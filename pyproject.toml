@@ -1,0 +1,10 @@
+[tool.black]
+line-length = 100
+
+[tool.isort]
+line_length = 100
+balanced_wrapping = true
+indent = "    "
+known_third_party = ["cudf", "cupy", "numpy", "pytest", "torch"]
+skip = ["build",".eggs"]
+
