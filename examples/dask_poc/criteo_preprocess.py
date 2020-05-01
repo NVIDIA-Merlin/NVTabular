@@ -71,10 +71,13 @@ def get_dataset_parts(data_path, fs, row_groups_per_part):
             fpath_last = fpath
             rg_list.append(rgi)
             rgi += 1
+        if rg_list:
+            full_path = fs.sep.join([data_path, fpath_last])
+            parts.append(tuple([full_path, rg_list]))
     else:
         print("WARNING - Must have metadata file to split by row-group chunks!")
         for piece in dataset.pieces:
-            part.append(tuple([piece.path, None]))
+            parts.append(tuple([piece.path, None]))
     return parts
 
 
