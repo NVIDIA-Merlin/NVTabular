@@ -1,5 +1,4 @@
 ## nvTabular
-==========
 
 Recommender systems require massive datasets to train, particularly for deep learning based solutions.  The transformation of these datasets after ETL in order to prepare them for model training is particularly challenging.  Often the time taken to do steps such as feature engineering, categorical encoding and normalization of continuous variables exceed the time it takes to train a model.
 
@@ -27,19 +26,32 @@ To be clear, this is an early alpha release, and we have a long way to go.  We h
 
 
 ### Getting Started
-----------------
 nvTabular is available in the NVidia container repository at the following location:
 
 [Docker quickstart]
 
 Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS cuDF](https://github.com/rapidsai/cudf) and a range of [examples](examples).  The easiest way to get started is to simply launch the container above and explore the examples within.  It is designed to work with [Cuda 10.2](https://developer.nvidia.com/cuda-downloads).  As we mature more cuda versions will be supported.
 
-[Conda Install]
+#### Conda
 
-If you wish to install the library yourself you can do so using the commands above.  The requirements for the library include:
+nvTabular can be installed with conda from the ```nvidia``` channel with:
+
+```
+conda install -c nvidia nvtabular
+```
+
+This command is not available until we publicly launch,  until then you can install from
+github using pip:
+
+```
+pip install -e 'git+ssh://git@github.com/rapidsai/recsys.git#&egg=nvtabular&subdirectory=nvtabular'
+```
+
+Installing from GitHub requires that you install the nvtabular dependencies first (cudf / numpy /
+pytorch (cudf / numpy / pytorch). This also requires that you have ssh access to the GitHub
+repository.
 
 ### Examples and Tutorials:
---------------
 
 A workflow demonstrating the preprocessing and dataloading components of nvTabular can be found in the [NVidia Recommender System tutorial](https://developer.nvidia.com/deep-learning-examples#rec-sys) on training [Facebook's Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/) on the [Criteo 1TB dataset](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/).
 
@@ -50,7 +62,7 @@ We also have a simple tutorial that demonstrates similar functionality on a much
 [ Rossman Store Sales ](examples/gpu_benchmark-rossmann.ipynb)
 
 ### Contributing
-------------
+
 If you wish to contribute to the library directly please see Contributing.md.  We are in particular interested in contributions or feature requests for feature engineering or preprocessing operators that you have found helpful in your own workflows.
 
 #### Core Contributors
@@ -58,7 +70,6 @@ If you wish to contribute to the library directly please see Contributing.md.  W
 nvTabular is supported and maintained directly by a small team of nvidians with a love of recommender systems.  They are: Ben Frederickson, Alec Gunny, Even Oldridge, Julio Perez, Onur Yilmaz, and Rick Zamora.
 
 ### Learn More
-------------
 
 If you’re interested in learning more about how nvTabular works under the hood we have provided a [more detailed description of the core functionality](HowItWorks.md).
 
