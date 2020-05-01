@@ -470,16 +470,15 @@ def parse_args():
     )
     parser.add_argument(
         "--data-path",
-        default="/raid/dask-space/criteo/crit_pq_int",
         type=str,
         help="Raw dataset path.",
     )
     parser.add_argument(
-        "--out-path", default="/raid/dask-space/rzamora/scratch", type=str, help="Root output path."
+        "--out-path", type=str, help="Root output path."
     )
     parser.add_argument(
         "--dask-workspace",
-        default="/raid/dask-space/rzamora",
+        default=None,
         type=str,
         help="Dask workspace path.",
     )
