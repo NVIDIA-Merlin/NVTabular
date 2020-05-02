@@ -629,7 +629,7 @@ class Export(TransformOperator):
 
     @annotate("Export_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        gdf.to_parquet(self.path)
+        gdf.to_parquet(self.path, compression=None)
         return
 
 

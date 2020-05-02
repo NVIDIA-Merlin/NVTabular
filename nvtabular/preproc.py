@@ -896,7 +896,7 @@ class Workflow:
         else:
             file_name = f"{self.current_file_num}.parquet"
             path = os.path.join(export_path, file_name)
-            gdf.to_parquet(path)
+            gdf.to_parquet(path, compression=None)
             self.current_file_num += 1
 
     def get_stats(self):
