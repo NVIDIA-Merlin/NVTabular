@@ -1,7 +1,4 @@
-## Be sure to clean up output and dask work-space before running test
-# !rm -rf /raid/dask-space/rzamora/*
-# !rm -rf /datasets/criteo/rzamora/scratch/*
-# !mkdir /raid/dask-space/rzamora/scratch
+# Note: Be sure to clean up output and dask work-space before running test
 
 import os
 import glob
@@ -147,7 +144,7 @@ def _read_and_process(part, columns, split_out, kwargs):
 
 
 def _read_and_apply_ops(
-    part, cat_cols, cont_cols, cat_labels, nsplits, processed_path, fs, gpu_cache, kwargs
+    part, cat_cols, cont_cols, cat_labels, nsplits, processed_path, fs, gpu_cache, mem, kwargs
 ):
 
     # Read dataset part
@@ -211,17 +208,10 @@ def _read_and_apply_ops(
 
     # Write each split to a separate file
     for s, df in result.items():
-        #prefix = subdir_paths[s]
         prefix = fs.sep.join([processed_path, "split." + str(s)])
-        pw = caching.cache()._get_pq_writer(prefix, s)
+        pw = caching.cache()._get_pq_writer(prefix, s, mem=mem)
         pw.write_table(df)
     return len_gdf
-
-
-def _write_split_to_shuffled(gdf, prefix, fs):
-    pw = caching.cache()._get_pq_writer(prefix, fs)
-    pw.write_table(gdf)
-    return prefix
 
 
 def _finish_write(parts):
@@ -234,6 +224,7 @@ def _worker_shuffle(processed_path, fs):
         pw.close()
 
         gdf = cudf.io.read_parquet(bio, index=False,)
+        bio.close()
 
         sort_key = "__sort_index__"
         arr = cupy.arange(len(gdf))
@@ -318,13 +309,6 @@ def main(args):
     parts = get_dataset_parts(data_path, fs, row_groups_per_part)
     processed_path = out_path + fs.sep + "processed"
     fs.mkdirs(processed_path, exist_ok=True)
-    # # Create nested directory structure for intermediate shuffle
-    # subdir_paths = {}
-    # for s in range(nsplits):
-    #     subdir = "split={value}".format(value=s)
-    #     subdir_path = processed_path + fs.sep + subdir
-    #     fs.mkdirs(subdir_path, exist_ok=True)
-    #     subdir_paths[s] = subdir_path
 
     # Debug - Take partial dataset
     if args.debug:
@@ -391,6 +375,7 @@ def main(args):
     )
 
     # Step 6: Re-read dataset and write transformed/shuffled dataset
+    use_bytesio = args.worker_shuffle
     for p, part in enumerate(parts):
         reread_key = (reread_name, p)
         dsk[reread_key] = (
@@ -403,6 +388,7 @@ def main(args):
             processed_path,
             fs,
             gpu_cache,
+            use_bytesio,
             {},
         )
 

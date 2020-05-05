@@ -14,13 +14,18 @@ class CategoryCache:
         for path, (pw, fpath) in self.pq_writer_cache.items():
             pw.close()
 
-    def _get_pq_writer(self, prefix, s):
+    def _get_pq_writer(self, prefix, s, mem):
         pw, fil = self.pq_writer_cache.get(prefix, (None, None))
         if pw is None:
-            outfile_id = guid() + ".parquet"
-            full_path = ".".join([prefix, outfile_id])
-            pw = ParquetWriter(full_path, compression=None)
-            self.pq_writer_cache[prefix] = (pw, full_path)
+            if mem:
+                fil = BytesIO()
+                pw = ParquetWriter(fil, compression=None)
+                self.pq_writer_cache[prefix] = (pw, fil)
+            else:
+                outfile_id = guid() + ".parquet"
+                full_path = ".".join([prefix, outfile_id])
+                pw = ParquetWriter(full_path, compression=None)
+                self.pq_writer_cache[prefix] = (pw, full_path)
         return pw
 
     def _get_encodings(self, col, path, cache=False):
