@@ -15,10 +15,14 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../../."))
 
+import recommonmark
+from recommonmark.transform import AutoStructify
+from recommonmark.parser import CommonMarkParser
+
 
 # -- Project information -----------------------------------------------------
 
-project = "nvTabular"
+project = "NVTabular"
 copyright = "2020, Nvidia"
 author = "Nvidia"
 
@@ -32,6 +36,7 @@ release = "2020"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "recommonmark",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
@@ -57,3 +62,15 @@ html_theme = "alabaster"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+source_parsers = {".md": CommonMarkParser}
+source_suffix = [".rst", ".md"]
+
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'enable_math': True,
+            'enable_eval_rst': True,
+            'auto_code_block': True,
+            }, True)
+    app.add_transform(AutoStructify)
+

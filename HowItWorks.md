@@ -1,13 +1,13 @@
 How it Works
 ============
 
-![nvTabular Workflow](nvTabular.png)
+![NVTabular Workflow](nvTabular.png)
 
-nvTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive dataset like the [Criteo Display Advertising Challenge](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or the [Twitter RecSys Challenge 2020](https://recsys-twitter.com/) that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as nvTabular in order to make tabular data workflows simpler.
+NVTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive dataset like the [Criteo Display Advertising Challenge](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or the [Twitter RecSys Challenge 2020](https://recsys-twitter.com/) that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as NVTabular in order to make tabular data workflows simpler.
 
 We provide mechanisms for iteration when the dataset exceeds GPU memory, allowing you to focus on what you want to do with your data, not how you need to do it.  We also provide a template for our core compute mechanism, Operations, or ‘ops’ allowing you to build your own custom ops from cuDF and other libraries.
 
-Follow our getting started guide to get nvTabular installed on your container or system.  Once installed you can setup a workflow in the following way:
+Follow our getting started guide to get NVTabular installed on your container or system.  Once installed you can setup a workflow in the following way:
 
 [ setup example ]
 
@@ -27,7 +27,7 @@ In order to minimize iteration through the data we combine all of the computatio
 
 A higher level of abstraction:
 ----------------------
-nvTabular code is targeted at the operator level, not the dataframe level, providing a method for specifying the operation you want to perform, and the columns or type of data that you want to perform it on.
+NVTabular code is targeted at the operator level, not the dataframe level, providing a method for specifying the operation you want to perform, and the columns or type of data that you want to perform it on.
 
 We make an explicit distinction between feature engineering ops, which create new variables, and preprocessing ops which transform data more directly to make it ready for the model to which it’s feeding.  While the type of computation involved in these two stages is often similar, we want to allow for the creation of new features that will then be preprocessed in the same way as other input variables.
 
@@ -49,15 +49,15 @@ Framework Interoperability:
 
 In addition to providing mechanisms for transforming the data to prepare it for deep learning models we also provide framework-specific dataloaders to help optimize getting that data to the GPU.  Under a traditional dataloading scheme, data is read in item by item and collated into a batch.  PyTorch allows for multiple processes to create many batches at the same time, however this still leads to many individual rows of tabular data accessed independently which impacts I/O, especially when this data is on the disk and not in CPU memory.  TensorFlow loads and shuffles TFRecords by adopting a windowed buffering scheme that loads data sequentially to a buffer, which it samples batches from randomly and replenishes with the next sequential elements from disk. Larger buffer sizes ensure more randomness, but can quickly bottleneck performance as TensorFlow tries to keep the buffer saturated. Smaller buffer sizes mean that datasets which aren't uniformly distributed on disk lead to biased sampling and potentially degraded convergence.  
 
-In nvTabular we provide an option to shuffle during dataset creation, creating a uniformly shuffled allowing the dataloader to read in contiguous chunks of data that are already randomized across the entire dataset.  NVTabular provides the option to control the number of chunks that are combined into a batch, allowing the end user flexibility when trading off between performance and true randomization.  This mechanism is critical when dealing with datasets that exceed CPU memory and per epoch shuffling is desired during training.  Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.
+In NVTabular we provide an option to shuffle during dataset creation, creating a uniformly shuffled allowing the dataloader to read in contiguous chunks of data that are already randomized across the entire dataset.  NVTabular provides the option to control the number of chunks that are combined into a batch, allowing the end user flexibility when trading off between performance and true randomization.  This mechanism is critical when dealing with datasets that exceed CPU memory and per epoch shuffling is desired during training.  Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.
 
-When compared to an item by item dataloader of PyTorch we have benchmarked our throughput as 100x faster dependent upon batch and tensor size.  Relative to Tensorflow’s windowed shuffle nvTabular is ~2.5x faster with many optimizations still available.
+When compared to an item by item dataloader of PyTorch we have benchmarked our throughput as 100x faster dependent upon batch and tensor size.  Relative to Tensorflow’s windowed shuffle NVTabular is ~2.5x faster with many optimizations still available.
 
 Multi-GPU Support:
 -----------------------
-Multi-GPU support is planned through Dask-cudf and Dask which allows for the easy parallelization of operations across multiple GPUs.  To use multi-gpu nvTabular specify the devices you want to leverage in the creation of the workflow.
+Multi-GPU support is planned through Dask-cudf and Dask which allows for the easy parallelization of operations across multiple GPUs.  To use multi-gpu NVTabular specify the devices you want to leverage in the creation of the workflow.
 
 CPU Support:
 ------------
-Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that nvTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.
+Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that NVTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.
 

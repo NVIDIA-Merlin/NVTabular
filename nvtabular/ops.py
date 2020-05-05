@@ -355,7 +355,7 @@ class Moments(StatOperator):
 
     @annotate("Moments_fin", color="green", domain="nvt_python")
     def read_fin(self):
-        """ Finalize statistical-moments algoprithm.
+        """ Finalize statistical-moments algorithm.
         """
         for col in self.varis.keys():
             self.stds[col] = float(np.sqrt(self.varis[col]))

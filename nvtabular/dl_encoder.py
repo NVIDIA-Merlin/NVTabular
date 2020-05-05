@@ -21,7 +21,6 @@ import cudf
 import cupy as cp
 import numpy as np
 import pandas as pd
-import psutil
 import rmm
 from cudf.utils.dtypes import min_scalar_type
 import nvtabular.ds_iterator as ds_itr
