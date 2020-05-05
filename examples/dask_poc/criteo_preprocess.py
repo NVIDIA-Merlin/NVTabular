@@ -255,27 +255,45 @@ def main(args):
     freq_limit = args.freq_limit
     nsplits = args.splits
     row_groups_per_part = args.row_groups
-    os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
+    if args.protocol == "ucx":
+        os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
 
-    # Use more hash partitions for high-cardinality columns
-    cont_names = ["I" + str(x) for x in range(1, 14)]
-    cat_names = ["C" + str(x) for x in range(1, 27)]
-    split_out = {col: 1 for col in cat_names}
-    split_out["C20"] = 8
-    split_out["C1"] = 8
-    split_out["C22"] = 4
-    split_out["C10"] = 4
-    split_out["C21"] = 2
-    split_out["C11"] = 2
-    split_out["C23"] = 2
-    split_out["C12"] = 2
+    # Use Criteo dataset by default (for now)
+    cont_names = args.cont_names.split(",") if args.cont_names else ["I" + str(x) for x in range(1, 14)]
+    cat_names = args.cat_names.split(",") if args.cat_names else ["C" + str(x) for x in range(1, 27)]
 
-    # Chose which cat_coluns to cache directly in device memory
-    gpu_cache = {col: True for col in cat_names}
-    gpu_cache["C20"] = False
-    gpu_cache["C1"] = False
-    gpu_cache["C22"] = False
-    gpu_cache["C10"] = False
+    if args.cat_splits:
+        split_out = (
+            name : int(s)
+            for name, s in zip(cat_names, args.cat_splits.split(","))
+        )
+    else:
+        split_out = {col: 1 for col in cat_names}
+        if args.cat_names is None:
+            # Using Criteo... Use more hash partitions for
+            # known high-cardinality columns
+            split_out["C20"] = 8
+            split_out["C1"] = 8
+            split_out["C22"] = 4
+            split_out["C10"] = 4
+            split_out["C21"] = 2
+            split_out["C11"] = 2
+            split_out["C23"] = 2
+            split_out["C12"] = 2
+
+    if args.cat_cache:
+        gpu_cache = (
+            name : bool(c)
+            for name, c in zip(cat_names, args.cat_cache.split(","))
+        )
+    else:
+        # Chose which cat_coluns to cache directly in device memory
+        gpu_cache = {col: True for col in cat_names}
+        if args.cat_names is None:
+            gpu_cache["C20"] = False
+            gpu_cache["C1"] = False
+            gpu_cache["C22"] = False
+            gpu_cache["C10"] = False
 
     # Setup LocalCUDACluster
     if args.protocol == "tcp":
@@ -414,7 +432,7 @@ def main(args):
         cleanup = client.run(caching.clean)
     runtime = time.time() - runtime
 
-    print("\nDask POC Criteo benchmark")
+    print("\nDask POC nvtabular benchmark")
     print("-------------------------------")
     print(f"row-group chunk | {args.row_groups}")
     print(f"protocol        | {args.protocol}")
@@ -468,7 +486,7 @@ def parse_args():
         "-r", "--row-groups", default=48, type=int, help="Number of row-groups per partition"
     )
     parser.add_argument(
-        "-f", "--freq-limit", default=15, type=int, help="Frequency limit on cat encoding."
+        "-f", "--freq-limit", default=0, type=int, help="Frequency limit on cat encodings."
     )
     parser.add_argument(
         "--device-limit", default="26GB", type=str, help="Device memory limit (per worker)."
@@ -481,6 +499,18 @@ def parse_args():
     )
     parser.add_argument(
         "--debug", action="store_true", help="Use fraction of dataset for debugging."
+    )
+    parser.add_argument(
+        "--cat_names", default=None, type=str, help="List of categorical column names."
+    )
+    parser.add_argument(
+        "--cat_cache", default=None, type=str, help='Whether to cache each category in device memory (Ex "1, 0, 0, 0").'
+    )
+    parser.add_argument(
+        "--cat_splits", default=None, type=str, help='How many splits to use for each category (Ex "8, 4, 2, 1").'
+    )
+    parser.add_argument(
+        "--cont_names", default=None, type=str, help="List of continuous column names."
     )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
