@@ -108,7 +108,7 @@ class PQFileReader(GPUFileReader):
         # Use first row-group metadata to estimate memory-rqs
         # NOTE: We could also use parquet metadata here, but
         #       `total_uncompressed_size` for each column is
-        #       not representitive of dataframe size for
+        #       not representative of dataframe size for
         #       strings/categoricals (parquet only stores uniques)
         self.row_size = self.row_size or 0
         if self.num_rows > 0 and self.row_size == 0:
@@ -116,7 +116,7 @@ class PQFileReader(GPUFileReader):
                 # removed logic for max in first x rows, it was
                 # causing infinite loops for our customers on their datasets.
                 self.row_size += col.dtype.itemsize
-        # Check if wwe are using row groups
+        # Check if we are using row groups
         self.use_row_groups = kwargs.get("use_row_groups", None)
         self.row_group_batch = 1
         self.next_row_group = 0
@@ -340,7 +340,6 @@ class GPUDatasetIterator:
             raise ValueError("len(paths) must be > 0.")
         self.paths = paths
         self.kwargs = kwargs
-
 
     def __iter__(self):
         for path in self.paths:

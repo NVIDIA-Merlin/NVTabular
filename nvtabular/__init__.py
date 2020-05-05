@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from . import preproc
+from . import ds_iterator
 
-from .ds_iterator import GPUDatasetIterator as dataset
-from .preproc import Workflow
+Workflow = preproc.Workflow
+dataset = ds_iterator.GPUDatasetIterator
 
-__all__ = [Workflow, dataset]
+__all__ = ["Workflow", "dataset"]

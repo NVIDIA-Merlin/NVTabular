@@ -22,13 +22,10 @@ import cudf
 import yaml
 from cudf._lib.nvtx import annotate
 
-from nvtabular.batchloader import create_tensors
 from nvtabular.dl_encoder import DLLabelEncoder
 from nvtabular.ds_iterator import Shuffler
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator, all_ops
-
-from cudf._lib.nvtx import annotate
 
 
 try:
@@ -186,12 +183,16 @@ class Workflow:
 
     def config_add_ops(self, operators, phase):
         """
-        operators: list of operators or single operator, Op/s to be
-                   added into the preprocessing phase
-        phase: identifier for feature engineering FE or preprocessing PP
-        ---
         This function serves to translate the operator list api into backend
         ready dependency dictionary.
+
+        Parameters
+        ----------
+        operators: list
+            list of operators or single operator, Op/s to be added into the
+            preprocessing phase
+        phase:
+            identifier for feature engineering FE or preprocessing PP
         """
         target_cols = self.get_tar_cols(operators)
         if phase in self.config and target_cols in self.config[phase]:
@@ -214,7 +215,6 @@ class Workflow:
                 operators.remove(op)
 
     def add_feature(self, operators):
-
         """
         Adds feature engineering operator(s), while mapping
         to the correct columns given operator dependencies.
@@ -229,7 +229,6 @@ class Workflow:
         self.config_add_ops(operators, "FE")
 
     def add_cat_feature(self, operators):
-
         """
         Adds categorical feature engineering operator(s), while mapping
         to the correct columns given operator dependencies.
@@ -433,12 +432,16 @@ class Workflow:
 
     def load_config(self, config, pro=False):
         """
-        config: Dictionary, this object contains the phases and user specified operators
-        pro: Bool, used to signal if config should be parsed via dependency dictionary
-             or operator list api
-        ---
         This function extracts all the operators from the given phases and produces a
         set of phases with necessary operators to complete configured pipeline.
+
+        Parameters
+        ----------
+        config : dict
+            this object contains the phases and user specified operators
+        pro: bool
+            signals if config should be parsed via dependency dictionary or
+            operator list api
         """
         # separate FE and PP
         if not pro:
@@ -521,10 +524,13 @@ class Workflow:
 
     def sort_task_types(self, master_list):
         """
-        master_list: a complete list of all necessary operators to complete specified pipeline
-        ----
         This function helps ordering and breaking up the master list of operators into the
         correct phases.
+
+        Parameters
+        -----------
+        master_list : list
+            a complete list of all necessary operators to complete specified pipeline
         """
         nodeps = []
         for tup in master_list:
@@ -537,10 +543,14 @@ class Workflow:
 
     def compile_dict_from_list(self, task_list_dict):
         """
-        task_list_dict: dictionary, this dictionary has phases(key) and
-                        the corresponding list of operators for each phase.
-        This function retrievs all the operators from the different keys in
+        This function retrieves all the operators from the different keys in
         the task_list_dict object.
+
+        Parameters
+        -----------
+        task_list_dict : dict
+            this dictionary has phases(key) and the corresponding list of operators for
+            each phase.
         """
         tk_d = {}
         phases = 0
@@ -697,10 +707,14 @@ class Workflow:
 
     def is_repeat_op(self, op, cols):
         """
-        op: operator;
-        cols: string; one of the following; continuous, categorical, all
-        helper function to find if a given operator targeting a column set
+        Helper function to find if a given operator targeting a column set
         already exists in the master task list.
+
+        Parameters
+        ----------
+        op: operator;
+        cols: str
+            one of the following; continuous, categorical, all
         """
         for task_d in self.master_task_list:
             if op._id in task_d[0]._id and cols == task_d[1]:
@@ -763,12 +777,11 @@ class Workflow:
                     gdf, export_path, shuffler=shuffler, num_out_files=num_out_files,
                 )
             gdf = None
-        #                 pdb.set_trace()
         # if export is activated combine as many GDFs as possible and
         # then write them out cudf.concat([exp_gdf, gdf], axis=0)
         for stat_op in stat_ops_ran:
             stat_op.read_fin()
-            # missing bubble up to prerprocessor
+            # missing bubble up to preprocessor
         self.get_stats()
 
     def apply(
@@ -957,6 +970,8 @@ class Workflow:
             stat_op.clear()
 
     def ds_to_tensors(self, itr, apply_ops=True):
+        from nvtabular.batchloader import create_tensors
+
         return create_tensors(self, itr=itr, apply_ops=apply_ops)
 
     def recreate_master_task_list(self, task_list, op_args):

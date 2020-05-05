@@ -51,14 +51,14 @@ class TensorItr:
     """
         Tensor dataset, for data already in tensor format.
         (see preproc::ds_to_tensor)
-        
+
         Parameters
         -----------
         tensors : list of tensors
         batch_size: the size of each batch to return.
         pin_memory: allows pinning of cpu memory, if used.
         shuffle: keyword to trigger the shuffle of batch
-        
+
     """
 
     def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False):
@@ -189,7 +189,7 @@ class TorchTensorBatchFileItr:
         For Torch Only:
         Batch Tensor dataset, takes in a file and converts to tensors
         supplying user defined size chunks.
-        
+
         Parameters
         -----------
         path : path of input file
@@ -198,7 +198,7 @@ class TorchTensorBatchFileItr:
         conts: continuous columns
         labels: label columns
         pin_memory: allows pinning of cpu memory, if used.
-        
+
     """
 
     def __init__(
@@ -215,16 +215,16 @@ class TorchTensorBatchFileItr:
     def proc_new_chunk(self, gdf):
         cats, conts, label = {}, {}, {}
         gdf_cats, gdf_conts, gdf_label = (
-                                            gdf[self.cat_cols],
-                                            gdf[self.cont_cols],
-                                            gdf[self.label_cols],
-                                        )
+            gdf[self.cat_cols],
+            gdf[self.cont_cols],
+            gdf[self.label_cols],
+        )
         # Change cats, conts to dim=1 for column dim=0 for df sub section
         cats = from_dlpack(gdf_cats.to_dlpack()).type(torch.long)
         conts = from_dlpack(gdf_conts.to_dlpack()).type(torch.float32)
         label = from_dlpack(gdf_label.to_dlpack()).type(torch.float32)
         return cats, conts, label
-    
+
     def __iter__(self):
         for chunk in self.itr:
             chunk = self.proc_new_chunk(chunk)
@@ -235,7 +235,6 @@ class TorchTensorBatchFileItr:
                 else:
                     batch = [tensor[idx:] for tensor in chunk]
                 yield batch
-
 
 
 class DLCollator:
@@ -256,14 +255,15 @@ class DLCollator:
 class TorchTensorBatchDatasetItr:
     """
         For Torch Only:
-        Batch Tensor dataset, takes in list of files 
+        Batch Tensor dataset, takes in list of files
         and creates TorchTensorBatchFileItr for each
         path supplied, supplying user defined size chunks.
-        
+
         Parameters
         -----------
         paths : list of input files that represent complete dataset
     """
+
     def __init__(self, paths, **kwargs):
         if isinstance(paths, str):
             paths = [paths]

@@ -313,7 +313,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         rows += len(chunk[0])
         del chunk
 
-    # accounts for incomplete batches at the end of chunks 
+    # accounts for incomplete batches at the end of chunks
     # that dont necesssarily have the full batch_size
     assert (idx + 1) * batch_size >= rows
     assert rows == num_rows

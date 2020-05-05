@@ -28,14 +28,6 @@ nvtabular.ds\_iterator module
    :undoc-members:
    :show-inheritance:
 
-nvtabular.ds\_joiner module
------------------------------
-
-.. automodule:: nvtabular.ds_joiner
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 nvtabular.ds\_writer module
 -----------------------------
 
