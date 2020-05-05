@@ -483,16 +483,16 @@ def parse_args():
         help="Dask workspace path.",
     )
     parser.add_argument(
-        "-s", "--splits", default=32, type=int, help="Number of splits to shuffle each partition"
+        "-s", "--splits", default=24, type=int, help="Number of splits to shuffle each partition"
     )
     parser.add_argument(
-        "-r", "--row-groups", default=32, type=int, help="Number of row-groups per partition"
+        "-r", "--row-groups", default=48, type=int, help="Number of row-groups per partition"
     )
     parser.add_argument(
         "-f", "--freq-limit", default=15, type=int, help="Frequency limit on cat encoding."
     )
     parser.add_argument(
-        "--device-limit", default="23GB", type=str, help="Device memory limit (per worker)."
+        "--device-limit", default="26GB", type=str, help="Device memory limit (per worker)."
     )
     parser.add_argument(
         "--host-limit", default="96GB", type=str, help="Host memory limit (per worker)."
