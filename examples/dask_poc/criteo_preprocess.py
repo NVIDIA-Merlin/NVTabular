@@ -455,18 +455,11 @@ def parse_args():
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--data-path",
-        type=str,
-        help="Raw dataset path.",
+        "--data-path", type=str, help="Raw dataset path.",
     )
+    parser.add_argument("--out-path", type=str, help="Root output path.")
     parser.add_argument(
-        "--out-path", type=str, help="Root output path."
-    )
-    parser.add_argument(
-        "--dask-workspace",
-        default=None,
-        type=str,
-        help="Dask workspace path.",
+        "--dask-workspace", default=None, type=str, help="Dask workspace path.",
     )
     parser.add_argument(
         "-s", "--splits", default=24, type=int, help="Number of splits to shuffle each partition"
