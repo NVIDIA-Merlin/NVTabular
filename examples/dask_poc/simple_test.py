@@ -22,7 +22,7 @@ freq_limit = "0"
 if os.path.isdir(out_dir):
     shutil.rmtree(out_dir)
     os.mkdir(out_dir)
-    
+
 if True:
     # Remove old dataset
     if os.path.isdir(test_dataset_path):
@@ -30,11 +30,11 @@ if True:
 
     # Write test dataset
     ddf_d = timeseries(
-        start='2000-01-01',
-        end='2001-01-01',
-        freq='1h',
-        partition_freq='30d',
-        dtypes={'x': float, 'y': float, 'name': str, 'id1': int, 'id2': int},
+        start="2000-01-01",
+        end="2001-01-01",
+        freq="1h",
+        partition_freq="30d",
+        dtypes={"x": float, "y": float, "name": str, "id1": int, "id2": int},
         id_lam=1_000_000_000,
     ).reset_index(drop=True)
     ddf = dask_cudf.from_dask_dataframe(ddf_d)
@@ -45,12 +45,11 @@ if True:
         df["id1"][df["id1"] < 1000] = None
         df["name"][df["name"] == "Edith"] = None
         return df
+
     ddf = ddf.map_partitions(_add_nulls, meta=ddf._meta)
 
     ddf.to_parquet(
-        test_dataset_path,
-        write_index=False,
-        write_metadata_file=True,
+        test_dataset_path, write_index=False, write_metadata_file=True,
     )
     del ddf
 
@@ -59,18 +58,30 @@ if True:
 cmd = [
     "python",
     "./criteo_preprocess.py",
-    "-d", devices,
-    "--data-path", test_dataset_path,
-    "--out-path", out_dir,
-    "--dask-workspace", dask_workspace,
-    "-p", protocol,
-    "-r", row_group_chunk,
-    "-s", nsplits,
-    "-f", freq_limit,
-    "--cat-names", "id1,id2,name",
-    "--cat-cache", "False,False,True",
-    "--cat-splits", "2,2,1",
-    "--cont-names", "x,y",
+    "-d",
+    devices,
+    "--data-path",
+    test_dataset_path,
+    "--out-path",
+    out_dir,
+    "--dask-workspace",
+    dask_workspace,
+    "-p",
+    protocol,
+    "-r",
+    row_group_chunk,
+    "-s",
+    nsplits,
+    "-f",
+    freq_limit,
+    "--cat-names",
+    "id1,id2,name",
+    "--cat-cache",
+    "False,False,True",
+    "--cat-splits",
+    "2,2,1",
+    "--cont-names",
+    "x,y",
     "--no-rmm-pool",
     "--worker-shuffle",
 ]
@@ -79,7 +90,7 @@ sp.run(cmd)
 
 
 # Read back dataset
-result_paths = glob.glob("/".join([out_dir,"processed","*.parquet"]))
+result_paths = glob.glob("/".join([out_dir, "processed", "*.parquet"]))
 result = dask_cudf.read_parquet(result_paths, index=False).compute()
 
 # Read original dataset
@@ -103,13 +114,9 @@ if freq_limit == "0":
     result["_count"] = cupy.ones(len(result))
     for col in ["id1", "id2", "name"]:
 
-        expect = df0.groupby(
-            col, dropna=False
-        ).count()["_count"].sort_values("_count")
+        expect = df0.groupby(col, dropna=False).count()["_count"].sort_values("_count")
 
-        got = result.groupby(
-            col, dropna=False
-        ).count()["_count"].sort_values("_count")
+        got = result.groupby(col, dropna=False).count()["_count"].sort_values("_count")
 
         assert_eq(expect, got, check_index=False)
 

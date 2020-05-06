@@ -32,8 +32,8 @@ from dask.dataframe.utils import group_split_dispatch
 """ Caching Utilities
 """
 
-class CategoryCache:
 
+class CategoryCache:
     def __init__(self):
         self.cat_cache = {}
         self.pq_writer_cache = {}
@@ -78,6 +78,7 @@ class CategoryCache:
 
         return table
 
+
 def _cache():
     worker = get_worker()
     if not hasattr(worker, "cats_cache"):
@@ -90,6 +91,7 @@ def _clean_cache():
     if hasattr(worker, "cats_cache"):
         del worker.cats_cache
     return
+
 
 """ Helper Functions
 """
@@ -321,14 +323,15 @@ def main(args):
         os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
 
     # Use Criteo dataset by default (for now)
-    cont_names = args.cont_names.split(",") if args.cont_names else ["I" + str(x) for x in range(1, 14)]
-    cat_names = args.cat_names.split(",") if args.cat_names else ["C" + str(x) for x in range(1, 27)]
+    cont_names = (
+        args.cont_names.split(",") if args.cont_names else ["I" + str(x) for x in range(1, 14)]
+    )
+    cat_names = (
+        args.cat_names.split(",") if args.cat_names else ["C" + str(x) for x in range(1, 27)]
+    )
 
     if args.cat_splits:
-        split_out = {
-            name : int(s)
-            for name, s in zip(cat_names, args.cat_splits.split(","))
-        }
+        split_out = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
     else:
         split_out = {col: 1 for col in cat_names}
         if args.cat_names is None:
@@ -344,10 +347,7 @@ def main(args):
             split_out["C12"] = 2
 
     if args.cat_cache:
-        gpu_cache = {
-            name : bool(c)
-            for name, c in zip(cat_names, args.cat_cache.split(","))
-        }
+        gpu_cache = {name: bool(c) for name, c in zip(cat_names, args.cat_cache.split(","))}
     else:
         # Chose which cat_coluns to cache directly in device memory
         gpu_cache = {col: True for col in cat_names}
@@ -565,10 +565,16 @@ def parse_args():
         "--cat-names", default=None, type=str, help="List of categorical column names."
     )
     parser.add_argument(
-        "--cat-cache", default=None, type=str, help='Whether to cache each category in device memory (Ex "1, 0, 0, 0").'
+        "--cat-cache",
+        default=None,
+        type=str,
+        help='Whether to cache each category in device memory (Ex "1, 0, 0, 0").',
     )
     parser.add_argument(
-        "--cat-splits", default=None, type=str, help='How many splits to use for each category (Ex "8, 4, 2, 1").'
+        "--cat-splits",
+        default=None,
+        type=str,
+        help='How many splits to use for each category (Ex "8, 4, 2, 1").',
     )
     parser.add_argument(
         "--cont-names", default=None, type=str, help="List of continuous column names."
