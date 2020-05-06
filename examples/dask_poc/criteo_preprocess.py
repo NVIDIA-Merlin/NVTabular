@@ -186,6 +186,7 @@ def _read_and_apply_ops(
             value = caching.cache()._get_encodings(col, encodings[col], cache=gpu_cache[col])
         else:
             value = cudf.DataFrame({col: [None]})
+            value[col] = value[col].astype(vals.dtype)
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
@@ -263,10 +264,10 @@ def main(args):
     cat_names = args.cat_names.split(",") if args.cat_names else ["C" + str(x) for x in range(1, 27)]
 
     if args.cat_splits:
-        split_out = (
+        split_out = {
             name : int(s)
             for name, s in zip(cat_names, args.cat_splits.split(","))
-        )
+        }
     else:
         split_out = {col: 1 for col in cat_names}
         if args.cat_names is None:
@@ -282,10 +283,10 @@ def main(args):
             split_out["C12"] = 2
 
     if args.cat_cache:
-        gpu_cache = (
+        gpu_cache = {
             name : bool(c)
             for name, c in zip(cat_names, args.cat_cache.split(","))
-        )
+        }
     else:
         # Chose which cat_coluns to cache directly in device memory
         gpu_cache = {col: True for col in cat_names}
@@ -501,16 +502,16 @@ def parse_args():
         "--debug", action="store_true", help="Use fraction of dataset for debugging."
     )
     parser.add_argument(
-        "--cat_names", default=None, type=str, help="List of categorical column names."
+        "--cat-names", default=None, type=str, help="List of categorical column names."
     )
     parser.add_argument(
-        "--cat_cache", default=None, type=str, help='Whether to cache each category in device memory (Ex "1, 0, 0, 0").'
+        "--cat-cache", default=None, type=str, help='Whether to cache each category in device memory (Ex "1, 0, 0, 0").'
     )
     parser.add_argument(
-        "--cat_splits", default=None, type=str, help='How many splits to use for each category (Ex "8, 4, 2, 1").'
+        "--cat-splits", default=None, type=str, help='How many splits to use for each category (Ex "8, 4, 2, 1").'
     )
     parser.add_argument(
-        "--cont_names", default=None, type=str, help="List of continuous column names."
+        "--cont-names", default=None, type=str, help="List of continuous column names."
     )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
