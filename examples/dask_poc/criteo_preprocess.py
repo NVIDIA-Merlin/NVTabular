@@ -5,6 +5,7 @@ import glob
 import time
 import fsspec
 import argparse
+from io import BytesIO
 
 import dask
 import dask.dataframe as dd
@@ -21,14 +22,74 @@ import pandas as pd
 import cupy
 import cudf
 import dask_cudf
+from cudf.io.parquet import ParquetWriter
 
 from dask_cuda import LocalCUDACluster
-from dask.distributed import Client, wait
-from dask.distributed import performance_report
+from dask.distributed import Client, wait, performance_report, get_worker
 from dask.utils import parse_bytes, natural_sort_key
 from dask.dataframe.utils import group_split_dispatch
 
-import caching
+""" Caching Utilities
+"""
+
+class CategoryCache:
+
+    def __init__(self):
+        self.cat_cache = {}
+        self.pq_writer_cache = {}
+
+    def __del__(self):
+        for path, (pw, fpath) in self.pq_writer_cache.items():
+            pw.close()
+
+    def _get_pq_writer(self, prefix, s, mem):
+        pw, fil = self.pq_writer_cache.get(prefix, (None, None))
+        if pw is None:
+            if mem:
+                fil = BytesIO()
+                pw = ParquetWriter(fil, compression=None)
+                self.pq_writer_cache[prefix] = (pw, fil)
+            else:
+                outfile_id = guid() + ".parquet"
+                full_path = ".".join([prefix, outfile_id])
+                pw = ParquetWriter(full_path, compression=None)
+                self.pq_writer_cache[prefix] = (pw, full_path)
+        return pw
+
+    def _get_encodings(self, col, path, cache=False):
+        table = self.cat_cache.get(col, None)
+        if table and not isinstance(table, cudf.DataFrame):
+            df = cudf.io.read_parquet(table, index=False, columns=[col])
+            df.index.name = "labels"
+            df.reset_index(drop=False, inplace=True)
+            return df
+
+        if table is None:
+            if cache:
+                table = cudf.io.read_parquet(path, index=False, columns=[col])
+            else:
+                with open(path, "rb") as f:
+                    self.cat_cache[col] = BytesIO(f.read())
+                table = cudf.io.read_parquet(self.cat_cache[col], index=False, columns=[col])
+            table.index.name = "labels"
+            table.reset_index(drop=False, inplace=True)
+            if cache:
+                self.cat_cache[col] = table.copy(deep=False)
+
+        return table
+
+def _cache():
+    worker = get_worker()
+    if not hasattr(worker, "cats_cache"):
+        worker.cats_cache = CategoryCache()
+    return worker.cats_cache
+
+
+def _clean_cache():
+    worker = get_worker()
+    if hasattr(worker, "cats_cache"):
+        del worker.cats_cache
+    return
 
 """ Helper Functions
 """
@@ -183,7 +244,7 @@ def _read_and_apply_ops(
     # Categorical Encodings
     def _encode(vals, encodings, col, gpu_cache, na_sentinel=-1):
         if encodings[col]:
-            value = caching.cache()._get_encodings(col, encodings[col], cache=gpu_cache[col])
+            value = _cache()._get_encodings(col, encodings[col], cache=gpu_cache[col])
         else:
             value = cudf.DataFrame({col: [None]})
             value[col] = value[col].astype(vals.dtype)
@@ -210,7 +271,7 @@ def _read_and_apply_ops(
     # Write each split to a separate file
     for s, df in result.items():
         prefix = fs.sep.join([processed_path, "split." + str(s)])
-        pw = caching.cache()._get_pq_writer(prefix, s, mem=mem)
+        pw = _cache()._get_pq_writer(prefix, s, mem=mem)
         pw.write_table(df)
     return len_gdf
 
@@ -221,7 +282,7 @@ def _finish_write(parts):
 
 def _worker_shuffle(processed_path, fs):
     paths = []
-    for path, (pw, bio) in caching.cache().pq_writer_cache.items():
+    for path, (pw, bio) in _cache().pq_writer_cache.items():
         pw.close()
 
         gdf = cudf.io.read_parquet(bio, index=False,)
@@ -320,9 +381,8 @@ def main(args):
 
     # Setup RMM pool and caching
     if not args.no_rmm_pool:
-        setup_rmm_pool(client, "24GB")
-    client.upload_file("caching.py")
-    client.run(caching.cache)
+        setup_rmm_pool(client, parse_bytes(args.device_limit))
+    client.run(_cache)
 
     fs = get_fs_token_paths(data_path, mode="rb")[0]
     parts = get_dataset_parts(data_path, fs, row_groups_per_part)
@@ -425,12 +485,12 @@ def main(args):
             done = client.get(dsk, finalize_write_name)
             if args.worker_shuffle:
                 worker_shuffle = client.run(_worker_shuffle, processed_path, fs)
-            cleanup = client.run(caching.clean)
+            cleanup = client.run(_clean_cache)
     else:
         done = client.get(dsk, finalize_write_name)
         if args.worker_shuffle:
             worker_shuffle = client.run(_worker_shuffle, processed_path, fs)
-        cleanup = client.run(caching.clean)
+        cleanup = client.run(_clean_cache)
     runtime = time.time() - runtime
 
     print("\nDask POC nvtabular benchmark")
