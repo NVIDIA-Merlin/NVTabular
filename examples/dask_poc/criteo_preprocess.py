@@ -283,7 +283,7 @@ def _read_and_apply_ops(
     else:
         # We should do a real sort here
         sort_key = "__sort_index__"
-        arr = cupy.arange(len(df))
+        arr = cupy.arange(gdf_size)
         cupy.random.shuffle(arr)
         gdf[sort_key] = arr
         gdf = gdf.sort_values(sort_key)
