@@ -5,6 +5,7 @@ import glob
 import time
 import fsspec
 import argparse
+from io import BytesIO
 
 import dask
 import dask.dataframe as dd
@@ -21,14 +22,76 @@ import pandas as pd
 import cupy
 import cudf
 import dask_cudf
+from cudf.io.parquet import ParquetWriter
 
 from dask_cuda import LocalCUDACluster
-from dask.distributed import Client, wait
-from dask.distributed import performance_report
+from dask.distributed import Client, wait, performance_report, get_worker
 from dask.utils import parse_bytes, natural_sort_key
 from dask.dataframe.utils import group_split_dispatch
 
-import caching
+""" Caching Utilities
+"""
+
+
+class CategoryCache:
+    def __init__(self):
+        self.cat_cache = {}
+        self.pq_writer_cache = {}
+
+    def __del__(self):
+        for path, (pw, fpath) in self.pq_writer_cache.items():
+            pw.close()
+
+    def _get_pq_writer(self, prefix, s, mem):
+        pw, fil = self.pq_writer_cache.get(prefix, (None, None))
+        if pw is None:
+            if mem:
+                fil = BytesIO()
+                pw = ParquetWriter(fil, compression=None)
+                self.pq_writer_cache[prefix] = (pw, fil)
+            else:
+                outfile_id = guid() + ".parquet"
+                full_path = ".".join([prefix, outfile_id])
+                pw = ParquetWriter(full_path, compression=None)
+                self.pq_writer_cache[prefix] = (pw, full_path)
+        return pw
+
+    def _get_encodings(self, col, path, cache=False):
+        table = self.cat_cache.get(col, None)
+        if table and not isinstance(table, cudf.DataFrame):
+            df = cudf.io.read_parquet(table, index=False, columns=[col])
+            df.index.name = "labels"
+            df.reset_index(drop=False, inplace=True)
+            return df
+
+        if table is None:
+            if cache:
+                table = cudf.io.read_parquet(path, index=False, columns=[col])
+            else:
+                with open(path, "rb") as f:
+                    self.cat_cache[col] = BytesIO(f.read())
+                table = cudf.io.read_parquet(self.cat_cache[col], index=False, columns=[col])
+            table.index.name = "labels"
+            table.reset_index(drop=False, inplace=True)
+            if cache:
+                self.cat_cache[col] = table.copy(deep=False)
+
+        return table
+
+
+def _cache():
+    worker = get_worker()
+    if not hasattr(worker, "cats_cache"):
+        worker.cats_cache = CategoryCache()
+    return worker.cats_cache
+
+
+def _clean_cache():
+    worker = get_worker()
+    if hasattr(worker, "cats_cache"):
+        del worker.cats_cache
+    return
+
 
 """ Helper Functions
 """
@@ -183,9 +246,10 @@ def _read_and_apply_ops(
     # Categorical Encodings
     def _encode(vals, encodings, col, gpu_cache, na_sentinel=-1):
         if encodings[col]:
-            value = caching.cache()._get_encodings(col, encodings[col], cache=gpu_cache[col])
+            value = _cache()._get_encodings(col, encodings[col], cache=gpu_cache[col])
         else:
             value = cudf.DataFrame({col: [None]})
+            value[col] = value[col].astype(vals.dtype)
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
@@ -209,7 +273,7 @@ def _read_and_apply_ops(
     # Write each split to a separate file
     for s, df in result.items():
         prefix = fs.sep.join([processed_path, "split." + str(s)])
-        pw = caching.cache()._get_pq_writer(prefix, s, mem=mem)
+        pw = _cache()._get_pq_writer(prefix, s, mem=mem)
         pw.write_table(df)
     return len_gdf
 
@@ -220,7 +284,7 @@ def _finish_write(parts):
 
 def _worker_shuffle(processed_path, fs):
     paths = []
-    for path, (pw, bio) in caching.cache().pq_writer_cache.items():
+    for path, (pw, bio) in _cache().pq_writer_cache.items():
         pw.close()
 
         gdf = cudf.io.read_parquet(bio, index=False,)
@@ -255,27 +319,43 @@ def main(args):
     freq_limit = args.freq_limit
     nsplits = args.splits
     row_groups_per_part = args.row_groups
-    os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
+    if args.protocol == "ucx":
+        os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
 
-    # Use more hash partitions for high-cardinality columns
-    cont_names = ["I" + str(x) for x in range(1, 14)]
-    cat_names = ["C" + str(x) for x in range(1, 27)]
-    split_out = {col: 1 for col in cat_names}
-    split_out["C20"] = 8
-    split_out["C1"] = 8
-    split_out["C22"] = 4
-    split_out["C10"] = 4
-    split_out["C21"] = 2
-    split_out["C11"] = 2
-    split_out["C23"] = 2
-    split_out["C12"] = 2
+    # Use Criteo dataset by default (for now)
+    cont_names = (
+        args.cont_names.split(",") if args.cont_names else ["I" + str(x) for x in range(1, 14)]
+    )
+    cat_names = (
+        args.cat_names.split(",") if args.cat_names else ["C" + str(x) for x in range(1, 27)]
+    )
 
-    # Chose which cat_coluns to cache directly in device memory
-    gpu_cache = {col: True for col in cat_names}
-    gpu_cache["C20"] = False
-    gpu_cache["C1"] = False
-    gpu_cache["C22"] = False
-    gpu_cache["C10"] = False
+    if args.cat_splits:
+        split_out = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
+    else:
+        split_out = {col: 1 for col in cat_names}
+        if args.cat_names is None:
+            # Using Criteo... Use more hash partitions for
+            # known high-cardinality columns
+            split_out["C20"] = 8
+            split_out["C1"] = 8
+            split_out["C22"] = 4
+            split_out["C10"] = 4
+            split_out["C21"] = 2
+            split_out["C11"] = 2
+            split_out["C23"] = 2
+            split_out["C12"] = 2
+
+    if args.cat_cache:
+        gpu_cache = {name: bool(c) for name, c in zip(cat_names, args.cat_cache.split(","))}
+    else:
+        # Chose which cat_coluns to cache directly in device memory
+        gpu_cache = {col: True for col in cat_names}
+        if args.cat_names is None:
+            gpu_cache["C20"] = False
+            gpu_cache["C1"] = False
+            gpu_cache["C22"] = False
+            gpu_cache["C10"] = False
 
     # Setup LocalCUDACluster
     if args.protocol == "tcp":
@@ -301,9 +381,8 @@ def main(args):
 
     # Setup RMM pool and caching
     if not args.no_rmm_pool:
-        setup_rmm_pool(client, "24GB")
-    client.upload_file("caching.py")
-    client.run(caching.cache)
+        setup_rmm_pool(client, parse_bytes(args.device_limit))
+    client.run(_cache)
 
     fs = get_fs_token_paths(data_path, mode="rb")[0]
     parts = get_dataset_parts(data_path, fs, row_groups_per_part)
@@ -406,15 +485,15 @@ def main(args):
             done = client.get(dsk, finalize_write_name)
             if args.worker_shuffle:
                 worker_shuffle = client.run(_worker_shuffle, processed_path, fs)
-            cleanup = client.run(caching.clean)
+            cleanup = client.run(_clean_cache)
     else:
         done = client.get(dsk, finalize_write_name)
         if args.worker_shuffle:
             worker_shuffle = client.run(_worker_shuffle, processed_path, fs)
-        cleanup = client.run(caching.clean)
+        cleanup = client.run(_clean_cache)
     runtime = time.time() - runtime
 
-    print("\nDask POC Criteo benchmark")
+    print("\nDask POC nvtabular benchmark")
     print("-------------------------------")
     print(f"row-group chunk | {args.row_groups}")
     print(f"protocol        | {args.protocol}")
@@ -468,7 +547,7 @@ def parse_args():
         "-r", "--row-groups", default=48, type=int, help="Number of row-groups per partition"
     )
     parser.add_argument(
-        "-f", "--freq-limit", default=15, type=int, help="Frequency limit on cat encoding."
+        "-f", "--freq-limit", default=0, type=int, help="Frequency limit on cat encodings."
     )
     parser.add_argument(
         "--device-limit", default="26GB", type=str, help="Device memory limit (per worker)."
@@ -481,6 +560,24 @@ def parse_args():
     )
     parser.add_argument(
         "--debug", action="store_true", help="Use fraction of dataset for debugging."
+    )
+    parser.add_argument(
+        "--cat-names", default=None, type=str, help="List of categorical column names."
+    )
+    parser.add_argument(
+        "--cat-cache",
+        default=None,
+        type=str,
+        help='Whether to cache each category in device memory (Ex "1, 0, 0, 0").',
+    )
+    parser.add_argument(
+        "--cat-splits",
+        default=None,
+        type=str,
+        help='How many splits to use for each category (Ex "8, 4, 2, 1").',
+    )
+    parser.add_argument(
+        "--cont-names", default=None, type=str, help="List of continuous column names."
     )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
