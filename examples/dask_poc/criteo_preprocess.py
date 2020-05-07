@@ -207,7 +207,7 @@ def _read_and_process(part, columns, split_out, kwargs):
 
 
 def _read_and_apply_ops(
-    part, cat_cols, cont_cols, cat_labels, nsplits, processed_path, fs, gpu_cache, mem, kwargs
+    part, cat_cols, cont_cols, cat_labels, nsplits, processed_path, fs, gpu_cache, mem, full, kwargs
 ):
 
     # Read dataset part
@@ -253,29 +253,50 @@ def _read_and_apply_ops(
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
-        codes = cudf.DataFrame({col: vals.copy(), "order": cupy.arange(len(vals)),})
-        codes = codes.merge(value, on=col, how="left").sort_values("order")["labels"]
-        codes.fillna(na_sentinel, inplace=True)
-
-        return codes.values
+        if full:
+            # Use `searchsorted` if we are using a "full" encoding
+            labels = value[col].searchsorted(vals, side="left", na_position="first")
+            labels[labels >= len(value[col])] = na_sentinel
+            return labels
+        else:
+            codes = cudf.DataFrame({col: vals.copy(), "order": cupy.arange(len(vals)),})
+            codes = codes.merge(value, on=col, how="left").sort_values("order")["labels"]
+            codes.fillna(na_sentinel, inplace=True)
+            return codes.values
 
     for col in cat_cols:
         gdf[col] = _encode(gdf[col]._column, cat_labels, col, gpu_cache, na_sentinel=0)
 
     # Split gdf into random splits
     gdf_size = len(gdf)
-    ind = cupy.random.choice(cupy.arange(nsplits, dtype="int8"), gdf_size)
-    result = group_split_dispatch(gdf, ind, nsplits, ignore_index=True)
-    del ind
-    len_gdf = len(gdf)
-    del gdf
+    if mem:
+        # Dont need a real sort if we are doing in memory later
+        ind = cupy.random.choice(cupy.arange(nsplits, dtype="int8"), gdf_size)
+        result = group_split_dispatch(gdf, ind, nsplits, ignore_index=True)
+        del ind
+        del gdf
+        # Write each split to a separate file
+        for s, df in result.items():
+            prefix = fs.sep.join([processed_path, "split." + str(s)])
+            pw = _cache()._get_pq_writer(prefix, s, mem=mem)
+            pw.write_table(df)
+    else:
+        # We should do a real sort here
+        sort_key = "__sort_index__"
+        arr = cupy.arange(gdf_size)
+        cupy.random.shuffle(arr)
+        gdf[sort_key] = arr
+        gdf = gdf.sort_values(sort_key)
+        gdf.drop(columns=[sort_key], inplace=True)
+        splits = list(range(0, gdf_size, int(gdf_size / nsplits)))
+        splits[-1] = gdf_size
+        # Write each split to a separate file
+        for s in range(0, len(splits) - 1):
+            prefix = fs.sep.join([processed_path, "split." + str(s)])
+            pw = _cache()._get_pq_writer(prefix, s, mem=mem)
+            pw.write_table(gdf.iloc[splits[s] : splits[s + 1]])
 
-    # Write each split to a separate file
-    for s, df in result.items():
-        prefix = fs.sep.join([processed_path, "split." + str(s)])
-        pw = _cache()._get_pq_writer(prefix, s, mem=mem)
-        pw.write_table(df)
-    return len_gdf
+    return gdf_size
 
 
 def _finish_write(parts):
@@ -354,8 +375,10 @@ def main(args):
         if args.cat_names is None:
             gpu_cache["C20"] = False
             gpu_cache["C1"] = False
-            gpu_cache["C22"] = False
-            gpu_cache["C10"] = False
+            # Only need to cache the largest two on a dgx-2
+            if args.n_workers < 16:
+                gpu_cache["C22"] = False
+                gpu_cache["C10"] = False
 
     # Setup LocalCUDACluster
     if args.protocol == "tcp":
@@ -468,6 +491,7 @@ def main(args):
             fs,
             gpu_cache,
             use_bytesio,
+            (freq_limit == 0),
             {},
         )
 
