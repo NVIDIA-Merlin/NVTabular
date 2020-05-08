@@ -3,7 +3,7 @@ How it Works
 
 ![NVTabular Workflow](nvTabular.png)
 
-NVTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive dataset like [Criteo](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or [RecSys 2020](https://recsys-twitter.com/ that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as NVTabular in order to make tabular data workflows simpler.
+NVTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive dataset like [Criteo](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or [RecSys 2020](https://recsys-twitter.com/) that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as NVTabular in order to make tabular data workflows simpler.
 
 We provide mechanisms for iteration when the dataset exceeds GPU memory, allowing you to focus on what you want to do with your data, not how you need to do it.  We also provide a template for our core compute mechanism, Operations, or ‘ops’ allowing you to build your own custom ops from cuDF and other libraries.
 
@@ -60,4 +60,3 @@ Multi-GPU support is planned through Dask-cudf and Dask which allows for the eas
 CPU Support:
 ------------
 Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that NVTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.
-
