@@ -63,4 +63,4 @@ NVTabular is supported and maintained directly by a small team of nvidians with 
 
 If you’re interested in learning more about how NVTabular works under the hood we have provided this [more detailed description of the core functionality](HowItWorks.md).
 
-We also have [API documentation](link to come)  that outlines in detail the specifics of the calls available within the library.
+We also have [API documentation](https://nvidia.github.io/NVTabular) that outlines in detail the specifics of the calls available within the library.
