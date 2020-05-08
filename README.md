@@ -57,7 +57,7 @@ If you wish to contribute to the library directly please see [Contributing.md](h
 
 #### Core Contributors
 
-NVTabular is supported and maintained directly by a small team of nvidians with a love of recommender systems.  They are: Ben Fredrickson, Alec Gunny, Even Oldridge, Julio Perez, Onur Yilmaz, and Rick Zamora.
+NVTabular is supported and maintained directly by a small team of nvidians with a love of recommender systems.  They are: Ben Frederickson, Alec Gunny, Even Oldridge, Julio Perez, Onur Yilmaz, and Rick Zamora.
 
 ### Learn More
 
