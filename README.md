@@ -12,8 +12,8 @@ NVTabular is designed to support Data Scientists and ML Engineers trying to trai
 
 It is also meant to help ML/Ops Engineers deploying models into production by providing:
 
-* Integration with model serving frameworks like NVidia’s Triton Inference Server to make model deployment easy.
 * Faster dataset transformation, allowing for production models to be trained more frequently and kept up to date helping improve responsiveness and model performance.
+* Integration with model serving frameworks like NVidia’s Triton Inference Server to make model deployment easy.
 * Statistical monitoring of the dataset for distributional shift and outlier detection during production training or inference.
 
 The library is designed to be interoperable with both PyTorch and Tensorflow using batch data-loaders that we’ve developed as extensions of native framework code.  NVTabular provides the option to shuffle data during preprocessing, allowing the data-loader to load large contiguous chunks from files rather than individual elements.  This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset.  We have benchmarked our data-loader at 100x the baseline item by item PyTorch dataloader and 3x the Tensorflow batch data-loader, with several optimizations yet to come in that stack.
