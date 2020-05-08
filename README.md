@@ -1,10 +1,10 @@
 ## NVTabular
 
-nvTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS cuDF library](https://github.com/rapidsai/cudf) library.
+NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems.  It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS cuDF library](https://github.com/rapidsai/cudf) library.
 
 Recommender systems require massive datasets to train, particularly for deep learning based solutions.  The transformation of these datasets after ETL in order to prepare them for model training is particularly challenging.  Often the time taken to do steps such as feature engineering, categorical encoding and normalization of continuous variables exceed the time it takes to train a model.
 
-nvTabular is designed to support Data Scientists and ML Engineers trying to train (deep learning) recommender systems or other tabular data problems by allowing them to:
+NVTabular is designed to support Data Scientists and ML Engineers trying to train (deep learning) recommender systems or other tabular data problems by allowing them to:
 
 * Prepare datasets quickly and easily in order to experiment more and train more models.
 * Work with datasets that exceed GPU and CPU memory without having to worry about scale.
@@ -16,7 +16,7 @@ It is also meant to help ML/Ops Engineers deploying models into production by pr
 * Faster dataset transformation, allowing for production models to be trained more frequently and kept up to date helping improve responsiveness and model performance.
 * Statistical monitoring of the dataset for distributional shift and outlier detection during production training or inference.
 
-The library is designed to be interoperable with both PyTorch and Tensorflow using batch data-loaders that we’ve developed as extensions of native framework code.  nvTabular provides the option to shuffle data during preprocessing, allowing the data-loader to load large contiguous chunks from files rather than individual elements.  This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset.  We have benchmarked our data-loader at 100x the baseline item by item PyTorch dataloader and 3x the Tensorflow batch data-loader, with several optimizations yet to come in that stack.
+The library is designed to be interoperable with both PyTorch and Tensorflow using batch data-loaders that we’ve developed as extensions of native framework code.  NVTabular provides the option to shuffle data during preprocessing, allowing the data-loader to load large contiguous chunks from files rather than individual elements.  This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset.  We have benchmarked our data-loader at 100x the baseline item by item PyTorch dataloader and 3x the Tensorflow batch data-loader, with several optimizations yet to come in that stack.
 
 Extending beyond model training, we plan to provide integration with model serving frameworks like [NVidia’s Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server), creating a clear path to production inference for these models and allowing the feature engineering and preprocessing steps performed on the data during training to be easily and automatically applied to incoming data during inference.
 
@@ -25,7 +25,7 @@ Our goal is faster iteration on massive tabular datasets, both for experimentati
 To be clear, this is an early alpha release, and we have a long way to go.  We have a working framework, but our [operator set](./Operators.md) is limited for the initial launch and every day we’re developing new optimizations that will help improve the performance of the library.  If you’re interested in working with us to help develop this library we’re looking for early collaborators and contributors.  In the coming months we’ll be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems.  Please reach out via email or see our guide on contributions.  We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 ### Getting Started
-nvTabular is available in the NVidia container repository at the following location:
+NVTabular is available in the NVidia container repository at the following location:
 
 [Docker quickstart]
 
@@ -43,7 +43,7 @@ Requirements.yml
 
 ### Examples and Tutorials:
 
-A workflow demonstrating the preprocessing and data-loading components of nvTabular can be found in the DeepLearningExamples tutorial on training Facebook's [Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/) on the [Criteo 1TB dataset](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/).
+A workflow demonstrating the preprocessing and data-loading components of NVTabular can be found in the DeepLearningExamples tutorial on training Facebook's [Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/) on the [Criteo 1TB dataset](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/).
 
 [ DLRM Criteo Workflow ](https://developer.nvidia.com/deep-learning-examples#rec-sys)
 
@@ -57,10 +57,10 @@ If you wish to contribute to the library directly please see [Contributing.md](h
 
 #### Core Contributors
 
-nvTabular is supported and maintained directly by a small team of nvidians with a love of recommender systems.  They are: Ben Fredrickson, Alec Gunny, Even Oldridge, Julio Perez, Onur Yilmaz, and Rick Zamora.
+NVTabular is supported and maintained directly by a small team of nvidians with a love of recommender systems.  They are: Ben Fredrickson, Alec Gunny, Even Oldridge, Julio Perez, Onur Yilmaz, and Rick Zamora.
 
 ### Learn More
 
-If you’re interested in learning more about how nvTabular works under the hood we have provided this [more detailed description of the core functionality](HowItWorks.md).
+If you’re interested in learning more about how NVTabular works under the hood we have provided this [more detailed description of the core functionality](HowItWorks.md).
 
 We also have [API documentation](link to come)  that outlines in detail the specifics of the calls available within the library.
