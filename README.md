@@ -53,7 +53,7 @@ We also have a simple tutorial that demonstrates similar functionality on a much
 
 ### Contributing
 
-If you wish to contribute to the library directly please see [Contributing.md](https://github.com/rapidsai/recsys/blob/master/CONTRIBUTING.md).  We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
+If you wish to contribute to the library directly please see [Contributing.md](https://github.com/nvidia/NVTabular/blob/master/CONTRIBUTING.md).  We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 #### Core Contributors
 
