@@ -22,7 +22,7 @@ Extending beyond model training, we plan to provide integration with model servi
 
 Our goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness.   
 
-To be clear, this is an early alpha release, and we have a long way to go.  We have a working framework, but our [operator set](./Operators.md) is limited for the initial launch and every day we’re developing new optimizations that will help improve the performance of the library.  If you’re interested in working with us to help develop this library we’re looking for early collaborators and contributors.  In the coming months we’ll be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems.  Please reach out via email or see our guide on contributions.  We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
+To be clear, this is an early alpha release, and we have a long way to go.  We have a working framework, but our [operator set](./Operators.md) is limited for the initial launch and every day we’re developing new optimizations that will help improve the performance of the library.  If you’re interested in working with us to help develop this library we’re looking for early collaborators and aontributors.  In the coming months we’ll be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems.  Please reach out via email or see our guide on contributions.  We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 ### Getting Started
 NVTabular is available in the NVidia container repository at the following location:
@@ -53,7 +53,7 @@ We also have a simple tutorial that demonstrates similar functionality on a much
 
 ### Contributing
 
-If you wish to contribute to the library directly please see [Contributing.md](https://github.com/rapidsai/recsys/blob/master/CONTRIBUTING.md).  We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
+If you wish to contribute to the library directly please see [Contributing.md](https://github.com/nvidia/NVTabular/blob/master/CONTRIBUTING.md).  We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 #### Core Contributors
 
