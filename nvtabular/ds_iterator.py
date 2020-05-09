@@ -366,7 +366,7 @@ class Shuffler:
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         self.writer_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.writers = [ParquetWriter(f) for f in self.writer_files]
+        self.writers = [ParquetWriter(f, compression=None) for f in self.writer_files]
         self.b_idxs = np.arange(num_out_files)
         self.num_threads = num_threads
         self.num_out_files = num_out_files

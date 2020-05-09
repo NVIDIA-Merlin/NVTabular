@@ -276,7 +276,7 @@ class DLLabelEncoder(object):
         self.cat_exp_count = self.cat_exp_count + x.shape[0]
         file_id = str(uuid.uuid4().hex) + ".parquet"
         tar_file = os.path.join(self.folder_path, file_id)
-        x.to_parquet(tar_file)
+        x.to_parquet(tar_file, compression=None)
         self._cats = cudf.Series()
         # should find new file just exported
         new_file_path = [
