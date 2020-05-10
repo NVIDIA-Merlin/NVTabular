@@ -406,3 +406,81 @@ class Shuffler:
         self.queue.join()
         for writer in self.writers:
             writer.close()
+
+
+class HugeCTR:
+    """
+    Generates outputs for HugeCTR
+
+    Parameters
+    -----------
+    out_dir : str
+        path for the shuffled files
+    num_out_files : int, default 30
+    num_threads : int, default 4
+
+    """
+
+    def __init__(self, out_dir, num_out_files=30, num_threads=4):
+        self.queue = queue.Queue(num_threads)
+        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
+        self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+        file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
+        file_list_writer.write(str(num_out_files) + "\n")
+        for f in self.writer_files:
+            file_list_writer.write(f + "\n")
+        file_list_writer.close()
+        self.writers = [open(f, "ab") for f in self.writer_files]
+        self.num_threads = num_threads
+        self.num_out_files = num_out_files
+
+        # signifies that end-of-data and that the thread should shut down
+        self._eod = object()
+
+        for _ in range(num_threads):
+            write_thread = threading.Thread(target=self._write_thread, daemon=True)
+            write_thread.start()
+
+    def _write_thread(self):
+        while True:
+            item = self.queue.get()
+            try:
+                if item is self._eod:
+                    break
+                idx, data = item
+                with self.write_locks[idx]:
+                    self.writers[idx].write(data)
+            finally:
+                self.queue.task_done()
+
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf):
+        # add necessary information for hugeCTR format.
+        gdf['hugectr_length_column'] = [0] * gdf.shape[0]
+        gdf = gdf.set_index('hugectr_length_column')
+
+        # get slice info
+        int_slice_size = gdf.shape[0] // self.num_out_files
+        slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
+        
+        for x in range(self.num_out_files):
+            start = x * slice_size
+            end = start + slice_size
+            # check if end is over length
+            end = end if end <= gdf.shape[0] else gdf.shape[0]
+            to_write = gdf.iloc[start:end].to_records()
+            self.queue.put((x, to_write))
+
+        # wait for all writes to finish before exitting (so that we aren't using memory)
+        self.queue.join()
+        gdf.reset_index(inplace=True)
+
+    def close(self):
+        # wake up all the worker threads and signal for them to exit
+        for _ in range(self.num_threads):
+            self.queue.put(self._eod)
+
+        # wait for pending writes to finish
+        self.queue.join()
+        for writer in self.writers:
+            writer.close()

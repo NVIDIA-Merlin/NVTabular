@@ -24,7 +24,7 @@ from cudf._lib.nvtx import annotate
 
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
-from nvtabular.io import Shuffler
+from nvtabular.io import HugeCTR, Shuffler
 from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator, all_ops
 
 try:
@@ -641,6 +641,7 @@ class Workflow:
         record_stats=True,
         shuffler=None,
         num_out_files=None,
+        huge_ctr=None,
     ):
         """
         Gather necessary column statistics in single pass.
@@ -664,6 +665,10 @@ class Workflow:
                 self.write_df(
                     gdf, export_path, shuffler=shuffler, num_out_files=num_out_files,
                 )
+
+            if huge_ctr and phase_index == len(self.phases) - 1:
+                huge_ctr.add_data(gdf)
+
             gdf = None
         # if export is activated combine as many GDFs as possible and
         # then write them out cudf.concat([exp_gdf, gdf], axis=0)
@@ -680,6 +685,9 @@ class Workflow:
         shuffle=False,
         output_path="./ds_export",
         num_out_files=None,
+        hugectr_gen_output=False,
+        hugectr_output_path="./hugectr",
+        hugectr_num_out_files=None,
     ):
 
         """
@@ -704,10 +712,13 @@ class Workflow:
 
         # if no tasks have been loaded then we need to load internal config\
         shuffler = None
+        huge_ctr = None
         if not self.phases:
             self.finalize()
         if shuffle:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
+        if hugectr_gen_output:
+            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files)
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -715,6 +726,7 @@ class Workflow:
                 record_stats=record_stats,
                 shuffler=shuffler,
                 num_out_files=num_out_files,
+                huge_ctr=huge_ctr,
             )
         else:
             self.apply_ops(
@@ -723,9 +735,12 @@ class Workflow:
                 record_stats=record_stats,
                 shuffler=shuffler,
                 num_out_files=num_out_files,
+                huge_ctr=huge_ctr,
             )
         if shuffle:
             shuffler.close()
+        if huge_ctr:
+            huge_ctr.close()
 
     def update_stats(
         self,
@@ -735,6 +750,7 @@ class Workflow:
         record_stats=True,
         shuffler=None,
         num_out_files=None,
+        huge_ctr=None,
     ):
         end = end_phase if end_phase else len(self.phases)
         for idx, _ in enumerate(self.phases[:end]):
@@ -745,6 +761,7 @@ class Workflow:
                 record_stats=record_stats,
                 shuffler=shuffler,
                 num_out_files=num_out_files,
+                huge_ctr=huge_ctr,
             )
 
     def apply_ops(
@@ -756,6 +773,7 @@ class Workflow:
         shuffler=None,
         output_path=None,
         num_out_files=None,
+        huge_ctr=None,
     ):
         """
         gdf: cudf dataframe
