@@ -117,7 +117,7 @@ class TransformOperator(Operator):
         gdf: cudf.DataFrame,
         columns_ctx: dict,
         input_cols,
-        target_cols="base",
+        target_cols=["base"],
         stats_context=None,
     ):
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
