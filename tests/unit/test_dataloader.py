@@ -29,6 +29,7 @@ import nvtabular.batchloader as bl
 import nvtabular.ds_iterator as ds
 import nvtabular.ops as ops
 import nvtabular.preproc as pp
+from nvtabular.tf_dataloader import KerasSequenceDataset
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -319,3 +320,77 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     assert rows == num_rows
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("batch_size", [1, 10, 100])
+def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    cont_names = ["x", "y", "id"]
+    cat_names = ["name-string"]
+    label_name = ["label"]
+    if engine == "parquet":
+        cat_names.append("name-cat")
+
+    columns = cont_names+cat_names
+
+    processor = pp.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
+    )
+    processor.add_feature([ops.FillMissing()])
+    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess(ops.Categorify())
+    processor.finalize()
+
+    data_itr = KerasSequenceDataset(
+        paths,
+        columns=columns,
+        batch_size=batch_size,
+        buffer_size=gpu_memory_frac,
+        label_name=label_name[0],
+        engine=engine,
+        shuffle=False
+    )
+    processor.update_stats(data_itr.nvt_dataset, record_stats=True)
+    data_itr.map(processor)
+
+    rows = 0
+    for idx in range(len(data_itr)):
+        X, y = next(data_itr)
+
+        # first elements to check epoch-to-epoch consistency
+        if idx == 0:
+            X0, y0 = X, y
+
+        # check that we have at most batch_size elements
+        num_samples = y.shape[0]
+        assert num_samples <= batch_size
+
+        # check that all the features in X have the
+        # appropriate length and that the set of
+        # their names is exactly the set of names in
+        # `columns`
+        these_cols = columns.copy()
+        for column, x in X.items():
+            try:
+                these_cols.remove(column)
+            except ValueError:
+                raise AssertionError
+            assert(x.shape[0] == num_samples)
+        assert len(these_cols) == 0
+
+        rows += num_samples
+
+    # check start of next epoch to ensure consistency
+    X, y = next(data_itr)
+    assert (y.numpy() == y0.numpy()).all()
+    for column, x in X.items():
+        x0 = X0.pop(column)
+        assert (x.numpy() == x0.numpy()).all()
+    assert len(X0) == 0
+
+    # accounts for incomplete batches at the end of chunks 
+    # that dont necesssarily have the full batch_size
+    assert (idx + 1) * batch_size >= rows
+    assert rows == (60*24*3 + 1)
