@@ -1,0 +1,36 @@
+ARG CUDA_VERSION=10.2
+ARG CUDA_SHORT_VERSION=${CUDA_VERSION}
+ARG LINUX_VERSION=ubuntu18.04
+FROM nvidia/cuda:${CUDA_VERSION}-devel-${LINUX_VERSION}
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/lib
+# Needed for cudf.concat(), avoids "OSError: library nvvm not found"
+ENV NUMBAPRO_NVVM=/usr/local/cuda/nvvm/lib64/libnvvm.so
+ENV NUMBAPRO_LIBDEVICE=/usr/local/cuda/nvvm/libdevice/
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG CC=7
+ARG CXX=7
+RUN apt update -y --fix-missing && \
+    apt upgrade -y && \
+    apt install -y \
+      git \
+      gcc-${CC} \
+      g++-${CXX} \
+      libboost-all-dev \
+      tzdata
+
+# Install conda
+ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh /miniconda.sh
+RUN sh /miniconda.sh -b -p /conda && /conda/bin/conda update -n base conda
+ENV PATH=${PATH}:/conda/bin
+# Enables "source activate conda"
+SHELL ["/bin/bash", "-c"]
+
+RUN conda install -c rapidsai-nightly -c nvidia -c numba -c conda-forge \
+    cudf python=3.6 cudatoolkit=10.2
+
+RUN conda install -c conda-forge pyyaml
+
+COPY . .
+
+RUN pip install --no-cache-dir -e nvtabular/.
