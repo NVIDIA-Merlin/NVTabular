@@ -37,6 +37,7 @@ release = "2020"
 # ones.
 extensions = [
     "recommonmark",
+    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
@@ -74,3 +75,5 @@ def setup(app):
             }, True)
     app.add_transform(AutoStructify)
 
+
+nbsphinx_allow_errors = True

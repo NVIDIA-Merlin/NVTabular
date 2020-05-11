@@ -13,7 +13,7 @@ Follow our getting started guide to get NVTabular installed on your container or
 
 With the workflow in place we can now explore the library in detail.
 
-Operations:
+Operations
 ----------
 Operations are a reflection of the way in which compute happens on the GPU across large datasets.  At a high level we’re concerned with two types of compute: the type that touches the entire dataset (or some large chunk of it) and the type that operates on a single row.  Operations split the compute such that the first phase, which we call statistics gathering, is the only place where operations that cross the row boundary can take place.  An example of this would be in the Normalize op which relies on two statistics, the mean and standard deviation.  In order to normalize a row, we must first have calculated these two values.
 
@@ -25,7 +25,7 @@ The second phase of operations is the apply phase, which uses the statistics cre
 
 In order to minimize iteration through the data we combine all of the computation required for statistics into a single computation graph that is applied chunkwise while the data is on GPU.  We similarly group the apply operation and transform the entire chunk at a time.  This lazy iteration style allows you to setup a desired workflow first, and then apply it to multiple datasets, including the option to apply statistics from one dataset to others.  Using this option the training set statistics can be applied to the validation and test sets preventing undesirable data leakage.
 
-A higher level of abstraction:
+A higher level of abstraction
 ----------------------
 NVTabular code is targeted at the operator level, not the dataframe level, providing a method for specifying the operation you want to perform, and the columns or type of data that you want to perform it on.
 
@@ -44,7 +44,7 @@ Operators may also be chained to allow for more complex feature engineering or p
 
 [ Chaining example ] 
 
-Framework Interoperability:
+Framework Interoperability
 -----------------------
 
 In addition to providing mechanisms for transforming the data to prepare it for deep learning models we also provide framework-specific dataloaders to help optimize getting that data to the GPU.  Under a traditional dataloading scheme, data is read in item by item and collated into a batch.  PyTorch allows for multiple processes to create many batches at the same time, however this still leads to many individual rows of tabular data accessed independently which impacts I/O, especially when this data is on the disk and not in CPU memory.  TensorFlow loads and shuffles TFRecords by adopting a windowed buffering scheme that loads data sequentially to a buffer, which it samples batches from randomly and replenishes with the next sequential elements from disk. Larger buffer sizes ensure more randomness, but can quickly bottleneck performance as TensorFlow tries to keep the buffer saturated. Smaller buffer sizes mean that datasets which aren't uniformly distributed on disk lead to biased sampling and potentially degraded convergence.  
@@ -53,10 +53,10 @@ In NVTabular we provide an option to shuffle during dataset creation, creating a
 
 When compared to an item by item dataloader of PyTorch we have benchmarked our throughput as 100x faster dependent upon batch and tensor size.  Relative to Tensorflow’s windowed shuffle NVTabular is ~2.5x faster with many optimizations still available.
 
-Multi-GPU Support:
+Multi-GPU Support
 -----------------------
 Multi-GPU support is planned through Dask-cudf and Dask which allows for the easy parallelization of operations across multiple GPUs.  To use multi-gpu NVTabular specify the devices you want to leverage in the creation of the workflow.
 
-CPU Support:
+CPU Support
 ------------
 Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that NVTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.

@@ -10,9 +10,10 @@ Welcome to NVTabular's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   Introduction <README>
+   Introduction <Introduction>
    How it Works <HowItWorks>
-   API Documentation <nvtabular>
+   API Documentation <api/index>
+   Examples <examples/index>
 
 
 Indices and tables
