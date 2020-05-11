@@ -1,5 +1,5 @@
 Workflow
 ========
 
-.. automodule:: nvtabular.preproc
+.. automodule:: nvtabular.workflow
    :members:

@@ -22,11 +22,10 @@ import cudf
 import yaml
 from cudf._lib.nvtx import annotate
 
-from nvtabular.dl_encoder import DLLabelEncoder
-from nvtabular.ds_iterator import Shuffler
 from nvtabular.ds_writer import DatasetWriter
+from nvtabular.encoder import DLLabelEncoder
+from nvtabular.io import Shuffler
 from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator, all_ops
-
 
 try:
     import cupy as cp
@@ -35,46 +34,6 @@ except ImportError:
 
 
 LOG = logging.getLogger("nvtabular")
-
-
-def get_new_config():
-    """
-    boiler config object, to be filled in with targeted operator tasks
-    """
-    config = {}
-    config["FE"] = {}
-    config["FE"]["all"] = {}
-    config["FE"]["continuous"] = {}
-    config["FE"]["categorical"] = {}
-    config["PP"] = {}
-    config["PP"]["all"] = {}
-    config["PP"]["continuous"] = {}
-    config["PP"]["categorical"] = {}
-    return config
-
-
-def get_new_list_config():
-    """
-    boiler config object, to be filled in with targeted operator tasks
-    """
-    config = {}
-    config["FE"] = {}
-    config["FE"]["all"] = []
-    config["FE"]["continuous"] = []
-    config["FE"]["categorical"] = []
-    config["PP"] = {}
-    config["PP"]["all"] = []
-    config["PP"]["continuous"] = []
-    config["PP"]["categorical"] = []
-    return config
-
-
-def _shuffle_part(gdf):
-    sort_key = "__sort_index__"
-    arr = cp.arange(len(gdf))
-    cp.random.shuffle(arr)
-    gdf[sort_key] = cudf.Series(arr)
-    return gdf.sort_values(sort_key).drop(columns=[sort_key])
 
 
 class Workflow:
@@ -400,35 +359,6 @@ class Workflow:
             writer.write(gdf, shuffle=shuffle)
         writer.write_metadata()
         return
-
-    def pq_to_pq_processed(
-        self, indir, outdir, columns=None, shuffle=True, apply_ops=True, chunk_size=None, **kwargs,
-    ):
-        """ Read parquet files and write to new dataset
-        """
-
-        # TODO: WARNING -- This method is still a work in progress!!
-        # NOTE: There will be memory problems if the files are large
-        #       compared to GPU memory.  Need to add check here.
-
-        import dask_cudf
-
-        # Read dataset - Each dask task will read an entire file
-        gddf = dask_cudf.read_parquet(
-            indir, index=False, columns=columns, split_row_groups=False, gather_statistics=True,
-        )
-
-        # Shuffle the file (if desired)
-        if shuffle:
-            gddf = gddf.map_partitions(_shuffle_part)
-
-        # Apply Operations (if desired)
-        if apply_ops:
-            gddf = gddf.map_partitions(self.apply_ops, meta=self.apply_ops(gddf.head()))
-
-        # Write each partition to an output parquet file
-        # (row groups correspond to `chunk_size`)
-        gddf.to_parquet(outdir, write_index=False, chunk_size=chunk_size, engine="pyarrow")
 
     def load_config(self, config, pro=False):
         """
@@ -970,7 +900,7 @@ class Workflow:
             stat_op.clear()
 
     def ds_to_tensors(self, itr, apply_ops=True):
-        from nvtabular.batchloader import create_tensors
+        from nvtabular.torch_dataloader import create_tensors
 
         return create_tensors(self, itr=itr, apply_ops=apply_ops)
 
@@ -988,3 +918,43 @@ class Workflow:
 
             master_list.append((op, main_grp, sub_cols, dep_ops))
         return master_list
+
+
+def get_new_config():
+    """
+    boiler config object, to be filled in with targeted operator tasks
+    """
+    config = {}
+    config["FE"] = {}
+    config["FE"]["all"] = {}
+    config["FE"]["continuous"] = {}
+    config["FE"]["categorical"] = {}
+    config["PP"] = {}
+    config["PP"]["all"] = {}
+    config["PP"]["continuous"] = {}
+    config["PP"]["categorical"] = {}
+    return config
+
+
+def get_new_list_config():
+    """
+    boiler config object, to be filled in with targeted operator tasks
+    """
+    config = {}
+    config["FE"] = {}
+    config["FE"]["all"] = []
+    config["FE"]["continuous"] = []
+    config["FE"]["categorical"] = []
+    config["PP"] = {}
+    config["PP"]["all"] = []
+    config["PP"]["continuous"] = []
+    config["PP"]["categorical"] = []
+    return config
+
+
+def _shuffle_part(gdf):
+    sort_key = "__sort_index__"
+    arr = cp.arange(len(gdf))
+    cp.random.shuffle(arr)
+    gdf[sort_key] = cudf.Series(arr)
+    return gdf.sort_values(sort_key).drop(columns=[sort_key])

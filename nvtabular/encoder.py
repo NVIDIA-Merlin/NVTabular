@@ -23,7 +23,8 @@ import numpy as np
 import pandas as pd
 import rmm
 from cudf.utils.dtypes import min_scalar_type
-import nvtabular.ds_iterator as ds_itr
+
+import nvtabular.io
 
 
 class DLLabelEncoder(object):
@@ -297,7 +298,7 @@ class DLLabelEncoder(object):
                 if x.endswith("parquet") and x not in self.file_paths + self.ignore_files
             ]
             if file_paths:
-                chunks = ds_itr.GPUDatasetIterator(file_paths)
+                chunks = nvtabular.io.GPUDatasetIterator(file_paths)
                 for chunk in chunks:
                     compr = self.merge_series(chunk[self.col], compr)
                     if len(compr) == 0:

@@ -19,14 +19,14 @@ import glob
 import cudf
 import pytest
 
-import nvtabular.dl_groupby as groupby
+import nvtabular.groupby as groupby
 from tests.conftest import allcols_csv, mycols_csv
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
 @pytest.mark.parametrize("gpu_mem_trans_use", [0.00000001, 0.5])
-def test_dl_groupby_fit_merge_fim(datasets, batch, dskey, gpu_mem_trans_use):
+def test_groupby_fit_merge_fim(datasets, batch, dskey, gpu_mem_trans_use):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
     df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]

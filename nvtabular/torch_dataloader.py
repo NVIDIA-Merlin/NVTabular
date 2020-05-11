@@ -18,7 +18,7 @@ import cudf
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.ds_iterator import GPUFileIterator
+from nvtabular.io import GPUFileIterator
 
 
 class FileItrDataset(torch.utils.data.IterableDataset):

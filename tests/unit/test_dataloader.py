@@ -24,12 +24,13 @@ import numpy as np
 import pytest
 import torch
 from cudf.tests.utils import assert_eq
+
 import nvtabular as nvt
-import nvtabular.batchloader as bl
-import nvtabular.ds_iterator as ds
+import nvtabular.io
 import nvtabular.ops as ops
-import nvtabular.preproc as pp
 from nvtabular.tf_dataloader import KerasSequenceDataset
+import nvtabular.torch_dataloader
+
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -41,7 +42,7 @@ def test_gpu_file_iterator_ds(datasets, batch, dskey):
     df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
     df_expect["id"] = df_expect["id"].astype("int64")
     df_itr = cudf.DataFrame()
-    data_itr = bl.FileItrDataset(
+    data_itr = nvtabular.torch_dataloader.FileItrDataset(
         paths[0],
         engine="csv",
         batch_size=batch,
@@ -64,11 +65,11 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     df_expect["id"] = df_expect["id"].astype("int64")
     df_itr = cudf.DataFrame()
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"], to_cpu=True,
     )
 
-    data_itr = bl.FileItrDataset(
+    data_itr = nvtabular.torch_dataloader.FileItrDataset(
         paths[0],
         engine="csv",
         batch_size=batch,
@@ -78,8 +79,10 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     )
 
     data_chain = torch.utils.data.ChainDataset([data_itr])
-    dlc = bl.DLCollator(processor)
-    bl.DLDataLoader(data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0)
+    dlc = nvtabular.torch_dataloader.DLCollator(processor)
+    nvtabular.torch_dataloader.DLDataLoader(
+        data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0
+    )
 
     for data_gd in data_itr:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
@@ -96,7 +99,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = ds.Shuffler(tmpdir, num_files)
+    shuf = nvtabular.io.Shuffler(tmpdir, num_files)
     shuf.add_data(df1)
     writer_files = shuf.writer_files
     shuf.close()
@@ -134,7 +137,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
     )
 
@@ -143,7 +146,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,
@@ -201,22 +204,24 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
         for col in cont_names:
             assert f"{col}_LogOp" in processor.columns_ctx["final"]["cols"]["continuous"]
 
-    dlc = bl.DLCollator(preproc=processor, apply_ops=False)
+    dlc = nvtabular.torch_dataloader.DLCollator(preproc=processor, apply_ops=False)
     data_files = [
-        bl.FileItrDataset(
+        nvtabular.torch_dataloader.FileItrDataset(
             x, use_row_groups=True, gpu_memory_frac=gpu_memory_frac, names=allcols_csv,
         )
         for x in glob.glob(str(tmpdir) + "/ds_part.*.parquet")
     ]
 
     data_itr = torch.utils.data.ChainDataset(data_files)
-    dl = bl.DLDataLoader(data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0)
+    dl = nvtabular.torch_dataloader.DLDataLoader(
+        data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0
+    )
 
     len_df_pp = 0
     for chunk in dl:
         len_df_pp += len(chunk[0][0])
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
         use_row_groups=True,
         gpu_memory_frac=gpu_memory_frac,
@@ -228,7 +233,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert len(x[0]) == len_df_pp
 
-    itr_ds = bl.TensorItrDataset([x[0], x[1], x[2]], batch_size=512000)
+    itr_ds = nvtabular.torch_dataloader.TensorItrDataset([x[0], x[1], x[2]], batch_size=512000)
     count_tens_itr = 0
     for data_gd in itr_ds:
         count_tens_itr += len(data_gd[1])
@@ -264,7 +269,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
     )
 
@@ -272,7 +277,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,
@@ -296,7 +301,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
-    data_itr = nvt.batchloader.TorchTensorBatchDatasetItr(
+    data_itr = nvt.torch_dataloader.TorchTensorBatchDatasetItr(
         tar_paths[0],
         engine="parquet",
         sub_batch_size=batch_size,
@@ -335,7 +340,7 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
 
     columns = cont_names+cat_names
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
     )
     processor.add_feature([ops.FillMissing()])

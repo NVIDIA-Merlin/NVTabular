@@ -1,4 +1,7 @@
-Torch Dataloader
-================
+TensorFlow Dataloader
+=====================
 
-TODO
+.. automodule:: nvtabular.tf_dataloader
+   :members:
+   :undoc-members:
+   :show-inheritance:

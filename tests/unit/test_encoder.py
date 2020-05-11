@@ -20,15 +20,15 @@ import os
 import cudf
 import pytest
 
-import nvtabular.dl_encoder as encoder
-import nvtabular.ds_iterator as ds
+import nvtabular.encoder as encoder
+from nvtabular.io import GPUDatasetIterator
 from tests.conftest import allcols_csv, mycols_csv
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
 @pytest.mark.parametrize("use_frequency", [True, False])
-def test_dl_encoder_fit_transform_fim(datasets, batch, dskey, use_frequency):
+def test_encoder_fit_transform_fim(datasets, batch, dskey, use_frequency):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
     df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
@@ -47,12 +47,12 @@ def test_dl_encoder_fit_transform_fim(datasets, batch, dskey, use_frequency):
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
 @pytest.mark.parametrize("use_frequency", [True, False])
-def test_dl_encoder_fit_transform_ltm(datasets, batch, dskey, use_frequency):
+def test_encoder_fit_transform_ltm(datasets, batch, dskey, use_frequency):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
     df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
     df_expect["id"] = df_expect["id"].astype("int64")
-    data_itr = ds.GPUDatasetIterator(paths[0], batch_size=batch, gpu_memory_frac=2e-8, names=names)
+    data_itr = GPUDatasetIterator(paths[0], batch_size=batch, gpu_memory_frac=2e-8, names=names)
     enc = encoder.DLLabelEncoder(
         "name-string", path=str(datasets["cats"]), limit_frac=1e-10, use_frequency=use_frequency,
     )
@@ -70,7 +70,7 @@ def test_dl_encoder_fit_transform_ltm(datasets, batch, dskey, use_frequency):
 
 @pytest.mark.parametrize("values", [[0, 1, 2, 3], ["0", "1", "2", "3"], [0, 1, 2, -1]])
 @pytest.mark.parametrize("use_frequency", [True, False])
-def test_dl_encoder_off_by_one(values, use_frequency):
+def test_encoder_off_by_one(values, use_frequency):
     values = cudf.Series(values)
     enc = encoder.DLLabelEncoder("x", use_frequency=use_frequency)
     for _ in range(3):

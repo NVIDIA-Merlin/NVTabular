@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from . import preproc
-from . import ds_iterator
+from . import io, workflow
 
-Workflow = preproc.Workflow
-dataset = ds_iterator.GPUDatasetIterator
+Workflow = workflow.Workflow
+dataset = io.GPUDatasetIterator
+
 
 __all__ = ["Workflow", "dataset"]

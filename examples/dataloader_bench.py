@@ -21,7 +21,7 @@ print(args)
 GPU_id = args.gpu_id
 os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU_id)
 
-from nvtabular.batchloader import TorchTensorBatchDatasetItr
+from nvtabular.torch_dataloader import TorchTensorBatchDatasetItr
 
 logging.basicConfig()
 logging.getLogger("nvtabular").setLevel(logging.DEBUG)

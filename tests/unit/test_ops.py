@@ -21,9 +21,9 @@ import cudf
 import numpy as np
 import pytest
 
-import nvtabular.ds_iterator as ds
+import nvtabular as nvt
+import nvtabular.io
 import nvtabular.ops as ops
-import nvtabular.preproc as pp
 from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
 
 
@@ -52,7 +52,7 @@ def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,
@@ -60,10 +60,10 @@ def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
         names=allcols_csv,
     )
 
-    config = pp.get_new_config()
+    config = nvtabular.workflow.get_new_config()
     config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
 
-    processor = pp.Workflow(
+    processor = nvtabular.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
@@ -115,7 +115,7 @@ def test_moments(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,
@@ -123,10 +123,10 @@ def test_moments(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
         names=allcols_csv,
     )
 
-    config = pp.get_new_config()
+    config = nvt.workflow.get_new_config()
     config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
@@ -173,7 +173,7 @@ def test_encoder(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,
@@ -181,10 +181,10 @@ def test_encoder(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
         names=allcols_csv,
     )
 
-    config = pp.get_new_config()
+    config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [ops.Encoder(columns=op_columns)]
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
@@ -230,7 +230,7 @@ def test_median(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,
@@ -238,10 +238,10 @@ def test_median(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
         names=allcols_csv,
     )
 
-    config = pp.get_new_config()
+    config = nvt.workflow.get_new_config()
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
-    processor = pp.Workflow(
+    processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
@@ -283,7 +283,7 @@ def test_log(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
         columns = mycols_csv
     cont_names = ["x", "y", "id"]
 
-    data_itr = ds.GPUDatasetIterator(
+    data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
         use_row_groups=True,

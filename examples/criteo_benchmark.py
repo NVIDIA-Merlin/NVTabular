@@ -40,10 +40,10 @@ from fastai.metrics import accuracy
 from fastai.basic_data import DataBunch
 from fastai.tabular import TabularModel
 
-from nvtabular.batchloader import DLCollator, DLDataLoader, FileItrDataset
-from nvtabular.ds_iterator import GPUDatasetIterator
+from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
+from nvtabular.io import GPUDatasetIterator
 from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill
-from nvtabular.preproc import Workflow
+from nvtabular import Workflow
 
 if args.pool:
     rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * rmm.get_info().free)

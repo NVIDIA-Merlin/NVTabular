@@ -17,8 +17,8 @@
 import io
 import logging
 import os
-import threading
 import queue
+import threading
 from itertools import islice
 
 import cudf
@@ -27,7 +27,6 @@ import numpy as np
 import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
-
 
 LOG = logging.getLogger("nvtabular")
 

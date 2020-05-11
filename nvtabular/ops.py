@@ -20,8 +20,8 @@ import cudf
 import numpy as np
 from cudf._lib.nvtx import annotate
 
-from nvtabular.dl_encoder import DLLabelEncoder
-from nvtabular.dl_groupby import GroupByMomentsCal
+from nvtabular.encoder import DLLabelEncoder
+from nvtabular.groupby import GroupByMomentsCal
 
 CONT = "continuous"
 CAT = "categorical"

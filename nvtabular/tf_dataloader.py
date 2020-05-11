@@ -1,43 +1,45 @@
-import tensorflow as tf
-from tensorflow.python.feature_column import feature_column_v2 as fc
+import os
+import warnings
 
 # need to configure tensorflow to not use all of memory
 # TF_MEMORY_ALLOCATION is fraction of GPU memory if < 1, and size
 # in MB if > 1
 import rmm
-import os
-import warnings
+import tensorflow as tf
+from packaging import version
+from tensorflow.python.feature_column import feature_column_v2 as fc
 
-free_gpu_mem_mb = rmm.get_info().free / (1024**2)
+from .io import GPUDatasetIterator
+from .workflow import Workflow, _shuffle_part
+
+free_gpu_mem_mb = rmm.get_info().free / (1024 ** 2)
 tf_mem_size = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
 if float(tf_mem_size) < 1:
-    tf_mem_size = free_gpu_mem_mb*float(tf_mem_size)
+    tf_mem_size = free_gpu_mem_mb * float(tf_mem_size)
 tf_mem_size = int(tf_mem_size)
 assert tf_mem_size < free_gpu_mem_mb
 
 tf_device = os.environ.get("TF_VISIBLE_DEVICE", 0)
 try:
     tf.config.set_logical_device_configuration(
-        tf.config.list_physical_devices('GPU')[tf_device],
-        [tf.config.LogicalDeviceConfiguration(memory_limit=tf_mem_size)]
+        tf.config.list_physical_devices("GPU")[tf_device],
+        [tf.config.LogicalDeviceConfiguration(memory_limit=tf_mem_size)],
     )
 except RuntimeError:
     warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
 
-from packaging import version
+
 if version.parse(tf.__version__) < version.parse("2.2.0"):
     from tfdlpack import from_dlpack as tf_from_dlpack
 else:
     from tensorflow.experimental.dlpack import from_dlpack as tf_from_dlpack
-    warnings.warn("Tensorflow 2.2.0 dlpack integration has known memory leak issues")
 
-from .ds_iterator import GPUDatasetIterator
-from .preproc import Workflow, _shuffle_part
+    warnings.warn("Tensorflow 2.2.0 dlpack integration has known memory leak issues")
 
 
 def _to_tensor(x):
     """
-  map a cudf series `x` to a `(len(x), 1)` dim 
+  map a cudf series `x` to a `(len(x), 1)` dim
   TensorFlow tensor
   """
     # catch cudf warning about row ordering since
@@ -192,11 +194,11 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
         # TODO: what's the syntax for byte range read?
         if buffer_size >= 1:
             if buffer_size < batch_size:
-                reader_kwargs['batch_size'] = int(batch_size*buffer_size)
+                reader_kwargs["batch_size"] = int(batch_size * buffer_size)
             else:
-                reader_kwargs['batch_size'] = buffer_size
+                reader_kwargs["batch_size"] = buffer_size
         else:
-            reader_kwargs['gpu_memory_frac'] = buffer_size
+            reader_kwargs["gpu_memory_frac"] = buffer_size
 
         self._nvt_dataset = GPUDatasetIterator(
             files, columns=column_names + [label_name], engine=engine, **reader_kwargs

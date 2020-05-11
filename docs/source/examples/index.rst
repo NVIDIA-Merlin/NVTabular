@@ -2,7 +2,8 @@ Examples
 ========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Examples:
 
-   Criteo Example <gpu_benchmark-criteo>
+   Rossmann Example <rossmann>
+   Criteo Example <criteo>
