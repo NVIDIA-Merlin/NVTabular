@@ -55,10 +55,6 @@ We also have a simple tutorial that demonstrates similar functionality on a much
 
 If you wish to contribute to the library directly please see [Contributing.md](https://github.com/nvidia/NVTabular/blob/master/CONTRIBUTING.md).  We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
-#### Core Contributors
-
-NVTabular is supported and maintained directly by a small team of nvidians with a love of recommender systems.  They are: Ben Frederickson, Alec Gunny, Even Oldridge, Julio Perez, Onur Yilmaz, and Rick Zamora.
-
 ### Learn More
 
 If you’re interested in learning more about how NVTabular works under the hood we have provided this [more detailed description of the core functionality](HowItWorks.md).
