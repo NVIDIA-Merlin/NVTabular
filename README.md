@@ -41,7 +41,7 @@ If you wish to install the library yourself you can do so using the commands abo
 Requirements.yml
 ```
 
-### Examples and Tutorials:
+### Examples and Tutorials
 
 A workflow demonstrating the preprocessing and data-loading components of NVTabular can be found in the DeepLearningExamples tutorial on training Facebook's [Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/) on the [Criteo 1TB dataset](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/).
 
