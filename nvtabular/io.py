@@ -421,7 +421,11 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, num_out_files=30, num_threads=4):
+    def __init__(self, out_dir, num_labels,
+                 num_out_files=30, num_threads=4):
+
+        self.num_labels = num_labels
+        self.num_feature = 0
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
@@ -433,6 +437,7 @@ class HugeCTR:
         self.writers = [open(f, "ab") for f in self.writer_files]
         self.num_threads = num_threads
         self.num_out_files = num_out_files
+        self.num_samples = [0] * num_out_files
 
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
@@ -455,10 +460,7 @@ class HugeCTR:
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-        # add necessary information for hugeCTR format.
-        gdf['hugectr_length_column'] = [0] * gdf.shape[0]
-        gdf = gdf.set_index('hugectr_length_column')
-
+        self.num_feature = gdf.shape[1] - self.num_labels
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -468,13 +470,29 @@ class HugeCTR:
             end = start + slice_size
             # check if end is over length
             end = end if end <= gdf.shape[0] else gdf.shape[0]
-            to_write = gdf.iloc[start:end].to_records()
-            self.queue.put((x, to_write))
+            to_write = gdf.iloc[start:end]
+            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
+            self.queue.put((x, to_write.to_records()))
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
-        gdf.reset_index(inplace=True)
 
+    def write_header(self):
+        for i in range(len(self.writers)):
+            self.writers[i].seek(0)
+            # error_check (0: no error check; 1: check_num) 
+            # num of samples in this file
+            # Dimension of the labels
+            # Dimension of the features
+            # slot_num for each embedding
+            # reserved for future use
+            header = np.array([0, self.num_samples[i], 
+                               self.num_labels, self.num_feature,
+                               0, 0, 0, 0], dtype=np.long)
+            
+            self.writers[i].write(header)
+
+ 
     def close(self):
         # wake up all the worker threads and signal for them to exit
         for _ in range(self.num_threads):
@@ -482,5 +500,7 @@ class HugeCTR:
 
         # wait for pending writes to finish
         self.queue.join()
+        self.write_header()
+
         for writer in self.writers:
             writer.close()
