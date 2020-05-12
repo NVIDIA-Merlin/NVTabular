@@ -8,12 +8,11 @@ Welcome to NVTabular's documentation!
 
 .. toctree::
    :maxdepth: 3
-   :caption: Contents:
 
    Introduction <Introduction>
    How it Works <HowItWorks>
-   API Documentation <api/index>
    Examples <examples/index>
+   API Documentation <api/index>
 
 
 Indices and tables

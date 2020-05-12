@@ -3,7 +3,6 @@ API Documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Documentation:
 
    Workflow <workflow>
    Operators <ops/index>

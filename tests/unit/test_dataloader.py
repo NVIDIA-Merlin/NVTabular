@@ -338,7 +338,7 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     if engine == "parquet":
         cat_names.append("name-cat")
 
-    columns = cont_names+cat_names
+    columns = cont_names + cat_names
 
     processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
@@ -355,7 +355,7 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         buffer_size=gpu_memory_frac,
         label_name=label_name[0],
         engine=engine,
-        shuffle=False
+        shuffle=False,
     )
     processor.update_stats(data_itr.nvt_dataset, record_stats=True)
     data_itr.map(processor)
@@ -382,7 +382,7 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
                 these_cols.remove(column)
             except ValueError:
                 raise AssertionError
-            assert(x.shape[0] == num_samples)
+            assert x.shape[0] == num_samples
         assert len(these_cols) == 0
 
         rows += num_samples
@@ -395,7 +395,7 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         assert (x.numpy() == x0.numpy()).all()
     assert len(X0) == 0
 
-    # accounts for incomplete batches at the end of chunks 
+    # accounts for incomplete batches at the end of chunks
     # that dont necesssarily have the full batch_size
     assert (idx + 1) * batch_size >= rows
-    assert rows == (60*24*3 + 1)
+    assert rows == (60 * 24 * 3 + 1)

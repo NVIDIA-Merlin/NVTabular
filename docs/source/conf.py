@@ -13,11 +13,10 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../."))
-
-import recommonmark
-from recommonmark.transform import AutoStructify
+import sphinx
 from recommonmark.parser import CommonMarkParser
+
+sys.path.insert(0, os.path.abspath("../../."))
 
 
 # -- Project information -----------------------------------------------------
@@ -36,11 +35,13 @@ release = "2020"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "sphinx_rtd_theme",
     "recommonmark",
     "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -57,7 +58,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -67,13 +68,31 @@ html_static_path = ["_static"]
 source_parsers = {".md": CommonMarkParser}
 source_suffix = [".rst", ".md"]
 
-def setup(app):
-    app.add_config_value('recommonmark_config', {
-            'enable_math': True,
-            'enable_eval_rst': True,
-            'auto_code_block': True,
-            }, True)
-    app.add_transform(AutoStructify)
-
-
 nbsphinx_allow_errors = True
+html_show_sourcelink = False
+
+# certain references in the README couldn't be autoresolved here,
+# hack by forcing to the either the correct documentation page (examples)
+# or to a blob on the repo
+_REPO = "https://github.com/NVIDIA/NVTabular/blob/master/"
+_URL_MAP = {
+    "./examples": "examples/index",
+    "examples/rossmann-store-sales-example.ipynb": "examples/rossmann",
+    "examples/criteo-example.ipynb": "examples/criteo",
+    "./CONTRIBUTING": _REPO + "/CONTRIBUTING.md",
+    "./Operators": _REPO + "/Operators.md",
+}
+
+
+class GitHubDomain(sphinx.domains.Domain):
+    def resolve_any_xref(self, env, docname, builder, target, node, contnode):
+        resolved = _URL_MAP.get(target)
+        print("resolver", target, resolved)
+        if resolved:
+            contnode["refuri"] = resolved
+            return [("github:any", contnode)]
+        return []
+
+
+def setup(app):
+    app.add_domain(GitHubDomain)

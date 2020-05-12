@@ -1,10 +1,10 @@
-import cudf
-import pytest
-import numpy as np
-import random
 import os
+import random
 from functools import wraps
 
+import cudf
+import numpy as np
+import pytest
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
