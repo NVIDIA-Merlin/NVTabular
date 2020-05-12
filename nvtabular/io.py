@@ -421,11 +421,12 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, num_labels,
+    def __init__(self, out_dir, cats, conts, labels,
                  num_out_files=30, num_threads=4):
 
-        self.num_labels = num_labels
-        self.num_feature = 0
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
@@ -447,20 +448,29 @@ class HugeCTR:
             write_thread.start()
 
     def _write_thread(self):
+        one = np.array([1], dtype=np.longlong).tobytes()
         while True:
             item = self.queue.get()
             try:
                 if item is self._eod:
                     break
                 idx, data = item
-                with self.write_locks[idx]:
-                    self.writers[idx].write(data)
+                with self.write_locks[idx]:                
+                    cat_features = data[self.cats].to_pandas().to_numpy(dtype=np.longlong)
+                    cont_features = data[self.conts].to_pandas().to_numpy(dtype=np.float)
+                    label_col = data[self.labels].to_pandas().to_numpy(dtype=np.float)
+                   
+                    for i in range(len(label_col)):
+                        self.writers[idx].write(label_col[i].tobytes())
+                        self.writers[idx].write(cont_features[i].tobytes())
+                        for c in cat_features[i]:
+                            self.writers[idx].write(one) # this is for nnz
+                            self.writers[idx].write(c.tobytes())
             finally:
                 self.queue.task_done()
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-        self.num_feature = gdf.shape[1] - self.num_labels
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -472,7 +482,7 @@ class HugeCTR:
             end = end if end <= gdf.shape[0] else gdf.shape[0]
             to_write = gdf.iloc[start:end]
             self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            self.queue.put((x, to_write.to_records()))
+            self.queue.put((x, to_write))
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
@@ -487,10 +497,10 @@ class HugeCTR:
             # slot_num for each embedding
             # reserved for future use
             header = np.array([0, self.num_samples[i], 
-                               self.num_labels, self.num_feature,
-                               0, 0, 0, 0], dtype=np.long)
+                               len(self.labels), len(self.conts),
+                               len(self.cats), 0, 0, 0], dtype=np.longlong)
             
-            self.writers[i].write(header)
+            self.writers[i].write(header.tobytes())
 
  
     def close(self):
