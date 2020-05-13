@@ -9,7 +9,14 @@ We provide mechanisms for iteration when the dataset exceeds GPU memory, allowin
 
 Follow our getting started guide to get NVTabular installed on your container or system.  Once installed you can setup a workflow in the following way:
 
-[ setup example ]
+```python
+import nvtabular as nvt
+workflow = nvt.Workflow(
+    cat_names=["user_id", "item_id", "city"],
+    cont_names=["age", "time_of_day", "item_num_views"],
+    label_name=["label"]
+)
+```
 
 With the workflow in place we can now explore the library in detail.
 
@@ -21,7 +28,17 @@ Statistics are further split into a chunked compute and a combine stage allowing
 
 The second phase of operations is the apply phase, which uses the statistics created earlier to modify the dataset, transforming the data.  Notably we allow for the application of transforms not only during the modification of the dataset, but also during dataloading, with plans to support the same transforms during inference.
 
-[ Underlying code for Normalize ]
+```python
+# by default, the op will be applied to _all_
+# columns of the associated variable type
+workflow.add_cont_preprocess(nvt.ops.Normalize())
+
+dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
+
+# record stats, transform the dataset, and export
+# the transformed data to a parquet file
+proc.apply(train_ds_iterator, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+```
 
 In order to minimize iteration through the data we combine all of the computation required for statistics into a single computation graph that is applied chunkwise while the data is on GPU.  We similarly group the apply operation and transform the entire chunk at a time.  This lazy iteration style allows you to setup a desired workflow first, and then apply it to multiple datasets, including the option to apply statistics from one dataset to others.  Using this option the training set statistics can be applied to the validation and test sets preventing undesirable data leakage.
 
@@ -38,11 +55,25 @@ Two main data types are currently supported: categorical variables and continuou
 
 Preprocessing operators take in a set of columns of the same type and perform the operation across each column, transforming the output during the final operation into a long tensor in the case of categorical variables or a float tensor in the case of continuous variables.  Preprocessing operations replace the column values with their new representation by default, but again we allow the user to override this.
 
-[ Normalization example ]
+```python
+# same example as before, but now only apply normalization
+# to `age` and `item_num_views` columns, which will create
+# new columns `age_normalize` and `item_num_views_normalize`
+workflow.add_cont_preprocess(nvt.ops.Normalize(columns=["age", "item_num_views"], replace=False))
+
+dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
+proc.apply(train_ds_iterator, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+```
 
 Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
 
-[ Chaining example ] 
+```python
+# zero fill and then take log(1+x)
+workflow.add_cont_feature([ZeroFill(), LogOp()])
+
+# then normalize
+workflow.add_cont_preprocess(Normalize())
+```
 
 Framework Interoperability
 -----------------------
