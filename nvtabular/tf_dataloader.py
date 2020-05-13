@@ -80,8 +80,8 @@ def _get_parents(column):
 class KerasSequenceDataset(tf.keras.utils.Sequence):
     """
   Infinite generator used to iterate through csv or parquet dataframes
-  on GPU by leveraging an nvTabular dataset. Applies preprocessing via
-  nvTabular workflows and outputs tabular dictionaries of TensorFlow
+  on GPU by leveraging an NVTabular dataset. Applies preprocessing via
+  NVTabular workflows and outputs tabular dictionaries of TensorFlow
   Tensors via dlpack and tfdlpack. Useful for training tabular models
   instantiated by Tensorflow Feature Columns and trained with Keras.fit.
 
@@ -101,8 +101,8 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
   vectorized continuous and multi-hot categorical features are not
   currently supported, since cuDF doesn't support array-like columns.
 
-  The underlying nvTabular `dataset` object is stored in the `nvt_dataset`
-  property, and should be used for updating and nvTabular Workflow
+  The underlying NVTabular `dataset` object is stored in the `nvt_dataset`
+  property, and should be used for updating and NVTabular Workflow
   statistics (i.e. `workflow.update_stats(datset.nvt_dataset, record_stats=True)`).
 
   Parameters
@@ -232,12 +232,12 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
 
     def map(self, workflow):
         """
-    Map an nvTabular Workflow object onto the dataset.
+    Map an NVTabular Workflow object onto the dataset.
     Each chunk read by the iterator will be transformed
     via `workflow.apply_ops`.
     """
         if not isinstance(workflow, Workflow):
-            raise TypeError("Expected nvTabular Workflow, " "found type {}".format(type(workflow)))
+            raise TypeError("Expected NVTabular Workflow, found type {}".format(type(workflow)))
 
         self.workflows.append(workflow)
 

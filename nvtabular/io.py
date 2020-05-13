@@ -314,20 +314,6 @@ class GPUDatasetIterator:
     use_row_groups :
     dtypes :
     row_size: int
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     def __init__(self, paths, **kwargs):

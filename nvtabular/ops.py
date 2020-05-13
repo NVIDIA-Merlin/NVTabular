@@ -201,20 +201,6 @@ class MinMax(StatOperator):
     batch_maxs : list of float, default None
     mins : list of float, default None
     maxs : list of float, default None
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     def __init__(self, columns=None, batch_mins=None, batch_maxs=None, mins=None, maxs=None):
@@ -292,20 +278,6 @@ class Moments(StatOperator):
     means : list of float, default None
     varis : list of float, default None
     stds : list of float, default None
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     def __init__(self, columns=None, counts=None, means=None, varis=None, stds=None):
@@ -392,20 +364,6 @@ class Median(StatOperator):
     fill : float, default None
     batch_medians : list, default None
     medians : list, default None
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     def __init__(self, columns=None, fill=None, batch_medians=None, medians=None):
@@ -468,7 +426,7 @@ class Encoder(StatOperator):
         use frequency based transformation or not.
     freq_threshold : int, default 0
         threshold value for frequency based transformation.
-    limit_frac : float, default 0.1
+    limit_frac : float, default 0.5
         fraction of memory to use during unique id calculation.
     gpu_mem_util_limit : float, default 0.8
         GPU memory utilization limit during frequency based
@@ -481,20 +439,6 @@ class Encoder(StatOperator):
     columns :
     preprocessing : bool
     replace : bool
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     def __init__(
@@ -592,20 +536,6 @@ class Export(TransformOperator):
     columns :
     preprocessing : bool, default False
     replace : bool, default False
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     default_in = ALL
@@ -634,27 +564,12 @@ class Export(TransformOperator):
 
 
 class ZeroFill(TransformOperator):
-
     """
     This operation sets negative values to zero.
 
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     default_in = CONT
@@ -682,20 +597,6 @@ class LogOp(TransformOperator):
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     default_in = CONT
@@ -722,20 +623,6 @@ class Normalize(DFOperator):
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     default_in = CONT
@@ -793,21 +680,6 @@ class FillMissing(DFOperator):
     replace : bool, default True
     default_in :
     default_out :
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
-
     """
 
     MEDIAN = "median"
@@ -1037,20 +909,6 @@ class GroupBy(DFOperator):
         cudf's merge function doesn't preserve the order of the data
         and this column name is used to create a column with integer
         values in ascending order.
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     default_in = CAT
@@ -1141,20 +999,6 @@ class Categorify(DFOperator):
         if set Yes
     cat_names :
     embed_sz :
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     default_in = CAT

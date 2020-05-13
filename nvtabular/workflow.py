@@ -63,20 +63,6 @@ class Workflow:
     config : bool
     export : bool, default False
     export_path : str, default "./ds_export"
-
-    Examples
-    ---------
-
-    .. code-block:: python
-
-        import cudf
-
-    Output:
-
-    .. code-block:: python
-
-        Start output here
-
     """
 
     def __init__(
@@ -197,13 +183,6 @@ class Workflow:
         operators : object
             list of categorical operators or single operator, Op/s to be
             added into the feature engineering phase
-
-        Examples
-        ---------
-
-        .. code-block:: python
-
-            add code here
         """
 
         self.op_default_check(operators, "categorical")
@@ -220,13 +199,6 @@ class Workflow:
         -----------
         operators : object
             continuous objects such as ZeroFill and LogOp
-
-        Examples
-        ---------
-
-        .. code-block:: python
-
-            add code here
         """
 
         self.op_default_check(operators, "continuous")
@@ -243,13 +215,6 @@ class Workflow:
         -----------
         operators : object
             categorical objects such as Categorify
-
-        Examples
-        ---------
-
-        .. code-block:: python
-
-            add code here
         """
 
         self.op_default_check(operators, "categorical")
@@ -266,13 +231,6 @@ class Workflow:
         -----------
         operators : object
             categorical objects such as Normalize
-
-        Examples
-        ---------
-
-        .. code-block:: python
-
-            add code here
         """
 
         self.op_default_check(operators, "continuous")
@@ -742,14 +700,6 @@ class Workflow:
         num_out_files : integer
             number of files to create after shuffling
             the data
-
-        Examples
-        ---------
-
-        .. code-block:: python
-
-            add code here
-
         """
 
         # if no tasks have been loaded then we need to load internal config\
