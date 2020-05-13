@@ -37,9 +37,11 @@ release = "2020"
 extensions = [
     "sphinx_rtd_theme",
     "recommonmark",
+    "sphinx_markdown_tables",
     "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
+    "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
 ]

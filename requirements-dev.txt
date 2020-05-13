@@ -7,3 +7,4 @@ nbsphinx>=0.6
 pytest>=5
 recommonmark>=0.6
 Sphinx>=3
+sphinx_markdown_tables
