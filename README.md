@@ -41,7 +41,7 @@ The following images are available from the registry with cudf and nvtabular alr
 
 Once you have selected, the desired container from the table above, you can run the container using the following commands:
 ```
-docker run --gpus all --rm -it -p 9999:8888 -p 9797:8787 -p 9796:8786 --ipc=host --cap-add SYS_PTRACE gitlab-master.nvidia.com:5005/rapidsdl/docker:rapidsdl_rel /bin/bash
+docker run --gpus all --rm -it -p 9999:8888 -p 9797:8787 -p 9796:8786 --ipc=host --cap-add SYS_PTRACE <container_image> /bin/bash
 ```
 If you are running on a docker version < 19 please change --gpus all to --runtime=nvidia.
 
