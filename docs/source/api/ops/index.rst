@@ -3,7 +3,6 @@ Operators
 
 .. toctree::
    :maxdepth: 2
-   :caption: Operators:
 
    Categorify <categorify>
    FillMissing <fillmissing>

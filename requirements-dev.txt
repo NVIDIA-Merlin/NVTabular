@@ -1,0 +1,9 @@
+# Dependencies required to develop nvtabular
+-r requirements.txt
+
+black>=19
+flake8>=3.7
+nbsphinx>=0.6
+pytest>=5
+recommonmark>=0.6
+Sphinx>=3

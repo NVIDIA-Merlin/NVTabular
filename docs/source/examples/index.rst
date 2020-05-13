@@ -2,8 +2,7 @@ Examples
 ========
 
 .. toctree::
-   :maxdepth: 4
-   :caption: Examples:
+   :maxdepth: 2
 
    Rossmann Example <rossmann>
    Criteo Example <criteo>

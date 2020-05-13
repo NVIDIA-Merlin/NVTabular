@@ -289,99 +289,99 @@ def test_gpu_workflow(tmpdir, datasets, dump, gpu_memory_frac, engine):
     return processor.ds_exports
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])	
-@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])	
-@pytest.mark.parametrize("dump", [True, False])	
-@pytest.mark.parametrize("replace", [True, False])	
-def test_gpu_workflow_config(tmpdir, datasets, dump, gpu_memory_frac, engine, replace):	
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])	
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("dump", [True, False])
+@pytest.mark.parametrize("replace", [True, False])
+def test_gpu_workflow_config(tmpdir, datasets, dump, gpu_memory_frac, engine, replace):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
-    if engine == "parquet":	
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]	
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]	
-    else:	
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]	
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]	
-    df = cudf.concat([df1, df2], axis=0)	
-    df["id"] = df["id"].astype("int64")	
+    if engine == "parquet":
+        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    else:
+        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
+    df = cudf.concat([df1, df2], axis=0)
+    df["id"] = df["id"].astype("int64")
 
-    if engine == "parquet":	
-        cat_names = ["name-cat", "name-string"]	
-        columns = mycols_pq	
-    else:	
-        cat_names = ["name-string"]	
-        columns = mycols_csv	
-    cont_names = ["x", "y", "id"]	
-    label_name = ["label"]	
+    if engine == "parquet":
+        cat_names = ["name-cat", "name-string"]
+        columns = mycols_pq
+    else:
+        cat_names = ["name-string"]
+        columns = mycols_csv
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
 
-    config = nvt.workflow.get_new_config()	
-    # add operators with dependencies	
-    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp()]]	
-    config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]	
-    config["PP"]["categorical"] = [ops.Categorify()]	
+    config = nvt.workflow.get_new_config()
+    # add operators with dependencies
+    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp()]]
+    config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]
+    config["PP"]["categorical"] = [ops.Categorify()]
 
-    processor = nvt.Workflow(	
-        cat_names=cat_names,	
-        cont_names=cont_names,	
-        label_name=label_name,	
-        config=config,	
-        to_cpu=False,	
-    )	
+    processor = nvt.Workflow(
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+        config=config,
+        to_cpu=False,
+    )
 
-    data_itr = nvt.io.GPUDatasetIterator(	
-        paths,	
-        columns=columns,	
-        use_row_groups=True,	
-        gpu_memory_frac=gpu_memory_frac,	
-        names=allcols_csv,	
-    )	
+    data_itr = nvt.io.GPUDatasetIterator(
+        paths,
+        columns=columns,
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+        names=allcols_csv,
+    )
 
-    processor.update_stats(data_itr)	
+    processor.update_stats(data_itr)
 
-    if dump:	
-        config_file = tmpdir + "/temp.yaml"	
-        processor.save_stats(config_file)	
-        processor.clear_stats()	
-        processor.load_stats(config_file)	
+    if dump:
+        config_file = tmpdir + "/temp.yaml"
+        processor.save_stats(config_file)
+        processor.clear_stats()
+        processor.load_stats(config_file)
 
-    def get_norms(tar: cudf.Series):	
-        ser_median = tar.dropna().quantile(0.5, interpolation="linear")	
-        gdf = tar.fillna(ser_median)	
-        gdf = np.log(gdf + 1)	
-        return gdf	
+    def get_norms(tar: cudf.Series):
+        ser_median = tar.dropna().quantile(0.5, interpolation="linear")
+        gdf = tar.fillna(ser_median)
+        gdf = np.log(gdf + 1)
+        return gdf
 
-    # Check mean and std - No good right now we have to add all other changes; Zerofill, Log	
+    # Check mean and std - No good right now we have to add all other changes; Zerofill, Log
 
-    concat_ops = "_FillMissing_LogOp"	
-    if replace:	
-        concat_ops = ""	
-    assert math.isclose(	
-        get_norms(df.x).mean(), processor.stats["means"]["x" + concat_ops], rel_tol=1e-1,	
-    )	
-    assert math.isclose(	
-        get_norms(df.y).mean(), processor.stats["means"]["y" + concat_ops], rel_tol=1e-1,	
-    )	
+    concat_ops = "_FillMissing_LogOp"
+    if replace:
+        concat_ops = ""
+    assert math.isclose(
+        get_norms(df.x).mean(), processor.stats["means"]["x" + concat_ops], rel_tol=1e-1,
+    )
+    assert math.isclose(
+        get_norms(df.y).mean(), processor.stats["means"]["y" + concat_ops], rel_tol=1e-1,
+    )
 
-    assert math.isclose(	
-        get_norms(df.x).std(), processor.stats["stds"]["x" + concat_ops], rel_tol=1e-1,	
-    )	
-    assert math.isclose(	
-        get_norms(df.y).std(), processor.stats["stds"]["y" + concat_ops], rel_tol=1e-1,	
-    )	
+    assert math.isclose(
+        get_norms(df.x).std(), processor.stats["stds"]["x" + concat_ops], rel_tol=1e-1,
+    )
+    assert math.isclose(
+        get_norms(df.y).std(), processor.stats["stds"]["y" + concat_ops], rel_tol=1e-1,
+    )
 
-    # Check that categories match	
-    if engine == "parquet":	
-        cats_expected0 = df["name-cat"].unique().values_to_string()	
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()	
-        # adding the None entry as a string because of move from gpu	
-        assert cats0 == ["None"] + cats_expected0	
-    cats_expected1 = df["name-string"].unique().values_to_string()	
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()	
-    # adding the None entry as a string because of move from gpu	
-    assert cats1 == ["None"] + cats_expected1	
+    # Check that categories match
+    if engine == "parquet":
+        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        # adding the None entry as a string because of move from gpu
+        assert cats0 == ["None"] + cats_expected0
+    cats_expected1 = df["name-string"].unique().values_to_string()
+    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    # adding the None entry as a string because of move from gpu
+    assert cats1 == ["None"] + cats_expected1
 
-    # Write to new "shuffled" and "processed" dataset	
-    processor.write_to_dataset(tmpdir, data_itr, nfiles=10, shuffle=True, apply_ops=True)	
+    # Write to new "shuffled" and "processed" dataset
+    processor.write_to_dataset(tmpdir, data_itr, nfiles=10, shuffle=True, apply_ops=True)
 
     data_itr_2 = nvtabular.io.GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
