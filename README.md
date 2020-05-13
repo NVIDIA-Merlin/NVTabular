@@ -45,6 +45,16 @@ A workflow demonstrating the preprocessing and data-loading components of NVTabu
 
 [ DLRM Criteo Workflow ](https://developer.nvidia.com/deep-learning-examples#rec-sys)
 
+Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NVTabular library.  The original ETL script provided in Numpy took over five days to complete.  Combined with CPU training the total iteration time is over one week.  By optimizing the ETL code in spark and running on a DGX-1 equivilent cluster we were able to bring that time down to three hours for ETL and one hour for training.
+
+With NVTabular on a single V100 32GB GPU we are able to complete ETL in 15 minutes, and using a DGX-1 cluster of eight V100 GPUs we can accelerate ETL to 3 minutes.  Combined with [HugeCTR](http://www.github.com/nvidia/HugeCTR/) we can process the dataset and train the full model in only 18 minutes.  This fast iteration is the goal of NVTabular and the Merlin application framework.
+
+![NVTabular Performance](nvt_performance.png)
+
+When examining the relative time spent in ETL vs Training we see that with NVTabular data scientists and ML engineers no longer need to spend 75% of their time on ETL. 
+
+![NVTabular Relative Performance](nvt_relativetime.png)
+
 We also have a simple tutorial that demonstrates similar functionality on a much smaller dataset, providing a pipeline for the [Rossman store sales dataset](https://www.kaggle.com/c/rossmann-store-sales) fed into a [fast.ai tabular data model](https://docs.fast.ai/tabular.html).  
 
 [ Rossman Store Sales ](examples/gpu_benchmark-rossmann.ipynb)
