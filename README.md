@@ -23,13 +23,49 @@ Extending beyond model training, we plan to provide integration with model servi
 Our goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness.   
 
 ### Getting Started
+NVTabular is available in the NVidia container repository at the following location, http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
-NVTabular is available in the NVidia container repository at the following location:
+The following images are available from the registry with cudf and nvtabular already installed:
 
-[Docker quickstart]
+| Available Images | Description | Environment |
+| ------ | ------ | ------ |
+| <container-registry>/cuda10.2_py3.7 | cuda 10.2 toolkit and python 3.7 | base |
+| <container-registry>/cuda10.2_py3.7_tf2.1.0 | cuda 10.2 toolkit, python 3.7 and tensorflow 2.1.0 | base |
+| <container-registry>/cuda10.2_py3.7_torch1.5 | cuda 10.2 toolkit, python 3.7 and pytorch 1.5 | base |
+| <container-registry>/cuda10.2_py3.7_torch1.5_tf2.1.0 | cuda 10.2 toolkit, python 3.7, pytorch 1.5 and tensorflow 2.1.0 | base |
+| <container-registry>/cuda10.2_py3.6 | cuda 10.2 toolkit and python 3.6 | base |
+| <container-registry>/cuda10.2_py3.6_tf2.1.0 | cuda 10.2 toolkit, python 3.6 and tensorflow 2.1.0 | base |
+| <container-registry>/cuda10.2_py3.6_torch1.5 | cuda 10.2 toolkit, python 3.6 and pytorch 1.5 | base |
+| <container-registry>/cuda10.2_py3.6_torch1.5_tf2.1.0 | cuda 10.2 toolkit, python 3.6, pytorch 1.5 and tensorflow 2.1.0 | base |
+
+
+Once you have selected, the desired container from the table above, you can run the container using the following commands:
+```
+docker run --gpus all --rm -it -p 9999:8888 -p 9797:8787 -p 9796:8786 --ipc=host --cap-add SYS_PTRACE <container_image> /bin/bash
+```
+If you are running on a docker version < 19 please change --gpus all to --runtime=nvidia.
+
+The container will open a shell when the run command completes execution, you will be responsible for starting the jupyter lab on the docker container.
+Should look similar to below:
+```
+root@2efa5b50b909: 
+```
+
+First, activate the correct environment:
+```
+root@2efa5b50b909: source activate base
+```
+Then you should see the following prompt (The environment has been activated):
+```
+(base)root@2efa5b50b909: 
+```
 
 Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS cuDF](https://github.com/rapidsai/cudf), and a range of [examples](./examples).  The easiest way to get started is to simply launch the container above and explore the examples within.  It is designed to work with Cuda 10.2.  As we mature more cuda versions will be supported.
 
+The code base with examples, can be found at the following directory location within the container:
+```
+/nvtabular/
+```
 
 #### Conda
 
