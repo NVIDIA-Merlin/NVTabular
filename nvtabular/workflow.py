@@ -49,7 +49,7 @@ class Workflow:
     cont_names : list of str
         Names of the continous columns.
     label_name : list of str
-        Names of the label columna.
+        Names of the label column.
     feat_ops : list of feature engineering operator objects
         Feature engineering ops objects GroupBy.
         New feature engineering operators can be added

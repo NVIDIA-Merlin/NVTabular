@@ -22,8 +22,8 @@ sys.path.insert(0, os.path.abspath("../../."))
 # -- Project information -----------------------------------------------------
 
 project = "NVTabular"
-copyright = "2020, Nvidia"
-author = "Nvidia"
+copyright = "2020, NVIDIA"
+author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags
 release = "2020"
@@ -87,7 +87,6 @@ _URL_MAP = {
 class GitHubDomain(sphinx.domains.Domain):
     def resolve_any_xref(self, env, docname, builder, target, node, contnode):
         resolved = _URL_MAP.get(target)
-        print("resolver", target, resolved)
         if resolved:
             contnode["refuri"] = resolved
             return [("github:any", contnode)]
