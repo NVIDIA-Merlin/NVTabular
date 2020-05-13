@@ -1,9 +1,9 @@
 # Copyright (c) 2020, NVIDIA CORPORATION.
 
 # Usage:
-#   conda build . -c defaults -c conda-forge -c numba -c rapidsai -c pytorch 
+#   conda build . -c defaults -c conda-forge -c numba -c rapidsai-nightly -c pytorch 
 
-{% set version = environ.get('GIT_DESCRIBE_TAG', '0.13.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.1').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set minor_version =  version.split('.')[0] + '.' + version.split('.')[1] %}
 {% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
 {% set cuda_version='.'.join(environ.get('CUDA', 'unknown').split('.')[:2]) %}
@@ -14,7 +14,7 @@ package:
   version: {{ version }}
 
 source:
-  path: ../../nvtabular/
+  path: ../../
 
 build:
   number: {{ git_revision_count }}
@@ -24,18 +24,18 @@ requirements:
   build:
     - python x.x
     - setuptools
-    - cudf {{ minor_version }}
+    - cudf 0.14.*
   run:
     - python x.x
-    - cudf {{ minor_version }}
-    - dask-cudf {{ minor_version }}
+    - cudf 0.14.*
+    - dask-cudf 0.14.*
     - cupy>=7,<8.0.0a0
     - dask>=2.12.0
     - distributed>=2.12.0
     - {{ pin_compatible('cudatoolkit', max_pin='x.x') }}
 
 about:
-  home: https://github.com/rapidsai/recsys
+  home: https://github.com/NVIDIA/NVTabular
   license: Apache-2.0
   # license_file: LICENSE
-  summary: nvtabular library
+  summary: NVTabular library

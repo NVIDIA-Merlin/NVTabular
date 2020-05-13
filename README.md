@@ -23,25 +23,29 @@ Extending beyond model training, we plan to provide integration with model servi
 Our goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness.   
 
 ### Getting Started
+
 NVTabular is available in the NVidia container repository at the following location:
 
 [Docker quickstart]
 
 Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS cuDF](https://github.com/rapidsai/cudf), and a range of [examples](./examples).  The easiest way to get started is to simply launch the container above and explore the examples within.  It is designed to work with Cuda 10.2.  As we mature more cuda versions will be supported.
 
+
+#### Conda
+
+NVTabular can be installed with Anaconda from the ```nvidia``` channel:
+
 ```
-conda install -c nvidia nvtabular
+conda install -c nvidia -c rapidsai-nightly -c numba -c conda-forge  nvtabular python=3.6 cudatoolkit=10.2
 ```
 
-If you wish to install the library yourself you can do so using the commands above.  The requirements for the library include:
-
-```
-Requirements.yml
-```
+Note that we currently require the nightly version of cuDF, which is installed through the
+```rapidsai-nightly``` channel.
 
 ### Examples and Tutorials
 
 An example demonstrating how to use NVTabular to preprocess the [Criteo 1TB dataset](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) can be found in the [criteo example notebook](examples/criteo-example.ipynb). This example also shows how to use NVTabular's data-loaders on the preprocessed data to train Facebook's [Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/).
+
 Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NVTabular library.  The original ETL script provided in Numpy took over five days to complete.  Combined with CPU training the total iteration time is over one week.  By optimizing the ETL code in spark and running on a DGX-1 equivilent cluster we were able to bring that time down to three hours for ETL and one hour for training.
 
 With NVTabular on a single V100 32GB GPU we are able to complete ETL in 15 minutes, and using a DGX-1 cluster of eight V100 GPUs we can accelerate ETL to 3 minutes.  Combined with [HugeCTR](http://www.github.com/nvidia/HugeCTR/) we can process the dataset and train the full model in only 18 minutes.  This fast iteration is the goal of NVTabular and the Merlin application framework.
