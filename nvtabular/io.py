@@ -24,6 +24,7 @@ from itertools import islice
 import cudf
 import cupy as cp
 import numpy as np
+import pandas as pd
 import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
@@ -440,6 +441,20 @@ class HugeCTR:
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
 
+        self.column_order = []
+        for l in labels:
+            self.column_order.append(l)
+
+        for c in conts:
+            self.column_order.append(c)
+
+        self.ones = []
+        for c in cats: 
+            col_one = '__one__' + c
+            self.ones.append(col_one)
+            self.column_order.append(col_one)
+            self.column_order.append(c)
+
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
 
@@ -455,17 +470,15 @@ class HugeCTR:
                 if item is self._eod:
                     break
                 idx, data = item
-                with self.write_locks[idx]:                
-                    cat_features = data[self.cats].to_pandas().to_numpy(dtype=np.longlong)
-                    cont_features = data[self.conts].to_pandas().to_numpy(dtype=np.float)
-                    label_col = data[self.labels].to_pandas().to_numpy(dtype=np.float)
-                   
-                    for i in range(len(label_col)):
-                        self.writers[idx].write(label_col[i].tobytes())
-                        self.writers[idx].write(cont_features[i].tobytes())
-                        for c in cat_features[i]:
-                            self.writers[idx].write(one) # this is for nnz
-                            self.writers[idx].write(c.tobytes())
+                ones = np.array(([1] * data.shape[0]), dtype=np.int)
+                with self.write_locks[idx]:
+                    df = data[self.labels].to_pandas().astype(float)
+                    df[self.conts] = data[self.conts].to_pandas().astype(float)   
+                    for i in range(len(self.cats)):
+                        df["___" + str(i)+ "___" + self.cats[i]] = ones
+                        df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
+
+                    self.writers[idx].write(df.to_numpy().tobytes())                   
             finally:
                 self.queue.task_done()
 
