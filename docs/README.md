@@ -1,9 +1,13 @@
-#Contributing to Docs
+# Contributing to Docs
 
 Follow the instructions below to be able to build docs.
 
-##Steps to follow:
-In order to build the docs, we need to install NVTabular in a conda env. See installation instructions.
+## Steps to follow:
+1. In order to build the docs, we need to install NVTabular in a conda env. [See installation instructions](https://github.com/NVIDIA/NVTabular).
+
+2. Install required documentation tools and extensions:
+
+`pip install sphinx recommonmark nbsphinx sphinx_rtd_theme`
 
 Once NVTabular is installed, navigate to ../NVTabular/docs/. If you have your documentation written and want to turn it into HTML, run makefile:
 
