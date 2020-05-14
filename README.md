@@ -25,25 +25,13 @@ Our goal is faster iteration on massive tabular datasets, both for experimentati
 ### Getting Started
 NVTabular is available in the NVIDIA container repository at the following location, http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
-The following images are available from the registry with cudf and nvtabular already installed:
+Currently we have the alpha release (0.1) container, you can pull the container using the following command:
 
-| Available Images | Description | Environment |
-| ------ | ------ | ------ |
-| <container-registry>/cuda10.2_py3.7 | cuda 10.2 toolkit and python 3.7 | base |
-| <container-registry>/cuda10.2_py3.7_tf2.1.0 | cuda 10.2 toolkit, python 3.7 and tensorflow 2.1.0 | base |
-| <container-registry>/cuda10.2_py3.7_torch1.5 | cuda 10.2 toolkit, python 3.7 and pytorch 1.5 | base |
-| <container-registry>/cuda10.2_py3.7_torch1.5_tf2.1.0 | cuda 10.2 toolkit, python 3.7, pytorch 1.5 and tensorflow 2.1.0 | base |
-| <container-registry>/cuda10.2_py3.6 | cuda 10.2 toolkit and python 3.6 | base |
-| <container-registry>/cuda10.2_py3.6_tf2.1.0 | cuda 10.2 toolkit, python 3.6 and tensorflow 2.1.0 | base |
-| <container-registry>/cuda10.2_py3.6_torch1.5 | cuda 10.2 toolkit, python 3.6 and pytorch 1.5 | base |
-| <container-registry>/cuda10.2_py3.6_torch1.5_tf2.1.0 | cuda 10.2 toolkit, python 3.6, pytorch 1.5 and tensorflow 2.1.0 | base |
-
-
-Once you have selected, the desired container from the table above, you can run the container using the following commands:
 ```
-docker run --gpus all --rm -it -p 9999:8888 --ipc=host <container_image> /bin/bash
+docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.1 /bin/bash
 ```
-If you are running on a docker version < 19 please change ```--gpus all``` to ```--runtime=nvidia```.
+
+If you are running on a docker version 19+ please change ```--runtime=nvidia``` to ```--gpus all```.
 
 The container will open a shell when the run command completes execution, you will be responsible for starting the jupyter lab on the docker container.
 Should look similar to below:
@@ -51,14 +39,25 @@ Should look similar to below:
 root@2efa5b50b909: 
 ```
 
-First, activate the correct environment:
+First, activate the ```rapids``` conda environment:
 ```
-root@2efa5b50b909: source activate base
+root@2efa5b50b909: source activate rapids
 ```
+
 Then you should see the following prompt (The environment has been activated):
 ```
-(base)root@2efa5b50b909: 
+(rapids)root@2efa5b50b909: 
 ```
+
+Finally start the jupyter-lab server:
+```
+jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
+```
+
+Now you can use any browser to access the jupyter-lab server, via <MachineIP>:8888
+
+Once in the server, navigate to the ```/nvtabular/``` directory and explore the code base or try out some of the examples. 
+
 
 Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS cuDF](https://github.com/rapidsai/cudf), and a range of [examples](./examples). The easiest way to get started is to simply launch the container above and explore the examples within. It is designed to work with Cuda 10.2. As we mature more cuda versions will be supported.
 
