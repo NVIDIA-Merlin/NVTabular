@@ -83,7 +83,8 @@ When compared to an item by item dataloader of PyTorch we have benchmarked our t
 
 Multi-GPU Support
 -----------------------
-Multi-GPU support is planned through Dask-cudf and Dask which allows for the easy parallelization of operations across multiple GPUs.  To use multi-gpu NVTabular specify the devices you want to leverage in the creation of the workflow.
+
+The next release will have multi-GPU support using Dask-cudf and Dask, and will allow for easy parallelization of operations across multiple GPUs.
 
 CPU Support
 ------------

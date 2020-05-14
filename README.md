@@ -59,7 +59,7 @@ Now you can use any browser to access the jupyter-lab server, via <MachineIP>:88
 Once in the server, navigate to the ```/nvtabular/``` directory and explore the code base or try out some of the examples. 
 
 
-Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS cuDF](https://github.com/rapidsai/cudf), and a range of [examples](./examples). The easiest way to get started is to simply launch the container above and explore the examples within. It is designed to work with Cuda 10.2. As we mature more cuda versions will be supported.
+Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS cuDF](https://github.com/rapidsai/cudf), and a range of [examples](./examples). The easiest way to get started is to simply launch the container above and explore the examples within.
 
 The code base with examples, can be found at the following directory location within the container:
 ```
@@ -79,11 +79,11 @@ Note that we currently require the nightly version of cuDF, which is installed t
 
 ### Examples and Tutorials
 
-An example demonstrating how to use NVTabular to preprocess the [Criteo 1TB dataset](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) can be found in the [criteo example notebook](examples/criteo-example.ipynb). This example also shows how to use NVTabular's data-loaders on the preprocessed data to train Facebook's [Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/).
+An example demonstrating how to use NVTabular to preprocess the [Criteo 1TB dataset](http://labs.criteo.com/2013/12/download-terabyte-click-logs/) can be found in the [criteo example notebook](examples/criteo-example.ipynb). This example also shows how to use NVTabular's data-loaders on the preprocessed data to train Facebook's [Deep Learning Recommender Model (DLRM)](https://github.com/facebookresearch/dlrm/).
 
 Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NVTabular library. The original ETL script provided in Numpy took over five days to complete. Combined with CPU training the total iteration time is over one week. By optimizing the ETL code in spark and running on a DGX-1 equivalent cluster we were able to bring that time down to three hours for ETL and one hour for training.
 
-With NVTabular on a single V100 32GB GPU we are able to complete ETL in 15 minutes, and using a DGX-1 cluster of eight V100 GPUs we can accelerate ETL to 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/) we can process the dataset and train the full model in only 18 minutes. This fast iteration is the goal of NVTabular and the Merlin application framework.
+With NVTabular on a single V100 32GB GPU we are able to complete ETL in 15 minutes, and using a DGX-1 cluster of eight V100 GPUs we can accelerate ETL to 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/) we can process the dataset and train the full model in only 18 minutes. This fast iteration is the goal of NVTabular and the [Merlin application framework](https://developer.nvidia.com/nvidia-merlin).
 
 
 <p align="center"><img src="_images/nvt_performance.png" width="50%"></p>
@@ -98,7 +98,7 @@ We also have a [simple tutorial](examples/rossmann-store-sales-example.ipynb) th
 
 If you wish to contribute to the library directly please see [Contributing.md](./CONTRIBUTING.md). We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
-To be clear, this is an early alpha release, and we have a long way to go. We have a working framework, but our [operator set](./Operators.md) is limited for the initial launch and every day we are developing new optimizations that will help improve the performance of the library. If you are interested in working with us to help develop this library we are looking for early collaborators and contributors. In the coming months we will be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems. Please reach out via email or see our guide on contributions. We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
+To be clear, this is an early alpha release, and we have a long way to go. We have a working framework, but our [operator set](./Operators.md) is limited for the initial launch and every day we are developing new optimizations that will help improve the performance of the library. If you are interested in working with us to help develop this library we are looking for early collaborators and contributors. In the coming months we will be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems. Please reach out by submitting an issue or see our guide on contributions. We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 ### Learn More
 
