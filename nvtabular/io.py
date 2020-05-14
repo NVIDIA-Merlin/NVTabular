@@ -24,7 +24,7 @@ from itertools import islice
 import cudf
 import cupy as cp
 import numpy as np
-import pandas as pd
+
 import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
@@ -422,8 +422,7 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, cats, conts, labels,
-                 num_out_files=30, num_threads=4):
+    def __init__(self, out_dir, cats, conts, labels, num_out_files=30, num_threads=4):
 
         self.cats = cats
         self.conts = conts
@@ -449,8 +448,8 @@ class HugeCTR:
             self.column_order.append(c)
 
         self.ones = []
-        for c in cats: 
-            col_one = '__one__' + c
+        for c in cats:
+            col_one = "__one__" + c
             self.ones.append(col_one)
             self.column_order.append(col_one)
             self.column_order.append(c)
@@ -463,7 +462,6 @@ class HugeCTR:
             write_thread.start()
 
     def _write_thread(self):
-        one = np.array([1], dtype=np.longlong).tobytes()
         while True:
             item = self.queue.get()
             try:
@@ -473,12 +471,12 @@ class HugeCTR:
                 ones = np.array(([1] * data.shape[0]), dtype=np.int)
                 with self.write_locks[idx]:
                     df = data[self.labels].to_pandas().astype(float)
-                    df[self.conts] = data[self.conts].to_pandas().astype(float)   
+                    df[self.conts] = data[self.conts].to_pandas().astype(float)
                     for i in range(len(self.cats)):
-                        df["___" + str(i)+ "___" + self.cats[i]] = ones
+                        df["___" + str(i) + "___" + self.cats[i]] = ones
                         df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
 
-                    self.writers[idx].write(df.to_numpy().tobytes())                   
+                    self.writers[idx].write(df.to_numpy().tobytes())
             finally:
                 self.queue.task_done()
 
@@ -487,7 +485,7 @@ class HugeCTR:
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
-        
+
         for x in range(self.num_out_files):
             start = x * slice_size
             end = start + slice_size
@@ -503,19 +501,28 @@ class HugeCTR:
     def write_header(self):
         for i in range(len(self.writers)):
             self.writers[i].seek(0)
-            # error_check (0: no error check; 1: check_num) 
+            # error_check (0: no error check; 1: check_num)
             # num of samples in this file
             # Dimension of the labels
             # Dimension of the features
             # slot_num for each embedding
             # reserved for future use
-            header = np.array([0, self.num_samples[i], 
-                               len(self.labels), len(self.conts),
-                               len(self.cats), 0, 0, 0], dtype=np.longlong)
-            
+            header = np.array(
+                [
+                    0,
+                    self.num_samples[i],
+                    len(self.labels),
+                    len(self.conts),
+                    len(self.cats),
+                    0,
+                    0,
+                    0,
+                ],
+                dtype=np.longlong,
+            )
+
             self.writers[i].write(header.tobytes())
 
- 
     def close(self):
         # wake up all the worker threads and signal for them to exit
         for _ in range(self.num_threads):

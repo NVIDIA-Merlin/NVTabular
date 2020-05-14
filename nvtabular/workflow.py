@@ -718,12 +718,14 @@ class Workflow:
         if shuffle:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
-            #TODO: number of labels should be calculated here and passed to num_labels
-            huge_ctr = HugeCTR(hugectr_output_path, 
-                               cats=self.columns_ctx["categorical"]["base"],
-                               conts=self.columns_ctx["continuous"]["base"],
-                               labels=self.columns_ctx["label"]["base"],
-                               num_out_files=hugectr_num_out_files)
+            # TODO: number of labels should be calculated here and passed to num_labels
+            huge_ctr = HugeCTR(
+                hugectr_output_path,
+                cats=self.columns_ctx["categorical"]["base"],
+                conts=self.columns_ctx["continuous"]["base"],
+                labels=self.columns_ctx["label"]["base"],
+                num_out_files=hugectr_num_out_files,
+            )
         if apply_offline:
             self.update_stats(
                 dataset,
