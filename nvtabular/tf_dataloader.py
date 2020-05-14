@@ -80,20 +80,33 @@ def _get_parents(column):
 class KerasSequenceDataset(tf.keras.utils.Sequence):
     """
   Infinite generator used to iterate through csv or parquet dataframes
-  on GPU by leveraging an nvTabular dataset. Applies preprocessing via
-  nvTabular workflows and outputs tabular dictionaries of TensorFlow
+  on GPU by leveraging an NVTabular `dataset`. Applies preprocessing via
+  NVTabular `Workflow`s and outputs tabular dictionaries of TensorFlow
   Tensors via dlpack and tfdlpack. Useful for training tabular models
-  instantiated by Tensorflow Feature Columns and trained with Keras.fit.
+  built in Keras, instantiated by TensorFlow Feature Columns, and trained via
+  `tf.keras.Model.fit`.
 
-  In order to minimize loading and preprocessing time, batches are loaded
-  in groups of size `buffer_factor` and preprocessed at once. As such,
-  TensorFlow should be configured to leave some memory for cuDF to do
-  its work. If `shuffle` is `True`, each of these chunks will be shuffled
-  before iteration. While this limits the randomness of batches from
-  epoch to epoch, pre-randomized datasets (i.e. sequential reading of
-  the dataset yields unbiased samples of features) and large buffer sizes
-  should enable sufficient randomness to fit most tabular datasets of
-  interest.
+  In order to minimize loading and preprocessing time, data is loaded
+  in larger-than-batch-sized chunks whose exact size is decided by the
+  `buffer_size` argument (see below). These chunks are loaded and
+  preprocssed by any Workflows all at once to reduce bottlenecks.
+  Importantly, TensorFlow's default behavior is to claim all GPU memory
+  for itself, which leaves none for NVTabular to perform this
+  functionality. As such, we attempt to configure TensorFlow to restrict
+  its memory allocation on a given GPU using the environment variables
+  `TF_MEMORY_ALLOCATION` and `TF_VISIBLE_DEVICE`. If `TF_MEMORY_ALLOCATION < 1`,
+  it will be assumed that this refers to a fraction of free GPU
+  memory on the given device. Otherwise, it will refer to an explicit
+  allocation amount in MB. `TF_VISIBLE_DEVICE` should be an integer GPU
+  index.
+  
+  If `shuffle` is `True`, each of chunks will be shuffled
+  before being iterated through in batches of size `batch_size`.
+  While this limits the randomness of batches from epoch to epoch,
+  pre-randomized datasets (i.e. datasets ordered such that sequential
+  reading of elements yields unbiased samples of features) and large
+  buffer sizes should enable sufficient randomness to fit most tabular
+  datasets of interest.
 
   Iterator output is of the form `(dict(features), label)`, where each
   element of the features dict is a `feature_name: feature_tensor` pair
@@ -101,14 +114,19 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
   vectorized continuous and multi-hot categorical features are not
   currently supported, since cuDF doesn't support array-like columns.
 
-  The underlying nvTabular `dataset` object is stored in the `nvt_dataset`
-  property, and should be used for updating and nvTabular Workflow
-  statistics (i.e. `workflow.update_stats(datset.nvt_dataset, record_stats=True)`).
+  The underlying NVTabular `dataset` object is stored in the `nvt_dataset`
+  property, and should be used for updating NVTabular `Workflow`
+  statistics:
+  ```python
+  workflow = nvt.Workflow(...)
+  dataset = KerasSequenceDataset(...)
+  workflow.update_stats(dataset.nvt_dataset, record_stats=True)
+  ```
 
   Parameters
   -------------
   - file_pattern: str or list(str)
-      Either a string representing a file pattern (see tf.glob for
+      Either a string representing a file pattern (see `tf.glob` for
       pattern rules) or a list of filenames to be iterated through
   - columns: list(str) or list(tf.feature_column)
       Either a list of string column names to use from the dataframe(s)
@@ -128,11 +146,11 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
   - shuffle: bool, default True
       Whether to shuffle chunks of batches before iterating through them.
   - buffer_size: float or int
-      If 0 <  buffer_size < 1, buffer_size will refer to the amount of
-      free GPU memory to occupy with a buffered chunk. If 1 < buffer_size <
-      batch_size, the number of rows read for a buffered chunk will
-      be equal to int(buffer_size*batch_size). Otherwise, if buffer_size >
-      batch_size, buffer_size rows will be read in each chunk (except for
+      If `0 <  buffer_size < 1`, `buffer_size` will refer to the amount of
+      free GPU memory to occupy with a buffered chunk. If `1 < buffer_size <
+      batch_size`, the number of rows read for a buffered chunk will
+      be equal to `int(buffer_size*batch_size)`. Otherwise, if `buffer_size >
+      batch_size`, `buffer_size` rows will be read in each chunk (except for
       the last chunk in a dataset, which will, in general, be smaller).
       Larger chunk sizes will lead to more efficieny and randomness,
       but require more memory.
@@ -143,7 +161,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
       the `__getitem__` method, but keep track of batches internally,
       setting this to a value different than the actual size of the
       dataset will have no impact in the frequency with which samples
-      are seen by the network. If left as None, initialization will
+      are seen by the network. If left as `None`, initialization will
       include one iteration through the dataset to count the dataset
       size explicitly.
   """
