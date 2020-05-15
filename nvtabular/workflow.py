@@ -803,6 +803,10 @@ class Workflow:
                 self.write_df(
                     gdf, output_path, shuffler=shuffler, num_out_files=num_out_files,
                 )
+
+            if huge_ctr and phase_index == len(self.phases) - 1:
+                huge_ctr.add_data(gdf)
+
         return gdf
 
     @annotate("Write_df", color="red", domain="nvt_python")

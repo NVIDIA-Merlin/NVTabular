@@ -440,6 +440,13 @@ class HugeCTR:
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
 
+        self.column_names = []
+        for l in labels:
+            self.column_names.append(l)
+
+        for c in conts:
+            self.column_names.append(c)
+
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
 
@@ -454,10 +461,9 @@ class HugeCTR:
                 if item is self._eod:
                     break
                 idx, data = item
-                ones = np.array(([1] * data.shape[0]), dtype=np.int)
+                ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                 with self.write_locks[idx]:
-                    df = data[self.labels].to_pandas().astype(float)
-                    df[self.conts] = data[self.conts].to_pandas().astype(float)
+                    df = data[self.column_names].to_pandas().astype(np.single)
                     for i in range(len(self.cats)):
                         df["___" + str(i) + "___" + self.cats[i]] = ones
                         df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
