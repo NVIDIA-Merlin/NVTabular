@@ -440,20 +440,6 @@ class HugeCTR:
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
 
-        self.column_order = []
-        for l in labels:
-            self.column_order.append(l)
-
-        for c in conts:
-            self.column_order.append(c)
-
-        self.ones = []
-        for c in cats:
-            col_one = "__one__" + c
-            self.ones.append(col_one)
-            self.column_order.append(col_one)
-            self.column_order.append(c)
-
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
 
