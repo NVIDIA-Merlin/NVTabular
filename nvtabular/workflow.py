@@ -539,6 +539,19 @@ class Workflow:
                 final_ctx[key] = final_ctx[key] + to_add
         self.columns_ctx["final"]["cols"] = final_ctx
 
+    def get_final_cols_names(self, cols):
+        """
+        Returns all the column names after preprocessing and feature
+        engineering.
+        Parameters
+        -----------
+        cols : list of str
+        """
+        col_names = []
+        for c in cols.values():
+            col_names = col_names + c
+        return col_names
+
     def build_tasks(self, task_dict: dict, task_set):
         """
         task_dict: the task dictionary retrieved from the config
@@ -667,6 +680,13 @@ class Workflow:
                 )
 
             if huge_ctr and phase_index == len(self.phases) - 1:
+                if not self.cal_col_names:
+                    cat_names = self.get_final_cols_names(self.columns_ctx["categorical"])
+                    cont_names = self.get_final_cols_names(self.columns_ctx["continuous"])
+                    label_names = self.get_final_cols_names(self.columns_ctx["label"])
+                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    self.cal_col_names = True
+
                 huge_ctr.add_data(gdf)
 
             gdf = None
@@ -716,14 +736,12 @@ class Workflow:
         if not self.phases:
             self.finalize()
         if shuffle:
+            
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
-            # TODO: number of labels should be calculated here and passed to num_labels
+            self.cal_col_names = False
             huge_ctr = HugeCTR(
                 hugectr_output_path,
-                cats=self.columns_ctx["categorical"]["base"],
-                conts=self.columns_ctx["continuous"]["base"],
-                labels=self.columns_ctx["label"]["base"],
                 num_out_files=hugectr_num_out_files,
             )
         if apply_offline:
@@ -805,6 +823,12 @@ class Workflow:
                 )
 
             if huge_ctr and phase_index == len(self.phases) - 1:
+                if not self.cal_col_names:
+                    cat_names = self.get_final_cols_names(self.columns_ctx["categorical"])
+                    cont_names = self.get_final_cols_names(self.columns_ctx["continuous"])
+                    label_names = self.get_final_cols_names(self.columns_ctx["label"])
+                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    self.cal_col_names = True
                 huge_ctr.add_data(gdf)
 
         return gdf

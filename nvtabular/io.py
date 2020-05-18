@@ -422,11 +422,7 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, cats, conts, labels, num_out_files=30, num_threads=4):
-
-        self.cats = cats
-        self.conts = conts
-        self.labels = labels
+    def __init__(self, out_dir, num_out_files=30, num_threads=4):
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
@@ -439,14 +435,6 @@ class HugeCTR:
         self.num_threads = num_threads
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
-
-        self.column_names = []
-        for l in labels:
-            self.column_names.append(l)
-
-        for c in conts:
-            self.column_names.append(c)
-
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
 
@@ -514,6 +502,12 @@ class HugeCTR:
             )
 
             self.writers[i].write(header.tobytes())
+
+    def set_col_names(self, labels, cats, conts):
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.column_names = labels + conts
 
     def close(self):
         # wake up all the worker threads and signal for them to exit
