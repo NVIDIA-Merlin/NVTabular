@@ -539,17 +539,17 @@ class Workflow:
                 final_ctx[key] = final_ctx[key] + to_add
         self.columns_ctx["final"]["cols"] = final_ctx
 
-    def get_final_cols_names(self, cols):
+    def get_final_cols_names(self, col_type):
         """
         Returns all the column names after preprocessing and feature
         engineering.
         Parameters
         -----------
-        cols : list of str
+        col_type : str
         """
         col_names = []
-        for c in cols.values():
-            col_names = col_names + c
+        for c_names in self.columns_ctx[col_type].values():
+            col_names = col_names + c_names
         return col_names
 
     def build_tasks(self, task_dict: dict, task_set):
@@ -681,9 +681,9 @@ class Workflow:
 
             if huge_ctr and phase_index == len(self.phases) - 1:
                 if not self.cal_col_names:
-                    cat_names = self.get_final_cols_names(self.columns_ctx["categorical"])
-                    cont_names = self.get_final_cols_names(self.columns_ctx["continuous"])
-                    label_names = self.get_final_cols_names(self.columns_ctx["label"])
+                    cat_names = self.get_final_cols_names("categorical")
+                    cont_names = self.get_final_cols_names("continuous")
+                    label_names = self.get_final_cols_names("label")
                     huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
                     self.cal_col_names = True
 
@@ -736,14 +736,10 @@ class Workflow:
         if not self.phases:
             self.finalize()
         if shuffle:
-            
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
             self.cal_col_names = False
-            huge_ctr = HugeCTR(
-                hugectr_output_path,
-                num_out_files=hugectr_num_out_files,
-            )
+            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files,)
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -824,9 +820,9 @@ class Workflow:
 
             if huge_ctr and phase_index == len(self.phases) - 1:
                 if not self.cal_col_names:
-                    cat_names = self.get_final_cols_names(self.columns_ctx["categorical"])
-                    cont_names = self.get_final_cols_names(self.columns_ctx["continuous"])
-                    label_names = self.get_final_cols_names(self.columns_ctx["label"])
+                    cat_names = self.get_final_cols_names("categorical")
+                    cont_names = self.get_final_cols_names("continuous")
+                    label_names = self.get_final_cols_names("label")
                     huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
                     self.cal_col_names = True
                 huge_ctr.add_data(gdf)
