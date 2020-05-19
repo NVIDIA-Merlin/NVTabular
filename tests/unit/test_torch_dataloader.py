@@ -22,16 +22,15 @@ import shutil
 import cudf
 import numpy as np
 import pytest
-import torch
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from nvtabular.tf_dataloader import KerasSequenceDataset
-import nvtabular.torch_dataloader
-
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
+
+torch = pytest.importorskip("torch")
+torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -42,7 +41,7 @@ def test_gpu_file_iterator_ds(datasets, batch, dskey):
     df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
     df_expect["id"] = df_expect["id"].astype("int64")
     df_itr = cudf.DataFrame()
-    data_itr = nvtabular.torch_dataloader.FileItrDataset(
+    data_itr = torch_dataloader.FileItrDataset(
         paths[0],
         engine="csv",
         batch_size=batch,
@@ -69,7 +68,7 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
         cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"], to_cpu=True,
     )
 
-    data_itr = nvtabular.torch_dataloader.FileItrDataset(
+    data_itr = torch_dataloader.FileItrDataset(
         paths[0],
         engine="csv",
         batch_size=batch,
@@ -79,37 +78,14 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     )
 
     data_chain = torch.utils.data.ChainDataset([data_itr])
-    dlc = nvtabular.torch_dataloader.DLCollator(processor)
-    nvtabular.torch_dataloader.DLDataLoader(
-        data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0
-    )
+    dlc = torch_dataloader.DLCollator(processor)
+    torch_dataloader.DLDataLoader(data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0)
 
     for data_gd in data_itr:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
     assert len(data_itr) == len(data_chain)
     assert_eq(df_itr.reset_index(drop=True), df_expect.reset_index(drop=True))
-
-
-@pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
-def test_shuffle_gpu(tmpdir, datasets, engine):
-    num_files = 2
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = nvtabular.io.Shuffler(tmpdir, num_files)
-    shuf.add_data(df1)
-    writer_files = shuf.writer_files
-    shuf.close()
-    if engine == "parquet":
-        df3 = cudf.read_parquet(writer_files[0])[mycols_pq]
-        df4 = cudf.read_parquet(writer_files[1])[mycols_pq]
-    else:
-        df3 = cudf.read_parquet(writer_files[0])[mycols_csv]
-        df4 = cudf.read_parquet(writer_files[1])[mycols_csv]
-    assert df1.shape[0] == df3.shape[0] + df4.shape[0]
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -204,16 +180,16 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
         for col in cont_names:
             assert f"{col}_LogOp" in processor.columns_ctx["final"]["cols"]["continuous"]
 
-    dlc = nvtabular.torch_dataloader.DLCollator(preproc=processor, apply_ops=False)
+    dlc = torch_dataloader.DLCollator(preproc=processor, apply_ops=False)
     data_files = [
-        nvtabular.torch_dataloader.FileItrDataset(
+        torch_dataloader.FileItrDataset(
             x, use_row_groups=True, gpu_memory_frac=gpu_memory_frac, names=allcols_csv,
         )
         for x in glob.glob(str(tmpdir) + "/ds_part.*.parquet")
     ]
 
     data_itr = torch.utils.data.ChainDataset(data_files)
-    dl = nvtabular.torch_dataloader.DLDataLoader(
+    dl = torch_dataloader.DLDataLoader(
         data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0
     )
 
@@ -233,7 +209,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert len(x[0]) == len_df_pp
 
-    itr_ds = nvtabular.torch_dataloader.TensorItrDataset([x[0], x[1], x[2]], batch_size=512000)
+    itr_ds = torch_dataloader.TensorItrDataset([x[0], x[1], x[2]], batch_size=512000)
     count_tens_itr = 0
     for data_gd in itr_ds:
         count_tens_itr += len(data_gd[1])
@@ -325,77 +301,3 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     assert rows == num_rows
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
-
-
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
-@pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("batch_size", [1, 10, 100])
-def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    cont_names = ["x", "y", "id"]
-    cat_names = ["name-string"]
-    label_name = ["label"]
-    if engine == "parquet":
-        cat_names.append("name-cat")
-
-    columns = cont_names + cat_names
-
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
-    )
-    processor.add_feature([ops.FillMissing()])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
-
-    data_itr = KerasSequenceDataset(
-        paths,
-        columns=columns,
-        batch_size=batch_size,
-        buffer_size=gpu_memory_frac,
-        label_name=label_name[0],
-        engine=engine,
-        shuffle=False,
-    )
-    processor.update_stats(data_itr.nvt_dataset, record_stats=True)
-    data_itr.map(processor)
-
-    rows = 0
-    for idx in range(len(data_itr)):
-        X, y = next(data_itr)
-
-        # first elements to check epoch-to-epoch consistency
-        if idx == 0:
-            X0, y0 = X, y
-
-        # check that we have at most batch_size elements
-        num_samples = y.shape[0]
-        assert num_samples <= batch_size
-
-        # check that all the features in X have the
-        # appropriate length and that the set of
-        # their names is exactly the set of names in
-        # `columns`
-        these_cols = columns.copy()
-        for column, x in X.items():
-            try:
-                these_cols.remove(column)
-            except ValueError:
-                raise AssertionError
-            assert x.shape[0] == num_samples
-        assert len(these_cols) == 0
-
-        rows += num_samples
-
-    # check start of next epoch to ensure consistency
-    X, y = next(data_itr)
-    assert (y.numpy() == y0.numpy()).all()
-    for column, x in X.items():
-        x0 = X0.pop(column)
-        assert (x.numpy() == x0.numpy()).all()
-    assert len(X0) == 0
-
-    # accounts for incomplete batches at the end of chunks
-    # that dont necesssarily have the full batch_size
-    assert (idx + 1) * batch_size >= rows
-    assert rows == (60 * 24 * 3 + 1)
