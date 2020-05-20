@@ -549,7 +549,7 @@ class Workflow:
         """
         col_names = []
         for c_names in self.columns_ctx[col_type].values():
-            col_names = col_names + c_names
+            col_names.extend(c_names)
         return col_names
 
     def build_tasks(self, task_dict: dict, task_set):

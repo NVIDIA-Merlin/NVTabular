@@ -422,7 +422,14 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, num_out_files=30, num_threads=4):
+    def __init__(self, out_dir, num_out_files=30, num_threads=4,
+                 cats=None, conts=None, labels=None):
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.column_names = None
+        if cats and conts:
+            self.column_names = labels + conts
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
