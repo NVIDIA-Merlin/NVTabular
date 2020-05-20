@@ -1054,12 +1054,9 @@ class Categorify(DFOperator):
         return new_gdf
 
     def get_emb_sz(self, encoders, cat_names):
-        work_in = {}
-        for key in encoders.keys():
-            work_in[key] = encoders[key] + 1
         # sorted key required to ensure same sort occurs for all values
         ret_list = [
-            (n, self.def_emb_sz(work_in, n))
+            (n, self.def_emb_sz(encoders, n))
             for n in sorted(cat_names, key=lambda entry: entry.split("_")[0])
         ]
         return ret_list
