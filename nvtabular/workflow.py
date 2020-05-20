@@ -847,7 +847,7 @@ class Workflow:
         main_obj["op_args"] = op_args
         main_obj["tasks"] = tasks
         with open(path, "w") as outfile:
-            yaml.dump(main_obj, outfile, default_flow_style=False)
+            yaml.safe_dump(main_obj, outfile, default_flow_style=False)
 
     def load_stats(self, path):
         def _set_stats(self, stats_dict):
@@ -855,7 +855,7 @@ class Workflow:
                 self.stats[key] = stat
 
         with open(path, "r") as infile:
-            main_obj = yaml.load(infile)
+            main_obj = yaml.safe_load(infile)
             _set_stats(self, main_obj["stats"])
             self.master_task_list = self.recreate_master_task_list(
                 main_obj["tasks"], main_obj["op_args"]
