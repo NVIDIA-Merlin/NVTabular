@@ -428,7 +428,7 @@ class HugeCTR:
         self.conts = conts
         self.labels = labels
         self.column_names = None
-        if cats and conts:
+        if labels and conts:
             self.column_names = labels + conts
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
