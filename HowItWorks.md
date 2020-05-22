@@ -33,7 +33,7 @@ The second phase of operations is the apply phase, which uses the statistics cre
 # columns of the associated variable type
 workflow.add_cont_preprocess(nvt.ops.Normalize())
 
-dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
+train_ds_iterator = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
 
 # record stats, transform the dataset, and export
 # the transformed data to a parquet file
