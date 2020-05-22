@@ -539,6 +539,19 @@ class Workflow:
                 final_ctx[key] = final_ctx[key] + to_add
         self.columns_ctx["final"]["cols"] = final_ctx
 
+    def get_final_cols_names(self, col_type):
+        """
+        Returns all the column names after preprocessing and feature
+        engineering.
+        Parameters
+        -----------
+        col_type : str
+        """
+        col_names = []
+        for c_names in self.columns_ctx[col_type].values():
+            col_names.extend(c_names)
+        return col_names
+
     def build_tasks(self, task_dict: dict, task_set):
         """
         task_dict: the task dictionary retrieved from the config
@@ -667,6 +680,13 @@ class Workflow:
                 )
 
             if huge_ctr and phase_index == len(self.phases) - 1:
+                if not self.cal_col_names:
+                    cat_names = self.get_final_cols_names("categorical")
+                    cont_names = self.get_final_cols_names("continuous")
+                    label_names = self.get_final_cols_names("label")
+                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    self.cal_col_names = True
+
                 huge_ctr.add_data(gdf)
 
             gdf = None
@@ -718,14 +738,8 @@ class Workflow:
         if shuffle:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
-            # TODO: number of labels should be calculated here and passed to num_labels
-            huge_ctr = HugeCTR(
-                hugectr_output_path,
-                cats=self.columns_ctx["categorical"]["base"],
-                conts=self.columns_ctx["continuous"]["base"],
-                labels=self.columns_ctx["label"]["base"],
-                num_out_files=hugectr_num_out_files,
-            )
+            self.cal_col_names = False
+            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files,)
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -803,6 +817,16 @@ class Workflow:
                 self.write_df(
                     gdf, output_path, shuffler=shuffler, num_out_files=num_out_files,
                 )
+
+            if huge_ctr and phase_index == len(self.phases) - 1:
+                if not self.cal_col_names:
+                    cat_names = self.get_final_cols_names("categorical")
+                    cont_names = self.get_final_cols_names("continuous")
+                    label_names = self.get_final_cols_names("label")
+                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    self.cal_col_names = True
+                huge_ctr.add_data(gdf)
+
         return gdf
 
     @annotate("Write_df", color="red", domain="nvt_python")

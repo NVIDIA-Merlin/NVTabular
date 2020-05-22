@@ -422,11 +422,14 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, cats, conts, labels, num_out_files=30, num_threads=4):
-
+    def __init__(self, out_dir, num_out_files=30, num_threads=4,
+                 cats=None, conts=None, labels=None):
         self.cats = cats
         self.conts = conts
         self.labels = labels
+        self.column_names = None
+        if labels and conts:
+            self.column_names = labels + conts
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
@@ -439,21 +442,6 @@ class HugeCTR:
         self.num_threads = num_threads
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
-
-        self.column_order = []
-        for l in labels:
-            self.column_order.append(l)
-
-        for c in conts:
-            self.column_order.append(c)
-
-        self.ones = []
-        for c in cats:
-            col_one = "__one__" + c
-            self.ones.append(col_one)
-            self.column_order.append(col_one)
-            self.column_order.append(c)
-
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
 
@@ -468,10 +456,9 @@ class HugeCTR:
                 if item is self._eod:
                     break
                 idx, data = item
-                ones = np.array(([1] * data.shape[0]), dtype=np.int)
+                ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                 with self.write_locks[idx]:
-                    df = data[self.labels].to_pandas().astype(float)
-                    df[self.conts] = data[self.conts].to_pandas().astype(float)
+                    df = data[self.column_names].to_pandas().astype(np.single)
                     for i in range(len(self.cats)):
                         df["___" + str(i) + "___" + self.cats[i]] = ones
                         df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
@@ -522,6 +509,12 @@ class HugeCTR:
             )
 
             self.writers[i].write(header.tobytes())
+
+    def set_col_names(self, labels, cats, conts):
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.column_names = labels + conts
 
     def close(self):
         # wake up all the worker threads and signal for them to exit
