@@ -156,7 +156,7 @@ class DLLabelEncoder(object):
                 )
             i = i + sub_cats_size
 
-        sub_cats = cudf.Series([])
+        sub_cats = None
         return encoded[:].replace(-1, 0)
 
     def _series_size(self, s):
@@ -270,24 +270,6 @@ class DLLabelEncoder(object):
         mask = dg["l2"].isin(df["l1"])
         unis = dg.loc[~mask]["l2"].unique()
         return unis
-
-    def dump_cats(self):
-        x = cudf.DataFrame()
-        x[self.col] = self._cats.unique()
-        self.cat_exp_count = self.cat_exp_count + x.shape[0]
-        file_id = str(uuid.uuid4().hex) + ".parquet"
-        tar_file = os.path.join(self.folder_path, file_id)
-        x.to_parquet(tar_file, compression=None)
-        self._cats = cudf.Series()
-        # should find new file just exported
-        new_file_path = [
-            os.path.join(self.folder_path, x)
-            for x in os.listdir(self.folder_path)
-            if x.endswith("parquet") and x not in self.file_paths and x not in self.ignore_files
-        ]
-        # add file to list
-        self.file_paths.extend(new_file_path)
-        self.file_paths = list(set(self.file_paths))
 
     def one_cycle(self, compr):
         # compr is already a list of unique values to check against

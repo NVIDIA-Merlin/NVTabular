@@ -24,7 +24,6 @@ from itertools import islice
 import cudf
 import cupy as cp
 import numpy as np
-
 import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
@@ -422,8 +421,9 @@ class HugeCTR:
 
     """
 
-    def __init__(self, out_dir, num_out_files=30, num_threads=4,
-                 cats=None, conts=None, labels=None):
+    def __init__(
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+    ):
         self.cats = cats
         self.conts = conts
         self.labels = labels
