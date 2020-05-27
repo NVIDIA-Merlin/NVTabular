@@ -37,7 +37,7 @@ dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac
 
 # record stats, transform the dataset, and export
 # the transformed data to a parquet file
-proc.apply(train_ds_iterator, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
 ```
 
 In order to minimize iteration through the data we combine all of the computation required for statistics into a single computation graph that is applied chunkwise while the data is on GPU.  We similarly group the apply operation and transform the entire chunk at a time.  This lazy iteration style allows you to setup a desired workflow first, and then apply it to multiple datasets, including the option to apply statistics from one dataset to others.  Using this option the training set statistics can be applied to the validation and test sets preventing undesirable data leakage.
@@ -59,7 +59,7 @@ Preprocessing operators take in a set of columns of the same type and perform th
 workflow.add_cont_preprocess(nvt.ops.Normalize(columns=["age", "item_num_views"], replace=False))
 
 dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
-proc.apply(train_ds_iterator, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
 ```
 
 Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
