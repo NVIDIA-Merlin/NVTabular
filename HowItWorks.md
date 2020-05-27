@@ -58,8 +58,8 @@ Preprocessing operators take in a set of columns of the same type and perform th
 # new columns `age_normalize` and `item_num_views_normalize`
 workflow.add_cont_preprocess(nvt.ops.Normalize(columns=["age", "item_num_views"], replace=False))
 
-train_ds_iterator = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
-proc.apply(train_ds_iterator, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
+proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
 ```
 
 Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
