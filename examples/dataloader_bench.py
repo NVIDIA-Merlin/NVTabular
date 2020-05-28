@@ -12,7 +12,9 @@ def parse_args():
     parser.add_argument("gpu_id", help="gpu index to use")
     parser.add_argument("in_dir", help="directory with dataset files inside")
     parser.add_argument("in_file_type", help="type of file (i.e. parquet, csv, orc)")
-    parser.add_argument("gpu_mem_frac", help="the amount of gpu memory to use for dataloader in fraction")
+    parser.add_argument(
+        "gpu_mem_frac", help="the amount of gpu memory to use for dataloader in fraction"
+    )
     return parser.parse_args()
 
 
@@ -27,7 +29,7 @@ logging.basicConfig()
 logging.getLogger("nvtabular").setLevel(logging.DEBUG)
 
 data_path = args.in_dir
-train_set = [os.path.join(data_path, x) for x in os.listdir(data_path) if x.endswith('parquet')]
+train_set = [os.path.join(data_path, x) for x in os.listdir(data_path) if x.endswith("parquet")]
 print(train_set)
 cont_names = ["I" + str(x) for x in range(1, 14)]
 cat_names = ["C" + str(x) for x in range(1, 24)]
@@ -56,4 +58,13 @@ for batch_size in [2 ** i for i in range(9, 26, 1)]:
 
     throughput = i * batch_size / (stop - start)
     results[batch_size] = throughput
-    print("batch size: ", batch_size, ", throughput: ", throughput, "items", i * batch_size, "time", stop-start)
+    print(
+        "batch size: ",
+        batch_size,
+        ", throughput: ",
+        throughput,
+        "items",
+        i * batch_size,
+        "time",
+        stop - start,
+    )
