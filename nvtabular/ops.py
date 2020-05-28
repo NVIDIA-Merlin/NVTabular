@@ -126,8 +126,6 @@ class TransformOperator(Operator):
         return self.assemble_new_df(gdf, new_gdf, target_columns)
 
     def assemble_new_df(self, origin_gdf, new_gdf, target_columns):
-        if not new_gdf:
-            return origin_gdf
         if self.replace and self.preprocessing and target_columns:
             origin_gdf[target_columns] = new_gdf
             return origin_gdf
@@ -384,9 +382,7 @@ class Median(StatOperator):
                 self.batch_medians[name] = []
             col = gdf[name].copy()
             col = col.dropna().reset_index(drop=True).sort_values()
-            if self.fill:
-                self.batch_medians[name].append(self.fill)
-            elif len(col) > 1:
+            if len(col) > 1:
                 self.batch_medians[name].append(float(col[len(col) // 2]))
             else:
                 self.batch_medians[name].append(0.0)
@@ -655,12 +651,7 @@ class Normalize(DFOperator):
 class FillMissing(DFOperator):
 
     """
-    Many datasets may contain missing values for various reasons, and
-    there are couple of ways to fill these missing values. This operation
-    supports the top two widely used methods, namely median and constant.
-    Median method calculates the median of the column (feature) and fills
-    the missing values with this median value while constant method fills
-    missing values with a pre-defined value.
+    This operation replaces missing values with a constant pre-defined value
 
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
@@ -668,72 +659,68 @@ class FillMissing(DFOperator):
 
     Parameters
     -----------
-    fill_strategy : MEDIAN or CONSTANT
-        MEDIAN method fills missing values with median of the column.
-        CONSTANT method fills missing values with the value in fill_val
-        parameter.
-    fill_val : float
-    filler : float
-    add_col : bool, default False
+    fill_val : float, default 0
+        The constant value to replace missing values with
     columns :
     preprocessing : bool, default True
     replace : bool, default True
-    default_in :
-    default_out :
     """
 
-    MEDIAN = "median"
-    CONSTANT = "constant"
     default_in = CONT
     default_out = CONT
 
     def __init__(
-        self,
-        fill_strategy=MEDIAN,
-        fill_val=0,
-        filler={},
-        add_col=False,
-        columns=None,
-        preprocessing=True,
-        replace=True,
-        default_in=None,
-        default_out=None,
+        self, fill_val=0, columns=None, preprocessing=True, replace=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.fill_strategy = fill_strategy
         self.fill_val = fill_val
-        self.add_col = add_col
-        self.filler = filler
+
+    @property
+    def req_stats(self):
+        return []
+
+    @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        cont_names = target_columns
+        if not cont_names:
+            return gdf
+        z_gdf = gdf[cont_names].fillna(0)
+        z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
+        return z_gdf
+
+
+class FillMedian(DFOperator):
+    """
+    This operation replaces missing values with the median value for the column
+
+    Although you can directly call methods of this class to
+    transform your categorical features, it's typically used within a
+    Workflow class.
+
+    Parameters
+    -----------
+    columns :
+    preprocessing : bool, default True
+    replace : bool, default True
+    """
+
+    default_in = CONT
+    default_out = CONT
 
     @property
     def req_stats(self):
         return [Median()]
 
-    @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
+    @annotate("FillMedian_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cont_names = target_columns
-        if not cont_names or not stats_context["medians"]:
+        if not target_columns:
             return gdf
-        z_gdf = self.apply_filler(gdf[cont_names], stats_context, cont_names)
-        return z_gdf
 
-    def apply_filler(self, gdf, stats_context, cont_names):
-        na_names = [name for name in cont_names if gdf[name].isna().sum()]
-        if self.add_col:
-            gdf = self.add_na_indicators(gdf, na_names, cont_names)
-        for col in na_names:
-            gdf[col] = gdf[col].fillna(np.float32(stats_context["medians"][col]))
-        gdf.columns = [f"{name}_{self._id}" for name in gdf.columns]
-        return gdf
-
-    def add_na_indicators(self, gdf: cudf.DataFrame, na_names, cat_names):
-        gdf = cudf.DataFrame()
-        for name in na_names:
-            name_na = name + "_na"
-            gdf[name_na] = gdf[name].isna()
-            if name_na not in cat_names:
-                cat_names.append(name_na)
-        return gdf
+        new_gdf = cudf.DataFrame()
+        for col in target_columns:
+            new_gdf[col] = gdf[col].fillna(stats_context["medians"][col])
+        new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
+        return new_gdf
 
 
 class GroupByMoments(StatOperator):
@@ -1084,6 +1071,7 @@ all_ops = {
     LogOp()._id: LogOp,
     Normalize()._id: Normalize,
     FillMissing()._id: FillMissing,
+    FillMedian()._id: FillMedian,
     Categorify()._id: Categorify,
     GroupBy()._id: GroupBy,
     GroupByMoments()._id: GroupByMoments,

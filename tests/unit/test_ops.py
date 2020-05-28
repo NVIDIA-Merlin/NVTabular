@@ -20,6 +20,7 @@ import math
 import cudf
 import numpy as np
 import pytest
+from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.io
@@ -300,3 +301,24 @@ def test_log(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     for gdf in data_itr:
         new_gdf = log_op.apply_op(gdf, columns_ctx, "continuous")
         assert new_gdf[cont_names] == np.log(gdf[cont_names].astype(np.float32))
+
+
+def test_fill_missing(tmpdir, datasets, engine="parquet"):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+
+    df = cudf.concat([cudf.read_parquet(path) for path in paths])
+
+    data_itr = nvtabular.io.GPUDatasetIterator(
+        paths, columns=columns, use_row_groups=True, names=allcols_csv
+    )
+
+    op = nvt.ops.FillMissing(42)
+
+    cont_names = ["x", "y"]
+    columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = cont_names
+
+    transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous") for df in data_itr])
+    assert_eq(transformed[cont_names], df[cont_names].dropna(42))

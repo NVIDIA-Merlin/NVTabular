@@ -99,7 +99,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
   memory on the given device. Otherwise, it will refer to an explicit
   allocation amount in MB. `TF_VISIBLE_DEVICE` should be an integer GPU
   index.
-  
+
   If `shuffle` is `True`, each of chunks will be shuffled
   before being iterated through in batches of size `batch_size`.
   While this limits the randomness of batches from epoch to epoch,

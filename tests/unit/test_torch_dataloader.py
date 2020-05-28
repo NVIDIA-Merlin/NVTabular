@@ -117,7 +117,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
     )
 
-    processor.add_feature([ops.FillMissing(), ops.LogOp(preprocessing=preprocessing)])
+    processor.add_feature([ops.FillMedian(), ops.LogOp(preprocessing=preprocessing)])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
@@ -249,7 +249,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
     )
 
-    processor.add_feature([ops.FillMissing()])
+    processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
 

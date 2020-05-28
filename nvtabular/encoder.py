@@ -15,7 +15,6 @@
 #
 
 import os
-import uuid
 
 import cudf
 import cupy as cp
