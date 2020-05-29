@@ -184,7 +184,7 @@ def process_one_df(
         _to_tensor(gdf_label, torch.float32, label, to_cpu=to_cpu)
 
 
-class TorchTensorBatchFileItr:
+class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
     """
         For Torch Only:
         Batch Tensor dataset, takes in a file and converts to tensors
@@ -211,6 +211,10 @@ class TorchTensorBatchFileItr:
         self.itr = GPUFileIterator(path, **kwargs)
         self.batch_size = sub_batch_size
         self.num_chunks = len(self.itr.engine)
+        (self.rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(path)
+
+    def __len__(self):
+        return self.rows
 
     def proc_new_chunk(self, gdf):
         cats, conts, label = {}, {}, {}
@@ -252,7 +256,7 @@ class DLCollator:
         return (batch[0], batch[1]), batch[2].long()
 
 
-class TorchTensorBatchDatasetItr:
+class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
     """
         For Torch Only:
         Batch Tensor dataset, takes in list of files
@@ -274,11 +278,18 @@ class TorchTensorBatchDatasetItr:
         self.paths = paths
         self.cur_path = None
         self.kwargs = kwargs
+        self.rows = 0
+        for file_path in self.paths:
+            (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
+            self.rows += num_rows
 
     def __iter__(self):
         for path in self.paths:
             self.cur_path = path
             yield from TorchTensorBatchFileItr(path, **self.kwargs)
+            
+    def __len__(self):
+        return self.rows
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
