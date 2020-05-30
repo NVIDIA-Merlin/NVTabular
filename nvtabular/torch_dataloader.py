@@ -323,7 +323,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
         self.rows = 0
         for file_path in self.paths:
             (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
-            self.rows += (num_rows / 
+            self.rows += (num_rows // kwargs.get('sub_batch_size', 1)) + 1
 
     def __iter__(self):
         for path in self.paths:
