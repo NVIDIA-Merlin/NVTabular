@@ -139,6 +139,47 @@ def create_tensors(preproc, itr=None, gdf=None, apply_ops=True):
     return cats, conts, label
 
 
+def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
+    cats, conts, label = {}, {}, {}
+    _one_df(gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols)
+    cats_list = (
+        [cats[x] for x in sorted(cats.keys(), key=lambda entry: entry.split("_")[0])]
+        if cats
+        else None
+    )
+    conts_list = [conts[x] for x in sorted(conts.keys())] if conts else None
+    label_list = [label[x] for x in sorted(label.keys())] if label else None
+
+    # Change cats, conts to dim=1 for column dim=0 for df sub section
+    cats = torch.stack(cats_list, dim=1) if len(cats_list) > 0 else None
+    conts = torch.stack(conts_list, dim=1) if len(conts_list) > 0 else None
+    label = torch.cat(label_list, dim=0) if len(label_list) > 0 else None
+    return cats, conts, label
+
+
+def _one_df(
+    gdf,
+    cats,
+    conts,
+    label,
+    cat_names=None,
+    cont_names=None,
+    label_names=None,
+):
+    gdf_cats, gdf_conts, gdf_label = (
+        gdf[cat_names],
+        gdf[cont_names],
+        gdf[label_names],
+    )
+    del gdf
+    if len(gdf_cats) > 0:
+        _to_tensor(gdf_cats, torch.long, cats, to_cpu=False)
+    if len(gdf_conts) > 0:
+        _to_tensor(gdf_conts, torch.float32, conts, to_cpu=False)
+    if len(gdf_label) > 0:
+        _to_tensor(gdf_label, torch.float32, label, to_cpu=False)
+
+
 def get_final_cols(preproc):
     if "cols" not in preproc.columns_ctx["final"]:
         preproc.create_final_cols()
@@ -211,10 +252,9 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         self.itr = GPUFileIterator(path, **kwargs)
         self.batch_size = sub_batch_size
         self.num_chunks = len(self.itr.engine)
-        (self.rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(path)
 
     def __len__(self):
-        return self.rows
+        return self.num_chunks
 
     def proc_new_chunk(self, gdf):
         cats, conts, label = {}, {}, {}
@@ -231,13 +271,15 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         for chunk in self.itr:
-            chunk = self.proc_new_chunk(chunk)
-            for idx in range(0, len(chunk[0]), self.batch_size):
+#             chunk = self.proc_new_chunk(chunk)
+            for idx in range(0, len(chunk), self.batch_size):
                 batch = None
-                if idx + self.batch_size < len(chunk[0]):
-                    batch = [tensor[idx : idx + self.batch_size] for tensor in chunk]
+                if idx + self.batch_size < len(chunk):
+#                     batch = [tensor[idx : idx + self.batch_size] for tensor in chunk]
+                    batch = chunk.iloc[idx : idx + self.batch_size]
                 else:
-                    batch = [tensor[idx:] for tensor in chunk]
+#                     batch = [tensor[idx:] for tensor in chunk]
+                    batch = chunk.iloc[idx:]
                 yield batch
 
 
@@ -281,7 +323,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
         self.rows = 0
         for file_path in self.paths:
             (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
-            self.rows += num_rows
+            self.rows += (num_rows / 
 
     def __iter__(self):
         for path in self.paths:
