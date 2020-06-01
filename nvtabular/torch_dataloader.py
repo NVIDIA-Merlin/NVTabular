@@ -132,7 +132,7 @@ def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
     return combine_tensors(cats, conts, label)
 
 
-def combine_tensors(cats, cols, labels):
+def combine_tensors(cats, conts, label):
     cats_list = (
         [cats[x] for x in sorted(cats.keys(), key=lambda entry: entry.split("_")[0])]
         if cats
@@ -203,7 +203,7 @@ def process_one_df(
         cat_names, cont_names, label_names = get_final_cols(preproc)
         to_cpu = preproc.to_cpu
 
-    self._one_df(
+    _one_df(
         gdf,
         cats,
         conts,
