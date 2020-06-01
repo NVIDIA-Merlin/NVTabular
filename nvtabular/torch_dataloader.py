@@ -47,7 +47,7 @@ class TensorItrDataset(torch.utils.data.IterableDataset):
         return len(self.tensor_itr)
 
 
-class TensorItr:
+class TensorItrDataset:
     """
         Tensor dataset, for data already in tensor format.
         (see preproc::ds_to_tensor)
@@ -123,25 +123,16 @@ def create_tensors(preproc, itr=None, gdf=None, apply_ops=True):
             process_one_df(gdf, cats, conts, label, preproc=preproc, apply_ops=apply_ops)
     elif gdf:
         process_one_df(gdf, cats, conts, label, preproc=preproc, apply_ops=apply_ops)
-
-    cats_list = (
-        [cats[x] for x in sorted(cats.keys(), key=lambda entry: entry.split("_")[0])]
-        if cats
-        else None
-    )
-    conts_list = [conts[x] for x in sorted(conts.keys())] if conts else None
-    label_list = [label[x] for x in sorted(label.keys())] if label else None
-
-    # Change cats, conts to dim=1 for column dim=0 for df sub section
-    cats = torch.stack(cats_list, dim=1) if len(cats_list) > 0 else None
-    conts = torch.stack(conts_list, dim=1) if len(conts_list) > 0 else None
-    label = torch.cat(label_list, dim=0) if len(label_list) > 0 else None
-    return cats, conts, label
+    return combine_tensors(cats, conts, label)
 
 
 def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
     cats, conts, label = {}, {}, {}
     _one_df(gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols)
+    return combine_tensors(cats, conts, label)
+
+
+def combine_tensors(cats, cols, labels):
     cats_list = (
         [cats[x] for x in sorted(cats.keys(), key=lambda entry: entry.split("_")[0])]
         if cats
@@ -155,6 +146,7 @@ def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
     conts = torch.stack(conts_list, dim=1) if len(conts_list) > 0 else None
     label = torch.cat(label_list, dim=0) if len(label_list) > 0 else None
     return cats, conts, label
+
 
 
 def _one_df(
@@ -211,18 +203,15 @@ def process_one_df(
         cat_names, cont_names, label_names = get_final_cols(preproc)
         to_cpu = preproc.to_cpu
 
-    gdf_cats, gdf_conts, gdf_label = (
-        gdf[cat_names],
-        gdf[cont_names],
-        gdf[label_names],
+    self._one_df(
+        gdf,
+        cats,
+        conts,
+        label,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_names=label_names,
     )
-    del gdf
-    if len(gdf_cats) > 0:
-        _to_tensor(gdf_cats, torch.long, cats, to_cpu=to_cpu)
-    if len(gdf_conts) > 0:
-        _to_tensor(gdf_conts, torch.float32, conts, to_cpu=to_cpu)
-    if len(gdf_label) > 0:
-        _to_tensor(gdf_label, torch.float32, label, to_cpu=to_cpu)
 
 
 class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
@@ -256,29 +245,13 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
     def __len__(self):
         return self.num_chunks
 
-    def proc_new_chunk(self, gdf):
-        cats, conts, label = {}, {}, {}
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[self.cat_cols],
-            gdf[self.cont_cols],
-            gdf[self.label_cols],
-        )
-        # Change cats, conts to dim=1 for column dim=0 for df sub section
-        cats = from_dlpack(gdf_cats.to_dlpack()).type(torch.long)
-        conts = from_dlpack(gdf_conts.to_dlpack()).type(torch.float32)
-        label = from_dlpack(gdf_label.to_dlpack()).type(torch.float32)
-        return cats, conts, label
-
     def __iter__(self):
         for chunk in self.itr:
-#             chunk = self.proc_new_chunk(chunk)
             for idx in range(0, len(chunk), self.batch_size):
                 batch = None
                 if idx + self.batch_size < len(chunk):
-#                     batch = [tensor[idx : idx + self.batch_size] for tensor in chunk]
                     batch = chunk.iloc[idx : idx + self.batch_size]
                 else:
-#                     batch = [tensor[idx:] for tensor in chunk]
                     batch = chunk.iloc[idx:]
                 yield batch
 
