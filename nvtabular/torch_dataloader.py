@@ -248,12 +248,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
     def __iter__(self):
         for chunk in self.itr:
             for idx in range(0, len(chunk), self.batch_size):
-                batch = None
-                if idx + self.batch_size < len(chunk):
-                    batch = chunk.iloc[idx : idx + self.batch_size]
-                else:
-                    batch = chunk.iloc[idx:]
-                yield batch
+                yield chunk.iloc[idx : idx + self.batch_size]
 
 
 class DLCollator:
