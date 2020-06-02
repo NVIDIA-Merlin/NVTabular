@@ -189,8 +189,7 @@ class StatOperator(Operator):
 
 class MinMax(StatOperator):
     """
-    Moments operation calculates some of the statistics of features including
-    mean, variance, standarded deviation, and count.
+    MinMax operation calculates min and max statistics of features.
 
     Parameters
     -----------
@@ -564,7 +563,7 @@ class ZeroFill(TransformOperator):
     This operation sets negative values to zero.
 
     Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
+    transform your continuous features, it's typically used within a
     Workflow class.
     """
 
@@ -591,7 +590,7 @@ class LogOp(TransformOperator):
     to standardize the features.
 
     Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
+    transform your continuous features, it's typically used within a
     Workflow class.
     """
 
@@ -617,7 +616,7 @@ class Normalize(DFOperator):
     to standardize the features.
 
     Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
+    transform your continuous features, it's typically used within a
     Workflow class.
     """
 
@@ -654,7 +653,7 @@ class FillMissing(DFOperator):
     This operation replaces missing values with a constant pre-defined value
 
     Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
+    transform your continuous features, it's typically used within a
     Workflow class.
 
     Parameters
@@ -691,10 +690,10 @@ class FillMissing(DFOperator):
 
 class FillMedian(DFOperator):
     """
-    This operation replaces missing values with the median value for the column
+    This operation replaces missing values with the median value for the column.
 
     Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
+    transform your continuous features, it's typically used within a
     Workflow class.
 
     Parameters
