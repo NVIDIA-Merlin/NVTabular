@@ -319,11 +319,10 @@ def test_hash_bucket(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     df["id"] = df["id"].astype("int64")
 
     if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
         columns = mycols_pq
     else:
-        cat_names = ["name-string"]
         columns = mycols_csv
+    cat_names = ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
@@ -335,16 +334,27 @@ def test_hash_bucket(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
         names=allcols_csv,
     )
 
-    hash_bucket_op = ops.HashBucket({column: 10 for column in op_columns})
+    if op_columns is None:
+        num_buckets = 10
+    else:
+        num_buckets = {column: 10 for column in op_columns}
+    hash_bucket_op = ops.HashBucket(num_buckets)
 
     columns_ctx = {}
     columns_ctx["categorical"] = {}
     columns_ctx["categorical"]["base"] = cat_names
 
+    # check sums for determinancy
+    checksums = []
     for gdf in data_itr:
         new_gdf = hash_bucket_op.apply_op(gdf, columns_ctx, "categorical")
-        assert np.all(new_gdf[cat_names] >= 0)
-        assert np.all(new_gdf[cat_names] <= 9)
+        assert np.all(new_gdf[cat_names].values >= 0)
+        assert np.all(new_gdf[cat_names].values <= 9)
+        checksums.append(new_gdf[cat_names].sum().values)
+
+    for checksum, gdf in zip(checksums, data_itr):
+        new_gdf = hash_bucket_op.apply_op(gdf, columns_ctx, "categorical")
+        assert np.all(new_gdf[cat_names].sum().values == checksum)
 
 
 def test_fill_missing(tmpdir, datasets, engine="parquet"):
