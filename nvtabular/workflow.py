@@ -25,7 +25,7 @@ from cudf._lib.nvtx import annotate
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler
-from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator, OperatorRegistry
+from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 
 try:
     import cupy as cp
