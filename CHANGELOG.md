@@ -7,7 +7,7 @@
 
 ## Bug Fixes
 
-* Fix PyTorch dataloader for JOC compatability
+* Fix PyTorch dataloader for compatability with deep learning examples
 * Fix FillMissing operator with constant fill
 * Fix missing yaml dependency on conda install
 * Fix get_emb_sz off-by-one error
