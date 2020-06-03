@@ -2,13 +2,13 @@ name: nvtabular_dev
 channels:
   - rapidsai
   - nvidia
-  - rapidsai-nightly
   - conda-forge
   - defaults
 dependencies:
   - clang=8.0.1
   - clang-tools=8.0.1
   - cupy>=6.6.0,<8.0.0a0,!=7.1.0
+  - cudf=0.14.*
   - rmm=0.14.*
   - cmake>=3.12
   - cmake_setuptools>=0.1.3
