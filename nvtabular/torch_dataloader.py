@@ -47,7 +47,7 @@ class TensorItrDataset(torch.utils.data.IterableDataset):
         return len(self.tensor_itr)
 
 
-class TensorItrDataset:
+class TensorItr:
     """
         Tensor dataset, for data already in tensor format.
         (see preproc::ds_to_tensor)
