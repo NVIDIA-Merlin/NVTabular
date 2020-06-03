@@ -192,11 +192,8 @@ def process_one_df(
     if apply_ops and preproc:
         gdf = preproc.apply_ops(gdf)
 
-    to_cpu = False
-
     if preproc:
         cat_names, cont_names, label_names = get_final_cols(preproc)
-        to_cpu = preproc.to_cpu
 
     _one_df(
         gdf,
