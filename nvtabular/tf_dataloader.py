@@ -5,8 +5,9 @@ import warnings
 # TF_MEMORY_ALLOCATION is fraction of GPU memory if < 1, and size
 # in MB if > 1
 import rmm
-import tensorflow as tf
 from packaging import version
+
+import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 from .io import GPUDatasetIterator
