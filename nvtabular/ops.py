@@ -803,7 +803,7 @@ class GroupByMoments(StatOperator):
                     "count operations is only supported when there is no continuous columns."
                 )
 
-        supported_ops = ["count", "sum"]
+        supported_ops = ["count", "sum", "mean", "var", "std"]
         for ops in self.stats:
             if ops not in supported_ops:
                 raise ValueError(ops + " operation is not supported.")
