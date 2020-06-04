@@ -1,7 +1,7 @@
 import nvtabular as nvt
 import os
 import glob
-from nvtabular.ops import Normalize, FillMissing, Categorify, Moments, Median, Encoder, LogOp, ZeroFill, Dropna
+from nvtabular.ops import Normalize, FillMissing, Categorify, Moments, Median, Encoder, LogOp, ZeroFill
 import cudf
 import pandas as pd
 
@@ -41,7 +41,7 @@ proc = nvt.Workflow(
 )
 
 
-#proc.add_feature(nvt.ops.Dropna())
+proc.add_feature(nvt.ops.Dropna(CATEGORICAL_COLUMNS))
 proc.add_cont_preprocess(nvt.ops.LogOp(columns=['Sales']))
 proc.add_cont_preprocess(nvt.ops.Normalize())
 proc.add_cat_preprocess(nvt.ops.Categorify())
