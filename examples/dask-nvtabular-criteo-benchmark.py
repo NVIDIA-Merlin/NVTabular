@@ -44,24 +44,14 @@ def main(args):
         if args.cat_names is None:
             # Using Criteo... Use more hash partitions for
             # known high-cardinality columns
-            if args.n_workers >= 4:
-                split_out["C20"] = 8
-                split_out["C1"] = 8
-                split_out["C22"] = 4
-                split_out["C10"] = 4
-                split_out["C21"] = 2
-                split_out["C11"] = 2
-                split_out["C23"] = 2
-                split_out["C12"] = 2
-            else:
-                split_out["C20"] = 8
-                split_out["C1"] = 8
-                split_out["C22"] = 4
-                split_out["C10"] = 4
-                split_out["C21"] = 2
-                split_out["C11"] = 2
-                split_out["C23"] = 2
-                split_out["C12"] = 2
+            split_out["C20"] = 8
+            split_out["C1"] = 8
+            split_out["C22"] = 4
+            split_out["C10"] = 4
+            split_out["C21"] = 2
+            split_out["C11"] = 2
+            split_out["C23"] = 2
+            split_out["C12"] = 2
 
     # Specify categorical caching location
     cat_cache = None

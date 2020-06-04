@@ -26,8 +26,13 @@ from fsspec.core import get_fs_token_paths
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from nvtabular.dask.io import (DaskDataset, _worker_shuffle, _write_metadata,
-                               _write_output_partition, clean_pw_cache)
+from nvtabular.dask.io import (
+    DaskDataset,
+    _worker_shuffle,
+    _write_metadata,
+    _write_output_partition,
+    clean_pw_cache,
+)
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler

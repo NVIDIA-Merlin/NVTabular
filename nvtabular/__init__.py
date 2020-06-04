@@ -20,6 +20,7 @@ from .dask import DaskDataset
 
 Workflow = workflow.Workflow
 dataset = io.GPUDatasetIterator
+dask_dataset = DaskDataset  # Avoiding flake8 error
 
 
 __all__ = ["Workflow", "dataset"]
