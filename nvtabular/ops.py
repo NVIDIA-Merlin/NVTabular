@@ -20,8 +20,11 @@ import cudf
 import numpy as np
 from cudf._lib.nvtx import annotate
 
+from dask.delayed import Delayed
+from nvtabular.dask.categorify import _encode, _get_categories
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
+
 
 CONT = "continuous"
 CAT = "categorical"
@@ -181,6 +184,16 @@ class StatOperator(Operator):
                 Can be 'pass' if unneeded."""
         )
 
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        raise NotImplementedError(
+            """The dask operations needed to return a dictionary of uncomputed statistics."""
+        )
+
+    def dask_fin(self, dask_stats):
+        raise NotImplementedError(
+            """Follow-up operations to convert dask statistcs in to member variables"""
+        )
+
     def registered_stats(self):
         raise NotImplementedError(
             """Should return a list of statistics this operator will collect.
@@ -251,6 +264,20 @@ class MinMax(StatOperator):
             self.mins[col] = min(self.batch_mins[col])
             self.maxs[col] = max(self.batch_maxs[col])
         return
+
+    @annotate("MinMax_dask_graph", color="green", domain="nvt_python")
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+        dask_stats = {}
+        dask_stats["mins"] = ddf[cols].min()
+        dask_stats["maxs"] = ddf[cols].max()
+        return dask_stats
+
+    @annotate("MinMax_dask_fin", color="green", domain="nvt_python")
+    def dask_fin(self, dask_stats):
+        for col in dask_stats["mins"].index:
+            self.mins[col] = dask_stats["mins"][col]
+            self.maxs[col] = dask_stats["maxs"][col]
 
     def registered_stats(self):
         return ["mins", "maxs", "batch_mins", "batch_maxs"]
@@ -340,6 +367,23 @@ class Moments(StatOperator):
             self.varis[col] = float(self.varis[col])
             self.means[col] = float(self.means[col])
 
+    @annotate("Moments_dask_graph", color="green", domain="nvt_python")
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+        dask_stats = {}
+        dask_stats["count"] = ddf[cols].count()
+        dask_stats["mean"] = ddf[cols].mean()
+        dask_stats["std"] = ddf[cols].std()
+        return dask_stats
+
+    @annotate("Moments_dask_fin", color="green", domain="nvt_python")
+    def dask_fin(self, dask_stats):
+        for col in dask_stats["count"].index:
+            self.counts[col] = float(dask_stats["count"][col])
+            self.means[col] = float(dask_stats["mean"][col])
+            self.stds[col] = float(dask_stats["std"][col])
+            self.varis[col] = float(self.stds[col] * self.stds[col])
+
     def registered_stats(self):
         return ["means", "stds", "vars", "counts"]
 
@@ -405,6 +449,18 @@ class Median(StatOperator):
             self.medians[col] = float(self.batch_medians[col][len(self.batch_medians[col]) // 2])
         return
 
+    @annotate("Median_dask_graph", color="green", domain="nvt_python")
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+        # TODO: Use `method="tidigest"` when crick supports device
+        dask_stats = ddf[cols].quantile(q=0.5, method="dask")
+        return dask_stats
+
+    @annotate("Median_dask_fin", color="green", domain="nvt_python")
+    def dask_fin(self, dask_stats):
+        for col in dask_stats.index:
+            self.medians[col] = float(dask_stats[col])
+
     def registered_stats(self):
         return ["medians"]
 
@@ -440,6 +496,14 @@ class Encoder(StatOperator):
         GPU memory utilization limit during transformation. How much
         GPU memory will be used during transformation is calculated
         using this parameter.
+    split_out : dict, optional
+        Used for multi-GPU category calculation.  Each key in the dict
+        should correspond to a column name, and the value is the number
+        of hash partitions to use for the categorical tree reduction.
+        Only a single partition is used by default.
+    out_path : str, optional
+        Used for multi-GPU category calculation.  Root directory where
+        unique categories will be written out in parquet format.
     columns :
     preprocessing : bool
     replace : bool
@@ -455,6 +519,8 @@ class Encoder(StatOperator):
         columns=None,
         encoders=None,
         categories=None,
+        out_path=None,
+        split_out=None,
     ):
         super(Encoder, self).__init__(columns)
         self.use_frequency = use_frequency
@@ -464,6 +530,8 @@ class Encoder(StatOperator):
         self.gpu_mem_trans_use = gpu_mem_trans_use
         self.encoders = encoders if encoders is not None else {}
         self.categories = categories if categories is not None else {}
+        self.out_path = out_path or "./"
+        self.split_out = split_out
 
     @annotate("Encoder_op", color="green", domain="nvt_python")
     def apply_op(
@@ -506,6 +574,17 @@ class Encoder(StatOperator):
         for name, val in self.encoders.items():
             self.categories[name] = val.fit_finalize()
         return
+
+    @annotate("Encoder_dask_graph", color="green", domain="nvt_python")
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+        dsk, key = _get_categories(ddf, cols, self.out_path, self.freq_threshold, self.split_out)
+        return Delayed(key, dsk)
+
+    @annotate("Encoder_dask_fin", color="green", domain="nvt_python")
+    def dask_fin(self, dask_stats):
+        for col in dask_stats:
+            self.categories[col] = dask_stats[col]
 
     def cat_read_all_files(self, cat_obj):
         cat_size = cat_obj.get_cats().shape[0]
@@ -803,7 +882,7 @@ class GroupByMoments(StatOperator):
                     "count operations is only supported when there is no continuous columns."
                 )
 
-        supported_ops = ["count", "sum", "mean", "var", "std"]
+        supported_ops = ["count", "sum"]
         for ops in self.stats:
             if ops not in supported_ops:
                 raise ValueError(ops + " operation is not supported.")
@@ -1011,6 +1090,11 @@ class Categorify(DFOperator):
         replace=True,
         cat_names=None,
         embed_sz=None,
+        out_path=None,
+        split_out=None,
+        na_sentinel=None,
+        cat_cache=None,
+        dtype=None,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency
@@ -1020,6 +1104,15 @@ class Categorify(DFOperator):
         self.gpu_mem_trans_use = gpu_mem_trans_use
         self.cat_names = cat_names if cat_names else []
         self.embed_sz = embed_sz if embed_sz else {}
+        self.out_path = out_path or "./"
+        self.split_out = split_out
+        self.na_sentinel = na_sentinel or 0
+        self.dtype = dtype
+        self.cat_cache = cat_cache
+        # Allow user to specify a single string value for all columns
+        # E.g. cat_cache = "device"
+        if isinstance(self.cat_cache, str):
+            self.cat_cache = {name: cat_cache for name in self.cat_names}
 
     @property
     def req_stats(self):
@@ -1030,22 +1123,38 @@ class Categorify(DFOperator):
                 limit_frac=self.limit_frac,
                 gpu_mem_util_limit=self.gpu_mem_util_limit,
                 gpu_mem_trans_use=self.gpu_mem_trans_use,
+                out_path=self.out_path,
+                split_out=self.split_out,
             )
         ]
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context={}):
         cat_names = target_columns
         new_gdf = cudf.DataFrame()
         if not cat_names:
             return gdf
+        # Use multi-GPU version if the "encoders" are empty
+        use_multi = len(stats_context["encoders"]) < len(cat_names)
         cat_names = [name for name in cat_names if name in gdf.columns]
         new_cols = []
         for name in cat_names:
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
-            new_gdf[new_col] = stats_context["encoders"][name].transform(gdf[name])
-            new_gdf[new_col] = new_gdf[new_col].astype("int64")
+            if use_multi:
+                path = stats_context["categories"][name]
+                new_gdf[new_col] = _encode(
+                    name,
+                    path,
+                    gdf,
+                    self.cat_cache,
+                    na_sentinel=self.na_sentinel,
+                    freq_threshold=self.freq_threshold,
+                )
+            else:
+                new_gdf[new_col] = stats_context["encoders"][name].transform(gdf[name])
+            if self.dtype:
+                new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
         return new_gdf
 
     def get_emb_sz(self, encoders, cat_names):

@@ -21,7 +21,13 @@ import warnings
 import cudf
 import yaml
 from cudf._lib.nvtx import annotate
+from fsspec.core import get_fs_token_paths
 
+from dask.base import tokenize
+from dask.delayed import Delayed
+from dask.highlevelgraph import HighLevelGraph
+from nvtabular.dask.io import (DaskDataset, _worker_shuffle, _write_metadata,
+                               _write_output_partition, clean_pw_cache)
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler
@@ -36,10 +42,20 @@ except ImportError:
 LOG = logging.getLogger("nvtabular")
 
 
-class Workflow:
+def workflow_factory(*args, **kwargs):
+    if kwargs.get("client", None) is None:
+        return BaseWorkflow(*args, **kwargs)
+    else:
+        return DaskWorkflow(*args, **kwargs)
+
+
+Workflow = workflow_factory
+
+
+class BaseWorkflow:
 
     """
-    Workflow class organizes and runs all the feature engineering
+    BaseWorkflow class organizes and runs all the feature engineering
     and pre-processing operators for your workflow.
 
     Parameters
@@ -957,3 +973,219 @@ def _shuffle_part(gdf):
     cp.random.shuffle(arr)
     gdf[sort_key] = cudf.Series(arr)
     return gdf.sort_values(sort_key).drop(columns=[sort_key])
+
+
+class DaskWorkflow(BaseWorkflow):
+    """
+    Dask NVTabular Workflow Class
+    Dask-parallel version of `nvtabular.preproc.Workflow`. Intended
+    to wrap most `Workflow` attributes, but operates on dask_cudf
+    DataFrame objects, rather than `GPUDatasetIterator` objects.
+    """
+
+    def __init__(self, client=None, **kwargs):
+        super().__init__(**kwargs)
+        self.ddf = None
+        self.ddf_base_dataset = None
+        if client is None:
+            raise ValueError("Dask Workflow requires distributed client!")
+        self.client = client
+
+    def set_ddf(self, ddf):
+        if isinstance(ddf, DaskDataset):
+            self.ddf_base_dataset = ddf
+            self.ddf = self.ddf_base_dataset
+        else:
+            self.ddf = ddf
+
+    def get_ddf(self, base=False, columns=None):
+        if base:
+            if self.ddf_base_dataset is None:
+                raise ValueError("No dataset object available.")
+            return self.ddf_base_dataset.to_ddf(columns=columns)
+        else:
+            if self.ddf is None:
+                raise ValueError("No dask_cudf frame available.")
+            elif isinstance(self.ddf, DaskDataset):
+                columns = self.columns_ctx["all"]["base"]
+                return self.ddf.to_ddf(columns=columns)
+            return self.ddf
+
+    @staticmethod
+    def _aggregated_op(gdf, ops):
+        for op in ops:
+            columns_ctx, cols_grp, target_cols, logic, stats_context = op
+            gdf = logic(gdf, columns_ctx, cols_grp, target_cols, stats_context)
+        return gdf
+
+    def _aggregated_dask_transform(self, transforms):
+        # Assuming order of transforms corresponds to dependency ordering
+        ddf = self.get_ddf()
+        meta = ddf._meta
+        for transform in transforms:
+            columns_ctx, cols_grp, target_cols, logic, stats_context = transform
+            meta = logic(meta, columns_ctx, cols_grp, target_cols, stats_context)
+        new_ddf = ddf.map_partitions(self.__class__._aggregated_op, transforms, meta=meta)
+        self.set_ddf(new_ddf)
+
+    def exec_phase(self, phase_index, record_stats=True):
+        """
+        Gather necessary column statistics in single pass.
+        Execute one phase only, given by phase index
+        """
+        transforms = []
+        for task in self.phases[phase_index]:
+            op, cols_grp, target_cols, parents = task
+            op_name = op._id
+            if isinstance(op, TransformOperator):
+                if op_name in self.feat_ops:
+                    logic = self.feat_ops[op_name].apply_op
+                    stats_context = None
+                elif op_name in self.df_ops:
+                    logic = self.df_ops[op._id].apply_op
+                    stats_context = self.stats
+                else:
+                    raise ValueError("Not a FE op or DF op!")
+                transforms.append((self.columns_ctx, cols_grp, target_cols, logic, stats_context))
+            elif not isinstance(op, StatOperator):
+                raise ValueError("Unknown Operator Type")
+
+        # Preform transforms as single dask task (per ddf partition)
+        if transforms:
+            self._aggregated_dask_transform(transforms)
+
+        stats = {}
+        if record_stats:
+            for task in self.phases[phase_index]:
+                op, cols_grp, target_cols, parents = task
+                op_name = op._id
+                if isinstance(op, StatOperator):
+                    stat_op = self.stat_ops[op_name]
+                    columns = stat_op.get_columns(self.columns_ctx, cols_grp, target_cols)
+                    ddf = self.get_ddf(base=("base" in cols_grp), columns=columns)
+                    stats[op_name] = stat_op.dask_logic(
+                        ddf, self.columns_ctx, cols_grp, target_cols
+                    )
+
+        # Compute statistics if necessary
+        if stats:
+            stats = self.client.compute(stats).result()
+            for op_name, computed_stats in stats.items():
+                self.stat_ops[op_name].dask_fin(computed_stats)
+            del stats
+        self.get_stats()
+        return
+
+    def apply(
+        self,
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        shuffle=None,
+        output_path="./ds_export",
+        nsplits=None,
+        **kwargs,
+    ):
+
+        # if no tasks have been loaded then we need to load internal config\
+        if not self.phases:
+            self.finalize()
+        if apply_offline:
+            self.update_stats(
+                dataset,
+                output_path=output_path,
+                record_stats=record_stats,
+                shuffle=shuffle,
+                nsplits=nsplits,
+            )
+        else:
+            raise NotImplementedError("""TODO: Implement online apply""")
+
+    def reorder_tasks(self, end):
+        if end != 2:
+            # Opt only works for two phases (for now)
+            return
+        stat_tasks = []
+        trans_tasks = []
+        for idx, _ in enumerate(self.phases[:end]):
+            for task in self.phases[idx]:
+                op_name = task[0]._id
+                deps = task[2]
+                if op_name in self.stat_ops:
+                    if deps == ["base"]:
+                        stat_tasks.append(task)
+                    else:
+                        # This statistics depends on a transform
+                        # (Opt wont work)
+                        return
+                elif op_name in self.feat_ops:
+                    trans_tasks.append(task)
+                elif op_name in self.df_ops:
+                    trans_tasks.append(task)
+
+        self.phases[0] = stat_tasks
+        self.phases[1] = trans_tasks
+        return
+
+    def update_stats(
+        self,
+        dataset,
+        end_phase=None,
+        output_path=None,
+        record_stats=True,
+        shuffle=None,
+        nsplits=None,
+    ):
+        end = end_phase if end_phase else len(self.phases)
+
+        # Reorder tasks for two-phase workflows
+        self.reorder_tasks(end)
+
+        self.set_ddf(dataset)
+        for idx, _ in enumerate(self.phases[:end]):
+            self.exec_phase(idx, record_stats=record_stats)
+        if output_path:
+            self.to_dataset(output_path, shuffle=shuffle, nsplits=nsplits)
+
+    def to_dataset(self, output_path, shuffle=None, nsplits=None):
+        ddf = self.get_ddf()
+        nsplits = nsplits or 1
+        fs = get_fs_token_paths(output_path)[0]
+        output_path = fs.sep.join([output_path, "processed"])
+        fs.mkdirs(output_path, exist_ok=True)
+
+        if shuffle:
+            name = "write-processed"
+            write_name = name + tokenize(ddf, shuffle, nsplits)
+            task_list = []
+            dsk = {}
+            for idx in range(ddf.npartitions):
+                key = (write_name, idx)
+                dsk[key] = (
+                    _write_output_partition,
+                    (ddf._name, idx),
+                    output_path,
+                    shuffle,
+                    nsplits,
+                    fs,
+                )
+                task_list.append(key)
+            dsk[name] = (_write_metadata, task_list)
+            graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+            out = Delayed(name, graph)
+
+            # Would also be nice to clean the categorical
+            # cache before the write (TODO)
+            self.client.cancel(self.ddf_base_dataset)
+            self.ddf_base_dataset = None
+            out = self.client.compute(out).result()
+            if shuffle == "full":
+                self.client.cancel(self.ddf)
+                self.ddf = None
+                self.client.run(_worker_shuffle, output_path, fs)
+            self.client.run(clean_pw_cache)
+
+            return out
+
+        ddf.to_parquet(output_path, compression=None, write_index=False)
+        return None
