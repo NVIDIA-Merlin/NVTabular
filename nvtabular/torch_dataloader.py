@@ -47,7 +47,7 @@ class TensorItrDataset(torch.utils.data.IterableDataset):
         return len(self.tensor_itr)
 
 
-class TensorItrDataset:
+class TensorItr:
     """
         Tensor dataset, for data already in tensor format.
         (see preproc::ds_to_tensor)
@@ -128,7 +128,9 @@ def create_tensors(preproc, itr=None, gdf=None, apply_ops=True):
 
 def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
     cats, conts, label = {}, {}, {}
-    _one_df(gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols)
+    _one_df(
+        gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols
+    )
     return combine_tensors(cats, conts, label)
 
 
@@ -148,15 +150,8 @@ def combine_tensors(cats, conts, label):
     return cats, conts, label
 
 
-
 def _one_df(
-    gdf,
-    cats,
-    conts,
-    label,
-    cat_names=None,
-    cont_names=None,
-    label_names=None,
+    gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None,
 ):
     gdf_cats, gdf_conts, gdf_label = (
         gdf[cat_names],
@@ -197,11 +192,8 @@ def process_one_df(
     if apply_ops and preproc:
         gdf = preproc.apply_ops(gdf)
 
-    to_cpu = False
-
     if preproc:
         cat_names, cont_names, label_names = get_final_cols(preproc)
-        to_cpu = preproc.to_cpu
 
     _one_df(
         gdf,
@@ -291,13 +283,13 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
         self.rows = 0
         for file_path in self.paths:
             (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
-            self.rows += (num_rows // kwargs.get('sub_batch_size', 1)) + 1
+            self.rows += (num_rows // kwargs.get("sub_batch_size", 1)) + 1
 
     def __iter__(self):
         for path in self.paths:
             self.cur_path = path
             yield from TorchTensorBatchFileItr(path, **self.kwargs)
-            
+
     def __len__(self):
         return self.rows
 

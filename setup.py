@@ -19,7 +19,7 @@ from setuptools import setup
 
 setup(
     name="nvtabular",
-    version="0.1.0",
+    version="0.1.1",
     packages=["nvtabular"],
     url="https://github.com/NVIDIA/NVTabular",
     author="NVIDIA Corporation",

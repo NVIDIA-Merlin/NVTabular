@@ -25,7 +25,7 @@ from cudf._lib.nvtx import annotate
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler
-from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator, all_ops
+from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 
 try:
     import cupy as cp
@@ -564,7 +564,7 @@ class Workflow:
                 for op_id, dep_set in task.items():
                     # get op from op_id
                     # operators need to be instantiated with state information
-                    target_op = all_ops[op_id](**self.ops_args[op_id])
+                    target_op = OperatorRegistry.OPS[op_id](**self.ops_args[op_id])
                     if dep_set:
                         for dep_grp in dep_set:
                             # handle required stats of target op on
@@ -910,10 +910,10 @@ class Workflow:
             main_grp = task[1]
             sub_cols = task[2]
             dep_ids = task[3]
-            op = all_ops[op_id](**op_args[op_id])
+            op = OperatorRegistry.OPS[op_id](**op_args[op_id])
             dep_ops = []
             for ops_id in dep_ids:
-                dep_ops.append(all_ops[ops_id]())
+                dep_ops.append(OperatorRegistry.OPS[ops_id]())
 
             master_list.append((op, main_grp, sub_cols, dep_ops))
         return master_list

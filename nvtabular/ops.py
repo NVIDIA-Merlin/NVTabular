@@ -28,7 +28,16 @@ CAT = "categorical"
 ALL = "all"
 
 
-class Operator:
+class OperatorRegistry(type):
+    OPS = {}
+
+    def __new__(cls, name, bases, dct):
+        ret = super().__new__(cls, name, bases, dct)
+        OperatorRegistry.OPS[name] = ret
+        return ret
+
+
+class Operator(metaclass=OperatorRegistry):
     """
     Base class for all operator classes.
     """
@@ -1058,20 +1067,3 @@ class Categorify(DFOperator):
         sz = sz_dict.get(n, int(self.emb_sz_rule(n_cat)))  # rule of thumb
         self.embed_sz[n] = sz
         return n_cat, sz
-
-
-all_ops = {
-    MinMax()._id: MinMax,
-    Moments()._id: Moments,
-    Median()._id: Median,
-    Encoder()._id: Encoder,
-    Export()._id: Export,
-    ZeroFill()._id: ZeroFill,
-    LogOp()._id: LogOp,
-    Normalize()._id: Normalize,
-    FillMissing()._id: FillMissing,
-    FillMedian()._id: FillMedian,
-    Categorify()._id: Categorify,
-    GroupBy()._id: GroupBy,
-    GroupByMoments()._id: GroupByMoments,
-}

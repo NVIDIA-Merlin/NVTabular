@@ -28,7 +28,7 @@ ENV PATH=${PATH}:/conda/bin
 SHELL ["/bin/bash", "-c"]
 
 
-RUN conda install -c rapidsai-nightly -c nvidia -c numba -c conda-forge \
+RUN conda install -c rapidsai -c nvidia -c numba -c conda-forge \
     cudf python=${PYTHON_VERSION} cudatoolkit=${CUDA_SHORT_VERSION}
 
 RUN conda install -c conda-forge pyyaml
