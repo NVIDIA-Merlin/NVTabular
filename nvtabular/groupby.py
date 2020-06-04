@@ -288,7 +288,7 @@ class GroupByMomentsCal(object):
                 for cont_name in self.cont_col:
                     for su_op in self.supported_ops:
                         if su_op in self.stats_names:
-                            if su_op == 'count':
+                            if su_op == "count":
                                 new_col = self.col + "_count"
                                 self.stats[new_col] = result_map[su_op][cont_name]
                             else:
