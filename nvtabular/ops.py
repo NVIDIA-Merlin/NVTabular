@@ -19,7 +19,6 @@ import os
 import cudf
 import numpy as np
 from cudf._lib.nvtx import annotate
-
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -137,10 +136,10 @@ class TransformOperator(Operator):
     def assemble_new_df(self, origin_gdf, new_gdf, target_columns):
         if self.replace and self.preprocessing and target_columns:
             if new_gdf.shape[0] < origin_gdf.shape[0]:
-                return new_gdf.reset_index(drop=True, inplace=True)
+                return new_gdf
             else:
                 origin_gdf[target_columns] = new_gdf
-                return origin_gdf.reset_index(drop=True, inplace=True)
+                return origin_gdf
         return cudf.concat([origin_gdf, new_gdf], axis=1)
 
     def op_logic(self, gdf, target_columns, stats_context=None):
@@ -611,10 +610,11 @@ class Dropna(TransformOperator):
         cont_names = target_columns
         if not cont_names:
             new_gdf = gdf.dropna()
+            new_gdf = new_gdf.reset_index(drop=True)
             return new_gdf
         else:
             new_gdf = gdf.dropna(subset=cont_names)
-            print("dropped gdf", new_gdf.shape)
+            new_gdf = new_gdf.reset_index(drop=True)
         return new_gdf
 
 
