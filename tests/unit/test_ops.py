@@ -323,8 +323,6 @@ def test_hash_bucket(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     else:
         columns = mycols_csv
     cat_names = ["name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
 
     data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
