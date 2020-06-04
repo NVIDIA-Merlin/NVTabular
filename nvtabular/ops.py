@@ -136,8 +136,11 @@ class TransformOperator(Operator):
 
     def assemble_new_df(self, origin_gdf, new_gdf, target_columns):
         if self.replace and self.preprocessing and target_columns:
-            origin_gdf[target_columns] = new_gdf
-            return origin_gdf
+            if new_gdf.shape[0] < origin_gdf.shape[0]:
+                return new_gdf.reset_index(drop=True, inplace=True)
+            else:
+                origin_gdf[target_columns] = new_gdf
+                return origin_gdf.reset_index(drop=True, inplace=True)
         return cudf.concat([origin_gdf, new_gdf], axis=1)
 
     def op_logic(self, gdf, target_columns, stats_context=None):
@@ -588,6 +591,31 @@ class ZeroFill(TransformOperator):
         z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
         z_gdf[z_gdf < 0] = 0
         return z_gdf
+
+
+class Dropna(TransformOperator):
+    """
+    This operation detects missing values, and returns
+    a cudf DataFrame with Null entries dropped from it.
+
+    Although you can directly call methods of this class to
+    transform your categorical features, it's typically used within a
+    Workflow class.
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf, target_columns, stats_context=None):
+        cont_names = target_columns
+        if not cont_names:
+            new_gdf = gdf.dropna()
+            return new_gdf
+        else:
+            new_gdf = gdf.dropna(subset=cont_names)
+            print("dropped gdf", new_gdf.shape)
+        return new_gdf
 
 
 class LogOp(TransformOperator):
