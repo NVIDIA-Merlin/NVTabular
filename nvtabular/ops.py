@@ -628,13 +628,15 @@ class HashBucket(TransformOperator):
         elif isinstance(num_buckets, (tuple, list)):
             assert columns is not None
             assert len(columns) == len(num_buckets)
-            self.num_buckets = {
-                col: nb for col, nb in zip(columns, num_buckets)}
+            self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
         elif isinstance(num_buckets, int):
             self.num_buckets = num_buckets
         else:
             raise TypeError(
-              "`num_buckets` must be dict, iterable, or int, got type {}".format(type(num_buckets)))
+                "`num_buckets` must be dict, iterable, or int, got type {}".format(
+                    type(num_buckets)
+                )
+            )
         super(HashBucket, self).__init__(columns=columns, **kwargs)
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
@@ -663,13 +665,15 @@ class HashBucket(TransformOperator):
         elif isinstance(num_buckets, (tuple, list)):
             assert columns is not None
             assert len(columns) == len(num_buckets)
-            self.num_buckets = {
-                col: nb for col, nb in zip(columns, num_buckets)}
+            self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
         elif isinstance(num_buckets, int):
             self.num_buckets = num_buckets
         else:
             raise TypeError(
-              "`num_buckets` must be dict, iterable, or int, got type {}".format(type(num_buckets)))
+                "`num_buckets` must be dict, iterable, or int, got type {}".format(
+                    type(num_buckets)
+                )
+            )
         super(HashBucket, self).__init__(columns=columns, **kwargs)
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
