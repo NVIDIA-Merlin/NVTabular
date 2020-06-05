@@ -16,10 +16,10 @@
 
 import os
 
-import cudf
 import numpy as np
-from cudf._lib.nvtx import annotate
 
+import cudf
+from cudf._lib.nvtx import annotate
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -167,9 +167,7 @@ class StatOperator(Operator):
     def __init__(self, columns=None):
         super(StatOperator, self).__init__(columns)
 
-    def read_itr(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def read_itr(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         raise NotImplementedError(
             """The operation to conduct on the dataframe to observe the desired statistics."""
         )
@@ -217,9 +215,7 @@ class MinMax(StatOperator):
         self.maxs = maxs if maxs is not None else {}
 
     @annotate("MinMax_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration level Min Max collection, a chunk at a time
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -294,9 +290,7 @@ class Moments(StatOperator):
         self.stds = stds if stds is not None else {}
 
     @annotate("Moments_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level moment algorithm (mean/std).
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -379,9 +373,7 @@ class Median(StatOperator):
         self.medians = medians if medians is not None else {}
 
     @annotate("Median_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level median algorithm.
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -466,9 +458,7 @@ class Encoder(StatOperator):
         self.categories = categories if categories is not None else {}
 
     @annotate("Encoder_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level categorical encoder update.
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -714,9 +704,7 @@ class FillMissing(DFOperator):
     default_in = CONT
     default_out = CONT
 
-    def __init__(
-        self, fill_val=0, columns=None, preprocessing=True, replace=True,
-    ):
+    def __init__(self, fill_val=0, columns=None, preprocessing=True, replace=True):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.fill_val = fill_val
 
@@ -1048,6 +1036,7 @@ class Categorify(DFOperator):
         replace=True,
         cat_names=None,
         embed_sz=None,
+        dtype=None,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency
@@ -1057,6 +1046,7 @@ class Categorify(DFOperator):
         self.gpu_mem_trans_use = gpu_mem_trans_use
         self.cat_names = cat_names if cat_names else []
         self.embed_sz = embed_sz if embed_sz else {}
+        self.dtype = dtype
 
     @property
     def req_stats(self):
@@ -1082,7 +1072,8 @@ class Categorify(DFOperator):
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
             new_gdf[new_col] = stats_context["encoders"][name].transform(gdf[name])
-            new_gdf[new_col] = new_gdf[new_col].astype("int64")
+            if self.dtype:
+                new_gdf[new_col] = new_gdf[new_col].astype(self.dtype)
         return new_gdf
 
     def get_emb_sz(self, encoders, cat_names):
