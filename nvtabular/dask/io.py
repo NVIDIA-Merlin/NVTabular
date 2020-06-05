@@ -127,15 +127,13 @@ def _worker_shuffle(processed_path, fs):
     for path, (pw, bio) in get_cache().pq_writer_cache.items():
         pw.close()
 
-        gdf = cudf.io.read_parquet(bio, index=False,)
+        gdf = cudf.io.read_parquet(bio, index=False)
         bio.close()
 
         gdf = _shuffle_gdf(gdf)
         rel_path = "shuffled.%s.parquet" % (guid())
         full_path = fs.sep.join([processed_path, rel_path])
-        gdf.to_parquet(
-            full_path, compression=None, index=False,
-        )
+        gdf.to_parquet(full_path, compression=None, index=False)
         paths.append(full_path)
     return paths
 
@@ -307,7 +305,7 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def meta_empty(self, columns=None):
         path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_group=0, columns=columns, index=False,).iloc[:0]
+        return cudf.io.read_parquet(path, row_group=0, columns=columns, index=False).iloc[:0]
 
     def to_ddf(self, columns=None):
         pieces = self.pieces

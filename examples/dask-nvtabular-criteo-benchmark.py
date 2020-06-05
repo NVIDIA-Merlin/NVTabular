@@ -112,7 +112,7 @@ def main(args):
 
     # Define Dask NVTabular "Workflow"
     processor = Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
     )
     processor.add_feature([ops.ZeroFill(), ops.LogOp()])
     processor.add_preprocess(
@@ -187,13 +187,9 @@ def parse_args():
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
     )
-    parser.add_argument(
-        "--data-path", type=str, help="Raw dataset path.",
-    )
+    parser.add_argument("--data-path", type=str, help="Raw dataset path.")
     parser.add_argument("--out-path", type=str, help="Root output path.")
-    parser.add_argument(
-        "--dask-workspace", default=None, type=str, help="Dask workspace path.",
-    )
+    parser.add_argument("--dask-workspace", default=None, type=str, help="Dask workspace path.")
     parser.add_argument(
         "-s", "--splits", default=24, type=int, help="Number of splits to shuffle each partition"
     )
@@ -213,10 +209,7 @@ def parse_args():
         help="Fractional device-memory limit (per worker).",
     )
     parser.add_argument(
-        "--device-pool-frac",
-        default=0.8,
-        type=float,
-        help="Fractional rmm pool size (per worker).",
+        "--device-pool-frac", default=0.8, type=float, help="Fractional rmm pool size (per worker)."
     )
     parser.add_argument(
         "--worker-shuffle", action="store_true", help="Perform followup shuffle on each worker."

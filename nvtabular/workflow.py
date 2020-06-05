@@ -23,16 +23,10 @@ import yaml
 from cudf._lib.nvtx import annotate
 from fsspec.core import get_fs_token_paths
 
+import nvtabular.dask.io as dask_io
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from nvtabular.dask.io import (
-    DaskDataset,
-    _worker_shuffle,
-    _write_metadata,
-    _write_output_partition,
-    clean_pw_cache,
-)
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler
@@ -696,9 +690,7 @@ class BaseWorkflow:
             self.timings["preproc_apply"] += time.time() - start
 
             if export_path and phase_index == len(self.phases) - 1:
-                self.write_df(
-                    gdf, export_path, shuffler=shuffler, num_out_files=num_out_files,
-                )
+                self.write_df(gdf, export_path, shuffler=shuffler, num_out_files=num_out_files)
 
             if huge_ctr and phase_index == len(self.phases) - 1:
                 if not self.cal_col_names:
@@ -760,7 +752,7 @@ class BaseWorkflow:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
             self.cal_col_names = False
-            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files,)
+            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files)
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -835,9 +827,7 @@ class BaseWorkflow:
             )
             self.timings["preproc_apply"] += time.time() - start
             if phase_index == len(self.phases) - 1 and output_path:
-                self.write_df(
-                    gdf, output_path, shuffler=shuffler, num_out_files=num_out_files,
-                )
+                self.write_df(gdf, output_path, shuffler=shuffler, num_out_files=num_out_files)
 
             if huge_ctr and phase_index == len(self.phases) - 1:
                 if not self.cal_col_names:
@@ -997,7 +987,7 @@ class DaskWorkflow(BaseWorkflow):
         self.client = client
 
     def set_ddf(self, ddf):
-        if isinstance(ddf, DaskDataset):
+        if isinstance(ddf, dask_io.DaskDataset):
             self.ddf_base_dataset = ddf
             self.ddf = self.ddf_base_dataset
         else:
@@ -1011,7 +1001,7 @@ class DaskWorkflow(BaseWorkflow):
         else:
             if self.ddf is None:
                 raise ValueError("No dask_cudf frame available.")
-            elif isinstance(self.ddf, DaskDataset):
+            elif isinstance(self.ddf, dask_io.DaskDataset):
                 columns = self.columns_ctx["all"]["base"]
                 return self.ddf.to_ddf(columns=columns)
             return self.ddf
@@ -1167,7 +1157,7 @@ class DaskWorkflow(BaseWorkflow):
             for idx in range(ddf.npartitions):
                 key = (write_name, idx)
                 dsk[key] = (
-                    _write_output_partition,
+                    dask_io._write_output_partition,
                     (ddf._name, idx),
                     output_path,
                     shuffle,
@@ -1175,7 +1165,7 @@ class DaskWorkflow(BaseWorkflow):
                     fs,
                 )
                 task_list.append(key)
-            dsk[name] = (_write_metadata, task_list)
+            dsk[name] = (dask_io._write_metadata, task_list)
             graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
             out = Delayed(name, graph)
 
@@ -1187,8 +1177,8 @@ class DaskWorkflow(BaseWorkflow):
             if shuffle == "full":
                 self.client.cancel(self.ddf)
                 self.ddf = None
-                self.client.run(_worker_shuffle, output_path, fs)
-            self.client.run(clean_pw_cache)
+                self.client.run(dask_io._worker_shuffle, output_path, fs)
+            self.client.run(dask_io.clean_pw_cache)
 
             return out
 

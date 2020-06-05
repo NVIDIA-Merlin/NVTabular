@@ -101,7 +101,7 @@ def _cat_level_2(dfs, col, freq_limit, on_host):
 @annotate("cat_level_3", color="green", domain="nvt_python")
 def _cat_level_3(dfs, base_path, col, on_host):
     ignore_index = True
-    df = _concat(dfs, ignore_index,)
+    df = _concat(dfs, ignore_index)
     if on_host:
         df = cudf.from_pandas(df)
     rel_path = "unique.%s.parquet" % (col)
@@ -110,7 +110,7 @@ def _cat_level_3(dfs, base_path, col, on_host):
         # Make sure first category is Null
         df = df.sort_values(col, na_position="first")
         if not df[col]._column.has_nulls:
-            df = cudf.DataFrame({col: _concat([cudf.Series([None]), df[col]], ignore_index,)})
+            df = cudf.DataFrame({col: _concat([cudf.Series([None]), df[col]], ignore_index)})
         df.to_parquet(path, write_index=False, compression=None)
     else:
         df_null = cudf.DataFrame({col: [None]})
@@ -151,13 +151,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     level_3_name = "level_3-" + token
     finalize_labels_name = "categories-" + token
     for p in range(ddf.npartitions):
-        dsk[(level_1_name, p)] = (
-            _cat_level_1,
-            (ddf._name, p),
-            cols,
-            split_out,
-            on_host,
-        )
+        dsk[(level_1_name, p)] = (_cat_level_1, (ddf._name, p), cols, split_out, on_host)
         k = 0
         for c, col in enumerate(cols):
             for s in range(split_out[col]):

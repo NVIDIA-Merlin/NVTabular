@@ -71,7 +71,7 @@ def test_dask_workflow_api_dlrm(dask_cluster, tmpdir, datasets, freq_threshold, 
     label_name = ["label"]
 
     processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name,
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
 
     processor.add_feature([ops.ZeroFill(), ops.LogOp()])
@@ -126,7 +126,7 @@ def test_dask_minmax_dummyop(dask_cluster, tmpdir, datasets, engine):
             return _dummy_op_logic(*args, _id=self._id, **kwargs)
 
     processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name,
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
     processor.add_preprocess(DummyOp())
     processor.finalize()
@@ -163,7 +163,7 @@ def test_dask_median_dummyop(dask_cluster, tmpdir, datasets, engine):
             return _dummy_op_logic(*args, _id=self._id, **kwargs)
 
     processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name,
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
     processor.add_preprocess(DummyOp())
     processor.finalize()
@@ -193,7 +193,7 @@ def test_dask_normalize(dask_cluster, tmpdir, datasets, engine):
     label_name = ["label"]
 
     processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name,
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
     processor.add_preprocess(ops.Normalize())
     processor.finalize()
