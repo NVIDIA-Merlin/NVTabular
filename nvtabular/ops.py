@@ -1036,7 +1036,6 @@ class Categorify(DFOperator):
         replace=True,
         cat_names=None,
         embed_sz=None,
-        dtype=None,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency
@@ -1046,7 +1045,6 @@ class Categorify(DFOperator):
         self.gpu_mem_trans_use = gpu_mem_trans_use
         self.cat_names = cat_names if cat_names else []
         self.embed_sz = embed_sz if embed_sz else {}
-        self.dtype = dtype
 
     @property
     def req_stats(self):
@@ -1072,8 +1070,7 @@ class Categorify(DFOperator):
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
             new_gdf[new_col] = stats_context["encoders"][name].transform(gdf[name])
-            if self.dtype:
-                new_gdf[new_col] = new_gdf[new_col].astype(self.dtype)
+            new_gdf[new_col] = new_gdf[new_col].astype("int64")
         return new_gdf
 
     def get_emb_sz(self, encoders, cat_names):
