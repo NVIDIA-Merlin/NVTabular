@@ -516,9 +516,9 @@ class HugeCTR(Writer):
                 if item is self._eod:
                     break
                 idx, data = item
-                ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                 with self.write_locks[idx]:
                     if self.output_format == "binary":
+                        ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                         df = data[self.column_names].to_pandas().astype(np.single)
                         for i in range(len(self.cats)):
                             df["___" + str(i) + "___" + self.cats[i]] = ones
