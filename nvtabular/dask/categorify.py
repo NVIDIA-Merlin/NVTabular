@@ -19,12 +19,11 @@ from operator import getitem
 
 import cudf
 from cudf._lib.nvtx import annotate
-from fsspec.core import get_fs_token_paths
-
 from dask.base import tokenize
 from dask.dataframe.core import _concat
 from dask.distributed import get_worker
 from dask.highlevelgraph import HighLevelGraph
+from fsspec.core import get_fs_token_paths
 
 try:
     import cupy as cp

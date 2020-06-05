@@ -6,10 +6,10 @@ import time
 
 import cudf
 import rmm
+from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
 
 import nvtabular.ops as ops
-from dask.distributed import Client, performance_report
 from nvtabular import DaskDataset, Workflow
 
 
