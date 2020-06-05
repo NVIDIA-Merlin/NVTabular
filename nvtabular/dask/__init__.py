@@ -14,4 +14,7 @@
 # limitations under the License.
 #
 
-from .io import DaskDataset
+
+import io
+
+DaskDataset = io.DaskDataset
