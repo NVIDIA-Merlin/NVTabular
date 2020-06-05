@@ -15,6 +15,6 @@
 #
 
 
-import io
+from .io import DaskDataset
 
-DaskDataset = io.DaskDataset
+dask_dataset = DaskDataset  # Avoiding flake8 complaint

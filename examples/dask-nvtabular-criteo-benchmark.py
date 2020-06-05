@@ -121,7 +121,7 @@ def main(args):
             split_out=split_out,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
-            on_host=(args.n_workers < 4),
+            on_host=args.cat_on_host,
         )
     )
     processor.finalize()
@@ -229,6 +229,11 @@ def parse_args():
         default=None,
         type=str,
         help='Where to cache each category (Ex "device, host, disk").',
+    )
+    parser.add_argument(
+        "--cat-on-host",
+        action="store_true",
+        help="Whether to move categorical data to host between tasks.",
     )
     parser.add_argument(
         "--cat-splits",
