@@ -167,9 +167,7 @@ class StatOperator(Operator):
     def __init__(self, columns=None):
         super(StatOperator, self).__init__(columns)
 
-    def read_itr(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def read_itr(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         raise NotImplementedError(
             """The operation to conduct on the dataframe to observe the desired statistics."""
         )
@@ -217,9 +215,7 @@ class MinMax(StatOperator):
         self.maxs = maxs if maxs is not None else {}
 
     @annotate("MinMax_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration level Min Max collection, a chunk at a time
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -294,9 +290,7 @@ class Moments(StatOperator):
         self.stds = stds if stds is not None else {}
 
     @annotate("Moments_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level moment algorithm (mean/std).
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -379,9 +373,7 @@ class Median(StatOperator):
         self.medians = medians if medians is not None else {}
 
     @annotate("Median_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level median algorithm.
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -466,9 +458,7 @@ class Encoder(StatOperator):
         self.categories = categories if categories is not None else {}
 
     @annotate("Encoder_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level categorical encoder update.
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -714,9 +704,7 @@ class FillMissing(DFOperator):
     default_in = CONT
     default_out = CONT
 
-    def __init__(
-        self, fill_val=0, columns=None, preprocessing=True, replace=True,
-    ):
+    def __init__(self, fill_val=0, columns=None, preprocessing=True, replace=True):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.fill_val = fill_val
 
