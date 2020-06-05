@@ -17,6 +17,7 @@
 import io
 import json
 import logging
+import json
 import os
 import queue
 import threading
@@ -359,6 +360,7 @@ class GPUDatasetIterator:
             yield from GPUFileIterator(path, **self.kwargs)
 
 
+<<<<<<< HEAD
 def _shuffle_gdf(gdf, gdf_size=None):
     """ Shuffles a cudf dataframe, returning a new dataframe with randomly
     ordered rows """
@@ -405,6 +407,43 @@ class ThreadedWriter(Writer):
         if labels and conts:
             self.column_names = labels + conts
 
+=======
+    Parameters
+    -----------
+    out_dir : str
+        path for the shuffled files
+    num_out_files : int, default 30
+    num_threads : int, default 4
+    output_format: str, default binary
+    cats: list, default None
+    conts: list, default None
+    labels: list, default None
+    """
+
+    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None):
+        self.queue = queue.Queue(num_threads)
+        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
+        
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.column_names = None
+        if labels and conts:
+            self.column_names = labels + conts
+
+        # File names and writers depend on the output format
+        self.writer_files = None
+        if output_format == "binary":
+            self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+        elif output_format == "parquet":
+            self.writer_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
+        self.writers = None
+        if output_format == "binary":
+            self.writers = [open(f, "ab") for f in self.writer_files]
+        elif output_format == "parquet":
+            self.writers = [ParquetWriter(f, compression=None) for f in self.writer_files]
+        
+>>>>>>> Writing metada in json
         self.num_threads = num_threads
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
@@ -453,12 +492,22 @@ class ThreadedWriter(Writer):
     def _write_metadata(self):
         return
 
+<<<<<<< HEAD
     def _write_filelist(self):
         file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
         file_list_writer.write(str(self.num_out_files) + "\n")
         for f in self.data_files:
             file_list_writer.write(f + "\n")
         file_list_writer.close()
+=======
+    def write_metadata(self):
+        data = {}
+        data['num_rows'] = self.num_rows
+        data['cats'] = self.cats
+        data['conts'] = self.conts
+        with open(os.path.join(out_dir, "metadata.json"), "w") as outfile:
+            json.dump(data, outfile)
+>>>>>>> Writing metada in json
 
     def close(self):
         # wake up all the worker threads and signal for them to exit
@@ -490,10 +539,14 @@ class Shuffler(Writer):
         path for the shuffled files
     num_out_files : int, default 30
     num_threads : int, default 4
+    output_format: str, default binary
+    cats: list, default None
+    conts: list, default None
+    labels: list, default None
     """
 
-    def __init__(self, out_dir, num_out_files=30, num_threads=4):
-        Writer.__init__(self, out_dir, num_out_files, num_threads)
+    def __init__(self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None):
+        Writer.__init__(self, out_dir, num_out_files, num_threads, "binary", cats, conts, labels)
 
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
@@ -555,6 +608,7 @@ class ParquetWriter(ThreadedWriter):
         metadata_writer.close()
 
 
+<<<<<<< HEAD
 class HugeCTRWriter(ThreadedWriter):
     def __init__(
         self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None, 
@@ -562,6 +616,26 @@ class HugeCTRWriter(ThreadedWriter):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_files]
+=======
+    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None):
+        Writer.__init__(self, out_dir, num_out_files, num_threads, output_format, cats, conts, labels)
+       
+        file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
+        file_list_writer.write(str(num_out_files) + "\n")
+        for f in self.writer_files:
+            file_list_writer.write(f + "\n")
+        file_list_writer.close()
+        
+        self.num_samples = [0] * num_out_files
+        self.output_format = output_format
+
+        # signifies that end-of-data and that the thread should shut down
+        self._eod = object()
+
+        for _ in range(num_threads):
+            write_thread = threading.Thread(target=self._write_thread, daemon=True)
+            write_thread.start()
+>>>>>>> Writing metada in json
 
     def _write_thread(self):
         while True:
