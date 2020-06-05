@@ -645,12 +645,24 @@ class HugeCTRWriter(ThreadedWriter):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
+<<<<<<< HEAD
                     ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                     df = data[self.column_names].to_pandas().astype(np.single)
                     for i in range(len(self.cats)):
                         df["___" + str(i) + "___" + self.cats[i]] = ones
                         df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
                         self.data_writers[idx].write(df.to_numpy().tobytes())
+=======
+                    if self.output_format == "binary":
+                        ones = np.array(([1] * data.shape[0]), dtype=np.intc)
+                        df = data[self.column_names].to_pandas().astype(np.single)
+                        for i in range(len(self.cats)):
+                            df["___" + str(i) + "___" + self.cats[i]] = ones
+                            df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
+                            self.writers[idx].write(df.to_numpy().tobytes())
+                    elif self.output_format == "parquet":
+                        self.writers[idx].write_table(data)
+>>>>>>> Improving HugeCTR write
             finally:
                 self.queue.task_done()
 
