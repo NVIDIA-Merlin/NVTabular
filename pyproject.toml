@@ -5,6 +5,6 @@ line-length = 100
 line_length = 100
 balanced_wrapping = true
 indent = "    "
-known_third_party = ["cudf", "cupy", "dask", "dask_cudf", "numpy", "pytest", "torch", "rmm", "tensorflow"]
+known_third_party = ["cudf", "cupy", "dask", "dask_cuda", "dask_cudf", "numpy", "pytest", "torch", "rmm", "tensorflow"]
 skip = ["build",".eggs", "examples/criteo_benchmark.py", "examples/dataloader_bench.py"]
 
