@@ -3,7 +3,7 @@ repos:
         rev: 4.3.21
         hooks:
               - id: isort
-      - repo: https://github.com/ambv/black
+      - repo: https://github.com/python/black
         rev: stable
         hooks:
               - id: black
