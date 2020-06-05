@@ -330,8 +330,88 @@ class GPUDatasetIterator:
         for path in self.paths:
             yield from GPUFileIterator(path, **self.kwargs)
 
+class Writer():
+    """
+    Base Writer Class for Shuffler and HugeCTR
 
-class Shuffler:
+    Parameters
+    -----------
+    out_dir : str
+        path for the shuffled files
+    num_out_files : int, default 30
+    num_threads : int, default 4
+    output_format: str, default binary
+    """
+
+    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="binary"):
+        self.queue = queue.Queue(num_threads)
+        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
+        
+        # File names and writers depend on the output format
+        self.writer_files = None
+        if output_format == "binary":
+            self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+        elif output_format == "parquet":
+            self.writer_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
+        self.writers = None
+        if output_format == "binary":
+            self.writers = [open(f, "ab") for f in self.writer_files]
+        elif output_format == "parquet":
+            self.writers = [ParquetWriter(f, compression=None) for f in self.writer_files]
+        
+        self.num_threads = num_threads
+        self.num_out_files = num_out_files
+        self.b_idxs = np.arange(num_out_files)
+
+        self.num_rows = 0
+        
+    def _write_thread(self):
+        return
+    
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf, arr):
+        self.num_rows = gdf.shape[0]
+
+        # get slice info
+        int_slice_size = gdf.shape[0] // self.num_out_files
+        slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
+  
+        for x in range(self.num_out_files):
+            start = x * slice_size
+            end = start + slice_size
+            # check if end is over length
+            end = end if end <= gdf.shape[0] else gdf.shape[0]
+            to_write = gdf.iloc[arr[start:end]]
+            b_idx = self.b_idxs[x]
+            self.queue.put((b_idx, to_write))
+
+        # wait for all writes to finish before exitting (so that we aren't using memory)
+        self.queue.join()
+
+    def _write_header(self):
+        return
+
+    def write_metadata(self):
+        metadata_writer = open(os.path.join(out_dir, "metadata.txt"), "w")
+        metadata_writer.write(str(self.num_rows) + "\n")
+        metadata_writer.write(f + "\n")
+        metadata_writer.close()
+
+    def close(self):
+        # wake up all the worker threads and signal for them to exit
+        for _ in range(self.num_threads):
+            self.queue.put(self._eod)
+
+        # wait for pending writes to finish
+        self.queue.join()
+        self._write_header()
+
+        for writer in self.writers:
+            writer.close()
+        
+        self.write_metadata()
+
+class Shuffler(Writer):
     """
     Shuffling the data is an important part of machine learning
     training. This class is used by Workflow class and shuffles
@@ -344,17 +424,10 @@ class Shuffler:
         path for the shuffled files
     num_out_files : int, default 30
     num_threads : int, default 4
-
     """
 
     def __init__(self, out_dir, num_out_files=30, num_threads=4):
-        self.queue = queue.Queue(num_threads)
-        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
-        self.writer_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.writers = [ParquetWriter(f, compression=None) for f in self.writer_files]
-        self.b_idxs = np.arange(num_out_files)
-        self.num_threads = num_threads
-        self.num_out_files = num_out_files
+        Writer.__init__(self, out_dir, num_out_files, num_threads)
 
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
@@ -379,36 +452,12 @@ class Shuffler:
     def add_data(self, gdf):
         arr = cp.arange(len(gdf))
         cp.random.shuffle(arr)
-
-        # get slice info
-        int_slice_size = gdf.shape[0] // self.num_out_files
-        slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
         np.random.shuffle(self.b_idxs)
 
-        for x in range(self.num_out_files):
-            start = x * slice_size
-            end = start + slice_size
-            # check if end is over length
-            end = end if end <= gdf.shape[0] else gdf.shape[0]
-            to_write = gdf.iloc[arr[start:end]]
-            b_idx = self.b_idxs[x]
-            self.queue.put((b_idx, to_write))
-
-        # wait for all writes to finish before exitting (so that we aren't using memory)
-        self.queue.join()
-
-    def close(self):
-        # wake up all the worker threads and signal for them to exit
-        for _ in range(self.num_threads):
-            self.queue.put(self._eod)
-
-        # wait for pending writes to finish
-        self.queue.join()
-        for writer in self.writers:
-            writer.close()
+        Writer.add_data(self, gdf, arr)
 
 
-class HugeCTR:
+class HugeCTR(Writer):
     """
     Generates outputs for HugeCTR
 
@@ -418,30 +467,33 @@ class HugeCTR:
         path for the shuffled files
     num_out_files : int, default 30
     num_threads : int, default 4
-
+    output_format: str, default binary
+    cats: list, default None
+    conts: list, default None
+    labels: list, default None
     """
 
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+        self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None, 
     ):
+        Writer.__init__(self, out_dir, num_out_files, num_threads, output_format)
+        
         self.cats = cats
         self.conts = conts
         self.labels = labels
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
-        self.queue = queue.Queue(num_threads)
-        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
-        self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+       
         file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
         file_list_writer.write(str(num_out_files) + "\n")
         for f in self.writer_files:
             file_list_writer.write(f + "\n")
         file_list_writer.close()
-        self.writers = [open(f, "ab") for f in self.writer_files]
-        self.num_threads = num_threads
-        self.num_out_files = num_out_files
+        
         self.num_samples = [0] * num_out_files
+        self.output_format = output_format
+
         # signifies that end-of-data and that the thread should shut down
         self._eod = object()
 
@@ -458,34 +510,23 @@ class HugeCTR:
                 idx, data = item
                 ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                 with self.write_locks[idx]:
-                    df = data[self.column_names].to_pandas().astype(np.single)
-                    for i in range(len(self.cats)):
-                        df["___" + str(i) + "___" + self.cats[i]] = ones
-                        df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
-
-                    self.writers[idx].write(df.to_numpy().tobytes())
+                    if self.output_format == "binary":
+                        df = data[self.column_names].to_pandas().astype(np.single)
+                        for i in range(len(self.cats)):
+                            df["___" + str(i) + "___" + self.cats[i]] = ones
+                            df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
+                            self.writers[idx].write(df.to_numpy().tobytes())
+                    elif self.output_format == "parquet":
+                        self.writers[idx].write_table(data)
             finally:
                 self.queue.task_done()
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-        # get slice info
-        int_slice_size = gdf.shape[0] // self.num_out_files
-        slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
+        arr = cp.arange(len(gdf))
+        Writer.add_data(self, gdf, arr)
 
-        for x in range(self.num_out_files):
-            start = x * slice_size
-            end = start + slice_size
-            # check if end is over length
-            end = end if end <= gdf.shape[0] else gdf.shape[0]
-            to_write = gdf.iloc[start:end]
-            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            self.queue.put((x, to_write))
-
-        # wait for all writes to finish before exitting (so that we aren't using memory)
-        self.queue.join()
-
-    def write_header(self):
+    def _write_header(self):
         for i in range(len(self.writers)):
             self.writers[i].seek(0)
             # error_check (0: no error check; 1: check_num)
@@ -515,24 +556,3 @@ class HugeCTR:
         self.conts = conts
         self.labels = labels
         self.column_names = labels + conts
-
-    def close(self):
-        # wake up all the worker threads and signal for them to exit
-        for _ in range(self.num_threads):
-            self.queue.put(self._eod)
-
-        # wait for pending writes to finish
-        self.queue.join()
-        self.write_header()
-
-        for writer in self.writers:
-            writer.close()
-
-
-def _shuffle_gdf(gdf, gdf_size=None):
-    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
-    ordered rows """
-    gdf_size = gdf_size or len(gdf)
-    arr = cp.arange(gdf_size)
-    cp.random.shuffle(arr)
-    return gdf.iloc[arr]

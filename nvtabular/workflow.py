@@ -30,7 +30,7 @@ import nvtabular.dask.io as dask_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler
-from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
+from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator, all_ops
 
 LOG = logging.getLogger("nvtabular")
 
@@ -573,7 +573,7 @@ class BaseWorkflow:
                 for op_id, dep_set in task.items():
                     # get op from op_id
                     # operators need to be instantiated with state information
-                    target_op = OperatorRegistry.OPS[op_id](**self.ops_args[op_id])
+                    target_op = all_ops[op_id](**self.ops_args[op_id])
                     if dep_set:
                         for dep_grp in dep_set:
                             # handle required stats of target op on
@@ -715,6 +715,7 @@ class BaseWorkflow:
         hugectr_gen_output=False,
         hugectr_output_path="./hugectr",
         hugectr_num_out_files=None,
+        hugectr_output_format=None,
     ):
 
         """
@@ -746,7 +747,7 @@ class BaseWorkflow:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
             self.cal_col_names = False
-            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files)
+            huge_ctr = HugeCTR(hugectr_output_path, num_out_files=hugectr_num_out_files, output_format=hugectr_output_format)
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -915,10 +916,10 @@ class BaseWorkflow:
             main_grp = task[1]
             sub_cols = task[2]
             dep_ids = task[3]
-            op = OperatorRegistry.OPS[op_id](**op_args[op_id])
+            op = all_ops[op_id](**op_args[op_id])
             dep_ops = []
             for ops_id in dep_ids:
-                dep_ops.append(OperatorRegistry.OPS[ops_id]())
+                dep_ops.append(all_ops[ops_id]())
 
             master_list.append((op, main_grp, sub_cols, dep_ops))
         return master_list
