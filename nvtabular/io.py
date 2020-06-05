@@ -474,7 +474,53 @@ class ThreadedWriter(Writer):
         # Close writers
         for writer in self.data_writers:
             writer.close()
+        
+        self.write_metadata()
 
+class Shuffler(Writer):
+    """
+    Shuffling the data is an important part of machine learning
+    training. This class is used by Workflow class and shuffles
+    the data after all the pre-processing and feature engineering
+    operators are finished their processing.
+
+    Parameters
+    -----------
+    out_dir : str
+        path for the shuffled files
+    num_out_files : int, default 30
+    num_threads : int, default 4
+    """
+
+    def __init__(self, out_dir, num_out_files=30, num_threads=4):
+        Writer.__init__(self, out_dir, num_out_files, num_threads)
+
+        # signifies that end-of-data and that the thread should shut down
+        self._eod = object()
+
+        for _ in range(num_threads):
+            write_thread = threading.Thread(target=self._write_thread, daemon=True)
+            write_thread.start()
+
+    def _write_thread(self):
+        while True:
+            item = self.queue.get()
+            try:
+                if item is self._eod:
+                    break
+                idx, data = item
+                with self.write_locks[idx]:
+                    self.writers[idx].write_table(data)
+            finally:
+                self.queue.task_done()
+
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf):
+        arr = cp.arange(len(gdf))
+        cp.random.shuffle(arr)
+        np.random.shuffle(self.b_idxs)
+
+        Writer.add_data(self, gdf, arr)
 
 class ParquetWriter(ThreadedWriter):
     def __init__(
@@ -511,7 +557,7 @@ class ParquetWriter(ThreadedWriter):
 
 class HugeCTRWriter(ThreadedWriter):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+        self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None, 
     ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
