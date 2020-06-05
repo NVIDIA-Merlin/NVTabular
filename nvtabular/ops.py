@@ -25,7 +25,6 @@ from nvtabular.dask.categorify import _encode, _get_categories
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
-
 CONT = "continuous"
 CAT = "categorical"
 ALL = "all"
@@ -521,6 +520,7 @@ class Encoder(StatOperator):
         categories=None,
         out_path=None,
         split_out=None,
+        on_host=None,
     ):
         super(Encoder, self).__init__(columns)
         self.use_frequency = use_frequency
@@ -532,6 +532,7 @@ class Encoder(StatOperator):
         self.categories = categories if categories is not None else {}
         self.out_path = out_path or "./"
         self.split_out = split_out
+        self.on_host = on_host
 
     @annotate("Encoder_op", color="green", domain="nvt_python")
     def apply_op(
@@ -578,7 +579,9 @@ class Encoder(StatOperator):
     @annotate("Encoder_dask_graph", color="green", domain="nvt_python")
     def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        dsk, key = _get_categories(ddf, cols, self.out_path, self.freq_threshold, self.split_out)
+        dsk, key = _get_categories(
+            ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
+        )
         return Delayed(key, dsk)
 
     @annotate("Encoder_dask_fin", color="green", domain="nvt_python")
@@ -1095,6 +1098,7 @@ class Categorify(DFOperator):
         na_sentinel=None,
         cat_cache=None,
         dtype=None,
+        on_host=None,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency
@@ -1108,6 +1112,7 @@ class Categorify(DFOperator):
         self.split_out = split_out
         self.na_sentinel = na_sentinel or 0
         self.dtype = dtype
+        self.on_host = on_host
         self.cat_cache = cat_cache
         # Allow user to specify a single string value for all columns
         # E.g. cat_cache = "device"
@@ -1125,6 +1130,7 @@ class Categorify(DFOperator):
                 gpu_mem_trans_use=self.gpu_mem_trans_use,
                 out_path=self.out_path,
                 split_out=self.split_out,
+                on_host=self.on_host,
             )
         ]
 

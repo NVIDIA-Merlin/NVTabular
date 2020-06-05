@@ -6,10 +6,10 @@ import time
 
 import cudf
 import rmm
+from dask_cuda import LocalCUDACluster
 
 import nvtabular.ops as ops
 from dask.distributed import Client, performance_report
-from dask_cuda import LocalCUDACluster
 from nvtabular import DaskDataset, Workflow
 
 
@@ -117,7 +117,11 @@ def main(args):
     processor.add_feature([ops.ZeroFill(), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
-            out_path=out_path, split_out=split_out, cat_cache=cat_cache, freq_threshold=freq_limit,
+            out_path=out_path,
+            split_out=split_out,
+            cat_cache=cat_cache,
+            freq_threshold=freq_limit,
+            on_host=(args.n_workers < 4),
         )
     )
     processor.finalize()

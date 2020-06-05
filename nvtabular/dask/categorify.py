@@ -60,7 +60,7 @@ class CategoryCache:
 
 
 @annotate("cat_level_1", color="green", domain="nvt_python")
-def _cat_level_1(gdf, columns, split_out):
+def _cat_level_1(gdf, columns, split_out, on_host):
     # First level of "catigorify"
     gdf["_count"] = cp.ones(len(gdf), dtype="int32")
     output = {}
@@ -69,7 +69,10 @@ def _cat_level_1(gdf, columns, split_out):
         gb = gdf[[col, "_count"]].groupby(col, dropna=False).count()
         gb.reset_index(drop=False, inplace=True)
         for j, split in enumerate(gb.partition_by_hash([col], split_out[col], keep_index=False)):
-            output[k] = split
+            if on_host:
+                output[k] = split.to_pandas()
+            else:
+                output[k] = split
             k += 1
         gdf.drop(columns=[col], inplace=True)
         del gb
@@ -78,19 +81,29 @@ def _cat_level_1(gdf, columns, split_out):
 
 
 @annotate("cat_level_2", color="green", domain="nvt_python")
-def _cat_level_2(dfs, col, freq_limit):
+def _cat_level_2(dfs, col, freq_limit, on_host):
     ignore_index = True
-    gb = _concat(dfs, ignore_index).groupby(col, dropna=False).count()
+    if on_host:
+        # Pandas groupby does not have `dropna` arg
+        gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col, dropna=False).count()
+    else:
+        gb = _concat(dfs, ignore_index).groupby(col, dropna=False).count()
     gb.reset_index(drop=False, inplace=True)
     if freq_limit:
         gb = gb[gb["_count"] >= freq_limit]
+    if on_host:
+        gb_pd = gb[[col]].to_pandas()
+        del gb
+        return gb_pd
     return gb[[col]]
 
 
 @annotate("cat_level_3", color="green", domain="nvt_python")
-def _cat_level_3(dfs, base_path, col):
+def _cat_level_3(dfs, base_path, col, on_host):
     ignore_index = True
     df = _concat(dfs, ignore_index,)
+    if on_host:
+        df = cudf.from_pandas(df)
     rel_path = "unique.%s.parquet" % (col)
     path = "/".join([base_path, rel_path])
     if len(df):
@@ -111,7 +124,7 @@ def _finish_labels(paths, cols):
     return {col: paths[i] for i, col in enumerate(cols)}
 
 
-def _get_categories(ddf, cols, out_path, freq_limit, split_out):
+def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     if not cols:
         return {}
 
@@ -131,7 +144,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out):
     fs.mkdirs(out_path, exist_ok=True)
 
     dsk = {}
-    token = tokenize(ddf, cols, out_path, freq_limit, split_out)
+    token = tokenize(ddf, cols, out_path, freq_limit, split_out, on_host)
     level_1_name = "level_1-" + token
     split_name = "split-" + token
     level_2_name = "level_2-" + token
@@ -143,6 +156,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out):
             (ddf._name, p),
             cols,
             split_out,
+            on_host,
         )
         k = 0
         for c, col in enumerate(cols):
@@ -157,6 +171,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out):
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
                 col,
                 freq_limit,
+                on_host,
             )
 
         dsk[(level_3_name, c)] = (
@@ -164,6 +179,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out):
             [(level_2_name, c, s) for s in range(split_out[col])],
             out_path,
             col,
+            on_host,
         )
 
     dsk[finalize_labels_name] = (
