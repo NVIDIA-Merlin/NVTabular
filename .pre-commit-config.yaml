@@ -3,11 +3,12 @@ repos:
         rev: 4.3.21
         hooks:
               - id: isort
+                additional_dependencies: [toml]
       - repo: https://github.com/python/black
         rev: stable
         hooks:
-              - id: black
+        - id: black
       - repo: https://gitlab.com/pycqa/flake8
         rev: 3.8.1
         hooks:
-              - id: flake8
+        - id: flake8
