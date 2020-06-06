@@ -5,7 +5,7 @@ import os
 import time
 
 import cudf
-import rmm
+import numba.cuda as cuda
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
 
@@ -79,7 +79,7 @@ def main(args):
                 cat_cache["C10"] = "host"
 
     # Use total device size to calculate args.device_limit_frac
-    device_size = rmm.get_info().total
+    device_size = cuda.current_context().get_memory_info()[1]
     device_limit = int(args.device_limit_frac * device_size)
     device_pool_size = int(args.device_pool_frac * device_size)
     part_size = int(args.part_mem_frac * device_size)

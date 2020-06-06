@@ -20,9 +20,9 @@ from io import BytesIO
 
 import cudf
 import cupy
+import numba.cuda as cuda
 import numpy as np
 import pyarrow.parquet as pq
-import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
 from dask.base import tokenize
@@ -176,7 +176,7 @@ class DaskDataset:
                     "Using very large partitions sizes for Dask. "
                     "Memory-related errors are likely."
                 )
-            part_size = int(rmm.get_info().total * part_mem_fraction)
+            part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
 
         if isinstance(engine, str):
             if engine == "parquet":
