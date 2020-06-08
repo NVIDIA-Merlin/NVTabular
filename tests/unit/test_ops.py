@@ -374,7 +374,8 @@ def test_fill_missing(tmpdir, datasets, engine="parquet"):
 
     transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous") for df in data_itr])
     assert_eq(transformed[cont_names], df[cont_names].dropna(42))
-    
+
+
 def test_dropna(tmpdir, datasets, engine="parquet"):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
@@ -393,7 +394,7 @@ def test_dropna(tmpdir, datasets, engine="parquet"):
         columns = mycols_csv
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
-    
+
     data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
         columns=columns,
