@@ -19,12 +19,11 @@ import math
 
 import cudf
 import numpy as np
-import pytest
-from cudf.tests.utils import assert_eq
-
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
+import pytest
+from cudf.tests.utils import assert_eq
 from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
 
 
