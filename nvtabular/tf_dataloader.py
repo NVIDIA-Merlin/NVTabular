@@ -10,7 +10,7 @@ from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 from .io import GPUDatasetIterator
-from .workflow import Workflow, _shuffle_part
+from .workflow import BaseWorkflow, _shuffle_part
 
 free_gpu_mem_mb = rmm.get_info().free / (1024 ** 2)
 tf_mem_size = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
@@ -254,7 +254,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
     Each chunk read by the iterator will be transformed
     via `workflow.apply_ops`.
     """
-        if not isinstance(workflow, Workflow):
+        if not isinstance(workflow, BaseWorkflow):
             raise TypeError("Expected NVTabular Workflow, found type {}".format(type(workflow)))
 
         self.workflows.append(workflow)

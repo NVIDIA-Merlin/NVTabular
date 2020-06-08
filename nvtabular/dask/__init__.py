@@ -13,17 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import warnings
-
-from . import io, workflow
-from .dask import DaskDataset
-
-Workflow = workflow.Workflow
-dataset = io.GPUDatasetIterator
-dask_dataset = DaskDataset  # Avoiding flake8 error
 
 
-__all__ = ["Workflow", "dataset"]
+from .io import DaskDataset
 
-# cudf warns about column ordering with dlpack methods, ignore it
-warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+dask_dataset = DaskDataset  # Avoiding flake8 complaint
