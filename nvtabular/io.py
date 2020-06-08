@@ -433,20 +433,25 @@ class ThreadedWriter(Writer):
             self.column_names = labels + conts
 
         # File names and writers depend on the output format
-        self.writer_files = None
+        self.data_files = None
+        self.metadata_files = None
         if output_format == "binary":
-            self.writer_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+            self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         elif output_format == "parquet":
-            self.writer_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.writers = None
+            self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
+            self.metadata_files = [os.path.join(out_dir, f"{i}.json") for i in range(num_out_files)]
+        self.data_writers = None
+        self.metadata_writers = None
         if output_format == "binary":
-            self.writers = [open(f, "ab") for f in self.writer_files]
+            self.data_writers = [open(f, "ab") for f in self.data_files]
         elif output_format == "parquet":
-            self.writers = [ParquetWriter(f, compression=None) for f in self.writer_files]
+            self.data_writers = [ParquetWriter(f, compression=None) for f in self.data_files]
+            self.metadata_writers = [open(f, "w") for f in self.metadata_files]
         
 >>>>>>> Writing metada in json
         self.num_threads = num_threads
         self.num_out_files = num_out_files
+<<<<<<< HEAD
         self.num_samples = [0] * num_out_files
 
         self.data_files = None
@@ -468,6 +473,10 @@ class ThreadedWriter(Writer):
         self.conts = conts
         self.labels = labels
         self.column_names = labels + conts
+=======
+        self.b_idxs = np.arange(num_out_files)
+        self.num_samples = [0] * num_out_files
+>>>>>>> Improves metadata
 
     def _write_thread(self):
         return
@@ -483,9 +492,16 @@ class ThreadedWriter(Writer):
             end = start + slice_size
             # check if end is over length
             end = end if end <= gdf.shape[0] else gdf.shape[0]
+<<<<<<< HEAD
             to_write = gdf.iloc[start:end]
             self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
             self.queue.put((x, to_write))
+=======
+            to_write = gdf.iloc[arr[start:end]]
+            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
+            b_idx = self.b_idxs[x]
+            self.queue.put((b_idx, to_write))
+>>>>>>> Improves metadata
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
@@ -493,6 +509,7 @@ class ThreadedWriter(Writer):
     def _write_metadata(self):
         return
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     def _write_filelist(self):
         file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
@@ -509,6 +526,10 @@ class ThreadedWriter(Writer):
         with open(os.path.join(self.out_dir, "metadata.json"), "w") as outfile:
             json.dump(data, outfile)
 >>>>>>> Writing metada in json
+=======
+    def _write_metadata(self):
+        return
+>>>>>>> Improves metadata
 
     def close(self):
         # wake up all the worker threads and signal for them to exit
@@ -518,14 +539,28 @@ class ThreadedWriter(Writer):
         # wait for pending writes to finish
         self.queue.join()
 
+<<<<<<< HEAD
         self._write_filelist()
         self._write_metadata()
 
         # Close writers
+=======
+        # Write headers
+        self._write_header()
+>>>>>>> Improves metadata
         for writer in self.data_writers:
             writer.close()
         
-        self.write_metadata()
+        # Write metadata
+        self._write_metadata()
+        for writer in self.metadata_writers:
+            writer.close()
+
+    def set_col_names(self, labels, cats, conts):
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.column_names = labels + conts
 
 class Shuffler(Writer):
     """
@@ -564,7 +599,7 @@ class Shuffler(Writer):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-                    self.writers[idx].write_table(data)
+                    self.data_writers[idx].write_table(data)
             finally:
                 self.queue.task_done()
 
@@ -623,11 +658,10 @@ class HugeCTRWriter(ThreadedWriter):
        
         file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
         file_list_writer.write(str(num_out_files) + "\n")
-        for f in self.writer_files:
+        for f in self.data_files:
             file_list_writer.write(f + "\n")
         file_list_writer.close()
         
-        self.num_samples = [0] * num_out_files
         self.output_format = output_format
 
         # signifies that end-of-data and that the thread should shut down
@@ -660,10 +694,14 @@ class HugeCTRWriter(ThreadedWriter):
                         for i in range(len(self.cats)):
                             df["___" + str(i) + "___" + self.cats[i]] = ones
                             df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
-                            self.writers[idx].write(df.to_numpy().tobytes())
+                            self.data_writers[idx].write(df.to_numpy().tobytes())
                     elif self.output_format == "parquet":
+<<<<<<< HEAD
                         self.writers[idx].write_table(data)
 >>>>>>> Improving HugeCTR write
+=======
+                        self.data_writers[idx].write_table(data)
+>>>>>>> Improves metadata
             finally:
                 self.queue.task_done()
 
@@ -700,8 +738,8 @@ class HugeCTRWriter(ThreadedWriter):
 
     def _write_header(self):
         if self.output_format == "binary":
-            for i in range(len(self.writers)):
-                self.writers[i].seek(0)
+            for i in range(len(self.data_writers)):
+                self.data_writers[i].seek(0)
                 # error_check (0: no error check; 1: check_num)
                 # num of samples in this file
                 # Dimension of the labels
@@ -722,6 +760,7 @@ class HugeCTRWriter(ThreadedWriter):
                     dtype=np.longlong,
                 )
 
+<<<<<<< HEAD
                 self.writers[i].write(header.tobytes())
 >>>>>>> HugeCTR parquet format and metadata file working
 
@@ -743,6 +782,7 @@ def device_mem_size(kind="total"):
         size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
         pynvml.nvmlShutdown()
     return size
+<<<<<<< HEAD
 
 
 class WriterCache:
@@ -1161,3 +1201,18 @@ class CSVDatasetEngine(DatasetEngine):
             columns=columns,
             **self.csv_kwargs,
         )
+=======
+=======
+                self.data_writers[i].write(header.tobytes())
+
+    def _write_metadata(self):
+        if self.output_format == "parquet":
+            data = {}
+            for i in range(len(self.metadata_writers)):
+                data['num_rows'] = self.num_samples[i]
+                data['cats_name'] = self.cats
+                data['conts_name'] = self.conts
+                data['conts_labels'] = self.labels
+                json.dump(data, self.metadata_writers[i])
+>>>>>>> Improves metadata
+>>>>>>> Improves metadata
