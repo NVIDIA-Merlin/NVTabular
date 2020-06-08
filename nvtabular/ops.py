@@ -169,9 +169,7 @@ class StatOperator(Operator):
     def __init__(self, columns=None):
         super(StatOperator, self).__init__(columns)
 
-    def read_itr(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def read_itr(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         raise NotImplementedError(
             """The operation to conduct on the dataframe to observe the desired statistics."""
         )
@@ -219,9 +217,7 @@ class MinMax(StatOperator):
         self.maxs = maxs if maxs is not None else {}
 
     @annotate("MinMax_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration level Min Max collection, a chunk at a time
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -296,9 +292,7 @@ class Moments(StatOperator):
         self.stds = stds if stds is not None else {}
 
     @annotate("Moments_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level moment algorithm (mean/std).
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -381,9 +375,7 @@ class Median(StatOperator):
         self.medians = medians if medians is not None else {}
 
     @annotate("Median_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level median algorithm.
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -468,9 +460,7 @@ class Encoder(StatOperator):
         self.categories = categories if categories is not None else {}
 
     @annotate("Encoder_op", color="green", domain="nvt_python")
-    def apply_op(
-        self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base",
-    ):
+    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         """ Iteration-level categorical encoder update.
         """
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -645,6 +635,43 @@ class LogOp(TransformOperator):
         return new_gdf
 
 
+class HashBucket(TransformOperator):
+    default_in = CAT
+    default_out = CAT
+
+    def __init__(self, num_buckets, columns=None, **kwargs):
+        if isinstance(num_buckets, dict):
+            columns = [i for i in num_buckets.keys()]
+            self.num_buckets = num_buckets
+        elif isinstance(num_buckets, (tuple, list)):
+            assert columns is not None
+            assert len(columns) == len(num_buckets)
+            self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
+        elif isinstance(num_buckets, int):
+            self.num_buckets = num_buckets
+        else:
+            raise TypeError(
+                "`num_buckets` must be dict, iterable, or int, got type {}".format(
+                    type(num_buckets)
+                )
+            )
+        super(HashBucket, self).__init__(columns=columns, **kwargs)
+
+    @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        cat_names = target_columns
+        if isinstance(self.num_buckets, int):
+            num_buckets = {name: self.num_buckets for name in cat_names}
+        else:
+            num_buckets = self.num_buckets
+
+        new_gdf = cudf.DataFrame()
+        for col, nb in num_buckets.items():
+            new_col = f"{col}_{self._id}"
+            new_gdf[new_col] = gdf[col].hash_values() % nb
+        return new_gdf
+
+
 class Normalize(DFOperator):
     """
     Standardizing the features around 0 with a standard deviation
@@ -705,9 +732,7 @@ class FillMissing(DFOperator):
     default_in = CONT
     default_out = CONT
 
-    def __init__(
-        self, fill_val=0, columns=None, preprocessing=True, replace=True,
-    ):
+    def __init__(self, fill_val=0, columns=None, preprocessing=True, replace=True):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.fill_val = fill_val
 
