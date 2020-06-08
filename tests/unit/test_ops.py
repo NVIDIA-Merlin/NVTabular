@@ -50,7 +50,7 @@ def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     else:
         cat_names = ["name-string"]
         columns = mycols_csv
-    cont_names = ["x", "y", "id"]
+    cont_names = ["x", "y"]
     label_name = ["label"]
 
     data_itr = nvtabular.io.GPUDatasetIterator(
@@ -391,8 +391,6 @@ def test_dropna(tmpdir, datasets, engine="parquet"):
         columns = mycols_pq
     else:
         columns = mycols_csv
-    cont_names = ["x", "y", "id"]
-    cat_names = ["name-string"]
 
     data_itr = nvtabular.io.GPUDatasetIterator(
         paths,
