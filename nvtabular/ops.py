@@ -1156,7 +1156,6 @@ class Categorify(DFOperator):
                 out_path=self.out_path,
                 split_out=self.split_out,
                 on_host=self.on_host,
-                na_sentinel=self.na_sentinel,
             )
         ]
 
