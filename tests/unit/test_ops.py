@@ -360,7 +360,6 @@ def test_fill_missing(tmpdir, datasets, engine="parquet"):
     columns = mycols_pq if engine == "parquet" else mycols_csv
 
     df = cudf.concat([cudf.read_parquet(path) for path in paths])
-    print(df.head())
     data_itr = nvtabular.io.GPUDatasetIterator(
         paths, columns=columns, use_row_groups=True, names=allcols_csv
     )
