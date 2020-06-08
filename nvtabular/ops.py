@@ -597,14 +597,8 @@ class Dropna(TransformOperator):
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf, target_columns, stats_context=None):
-        cont_names = target_columns
-        if not cont_names:
-            new_gdf = gdf.dropna()
-            new_gdf = new_gdf.reset_index(drop=True)
-            return new_gdf
-        else:
-            new_gdf = gdf.dropna(subset=cont_names)
-            new_gdf = new_gdf.reset_index(drop=True)
+        new_gdf = gdf.dropna(subset=target_columns or None)
+        new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
 
 
