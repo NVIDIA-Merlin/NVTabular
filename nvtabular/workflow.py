@@ -29,7 +29,21 @@ from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
+<<<<<<< HEAD
+=======
+from nvtabular.encoder import DLLabelEncoder
+<<<<<<< HEAD
+from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
+<<<<<<< HEAD
+>>>>>>> HugeCTR parquet format and metadata file working
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
+=======
+from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
+=======
+from nvtabular.io import HugeCTR, Shuffler
+from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
+>>>>>>> HugeCTR parquet format and metadata file working
+>>>>>>> HugeCTR parquet format and metadata file working
 
 LOG = logging.getLogger("nvtabular")
 
@@ -451,6 +465,7 @@ class BaseWorkflow:
         # task format = (operator, main_columns_class, col_sub_key,  required_operators)
         dep_tasks = []
         for cols, task_list in task_dict.items():
+<<<<<<< HEAD
             for target_op, dep_grp in task_list:
                 if isinstance(target_op, DFOperator):
                     # check that the required stat is grabbed
@@ -458,6 +473,29 @@ class BaseWorkflow:
                     for opo in target_op.req_stats:
                         # only add if it doesnt already exist
                         if not self._is_repeat_op(opo, cols, master_task_list):
+=======
+            for task in task_list:
+                for op_id, dep_set in task.items():
+                    # get op from op_id
+                    # operators need to be instantiated with state information
+                    target_op = OperatorRegistry.OPS[op_id](**self.ops_args[op_id])
+                    if dep_set:
+                        for dep_grp in dep_set:
+                            # handle required stats of target op on
+                            # all the dependent columns
+                            for dep in dep_grp:
+                                if task_set in "PP" and not self.op_preprocess(dep):
+                                    dep_grp.remove(dep)
+                            if hasattr(target_op, "req_stats"):
+                                # check that the required stat is grabbed
+                                # for all necessary parents
+                                for opo in target_op.req_stats:
+                                    # only add if it doesnt already exist=
+                                    if not self.is_repeat_op(opo, cols):
+                                        dep_grp = dep_grp if dep_grp else ["base"]
+                                        dep_tasks.append((opo, cols, dep_grp, []))
+                            # after req stats handle target_op
+>>>>>>> HugeCTR parquet format and metadata file working
                             dep_grp = dep_grp if dep_grp else ["base"]
                             dep_tasks.append((opo, cols, dep_grp, []))
                 # after req stats handle target_op
@@ -574,6 +612,24 @@ class BaseWorkflow:
 
         return create_tensors(self, itr=itr, apply_ops=apply_ops)
 
+<<<<<<< HEAD
+=======
+    def recreate_master_task_list(self, task_list, op_args):
+        master_list = []
+        for task in task_list:
+            op_id = task[0]
+            main_grp = task[1]
+            sub_cols = task[2]
+            dep_ids = task[3]
+            op = OperatorRegistry.OPS[op_id](**op_args[op_id])
+            dep_ops = []
+            for ops_id in dep_ids:
+                dep_ops.append(OperatorRegistry.OPS[ops_id]())
+                
+            master_list.append((op, main_grp, sub_cols, dep_ops))
+        return master_list
+
+>>>>>>> HugeCTR parquet format and metadata file working
 
 def get_new_config():
     """

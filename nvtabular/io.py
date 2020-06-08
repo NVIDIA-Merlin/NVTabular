@@ -424,6 +424,7 @@ class ThreadedWriter(Writer):
         self.queue = queue.Queue(num_threads)
         self.write_locks = [threading.Lock() for _ in range(num_out_files)]
         
+        self.out_dir = out_dir
         self.cats = cats
         self.conts = conts
         self.labels = labels
@@ -505,7 +506,7 @@ class ThreadedWriter(Writer):
         data['num_rows'] = self.num_rows
         data['cats'] = self.cats
         data['conts'] = self.conts
-        with open(os.path.join(out_dir, "metadata.json"), "w") as outfile:
+        with open(os.path.join(self.out_dir, "metadata.json"), "w") as outfile:
             json.dump(data, outfile)
 >>>>>>> Writing metada in json
 
@@ -666,6 +667,7 @@ class HugeCTRWriter(ThreadedWriter):
             finally:
                 self.queue.task_done()
 
+<<<<<<< HEAD
     def _write_metadata(self):
         for i in range(len(self.data_writers)):
             self.data_writers[i].seek(0)
@@ -690,6 +692,38 @@ class HugeCTRWriter(ThreadedWriter):
             )
 
             self.data_writers[i].write(header.tobytes())
+=======
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf):
+        arr = cp.arange(len(gdf))
+        Writer.add_data(self, gdf, arr)
+
+    def _write_header(self):
+        if self.output_format == "binary":
+            for i in range(len(self.writers)):
+                self.writers[i].seek(0)
+                # error_check (0: no error check; 1: check_num)
+                # num of samples in this file
+                # Dimension of the labels
+                # Dimension of the features
+                # slot_num for each embedding
+                # reserved for future use
+                header = np.array(
+                    [
+                        0,
+                        self.num_samples[i],
+                        len(self.labels),
+                        len(self.conts),
+                        len(self.cats),
+                        0,
+                        0,
+                        0,
+                    ],
+                    dtype=np.longlong,
+                )
+
+                self.writers[i].write(header.tobytes())
+>>>>>>> HugeCTR parquet format and metadata file working
 
 
 def device_mem_size(kind="total"):
