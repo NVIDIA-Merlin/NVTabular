@@ -97,9 +97,7 @@ def test_dask_workflow_api_dlrm(
         dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
     processor.apply(dataset, output_path=str(tmpdir))
     result = processor.get_ddf().compute()
-    import pdb
 
-    pdb.set_trace()
     assert len(df0) == len(result)
     assert result["x"].min() == 0.0
     assert result["x"].isna().sum() == 0
