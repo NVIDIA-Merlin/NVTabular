@@ -9,8 +9,8 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from .io import GPUDatasetIterator
-from .workflow import BaseWorkflow, _shuffle_part
+from .io import GPUDatasetIterator, _shuffle_gdf
+from .workflow import BaseWorkflow
 
 free_gpu_mem_mb = rmm.get_info().free / (1024 ** 2)
 tf_mem_size = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
@@ -273,7 +273,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
             x = workflow.apply_ops(x)
 
         if self.shuffle:
-            x = _shuffle_part(x)
+            x = _shuffle_gdf(x)
         return x
 
     def _process_next_chunk(self):

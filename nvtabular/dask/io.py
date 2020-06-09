@@ -36,6 +36,8 @@ from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
 
+from nvtabular.io import _shuffle_gdf
+
 
 class WriterCache:
     def __init__(self):
@@ -82,13 +84,6 @@ def clean_pw_cache():
 def _write_metadata(meta_list):
     # TODO: Write _metadata file here (need to collect metadata)
     return meta_list
-
-
-def _shuffle_gdf(gdf, gdf_size=None):
-    gdf_size = gdf_size or len(gdf)
-    arr = cupy.arange(gdf_size)
-    cupy.random.shuffle(arr)
-    return gdf.iloc[arr]
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")

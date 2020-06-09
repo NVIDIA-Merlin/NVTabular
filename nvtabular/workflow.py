@@ -32,12 +32,6 @@ from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTR, Shuffler
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 
-try:
-    import cupy as cp
-except ImportError:
-    import numpy as cp
-
-
 LOG = logging.getLogger("nvtabular")
 
 
@@ -960,14 +954,6 @@ def get_new_list_config():
     config["PP"]["continuous"] = []
     config["PP"]["categorical"] = []
     return config
-
-
-def _shuffle_part(gdf):
-    sort_key = "__sort_index__"
-    arr = cp.arange(len(gdf))
-    cp.random.shuffle(arr)
-    gdf[sort_key] = cudf.Series(arr)
-    return gdf.sort_values(sort_key).drop(columns=[sort_key])
 
 
 class DaskWorkflow(BaseWorkflow):
