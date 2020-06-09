@@ -20,6 +20,7 @@ from io import BytesIO
 
 import cudf
 import cupy
+import dask_cudf
 import numba.cuda as cuda
 import numpy as np
 import pyarrow.parquet as pq
@@ -163,13 +164,14 @@ class DaskDataset:
         Other arguments to be passed to DatasetEngine.
     """
 
-    def __init__(self, path, engine, part_size=None, part_mem_fraction=0.125, **kwargs):
+    def __init__(self, path, engine, part_size=None, part_mem_fraction=None, **kwargs):
 
         if part_size:
             # If a specific partition size is given, use it directly
             part_size = parse_bytes(part_size)
         else:
             # If a fractional partition size is given, calculate part_size
+            part_mem_fraction = part_mem_fraction or 0.125
             assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
             if part_mem_fraction > 0.25:
                 warnings.warn(
@@ -181,6 +183,8 @@ class DaskDataset:
         if isinstance(engine, str):
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(path, part_size, **kwargs)
+            elif engine == "csv":
+                self.engine = CSVDatasetEngine(path, part_size, **kwargs)
             else:
                 raise ValueError("Only parquet supported for now")
         else:
@@ -211,6 +215,30 @@ class DatasetEngine:
 
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
+
+
+class CSVDatasetEngine(DatasetEngine):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+        self._ddf = None
+        self._columns = None
+        self.kwargs = kwargs
+
+    def _get_ddf(self, columns=None):
+        if self._ddf is not None and self._columns == columns:
+            return self._ddf
+        else:
+            self._ddf = dask_cudf.read_csv(
+                self.paths, columns=columns, chunksize=self.part_size, **self.kwargs
+            )
+            self._columns = columns
+            return self._ddf
+
+    def meta_empty(self, columns=None):
+        return self._get_ddf(columns=columns)._meta
+
+    def to_ddf(self, columns=None):
+        return self._get_ddf(columns=columns)
 
 
 class ParquetDatasetEngine(DatasetEngine):
