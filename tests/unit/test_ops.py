@@ -19,11 +19,12 @@ import math
 
 import cudf
 import numpy as np
+import pytest
+from cudf.tests.utils import assert_eq
+
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-import pytest
-from cudf.tests.utils import assert_eq
 from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
 
 
@@ -392,10 +393,7 @@ def test_dropna(tmpdir, datasets, engine="parquet"):
         columns = mycols_csv
 
     data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        names=allcols_csv
+        paths, columns=columns, use_row_groups=True, names=allcols_csv
     )
 
     dropna = ops.Dropna()
@@ -406,6 +404,5 @@ def test_dropna(tmpdir, datasets, engine="parquet"):
 
     for gdf in data_itr:
         new_gdf = dropna.apply_op(gdf, columns_ctx, "all")
-        assert new_gdf.shape[0] >= 1, 'dataframe is empty'
         assert new_gdf.columns.all() == gdf.columns.all()
-        assert new_gdf.isnull().all().sum() < 1, 'null values exist'
+        assert new_gdf.isnull().all().sum() < 1, "null values exist"

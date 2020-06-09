@@ -19,6 +19,7 @@ import os
 import cudf
 import numpy as np
 from cudf._lib.nvtx import annotate
+
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
