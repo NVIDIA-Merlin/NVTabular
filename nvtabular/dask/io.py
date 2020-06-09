@@ -238,11 +238,11 @@ class ParquetDatasetEngine(DatasetEngine):
     """ ParquetDatasetEngine
 
         Dask-based version of cudf.read_parquet.
-        TODO: Improve dask_cudf.read_parquet performance so that
-        this class can be slimmed down.
     """
 
     def __init__(self, *args, row_groups_per_part=None):
+        # TODO: Improve dask_cudf.read_parquet performance so that
+        # this class can be slimmed down.
         super().__init__(*args)
         self._metadata, self._base = self.get_metadata()
         self._pieces = None
