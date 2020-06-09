@@ -162,11 +162,15 @@ class DaskDataset:
         to GPU memory capacity). Ignored if part_size is passed
         directly. Note that the underlying engine may allow other
         custom kwargs to override this argument.
+    storage_options: None or dict
+        Further parameters to pass to the bytes backend.
     **kwargs :
         Other arguments to be passed to DatasetEngine.
     """
 
-    def __init__(self, path, engine, part_size=None, part_mem_fraction=None, **kwargs):
+    def __init__(
+        self, path, engine, part_size=None, part_mem_fraction=None, storage_options=None, **kwargs
+    ):
 
         if part_size:
             # If a specific partition size is given, use it directly
@@ -182,15 +186,26 @@ class DaskDataset:
                 )
             part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
 
+        # Engine-agnostic path handling
+        if hasattr(path, "name"):
+            path = stringify_path(path)
+        storage_options = storage_options or {}
+        fs, fs_token, paths = get_fs_token_paths(path, mode="rb", storage_options=storage_options)
+        paths = sorted(paths, key=natural_sort_key)
+
+        # If engine is not provided, try to infer from end of paths[0]
+        if engine is None:
+            engine = paths[0].split(".")[-1]
+
         if isinstance(engine, str):
             if engine == "parquet":
-                self.engine = ParquetDatasetEngine(path, part_size, **kwargs)
+                self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
-                self.engine = CSVDatasetEngine(path, part_size, **kwargs)
+                self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             else:
-                raise ValueError("Only parquet supported for now")
+                raise ValueError("Only parquet and csv supported (for now).")
         else:
-            self.engine = engine(path, part_size, **kwargs)
+            self.engine = engine(paths, part_size, fs, fs_token, **kwargs)
 
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
@@ -203,19 +218,11 @@ class DatasetEngine:
         a ``to_ddf`` method.
     """
 
-    def __init__(self, path, part_size, storage_options=None):
-        if hasattr(path, "name"):
-            path = stringify_path(path)
-
-        # ``storage_options``: None or dict
-        # (Further parameters to pass to the bytes backend)
-        storage_options = storage_options or {}
-        fs, fs_token, paths = get_fs_token_paths(path, mode="rb", storage_options=storage_options)
-
+    def __init__(self, paths, part_size, fs, fs_token):
+        self.paths = paths
+        self.part_size = part_size
         self.fs = fs
         self.fs_token = fs_token
-        self.paths = sorted(paths, key=natural_sort_key)
-        self.part_size = part_size
 
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
@@ -229,8 +236,8 @@ class ParquetDatasetEngine(DatasetEngine):
         this class can be slimmed down.
     """
 
-    def __init__(self, *args, storage_options=None, row_groups_per_part=None):
-        super().__init__(*args, storage_options=storage_options)
+    def __init__(self, *args, row_groups_per_part=None):
+        super().__init__(*args)
         self._metadata, self._base = self.get_metadata()
         self._pieces = None
         if row_groups_per_part is None:
@@ -339,8 +346,8 @@ class CSVDatasetEngine(DatasetEngine):
         Thin wrapper around dask_cudf.read_csv.
     """
 
-    def __init__(self, *args, storage_options=None, **kwargs):
-        super().__init__(*args, storage_options=storage_options)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
         self._meta = {}
         self.csv_kwargs = kwargs
         # CSV reader needs a list of files
