@@ -58,7 +58,7 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01, None])
-@pytest.mark.parametrize("engine", ["parquet", "csv"])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("freq_threshold", [0, 5])
 def test_dask_workflow_api_dlrm(
     dask_cluster, tmpdir, datasets, freq_threshold, part_mem_fraction, engine
@@ -68,9 +68,12 @@ def test_dask_workflow_api_dlrm(
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
         df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    elif engine == "csv":
+        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
     else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
+        df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
     df0 = cudf.concat([df1, df2], axis=0)
 
     if engine == "parquet":
@@ -88,10 +91,15 @@ def test_dask_workflow_api_dlrm(
     processor.add_preprocess(ops.Categorify(freq_threshold=freq_threshold, out_path=str(tmpdir)))
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine, part_mem_fraction=part_mem_fraction)
+    if engine in ("parquet", "csv"):
+        dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
+    else:
+        dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
     processor.apply(dataset, output_path=str(tmpdir))
     result = processor.get_ddf().compute()
+    import pdb
 
+    pdb.set_trace()
     assert len(df0) == len(result)
     assert result["x"].min() == 0.0
     assert result["x"].isna().sum() == 0

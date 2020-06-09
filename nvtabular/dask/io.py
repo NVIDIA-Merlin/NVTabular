@@ -169,7 +169,13 @@ class DaskDataset:
     """
 
     def __init__(
-        self, path, engine, part_size=None, part_mem_fraction=None, storage_options=None, **kwargs
+        self,
+        path,
+        engine=None,
+        part_size=None,
+        part_mem_fraction=None,
+        storage_options=None,
+        **kwargs,
     ):
 
         if part_size:
@@ -349,6 +355,7 @@ class CSVDatasetEngine(DatasetEngine):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
         self._meta = {}
+        self.names = kwargs.pop("names", None)
         self.csv_kwargs = kwargs
         # CSV reader needs a list of files
         # (Assume flat directory structure if this is a dir)
@@ -357,5 +364,5 @@ class CSVDatasetEngine(DatasetEngine):
 
     def to_ddf(self, columns=None):
         return dask_cudf.read_csv(
-            self.paths, columns=columns, chunksize=self.part_size, **self.csv_kwargs
-        )
+            self.paths, names=self.names, chunksize=self.part_size, **self.csv_kwargs
+        )[columns]
