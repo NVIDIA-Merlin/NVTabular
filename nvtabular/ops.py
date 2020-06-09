@@ -671,7 +671,7 @@ class Dropna(TransformOperator):
     a cudf DataFrame with Null entries dropped from it.
 
     Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
+    transform your categorical and/or continuous features, it's typically used within a
     Workflow class.
     """
 
