@@ -26,7 +26,7 @@ from dask.distributed import Client, LocalCluster
 
 import nvtabular.ops as ops
 from nvtabular import DaskDataset, Workflow
-from tests.conftest import mycols_pq
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 # LocalCluster Client Fixture
 client = None
@@ -57,16 +57,29 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
     return new_gdf
 
 
-@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("part_mem_fraction", [0.01, None])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("freq_threshold", [0, 5])
-def test_dask_workflow_api_dlrm(dask_cluster, tmpdir, datasets, freq_threshold, engine):
+def test_dask_workflow_api_dlrm(
+    dask_cluster, tmpdir, datasets, freq_threshold, part_mem_fraction, engine
+):
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    df1 = cudf.read_parquet(paths[0])[mycols_pq]
-    df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    if engine == "parquet":
+        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    elif engine == "csv":
+        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+    else:
+        df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
     df0 = cudf.concat([df1, df2], axis=0)
 
-    cat_names = ["name-cat", "name-string"]
+    if engine == "parquet":
+        cat_names = ["name-cat", "name-string"]
+    else:
+        cat_names = ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
@@ -78,7 +91,10 @@ def test_dask_workflow_api_dlrm(dask_cluster, tmpdir, datasets, freq_threshold, 
     processor.add_preprocess(ops.Categorify(freq_threshold=freq_threshold, out_path=str(tmpdir)))
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    if engine in ("parquet", "csv"):
+        dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
+    else:
+        dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
     processor.apply(dataset, output_path=str(tmpdir))
     result = processor.get_ddf().compute()
 
@@ -90,12 +106,16 @@ def test_dask_workflow_api_dlrm(dask_cluster, tmpdir, datasets, freq_threshold, 
 
     # Check category counts
     if freq_threshold == 0:
-        assert len(df0["name-cat"].unique()) == len(result["name-cat"].unique())
+        if engine == "parquet":
+            assert len(df0["name-cat"].unique()) == len(result["name-cat"].unique())
         assert len(df0["name-string"].unique()) == len(result["name-string"].unique())
 
         df0["_count"] = cupy.ones(len(df0))
         result["_count"] = cupy.ones(len(result))
-        for col in ["name-cat", "name-string"]:
+        cat_list = ["name-string"]
+        if engine == "parquet":
+            cat_list = ["name-cat", "name-string"]
+        for col in cat_list:
             expect = df0.groupby(col, dropna=False).count()["_count"].sort_values("_count")
             got = result.groupby(col, dropna=False).count()["_count"].sort_values("_count")
             assert_eq(expect, got, check_index=False)
