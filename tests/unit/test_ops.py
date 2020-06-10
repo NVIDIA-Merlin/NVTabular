@@ -50,7 +50,7 @@ def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     else:
         cat_names = ["name-string"]
         columns = mycols_csv
-    cont_names = ["x", "y", "id"]
+    cont_names = ["x", "y"]
     label_name = ["label"]
 
     data_itr = nvtabular.io.GPUDatasetIterator(
@@ -360,7 +360,6 @@ def test_fill_missing(tmpdir, datasets, engine="parquet"):
     columns = mycols_pq if engine == "parquet" else mycols_csv
 
     df = cudf.concat([cudf.read_parquet(path) for path in paths])
-
     data_itr = nvtabular.io.GPUDatasetIterator(
         paths, columns=columns, use_row_groups=True, names=allcols_csv
     )
@@ -374,3 +373,36 @@ def test_fill_missing(tmpdir, datasets, engine="parquet"):
 
     transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous") for df in data_itr])
     assert_eq(transformed[cont_names], df[cont_names].dropna(42))
+
+
+def test_dropna(tmpdir, datasets, engine="parquet"):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
+    if engine == "parquet":
+        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    else:
+        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
+    df = cudf.concat([df1, df2], axis=0)
+    df["id"] = df["id"].astype("int64")
+
+    if engine == "parquet":
+        columns = mycols_pq
+    else:
+        columns = mycols_csv
+
+    data_itr = nvtabular.io.GPUDatasetIterator(
+        paths, columns=columns, use_row_groups=True, names=allcols_csv
+    )
+
+    dropna = ops.Dropna()
+
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    for gdf in data_itr:
+        new_gdf = dropna.apply_op(gdf, columns_ctx, "all")
+        assert new_gdf.columns.all() == gdf.columns.all()
+        assert new_gdf.isnull().all().sum() < 1, "null values exist"
