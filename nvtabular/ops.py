@@ -1230,3 +1230,85 @@ class Categorify(DFOperator):
         sz = sz_dict.get(n, int(self.emb_sz_rule(n_cat)))  # rule of thumb
         self.embed_sz[n] = sz
         return n_cat, sz
+
+
+class SeriesOps(DFOperator):
+    """
+    Enables to call Methods to cudf.Series
+
+    Parameters
+    -----------
+    cat_names : str
+        name of the categorical column
+    cat_names_new : str or None
+        name of the output column, if replace=False
+    op_name : list
+        list operator's names
+    columns :
+    preprocessing : bool, default True
+        Sets if this is a pre-processing operation or not
+    replace : bool, default True
+        Replaces the transformed column with the original input
+        if set Yes
+    **kwards:
+        parameters added to op_name
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    def __init__(
+        self,
+        names=None,
+        names_new=None,
+        op_names=None,
+        columns=None,
+        preprocessing=True,
+        replace=True,
+        **kwards,
+    ):
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        self.names = names
+        self.op_names = op_names
+        self.kwards = kwards
+        self.replace = replace
+        self.preprocessing = preprocessing
+        self.names_new = names_new
+        if getattr(cudf.core.series.Series, op_names[0], None) is None:
+            raise ValueError(op_names[0] + " is not supported by cudf.core.series.Series")
+        if not (replace) and (names_new is None):
+            raise ValueError(
+                "If replace=False then new features will be created - cat_names_new cannot be None"
+            )
+
+    @property
+    def req_stats(self):
+        return []
+
+    @annotate("SeriesOps_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        if self.replace and self.preprocessing:
+            new_gdf = gdf
+            col_out = self.names
+        else:
+            new_gdf = cudf.DataFrame()
+            col_out = self.names_new
+        for col in target_columns:
+            if col == self.names:
+                op = gdf[col]
+                for op_name in self.op_names:
+                    op = getattr(op, op_name, None)
+                if op is None:
+                    raise ValueError(
+                        ", ".join(self.op_names) + " is not supported for column " + str(col)
+                    )
+                if isinstance(op, cudf.core.series.Series):
+                    new_gdf[col_out] = op
+                else:
+                    if "kwards" in self.kwards:
+                        new_gdf[col_out] = op(**self.kwards["kwards"])
+                    else:
+                        new_gdf[col_out] = op(**self.kwards)
+        if self.replace and self.preprocessing:
+            new_gdf = new_gdf[target_columns]
+        return new_gdf
