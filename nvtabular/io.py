@@ -433,20 +433,18 @@ class ThreadedWriter(Writer):
             self.column_names = labels + conts
 
         # File names and writers depend on the output format
+        self.metadata_writer = open(os.path.join(out_dir, "metadata.json"), "w")
         self.data_files = None
-        self.metadata_files = None
         if output_format == "binary":
             self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         elif output_format == "parquet":
             self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-            self.metadata_files = [os.path.join(out_dir, f"{i}.json") for i in range(num_out_files)]
         self.data_writers = None
-        self.metadata_writers = None
         if output_format == "binary":
             self.data_writers = [open(f, "ab") for f in self.data_files]
         elif output_format == "parquet":
             self.data_writers = [ParquetWriter(f, compression=None) for f in self.data_files]
-            self.metadata_writers = [open(f, "w") for f in self.metadata_files]
+            
         
 >>>>>>> Writing metada in json
         self.num_threads = num_threads
@@ -553,8 +551,7 @@ class ThreadedWriter(Writer):
         
         # Write metadata
         self._write_metadata()
-        for writer in self.metadata_writers:
-            writer.close()
+        self.metadata_writer.close()
 
     def set_col_names(self, labels, cats, conts):
         self.cats = cats
@@ -1208,6 +1205,7 @@ class CSVDatasetEngine(DatasetEngine):
     def _write_metadata(self):
         if self.output_format == "parquet":
             data = {}
+<<<<<<< HEAD
             for i in range(len(self.metadata_writers)):
                 data['num_rows'] = self.num_samples[i]
                 data['cats_name'] = self.cats
@@ -1215,4 +1213,16 @@ class CSVDatasetEngine(DatasetEngine):
                 data['conts_labels'] = self.labels
                 json.dump(data, self.metadata_writers[i])
 >>>>>>> Improves metadata
+<<<<<<< HEAD
 >>>>>>> Improves metadata
+=======
+=======
+            data['file_stats'] = []
+            for i in range(len(self.data_files)):
+                data['file_stats'].append({'file_name': f"{i}.data", 'num_rows': self.num_samples[i]})
+            data['cats_name'] = self.cats
+            data['conts_name'] = self.conts
+            data['conts_labels'] = self.labels
+            json.dump(data, self.metadata_writer)
+>>>>>>> Creates only 1 metadata file
+>>>>>>> Creates only 1 metadata file
