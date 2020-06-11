@@ -197,7 +197,6 @@ class StatOperator(Operator):
 class MinMax(StatOperator):
     """
     MinMax operation calculates min and max statistics of features.
-
     Parameters
     -----------
     columns :
@@ -286,7 +285,6 @@ class Moments(StatOperator):
     """
     Moments operation calculates some of the statistics of features including
     mean, variance, standarded deviation, and count.
-
     Parameters
     -----------
     columns :
@@ -388,7 +386,6 @@ class Moments(StatOperator):
 class Median(StatOperator):
     """
     This operation calculates median of features.
-
     Parameters
     -----------
     columns :
@@ -458,7 +455,6 @@ class Encoder(StatOperator):
     This is an internal operation. Encoder operation is used by
     the Categorify operation to calculate the unique numerical
     values to transform the categorical features.
-
     Parameters
     -----------
     use_frequency : bool
@@ -583,7 +579,6 @@ class Encoder(StatOperator):
 class ZeroFill(TransformOperator):
     """
     This operation sets negative values to zero.
-
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -607,7 +602,6 @@ class Dropna(TransformOperator):
     """
     This operation detects missing values, and returns
     a cudf DataFrame with Null entries dropped from it.
-
     Although you can directly call methods of this class to
     transform your categorical and/or continuous features, it's typically used within a
     Workflow class.
@@ -639,7 +633,6 @@ class LogOp(TransformOperator):
     of 1 is a common technique to compare measurements that have
     different units. This operation can be added to the workflow
     to standardize the features.
-
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -702,9 +695,7 @@ class Normalize(DFOperator):
     of 1 is a common technique to compare measurements that have
     different units. This operation can be added to the workflow
     to standardize the features.
-
     It performs Normalization using the mean std method.
-
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -743,9 +734,7 @@ class NormalizeMinMax(DFOperator):
     of 1 is a common technique to compare measurements that have
     different units. This operation can be added to the workflow
     to standardize the features.
-
     It performs Normalization using the min max method.
-
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -783,11 +772,9 @@ class FillMissing(DFOperator):
 
     """
     This operation replaces missing values with a constant pre-defined value
-
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
-
     Parameters
     -----------
     fill_val : float, default 0
@@ -821,11 +808,9 @@ class FillMissing(DFOperator):
 class FillMedian(DFOperator):
     """
     This operation replaces missing values with the median value for the column.
-
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
-
     Parameters
     -----------
     columns :
@@ -860,11 +845,9 @@ class GroupByMoments(StatOperator):
     feature(s) and calculates the std, variance, and sum of requested continuous
     features along with count of every group. Then, merges these new statistics
     with the data using the unique ids of categorical data.
-
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
-
     Parameters
     -----------
     cat_names : list of str
@@ -991,11 +974,9 @@ class GroupBy(DFOperator):
     feature(s) and calculates the std, variance, and sum of requested continuous
     features along with count of every group. Then, merges these new statistics
     with the data using the unique ids of categorical data.
-
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
-
     Parameters
     -----------
     cat_names : list of str
@@ -1086,11 +1067,9 @@ class Categorify(DFOperator):
     Machine Learning algorithms don't support these text values.
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
-
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
-
     Parameters
     -----------
     use_frequency : bool
@@ -1202,7 +1181,6 @@ class Categorify(DFOperator):
 
 def get_embedding_order(cat_names):
     """ Returns a consistent sorder order for categorical variables
-
     Parameters
     -----------
     cat_names : list of str
@@ -1225,6 +1203,86 @@ def get_embedding_size(encoders, cat_names):
     ret_list = [(n, _emb_sz_rule(encoders[n])) for n in get_embedding_order(cat_names)]
     return ret_list
 
-
 def _emb_sz_rule(n_cat: int) -> int:
     return n_cat, int(min(16, round(1.6 * n_cat ** 0.56)))
+
+class SeriesOps(DFOperator):
+    """
+    Enables to call Methods to cudf.Series
+
+    Parameters
+    -----------
+    cat_names : str
+        name of the categorical column
+    cat_names_new : str or None
+        name of the output column, if replace=False
+    op_name : list
+        list operator's names
+    columns :
+    preprocessing : bool, default True
+        Sets if this is a pre-processing operation or not
+    replace : bool, default True
+        Replaces the transformed column with the original input
+        if set Yes
+    **kwards:
+        parameters added to op_name
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    def __init__(
+        self,
+        names=None,
+        names_new=None,
+        op_names=None,
+        columns=None,
+        preprocessing=True,
+        replace=True,
+        **kwards,
+    ):
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        self.names = names
+        self.op_names = op_names
+        self.kwards = kwards
+        self.replace = replace
+        self.preprocessing = preprocessing
+        self.names_new = names_new
+        if getattr(cudf.core.series.Series, op_names[0], None) is None:
+            raise ValueError(op_names[0] + " is not supported by cudf.core.series.Series")
+        if not (replace) and (names_new is None):
+            raise ValueError(
+                "If replace=False then new features will be created - cat_names_new cannot be None"
+            )
+
+    @property
+    def req_stats(self):
+        return []
+
+    @annotate("SeriesOps_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        if self.replace and self.preprocessing:
+            new_gdf = gdf
+            col_out = self.names
+        else:
+            new_gdf = cudf.DataFrame()
+            col_out = self.names_new
+        for col in target_columns:
+            if col == self.names:
+                op = gdf[col]
+                for op_name in self.op_names:
+                    op = getattr(op, op_name, None)
+                if op is None:
+                    raise ValueError(
+                        ", ".join(self.op_names) + " is not supported for column " + str(col)
+                    )
+                if isinstance(op, cudf.core.series.Series):
+                    new_gdf[col_out] = op
+                else:
+                    if "kwards" in self.kwards:
+                        new_gdf[col_out] = op(**self.kwards["kwards"])
+                    else:
+                        new_gdf[col_out] = op(**self.kwards)
+        if self.replace and self.preprocessing:
+            new_gdf = new_gdf[target_columns]
+        return new_gdf

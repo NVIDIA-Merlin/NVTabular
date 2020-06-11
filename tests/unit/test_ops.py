@@ -301,3 +301,127 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
         processor.stats["maxs"]["x"] - processor.stats["mins"]["x"]
     )
     assert new_gdf["x"].equals(df["x"])
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
+    if engine == "parquet":
+        df1 = cudf.read_parquet(paths[0])[allcols_csv]
+        df2 = cudf.read_parquet(paths[1])[allcols_csv]
+    else:
+        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[allcols_csv]
+        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[allcols_csv]
+    df = cudf.concat([df1, df2], axis=0)
+    df["id"] = df["id"].astype("int64")
+
+    if engine == "parquet":
+        columns = allcols_csv
+    else:
+        columns = allcols_csv
+
+    data_itr = nvtabular.io.GPUDatasetIterator(
+        paths,
+        columns=columns,
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+        names=allcols_csv,
+    )
+
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    # Substring
+    # Replacement
+    op_seriesOp = ops.SeriesOps(
+        names="name-string",
+        names_new=None,
+        op_names=["str", "slice"],
+        start=1,
+        stop=3,
+        preprocessing=True,
+        replace=True,
+    )
+
+    for gdf in data_itr:
+        str_slice = gdf["name-string"].str.slice(1, 3)
+        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
+        assert np.sum(new_gdf["name-string"] != str_slice) == 0
+
+    # No Replacement
+    op_seriesOp = ops.SeriesOps(
+        names="name-string",
+        names_new="name-string-new",
+        op_names=["str", "slice"],
+        start=1,
+        stop=3,
+        replace=False,
+    )
+
+    for gdf in data_itr:
+        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
+        assert np.sum(new_gdf["name-string-new"] != gdf["name-string"].str.slice(1, 3)) == 0
+        assert np.sum(new_gdf["name-string"] != gdf["name-string"]) == 0
+
+    # Replace
+    # Replacement
+    op_seriesOp = ops.SeriesOps(
+        names="name-string",
+        names_new=None,
+        op_names=["str", "replace"],
+        pat="e",
+        repl="XX",
+        preprocessing=True,
+        replace=True,
+    )
+
+    for gdf in data_itr:
+        str_replace = gdf["name-string"].str.replace("e", "XX")
+        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
+        assert np.sum(new_gdf["name-string"] != str_replace) == 0
+
+    # No Replacement
+    op_seriesOp = ops.SeriesOps(
+        names="name-string",
+        names_new="name-string-new",
+        op_names=["str", "replace"],
+        pat="e",
+        repl="XX",
+        replace=False,
+    )
+
+    for gdf in data_itr:
+        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
+        assert np.sum(new_gdf["name-string-new"] != gdf["name-string"].str.replace("e", "XX")) == 0
+        assert np.sum(new_gdf["name-string"] != gdf["name-string"]) == 0
+
+    # astype
+    # Replacement
+    op_seriesOp = ops.SeriesOps(
+        names="id",
+        names_new=None,
+        op_names=["astype"],
+        dtype="float",
+        preprocessing=True,
+        replace=True,
+    )
+
+    for gdf in data_itr:
+        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
+        assert new_gdf["id"].dtype == "float64"
+
+    # weekday
+    # No Replacement
+    op_seriesOp = ops.SeriesOps(
+        names="timestamp",
+        names_new="weekday",
+        op_names=["dt", "weekday"],
+        preprocessing=True,
+        replace=False,
+    )
+
+    for gdf in data_itr:
+        gdf = gdf[~(gdf["timestamp"].isnull())]
+        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
+        assert np.sum(new_gdf["weekday"] != gdf["timestamp"].dt.weekday) == 0
