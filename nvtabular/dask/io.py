@@ -35,6 +35,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
+from nvtabular.io import GPUDatasetIterator
 
 
 class WriterCache:
@@ -177,6 +178,7 @@ class DaskDataset:
         storage_options=None,
         **kwargs,
     ):
+        self.kwargs = kwargs
 
         if part_size:
             # If a specific partition size is given, use it directly
@@ -203,6 +205,7 @@ class DaskDataset:
         if engine is None:
             engine = paths[0].split(".")[-1]
 
+        self.itr = GPUDatasetIterator(paths, engine=engine)
         if isinstance(engine, str):
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
@@ -215,6 +218,10 @@ class DaskDataset:
 
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
+    
+    def __iter__(self):
+        for chunk in self.itr:
+            yield chunk
 
 
 class DatasetEngine:
