@@ -23,7 +23,7 @@ from itertools import islice
 
 import cudf
 import cupy as cp
-import numpy as npwaww
+import numpy as np
 import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter

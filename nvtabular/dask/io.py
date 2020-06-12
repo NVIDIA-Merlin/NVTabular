@@ -18,6 +18,7 @@ import warnings
 from collections import defaultdict
 from io import BytesIO
 
+import os
 import cudf
 import cupy
 import dask_cudf
@@ -176,13 +177,14 @@ class DaskDataset:
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
+        names=None,
         **kwargs,
     ):
         self.kwargs = kwargs
-
         if part_size:
             # If a specific partition size is given, use it directly
-            part_size = parse_bytes(part_size)
+            #part_size = parse_bytes(part_size)
+            part_mem_fraction = part_size
         else:
             # If a fractional partition size is given, calculate part_size
             part_mem_fraction = part_mem_fraction or 0.125
@@ -192,7 +194,7 @@ class DaskDataset:
                     "Using very large partitions sizes for Dask. "
                     "Memory-related errors are likely."
                 )
-            part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
+        part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
 
         # Engine-agnostic path handling
         if hasattr(path, "name"):
@@ -204,8 +206,7 @@ class DaskDataset:
         # If engine is not provided, try to infer from end of paths[0]
         if engine is None:
             engine = paths[0].split(".")[-1]
-
-        self.itr = GPUDatasetIterator(paths, engine=engine)
+        self.itr = GPUDatasetIterator(paths, engine=engine, gpu_memory_frac=part_mem_fraction, names=names)
         if isinstance(engine, str):
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
@@ -256,7 +257,10 @@ class ParquetDatasetEngine(DatasetEngine):
         if row_groups_per_part is None:
             # TODO: Use `total_byte_size` metadata if/when we figure out how to
             #       correct for apparent dict encoding of cat/string columns.
-            path0 = self.fs.sep.join([self._base, self._metadata.row_group(0).column(0).file_path])
+            if os.path.isdir(self._base):
+                path0 = self.fs.sep.join([self._base, self._metadata.row_group(0).column(0).file_path])
+            else:
+                path0 = self._base
             rg_byte_size_0 = (
                 cudf.io.read_parquet(path0, row_group=0).memory_usage(deep=True, index=True).sum()
             )
