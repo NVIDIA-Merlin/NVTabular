@@ -332,25 +332,42 @@ class GPUDatasetIterator:
             yield from GPUFileIterator(path, **self.kwargs)
 
 class Writer():
-    """
-    Base Writer Class for Shuffler and HugeCTR
+    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="parquet", cats=None, conts=None, labels=None):
+        # set variables
+        self.num_out_files = num_out_files
+        self.writer = None
+        if output_format == "binary":
+            self.writer = HugeCTRWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
+        elif output_format == "parquet":
+            self.writer = ParquetFWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
 
-    Parameters
-    -----------
-    out_dir : str
-        path for the shuffled files
-    num_out_files : int, default 30
-    num_threads : int, default 4
-    output_format: str, default binary
-    cats: list, default None
-    conts: list, default None
-    labels: list, default None
-    """
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf):
+        arr = cp.arange(len(gdf))
+        b_idxs = np.arange(self.num_out_files)
+        self.writer.write_data(gdf, arr, b_idxs)
 
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None):
-        self.queue = queue.Queue(num_threads)
-        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
-        
+    def close(self):
+        self.writer.close()
+
+    def set_col_names(self, labels, cats, conts):
+        self.writer.set_col_names(labels, cats, conts)
+
+class Shuffler(Writer):
+    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="parquet", cats=None, conts=None, labels=None):
+        super().__init__(out_dir, num_out_files, num_threads, output_format, cats, conts, labels)
+
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf):
+        arr = cp.arange(len(gdf))
+        cp.random.shuffle(arr)
+        b_idxs = np.arange(self.num_out_files)
+        np.random.shuffle(b_idxs)
+        self.writer.write_data(gdf, arr, b_idxs)
+
+class ThreadedWriter():
+    def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
+        # set variables 
         self.out_dir = out_dir
         self.cats = cats
         self.conts = conts
@@ -359,34 +376,34 @@ class Writer():
         if labels and conts:
             self.column_names = labels + conts
 
-        # File names and writers depend on the output format
-        self.metadata_writer = open(os.path.join(out_dir, "metadata.json"), "w")
-        self.data_files = None
-        if output_format == "binary":
-            self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
-        elif output_format == "parquet":
-            self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.data_writers = None
-        if output_format == "binary":
-            self.data_writers = [open(f, "ab") for f in self.data_files]
-        elif output_format == "parquet":
-            self.data_writers = [ParquetWriter(f, compression=None) for f in self.data_files]
-            
-        
         self.num_threads = num_threads
         self.num_out_files = num_out_files
-        self.b_idxs = np.arange(num_out_files)
         self.num_samples = [0] * num_out_files
 
-        self.num_rows = 0
-        
+        self.data_files = None
+
+        # create thread queue and locks
+        self.queue = queue.Queue(num_threads)
+        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
+
+        # signifies that end-of-data and that the thread should shut down
+        self._eod = object()
+
+        # create and start threads
+        for _ in range(num_threads):
+            write_thread = threading.Thread(target=self._write_thread, daemon=True)
+            write_thread.start()
+
+    def set_col_names(self, labels, cats, conts):
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.column_names = labels + conts
+
     def _write_thread(self):
         return
-    
-    @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf, arr):
-        self.num_rows = gdf.shape[0]
 
+    def write_data(self, gdf, arr, b_idxs):
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -398,17 +415,21 @@ class Writer():
             end = end if end <= gdf.shape[0] else gdf.shape[0]
             to_write = gdf.iloc[arr[start:end]]
             self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            b_idx = self.b_idxs[x]
+            b_idx = b_idxs[x]
             self.queue.put((b_idx, to_write))
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
 
-    def _write_header(self):
-        return
-
     def _write_metadata(self):
         return
+
+    def _write_filelist(self):
+        file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
+        file_list_writer.write(str(self.num_out_files) + "\n")
+        for f in self.data_files:
+            file_list_writer.write(f + "\n")
+        file_list_writer.close()
 
     def close(self):
         # wake up all the worker threads and signal for them to exit
@@ -418,49 +439,18 @@ class Writer():
         # wait for pending writes to finish
         self.queue.join()
 
-        # Write headers
-        self._write_header()
+        self._write_filelist()
+        self._write_metadata()
+        
+        # Close writers
         for writer in self.data_writers:
             writer.close()
-        
-        # Write metadata
-        self._write_metadata()
-        self.metadata_writer.close()
 
-    def set_col_names(self, labels, cats, conts):
-        self.cats = cats
-        self.conts = conts
-        self.labels = labels
-        self.column_names = labels + conts
-
-class Shuffler(Writer):
-    """
-    Shuffling the data is an important part of machine learning
-    training. This class is used by Workflow class and shuffles
-    the data after all the pre-processing and feature engineering
-    operators are finished their processing.
-
-    Parameters
-    -----------
-    out_dir : str
-        path for the shuffled files
-    num_out_files : int, default 30
-    num_threads : int, default 4
-    output_format: str, default binary
-    cats: list, default None
-    conts: list, default None
-    labels: list, default None
-    """
-
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None):
-        Writer.__init__(self, out_dir, num_out_files, num_threads, "binary", cats, conts, labels)
-
-        # signifies that end-of-data and that the thread should shut down
-        self._eod = object()
-
-        for _ in range(num_threads):
-            write_thread = threading.Thread(target=self._write_thread, daemon=True)
-            write_thread.start()
+class ParquetFWriter(ThreadedWriter):
+    def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
+        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
+        self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
+        self.data_writers = [ParquetWriter(f, compression=None) for f in self.data_files]
 
     def _write_thread(self):
         while True:
@@ -474,48 +464,23 @@ class Shuffler(Writer):
             finally:
                 self.queue.task_done()
 
-    @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
-        arr = cp.arange(len(gdf))
-        cp.random.shuffle(arr)
-        np.random.shuffle(self.b_idxs)
+    def _write_metadata(self):
+        metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
+        data = {}
+        data['file_stats'] = []
+        for i in range(len(self.data_files)):
+            data['file_stats'].append({'file_name': f"{i}.data", 'num_rows': self.num_samples[i]})
+        data['cats_name'] = self.cats
+        data['conts_name'] = self.conts
+        data['conts_labels'] = self.labels
+        json.dump(data, metadata_writer)
+        metadata_writer.close()
 
-        Writer.add_data(self, gdf, arr)
-
-
-class HugeCTR(Writer):
-    """
-    Generates outputs for HugeCTR
-
-    Parameters
-    -----------
-    out_dir : str
-        path for the shuffled files
-    num_out_files : int, default 30
-    num_threads : int, default 4
-    output_format: str, default binary
-    cats: list, default None
-    conts: list, default None
-    labels: list, default None
-    """
-
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None):
-        Writer.__init__(self, out_dir, num_out_files, num_threads, output_format, cats, conts, labels)
-       
-        file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
-        file_list_writer.write(str(num_out_files) + "\n")
-        for f in self.data_files:
-            file_list_writer.write(f + "\n")
-        file_list_writer.close()
-        
-        self.output_format = output_format
-
-        # signifies that end-of-data and that the thread should shut down
-        self._eod = object()
-
-        for _ in range(num_threads):
-            write_thread = threading.Thread(target=self._write_thread, daemon=True)
-            write_thread.start()
+class HugeCTRWriter(ThreadedWriter):
+    def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
+        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
+        self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+        self.data_writers = [open(f, "ab") for f in self.data_files]
 
     def _write_thread(self):
         while True:
@@ -525,56 +490,36 @@ class HugeCTR(Writer):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-                    if self.output_format == "binary":
-                        ones = np.array(([1] * data.shape[0]), dtype=np.intc)
-                        df = data[self.column_names].to_pandas().astype(np.single)
-                        for i in range(len(self.cats)):
-                            df["___" + str(i) + "___" + self.cats[i]] = ones
-                            df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
-                            self.data_writers[idx].write(df.to_numpy().tobytes())
-                    elif self.output_format == "parquet":
-                        self.data_writers[idx].write_table(data)
+                    ones = np.array(([1] * data.shape[0]), dtype=np.intc)
+                    df = data[self.column_names].to_pandas().astype(np.single)
+                    for i in range(len(self.cats)):
+                        df["___" + str(i) + "___" + self.cats[i]] = ones
+                        df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
+                        self.data_writers[idx].write(df.to_numpy().tobytes())
             finally:
                 self.queue.task_done()
 
-    @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
-        arr = cp.arange(len(gdf))
-        Writer.add_data(self, gdf, arr)
-
-    def _write_header(self):
-        if self.output_format == "binary":
-            for i in range(len(self.data_writers)):
-                self.data_writers[i].seek(0)
-                # error_check (0: no error check; 1: check_num)
-                # num of samples in this file
-                # Dimension of the labels
-                # Dimension of the features
-                # slot_num for each embedding
-                # reserved for future use
-                header = np.array(
-                    [
-                        0,
-                        self.num_samples[i],
-                        len(self.labels),
-                        len(self.conts),
-                        len(self.cats),
-                        0,
-                        0,
-                        0,
-                    ],
-                    dtype=np.longlong,
-                )
-
-                self.data_writers[i].write(header.tobytes())
-
     def _write_metadata(self):
-        if self.output_format == "parquet":
-            data = {}
-            data['file_stats'] = []
-            for i in range(len(self.data_files)):
-                data['file_stats'].append({'file_name': f"{i}.data", 'num_rows': self.num_samples[i]})
-            data['cats_name'] = self.cats
-            data['conts_name'] = self.conts
-            data['conts_labels'] = self.labels
-            json.dump(data, self.metadata_writer)
+        for i in range(len(self.data_writers)):
+            self.data_writers[i].seek(0)
+            # error_check (0: no error check; 1: check_num)
+            # num of samples in this file
+            # Dimension of the labels
+            # Dimension of the features
+            # slot_num for each embedding
+            # reserved for future use
+            header = np.array(
+                [
+                    0,
+                    self.num_samples[i],
+                    len(self.labels),
+                    len(self.conts),
+                    len(self.cats),
+                    0,
+                    0,
+                    0,
+                ],
+                dtype=np.longlong,
+            )
+
+            self.data_writers[i].write(header.tobytes())
