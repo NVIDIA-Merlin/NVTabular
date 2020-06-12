@@ -33,6 +33,7 @@ from nvtabular.ds_writer import DatasetWriter
 =======
 from nvtabular.encoder import DLLabelEncoder
 <<<<<<< HEAD
+<<<<<<< HEAD
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 <<<<<<< HEAD
 >>>>>>> HugeCTR parquet format and metadata file working
@@ -41,6 +42,9 @@ from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
 =======
 from nvtabular.io import HugeCTR, Shuffler
+=======
+from nvtabular.io import Writer, Shuffler
+>>>>>>> Adds threaded writer
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 >>>>>>> HugeCTR parquet format and metadata file working
 >>>>>>> HugeCTR parquet format and metadata file working
@@ -528,7 +532,163 @@ class BaseWorkflow:
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols, self.stats)
             elif isinstance(op, TransformOperator):
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
+<<<<<<< HEAD
         return gdf
+=======
+
+        return gdf, run_stat_ops
+
+    # run phase
+    def exec_phase(
+        self,
+        dataset,
+        phase_index,
+        export_path=None,
+        record_stats=True,
+        shuffler=None,
+        num_out_files=None,
+        huge_ctr=None,
+    ):
+        """
+        Gather necessary column statistics in single pass.
+        Execute one phase only, given by phase index
+        """
+        if isinstance(dataset, dask_io.DaskDataset):
+            itr = dataset.to_iter()
+        else:
+            itr = dataset
+        LOG.debug("running phase %s", phase_index)
+        stat_ops_ran = []
+        for gdf in itr:
+            # run all previous phases to get df to correct state
+            start = time.time()
+            for i in range(phase_index):
+                gdf, _ = self.run_ops_for_phase(gdf, self.phases[i], record_stats=False)
+            self.timings["preproc_reapply"] += time.time() - start
+            start = time.time()
+            gdf, stat_ops_ran = self.run_ops_for_phase(
+                gdf, self.phases[phase_index], record_stats=record_stats
+            )
+            self.timings["preproc_apply"] += time.time() - start
+
+            if export_path and phase_index == len(self.phases) - 1:
+                self.write_df(gdf, export_path, shuffler=shuffler, num_out_files=num_out_files)
+
+            if huge_ctr and phase_index == len(self.phases) - 1:
+                if not self.cal_col_names:
+                    cat_names = self.get_final_cols_names("categorical")
+                    cont_names = self.get_final_cols_names("continuous")
+                    label_names = self.get_final_cols_names("label")
+                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    self.cal_col_names = True
+
+                huge_ctr.add_data(gdf)
+
+            gdf = None
+
+        # if export is activated combine as many GDFs as possible and
+        # then write them out cudf.concat([exp_gdf, gdf], axis=0)
+        for stat_op in stat_ops_ran:
+            stat_op.read_fin()
+            self._update_stats(stat_op)
+            stat_op.clear()
+
+    def apply(
+        self,
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        shuffle=False,
+        output_path="./ds_export",
+        num_out_files=None,
+        hugectr_gen_output=False,
+        hugectr_output_path="./hugectr",
+        hugectr_num_out_files=None,
+        hugectr_output_format=None,
+    ):
+
+        """
+        Runs all the preprocessing and feature engineering operators.
+        Also, shuffles the data if shuffle is set to True.
+
+        Parameters
+        -----------
+        dataset : object
+        apply_offline : boolean
+            runs operators in offline mode or not
+        record_stats : boolean
+            record the stats in file or not
+        shuffle : boolean
+            shuffles the data or not
+        output_path : string
+            path to export stats
+        num_out_files : integer
+            number of files to create after shuffling
+            the data
+        """
+
+        # if no tasks have been loaded then we need to load internal config\
+        shuffler = None
+        huge_ctr = None
+        if not self.phases:
+            self.finalize()
+        if shuffle:
+            shuffler = Shuffler(output_path, num_out_files=num_out_files)
+        if hugectr_gen_output:
+            self.cal_col_names = False
+<<<<<<< HEAD
+            if hugectr_output_format == "binary":
+                huge_ctr = HugeCTRWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
+            elif hugectr_output_format == "parquet":
+                huge_ctr = ParquetWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
+=======
+            huge_ctr = Writer(hugectr_output_path, num_out_files=hugectr_num_out_files, output_format=hugectr_output_format)
+>>>>>>> Adds threaded writer
+        if apply_offline:
+            self.update_stats(
+                dataset,
+                output_path=output_path,
+                record_stats=record_stats,
+                shuffler=shuffler,
+                num_out_files=num_out_files,
+                huge_ctr=huge_ctr,
+            )
+        else:
+            self.apply_ops(
+                dataset,
+                output_path=output_path,
+                record_stats=record_stats,
+                shuffler=shuffler,
+                num_out_files=num_out_files,
+                huge_ctr=huge_ctr,
+            )
+        if shuffle:
+            shuffler.close()
+        if huge_ctr:
+            huge_ctr.close()
+
+    def update_stats(
+        self,
+        dataset,
+        end_phase=None,
+        output_path=None,
+        record_stats=True,
+        shuffler=None,
+        num_out_files=None,
+        huge_ctr=None,
+    ):
+        end = end_phase if end_phase else len(self.phases)
+        for idx, _ in enumerate(self.phases[:end]):
+            self.exec_phase(
+                dataset,
+                idx,
+                export_path=output_path,
+                record_stats=record_stats,
+                shuffler=shuffler,
+                num_out_files=num_out_files,
+                huge_ctr=huge_ctr,
+            )
+>>>>>>> Adds threaded writer
 
     def apply_ops(
         self,
