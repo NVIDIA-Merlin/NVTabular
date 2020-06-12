@@ -178,7 +178,6 @@ class DaskDataset:
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
-        names=None,
         **kwargs,
     ):
         self.kwargs = kwargs
@@ -207,11 +206,14 @@ class DaskDataset:
         # If engine is not provided, try to infer from end of paths[0]
         if engine is None:
             engine = paths[0].split(".")[-1]
+        names = kwargs.get("names", None)
         self.itr = GPUDatasetIterator(
             paths, engine=engine, gpu_memory_frac=part_mem_fraction, names=names
         )
         if isinstance(engine, str):
             if engine == "parquet":
+                if "names" in kwargs:
+                    kwargs.pop("names")
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
                 self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
