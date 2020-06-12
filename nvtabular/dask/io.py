@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import os
 import warnings
 from collections import defaultdict
 from io import BytesIO
@@ -183,8 +182,7 @@ class DaskDataset:
         self.kwargs = kwargs
         if part_size:
             # If a specific partition size is given, use it directly
-            # part_size = parse_bytes(part_size)
-            part_mem_fraction = part_size
+            part_size = parse_bytes(part_size)
         else:
             # If a fractional partition size is given, calculate part_size
             part_mem_fraction = part_mem_fraction or 0.125
@@ -194,7 +192,7 @@ class DaskDataset:
                     "Using very large partitions sizes for Dask. "
                     "Memory-related errors are likely."
                 )
-        part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
+            part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
 
         # Engine-agnostic path handling
         if hasattr(path, "name"):
@@ -262,7 +260,7 @@ class ParquetDatasetEngine(DatasetEngine):
         if row_groups_per_part is None:
             # TODO: Use `total_byte_size` metadata if/when we figure out how to
             #       correct for apparent dict encoding of cat/string columns.
-            if os.path.isdir(self._base):
+            if self.fs.isdir(self._base):
                 path0 = self.fs.sep.join(
                     [self._base, self._metadata.row_group(0).column(0).file_path]
                 )

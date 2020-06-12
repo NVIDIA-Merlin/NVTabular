@@ -58,7 +58,7 @@ def test_dask_dataset(tmpdir, datasets, engine, gpu_memory_frac):
     else:
         columns = mycols_csv
 
-    dd = DaskDataset(paths[0], engine=engine, part_size=gpu_memory_frac, names=columns)
+    dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=columns)
     size = 0
     for chunk in dd:
         size += chunk.shape[0]
