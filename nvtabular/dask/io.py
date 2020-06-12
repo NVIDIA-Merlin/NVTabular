@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 
+import os
 import warnings
 from collections import defaultdict
 from io import BytesIO
 
-import os
 import cudf
 import cupy
 import dask_cudf
@@ -32,10 +32,11 @@ from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.dataframe.utils import group_split_dispatch
 from dask.distributed import get_worker
-from dask.utils import natural_sort_key, parse_bytes
+from dask.utils import natural_sort_key  # , parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
+
 from nvtabular.io import GPUDatasetIterator
 
 
@@ -183,7 +184,7 @@ class DaskDataset:
         self.kwargs = kwargs
         if part_size:
             # If a specific partition size is given, use it directly
-            #part_size = parse_bytes(part_size)
+            # part_size = parse_bytes(part_size)
             part_mem_fraction = part_size
         else:
             # If a fractional partition size is given, calculate part_size
@@ -206,7 +207,9 @@ class DaskDataset:
         # If engine is not provided, try to infer from end of paths[0]
         if engine is None:
             engine = paths[0].split(".")[-1]
-        self.itr = GPUDatasetIterator(paths, engine=engine, gpu_memory_frac=part_mem_fraction, names=names)
+        self.itr = GPUDatasetIterator(
+            paths, engine=engine, gpu_memory_frac=part_mem_fraction, names=names
+        )
         if isinstance(engine, str):
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
@@ -219,7 +222,7 @@ class DaskDataset:
 
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
-    
+
     def __iter__(self):
         for chunk in self.itr:
             yield chunk
@@ -258,7 +261,9 @@ class ParquetDatasetEngine(DatasetEngine):
             # TODO: Use `total_byte_size` metadata if/when we figure out how to
             #       correct for apparent dict encoding of cat/string columns.
             if os.path.isdir(self._base):
-                path0 = self.fs.sep.join([self._base, self._metadata.row_group(0).column(0).file_path])
+                path0 = self.fs.sep.join(
+                    [self._base, self._metadata.row_group(0).column(0).file_path]
+                )
             else:
                 path0 = self._base
             rg_byte_size_0 = (
