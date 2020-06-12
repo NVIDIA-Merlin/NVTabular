@@ -410,7 +410,7 @@ def test_dropna(tmpdir, datasets, engine="parquet"):
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
+def test_dflambda(tmpdir, datasets, gpu_memory_frac, engine):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
     if engine == "parquet":
@@ -441,12 +441,9 @@ def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
 
     # Substring
     # Replacement
-    op_seriesOp = ops.SeriesOps(
-        names="name-string",
-        names_new=None,
-        op_names=["str", "slice"],
-        start=1,
-        stop=3,
+    op_seriesOp = ops.DFLambda(
+        f=lambda gdf: gdf["name-string"].str.slice(1, 3),
+        name_new="name-string",
         preprocessing=True,
         replace=True,
     )
@@ -457,12 +454,10 @@ def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
         assert np.sum(new_gdf["name-string"] != str_slice) == 0
 
     # No Replacement
-    op_seriesOp = ops.SeriesOps(
-        names="name-string",
-        names_new="name-string-new",
-        op_names=["str", "slice"],
-        start=1,
-        stop=3,
+    op_seriesOp = ops.DFLambda(
+        f=lambda gdf: gdf["name-string"].str.slice(1, 3),
+        name_new="name-string-new",
+        preprocessing=True,
         replace=False,
     )
 
@@ -473,12 +468,9 @@ def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
 
     # Replace
     # Replacement
-    op_seriesOp = ops.SeriesOps(
-        names="name-string",
-        names_new=None,
-        op_names=["str", "replace"],
-        pat="e",
-        repl="XX",
+    op_seriesOp = ops.DFLambda(
+        f=lambda gdf: gdf["name-string"].str.replace("e", "XX"),
+        name_new="name-string",
         preprocessing=True,
         replace=True,
     )
@@ -489,12 +481,10 @@ def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
         assert np.sum(new_gdf["name-string"] != str_replace) == 0
 
     # No Replacement
-    op_seriesOp = ops.SeriesOps(
-        names="name-string",
-        names_new="name-string-new",
-        op_names=["str", "replace"],
-        pat="e",
-        repl="XX",
+    op_seriesOp = ops.DFLambda(
+        f=lambda gdf: gdf["name-string"].str.replace("e", "XX"),
+        name_new="name-string-new",
+        preprocessing=True,
         replace=False,
     )
 
@@ -505,13 +495,8 @@ def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
 
     # astype
     # Replacement
-    op_seriesOp = ops.SeriesOps(
-        names="id",
-        names_new=None,
-        op_names=["astype"],
-        dtype="float",
-        preprocessing=True,
-        replace=True,
+    op_seriesOp = ops.DFLambda(
+        f=lambda gdf: gdf["id"].astype(float), name_new="id", preprocessing=True, replace=True,
     )
 
     for gdf in data_itr:
@@ -520,10 +505,9 @@ def test_seriesops(tmpdir, datasets, gpu_memory_frac, engine):
 
     # weekday
     # No Replacement
-    op_seriesOp = ops.SeriesOps(
-        names="timestamp",
-        names_new="weekday",
-        op_names=["dt", "weekday"],
+    op_seriesOp = ops.DFLambda(
+        f=lambda gdf: gdf["timestamp"].dt.weekday,
+        name_new="weekday",
         preprocessing=True,
         replace=False,
     )
