@@ -31,7 +31,7 @@ from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.dataframe.utils import group_split_dispatch
 from dask.distributed import get_worker
-from dask.utils import natural_sort_key  # , parse_bytes
+from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
