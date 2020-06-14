@@ -1230,3 +1230,11 @@ class Categorify(DFOperator):
         sz = sz_dict.get(n, int(self.emb_sz_rule(n_cat)))  # rule of thumb
         self.embed_sz[n] = sz
         return n_cat, sz
+
+    def get_embeddings(self, encoders, cat_names):
+        embeddings = {}
+        for col in sorted(cat_names):
+            path = encoders[col]
+            num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+            embeddings[col] = (num_rows, self.emb_sz_rule(num_rows))
+        return embeddings

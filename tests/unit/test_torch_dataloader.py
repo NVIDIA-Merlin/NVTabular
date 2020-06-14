@@ -292,7 +292,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     for idx, chunk in enumerate(data_itr):
-        rows += len(chunk)
+        rows += len(chunk[0])
         del chunk
 
     # accounts for incomplete batches at the end of chunks

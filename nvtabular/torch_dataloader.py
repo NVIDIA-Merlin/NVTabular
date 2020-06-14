@@ -61,12 +61,16 @@ class TensorItr:
 
     """
 
-    def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False):
-        assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
-        self.tensors = tensors
+    def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False, **kwargs):
+#         assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
+        import pdb; pdb.set_trace()
+        if isinstance(tensors, cudf.core.dataframe.DataFrame):
+            self.tensors = create_tensors_plain(tensors, **kwargs)
+        else:
+            self.tensors = tensors
         self.batch_size = batch_size
-        self.cur_idx = 0
-        self.num_samples = tensors[0].size(0)
+        
+        self.num_samples = self.tensors[0].size(0)
         if shuffle:
             self.shuffle()
 
@@ -85,15 +89,18 @@ class TensorItr:
             return self.num_samples // self.batch_size + 1
 
     def __next__(self):
-        idx = self.cur_idx * self.batch_size
-        self.cur_idx += 1
         # Need to handle odd sized batches if data isn't divisible by batchsize
+#         for idx in range(0, self.num_samples, self.batch_size):
+#             tens = [tensor[idx : idx + self.batch_size ] for tensor in self.tensors]
+#             yield (tens[0], tens[1], tens[2])
+        idx = self.cur_idx
+        self.cur_idex = self.cur_idx + self.batch_size
         if idx < self.num_samples and (idx + self.batch_size <= self.num_samples):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
-            return (tens[0], tens[1]), tens[2]
+            return tens[0], tens[1], tens[2]
         elif idx < self.num_samples and idx + self.batch_size > self.num_samples:
             tens = [tensor[idx:] for tensor in self.tensors]
-            return (tens[0], tens[1]), tens[2]
+            return tens[0], tens[1], tens[2]
         else:
             raise StopIteration
 
@@ -126,7 +133,7 @@ def create_tensors(preproc, itr=None, gdf=None, apply_ops=True):
     return combine_tensors(cats, conts, label)
 
 
-def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
+def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
     cats, conts, label = {}, {}, {}
     _one_df(
         gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols
@@ -153,11 +160,7 @@ def combine_tensors(cats, conts, label):
 def _one_df(
     gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None,
 ):
-    gdf_cats, gdf_conts, gdf_label = (
-        gdf[cat_names],
-        gdf[cont_names],
-        gdf[label_names],
-    )
+    gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
     if len(gdf_cats) > 0:
         _to_tensor(gdf_cats, torch.long, cats, to_cpu=False)
@@ -165,6 +168,7 @@ def _one_df(
         _to_tensor(gdf_conts, torch.float32, conts, to_cpu=False)
     if len(gdf_label) > 0:
         _to_tensor(gdf_label, torch.float32, label, to_cpu=False)
+
 
 
 def get_final_cols(preproc):
@@ -239,9 +243,15 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         for chunk in self.itr:
-            for idx in range(0, len(chunk), self.batch_size):
-                yield chunk.iloc[idx : idx + self.batch_size]
+#             yield TensorItr(chunk, batch_size=self.batch_size, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols)
+            chunk = create_tensors_plain(chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols)
+            for idx in range(0, len(chunk[0]), self.batch_size):
+                tens = [tensor[idx : idx + self.batch_size ] for tensor in chunk]
+                yield tens[0], tens[1], tens[2]
+#                 yield chunk.iloc[idx : idx + self.batch_size]
 
+                
+                
 
 class DLCollator:
     transform = None
