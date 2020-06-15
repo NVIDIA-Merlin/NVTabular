@@ -523,3 +523,11 @@ class HugeCTRWriter(ThreadedWriter):
             )
 
             self.data_writers[i].write(header.tobytes())
+
+def _shuffle_gdf(gdf, gdf_size=None):
+    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
+    ordered rows """
+    gdf_size = gdf_size or len(gdf)
+    arr = cp.arange(gdf_size)
+    cp.random.shuffle(arr)
+    return gdf.iloc[arr]
