@@ -58,29 +58,51 @@ class CategoryCache:
         return table
 
 
-@annotate("cat_level_1", color="green", domain="nvt_python")
-def _cat_level_1(gdf, columns, split_out, on_host):
-    # First level of "catigorify"
+@annotate("top_level_groupby", color="green", domain="nvt_python")
+def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, on_host):
+    # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
-    for i, col in enumerate(columns):
-        gb = gdf[[col]].groupby(col, dropna=False).agg({col: ["count"]})
-        gb.columns = gb.columns.get_level_values(1)
-        gb.reset_index(drop=False, inplace=True)
-        for j, split in enumerate(gb.partition_by_hash([col], split_out[col], keep_index=False)):
+    for i, cat_col in enumerate(cat_cols):
+
+        # Compile aggregation dictionary and add "squared-sum"
+        # column(s) (necessary when `cont_cols` is non-empty)
+        df_gb = gdf[[cat_col] + cont_cols].copy(deep=False)
+        agg_dict = {}
+        agg_dict[cat_col] = ["count"]
+        for col in cont_cols:
+            agg_dict[col] = ["sum"]
+            name = "__".join([col, "pow2"])
+            df_gb[name] = df_gb[col].pow(2)
+            agg_dict[name] = ["sum"]
+
+        # Perform groupby and flatten column index
+        # (flattening provides better cudf support)
+        gb = df_gb.groupby(cat_col, dropna=False).agg(agg_dict)
+        gb.columns = [
+            "__".join(list(name)) if name[0] != cat_col else "count"
+            for name in gb.columns.to_flat_index()
+        ]
+        gb.reset_index(inplace=True, drop=False)
+        del df_gb
+
+        # Split the result by the hash value of the categorical column
+        for j, split in enumerate(
+            gb.partition_by_hash([cat_col], split_out[cat_col], keep_index=False)
+        ):
             if on_host:
                 output[k] = split.to_pandas()
             else:
                 output[k] = split
             k += 1
-        gdf.drop(columns=[col], inplace=True)
+        gdf.drop(columns=[cat_col], inplace=True)
         del gb
     del gdf
     return output
 
 
-@annotate("cat_level_2", color="green", domain="nvt_python")
-def _cat_level_2(dfs, col, freq_limit, on_host):
+@annotate("mid_level_groupby", color="green", domain="nvt_python")
+def _mid_level_groupby(dfs, col, freq_limit, on_host):
     ignore_index = True
     if on_host:
         # Pandas groupby does not have `dropna` arg
@@ -97,8 +119,8 @@ def _cat_level_2(dfs, col, freq_limit, on_host):
     return gb[[col]]
 
 
-@annotate("cat_level_3", color="green", domain="nvt_python")
-def _cat_level_3(dfs, base_path, col, on_host):
+@annotate("write_uniques", color="green", domain="nvt_python")
+def _write_uniques(dfs, base_path, col, on_host):
     ignore_index = True
     df = _concat(dfs, ignore_index)
     if on_host:
@@ -150,7 +172,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     level_3_name = "level_3-" + token
     finalize_labels_name = "categories-" + token
     for p in range(ddf.npartitions):
-        dsk[(level_1_name, p)] = (_cat_level_1, (ddf._name, p), cols, split_out, on_host)
+        dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), cols, split_out, [], on_host)
         k = 0
         for c, col in enumerate(cols):
             for s in range(split_out[col]):
@@ -160,7 +182,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     for c, col in enumerate(cols):
         for s in range(split_out[col]):
             dsk[(level_2_name, c, s)] = (
-                _cat_level_2,
+                _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
                 col,
                 freq_limit,
@@ -168,7 +190,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
             )
 
         dsk[(level_3_name, c)] = (
-            _cat_level_3,
+            _write_uniques,
             [(level_2_name, c, s) for s in range(split_out[col])],
             out_path,
             col,
