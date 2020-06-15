@@ -163,7 +163,6 @@ def test_dask_minmax_dummyop(dask_cluster, tmpdir, datasets, engine):
     assert math.isclose(result.id.max(), processor.stats["maxs"]["id"], rel_tol=1e-3)
 
 
-
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_dask_median_dummyop(dask_cluster, tmpdir, datasets, engine):
 
@@ -199,7 +198,6 @@ def test_dask_median_dummyop(dask_cluster, tmpdir, datasets, engine):
     assert math.isclose(medians["x"], processor.stats["medians"]["x"], abs_tol=1e-1)
     assert math.isclose(medians["y"], processor.stats["medians"]["y"], abs_tol=1e-1)
     assert math.isclose(medians["id"], processor.stats["medians"]["id"], rel_tol=1e-2)
-
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
