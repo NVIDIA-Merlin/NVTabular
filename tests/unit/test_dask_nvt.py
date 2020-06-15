@@ -110,8 +110,12 @@ def test_dask_workflow_api_dlrm(
     cat_result = result.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
     if freq_threshold:
         cat_expect = cat_expect[cat_expect["name-string"] >= freq_threshold]
-        # Note that we need to skip the 0th element in result (null mapping)
-        assert_eq(cat_expect, cat_result.iloc[1:], check_index=False)
+        # Note that we may need to skip the 0th element in result (null mapping)
+        assert_eq(
+            cat_expect,
+            cat_result.iloc[1:] if len(cat_result) > len(cat_expect) else cat_result,
+            check_index=False,
+        )
     else:
         assert_eq(cat_expect, cat_result)
 
