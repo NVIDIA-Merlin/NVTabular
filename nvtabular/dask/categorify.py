@@ -61,11 +61,11 @@ class CategoryCache:
 @annotate("cat_level_1", color="green", domain="nvt_python")
 def _cat_level_1(gdf, columns, split_out, on_host):
     # First level of "catigorify"
-    gdf["_count"] = cp.ones(len(gdf), dtype="int32")
     output = {}
     k = 0
     for i, col in enumerate(columns):
-        gb = gdf[[col, "_count"]].groupby(col, dropna=False).sum()
+        gb = gdf[[col]].groupby(col, dropna=False).agg({col: ["count"]})
+        gb.columns = gb.columns.get_level_values(1)
         gb.reset_index(drop=False, inplace=True)
         for j, split in enumerate(gb.partition_by_hash([col], split_out[col], keep_index=False)):
             if on_host:
@@ -89,7 +89,7 @@ def _cat_level_2(dfs, col, freq_limit, on_host):
         gb = _concat(dfs, ignore_index).groupby(col, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
     if freq_limit:
-        gb = gb[gb["_count"] >= freq_limit]
+        gb = gb[gb["count"] >= freq_limit]
     if on_host:
         gb_pd = gb[[col]].to_pandas()
         del gb
