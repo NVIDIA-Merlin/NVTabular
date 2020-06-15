@@ -24,12 +24,12 @@ from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from fsspec.core import get_fs_token_paths
 
 import nvtabular.dask.io as dask_io
+from fsspec.core import get_fs_token_paths
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
-from nvtabular.io import Writer, Shuffler
+from nvtabular.io import Shuffler, Writer
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -747,7 +747,11 @@ class BaseWorkflow:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
             self.cal_col_names = False
-            huge_ctr = Writer(hugectr_output_path, num_out_files=hugectr_num_out_files, output_format=hugectr_output_format)
+            huge_ctr = Writer(
+                hugectr_output_path,
+                num_out_files=hugectr_num_out_files,
+                output_format=hugectr_output_format,
+            )
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -920,7 +924,7 @@ class BaseWorkflow:
             dep_ops = []
             for ops_id in dep_ids:
                 dep_ops.append(OperatorRegistry.OPS[ops_id]())
-                
+
             master_list.append((op, main_grp, sub_cols, dep_ops))
         return master_list
 

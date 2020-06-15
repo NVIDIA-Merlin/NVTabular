@@ -15,8 +15,8 @@
 #
 
 import io
-import logging
 import json
+import logging
 import os
 import queue
 import threading
@@ -331,8 +331,18 @@ class GPUDatasetIterator:
         for path in self.paths:
             yield from GPUFileIterator(path, **self.kwargs)
 
-class Writer():
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="parquet", cats=None, conts=None, labels=None):
+
+class Writer:
+    def __init__(
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        output_format="parquet",
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
         # set variables
         self.num_out_files = num_out_files
         self.writer = None
@@ -353,8 +363,18 @@ class Writer():
     def set_col_names(self, labels, cats, conts):
         self.writer.set_col_names(labels, cats, conts)
 
+
 class Shuffler(Writer):
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="parquet", cats=None, conts=None, labels=None):
+    def __init__(
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        output_format="parquet",
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
         super().__init__(out_dir, num_out_files, num_threads, output_format, cats, conts, labels)
 
     @annotate("add_data", color="orange", domain="nvt_python")
@@ -365,9 +385,10 @@ class Shuffler(Writer):
         np.random.shuffle(b_idxs)
         self.writer.write_data(gdf, arr, b_idxs)
 
-class ThreadedWriter():
+
+class ThreadedWriter:
     def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
-        # set variables 
+        # set variables
         self.out_dir = out_dir
         self.cats = cats
         self.conts = conts
@@ -407,7 +428,7 @@ class ThreadedWriter():
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
-  
+
         for x in range(self.num_out_files):
             start = x * slice_size
             end = start + slice_size
@@ -441,10 +462,11 @@ class ThreadedWriter():
 
         self._write_filelist()
         self._write_metadata()
-        
+
         # Close writers
         for writer in self.data_writers:
             writer.close()
+
 
 class ParquetFWriter(ThreadedWriter):
     def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
@@ -467,14 +489,15 @@ class ParquetFWriter(ThreadedWriter):
     def _write_metadata(self):
         metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
         data = {}
-        data['file_stats'] = []
+        data["file_stats"] = []
         for i in range(len(self.data_files)):
-            data['file_stats'].append({'file_name': f"{i}.data", 'num_rows': self.num_samples[i]})
-        data['cats_name'] = self.cats
-        data['conts_name'] = self.conts
-        data['conts_labels'] = self.labels
+            data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
+        data["cats_name"] = self.cats
+        data["conts_name"] = self.conts
+        data["conts_labels"] = self.labels
         json.dump(data, metadata_writer)
         metadata_writer.close()
+
 
 class HugeCTRWriter(ThreadedWriter):
     def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
@@ -523,6 +546,7 @@ class HugeCTRWriter(ThreadedWriter):
             )
 
             self.data_writers[i].write(header.tobytes())
+
 
 def _shuffle_gdf(gdf, gdf_size=None):
     """ Shuffles a cudf dataframe, returning a new dataframe with randomly
