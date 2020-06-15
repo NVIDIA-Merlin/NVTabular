@@ -23,6 +23,7 @@ import cudf
 import cupy
 import dask_cudf
 import numpy as np
+import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
 from dask.base import tokenize
@@ -31,8 +32,6 @@ from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.dataframe.utils import group_split_dispatch
 from dask.distributed import get_worker
 from dask.utils import natural_sort_key, parse_bytes
-
-import pyarrow.parquet as pq
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
