@@ -18,6 +18,7 @@ from io import BytesIO
 from operator import getitem
 
 import cudf
+import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.dataframe.core import _concat
@@ -59,7 +60,7 @@ class CategoryCache:
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, on_host):
+def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
@@ -72,9 +73,10 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, on_host):
         agg_dict[cat_col] = ["count"]
         for col in cont_cols:
             agg_dict[col] = ["sum"]
-            name = "__".join([col, "pow2"])
-            df_gb[name] = df_gb[col].pow(2)
-            agg_dict[name] = ["sum"]
+            if sum_sq:
+                name = "__".join([col, "pow2"])
+                df_gb[name] = df_gb[col].pow(2)
+                agg_dict[name] = ["sum"]
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
@@ -102,21 +104,64 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, on_host):
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col, freq_limit, on_host):
+def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
     ignore_index = True
     if on_host:
-        # Pandas groupby does not have `dropna` arg
         gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col, dropna=False).sum()
     else:
         gb = _concat(dfs, ignore_index).groupby(col, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
     if freq_limit:
         gb = gb[gb["count"] >= freq_limit]
+
+    ddof = 1
+    for cont_col in cont_cols:
+        name_sum = "__".join([cont_col, "sum"])
+
+        if "mean" in agg_list:
+            gb["__".join([cont_col, "mean"])] = gb[name_sum] / gb["count"]
+
+        if "var" in agg_list or "std" in agg_list:
+            n = gb["count"]
+            x = gb[name_sum]
+            x2 = gb["__".join([cont_col, "sum2"])]
+            result = x2 - x ** 2 / n
+            div = n - ddof
+            div[div < 0] = 0
+            result /= div
+            result[(n - ddof) == 0] = np.nan
+
+            if "var" in agg_list:
+                name_var = "__".join([cont_col, "var"])
+                gb[name_var] = result
+            if "std" in agg_list:
+                name_std = "__".join([cont_col, "std"])
+                gb[name_std] = np.sqrt(result)
+
     if on_host:
-        gb_pd = gb[[col]].to_pandas()
+        gb_pd = gb.to_pandas() if agg_list else gb[[col]].to_pandas()
         del gb
         return gb_pd
-    return gb[[col]]
+    return gb if agg_list else gb[[col]]
+
+
+@annotate("write_gb_stats", color="green", domain="nvt_python")
+def _write_gb_stats(dfs, base_path, col, on_host):
+    ignore_index = True
+    df = _concat(dfs, ignore_index)
+    if on_host:
+        df = cudf.from_pandas(df)
+    rel_path = "cat_stats.%s.parquet" % (col)
+    path = "/".join([base_path, rel_path])
+    if len(df):
+        df = df.sort_values(col, na_position="first")
+        df.to_parquet(path, write_index=False, compression=None)
+    else:
+        df_null = cudf.DataFrame({col: [None]})
+        df_null[col] = df_null[col].astype(df[col].dtype)
+        df_null.to_parquet(path, write_index=False, compression=None)
+    del df
+    return path
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
@@ -172,7 +217,15 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     level_3_name = "level_3-" + token
     finalize_labels_name = "categories-" + token
     for p in range(ddf.npartitions):
-        dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), cols, split_out, [], on_host)
+        dsk[(level_1_name, p)] = (
+            _top_level_groupby,
+            (ddf._name, p),
+            cols,
+            split_out,
+            [],  # cont_cols
+            False,  # sum_sq
+            on_host,
+        )
         k = 0
         for c, col in enumerate(cols):
             for s in range(split_out[col]):
@@ -185,6 +238,8 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
                 col,
+                [],  # cont_cols
+                [],  # agg_list
                 freq_limit,
                 on_host,
             )
