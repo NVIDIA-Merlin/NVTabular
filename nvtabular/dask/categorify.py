@@ -65,7 +65,7 @@ def _cat_level_1(gdf, columns, split_out, on_host):
     output = {}
     k = 0
     for i, col in enumerate(columns):
-        gb = gdf[[col, "_count"]].groupby(col, dropna=False).count()
+        gb = gdf[[col, "_count"]].groupby(col, dropna=False).sum()
         gb.reset_index(drop=False, inplace=True)
         for j, split in enumerate(gb.partition_by_hash([col], split_out[col], keep_index=False)):
             if on_host:
@@ -84,9 +84,9 @@ def _cat_level_2(dfs, col, freq_limit, on_host):
     ignore_index = True
     if on_host:
         # Pandas groupby does not have `dropna` arg
-        gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col, dropna=False).count()
+        gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col, dropna=False).sum()
     else:
-        gb = _concat(dfs, ignore_index).groupby(col, dropna=False).count()
+        gb = _concat(dfs, ignore_index).groupby(col, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
     if freq_limit:
         gb = gb[gb["_count"] >= freq_limit]
