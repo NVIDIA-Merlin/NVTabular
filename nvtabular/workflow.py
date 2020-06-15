@@ -24,9 +24,9 @@ from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
+from fsspec.core import get_fs_token_paths
 
 import nvtabular.dask.io as dask_io
-from fsspec.core import get_fs_token_paths
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import Shuffler, Writer
