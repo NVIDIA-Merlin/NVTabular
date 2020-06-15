@@ -74,7 +74,6 @@ class BaseWorkflow:
         export=False,
         export_path="./ds_export",
     ):
-        self.master_task_list = []
         self.phases = []
 
         self.columns_ctx = {}
@@ -289,12 +288,14 @@ class BaseWorkflow:
         # separate FE and PP
         if not pro:
             config = self.compile_dict_from_list(config)
-        task_sets = {}
-        for task_set in config.keys():
-            task_sets[task_set] = self.build_tasks(config[task_set], task_set)
-            self.master_task_list = self.master_task_list + task_sets[task_set]
 
-        baseline, leftovers = self.sort_task_types(self.master_task_list)
+        task_sets = {}
+        master_task_list = []
+        for task_set in config.keys():
+            task_sets[task_set] = self.build_tasks(config[task_set], task_set, master_task_list)
+            master_task_list = master_task_list + task_sets[task_set]
+
+        baseline, leftovers = self.sort_task_types(master_task_list)
         self.phases.append(baseline)
         self.phase_creator(leftovers)
         # check if export wanted
@@ -505,7 +506,7 @@ class BaseWorkflow:
             col_names.extend(c_names)
         return col_names
 
-    def build_tasks(self, task_dict: dict, task_set):
+    def build_tasks(self, task_dict: dict, task_set, master_task_list):
         """
         task_dict: the task dictionary retrieved from the config
         Based on input config information
@@ -530,7 +531,7 @@ class BaseWorkflow:
                                 # for all necessary parents
                                 for opo in target_op.req_stats:
                                     # only add if it doesnt already exist=
-                                    if not self.is_repeat_op(opo, cols):
+                                    if not self._is_repeat_op(opo, cols, master_task_list):
                                         dep_grp = dep_grp if dep_grp else ["base"]
                                         dep_tasks.append((opo, cols, dep_grp, []))
                             # after req stats handle target_op
@@ -538,16 +539,16 @@ class BaseWorkflow:
                             parents = (
                                 [] if not hasattr(target_op, "req_stats") else target_op.req_stats
                             )
-                            if not self.is_repeat_op(target_op, cols):
+                            if not self._is_repeat_op(target_op, cols, master_task_list):
                                 dep_tasks.append((target_op, cols, dep_grp, parents))
         return dep_tasks
 
     def op_preprocess(self, target_op_id):
-        # TODO: this used to look at the self.feat_ops/self.df_ops/self.stat_ops to figure
+        # TODO: th_ used to look at the self.feat_ops/self.df_ops/self.stat_ops to figure
         # and reutnr the preprocessing member from this. figure out if we can remove this safely
         return True
 
-    def is_repeat_op(self, op, cols):
+    def _is_repeat_op(self, op, cols, master_task_list):
         """
         Helper function to find if a given operator targeting a column set
         already exists in the master task list.
@@ -558,7 +559,7 @@ class BaseWorkflow:
         cols: str
             one of the following; continuous, categorical, all
         """
-        for task_d in self.master_task_list:
+        for task_d in master_task_list:
             if op._id in task_d[0]._id and cols == task_d[1]:
                 return True
         return False
@@ -792,14 +793,6 @@ class BaseWorkflow:
                 stats_drop[name] = stat
         main_obj["stats"] = stats_drop
         main_obj["columns_ctx"] = self.columns_ctx
-        op_args = {}
-        tasks = []
-        for task in self.master_task_list:
-            tasks.append([task[0]._id, task[1], task[2], [x._id for x in task[3]]])
-            op = task[0]
-            op_args[op._id] = op.__dict__
-        main_obj["op_args"] = op_args
-        main_obj["tasks"] = tasks
         with open(path, "w") as outfile:
             yaml.safe_dump(main_obj, outfile, default_flow_style=False)
 
@@ -811,9 +804,6 @@ class BaseWorkflow:
         with open(path, "r") as infile:
             main_obj = yaml.safe_load(infile)
             _set_stats(self, main_obj["stats"])
-            self.master_task_list = self.recreate_master_task_list(
-                main_obj["tasks"], main_obj["op_args"]
-            )
             self.columns_ctx = main_obj["columns_ctx"]
         encoders = self.stats.get("encoders", {})
         for col, cats in encoders.items():
@@ -829,21 +819,6 @@ class BaseWorkflow:
         from nvtabular.torch_dataloader import create_tensors
 
         return create_tensors(self, itr=itr, apply_ops=apply_ops)
-
-    def recreate_master_task_list(self, task_list, op_args):
-        master_list = []
-        for task in task_list:
-            op_id = task[0]
-            main_grp = task[1]
-            sub_cols = task[2]
-            dep_ids = task[3]
-            op = OperatorRegistry.OPS[op_id](**op_args[op_id])
-            dep_ops = []
-            for ops_id in dep_ids:
-                dep_ops.append(OperatorRegistry.OPS[ops_id]())
-
-            master_list.append((op, main_grp, sub_cols, dep_ops))
-        return master_list
 
 
 def get_new_config():
