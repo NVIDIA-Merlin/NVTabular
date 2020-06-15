@@ -25,13 +25,18 @@ from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from fsspec.core import get_fs_token_paths
 
+<<<<<<< HEAD
 import nvtabular.io as nvt_io
+=======
+import nvtabular.dask.io as dask_io
+from fsspec.core import get_fs_token_paths
+>>>>>>> Fixing formatting
 from nvtabular.ds_writer import DatasetWriter
 <<<<<<< HEAD
 =======
 from nvtabular.encoder import DLLabelEncoder
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
@@ -45,6 +50,9 @@ from nvtabular.io import HugeCTR, Shuffler
 =======
 from nvtabular.io import Writer, Shuffler
 >>>>>>> Adds threaded writer
+=======
+from nvtabular.io import Shuffler, Writer
+>>>>>>> Fixing formatting
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 >>>>>>> HugeCTR parquet format and metadata file working
 >>>>>>> HugeCTR parquet format and metadata file working
@@ -637,6 +645,7 @@ class BaseWorkflow:
         if hugectr_gen_output:
             self.cal_col_names = False
 <<<<<<< HEAD
+<<<<<<< HEAD
             if hugectr_output_format == "binary":
                 huge_ctr = HugeCTRWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
             elif hugectr_output_format == "parquet":
@@ -644,6 +653,13 @@ class BaseWorkflow:
 =======
             huge_ctr = Writer(hugectr_output_path, num_out_files=hugectr_num_out_files, output_format=hugectr_output_format)
 >>>>>>> Adds threaded writer
+=======
+            huge_ctr = Writer(
+                hugectr_output_path,
+                num_out_files=hugectr_num_out_files,
+                output_format=hugectr_output_format,
+            )
+>>>>>>> Fixing formatting
         if apply_offline:
             self.update_stats(
                 dataset,
@@ -785,7 +801,7 @@ class BaseWorkflow:
             dep_ops = []
             for ops_id in dep_ids:
                 dep_ops.append(OperatorRegistry.OPS[ops_id]())
-                
+
             master_list.append((op, main_grp, sub_cols, dep_ops))
         return master_list
 
