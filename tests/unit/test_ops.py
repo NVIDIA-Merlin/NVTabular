@@ -65,11 +65,7 @@ def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
     processor.update_stats(data_itr)
@@ -128,11 +124,7 @@ def test_moments(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
     processor.update_stats(data_itr)
@@ -186,11 +178,7 @@ def test_encoder(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     config["PP"]["categorical"] = [ops.Encoder(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
     processor.update_stats(data_itr)
@@ -243,11 +231,7 @@ def test_median(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
     processor.update_stats(data_itr)
