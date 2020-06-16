@@ -18,7 +18,6 @@ import glob
 import math
 
 import cudf
-import cupy
 import dask_cudf
 import pytest
 from dask.dataframe import assert_eq
@@ -59,7 +58,7 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01, None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-@pytest.mark.parametrize("freq_threshold", [0, 5])
+@pytest.mark.parametrize("freq_threshold", [0, 150])
 def test_dask_workflow_api_dlrm(
     dask_cluster, tmpdir, datasets, freq_threshold, part_mem_fraction, engine
 ):
@@ -88,7 +87,9 @@ def test_dask_workflow_api_dlrm(
     )
 
     processor.add_feature([ops.ZeroFill(), ops.LogOp()])
-    processor.add_preprocess(ops.Categorify(freq_threshold=freq_threshold, out_path=str(tmpdir)))
+    processor.add_preprocess(
+        ops.Categorify(freq_threshold=freq_threshold, out_path=str(tmpdir), split_out=2)
+    )
     processor.finalize()
 
     if engine in ("parquet", "csv"):
@@ -105,20 +106,18 @@ def test_dask_workflow_api_dlrm(
     assert result["y"].isna().sum() == 0
 
     # Check category counts
-    if freq_threshold == 0:
-        if engine == "parquet":
-            assert len(df0["name-cat"].unique()) == len(result["name-cat"].unique())
-        assert len(df0["name-string"].unique()) == len(result["name-string"].unique())
-
-        df0["_count"] = cupy.ones(len(df0))
-        result["_count"] = cupy.ones(len(result))
-        cat_list = ["name-string"]
-        if engine == "parquet":
-            cat_list = ["name-cat", "name-string"]
-        for col in cat_list:
-            expect = df0.groupby(col, dropna=False).count()["_count"].sort_values("_count")
-            got = result.groupby(col, dropna=False).count()["_count"].sort_values("_count")
-            assert_eq(expect, got, check_index=False)
+    cat_expect = df0.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
+    cat_result = result.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
+    if freq_threshold:
+        cat_expect = cat_expect[cat_expect["name-string"] >= freq_threshold]
+        # Note that we may need to skip the 0th element in result (null mapping)
+        assert_eq(
+            cat_expect,
+            cat_result.iloc[1:] if len(cat_result) > len(cat_expect) else cat_result,
+            check_index=False,
+        )
+    else:
+        assert_eq(cat_expect, cat_result)
 
     # Read back from disk
     df_disk = dask_cudf.read_parquet("/".join([str(tmpdir), "processed"]), index=False).compute()
