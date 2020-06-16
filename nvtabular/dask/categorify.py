@@ -60,7 +60,7 @@ class CategoryCache:
 
 
 def _make_name(*args):
-    return "__".join(args)
+    return "_".join(args)
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
@@ -85,7 +85,10 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
         gb = df_gb.groupby(cat_col, dropna=False).agg(agg_dict)
-        gb.columns = [_make_name(*list(name)) for name in gb.columns.to_flat_index()]
+        gb.columns = [
+            _make_name(*name) if name[0] == cat_col else _make_name(*((cat_col,) + name))
+            for name in gb.columns.to_flat_index()
+        ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
@@ -123,19 +126,19 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
 
     ddof = 1
     for cont_col in cont_cols:
-        name_sum = _make_name(cont_col, "sum")
+        name_sum = _make_name(col, cont_col, "sum")
         if "sum" in agg_list:
             required.append(name_sum)
 
         if "mean" in agg_list:
-            name_mean = _make_name(cont_col, "mean")
+            name_mean = _make_name(col, cont_col, "mean")
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "var" in agg_list or "std" in agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb[_make_name(cont_col, "pow2", "sum")]
+            x2 = gb[_make_name(col, cont_col, "pow2", "sum")]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 0] = 0
@@ -143,11 +146,11 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
             result[(n - ddof) == 0] = np.nan
 
             if "var" in agg_list:
-                name_var = _make_name(cont_col, "var")
+                name_var = _make_name(col, cont_col, "var")
                 required.append(name_var)
                 gb[name_var] = result
             if "std" in agg_list:
-                name_std = _make_name(cont_col, "std")
+                name_std = _make_name(col, cont_col, "std")
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 

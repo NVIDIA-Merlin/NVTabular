@@ -159,8 +159,10 @@ def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
 
     # TODO:  Add correctness assertions...
     assert len(df0) == len(result)
-    assert "x__std" in result.columns
-    assert "x__var" not in result.columns
+    assert "name-cat_x_std" in result.columns
+    assert "name-cat_x_var" not in result.columns
+    assert "name-string_x_std" in result.columns
+    assert "name-string_x_var" not in result.columns
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
