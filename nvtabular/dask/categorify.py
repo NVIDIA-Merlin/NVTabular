@@ -114,17 +114,25 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
     if freq_limit:
         gb = gb[gb["count"] >= freq_limit]
 
+    required = [col]
+    if "count" in agg_list:
+        required.append("count")
+
     ddof = 1
     for cont_col in cont_cols:
         name_sum = "__".join([cont_col, "sum"])
+        if "sum" in agg_list:
+            required.append(name_sum)
 
         if "mean" in agg_list:
-            gb["__".join([cont_col, "mean"])] = gb[name_sum] / gb["count"]
+            name_mean = "__".join([cont_col, "mean"])
+            required.append(name_mean)
+            gb[name_mean] = gb[name_sum] / gb["count"]
 
         if "var" in agg_list or "std" in agg_list:
             n = gb["count"]
             x = gb[name_sum]
-            x2 = gb["__".join([cont_col, "sum2"])]
+            x2 = gb["__".join([cont_col, "pow2", "sum"])]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 0] = 0
@@ -133,16 +141,18 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
 
             if "var" in agg_list:
                 name_var = "__".join([cont_col, "var"])
+                required.append(name_var)
                 gb[name_var] = result
             if "std" in agg_list:
                 name_std = "__".join([cont_col, "std"])
+                required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
     if on_host:
-        gb_pd = gb.to_pandas() if agg_list else gb[[col]].to_pandas()
+        gb_pd = gb[required].to_pandas()
         del gb
         return gb_pd
-    return gb if agg_list else gb[[col]]
+    return gb[required]
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
@@ -216,14 +226,16 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = "categories-" + token
+    agg_list = ["count", "sum", "mean", "std"]
+    cont_agg_cols = ["x"]
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (
             _top_level_groupby,
             (ddf._name, p),
             cols,
             split_out,
-            [],  # cont_cols
-            False,  # sum_sq
+            cont_agg_cols,
+            ("std" in agg_list or "var" in agg_list),
             on_host,
         )
         k = 0
@@ -238,14 +250,14 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
                 col,
-                [],  # cont_cols
-                [],  # agg_list
+                cont_agg_cols,
+                agg_list,
                 freq_limit,
                 on_host,
             )
 
         dsk[(level_3_name, c)] = (
-            _write_uniques,
+            _write_gb_stats,
             [(level_2_name, c, s) for s in range(split_out[col])],
             out_path,
             col,

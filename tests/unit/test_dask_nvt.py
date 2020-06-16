@@ -96,7 +96,11 @@ def test_dask_workflow_api_dlrm(
         dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
     else:
         dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
-    processor.apply(dataset, output_path=str(tmpdir))
+    # processor.apply(dataset, output_path=str(tmpdir))
+    processor.apply(dataset)
+    import pdb
+
+    pdb.set_trace()
     result = processor.get_ddf().compute()
 
     assert len(df0) == len(result)
