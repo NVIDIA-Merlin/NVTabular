@@ -22,7 +22,7 @@ import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-from nvtabular.dask.categorify import _encode, _get_categories, _get_groupby_stats
+import nvtabular.dask.categorify as dask_cats
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -573,7 +573,7 @@ class Encoder(StatOperator):
     @annotate("Encoder_dask_graph", color="green", domain="nvt_python")
     def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        dsk, key = _get_categories(
+        dsk, key = dask_cats._get_categories(
             ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
         )
         return Delayed(key, dsk)
@@ -900,6 +900,14 @@ class GroupByMoments(StatOperator):
         cudf's merge function doesn't preserve the order of the data
         and this column name is used to create a column with integer
         values in ascending order.
+    split_out : dict, optional
+        Used for multi-GPU groupby reduction.  Each key in the dict
+        should correspond to a column name, and the value is the number
+        of hash partitions to use for the categorical tree reduction.
+        Only a single partition is used by default.
+    out_path : str, optional
+        Used for multi-GPU groupby output.  Root directory where
+        groupby statistics will be written out in parquet format.
     """
 
     def __init__(
@@ -996,7 +1004,7 @@ class GroupByMoments(StatOperator):
 
         agg_cols = self.cont_names
         agg_list = self.stats
-        dsk, key = _get_groupby_stats(
+        dsk, key = dask_cats._groupby_stats(
             ddf, cols, agg_cols, agg_list, self.out_path, 0, self.split_out, self.on_host
         )
         return Delayed(key, dsk)
@@ -1078,6 +1086,7 @@ class GroupBy(DFOperator):
         replace=False,
         order_column_name="order-nvtabular",
         split_out=None,
+        cat_cache=None,
         out_path=None,
         on_host=None,
     ):
@@ -1092,6 +1101,9 @@ class GroupBy(DFOperator):
         self.split_out = split_out
         self.out_path = out_path
         self.on_host = on_host
+        self.cat_cache = cat_cache
+        if isinstance(self.cat_cache, str):
+            self.cat_cache = {name: cat_cache for name in self.cat_names}
 
     @property
     def req_stats(self):
@@ -1123,7 +1135,7 @@ class GroupBy(DFOperator):
             tmp = "__tmp__"  # Temporary column for sorting
             gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
             for col, path in stats_context["categories"].items():
-                stat_gdf = cudf.io.read_parquet(path, index=False)
+                stat_gdf = dask_cats._read_groupby_stat_df(path, self.cat_cache)
                 tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
                 tran_gdf = tran_gdf.sort_values(tmp)
                 tran_gdf.drop(columns=[col, tmp], inplace=True)
@@ -1243,7 +1255,7 @@ class Categorify(DFOperator):
             new_cols.append(new_col)
             if use_multi:
                 path = stats_context["categories"][name]
-                new_gdf[new_col] = _encode(
+                new_gdf[new_col] = dask_cats._encode(
                     name,
                     path,
                     gdf,

@@ -287,7 +287,7 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     )
 
 
-def _get_groupby_stats(ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host):
+def _groupby_stats(ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host):
     if isinstance(agg_cols, str):
         agg_cols = [agg_cols]
     return _groupby_to_disk(
@@ -337,3 +337,7 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
         labels = value[name].searchsorted(vals, side="left", na_position="first")
         labels[labels >= len(value[name])] = na_sentinel
         return labels
+
+
+def _read_groupby_stat_df(path, cat_cache):
+    return cudf.io.read_parquet(path, index=False)
