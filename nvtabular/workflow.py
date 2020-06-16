@@ -89,7 +89,6 @@ class BaseWorkflow:
         self.stats = {}
         self.ds_exports = export_path
         self.export = export
-        self.ops_args = {}
         self.current_file_num = 0
         self.timings = {
             "shuffle_df": 0.0,
@@ -288,7 +287,6 @@ class BaseWorkflow:
         # separate FE and PP
         if not pro:
             config = self.compile_dict_from_list(config)
-
         task_sets = {}
         master_task_list = []
         for task_set in config.keys():
@@ -415,17 +413,9 @@ class BaseWorkflow:
         for obj in task_list:
             if isinstance(obj, list):
                 for idx, op in enumerate(obj):
-                    # kwargs for mapping during load later
-                    self.ops_args[op._id] = op.export_op()[op._id]
-                    if idx > 0:
-                        to_add = {op._id: [[obj[idx - 1]._id]]}
-                    else:
-                        to_add = {op._id: [[]]}
-                    task_dicts.append(to_add)
+                    task_dicts.append((op, [obj[idx - 1]._id] if idx > 0 else []))
             else:
-                self.ops_args[obj._id] = obj.export_op()[obj._id]
-                to_add = {obj._id: [[]]}
-                task_dicts.append(to_add)
+                task_dicts.append((obj, []))
         return task_dicts
 
     def _create_final_col_refs(self, task_sets):
@@ -514,33 +504,25 @@ class BaseWorkflow:
         # task format = (operator, main_columns_class, col_sub_key,  required_operators)
         dep_tasks = []
         for cols, task_list in task_dict.items():
-            for task in task_list:
-                for op_id, dep_set in task.items():
-                    # get op from op_id
-                    # operators need to be instantiated with state information
-                    target_op = OperatorRegistry.OPS[op_id](**self.ops_args[op_id])
-                    if dep_set:
-                        for dep_grp in dep_set:
-                            # handle required stats of target op on
-                            # all the dependent columns
-                            for dep in dep_grp:
-                                if task_set in "PP" and not self.op_preprocess(dep):
-                                    dep_grp.remove(dep)
-                            if hasattr(target_op, "req_stats"):
-                                # check that the required stat is grabbed
-                                # for all necessary parents
-                                for opo in target_op.req_stats:
-                                    # only add if it doesnt already exist=
-                                    if not self._is_repeat_op(opo, cols, master_task_list):
-                                        dep_grp = dep_grp if dep_grp else ["base"]
-                                        dep_tasks.append((opo, cols, dep_grp, []))
-                            # after req stats handle target_op
+            for target_op, dep_grp in task_list:
+                # handle required stats of target op on
+                # all the dependent columns
+                for dep in dep_grp:
+                    if task_set in "PP" and not self.op_preprocess(dep):
+                        dep_grp.remove(dep)
+                if hasattr(target_op, "req_stats"):
+                    # check that the required stat is grabbed
+                    # for all necessary parents
+                    for opo in target_op.req_stats:
+                        # only add if it doesnt already exist
+                        if not self._is_repeat_op(opo, cols, master_task_list):
                             dep_grp = dep_grp if dep_grp else ["base"]
-                            parents = (
-                                [] if not hasattr(target_op, "req_stats") else target_op.req_stats
-                            )
-                            if not self._is_repeat_op(target_op, cols, master_task_list):
-                                dep_tasks.append((target_op, cols, dep_grp, parents))
+                            dep_tasks.append((opo, cols, dep_grp, []))
+                # after req stats handle target_op
+                dep_grp = dep_grp if dep_grp else ["base"]
+                parents = [] if not hasattr(target_op, "req_stats") else target_op.req_stats
+                if not self._is_repeat_op(target_op, cols, master_task_list):
+                    dep_tasks.append((target_op, cols, dep_grp, parents))
         return dep_tasks
 
     def op_preprocess(self, target_op_id):

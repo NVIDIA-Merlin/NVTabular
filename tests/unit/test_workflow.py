@@ -310,7 +310,7 @@ def test_gpu_workflow_config(tmpdir, datasets, dump, gpu_memory_frac, engine, re
 
     config = nvt.workflow.get_new_config()
     # add operators with dependencies
-    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp()]]
+    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp(replace=replace)]]
     config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]
     config["PP"]["categorical"] = [ops.Categorify()]
 

@@ -30,16 +30,7 @@ CAT = "categorical"
 ALL = "all"
 
 
-class OperatorRegistry(type):
-    OPS = {}
-
-    def __new__(cls, name, bases, dct):
-        ret = super().__new__(cls, name, bases, dct)
-        OperatorRegistry.OPS[name] = ret
-        return ret
-
-
-class Operator(metaclass=OperatorRegistry):
+class Operator:
     """
     Base class for all operator classes.
     """
