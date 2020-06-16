@@ -31,6 +31,8 @@ try:
 except ImportError:
     import numpy as cp
 
+SEP = "__"
+
 
 class CategoryCache:
     def __init__(self):
@@ -74,14 +76,14 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
         for col in cont_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
-                name = "__".join([col, "pow2"])
+                name = SEP.join([col, "pow2"])
                 df_gb[name] = df_gb[col].pow(2)
                 agg_dict[name] = ["sum"]
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
         gb = df_gb.groupby(cat_col, dropna=False).agg(agg_dict)
-        gb.columns = ["__".join(list(name)) for name in gb.columns.to_flat_index()]
+        gb.columns = [SEP.join(list(name)) for name in gb.columns.to_flat_index()]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
@@ -109,7 +111,7 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
         gb = _concat(dfs, ignore_index).groupby(col, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
 
-    name_count = "__".join([col, "count"])
+    name_count = SEP.join([col, "count"])
     if freq_limit:
         gb = gb[gb[name_count] >= freq_limit]
 
@@ -119,19 +121,19 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
 
     ddof = 1
     for cont_col in cont_cols:
-        name_sum = "__".join([cont_col, "sum"])
+        name_sum = SEP.join([cont_col, "sum"])
         if "sum" in agg_list:
             required.append(name_sum)
 
         if "mean" in agg_list:
-            name_mean = "__".join([cont_col, "mean"])
+            name_mean = SEP.join([cont_col, "mean"])
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "var" in agg_list or "std" in agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb["__".join([cont_col, "pow2", "sum"])]
+            x2 = gb[SEP.join([cont_col, "pow2", "sum"])]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 0] = 0
@@ -139,11 +141,11 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
             result[(n - ddof) == 0] = np.nan
 
             if "var" in agg_list:
-                name_var = "__".join([cont_col, "var"])
+                name_var = SEP.join([cont_col, "var"])
                 required.append(name_var)
                 gb[name_var] = result
             if "std" in agg_list:
-                name_std = "__".join([cont_col, "std"])
+                name_std = SEP.join([cont_col, "std"])
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 

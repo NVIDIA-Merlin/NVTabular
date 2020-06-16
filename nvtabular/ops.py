@@ -989,6 +989,11 @@ class GroupByMoments(StatOperator):
     def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
 
+        supported_ops = ["count", "sum", "mean", "std", "var"]
+        for op in self.stats:
+            if op not in supported_ops:
+                raise ValueError(op + " operation is not supported.")
+
         agg_cols = self.cont_names
         agg_list = self.stats
         dsk, key = _get_groupby_stats(

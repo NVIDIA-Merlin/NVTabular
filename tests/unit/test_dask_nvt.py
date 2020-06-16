@@ -146,7 +146,7 @@ def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
         ops.GroupBy(
             cat_names=cat_names,
             cont_names=["x", "y", "id"],
-            stats=["count", "sum"],
+            stats=["count", "sum", "std"],
             out_path=str(tmpdir),
             split_out=2,
         )
@@ -157,8 +157,10 @@ def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 
-    # TODO:  Add assertions...
+    # TODO:  Add correctness assertions...
     assert len(df0) == len(result)
+    assert "x__std" in result.columns
+    assert "x__var" not in result.columns
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
