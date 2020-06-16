@@ -244,7 +244,12 @@ class ParquetDatasetEngine(DatasetEngine):
         if row_groups_per_part is None:
             # TODO: Use `total_byte_size` metadata if/when we figure out how to
             #       correct for apparent dict encoding of cat/string columns.
-            path0 = self.fs.sep.join([self._base, self._metadata.row_group(0).column(0).file_path])
+            file_path = self._metadata.row_group(0).column(0).file_path
+            path0 = (
+                self.fs.sep.join([self._base, file_path])
+                if file_path != ""
+                else self._base  # This is a single file
+            )
             rg_byte_size_0 = (
                 cudf.io.read_parquet(path0, row_group=0).memory_usage(deep=True, index=True).sum()
             )
@@ -309,7 +314,11 @@ class ParquetDatasetEngine(DatasetEngine):
             row_groups = range(row_group_count)
             for i in range(0, row_group_count, self.row_groups_per_part):
                 rg_list = list(row_groups[i : i + self.row_groups_per_part])
-                full_path = self.fs.sep.join([data_path, filename])
+                full_path = (
+                    self.fs.sep.join([data_path, filename])
+                    if filename != ""
+                    else data_path  # This is a single file
+                )
                 pieces.append((full_path, rg_list))
         return pieces
 

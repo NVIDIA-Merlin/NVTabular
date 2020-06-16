@@ -17,9 +17,12 @@
 import glob
 
 import cudf
+import dask_cudf
 import pytest
+from dask.dataframe import assert_eq
 
 import nvtabular.io
+from nvtabular import DaskDataset
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -42,3 +45,20 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df3 = cudf.read_parquet(writer_files[0])[mycols_csv]
         df4 = cudf.read_parquet(writer_files[1])[mycols_csv]
     assert df1.shape[0] == df3.shape[0] + df4.shape[0]
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
+@pytest.mark.parametrize("num_files", [1, 2])
+def test_dask_dataset(datasets, engine, num_files):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    paths = paths[:num_files]
+    if engine == "parquet":
+        ddf0 = dask_cudf.read_parquet(paths)[mycols_pq]
+        dataset = DaskDataset(paths)
+        result = dataset.to_ddf(columns=mycols_pq)
+    else:
+        ddf0 = dask_cudf.read_csv(paths, header=False, names=allcols_csv)[mycols_csv]
+        dataset = DaskDataset(paths, header=False, names=allcols_csv)
+        result = dataset.to_ddf(columns=mycols_csv)
+
+    assert_eq(ddf0, result)
