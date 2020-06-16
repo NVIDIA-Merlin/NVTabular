@@ -145,7 +145,7 @@ def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
     processor.add_preprocess(
         ops.GroupBy(
             cat_names=cat_names,
-            cont_names=["x", "y", "id"],
+            cont_names=cont_names,
             stats=["count", "sum", "std"],
             out_path=str(tmpdir),
             split_out=2,

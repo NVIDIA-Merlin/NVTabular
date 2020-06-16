@@ -35,6 +35,7 @@ except ImportError:
 class CategoryCache:
     def __init__(self):
         self.cat_cache = {}
+        self.gb_stat_cache = {}
 
     @annotate("get_categories", color="green", domain="nvt_python")
     def get_categories(self, col, path, cache="disk"):
@@ -56,6 +57,23 @@ class CategoryCache:
             table.reset_index(drop=False, inplace=True)
             if cache == "device":
                 self.cat_cache[col] = table.copy(deep=False)
+        return table
+
+    @annotate("get_gb_stats", color="green", domain="nvt_python")
+    def get_gb_stats(self, col, path, cache="disk"):
+        table = self.gb_stat_cache.get(col, None)
+        if table and not isinstance(table, cudf.DataFrame):
+            return cudf.io.read_parquet(table, index=False)
+
+        if table is None:
+            if cache in ("device", "disk"):
+                table = cudf.io.read_parquet(path, index=False)
+            elif cache == "host":
+                with open(path, "rb") as f:
+                    self.gb_stat_cache[col] = BytesIO(f.read())
+                table = cudf.io.read_parquet(self.gb_stat_cache[col], index=False)
+            if cache == "device":
+                self.gb_stat_cache[col] = table.copy(deep=False)
         return table
 
 
@@ -339,5 +357,10 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
         return labels
 
 
-def _read_groupby_stat_df(path, cat_cache):
+def _read_groupby_stat_df(path, name, cat_cache):
+    if cat_cache is not None:
+        cat_cache = cat_cache.get(name, "disk")
+        cache = _get_cache()
+        if cache:
+            return cache.get_gb_stats(name, path, cache=cat_cache)
     return cudf.io.read_parquet(path, index=False)

@@ -1135,7 +1135,7 @@ class GroupBy(DFOperator):
             tmp = "__tmp__"  # Temporary column for sorting
             gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
             for col, path in stats_context["categories"].items():
-                stat_gdf = dask_cats._read_groupby_stat_df(path, self.cat_cache)
+                stat_gdf = dask_cats._read_groupby_stat_df(path, col, self.cat_cache)
                 tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
                 tran_gdf = tran_gdf.sort_values(tmp)
                 tran_gdf.drop(columns=[col, tmp], inplace=True)
