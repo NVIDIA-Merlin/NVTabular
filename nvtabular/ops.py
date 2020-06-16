@@ -17,11 +17,12 @@
 import os
 
 import cudf
+import cupy
 import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-from nvtabular.dask.categorify import _encode, _get_categories
+from nvtabular.dask.categorify import _encode, _get_categories, _get_groupby_stats
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -911,6 +912,9 @@ class GroupByMoments(StatOperator):
         gpu_mem_trans_use=0.5,
         columns=None,
         order_column_name="order-nvtabular",
+        split_out=None,
+        out_path=None,
+        on_host=None,
     ):
         super(GroupByMoments, self).__init__(columns)
         self.cat_names = cat_names
@@ -922,6 +926,9 @@ class GroupByMoments(StatOperator):
         self.order_column_name = order_column_name
         self.moments = {}
         self.categories = {}
+        self.out_path = out_path or "./"
+        self.split_out = split_out
+        self.on_host = on_host
 
     def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         if self.cat_names is None:
@@ -978,6 +985,20 @@ class GroupByMoments(StatOperator):
         for name, val in self.moments.items():
             self.categories[name] = val.fit_finalize()
         return
+
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+
+        agg_cols = self.cont_names
+        agg_list = self.stats
+        dsk, key = _get_groupby_stats(
+            ddf, cols, agg_cols, agg_list, self.out_path, 0, self.split_out, self.on_host
+        )
+        return Delayed(key, dsk)
+
+    def dask_fin(self, dask_stats):
+        for col in dask_stats:
+            self.categories[col] = dask_stats[col]
 
     def registered_stats(self):
         return ["moments", "categories"]
@@ -1051,6 +1072,9 @@ class GroupBy(DFOperator):
         preprocessing=True,
         replace=False,
         order_column_name="order-nvtabular",
+        split_out=None,
+        out_path=None,
+        on_host=None,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.cat_names = cat_names
@@ -1060,6 +1084,9 @@ class GroupBy(DFOperator):
         self.limit_frac = limit_frac
         self.gpu_mem_util_limit = gpu_mem_util_limit
         self.gpu_mem_trans_use = gpu_mem_trans_use
+        self.split_out = split_out
+        self.out_path = out_path
+        self.on_host = on_host
 
     @property
     def req_stats(self):
@@ -1072,6 +1099,9 @@ class GroupBy(DFOperator):
                 gpu_mem_util_limit=self.gpu_mem_util_limit,
                 gpu_mem_trans_use=self.gpu_mem_trans_use,
                 order_column_name=self.order_column_name,
+                split_out=self.split_out,
+                out_path=self.out_path,
+                on_host=self.on_host,
             )
         ]
 
@@ -1080,10 +1110,21 @@ class GroupBy(DFOperator):
             raise ValueError("cat_names cannot be None.")
 
         new_gdf = cudf.DataFrame()
-        for name in stats_context["moments"]:
-            tran_gdf = stats_context["moments"][name].merge(gdf)
-            new_gdf[tran_gdf.columns] = tran_gdf
-
+        if stats_context["moments"]:
+            for name in stats_context["moments"]:
+                tran_gdf = stats_context["moments"][name].merge(gdf)
+                new_gdf[tran_gdf.columns] = tran_gdf
+        else:  # Dask-based version
+            tmp = "__tmp__"  # Temporary column for sorting
+            gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+            for col, path in stats_context["categories"].items():
+                stat_gdf = cudf.io.read_parquet(path, index=False)
+                tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
+                tran_gdf = tran_gdf.sort_values(tmp)
+                tran_gdf.drop(columns=[col, tmp], inplace=True)
+                new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
+                new_gdf[new_cols] = tran_gdf[new_cols]
+            gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 
 

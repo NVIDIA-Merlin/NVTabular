@@ -81,10 +81,7 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
         gb = df_gb.groupby(cat_col, dropna=False).agg(agg_dict)
-        gb.columns = [
-            "__".join(list(name)) if name[0] != cat_col else "count"
-            for name in gb.columns.to_flat_index()
-        ]
+        gb.columns = ["__".join(list(name)) for name in gb.columns.to_flat_index()]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
@@ -111,12 +108,14 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
     else:
         gb = _concat(dfs, ignore_index).groupby(col, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
+
+    name_count = "__".join([col, "count"])
     if freq_limit:
-        gb = gb[gb["count"] >= freq_limit]
+        gb = gb[gb[name_count] >= freq_limit]
 
     required = [col]
     if "count" in agg_list:
-        required.append("count")
+        required.append(name_count)
 
     ddof = 1
     for cont_col in cont_cols:
@@ -127,10 +126,10 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
         if "mean" in agg_list:
             name_mean = "__".join([cont_col, "mean"])
             required.append(name_mean)
-            gb[name_mean] = gb[name_sum] / gb["count"]
+            gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "var" in agg_list or "std" in agg_list:
-            n = gb["count"]
+            n = gb[name_count]
             x = gb[name_sum]
             x2 = gb["__".join([cont_col, "pow2", "sum"])]
             result = x2 - x ** 2 / n
@@ -200,7 +199,9 @@ def _finish_labels(paths, cols):
     return {col: paths[i] for i, col in enumerate(cols)}
 
 
-def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
+def _groupby_to_disk(
+    ddf, write_func, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+):
     if not cols:
         return {}
 
@@ -226,15 +227,13 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = "categories-" + token
-    agg_list = ["count", "sum", "mean", "std"]
-    cont_agg_cols = ["x"]
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (
             _top_level_groupby,
             (ddf._name, p),
             cols,
             split_out,
-            cont_agg_cols,
+            agg_cols,
             ("std" in agg_list or "var" in agg_list),
             on_host,
         )
@@ -250,14 +249,14 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
                 col,
-                cont_agg_cols,
+                agg_cols,
                 agg_list,
                 freq_limit,
                 on_host,
             )
 
         dsk[(level_3_name, c)] = (
-            _write_gb_stats,
+            write_func,
             [(level_2_name, c, s) for s in range(split_out[col])],
             out_path,
             col,
@@ -271,6 +270,22 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
     )
     graph = HighLevelGraph.from_collections(finalize_labels_name, dsk, dependencies=[ddf])
     return graph, finalize_labels_name
+
+
+def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
+    agg_cols = []
+    agg_list = []
+    return _groupby_to_disk(
+        ddf, _write_uniques, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+    )
+
+
+def _get_groupby_stats(ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host):
+    if isinstance(agg_cols, str):
+        agg_cols = [agg_cols]
+    return _groupby_to_disk(
+        ddf, _write_gb_stats, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+    )
 
 
 def _get_cache():

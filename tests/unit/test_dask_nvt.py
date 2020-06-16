@@ -96,11 +96,7 @@ def test_dask_workflow_api_dlrm(
         dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
     else:
         dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
-    # processor.apply(dataset, output_path=str(tmpdir))
-    processor.apply(dataset)
-    import pdb
-
-    pdb.set_trace()
+    processor.apply(dataset, output_path=str(tmpdir))
     result = processor.get_ddf().compute()
 
     assert len(df0) == len(result)
@@ -127,6 +123,42 @@ def test_dask_workflow_api_dlrm(
     df_disk = dask_cudf.read_parquet("/".join([str(tmpdir), "processed"]), index=False).compute()
     for col in df_disk:
         assert_eq(result[col], df_disk[col])
+
+
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
+def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
+
+    engine = "parquet"
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    df1 = cudf.read_parquet(paths[0])[mycols_pq]
+    df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    df0 = cudf.concat([df1, df2], axis=0)
+
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = Workflow(
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    )
+
+    processor.add_preprocess(
+        ops.GroupBy(
+            cat_names=cat_names,
+            cont_names=["x", "y", "id"],
+            stats=["count", "sum"],
+            out_path=str(tmpdir),
+            split_out=2,
+        )
+    )
+    processor.finalize()
+
+    dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
+    processor.apply(dataset)
+    result = processor.get_ddf().compute()
+
+    # TODO:  Add assertions...
+    assert len(df0) == len(result)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
