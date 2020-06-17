@@ -751,6 +751,10 @@ class Normalize(DFOperator):
     default_in = CONT
     default_out = CONT
 
+    def __init__(self, ntype="std", columns=None, preprocessing=True, replace=True):
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        self.ntype = ntype
+
     @property
     def req_stats(self):
         return [Moments()]
@@ -760,7 +764,10 @@ class Normalize(DFOperator):
         cont_names = target_columns
         if not cont_names or not stats_context["stds"]:
             return
-        gdf = self.apply_mean_std(gdf, stats_context, cont_names)
+        if self.ntype == "mean_std":
+            gdf = self.apply_mean_std(gdf, stats_context, cont_names)
+        elif self.ntype == "min_max":
+            gdf = self.apply_min_max(gdf, stats_context, cont_names)
         return gdf
 
     def apply_mean_std(self, gdf, stats_context, cont_names):
@@ -770,6 +777,23 @@ class Normalize(DFOperator):
                 new_col = f"{name}_{self._id}"
                 new_gdf[new_col] = (gdf[name] - stats_context["means"][name]) / (
                     stats_context["stds"][name]
+                )
+                new_gdf[new_col] = new_gdf[new_col].astype("float32")
+        return new_gdf
+
+    def apply_min_max(self, gdf, stats_context, cont_names):
+        # calculate min and max
+        min_max = {}
+        min_max["min"] = gdf[cont_names].min()
+        min_max["max"] = gdf[cont_names].max()
+        # create and fill new dataset
+        new_gdf = cudf.DataFrame()
+        for name in cont_names:
+            dif = min_max["max"][name] - min_max["min"][name]
+            if dif > 0:
+                new_col = f"{name}_{self._id}"
+                new_gdf[new_col] = (gdf[name] - stats_context["means"][name]) / (
+                    dif
                 )
                 new_gdf[new_col] = new_gdf[new_col].astype("float32")
         return new_gdf
