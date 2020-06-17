@@ -27,7 +27,7 @@ import cupy as cp
 import numpy as np
 import rmm
 from cudf._lib.nvtx import annotate
-from cudf.io.parquet import ParquetWriter
+from cudf.io.parquet import ParquetWriter as pwriter
 
 LOG = logging.getLogger("nvtabular")
 
