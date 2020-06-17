@@ -43,6 +43,7 @@ from nvtabular.encoder import DLLabelEncoder
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 <<<<<<< HEAD
 >>>>>>> HugeCTR parquet format and metadata file working
@@ -57,6 +58,9 @@ from nvtabular.io import Writer, Shuffler
 =======
 from nvtabular.io import Shuffler, Writer
 >>>>>>> Fixing formatting
+=======
+from nvtabular.io import Shuffler, HugeCTRWriter, ParquetWriter
+>>>>>>> Update workflow.py
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 >>>>>>> HugeCTR parquet format and metadata file working
 >>>>>>> HugeCTR parquet format and metadata file working
@@ -650,10 +654,14 @@ class BaseWorkflow:
             self.cal_col_names = False
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Update workflow.py
             if hugectr_output_format == "binary":
                 huge_ctr = HugeCTRWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
             elif hugectr_output_format == "parquet":
                 huge_ctr = ParquetWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
+<<<<<<< HEAD
 =======
             huge_ctr = Writer(hugectr_output_path, num_out_files=hugectr_num_out_files, output_format=hugectr_output_format)
 >>>>>>> Adds threaded writer
@@ -664,6 +672,8 @@ class BaseWorkflow:
                 output_format=hugectr_output_format,
             )
 >>>>>>> Fixing formatting
+=======
+>>>>>>> Update workflow.py
         if apply_offline:
             self.update_stats(
                 dataset,
