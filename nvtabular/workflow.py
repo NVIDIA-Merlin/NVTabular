@@ -29,7 +29,7 @@ from fsspec.core import get_fs_token_paths
 import nvtabular.dask.io as dask_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
-from nvtabular.io import Shuffler, Writer
+from nvtabular.io import Shuffler, HugeCTRWriter, ParquetWriter
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -747,11 +747,10 @@ class BaseWorkflow:
             shuffler = Shuffler(output_path, num_out_files=num_out_files)
         if hugectr_gen_output:
             self.cal_col_names = False
-            huge_ctr = Writer(
-                hugectr_output_path,
-                num_out_files=hugectr_num_out_files,
-                output_format=hugectr_output_format,
-            )
+            if hugectr_output_format == "binary":
+                huge_ctr = HugeCTRWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
+            elif hugectr_output_format == "parquet":
+                huge_ctr = ParquetWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
         if apply_offline:
             self.update_stats(
                 dataset,
