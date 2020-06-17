@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import queue
+import threading
 
 import cudf
 import torch
@@ -62,14 +64,10 @@ class TensorItr:
     """
 
     def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False, **kwargs):
-#         assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
-        import pdb; pdb.set_trace()
-        if isinstance(tensors, cudf.core.dataframe.DataFrame):
-            self.tensors = create_tensors_plain(tensors, **kwargs)
-        else:
-            self.tensors = tensors
+        #         assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
+        self.tensors = tensors
         self.batch_size = batch_size
-        
+
         self.num_samples = self.tensors[0].size(0)
         if shuffle:
             self.shuffle()
@@ -78,31 +76,16 @@ class TensorItr:
             for tensor in self.tensors:
                 tensor.pin_memory()
 
-    def __iter__(self):
-        self.cur_idx = 0
-        return self
-
     def __len__(self):
         if self.num_samples % self.batch_size == 0:
             return self.num_samples // self.batch_size
         else:
             return self.num_samples // self.batch_size + 1
 
-    def __next__(self):
-        # Need to handle odd sized batches if data isn't divisible by batchsize
-#         for idx in range(0, self.num_samples, self.batch_size):
-#             tens = [tensor[idx : idx + self.batch_size ] for tensor in self.tensors]
-#             yield (tens[0], tens[1], tens[2])
-        idx = self.cur_idx
-        self.cur_idex = self.cur_idx + self.batch_size
-        if idx < self.num_samples and (idx + self.batch_size <= self.num_samples):
+    def __iter__(self):
+        for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
-            return tens[0], tens[1], tens[2]
-        elif idx < self.num_samples and idx + self.batch_size > self.num_samples:
-            tens = [tensor[idx:] for tensor in self.tensors]
-            return tens[0], tens[1], tens[2]
-        else:
-            raise StopIteration
+            yield tens[0], tens[1], tens[2]
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
@@ -168,7 +151,6 @@ def _one_df(
         _to_tensor(gdf_conts, torch.float32, conts, to_cpu=False)
     if len(gdf_label) > 0:
         _to_tensor(gdf_label, torch.float32, label, to_cpu=False)
-
 
 
 def get_final_cols(preproc):
@@ -237,21 +219,40 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         self.itr = GPUFileIterator(path, **kwargs)
         self.batch_size = sub_batch_size
         self.num_chunks = len(self.itr.engine)
+        self.buffer = queue.Queue()
+        self.lock = threading.Lock()
+        self.itr = iter(self.itr)
 
     def __len__(self):
         return self.num_chunks
 
-    def __iter__(self):
-        for chunk in self.itr:
-#             yield TensorItr(chunk, batch_size=self.batch_size, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols)
-            chunk = create_tensors_plain(chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols)
-            for idx in range(0, len(chunk[0]), self.batch_size):
-                tens = [tensor[idx : idx + self.batch_size ] for tensor in chunk]
-                yield tens[0], tens[1], tens[2]
-#                 yield chunk.iloc[idx : idx + self.batch_size]
+    def __next__(self):
+        chunk = self.buffer.get()
+        self.buffer.task_done()
+        threading.Thread(target=self.load_chunk).start()
+        yield from TensorItr(
+            chunk,
+            batch_size=self.batch_size,
+            cat_cols=self.cat_cols,
+            cont_cols=self.cont_cols,
+            label_cols=self.label_cols,
+        )
 
-                
-                
+    def __iter__(self):
+        if self.buffer.qsize() < 1:
+            self.load_chunk()
+        if self.buffer.qsize() < 2:
+            threading.Thread(target=self.load_chunk).start()
+        yield from next(self)
+
+    def load_chunk(self):
+        with self.lock:
+            chunk = next(self.itr)
+            chunk = create_tensors_plain(
+                chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
+            )
+            self.buffer.put(chunk)
+
 
 class DLCollator:
     transform = None

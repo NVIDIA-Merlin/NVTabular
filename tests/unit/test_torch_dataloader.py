@@ -213,8 +213,8 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     count_tens_itr = 0
     for data_gd in itr_ds:
         count_tens_itr += len(data_gd[1])
-        assert data_gd[0][0].shape[1] > 0
-        assert data_gd[0][1].shape[1] > 0
+        assert data_gd[0].shape[1] > 0
+        assert data_gd[1].shape[1] > 0
 
     assert len_df_pp == count_tens_itr
     if os.path.exists(processor.ds_exports):
@@ -223,7 +223,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("batch_size", [1, 10, 100])
+@pytest.mark.parametrize("batch_size", [10, 100])
 def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
@@ -288,16 +288,30 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         names=mycols_csv,
         sep="\t",
     )
-
+    df_test = cudf.read_parquet(tar_paths[0])
+    df_test.columns = [x for x in range(0, len(columns))]
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
+    # works with iterator alone, needs to test inside torch dataloader
     for idx, chunk in enumerate(data_itr):
+        assert float(df_test.iloc[idx * batch_size][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
-
+    # assert_eq(df_test
     # accounts for incomplete batches at the end of chunks
     # that dont necesssarily have the full batch_size
-    assert (idx + 1) * batch_size >= rows
     assert rows == num_rows
+
+    def gen_col(batch):
+        batch = batch[0]
+        return batch[0], batch[1], batch[2]
+
+    t_dl = nvt.torch_dataloader.DLDataLoader(
+        data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
+    )
+
+    for idx, chunk in enumerate(t_dl):
+        assert float(df_test.iloc[idx * batch_size][0]) == float(chunk[0][0][0])
+
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
