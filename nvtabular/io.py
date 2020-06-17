@@ -331,37 +331,15 @@ class GPUDatasetIterator:
         for path in self.paths:
             yield from GPUFileIterator(path, **self.kwargs)
 
-
 class Writer:
-    def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        output_format="parquet",
-        cats=None,
-        conts=None,
-        labels=None,
-    ):
-        # set variables
-        self.num_out_files = num_out_files
-        self.writer = None
-        if output_format == "binary":
-            self.writer = HugeCTRWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
-        elif output_format == "parquet":
-            self.writer = ParquetFWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
+    def __init__(self):
+        pass
 
-    @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-        arr = cp.arange(len(gdf))
-        b_idxs = np.arange(self.num_out_files)
-        self.writer.write_data(gdf, arr, b_idxs)
+        raise NotImplementedError()
 
     def close(self):
-        self.writer.close()
-
-    def set_col_names(self, labels, cats, conts):
-        self.writer.set_col_names(labels, cats, conts)
+        pass
 
 
 class Shuffler(Writer):
@@ -370,24 +348,26 @@ class Shuffler(Writer):
         out_dir,
         num_out_files=30,
         num_threads=4,
-        output_format="parquet",
         cats=None,
         conts=None,
         labels=None,
     ):
-        super().__init__(out_dir, num_out_files, num_threads, output_format, cats, conts, labels)
+        self.writer = ParquetWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
 
-    @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-        arr = cp.arange(len(gdf))
-        cp.random.shuffle(arr)
-        b_idxs = np.arange(self.num_out_files)
-        np.random.shuffle(b_idxs)
-        self.writer.write_data(gdf, arr, b_idxs)
+        self.writer.add_data(_shuffle_part(gdf))
 
 
-class ThreadedWriter:
-    def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
+class ThreadedWriter(Writer):
+    def __init__(
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
         # set variables
         self.out_dir = out_dir
         self.cats = cats
@@ -424,7 +404,8 @@ class ThreadedWriter:
     def _write_thread(self):
         return
 
-    def write_data(self, gdf, arr, b_idxs):
+    @annotate("add_data", color="orange", domain="nvt_python")
+    def add_data(self, gdf):
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -434,10 +415,9 @@ class ThreadedWriter:
             end = start + slice_size
             # check if end is over length
             end = end if end <= gdf.shape[0] else gdf.shape[0]
-            to_write = gdf.iloc[arr[start:end]]
+            to_write = gdf.iloc[start:end]
             self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            b_idx = b_idxs[x]
-            self.queue.put((b_idx, to_write))
+            self.queue.put((x, to_write))
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
@@ -468,11 +448,19 @@ class ThreadedWriter:
             writer.close()
 
 
-class ParquetFWriter(ThreadedWriter):
-    def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
+class ParquetWriter(ThreadedWriter):
+    def __init__(
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.data_writers = [ParquetWriter(f, compression=None) for f in self.data_files]
+        self.data_writers = [pwriter(f, compression=None) for f in self.data_files]
 
     def _write_thread(self):
         while True:
@@ -500,7 +488,15 @@ class ParquetFWriter(ThreadedWriter):
 
 
 class HugeCTRWriter(ThreadedWriter):
-    def __init__(self, out_dir, num_out_files, num_threads, cats, conts, labels):
+    def __init__(
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_files]
