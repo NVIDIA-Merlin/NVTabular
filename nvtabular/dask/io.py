@@ -212,7 +212,7 @@ class DaskDataset:
         return self.engine.to_ddf(columns=columns)
 
     def to_iter(self, columns=None):
-        return self.engine.to_itr(columns=columns)
+        return self.engine.to_iter(columns=columns)
 
 
 class DatasetEngine:
@@ -355,7 +355,7 @@ class ParquetDatasetEngine(DatasetEngine):
         divisions = [None] * (len(pieces) + 1)
         return new_dd_object(dsk, name, meta, divisions)
 
-    def to_itr(self, columns=None):
+    def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]
         itr = GPUDatasetIterator(
             self.paths,
@@ -388,7 +388,7 @@ class CSVDatasetEngine(DatasetEngine):
             self.paths, names=self.names, chunksize=self.part_size, **self.csv_kwargs
         )[columns]
 
-    def to_itr(self, columns=None):
+    def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]
         itr = GPUDatasetIterator(
             self.paths,
