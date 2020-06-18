@@ -219,39 +219,52 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         self.itr = GPUFileIterator(path, **kwargs)
         self.batch_size = sub_batch_size
         self.num_chunks = len(self.itr.engine)
-        self.buffer = queue.Queue()
+        self.buffer = []
         self.lock = threading.Lock()
         self.itr = iter(self.itr)
+        self.chunks_served = 0
 
     def __len__(self):
         return self.num_chunks
 
     def __next__(self):
-        chunk = self.buffer.get()
-        self.buffer.task_done()
-        threading.Thread(target=self.load_chunk).start()
-        yield from TensorItr(
-            chunk,
-            batch_size=self.batch_size,
-            cat_cols=self.cat_cols,
-            cont_cols=self.cont_cols,
-            label_cols=self.label_cols,
-        )
+        import pdb; pdb.set_trace()
+        if self.buffer:
+            chunk = self.buffer.pop()
+            threading.Thread(target=self.load_chunk).start()
+            yield from TensorItr(
+                chunk,
+                batch_size=self.batch_size,
+                cat_cols=self.cat_cols,
+                cont_cols=self.cont_cols,
+                label_cols=self.label_cols,
+            )
 
     def __iter__(self):
-        if self.buffer.qsize() < 1:
+        if len(self.buffer) < 1:
             self.load_chunk()
-        if self.buffer.qsize() < 2:
+        threading.Thread(target-self.load_chunk).start()
+        while self.chunks_served < self.num_chunks:
+            chunk = self.buffer.pop()
             threading.Thread(target=self.load_chunk).start()
-        yield from next(self)
+            yield from TensorItr(
+                chunk,
+                batch_size=self.batch_size,
+                cat_cols=self.cat_cols,
+                cont_cols=self.cont_cols,
+                label_cols=self.label_cols,
+            )
+
 
     def load_chunk(self):
-        with self.lock:
-            chunk = next(self.itr)
-            chunk = create_tensors_plain(
-                chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
-            )
-            self.buffer.put(chunk)
+        if self.chunks_served <= self.num_chunks:
+            with self.lock:
+                chunk = next(self.itr)
+                chunk = create_tensors_plain(
+                    chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
+                )
+                self.buffer.append(chunk)
+                self.chunks_served += 1
 
 
 class DLCollator:
@@ -298,6 +311,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
 
     def __iter__(self):
         for path in self.paths:
+            #import pdb; pdb.set_trace()
             self.cur_path = path
             yield from TorchTensorBatchFileItr(path, **self.kwargs)
 

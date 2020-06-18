@@ -221,7 +221,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
         shutil.rmtree(processor.ds_exports)
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.0000001, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
@@ -293,6 +293,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
+    import pdb; pdb.set_trace()
     for idx, chunk in enumerate(data_itr):
         assert float(df_test.iloc[idx * batch_size][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
