@@ -293,9 +293,9 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
-    import pdb; pdb.set_trace()
     for idx, chunk in enumerate(data_itr):
-        assert float(df_test.iloc[idx * batch_size][0]) == float(chunk[0][0][0])
+        import pdb; pdb.set_trace()
+        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
     # assert_eq(df_test

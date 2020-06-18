@@ -228,8 +228,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         return self.num_chunks
 
     def __next__(self):
-        import pdb; pdb.set_trace()
-        if self.buffer:
+        while self.buffer:
             chunk = self.buffer.pop()
             threading.Thread(target=self.load_chunk).start()
             yield from TensorItr(
@@ -243,7 +242,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
     def __iter__(self):
         if len(self.buffer) < 1:
             self.load_chunk()
-        threading.Thread(target-self.load_chunk).start()
+        threading.Thread(target=self.load_chunk).start()
         while self.chunks_served < self.num_chunks:
             chunk = self.buffer.pop()
             threading.Thread(target=self.load_chunk).start()
