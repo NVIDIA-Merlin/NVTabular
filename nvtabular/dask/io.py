@@ -172,11 +172,6 @@ class DaskDataset:
         storage_options=None,
         **kwargs,
     ):
-        self.engine_type = engine
-        self.path = path
-        self.part_mem_fraction = part_mem_fraction
-        self.names = kwargs.get("names", None)
-        self.kwargs = kwargs
         if part_size:
             # If a specific partition size is given, use it directly
             part_size = parse_bytes(part_size)
@@ -216,14 +211,8 @@ class DaskDataset:
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
 
-    def to_iter(self):
-        itr = GPUDatasetIterator(
-            self.path,
-            engine=self.engine_type,
-            gpu_memory_frac=self.part_mem_fraction,
-            names=self.names,
-        )
-        return iter(itr)
+    def to_iter(self, columns=None):
+        return self.engine.to_itr(columns=columns)
 
 
 class DatasetEngine:
@@ -242,6 +231,8 @@ class DatasetEngine:
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
 
+    def to_iter(self, columns=None):
+        raise NotImplementedError(""" Return a GPUDatasetIterator  """)
 
 class ParquetDatasetEngine(DatasetEngine):
     """ ParquetDatasetEngine
@@ -363,6 +354,16 @@ class ParquetDatasetEngine(DatasetEngine):
         divisions = [None] * (len(pieces) + 1)
         return new_dd_object(dsk, name, meta, divisions)
 
+    def to_itr(self, columns=None):
+        part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]
+        itr = GPUDatasetIterator(
+            self.paths,
+            engine="parquet",
+            gpu_memory_frac=part_mem_fraction,
+            columns=columns,
+        )
+        return iter(itr)
+
 
 class CSVDatasetEngine(DatasetEngine):
     """ CSVDatasetEngine
@@ -384,3 +385,14 @@ class CSVDatasetEngine(DatasetEngine):
         return dask_cudf.read_csv(
             self.paths, names=self.names, chunksize=self.part_size, **self.csv_kwargs
         )[columns]
+
+    def to_itr(self, columns=None):
+        part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]
+        itr = GPUDatasetIterator(
+            self.paths,
+            engine="csv",
+            gpu_memory_frac=part_mem_fraction,
+            names=self.names,
+            columns=columns,
+        )
+        return iter(itr)
