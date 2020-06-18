@@ -366,8 +366,12 @@ class GPUDatasetIterator:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 <<<<<<< HEAD
+=======
+
+>>>>>>> fixes format and adds close method
 def _shuffle_gdf(gdf, gdf_size=None):
     """ Shuffles a cudf dataframe, returning a new dataframe with randomly
     ordered rows """
@@ -377,6 +381,7 @@ def _shuffle_gdf(gdf, gdf_size=None):
     return gdf.iloc[arr]
 
 
+<<<<<<< HEAD
 class Writer:
     def __init__(self):
         pass
@@ -433,6 +438,8 @@ class Writer():
 
 =======
 >>>>>>> Changes class structure
+=======
+>>>>>>> fixes format and adds close method
 class Writer:
     def __init__(self):
         pass
@@ -446,13 +453,7 @@ class Writer:
 
 class Shuffler(Writer):
     def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        cats=None,
-        conts=None,
-        labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
     ):
 <<<<<<< HEAD
 >>>>>>> Fixing formatting
@@ -469,6 +470,7 @@ class Shuffler(Writer):
 
     def add_data(self, gdf):
 <<<<<<< HEAD
+<<<<<<< HEAD
         arr = cp.arange(len(gdf))
         b_idxs = np.arange(self.num_out_files)
         self.writer.write_data(gdf, arr, b_idxs)
@@ -482,17 +484,17 @@ class Shuffler(Writer):
 =======
         self.writer.add_data(_shuffle_part(gdf))
 >>>>>>> Changes class structure
+=======
+        self.writer.add_data(_shuffle_gdf(gdf))
+
+    def close(self):
+        self.writer.close()
+>>>>>>> fixes format and adds close method
 
 
 class ThreadedWriter(Writer):
     def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        cats=None,
-        conts=None,
-        labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
     ):
         # set variables
         self.out_dir = out_dir
@@ -683,13 +685,7 @@ class ThreadedWriter(Writer):
 
 class ParquetWriter(ThreadedWriter):
     def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        cats=None,
-        conts=None,
-        labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
     ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
@@ -792,13 +788,7 @@ class HugeCTRWriter(ThreadedWriter):
 
 class HugeCTRWriter(ThreadedWriter):
     def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        cats=None,
-        conts=None,
-        labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
     ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
@@ -1397,6 +1387,7 @@ class CSVDatasetEngine(DatasetEngine):
 
             self.data_writers[i].write(header.tobytes())
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> Adds threaded writer
 <<<<<<< HEAD
 >>>>>>> Adds threaded writer
@@ -1419,3 +1410,5 @@ def _shuffle_gdf(gdf, gdf_size=None):
 =======
 >>>>>>> Fixing formatting
 >>>>>>> Fixing formatting
+=======
+>>>>>>> fixes format and adds close method
