@@ -36,7 +36,7 @@ from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
 
-from nvtabular.io import GPUDatasetIterator
+from nvtabular.io import _shuffle_gdf, GPUDatasetIterator
 
 
 class WriterCache:
@@ -84,13 +84,6 @@ def clean_pw_cache():
 def _write_metadata(meta_list):
     # TODO: Write _metadata file here (need to collect metadata)
     return meta_list
-
-
-def _shuffle_gdf(gdf, gdf_size=None):
-    gdf_size = gdf_size or len(gdf)
-    arr = cupy.arange(gdf_size)
-    cupy.random.shuffle(arr)
-    return gdf.iloc[arr]
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
@@ -223,7 +216,7 @@ class DaskDataset:
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
 
-    def __iter__(self):
+    def to_iter(self):
         for chunk in self.itr:
             yield chunk
 
@@ -260,12 +253,12 @@ class ParquetDatasetEngine(DatasetEngine):
         if row_groups_per_part is None:
             # TODO: Use `total_byte_size` metadata if/when we figure out how to
             #       correct for apparent dict encoding of cat/string columns.
-            if self.fs.isdir(self._base):
-                path0 = self.fs.sep.join(
-                    [self._base, self._metadata.row_group(0).column(0).file_path]
-                )
-            else:
-                path0 = self._base
+            file_path = self._metadata.row_group(0).column(0).file_path
+            path0 = (
+                self.fs.sep.join([self._base, file_path])
+                if file_path != ""
+                else self._base  # This is a single file
+            )
             rg_byte_size_0 = (
                 cudf.io.read_parquet(path0, row_group=0).memory_usage(deep=True, index=True).sum()
             )
@@ -330,7 +323,11 @@ class ParquetDatasetEngine(DatasetEngine):
             row_groups = range(row_group_count)
             for i in range(0, row_group_count, self.row_groups_per_part):
                 rg_list = list(row_groups[i : i + self.row_groups_per_part])
-                full_path = self.fs.sep.join([data_path, filename])
+                full_path = (
+                    self.fs.sep.join([data_path, filename])
+                    if filename != ""
+                    else data_path  # This is a single file
+                )
                 pieces.append((full_path, rg_list))
         return pieces
 

@@ -5,6 +5,7 @@ Operators
    :maxdepth: 2
 
    Categorify <categorify>
+   Dropna <dropna>
    FillMissing <fillmissing>
    GroupBy <groupby>
    LogOp <log>

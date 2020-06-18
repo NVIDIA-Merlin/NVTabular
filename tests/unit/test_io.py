@@ -17,7 +17,9 @@
 import glob
 
 import cudf
+import dask_cudf
 import pytest
+from dask.dataframe import assert_eq
 
 import nvtabular.io
 from nvtabular.dask.io import DaskDataset
@@ -47,7 +49,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["csv", "parquet"])
-def test_dask_dataset(tmpdir, datasets, engine, gpu_memory_frac):
+def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
@@ -60,7 +62,24 @@ def test_dask_dataset(tmpdir, datasets, engine, gpu_memory_frac):
 
     dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=columns)
     size = 0
-    for chunk in dd:
+    for chunk in iter(dd.to_iter()):
         size += chunk.shape[0]
 
     assert size == df1.shape[0]
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
+@pytest.mark.parametrize("num_files", [1, 2])
+def test_dask_dataset(datasets, engine, num_files):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    paths = paths[:num_files]
+    if engine == "parquet":
+        ddf0 = dask_cudf.read_parquet(paths)[mycols_pq]
+        dataset = DaskDataset(paths)
+        result = dataset.to_ddf(columns=mycols_pq)
+    else:
+        ddf0 = dask_cudf.read_csv(paths, header=False, names=allcols_csv)[mycols_csv]
+        dataset = DaskDataset(paths, header=False, names=allcols_csv)
+        result = dataset.to_ddf(columns=mycols_csv)
+
+    assert_eq(ddf0, result)
