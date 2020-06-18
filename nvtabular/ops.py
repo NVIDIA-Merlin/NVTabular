@@ -751,7 +751,7 @@ class Normalize(DFOperator):
     default_in = CONT
     default_out = CONT
 
-    def __init__(self, ntype="std", columns=None, preprocessing=True, replace=True):
+    def __init__(self, ntype="mean_std", columns=None, preprocessing=True, replace=True):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.ntype = ntype
 
