@@ -277,7 +277,7 @@ class GPUFileIterator:
     def __len__(self):
         return len(self.engine)
 
-    def set_dtypes(self, chunk):
+    def _set_dtypes(self, chunk):
         for col, dtype in self.dtypes.items():
             if type(dtype) is str:
                 if "hex" in dtype:
@@ -325,9 +325,11 @@ class GPUDatasetIterator:
             raise ValueError("len(paths) must be > 0.")
         self.paths = paths
         self.kwargs = kwargs
+        self.cur_path = None
 
     def __iter__(self):
         for path in self.paths:
+            self.cur_path = path
             yield from GPUFileIterator(path, **self.kwargs)
 
 
