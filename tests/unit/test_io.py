@@ -62,7 +62,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
     dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=columns)
     size = 0
-    for chunk in iter(dd.to_iter()):
+    for chunk in dd.to_iter():
         size += chunk.shape[0]
 
     assert size == df1.shape[0]

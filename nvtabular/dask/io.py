@@ -172,6 +172,10 @@ class DaskDataset:
         storage_options=None,
         **kwargs,
     ):
+        self.engine_type = engine
+        self.path = path
+        self.part_mem_fraction = part_mem_fraction
+        self.names = kwargs.get("names", None)
         self.kwargs = kwargs
         if part_size:
             # If a specific partition size is given, use it directly
@@ -197,10 +201,6 @@ class DaskDataset:
         # If engine is not provided, try to infer from end of paths[0]
         if engine is None:
             engine = paths[0].split(".")[-1]
-        names = kwargs.get("names", None)
-        self.itr = GPUDatasetIterator(
-            paths, engine=engine, gpu_memory_frac=part_mem_fraction, names=names
-        )
         if isinstance(engine, str):
             if engine == "parquet":
                 if "names" in kwargs:
@@ -217,8 +217,13 @@ class DaskDataset:
         return self.engine.to_ddf(columns=columns)
 
     def to_iter(self):
-        for chunk in self.itr:
-            yield chunk
+        itr = GPUDatasetIterator(
+            self.path,
+            engine=self.engine_type,
+            gpu_memory_frac=self.part_mem_fraction,
+            names=self.names,
+        )
+        return iter(itr)
 
 
 class DatasetEngine:
