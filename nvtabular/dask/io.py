@@ -185,7 +185,19 @@ class DaskDataset:
                     "Using very large partitions sizes for Dask. "
                     "Memory-related errors are likely."
                 )
-            part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
+
+            try:
+                part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
+            except NotImplementedError:
+                # TODO: Remove this block when rmm approach is fully supported
+                import pynvml
+
+                pynvml.nvmlInit()
+                part_size = int(
+                    pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total
+                    * part_mem_fraction
+                )
+                pynvml.nvmlShutdown()
 
         # Engine-agnostic path handling
         if hasattr(path, "name"):
@@ -235,10 +247,11 @@ class ParquetDatasetEngine(DatasetEngine):
         Dask-based version of cudf.read_parquet.
     """
 
-    def __init__(self, *args, row_groups_per_part=None):
+    def __init__(self, *args, row_groups_per_part=None, validate_schema=False):
         # TODO: Improve dask_cudf.read_parquet performance so that
         # this class can be slimmed down.
         super().__init__(*args)
+        self._validate_schema = validate_schema
         self._metadata, self._base = self.get_metadata()
         self._pieces = None
         if row_groups_per_part is None:
@@ -269,11 +282,13 @@ class ParquetDatasetEngine(DatasetEngine):
         fs = self.fs
         if len(paths) > 1:
             # This is a list of files
-            dataset = pq.ParquetDataset(paths, filesystem=fs)
+            dataset = pq.ParquetDataset(paths, filesystem=fs, validate_schema=self._validate_schema)
             base, fns = _analyze_paths(paths, fs)
         elif fs.isdir(paths[0]):
             # This is a directory
-            dataset = pq.ParquetDataset(paths[0], filesystem=fs)
+            dataset = pq.ParquetDataset(
+                paths[0], filesystem=fs, validate_schema=self._validate_schema
+            )
             allpaths = fs.glob(paths[0] + fs.sep + "*")
             base, fns = _analyze_paths(allpaths, fs)
         else:
