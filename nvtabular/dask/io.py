@@ -234,6 +234,7 @@ class DatasetEngine:
     def to_iter(self, columns=None):
         raise NotImplementedError(""" Return a GPUDatasetIterator  """)
 
+
 class ParquetDatasetEngine(DatasetEngine):
     """ ParquetDatasetEngine
 
@@ -359,6 +360,7 @@ class ParquetDatasetEngine(DatasetEngine):
         itr = GPUDatasetIterator(
             self.paths,
             engine="parquet",
+            row_group_size=self.row_groups_per_part,
             gpu_memory_frac=part_mem_fraction,
             columns=columns,
         )
