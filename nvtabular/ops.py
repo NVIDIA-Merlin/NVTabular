@@ -56,11 +56,6 @@ class Operator:
                 tar_cols = tar_cols + cols_ctx[cols_grp][tar]
         return tar_cols
 
-    def export_op(self):
-        export = {}
-        export[str(self._id)] = self.__dict__
-        return export
-
 
 class TransformOperator(Operator):
     """
@@ -149,7 +144,8 @@ class DFOperator(TransformOperator):
     Base class for data frame operator classes.
     """
 
-    def required_stats(self):
+    @property
+    def req_stats(self):
         raise NotImplementedError(
             "Should consist of a list of identifiers, that should map to available statistics"
         )
