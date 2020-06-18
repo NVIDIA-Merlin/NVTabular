@@ -329,7 +329,7 @@ class GPUDatasetIterator:
 
     def __iter__(self):
         for path in self.paths:
-            self.cur_path=path
+            self.cur_path = path
             yield from GPUFileIterator(path, **self.kwargs)
 
 
