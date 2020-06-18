@@ -36,7 +36,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
     shuf = nvtabular.io.Shuffler(tmpdir, num_files)
     shuf.add_data(df1)
-    writer_files = shuf.writer_files
+    writer_files = shuf.writer.data_files
     shuf.close()
     if engine == "parquet":
         df3 = cudf.read_parquet(writer_files[0])[mycols_pq]
