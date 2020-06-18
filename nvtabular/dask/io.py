@@ -36,7 +36,7 @@ from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
 
-from nvtabular.io import _shuffle_gdf, GPUDatasetIterator
+from nvtabular.io import GPUDatasetIterator, _shuffle_gdf
 
 
 class WriterCache:
