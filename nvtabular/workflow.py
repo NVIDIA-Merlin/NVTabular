@@ -44,6 +44,7 @@ from nvtabular.encoder import DLLabelEncoder
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 <<<<<<< HEAD
 >>>>>>> HugeCTR parquet format and metadata file working
@@ -61,6 +62,9 @@ from nvtabular.io import Shuffler, Writer
 =======
 from nvtabular.io import Shuffler, HugeCTRWriter, ParquetWriter
 >>>>>>> Update workflow.py
+=======
+from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
+>>>>>>> Sort imports
 from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
 >>>>>>> HugeCTR parquet format and metadata file working
 >>>>>>> HugeCTR parquet format and metadata file working
