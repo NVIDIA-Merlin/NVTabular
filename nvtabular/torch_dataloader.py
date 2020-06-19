@@ -227,6 +227,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         self.itr = iter(self.itr)
+        self.chunks_loaded = 0
         self.load_chunk()
         for x in range(self.num_chunks):
             threading.Thread(target=self.load_chunk).start()
@@ -241,11 +242,15 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
     def load_chunk(self):
         with self.lock:
-            chunk = next(self.itr)
+            try:
+                chunk = next(self.itr)
+            except StopIteration:
+                return
             chunk = create_tensors_plain(
                 chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
             )
             self.buffer.put(chunk)
+            self.chunks_loaded += 1 
 
 
 class DLCollator:
