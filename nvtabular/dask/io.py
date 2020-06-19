@@ -421,7 +421,6 @@ class CSVDatasetEngine(DatasetEngine):
         super().__init__(*args)
         self._meta = {}
         self.csv_kwargs = kwargs
-        self.names = self.csv_kwargs.get("names", None)
         # CSV reader needs a list of files
         # (Assume flat directory structure if this is a dir)
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
@@ -436,7 +435,7 @@ class CSVDatasetEngine(DatasetEngine):
             self.paths,
             engine="csv",
             gpu_memory_frac=part_mem_fraction,
-            names=self.names,
+            names=self.csv_kwargs.get("names", None),
             columns=columns,
         )
         return iter(itr)
