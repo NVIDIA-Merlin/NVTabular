@@ -17,6 +17,7 @@
 import warnings
 from collections import defaultdict
 from io import BytesIO
+from uuid import uuid4
 
 import cudf
 import cupy
@@ -34,7 +35,6 @@ from dask.distributed import get_worker
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
-from pyarrow.compat import guid
 
 from nvtabular.io import _shuffle_gdf
 
@@ -79,6 +79,12 @@ def clean_pw_cache():
     if hasattr(worker, "pw_cache"):
         del worker.pw_cache
     return
+
+
+def guid():
+    """ Simple utility function to get random hex string
+    """
+    return uuid4().hex
 
 
 def _write_metadata(meta_list):
