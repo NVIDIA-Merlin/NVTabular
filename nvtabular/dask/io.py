@@ -198,8 +198,6 @@ class DaskDataset:
             engine = paths[0].split(".")[-1]
         if isinstance(engine, str):
             if engine == "parquet":
-                if "names" in kwargs:
-                    kwargs.pop("names")
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
                 self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
