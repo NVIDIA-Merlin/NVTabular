@@ -54,9 +54,7 @@ def test_gpu_workflow_api(tmpdir, datasets, dump, gpu_memory_frac, engine, op_co
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=False,
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
 
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
@@ -220,11 +218,7 @@ def test_gpu_workflow(tmpdir, datasets, dump, gpu_memory_frac, engine):
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
     data_itr = nvtabular.io.GPUDatasetIterator(
@@ -316,16 +310,12 @@ def test_gpu_workflow_config(tmpdir, datasets, dump, gpu_memory_frac, engine, re
 
     config = nvt.workflow.get_new_config()
     # add operators with dependencies
-    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp()]]
+    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp(replace=replace)]]
     config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
     data_itr = nvt.io.GPUDatasetIterator(
