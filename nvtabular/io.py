@@ -158,7 +158,7 @@ class PQFileReader(GPUFileReader):
             yield gdf
             print(self.file_path, nskip, self.num_rows)
             gdf = None
-        
+
 
 class CSVFileReader(GPUFileReader):
     def intialize_reader(self, gpu_memory_frac, batch_size, **kwargs):

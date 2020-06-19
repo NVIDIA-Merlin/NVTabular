@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import glob
 import math
 import os
@@ -294,7 +293,6 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
     for idx, chunk in enumerate(data_itr):
-        import pdb; pdb.set_trace()
         assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
@@ -310,9 +308,9 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     t_dl = nvt.torch_dataloader.DLDataLoader(
         data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
     )
-
+    rows = 0
     for idx, chunk in enumerate(t_dl):
-        assert float(df_test.iloc[idx * batch_size][0]) == float(chunk[0][0][0])
-
+        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        rows += len(chunk[0])
     if os.path.exists(output_train):
         shutil.rmtree(output_train)

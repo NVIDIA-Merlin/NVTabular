@@ -218,7 +218,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         self.label_cols = labels
         self.itr = GPUFileIterator(path, **kwargs)
         self.batch_size = sub_batch_size
-        self.num_chunks = len(self.itr.engine) 
+        self.num_chunks = len(self.itr.engine)
         self.buffer = queue.Queue()
         self.lock = threading.Lock()
 
@@ -227,10 +227,8 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         self.itr = iter(self.itr)
-        self.chunks_served = 0
-        if self.buffer.qsize() < 1:
-            self.load_chunk()
-        while self.chunks_served < self.num_chunks:
+        self.load_chunk()
+        for x in range(self.num_chunks):
             threading.Thread(target=self.load_chunk).start()
             chunk = self.buffer.get()
             yield from TensorItr(
@@ -248,7 +246,6 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
                 chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
             )
             self.buffer.put(chunk)
-            self.chunks_served += 1
 
 
 class DLCollator:
