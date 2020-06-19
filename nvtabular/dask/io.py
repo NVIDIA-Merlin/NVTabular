@@ -170,7 +170,6 @@ class DaskDataset:
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
-        names=None,
         **kwargs,
     ):
         if part_size:
@@ -202,7 +201,7 @@ class DaskDataset:
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
                 self.engine = CSVDatasetEngine(
-                    paths, part_size, fs, fs_token, names=names, **kwargs
+                    paths, part_size, fs, fs_token, **kwargs
                 )
             else:
                 raise ValueError("Only parquet and csv supported (for now).")
@@ -223,12 +222,11 @@ class DatasetEngine:
         a ``to_ddf`` method.
     """
 
-    def __init__(self, paths, part_size, fs, fs_token, names=None):
+    def __init__(self, paths, part_size, fs, fs_token):
         self.paths = paths
         self.part_size = part_size
         self.fs = fs
         self.fs_token = fs_token
-        self.names = names
 
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
@@ -375,10 +373,11 @@ class CSVDatasetEngine(DatasetEngine):
         Thin wrapper around dask_cudf.read_csv.
     """
 
-    def __init__(self, *args, names=None, **kwargs):
-        super().__init__(*args, names=names)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
         self._meta = {}
         self.csv_kwargs = kwargs
+        self.names = self.csv_kwargs.get("names", None)
         # CSV reader needs a list of files
         # (Assume flat directory structure if this is a dir)
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
@@ -386,7 +385,7 @@ class CSVDatasetEngine(DatasetEngine):
 
     def to_ddf(self, columns=None):
         return dask_cudf.read_csv(
-            self.paths, names=self.names, chunksize=self.part_size, **self.csv_kwargs
+            self.paths, chunksize=self.part_size, **self.csv_kwargs
         )[columns]
 
     def to_iter(self, columns=None):
