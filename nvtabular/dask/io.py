@@ -170,6 +170,7 @@ class DaskDataset:
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
+        names=None,
         **kwargs,
     ):
         if part_size:
@@ -200,7 +201,7 @@ class DaskDataset:
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
-                self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
+                self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, names=names, **kwargs)
             else:
                 raise ValueError("Only parquet and csv supported (for now).")
         else:
@@ -220,11 +221,12 @@ class DatasetEngine:
         a ``to_ddf`` method.
     """
 
-    def __init__(self, paths, part_size, fs, fs_token):
+    def __init__(self, paths, part_size, fs, fs_token, names=None):
         self.paths = paths
         self.part_size = part_size
         self.fs = fs
         self.fs_token = fs_token
+        self.names = names
 
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
@@ -371,10 +373,9 @@ class CSVDatasetEngine(DatasetEngine):
         Thin wrapper around dask_cudf.read_csv.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+    def __init__(self, *args, names=None, **kwargs):
+        super().__init__(*args, names=names)
         self._meta = {}
-        self.names = kwargs.pop("names", None)
         self.csv_kwargs = kwargs
         # CSV reader needs a list of files
         # (Assume flat directory structure if this is a dir)

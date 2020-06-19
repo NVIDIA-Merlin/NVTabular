@@ -60,7 +60,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     else:
         columns = mycols_csv
 
-    dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=columns)
+    dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=allcols_csv)
     size = 0
     for chunk in dd.to_iter():
         size += chunk.shape[0]
