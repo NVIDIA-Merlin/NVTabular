@@ -79,7 +79,14 @@ def main(args):
                 cat_cache["C10"] = "host"
 
     # Use total device size to calculate args.device_limit_frac
-    device_size = cuda.current_context().get_memory_info()[1]
+    try:
+        device_size = cuda.current_context().get_memory_info()[1]
+    except NotImplementedError:
+        import pynvml
+
+        pynvml.nvmlInit()
+        device_size = pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total
+        pynvml.nvmlShutdown()
     device_limit = int(args.device_limit_frac * device_size)
     device_pool_size = int(args.device_pool_frac * device_size)
     part_size = int(args.part_mem_frac * device_size)

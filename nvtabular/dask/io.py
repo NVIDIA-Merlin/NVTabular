@@ -262,13 +262,17 @@ class ParquetDatasetEngine(DatasetEngine):
         Dask-based version of cudf.read_parquet.
     """
 
-    def __init__(self, *args, row_groups_per_part=None):
+    def __init__(self, *args, row_groups_per_part=None, legacy=False):
         # TODO: Improve dask_cudf.read_parquet performance so that
         # this class can be slimmed down.
         super().__init__(*args)
 
-        if pa_ds:
-            # Use pyarrow.dataset API for "newer" pyarrow versions
+        if pa_ds and not legacy:
+            # Use pyarrow.dataset API for "newer" pyarrow versions.
+            # Note that datasets API cannot handle a directory path
+            # within a list.
+            if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
+                self.paths = self.paths[0]
             self._legacy = False
             self._pieces = None
             self._metadata, self._base = defaultdict(int), ""
