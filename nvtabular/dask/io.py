@@ -191,7 +191,19 @@ class DaskDataset:
                     "Using very large partitions sizes for Dask. "
                     "Memory-related errors are likely."
                 )
-            part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
+
+            try:
+                part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
+            except NotImplementedError:
+                # TODO: Remove this block when rmm approach is fully supported
+                import pynvml
+
+                pynvml.nvmlInit()
+                part_size = int(
+                    pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total
+                    * part_mem_fraction
+                )
+                pynvml.nvmlShutdown()
 
         # Engine-agnostic path handling
         if hasattr(path, "name"):
