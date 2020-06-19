@@ -65,7 +65,7 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     df_itr = cudf.DataFrame()
 
     processor = nvt.Workflow(
-        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"], to_cpu=True,
+        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"],
     )
 
     data_itr = torch_dataloader.FileItrDataset(
@@ -113,9 +113,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_feature([ops.FillMedian(), ops.LogOp(preprocessing=preprocessing)])
     processor.add_preprocess(ops.Normalize())
@@ -245,9 +243,7 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=True,
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
 
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())

@@ -30,16 +30,7 @@ CAT = "categorical"
 ALL = "all"
 
 
-class OperatorRegistry(type):
-    OPS = {}
-
-    def __new__(cls, name, bases, dct):
-        ret = super().__new__(cls, name, bases, dct)
-        OperatorRegistry.OPS[name] = ret
-        return ret
-
-
-class Operator(metaclass=OperatorRegistry):
+class Operator:
     """
     Base class for all operator classes.
     """
@@ -64,11 +55,6 @@ class Operator(metaclass=OperatorRegistry):
             if tar in cols_ctx[cols_grp].keys():
                 tar_cols = tar_cols + cols_ctx[cols_grp][tar]
         return tar_cols
-
-    def export_op(self):
-        export = {}
-        export[str(self._id)] = self.__dict__
-        return export
 
 
 class TransformOperator(Operator):
@@ -158,7 +144,8 @@ class DFOperator(TransformOperator):
     Base class for data frame operator classes.
     """
 
-    def required_stats(self):
+    @property
+    def req_stats(self):
         raise NotImplementedError(
             "Should consist of a list of identifiers, that should map to available statistics"
         )

@@ -35,15 +35,16 @@ logging.getLogger("nvtabular").setLevel(logging.DEBUG)
 import cudf
 import rmm
 import torch
-from fastai.basic_train import Learner, to_cpu
-from fastai.metrics import accuracy
 from fastai.basic_data import DataBunch
+from fastai.basic_train import Learner
+from fastai.metrics import accuracy
 from fastai.tabular import TabularModel
 
-from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
+from nvtabular import Workflow
 from nvtabular.io import GPUDatasetIterator
 from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill
-from nvtabular import Workflow
+from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
+
 
 if args.pool:
     rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * rmm.get_info().free)
@@ -89,7 +90,7 @@ cont_names = ["I" + str(x) for x in range(1, 14)]
 cat_names = ["C" + str(x) for x in range(1, 27)]
 cols = ["label"] + cont_names + cat_names
 print("Creating Workflow Object")
-proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"], to_cpu=to_cpu)
+proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"])
 proc.add_feature([ZeroFill(replace=True), LogOp(replace=True)])
 proc.add_preprocess(Normalize(replace=True))
 if int(args.freq_thresh) == 0:
