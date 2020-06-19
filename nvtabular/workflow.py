@@ -31,7 +31,7 @@ import nvtabular.dask.io as dask_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
-from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
+from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
 
