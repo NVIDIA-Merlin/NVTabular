@@ -200,9 +200,7 @@ class DaskDataset:
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
-                self.engine = CSVDatasetEngine(
-                    paths, part_size, fs, fs_token, **kwargs
-                )
+                self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             else:
                 raise ValueError("Only parquet and csv supported (for now).")
         else:
@@ -384,9 +382,7 @@ class CSVDatasetEngine(DatasetEngine):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
     def to_ddf(self, columns=None):
-        return dask_cudf.read_csv(
-            self.paths, chunksize=self.part_size, **self.csv_kwargs
-        )[columns]
+        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
 
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]

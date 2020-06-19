@@ -61,7 +61,9 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
         columns = mycols_csv
 
     if engine == "csv":
-        dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=allcols_csv)
+        dd = DaskDataset(
+            paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=allcols_csv
+        )
     else:
         dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
     size = 0
