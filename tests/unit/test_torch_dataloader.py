@@ -221,7 +221,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
         shutil.rmtree(processor.ds_exports)
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.0000001, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.000001, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
