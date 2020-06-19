@@ -201,7 +201,9 @@ class DaskDataset:
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
             elif engine == "csv":
-                self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, names=names, **kwargs)
+                self.engine = CSVDatasetEngine(
+                    paths, part_size, fs, fs_token, names=names, **kwargs
+                )
             else:
                 raise ValueError("Only parquet and csv supported (for now).")
         else:
