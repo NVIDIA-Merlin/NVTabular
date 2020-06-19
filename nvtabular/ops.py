@@ -743,6 +743,8 @@ class Normalize(DFOperator):
     different units. This operation can be added to the workflow
     to standardize the features.
 
+    It performs Normalization using the mean std method.
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -750,10 +752,6 @@ class Normalize(DFOperator):
 
     default_in = CONT
     default_out = CONT
-
-    def __init__(self, ntype="mean_std", columns=None, preprocessing=True, replace=True):
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.ntype = ntype
 
     @property
     def req_stats(self):
@@ -764,10 +762,7 @@ class Normalize(DFOperator):
         cont_names = target_columns
         if not cont_names or not stats_context["stds"]:
             return
-        if self.ntype == "mean_std":
-            gdf = self.apply_mean_std(gdf, stats_context, cont_names)
-        elif self.ntype == "min_max":
-            gdf = self.apply_min_max(gdf, stats_context, cont_names)
+        gdf = self.apply_mean_std(gdf, stats_context, cont_names)
         return gdf
 
     def apply_mean_std(self, gdf, stats_context, cont_names):
@@ -781,20 +776,43 @@ class Normalize(DFOperator):
                 new_gdf[new_col] = new_gdf[new_col].astype("float32")
         return new_gdf
 
+
+class NormalizeMinMax(DFOperator):
+    """
+    Standardizing the features around 0 with a standard deviation
+    of 1 is a common technique to compare measurements that have
+    different units. This operation can be added to the workflow
+    to standardize the features.
+
+    It performs Normalization using the min max method.
+
+    Although you can directly call methods of this class to
+    transform your continuous features, it's typically used within a
+    Workflow class.
+    """
+
+    default_in = CONT
+    default_out = CONT
+
+    @property
+    def req_stats(self):
+        return [MinMax()]
+
+    @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        cont_names = target_columns
+        if not cont_names or not stats_context["mins"]:
+            return
+        gdf = self.apply_min_max(gdf, stats_context, cont_names)
+        return gdf
+
     def apply_min_max(self, gdf, stats_context, cont_names):
-        # calculate min and max
-        min_max = {}
-        min_max["min"] = gdf[cont_names].min()
-        min_max["max"] = gdf[cont_names].max()
-        # create and fill new dataset
         new_gdf = cudf.DataFrame()
         for name in cont_names:
-            dif = min_max["max"][name] - min_max["min"][name]
+            dif = stats_context["maxs"][name] - stats_context["mins"][name]
             if dif > 0:
                 new_col = f"{name}_{self._id}"
-                new_gdf[new_col] = (gdf[name] - stats_context["means"][name]) / (
-                    dif
-                )
+                new_gdf[new_col] = (gdf[name] - stats_context["means"][name]) / (dif)
                 new_gdf[new_col] = new_gdf[new_col].astype("float32")
         return new_gdf
 
