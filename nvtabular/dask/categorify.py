@@ -119,7 +119,6 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
             else:
                 output[k] = split
             k += 1
-        gdf.drop(columns=[cat_col], inplace=True)
         del gb
     del gdf
     return output
