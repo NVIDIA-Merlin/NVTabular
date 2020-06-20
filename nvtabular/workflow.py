@@ -397,7 +397,7 @@ class BaseWorkflow:
             for k, v in task_list.items():
                 tasks = []
                 for obj in v:
-                    if not isinstance(obj, collections.Sequence):
+                    if not isinstance(obj, collections.abc.Sequence):
                         obj = [obj]
                     for idx, op in enumerate(obj):
                         tasks.append((op, [obj[idx - 1]._id] if idx > 0 else []))

@@ -27,32 +27,20 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq
+from tests.conftest import allcols_csv, mycols_csv
 
 torch = pytest.importorskip("torch")
 torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
-@pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
-def test_gpu_file_iterator_ds(datasets, batch, dskey):
-    paths = glob.glob(str(datasets[dskey]) + "/*.csv")
-    names = allcols_csv if dskey == "csv-no-header" else None
-    df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
-    df_expect["id"] = df_expect["id"].astype("int64")
+@pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
+def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     df_itr = cudf.DataFrame()
-    data_itr = torch_dataloader.FileItrDataset(
-        paths[0],
-        engine="csv",
-        batch_size=batch,
-        gpu_memory_frac=0.01,
-        columns=mycols_csv,
-        names=names,
-    )
-    for data_gd in data_itr:
+    for data_gd in dataset:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
-    assert_eq(df_itr.reset_index(drop=True), df_expect.reset_index(drop=True))
+    assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -60,7 +48,8 @@ def test_gpu_file_iterator_ds(datasets, batch, dskey):
 def test_gpu_file_iterator_dl(datasets, batch, dskey):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
-    df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
+    header = None if dskey == "csv-no-header" else 0
+    df_expect = cudf.read_csv(paths[0], header=header, names=names)[mycols_csv]
     df_expect["id"] = df_expect["id"].astype("int64")
     df_itr = cudf.DataFrame()
 
@@ -92,24 +81,8 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("preprocessing", [True, False])
-def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocessing):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preprocessing):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
@@ -120,15 +93,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
-
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     if dump:
         config_file = tmpdir + "/temp.yaml"
@@ -169,7 +134,7 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
     assert cats1 == ["None"] + cats_expected1
 
     #     Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, data_itr, nfiles=10, shuffle=True, apply_ops=True)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
     processor.create_final_cols()
 
@@ -222,24 +187,8 @@ def test_gpu_preproc(tmpdir, datasets, dump, gpu_memory_frac, engine, preprocess
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
-def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
@@ -249,19 +198,11 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
 
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
-
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
     processor.apply(
-        data_itr,
+        dataset,
         apply_offline=True,
         record_stats=True,
         shuffle=True,
