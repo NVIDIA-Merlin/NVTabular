@@ -54,18 +54,13 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
+        df1 = cudf.read_csv(paths[0], header=0, names=allcols_csv)[mycols_csv]
     if engine == "parquet":
         columns = mycols_pq
     else:
         columns = mycols_csv
 
-    if engine == "csv":
-        dd = DaskDataset(
-            paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, names=allcols_csv
-        )
-    else:
-        dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
+    dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
     size = 0
     for chunk in dd.to_iter(columns=columns):
         size += chunk.shape[0]

@@ -184,7 +184,7 @@ class CSVFileReader(GPUFileReader):
         snippet = self.reader(
             io.StringIO(head), nrows=nrows, names=names, dtype=dtype, sep=sep, header=0
         )
-        self.inferred_names = not self.names
+        self.inferred_names = not names
         if self.file_bytes > 0:
             for i, col in enumerate(snippet.columns):
                 if names:
