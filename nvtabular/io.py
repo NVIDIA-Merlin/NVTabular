@@ -156,7 +156,6 @@ class PQFileReader(GPUFileReader):
             )
             gdf.reset_index(drop=True, inplace=True)
             yield gdf
-            print(self.file_path, nskip, self.num_rows)
             gdf = None
 
 

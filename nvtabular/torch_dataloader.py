@@ -241,7 +241,10 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
     def load_chunk(self):
         with self.lock:
-            chunk = next(self.itr)
+            try:
+                chunk = next(self.itr)
+            except StopIteration:
+                return
             chunk = create_tensors_plain(
                 chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
             )
