@@ -812,7 +812,7 @@ class NormalizeMinMax(DFOperator):
             dif = stats_context["maxs"][name] - stats_context["mins"][name]
             if dif > 0:
                 new_col = f"{name}_{self._id}"
-                new_gdf[new_col] = (gdf[name] - stats_context["means"][name]) / (dif)
+                new_gdf[new_col] = (gdf[name] - stats_context["mins"][name]) / (dif)
                 new_gdf[new_col] = new_gdf[new_col].astype("float32")
         return new_gdf
 
