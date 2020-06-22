@@ -1001,10 +1001,10 @@ class GroupByMoments(StatOperator):
             self.categories[col] = dask_stats[col]
 
     def registered_stats(self):
-        return ["moments", "categories"]
+        return ["moments", "gb_categories"]
 
     def stats_collected(self):
-        result = [("moments", self.moments), ("categories", self.categories)]
+        result = [("moments", self.moments), ("gb_categories", self.categories)]
         return result
 
     def clear(self):
@@ -1121,7 +1121,7 @@ class GroupBy(DFOperator):
         else:  # Dask-based version
             tmp = "__tmp__"  # Temporary column for sorting
             gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-            for col, path in stats_context["categories"].items():
+            for col, path in stats_context["gb_categories"].items():
                 stat_gdf = dask_cats._read_groupby_stat_df(path, col, self.cat_cache)
                 tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
                 tran_gdf = tran_gdf.sort_values(tmp)

@@ -212,11 +212,14 @@ def test_cats_and_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fractio
 
     processor.apply(dataset, output_path=str(tmpdir))
 
-    result_paths = glob.glob(str(tmpdir) + "/*.parquet")
-    if result_paths:  # Skipping dask version for now
+    if backend == "dask":
+        result = processor.get_ddf().compute()
+    else:
+        result_paths = glob.glob(str(tmpdir) + "/*.parquet")
         result = cudf.io.read_parquet(result_paths[0])
-        assert "name-cat_x_sum" in result.columns
-        assert "name-string_x_sum" in result.columns
+
+    assert "name-cat_x_sum" in result.columns
+    assert "name-string_x_sum" in result.columns
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

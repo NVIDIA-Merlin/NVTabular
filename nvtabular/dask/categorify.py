@@ -120,7 +120,6 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
                 output[k] = split
             k += 1
         del gb
-    del gdf
     return output
 
 

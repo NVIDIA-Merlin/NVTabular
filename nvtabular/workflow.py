@@ -814,18 +814,13 @@ class DaskWorkflow(BaseWorkflow):
         else:
             self.ddf = ddf
 
-    def get_ddf(self, base=False, columns=None):
-        if base:
-            if self.ddf_base_dataset is None:
-                raise ValueError("No dataset object available.")
-            return self.ddf_base_dataset.to_ddf(columns=columns)
-        else:
-            if self.ddf is None:
-                raise ValueError("No dask_cudf frame available.")
-            elif isinstance(self.ddf, dask_io.DaskDataset):
-                columns = self.columns_ctx["all"]["base"]
-                return self.ddf.to_ddf(columns=columns)
-            return self.ddf
+    def get_ddf(self):
+        if self.ddf is None:
+            raise ValueError("No dask_cudf frame available.")
+        elif isinstance(self.ddf, dask_io.DaskDataset):
+            columns = self.columns_ctx["all"]["base"]
+            return self.ddf.to_ddf(columns=columns)
+        return self.ddf
 
     @staticmethod
     def _aggregated_op(gdf, ops):
@@ -868,9 +863,9 @@ class DaskWorkflow(BaseWorkflow):
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    columns = op.get_columns(self.columns_ctx, cols_grp, target_cols)
-                    ddf = self.get_ddf(base=("base" in cols_grp), columns=columns)
-                    stats.append((op.dask_logic(ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    stats.append(
+                        (op.dask_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
+                    )
 
         # Compute statistics if necessary
         if stats:
