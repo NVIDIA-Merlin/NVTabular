@@ -35,7 +35,7 @@ from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
 
-from nvtabular.io import _device_mem_size, _shuffle_gdf
+from nvtabular.io import GPUDatasetIterator, _device_mem_size, _shuffle_gdf
 
 
 class WriterCache:
@@ -171,7 +171,6 @@ class DaskDataset:
         storage_options=None,
         **kwargs,
     ):
-
         if part_size:
             # If a specific partition size is given, use it directly
             part_size = parse_bytes(part_size)
@@ -197,7 +196,6 @@ class DaskDataset:
         # If engine is not provided, try to infer from end of paths[0]
         if engine is None:
             engine = paths[0].split(".")[-1]
-
         if isinstance(engine, str):
             if engine == "parquet":
                 self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
@@ -210,6 +208,9 @@ class DaskDataset:
 
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
+
+    def to_iter(self, columns=None):
+        return self.engine.to_iter(columns=columns)
 
 
 class DatasetEngine:
@@ -227,6 +228,9 @@ class DatasetEngine:
 
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
+
+    def to_iter(self, columns=None):
+        raise NotImplementedError(""" Return a GPUDatasetIterator  """)
 
 
 class ParquetDatasetEngine(DatasetEngine):
@@ -352,6 +356,17 @@ class ParquetDatasetEngine(DatasetEngine):
         divisions = [None] * (len(pieces) + 1)
         return new_dd_object(dsk, name, meta, divisions)
 
+    def to_iter(self, columns=None):
+        part_mem_fraction = self.part_size / _device_mem_size(kind="total")
+        itr = GPUDatasetIterator(
+            self.paths,
+            engine="parquet",
+            row_group_size=self.row_groups_per_part,
+            gpu_memory_frac=part_mem_fraction,
+            columns=columns,
+        )
+        return iter(itr)
+
 
 class CSVDatasetEngine(DatasetEngine):
     """ CSVDatasetEngine
@@ -362,14 +377,23 @@ class CSVDatasetEngine(DatasetEngine):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
         self._meta = {}
-        self.names = kwargs.pop("names", None)
         self.csv_kwargs = kwargs
+        self.names = self.csv_kwargs.get("names", None)
         # CSV reader needs a list of files
         # (Assume flat directory structure if this is a dir)
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
     def to_ddf(self, columns=None):
-        return dask_cudf.read_csv(
-            self.paths, names=self.names, chunksize=self.part_size, **self.csv_kwargs
-        )[columns]
+        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
+
+    def to_iter(self, columns=None):
+        part_mem_fraction = self.part_size / _device_mem_size(kind="total")
+        itr = GPUDatasetIterator(
+            self.paths,
+            engine="csv",
+            gpu_memory_frac=part_mem_fraction,
+            names=self.names,
+            columns=columns,
+        )
+        return iter(itr)

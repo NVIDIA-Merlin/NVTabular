@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import glob
 import math
 
 import cudf
@@ -25,55 +24,26 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
+from tests.conftest import cleanup, mycols_csv, mycols_pq
 
 
 @cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     config = nvtabular.workflow.get_new_config()
     config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    processor.update_stats(data_itr)
-
+    processor.update_stats(dataset)
     x_min = df["x"].min()
 
     assert x_min == pytest.approx(processor.stats["mins"]["x"], 1e-2)
@@ -95,47 +65,22 @@ def test_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_moments(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_moments(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     config = nvt.workflow.get_new_config()
     config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
+
+    assert df.x.count() == processor.stats["counts"]["x"]
+    assert df.x.count() == 4321
 
     # Check mean and std
     assert math.isclose(df.x.mean(), processor.stats["means"]["x"], rel_tol=1e-4)
@@ -153,47 +98,19 @@ def test_moments(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-def test_encoder(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [ops.Encoder(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     # Check that categories match
     if engine == "parquet" and not op_columns:
@@ -210,47 +127,19 @@ def test_encoder(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_median(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     config = nvt.workflow.get_new_config()
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     # Check median (TODO: Improve the accuracy)
     x_median = df.x.dropna().quantile(0.5, interpolation="linear")
@@ -266,39 +155,15 @@ def test_median(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_log(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        columns = mycols_pq
-    else:
-        columns = mycols_csv
+def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
-
     log_op = ops.LogOp(columns=op_columns)
 
     columns_ctx = {}
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
 
-    for gdf in data_itr:
+    for gdf in dataset:
         new_gdf = log_op.apply_op(gdf, columns_ctx, "continuous")
         assert new_gdf[cont_names] == np.log(gdf[cont_names].astype(np.float32))
 
@@ -306,31 +171,8 @@ def test_log(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-def test_hash_bucket(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        columns = mycols_pq
-    else:
-        columns = mycols_csv
+def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-string"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     if op_columns is None:
         num_buckets = 10
@@ -344,26 +186,19 @@ def test_hash_bucket(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 
     # check sums for determinancy
     checksums = []
-    for gdf in data_itr:
+    for gdf in dataset:
         new_gdf = hash_bucket_op.apply_op(gdf, columns_ctx, "categorical")
         assert np.all(new_gdf[cat_names].values >= 0)
         assert np.all(new_gdf[cat_names].values <= 9)
         checksums.append(new_gdf[cat_names].sum().values)
 
-    for checksum, gdf in zip(checksums, data_itr):
+    for checksum, gdf in zip(checksums, dataset):
         new_gdf = hash_bucket_op.apply_op(gdf, columns_ctx, "categorical")
         assert np.all(new_gdf[cat_names].sum().values == checksum)
 
 
-def test_fill_missing(tmpdir, datasets, engine="parquet"):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    columns = mycols_pq if engine == "parquet" else mycols_csv
-
-    df = cudf.concat([cudf.read_parquet(path) for path in paths])
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths, columns=columns, use_row_groups=True, names=allcols_csv
-    )
-
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_fill_missing(tmpdir, df, dataset, engine):
     op = nvt.ops.FillMissing(42)
 
     cont_names = ["x", "y"]
@@ -371,38 +206,20 @@ def test_fill_missing(tmpdir, datasets, engine="parquet"):
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
 
-    transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous") for df in data_itr])
+    transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous") for df in dataset])
     assert_eq(transformed[cont_names], df[cont_names].dropna(42))
 
 
-def test_dropna(tmpdir, datasets, engine="parquet"):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        columns = mycols_pq
-    else:
-        columns = mycols_csv
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths, columns=columns, use_row_groups=True, names=allcols_csv
-    )
-
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_dropna(tmpdir, df, dataset, engine):
     dropna = ops.Dropna()
+    columns = mycols_pq if engine == "parquet" else mycols_csv
 
     columns_ctx = {}
     columns_ctx["all"] = {}
     columns_ctx["all"]["base"] = columns
 
-    for gdf in data_itr:
+    for gdf in dataset:
         new_gdf = dropna.apply_op(gdf, columns_ctx, "all")
         assert new_gdf.columns.all() == gdf.columns.all()
         assert new_gdf.isnull().all().sum() < 1, "null values exist"

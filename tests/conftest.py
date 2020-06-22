@@ -1,3 +1,4 @@
+import glob
 import os
 import random
 from functools import wraps
@@ -5,6 +6,8 @@ from functools import wraps
 import cudf
 import numpy as np
 import pytest
+
+import nvtabular.io
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -104,6 +107,53 @@ def datasets(tmpdir_factory):
     )
 
     return datadir
+
+
+@pytest.fixture(scope="function")
+def paths(request):
+    engine = request.getfixturevalue("engine")
+    datasets = request.getfixturevalue("datasets")
+    return glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
+
+@pytest.fixture(scope="function")
+def df(request):
+    engine = request.getfixturevalue("engine")
+    paths = request.getfixturevalue("paths")
+    if engine == "parquet":
+        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    elif engine == "csv-no-header":
+        df1 = cudf.read_csv(paths[0], header=None, names=allcols_csv)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=None, names=allcols_csv)[mycols_csv]
+    elif engine == "csv":
+        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+    else:
+        raise ValueError("unknown engine:" + engine)
+    gdf = cudf.concat([df1, df2], axis=0)
+    gdf["id"] = gdf["id"].astype("int64")
+    return gdf
+
+
+@pytest.fixture(scope="function")
+def dataset(request):
+    paths = request.getfixturevalue("paths")
+    engine = request.getfixturevalue("engine")
+    try:
+        gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
+    except Exception:
+        gpu_memory_frac = 0.01
+
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+
+    return nvtabular.io.GPUDatasetIterator(
+        paths,
+        columns=columns,
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+        names=allcols_csv if engine == "csv-no-header" else None,
+    )
 
 
 def cleanup(func):
