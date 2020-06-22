@@ -1247,7 +1247,9 @@ class Categorify(DFOperator):
         if not cat_names:
             return gdf
         # Use multi-GPU version if the "encoders" are empty
-        use_multi = len(stats_context["encoders"]) < len(cat_names)
+        use_multi = "encoders" not in stats_context or len(stats_context["encoders"]) < len(
+            cat_names
+        )
         cat_names = [name for name in cat_names if name in gdf.columns]
         new_cols = []
         for name in cat_names:

@@ -19,12 +19,13 @@ import logging
 import os
 import queue
 import threading
+import warnings
 from itertools import islice
 
 import cudf
 import cupy as cp
+import numba.cuda as cuda
 import numpy as np
-import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
 
@@ -36,7 +37,7 @@ LOG = logging.getLogger("nvtabular")
 
 
 def _allowable_batch_size(gpu_memory_frac, row_size):
-    free_mem = rmm.get_info().free
+    free_mem = _device_mem_size(kind="free")
     gpu_memory = free_mem * gpu_memory_frac
     return max(int(gpu_memory / row_size), 1)
 
@@ -101,7 +102,7 @@ class PQFileReader(GPUFileReader):
         self.reader = cudf.read_parquet
 
         # Read Parquet-file metadata
-        (self.num_rows, self.num_row_groups, columns,) = cudf.io.read_parquet_metadata(
+        (self.num_rows, self.num_row_groups, columns) = cudf.io.read_parquet_metadata(
             self.file_path
         )
         # Use first row-group metadata to estimate memory-rqs
@@ -201,7 +202,7 @@ class CSVFileReader(GPUFileReader):
         if batch_size:
             self.batch_size = batch_size * self.row_size
         else:
-            free_mem = rmm.get_info().free
+            free_mem = _device_mem_size(kind="free")
             self.batch_size = free_mem * gpu_memory_frac
         self.num_chunks = int((self.file_bytes + self.batch_size - 1) // self.batch_size)
 
@@ -536,3 +537,23 @@ def _shuffle_gdf(gdf, gdf_size=None):
     arr = cp.arange(gdf_size)
     cp.random.shuffle(arr)
     return gdf.iloc[arr]
+
+
+def _device_mem_size(kind="total"):
+    if kind not in ["free", "total"]:
+        raise ValueError("kind argument not supported.")
+    try:
+        if kind == "free":
+            return int(cuda.current_context().get_memory_info()[0])
+        else:
+            return int(cuda.current_context().get_memory_info()[1])
+    except NotImplementedError:
+        # TODO: Remove this block if/when rmm approach is fully supported
+        import pynvml
+
+        pynvml.nvmlInit()
+        if kind == "free":
+            warnings.warn("RMM get_info is not supported. Using total device memory.")
+        size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
+        pynvml.nvmlShutdown()
+    return size

@@ -141,7 +141,7 @@ class DLLabelEncoder(object):
         if len(self._cats_host) == 0:
             raise Exception("Encoder was not fit!")
 
-        avail_gpu_mem = rmm.get_info().free
+        avail_gpu_mem = nvtabular.io._device_mem_size(kind="free")
         sub_cats_size = int(avail_gpu_mem * self.gpu_mem_trans_use / self._cats_host.dtype.itemsize)
         i = 0
         encoded = None
@@ -151,7 +151,7 @@ class DLLabelEncoder(object):
                 encoded = self._label_encoding(y, sub_cats, na_sentinel=0)
             else:
                 encoded = encoded.add(
-                    self._label_encoding(y, sub_cats, na_sentinel=0), fill_value=0,
+                    self._label_encoding(y, sub_cats, na_sentinel=0), fill_value=0
                 )
             i = i + sub_cats_size
 

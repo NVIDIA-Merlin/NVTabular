@@ -25,6 +25,7 @@ from dask.distributed import Client, LocalCluster
 
 import nvtabular.ops as ops
 from nvtabular import DaskDataset, Workflow
+from nvtabular.io import GPUDatasetIterator
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 # LocalCluster Client Fixture
@@ -163,6 +164,55 @@ def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
     assert "name-cat_x_var" not in result.columns
     assert "name-string_x_std" in result.columns
     assert "name-string_x_var" not in result.columns
+
+
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
+def test_cats_and_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
+
+    engine = "parquet"
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = Workflow(
+        # client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+    )
+
+    processor.add_preprocess(
+        ops.Categorify(
+            # columns=cat_names,
+            out_path=str(tmpdir),
+            split_out=2,
+            freq_threshold=10,
+            on_host=True,
+        )
+    )
+
+    processor.add_cat_feature(
+        ops.GroupBy(
+            cat_names=cat_names,
+            cont_names=cont_names,
+            stats=["count", "sum"],
+            out_path=str(tmpdir),
+            split_out=2,
+        )
+    )
+
+    processor.finalize()
+    # dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
+    dataset = GPUDatasetIterator(paths, engine="parquet", gpu_memory_frac=0.2)
+
+    processor.apply(dataset, output_path=str(tmpdir))
+
+    result_paths = glob.glob(str(tmpdir) + "/*.parquet")
+    result = cudf.io.read_parquet(result_paths[0])
+    assert "name-cat_x_sum" in result.columns
+    assert "name-string_x_sum" in result.columns
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

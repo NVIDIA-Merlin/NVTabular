@@ -21,7 +21,6 @@ from io import BytesIO
 import cudf
 import cupy
 import dask_cudf
-import numba.cuda as cuda
 import numpy as np
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
@@ -36,7 +35,7 @@ from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 from pyarrow.compat import guid
 
-from nvtabular.io import _shuffle_gdf
+from nvtabular.io import _device_mem_size, _shuffle_gdf
 
 
 class WriterCache:
@@ -186,18 +185,7 @@ class DaskDataset:
                     "Memory-related errors are likely."
                 )
 
-            try:
-                part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
-            except NotImplementedError:
-                # TODO: Remove this block when rmm approach is fully supported
-                import pynvml
-
-                pynvml.nvmlInit()
-                part_size = int(
-                    pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total
-                    * part_mem_fraction
-                )
-                pynvml.nvmlShutdown()
+            part_size = int(_device_mem_size(kind="total") * part_mem_fraction)
 
         # Engine-agnostic path handling
         if hasattr(path, "name"):
