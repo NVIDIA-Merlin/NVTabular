@@ -63,8 +63,7 @@ class TensorItr:
 
     """
 
-    def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False, **kwargs):
-        #         assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
+    def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False):
         self.tensors = tensors
         self.batch_size = batch_size
 
@@ -219,19 +218,15 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         self.itr = GPUFileIterator(path, **kwargs)
         self.batch_size = sub_batch_size
         self.num_chunks = len(self.itr.engine)
-        self.buffer = queue.Queue()
-        self.lock = threading.Lock()
 
     def __len__(self):
         return self.num_chunks
 
     def __iter__(self):
-        self.itr = iter(self.itr)
-        self.chunks_loaded = 0
-        self.load_chunk()
-        for x in range(self.num_chunks):
-            threading.Thread(target=self.load_chunk).start()
-            chunk = self.buffer.get()
+        buff = queue.Queue(1)
+        threading.Thread(target=self.load_chunk, args=(buff,)).start()
+        for _ in range(self.num_chunks):
+            chunk = buff.get()
             yield from TensorItr(
                 chunk,
                 batch_size=self.batch_size,
@@ -240,17 +235,12 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
                 label_cols=self.label_cols,
             )
 
-    def load_chunk(self):
-        with self.lock:
-            try:
-                chunk = next(self.itr)
-            except StopIteration:
-                return
+    def load_chunk(self, out):
+        for chunk in self.itr:
             chunk = create_tensors_plain(
                 chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
             )
-            self.buffer.put(chunk)
-            self.chunks_loaded += 1 
+            out.put(chunk)
 
 
 class DLCollator:

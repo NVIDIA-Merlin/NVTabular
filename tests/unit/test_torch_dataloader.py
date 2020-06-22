@@ -296,7 +296,6 @@ def test_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
-    # assert_eq(df_test
     # accounts for incomplete batches at the end of chunks
     # that dont necesssarily have the full batch_size
     assert rows == num_rows
