@@ -18,7 +18,7 @@ import cudf
 import cupy as cp
 import pandas as pd
 
-from nvtabular.io import _device_mem_size
+from nvtabular.io import device_mem_size
 
 
 class GroupByMomentsCal(object):
@@ -131,7 +131,7 @@ class GroupByMomentsCal(object):
         if "count" in self.stats_names:
             col_names.append(self.col + "_count")
 
-        avail_gpu_mem = _device_mem_size(kind="free")
+        avail_gpu_mem = device_mem_size(kind="free")
         sub_stats_size = int(avail_gpu_mem * self.gpu_mem_trans_use / (self.stats.shape[1] * 8))
         if sub_stats_size == 0:
             sub_stats_size = 1
