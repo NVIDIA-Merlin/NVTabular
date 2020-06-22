@@ -38,7 +38,7 @@ LOG = logging.getLogger("nvtabular")
 
 
 def _allowable_batch_size(gpu_memory_frac, row_size):
-    free_mem = _device_mem_size(kind="free")
+    free_mem = device_mem_size(kind="free")
     gpu_memory = free_mem * gpu_memory_frac
     return max(int(gpu_memory / row_size), 1)
 
@@ -203,7 +203,7 @@ class CSVFileReader(GPUFileReader):
         if batch_size:
             self.batch_size = batch_size * self.row_size
         else:
-            free_mem = _device_mem_size(kind="free")
+            free_mem = device_mem_size(kind="free")
             self.batch_size = free_mem * gpu_memory_frac
         self.num_chunks = int((self.file_bytes + self.batch_size - 1) // self.batch_size)
 
@@ -536,9 +536,9 @@ class HugeCTRWriter(ThreadedWriter):
             self.data_writers[i].write(header.tobytes())
 
 
-def _device_mem_size(kind="total"):
+def device_mem_size(kind="total"):
     if kind not in ["free", "total"]:
-        raise ValueError("kind argument not supported.")
+        raise ValueError("{0} not a supported option for device_mem_size.".format(kind))
     try:
         if kind == "free":
             return int(cuda.current_context().get_memory_info()[0])
@@ -549,7 +549,7 @@ def _device_mem_size(kind="total"):
 
         pynvml.nvmlInit()
         if kind == "free":
-            warnings.warn("RMM get_info is not supported. Using total device memory.")
+            warnings.warn("get_memory_info is not supported. Using total device memory from NVML.")
         size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
         pynvml.nvmlShutdown()
     return size

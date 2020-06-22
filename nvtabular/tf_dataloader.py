@@ -8,10 +8,10 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from .io import GPUDatasetIterator, _device_mem_size, _shuffle_gdf
+from .io import GPUDatasetIterator, _shuffle_gdf, device_mem_size
 from .workflow import BaseWorkflow
 
-free_gpu_mem_mb = _device_mem_size(kind="free") / (1024 ** 2)
+free_gpu_mem_mb = device_mem_size(kind="free") / (1024 ** 2)
 tf_mem_size = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
 if float(tf_mem_size) < 1:
     tf_mem_size = free_gpu_mem_mb * float(tf_mem_size)

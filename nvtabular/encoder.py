@@ -140,7 +140,7 @@ class DLLabelEncoder(object):
         if len(self._cats_host) == 0:
             raise Exception("Encoder was not fit!")
 
-        avail_gpu_mem = nvtabular.io._device_mem_size(kind="free")
+        avail_gpu_mem = nvtabular.io.device_mem_size(kind="free")
         sub_cats_size = int(avail_gpu_mem * self.gpu_mem_trans_use / self._cats_host.dtype.itemsize)
         i = 0
         encoded = None
@@ -165,8 +165,8 @@ class DLLabelEncoder(object):
 
     # Returns GPU available space and utilization.
     def _get_gpu_mem_info(self):
-        gpu_free_mem = nvtabular.io._device_mem_size(kind="free")
-        gpu_total_mem = nvtabular.io._device_mem_size(kind="total")
+        gpu_free_mem = nvtabular.io.device_mem_size(kind="free")
+        gpu_total_mem = nvtabular.io.device_mem_size(kind="total")
         gpu_mem_util = (gpu_total_mem - gpu_free_mem) / gpu_total_mem
         return gpu_free_mem, gpu_mem_util
 

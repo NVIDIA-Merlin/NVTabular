@@ -10,7 +10,7 @@ from dask_cuda import LocalCUDACluster
 
 import nvtabular.ops as ops
 from nvtabular import DaskDataset, Workflow
-from nvtabular.io import _device_mem_size
+from nvtabular.io import device_mem_size
 
 
 def setup_rmm_pool(client, pool_size):
@@ -79,7 +79,7 @@ def main(args):
                 cat_cache["C10"] = "host"
 
     # Use total device size to calculate args.device_limit_frac
-    device_size = _device_mem_size(kind="total")
+    device_size = device_mem_size(kind="total")
     device_limit = int(args.device_limit_frac * device_size)
     device_pool_size = int(args.device_pool_frac * device_size)
     part_size = int(args.part_mem_frac * device_size)
