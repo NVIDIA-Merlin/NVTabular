@@ -1,0 +1,11 @@
+ARG base
+FROM ${base} AS nvtabular
+ARG token=nvidia
+
+ENV HOME=/home/docker
+WORKDIR $HOME
+VOLUME $HOME
+EXPOSE 8888
+
+RUN conda install -c conda-forge jupyterlab
+ENTRYPOINT jupyter lab --ip=0.0.0.0 --LabApp.token=${token}

@@ -1,6 +1,9 @@
 */.ipynb_checkpoints/*
 /.*_checkpoints/
-*.ipynb_checkpoints/*
+.ipynb_checkpoints/*
+*/.jupyter/*
+*/.local/*
+
 cache/*
 data*/*
 *.parquet
