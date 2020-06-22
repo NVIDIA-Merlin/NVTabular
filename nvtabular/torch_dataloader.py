@@ -230,9 +230,6 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
             yield from TensorItr(
                 chunk,
                 batch_size=self.batch_size,
-                cat_cols=self.cat_cols,
-                cont_cols=self.cont_cols,
-                label_cols=self.label_cols,
             )
 
     def load_chunk(self, out):
