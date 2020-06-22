@@ -16,11 +16,9 @@ def parse_args():
     parser.add_argument("batch_size", help="type of file (i.e. parquet, csv, orc)")
     parser.add_argument("gpu_mem_frac", help="size of gpu to allot to the dataset iterator")
     parser.add_argument(
-        "--shuffle", required=False, help="bool value to activate shuffling of processed dataset",
+        "--shuffle", required=False, help="bool value to activate shuffling of processed dataset"
     )
-    parser.add_argument(
-        "--pool", required=False, help="bool value to use a RMM pooled allocator",
-    )
+    parser.add_argument("--pool", required=False, help="bool value to use a RMM pooled allocator")
     return parser.parse_args()
 
 
@@ -41,13 +39,13 @@ from fastai.metrics import accuracy
 from fastai.tabular import TabularModel
 
 from nvtabular import Workflow
-from nvtabular.io import GPUDatasetIterator
+from nvtabular.io import GPUDatasetIterator, _device_mem_size
 from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill
 from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
 
 
 if args.pool:
-    rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * rmm.get_info().free)
+    rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * _device_mem_size(kind="free"))
 
 # Args needed GPU_id, in_dir, out_dir, in_file_type, freq_threshold, batch_size, gpu_mem_frac
 # day_split

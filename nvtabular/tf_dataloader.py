@@ -4,15 +4,14 @@ import warnings
 # need to configure tensorflow to not use all of memory
 # TF_MEMORY_ALLOCATION is fraction of GPU memory if < 1, and size
 # in MB if > 1
-import rmm
 import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from .io import GPUDatasetIterator, _shuffle_gdf
+from .io import GPUDatasetIterator, _device_mem_size, _shuffle_gdf
 from .workflow import BaseWorkflow
 
-free_gpu_mem_mb = rmm.get_info().free / (1024 ** 2)
+free_gpu_mem_mb = _device_mem_size(kind="free") / (1024 ** 2)
 tf_mem_size = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
 if float(tf_mem_size) < 1:
     tf_mem_size = free_gpu_mem_mb * float(tf_mem_size)
