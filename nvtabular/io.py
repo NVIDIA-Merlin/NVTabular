@@ -20,12 +20,13 @@ import logging
 import os
 import queue
 import threading
+import warnings
 from itertools import islice
 
 import cudf
 import cupy as cp
+import numba.cuda as cuda
 import numpy as np
-import rmm
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
 
@@ -37,7 +38,7 @@ LOG = logging.getLogger("nvtabular")
 
 
 def _allowable_batch_size(gpu_memory_frac, row_size):
-    free_mem = rmm.get_info().free
+    free_mem = device_mem_size(kind="free")
     gpu_memory = free_mem * gpu_memory_frac
     return max(int(gpu_memory / row_size), 1)
 
@@ -102,7 +103,7 @@ class PQFileReader(GPUFileReader):
         self.reader = cudf.read_parquet
 
         # Read Parquet-file metadata
-        (self.num_rows, self.num_row_groups, columns,) = cudf.io.read_parquet_metadata(
+        (self.num_rows, self.num_row_groups, columns) = cudf.io.read_parquet_metadata(
             self.file_path
         )
         # Use first row-group metadata to estimate memory-rqs
@@ -202,7 +203,7 @@ class CSVFileReader(GPUFileReader):
         if batch_size:
             self.batch_size = batch_size * self.row_size
         else:
-            free_mem = rmm.get_info().free
+            free_mem = device_mem_size(kind="free")
             self.batch_size = free_mem * gpu_memory_frac
         self.num_chunks = int((self.file_bytes + self.batch_size - 1) // self.batch_size)
 
@@ -356,7 +357,7 @@ class Writer:
 
 class Shuffler(Writer):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
     ):
         self.writer = ParquetWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
 
@@ -369,7 +370,7 @@ class Shuffler(Writer):
 
 class ThreadedWriter(Writer):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
     ):
         # set variables
         self.out_dir = out_dir
@@ -453,7 +454,7 @@ class ThreadedWriter(Writer):
 
 class ParquetWriter(ThreadedWriter):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
     ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
@@ -486,7 +487,7 @@ class ParquetWriter(ThreadedWriter):
 
 class HugeCTRWriter(ThreadedWriter):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
     ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
@@ -533,3 +534,22 @@ class HugeCTRWriter(ThreadedWriter):
             )
 
             self.data_writers[i].write(header.tobytes())
+
+
+def device_mem_size(kind="total"):
+    if kind not in ["free", "total"]:
+        raise ValueError("{0} not a supported option for device_mem_size.".format(kind))
+    try:
+        if kind == "free":
+            return int(cuda.current_context().get_memory_info()[0])
+        else:
+            return int(cuda.current_context().get_memory_info()[1])
+    except NotImplementedError:
+        import pynvml
+
+        pynvml.nvmlInit()
+        if kind == "free":
+            warnings.warn("get_memory_info is not supported. Using total device memory from NVML.")
+        size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
+        pynvml.nvmlShutdown()
+    return size
