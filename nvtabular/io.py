@@ -504,11 +504,15 @@ class ParquetWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
-            data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
+            data["file_stats"].append(
+                {"file_name": f"{i}.parquet", "num_rows": self.num_samples[i]}
+            )
         # cats
         data["cats"] = []
         for c in self.cats:
