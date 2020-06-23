@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import collections
 import logging
 import os
 import time
@@ -30,7 +31,7 @@ import nvtabular.dask.io as dask_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
-from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
+from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
 
@@ -59,17 +60,7 @@ class BaseWorkflow:
         Names of the continous columns.
     label_name : list of str
         Names of the label column.
-    feat_ops : list of feature engineering operator objects
-        Feature engineering ops objects GroupBy.
-        New feature engineering operators can be added
-        later using the other functions
-    stat_ops : list of stats operator objects
-        Feature engineering ops objects such as
-        Categorify and Normalize. New feature engineering
-        operators can be added later using the other functions.
-    df_ops : list of data frame operator objects
-    to_cpu : bool, default True
-    config : bool
+    config : object
     export : bool, default False
     export_path : str, default "./ds_export"
     """
@@ -79,21 +70,13 @@ class BaseWorkflow:
         cat_names=None,
         cont_names=None,
         label_name=None,
-        feat_ops=None,
-        stat_ops=None,
-        df_ops=None,
-        to_cpu=True,
         config=None,
+        # TODO: move these out
         export=False,
         export_path="./ds_export",
     ):
-        self.reg_funcs = {
-            StatOperator: self.reg_stat_ops,
-            TransformOperator: self.reg_feat_ops,
-            DFOperator: self.reg_df_ops,
-        }
-        self.master_task_list = []
         self.phases = []
+
         self.columns_ctx = {}
         self.columns_ctx["all"] = {}
         self.columns_ctx["continuous"] = {}
@@ -103,15 +86,10 @@ class BaseWorkflow:
         self.columns_ctx["continuous"]["base"] = cont_names
         self.columns_ctx["categorical"]["base"] = cat_names
         self.columns_ctx["label"]["base"] = label_name
-        self.feat_ops = {}
-        self.stat_ops = {}
-        self.df_ops = {}
+
         self.stats = {}
-        self.task_sets = {}
         self.ds_exports = export_path
-        self.to_cpu = to_cpu
         self.export = export
-        self.ops_args = {}
         self.current_file_num = 0
         self.timings = {
             "shuffle_df": 0.0,
@@ -123,11 +101,11 @@ class BaseWorkflow:
             self.load_config(config)
         else:
             # create blank config and for later fill in
-            self.config = get_new_list_config()
+            self.config = get_new_config()
 
         self.clear_stats()
 
-    def get_tar_cols(self, operators):
+    def _get_target_cols(self, operators):
         # all operators in a list are chained therefore based on parent in list
         if type(operators) is list:
             target_cols = operators[0].get_default_in()
@@ -135,7 +113,7 @@ class BaseWorkflow:
             target_cols = operators.get_default_in()
         return target_cols
 
-    def config_add_ops(self, operators, phase):
+    def _config_add_ops(self, operators, phase):
         """
         This function serves to translate the operator list api into backend
         ready dependency dictionary.
@@ -148,10 +126,8 @@ class BaseWorkflow:
         phase:
             identifier for feature engineering FE or preprocessing PP
         """
-        target_cols = self.get_tar_cols(operators)
+        target_cols = self._get_target_cols(operators)
         if phase in self.config and target_cols in self.config[phase]:
-            # append operator as single ent1ry or as a list
-            # maybe should be list always to make downstream easier
             self.config[phase][target_cols].append(operators)
             return
 
@@ -180,7 +156,7 @@ class BaseWorkflow:
             added into the feature engineering phase
         """
 
-        self.config_add_ops(operators, "FE")
+        self._config_add_ops(operators, "FE")
 
     def add_cat_feature(self, operators):
         """
@@ -258,9 +234,8 @@ class BaseWorkflow:
             list of operators or single operator, Op/s to be
             added into the preprocessing phase
         """
-
         # must add last operator from FE for get_default_in
-        target_cols = self.get_tar_cols(operators)
+        target_cols = self._get_target_cols(operators)
         if self.config["FE"][target_cols]:
             op_to_add = self.config["FE"][target_cols][-1]
         else:
@@ -273,11 +248,7 @@ class BaseWorkflow:
             op_to_add = op_to_add + operators
         else:
             op_to_add.append(operators)
-        self.config_add_ops(op_to_add, "PP")
-
-    def reg_all_ops(self, task_list):
-        for tup in task_list:
-            self.reg_funcs[tup[0].__class__.__base__]([tup[0]])
+        self._config_add_ops(op_to_add, "PP")
 
     def finalize(self):
         """
@@ -286,34 +257,6 @@ class BaseWorkflow:
         data.
         """
         self.load_config(self.config)
-
-    def reg_feat_ops(self, feat_ops):
-        """
-        Register Feature engineering operators
-        """
-        for feat_op in feat_ops:
-            self.feat_ops[feat_op._id] = feat_op
-
-    def reg_df_ops(self, df_ops):
-        """
-        Register preprocessing operators
-        """
-        for df_op in df_ops:
-            dfop_id, dfop_rs = df_op._id, df_op.req_stats
-            self.reg_stat_ops(dfop_rs)
-            self.df_ops[dfop_id] = df_op
-
-    def reg_stat_ops(self, stat_ops):
-        """
-        Register statistical operators
-        """
-        for stat_op in stat_ops:
-            # pull stats, ensure no duplicates
-            for stat in stat_op.registered_stats():
-                if stat not in self.stats:
-                    self.stats[stat] = {}
-            # add actual statistic operator, after all stats added
-            self.stat_ops[stat_op._id] = stat_op
 
     def write_to_dataset(self, path, itr, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
         """ Write data to shuffled parquet dataset.
@@ -325,7 +268,6 @@ class BaseWorkflow:
                 gdf = self.apply_ops(gdf)
             writer.write(gdf, shuffle=shuffle)
         writer.write_metadata()
-        return
 
     def load_config(self, config, pro=False):
         """
@@ -342,22 +284,22 @@ class BaseWorkflow:
         """
         # separate FE and PP
         if not pro:
-            config = self.compile_dict_from_list(config)
-        self.task_sets = {}
+            config = self._compile_dict_from_list(config)
+        task_sets = {}
+        master_task_list = []
         for task_set in config.keys():
-            self.task_sets[task_set] = self.build_tasks(config[task_set], task_set)
-            self.master_task_list = self.master_task_list + self.task_sets[task_set]
+            task_sets[task_set] = self._build_tasks(config[task_set], task_set, master_task_list)
+            master_task_list = master_task_list + task_sets[task_set]
 
-        self.reg_all_ops(self.master_task_list)
-        baseline, leftovers = self.sort_task_types(self.master_task_list)
+        baseline, leftovers = self._sort_task_types(master_task_list)
         self.phases.append(baseline)
-        self.phase_creator(leftovers)
+        self._phase_creator(leftovers)
         # check if export wanted
         if self.export:
-            self.phases_export()
-        self.create_final_col_refs()
+            self._phases_export()
+        self._create_final_col_refs(task_sets)
 
-    def phase_creator(self, task_list):
+    def _phase_creator(self, task_list):
         """
         task_list: list, phase specific list of operators and dependencies
         ---
@@ -379,14 +321,14 @@ class BaseWorkflow:
                         break
                     if p_task[0]._id in cols_needed:
                         cols_needed.remove(p_task[0]._id)
-                if not cols_needed and self.find_parents(task[3], idx):
+                if not cols_needed and self._find_parents(task[3], idx):
                     added = True
                     phase.append(task)
 
             if not added:
                 self.phases.append([task])
 
-    def phases_export(self):
+    def _phases_export(self):
         """
         Export each phase from the dependency dictionary, that creates transformations.
         """
@@ -402,7 +344,7 @@ class BaseWorkflow:
                 tar_path = os.path.join(self.ds_exports, str(idx))
                 phase.append([Export(path=f"{tar_path}"), None, [], []])
 
-    def find_parents(self, ops_list, phase_idx):
+    def _find_parents(self, ops_list, phase_idx):
         """
         Attempt to find all ops in ops_list within subrange of phases
         """
@@ -419,7 +361,7 @@ class BaseWorkflow:
         if not ops_copy:
             return True
 
-    def sort_task_types(self, master_list):
+    def _sort_task_types(self, master_list):
         """
         This function helps ordering and breaking up the master list of operators into the
         correct phases.
@@ -438,52 +380,31 @@ class BaseWorkflow:
                     nodeps.append(tup)
         return nodeps, master_list
 
-    def compile_dict_from_list(self, task_list_dict):
+    def _compile_dict_from_list(self, config):
         """
         This function retrieves all the operators from the different keys in
-        the task_list_dict object.
+        the config object.
 
         Parameters
         -----------
-        task_list_dict : dict
+        config : dict
             this dictionary has phases(key) and the corresponding list of operators for
             each phase.
         """
-        tk_d = {}
-        phases = 0
-        for phase, task_list in task_list_dict.items():
-            tk_d[phase] = {}
+        ret = {}
+        for phase, task_list in config.items():
+            ret[phase] = {}
             for k, v in task_list.items():
-                tk_d[phase][k] = self.extract_tasks_dict(v)
-            # increment at end for next if exists
-            phases = phases + 1
-        return tk_d
+                tasks = []
+                for obj in v:
+                    if not isinstance(obj, collections.abc.Sequence):
+                        obj = [obj]
+                    for idx, op in enumerate(obj):
+                        tasks.append((op, [obj[idx - 1]._id] if idx > 0 else []))
+                ret[phase][k] = tasks
+        return ret
 
-    def extract_tasks_dict(self, task_list):
-        """
-        The function serves as a shim that can turn lists of operators
-        into the dictionary dependency format required for processing.
-        """
-        # contains a list of lists [[fillmissing, Logop]], Normalize, Categorify]
-        task_dicts = []
-        for obj in task_list:
-            if isinstance(obj, list):
-
-                for idx, op in enumerate(obj):
-                    # kwargs for mapping during load later
-                    self.ops_args[op._id] = op.export_op()[op._id]
-                    if idx > 0:
-                        to_add = {op._id: [[obj[idx - 1]._id]]}
-                    else:
-                        to_add = {op._id: [[]]}
-                    task_dicts.append(to_add)
-            else:
-                self.ops_args[obj._id] = obj.export_op()[obj._id]
-                to_add = {obj._id: [[]]}
-                task_dicts.append(to_add)
-        return task_dicts
-
-    def create_final_col_refs(self):
+    def _create_final_col_refs(self, task_sets):
         """
         This function creates a reference of all the operators whose produced
         columns will be available in the final set of columns. First step in
@@ -495,7 +416,7 @@ class BaseWorkflow:
         final = {}
         # all preprocessing tasks have a parent operator, it could be None
         # task (operator, main_columns_class, col_sub_key,  required_operators)
-        for task in self.task_sets["PP"]:
+        for task in task_sets["PP"]:
             # an operator cannot exist twice
             if not task[1] in final.keys():
                 final[task[1]] = []
@@ -508,7 +429,7 @@ class BaseWorkflow:
                 final[task[1]].append(task[0]._id)
         # add labels too specific because not specifically required in init
         final["label"] = []
-        for p_set, col_ctx in self.columns_ctx["label"].items():
+        for col_ctx in self.columns_ctx["label"].values():
             if not final["label"]:
                 final["label"] = col_ctx
             else:
@@ -561,7 +482,7 @@ class BaseWorkflow:
             col_names.extend(c_names)
         return col_names
 
-    def build_tasks(self, task_dict: dict, task_set):
+    def _build_tasks(self, task_dict: dict, task_set, master_task_list):
         """
         task_dict: the task dictionary retrieved from the config
         Based on input config information
@@ -569,53 +490,23 @@ class BaseWorkflow:
         # task format = (operator, main_columns_class, col_sub_key,  required_operators)
         dep_tasks = []
         for cols, task_list in task_dict.items():
-            for task in task_list:
-                for op_id, dep_set in task.items():
-                    # get op from op_id
-                    # operators need to be instantiated with state information
-                    target_op = OperatorRegistry.OPS[op_id](**self.ops_args[op_id])
-                    if dep_set:
-                        for dep_grp in dep_set:
-                            # handle required stats of target op on
-                            # all the dependent columns
-                            for dep in dep_grp:
-                                if task_set in "PP" and not self.op_preprocess(dep):
-                                    dep_grp.remove(dep)
-                            if hasattr(target_op, "req_stats"):
-                                # check that the required stat is grabbed
-                                # for all necessary parents
-                                for opo in target_op.req_stats:
-                                    # only add if it doesnt already exist=
-                                    if not self.is_repeat_op(opo, cols):
-                                        dep_grp = dep_grp if dep_grp else ["base"]
-                                        dep_tasks.append((opo, cols, dep_grp, []))
-                            # after req stats handle target_op
+            for target_op, dep_grp in task_list:
+                if isinstance(target_op, DFOperator):
+                    # check that the required stat is grabbed
+                    # for all necessary parents
+                    for opo in target_op.req_stats:
+                        # only add if it doesnt already exist
+                        if not self._is_repeat_op(opo, cols, master_task_list):
                             dep_grp = dep_grp if dep_grp else ["base"]
-                            parents = (
-                                [] if not hasattr(target_op, "req_stats") else target_op.req_stats
-                            )
-                            if not self.is_repeat_op(target_op, cols):
-                                dep_tasks.append((target_op, cols, dep_grp, parents))
+                            dep_tasks.append((opo, cols, dep_grp, []))
+                # after req stats handle target_op
+                dep_grp = dep_grp if dep_grp else ["base"]
+                parents = [] if not hasattr(target_op, "req_stats") else target_op.req_stats
+                if not self._is_repeat_op(target_op, cols, master_task_list):
+                    dep_tasks.append((target_op, cols, dep_grp, parents))
         return dep_tasks
 
-    def op_preprocess(self, target_op_id):
-        # find operator given id
-        target_op = self.find_op(target_op_id)
-        # check if operator has preprocessing
-        # if preprocessing, break
-        if hasattr(target_op, "preprocessing"):
-            return target_op.preprocessing
-        return True
-
-    def find_op(self, target_op_id):
-        if target_op_id in self.stat_ops:
-            return self.stat_ops[target_op_id]
-        elif target_op_id in self.feat_ops:
-            return self.feat_ops[target_op_id]
-        elif target_op_id in self.df_ops:
-            return self.df_ops[target_op_id]
-
-    def is_repeat_op(self, op, cols):
+    def _is_repeat_op(self, op, cols, master_task_list):
         """
         Helper function to find if a given operator targeting a column set
         already exists in the master task list.
@@ -626,7 +517,7 @@ class BaseWorkflow:
         cols: str
             one of the following; continuous, categorical, all
         """
-        for task_d in self.master_task_list:
+        for task_d in master_task_list:
             if op._id in task_d[0]._id and cols == task_d[1]:
                 return True
         return False
@@ -634,24 +525,17 @@ class BaseWorkflow:
     def run_ops_for_phase(self, gdf, tasks, record_stats=True):
         run_stat_ops = []
         for task in tasks:
-            op, cols_grp, target_cols, parents = task
-            LOG.debug("running op %s", op._id)
-            if record_stats and op._id in self.stat_ops:
-                op = self.stat_ops[op._id]
+            op, cols_grp, target_cols, _ = task
+            if record_stats and isinstance(op, StatOperator):
                 op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
                 run_stat_ops.append(op) if op not in run_stat_ops else None
-            elif op._id in self.feat_ops:
-                gdf = self.feat_ops[op._id].apply_op(
-                    gdf, self.columns_ctx, cols_grp, target_cols=target_cols
-                )
-            elif op._id in self.df_ops:
-                gdf = self.df_ops[op._id].apply_op(
-                    gdf,
-                    self.columns_ctx,
-                    cols_grp,
-                    target_cols=target_cols,
-                    stats_context=self.stats,
-                )
+
+            elif isinstance(op, DFOperator):
+                gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols, self.stats)
+
+            elif isinstance(op, TransformOperator):
+                gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
+
         return gdf, run_stat_ops
 
     # run phase
@@ -697,12 +581,13 @@ class BaseWorkflow:
                 huge_ctr.add_data(gdf)
 
             gdf = None
+
         # if export is activated combine as many GDFs as possible and
         # then write them out cudf.concat([exp_gdf, gdf], axis=0)
         for stat_op in stat_ops_ran:
             stat_op.read_fin()
-            # missing bubble up to preprocessor
-        self.get_stats()
+            self._update_stats(stat_op)
+            stat_op.clear()
 
     def apply(
         self,
@@ -820,7 +705,7 @@ class BaseWorkflow:
         end = end_phase if end_phase else len(self.phases)
         for phase_index in range(start, end):
             start = time.time()
-            gdf, stat_ops_ran = self.run_ops_for_phase(
+            gdf, _ = self.run_ops_for_phase(
                 gdf, self.phases[phase_index], record_stats=record_stats
             )
             self.timings["preproc_apply"] += time.time() - start
@@ -850,14 +735,8 @@ class BaseWorkflow:
             gdf.to_parquet(path, compression=None)
             self.current_file_num += 1
 
-    def get_stats(self):
-        for name, stat_op in self.stat_ops.items():
-            stat_vals = stat_op.stats_collected()
-            for name, stat in stat_vals:
-                if name in self.stats:
-                    self.stats[name] = stat
-                else:
-                    warnings.warn("stat not found,", name)
+    def _update_stats(self, stat_op):
+        self.stats.update(stat_op.stats_collected())
 
     def save_stats(self, path):
         main_obj = {}
@@ -871,14 +750,6 @@ class BaseWorkflow:
                 stats_drop[name] = stat
         main_obj["stats"] = stats_drop
         main_obj["columns_ctx"] = self.columns_ctx
-        op_args = {}
-        tasks = []
-        for task in self.master_task_list:
-            tasks.append([task[0]._id, task[1], task[2], [x._id for x in task[3]]])
-            op = self.find_op(task[0]._id)
-            op_args[op._id] = op.__dict__
-        main_obj["op_args"] = op_args
-        main_obj["tasks"] = tasks
         with open(path, "w") as outfile:
             yaml.safe_dump(main_obj, outfile, default_flow_style=False)
 
@@ -890,61 +761,21 @@ class BaseWorkflow:
         with open(path, "r") as infile:
             main_obj = yaml.safe_load(infile)
             _set_stats(self, main_obj["stats"])
-            self.master_task_list = self.recreate_master_task_list(
-                main_obj["tasks"], main_obj["op_args"]
-            )
             self.columns_ctx = main_obj["columns_ctx"]
         encoders = self.stats.get("encoders", {})
         for col, cats in encoders.items():
             self.stats["encoders"][col] = DLLabelEncoder(col, cats=cudf.Series(cats[0]))
-        self.reg_all_ops(self.master_task_list)
 
     def clear_stats(self):
-
-        for stat, vals in self.stats.items():
-            self.stats[stat] = {}
-
-        for statop_id, stat_op in self.stat_ops.items():
-            stat_op.clear()
+        self.stats = {}
 
     def ds_to_tensors(self, itr, apply_ops=True):
         from nvtabular.torch_dataloader import create_tensors
 
         return create_tensors(self, itr=itr, apply_ops=apply_ops)
 
-    def recreate_master_task_list(self, task_list, op_args):
-        master_list = []
-        for task in task_list:
-            op_id = task[0]
-            main_grp = task[1]
-            sub_cols = task[2]
-            dep_ids = task[3]
-            op = OperatorRegistry.OPS[op_id](**op_args[op_id])
-            dep_ops = []
-            for ops_id in dep_ids:
-                dep_ops.append(OperatorRegistry.OPS[ops_id]())
-
-            master_list.append((op, main_grp, sub_cols, dep_ops))
-        return master_list
-
 
 def get_new_config():
-    """
-    boiler config object, to be filled in with targeted operator tasks
-    """
-    config = {}
-    config["FE"] = {}
-    config["FE"]["all"] = {}
-    config["FE"]["continuous"] = {}
-    config["FE"]["categorical"] = {}
-    config["PP"] = {}
-    config["PP"]["all"] = {}
-    config["PP"]["continuous"] = {}
-    config["PP"]["categorical"] = {}
-    return config
-
-
-def get_new_list_config():
     """
     boiler config object, to be filled in with targeted operator tasks
     """
@@ -1020,17 +851,10 @@ class DaskWorkflow(BaseWorkflow):
         """
         transforms = []
         for task in self.phases[phase_index]:
-            op, cols_grp, target_cols, parents = task
-            op_name = op._id
+            op, cols_grp, target_cols, _ = task
             if isinstance(op, TransformOperator):
-                if op_name in self.feat_ops:
-                    logic = self.feat_ops[op_name].apply_op
-                    stats_context = None
-                elif op_name in self.df_ops:
-                    logic = self.df_ops[op._id].apply_op
-                    stats_context = self.stats
-                else:
-                    raise ValueError("Not a FE op or DF op!")
+                stats_context = self.stats if isinstance(op, DFOperator) else None
+                logic = op.apply_op
                 transforms.append((self.columns_ctx, cols_grp, target_cols, logic, stats_context))
             elif not isinstance(op, StatOperator):
                 raise ValueError("Unknown Operator Type")
@@ -1039,27 +863,23 @@ class DaskWorkflow(BaseWorkflow):
         if transforms:
             self._aggregated_dask_transform(transforms)
 
-        stats = {}
+        stats = []
         if record_stats:
             for task in self.phases[phase_index]:
-                op, cols_grp, target_cols, parents = task
-                op_name = op._id
+                op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    stat_op = self.stat_ops[op_name]
-                    columns = stat_op.get_columns(self.columns_ctx, cols_grp, target_cols)
+                    columns = op.get_columns(self.columns_ctx, cols_grp, target_cols)
                     ddf = self.get_ddf(base=("base" in cols_grp), columns=columns)
-                    stats[op_name] = stat_op.dask_logic(
-                        ddf, self.columns_ctx, cols_grp, target_cols
-                    )
+                    stats.append((op.dask_logic(ddf, self.columns_ctx, cols_grp, target_cols), op))
 
         # Compute statistics if necessary
         if stats:
-            stats = self.client.compute(stats).result()
-            for op_name, computed_stats in stats.items():
-                self.stat_ops[op_name].dask_fin(computed_stats)
+            for r in self.client.compute(stats):
+                computed_stats, op = r.result()
+                op.dask_fin(computed_stats)
+                self._update_stats(op)
+                op.clear()
             del stats
-        self.get_stats()
-        return
 
     def apply(
         self,
@@ -1094,23 +914,19 @@ class DaskWorkflow(BaseWorkflow):
         trans_tasks = []
         for idx, _ in enumerate(self.phases[:end]):
             for task in self.phases[idx]:
-                op_name = task[0]._id
                 deps = task[2]
-                if op_name in self.stat_ops:
+                if isinstance(task[0], StatOperator):
                     if deps == ["base"]:
                         stat_tasks.append(task)
                     else:
                         # This statistics depends on a transform
                         # (Opt wont work)
                         return
-                elif op_name in self.feat_ops:
-                    trans_tasks.append(task)
-                elif op_name in self.df_ops:
+                elif isinstance(task[0], TransformOperator):
                     trans_tasks.append(task)
 
         self.phases[0] = stat_tasks
         self.phases[1] = trans_tasks
-        return
 
     def update_stats(
         self,
@@ -1173,4 +989,3 @@ class DaskWorkflow(BaseWorkflow):
             return out
 
         ddf.to_parquet(output_path, compression=None, write_index=False)
-        return None

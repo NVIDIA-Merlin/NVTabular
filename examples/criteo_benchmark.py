@@ -16,11 +16,9 @@ def parse_args():
     parser.add_argument("batch_size", help="type of file (i.e. parquet, csv, orc)")
     parser.add_argument("gpu_mem_frac", help="size of gpu to allot to the dataset iterator")
     parser.add_argument(
-        "--shuffle", required=False, help="bool value to activate shuffling of processed dataset",
+        "--shuffle", required=False, help="bool value to activate shuffling of processed dataset"
     )
-    parser.add_argument(
-        "--pool", required=False, help="bool value to use a RMM pooled allocator",
-    )
+    parser.add_argument("--pool", required=False, help="bool value to use a RMM pooled allocator")
     return parser.parse_args()
 
 
@@ -35,18 +33,19 @@ logging.getLogger("nvtabular").setLevel(logging.DEBUG)
 import cudf
 import rmm
 import torch
-from fastai.basic_train import Learner, to_cpu
-from fastai.metrics import accuracy
 from fastai.basic_data import DataBunch
+from fastai.basic_train import Learner
+from fastai.metrics import accuracy
 from fastai.tabular import TabularModel
 
-from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
-from nvtabular.io import GPUDatasetIterator
-from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill
 from nvtabular import Workflow
+from nvtabular.io import GPUDatasetIterator, device_mem_size
+from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill
+from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
+
 
 if args.pool:
-    rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * rmm.get_info().free)
+    rmm.reinitialize(pool_allocator=True, initial_pool_size=0.8 * device_mem_size(kind="free"))
 
 # Args needed GPU_id, in_dir, out_dir, in_file_type, freq_threshold, batch_size, gpu_mem_frac
 # day_split
@@ -89,7 +88,7 @@ cont_names = ["I" + str(x) for x in range(1, 14)]
 cat_names = ["C" + str(x) for x in range(1, 27)]
 cols = ["label"] + cont_names + cat_names
 print("Creating Workflow Object")
-proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"], to_cpu=to_cpu)
+proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"])
 proc.add_feature([ZeroFill(replace=True), LogOp(replace=True)])
 proc.add_preprocess(Normalize(replace=True))
 if int(args.freq_thresh) == 0:

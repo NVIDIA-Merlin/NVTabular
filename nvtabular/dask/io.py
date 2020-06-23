@@ -22,7 +22,6 @@ from uuid import uuid4
 import cudf
 import cupy
 import dask_cudf
-import numba.cuda as cuda
 import numpy as np
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
@@ -36,7 +35,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
-from nvtabular.io import GPUDatasetIterator, _shuffle_gdf
+from nvtabular.io import GPUDatasetIterator, _shuffle_gdf, device_mem_size
 
 try:
     import pyarrow.dataset as pa_ds
@@ -195,19 +194,7 @@ class DaskDataset:
                     "Using very large partitions sizes for Dask. "
                     "Memory-related errors are likely."
                 )
-
-            try:
-                part_size = int(cuda.current_context().get_memory_info()[1] * part_mem_fraction)
-            except NotImplementedError:
-                # TODO: Remove this block when rmm approach is fully supported
-                import pynvml
-
-                pynvml.nvmlInit()
-                part_size = int(
-                    pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total
-                    * part_mem_fraction
-                )
-                pynvml.nvmlShutdown()
+            part_size = int(device_mem_size(kind="total") * part_mem_fraction)
 
         # Engine-agnostic path handling
         if hasattr(path, "name"):
@@ -404,7 +391,7 @@ class ParquetDatasetEngine(DatasetEngine):
         return new_dd_object(dsk, name, meta, divisions)
 
     def to_iter(self, columns=None):
-        part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]
+        part_mem_fraction = self.part_size / device_mem_size(kind="total")
         itr = GPUDatasetIterator(
             self.paths,
             engine="parquet",
@@ -434,7 +421,7 @@ class CSVDatasetEngine(DatasetEngine):
         return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
 
     def to_iter(self, columns=None):
-        part_mem_fraction = self.part_size / cuda.current_context().get_memory_info()[1]
+        part_mem_fraction = self.part_size / device_mem_size(kind="total")
         itr = GPUDatasetIterator(
             self.paths,
             engine="csv",

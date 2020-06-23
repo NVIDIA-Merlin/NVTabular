@@ -33,45 +33,19 @@ from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_gpu_workflow_api(tmpdir, datasets, dump, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_gpu_workflow_api(tmpdir, df, dataset, gpu_memory_frac, engine, dump, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, to_cpu=False,
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
 
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
-
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     if dump:
         config_file = tmpdir + "/temp.yaml"
@@ -105,7 +79,7 @@ def test_gpu_workflow_api(tmpdir, datasets, dump, gpu_memory_frac, engine, op_co
     assert cats1 == ["None"] + cats_expected1
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, data_itr, nfiles=10, shuffle=True, apply_ops=True)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
     data_itr_2 = nvtabular.io.GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
@@ -145,7 +119,8 @@ def test_gpu_file_iterator_parquet(datasets, batch):
 def test_gpu_file_iterator_csv(datasets, batch, dskey):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
-    df_expect = cudf.read_csv(paths[0], header=False, names=names)[mycols_csv]
+    header = None if dskey == "csv-no-header" else 0
+    df_expect = cudf.read_csv(paths[0], header=header, names=names)[mycols_csv]
     df_expect["id"] = df_expect["id"].astype("int64")
     df_itr = cudf.DataFrame()
     data_itr = nvtabular.io.GPUFileIterator(
@@ -173,44 +148,20 @@ def test_gpu_dataset_iterator_parquet(datasets, batch):
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
-@pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
-def test_gpu_dataset_iterator_csv(datasets, batch, dskey):
-    paths = glob.glob(str(datasets[dskey]) + "/*.csv")
-    df_expect1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    df_expect2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df_expect = cudf.concat([df_expect1, df_expect2], axis=0)
-    df_expect["id"] = df_expect["id"].astype("int64")
+@pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
+def test_gpu_dataset_iterator_csv(datasets, df, dataset, batch, engine):
     df_itr = cudf.DataFrame()
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths, batch_size=batch, gpu_memory_frac=0.01, columns=mycols_csv, names=allcols_csv,
-    )
-    for data_gd in data_itr:
+    for data_gd in dataset:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
-    assert_eq(df_itr.reset_index(drop=True), df_expect.reset_index(drop=True))
+    assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
 @cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
-def test_gpu_workflow(tmpdir, datasets, dump, gpu_memory_frac, engine):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
@@ -220,22 +171,10 @@ def test_gpu_workflow(tmpdir, datasets, dump, gpu_memory_frac, engine):
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
-
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
     if dump:
         config_file = tmpdir + "/temp.yaml"
         processor.save_stats(config_file)
@@ -268,7 +207,7 @@ def test_gpu_workflow(tmpdir, datasets, dump, gpu_memory_frac, engine):
     assert cats1 == ["None"] + cats_expected1
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, data_itr, nfiles=10, shuffle=True, apply_ops=True)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
     data_itr_2 = nvtabular.io.GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
@@ -293,50 +232,22 @@ def test_gpu_workflow(tmpdir, datasets, dump, gpu_memory_frac, engine):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("replace", [True, False])
-def test_gpu_workflow_config(tmpdir, datasets, dump, gpu_memory_frac, engine, replace):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
+def test_gpu_workflow_config(tmpdir, df, dataset, gpu_memory_frac, engine, dump, replace):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
     config = nvt.workflow.get_new_config()
     # add operators with dependencies
-    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp()]]
+    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp(replace=replace)]]
     config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    data_itr = nvt.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
-
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     if dump:
         config_file = tmpdir + "/temp.yaml"
@@ -381,7 +292,7 @@ def test_gpu_workflow_config(tmpdir, datasets, dump, gpu_memory_frac, engine, re
     assert cats1 == ["None"] + cats_expected1
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, data_itr, nfiles=10, shuffle=True, apply_ops=True)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
     data_itr_2 = nvtabular.io.GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
