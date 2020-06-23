@@ -181,7 +181,7 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
         self.embedding_shapes = embedding_shapes
         self.aggregation = aggregation
 
-        super(ScalarEmbedding, self).__init__(name=name, **kwargs)
+        super(ScalarDenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
         assert all([shape[1] == 1 for shape in input_shapes.values()])

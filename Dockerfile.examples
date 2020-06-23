@@ -7,10 +7,11 @@ WORKDIR $HOME
 VOLUME $HOME
 EXPOSE 8888
 
-RUN conda install -c conda-forge jupyterlab && \
+RUN conda install -c conda-forge -c rapidsai jupyterlab dask-cudf && \
       pip install -U \
         grpcio>=1.24.3 \
         tensorflow==2.1.0 \
+        tfdlpack-gpu \
         tensorboard==2.2.0 \
         jupyter-tensorboard
 ENTRYPOINT jupyter lab --ip=0.0.0.0 --LabApp.token=${token}
