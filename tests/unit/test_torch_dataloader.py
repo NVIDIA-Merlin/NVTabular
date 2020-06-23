@@ -26,7 +26,7 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, mycols_csv
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 torch = pytest.importorskip("torch")
 torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
@@ -224,6 +224,8 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
         names=mycols_csv,
         sep="\t",
     )
+
+    columns = mycols_pq if engine == "parquet" else mycols_csv
     df_test = cudf.read_parquet(tar_paths[0])
     df_test.columns = [x for x in range(0, len(columns))]
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
