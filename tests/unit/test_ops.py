@@ -228,47 +228,19 @@ def test_dropna(tmpdir, df, dataset, engine):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_normalize(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
-    cont_names = ["x", "y", "id"]
+def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
     label_name = ["label"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     config = nvt.workflow.get_new_config()
     config["PP"]["continuous"] = [ops.Moments()]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+    processor = nvtabular.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     op = ops.Normalize()
 
@@ -276,7 +248,6 @@ def test_normalize(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
 
-    # for gdf in data_itr:
     new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
     df["x"] = (df["x"] - processor.stats["means"]["x"]) / processor.stats["stds"]["x"]
     assert new_gdf["x"].equals(df["x"])
@@ -285,47 +256,19 @@ def test_normalize(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_normalize_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[mycols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
-
-    if engine == "parquet":
-        cat_names = ["name-cat", "name-string"]
-        columns = mycols_pq
-    else:
-        cat_names = ["name-string"]
-        columns = mycols_csv
-    cont_names = ["x", "y", "id"]
+def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
     label_name = ["label"]
-
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
-    )
 
     config = nvt.workflow.get_new_config()
     config["PP"]["continuous"] = [ops.MinMax()]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        to_cpu=False,
+    processor = nvtabular.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
     )
 
-    processor.update_stats(data_itr)
+    processor.update_stats(dataset)
 
     op = ops.NormalizeMinMax()
 
@@ -333,7 +276,6 @@ def test_normalize_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns)
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
 
-    # for gdf in data_itr:
     new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
     df["x"] = (df["x"] - processor.stats["mins"]["x"]) / (
         processor.stats["maxs"]["x"] - processor.stats["mins"]["x"]

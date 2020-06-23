@@ -810,10 +810,12 @@ class NormalizeMinMax(DFOperator):
         new_gdf = cudf.DataFrame()
         for name in cont_names:
             dif = stats_context["maxs"][name] - stats_context["mins"][name]
+            new_col = f"{name}_{self._id}"
             if dif > 0:
-                new_col = f"{name}_{self._id}"
-                new_gdf[new_col] = (gdf[name] - stats_context["mins"][name]) / (dif)
-                new_gdf[new_col] = new_gdf[new_col].astype("float32")
+                new_gdf[new_col] = (gdf[name] - stats_context["mins"][name]) / dif
+            elif dif == 0:
+                new_gdf[new_col] = gdf[name] / (2 * gdf[name])
+            new_gdf[new_col] = new_gdf[new_col].astype("float32")
         return new_gdf
 
 
