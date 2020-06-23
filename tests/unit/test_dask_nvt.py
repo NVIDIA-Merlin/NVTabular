@@ -185,13 +185,7 @@ def test_cats_and_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fractio
         processor = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_preprocess(
-        ops.Categorify(
-            # columns=cat_names,
-            out_path=str(tmpdir),
-            split_out=2,
-            freq_threshold=10,
-            on_host=True,
-        )
+        ops.Categorify(out_path=str(tmpdir), split_out=2, freq_threshold=10, on_host=True)
     )
 
     processor.add_cat_feature(
