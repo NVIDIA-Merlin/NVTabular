@@ -15,11 +15,6 @@
 #
 
 import io
-<<<<<<< HEAD
-import json
-import logging
-=======
->>>>>>> Fixing formatting
 import json
 import logging
 import os
@@ -363,15 +358,7 @@ class GPUDatasetIterator:
             self.cur_path = path
             yield from GPUFileIterator(path, **self.kwargs)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-<<<<<<< HEAD
-=======
-
->>>>>>> fixes format and adds close method
 def _shuffle_gdf(gdf, gdf_size=None):
     """ Shuffles a cudf dataframe, returning a new dataframe with randomly
     ordered rows """
@@ -381,7 +368,6 @@ def _shuffle_gdf(gdf, gdf_size=None):
     return gdf.iloc[arr]
 
 
-<<<<<<< HEAD
 class Writer:
     def __init__(self):
         pass
@@ -418,112 +404,10 @@ class ThreadedWriter(Writer):
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
+        self.col_idx = {}
 
-=======
-    Parameters
-    -----------
-    out_dir : str
-        path for the shuffled files
-    num_out_files : int, default 30
-    num_threads : int, default 4
-    output_format: str, default binary
-    cats: list, default None
-    conts: list, default None
-    labels: list, default None
-    """
-=======
-class Writer():
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="parquet", cats=None, conts=None, labels=None):
-=======
-
-=======
->>>>>>> Changes class structure
-=======
->>>>>>> fixes format and adds close method
-class Writer:
-    def __init__(self):
-        pass
-
-    def add_data(self, gdf):
-        raise NotImplementedError()
-
-    def close(self):
-        pass
-
-
-class Shuffler(Writer):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
-    ):
-<<<<<<< HEAD
->>>>>>> Fixing formatting
-        # set variables
-        self.num_out_files = num_out_files
-        self.writer = None
-        if output_format == "binary":
-            self.writer = HugeCTRWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
-        elif output_format == "parquet":
-            self.writer = ParquetFWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
-=======
-        self.writer = ParquetWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
->>>>>>> Changes class structure
-
-    def add_data(self, gdf):
-<<<<<<< HEAD
-<<<<<<< HEAD
-        arr = cp.arange(len(gdf))
-        b_idxs = np.arange(self.num_out_files)
-        self.writer.write_data(gdf, arr, b_idxs)
->>>>>>> Adds threaded writer
-
-    def close(self):
-        self.writer.close()
-
-    def set_col_names(self, labels, cats, conts):
-        self.writer.set_col_names(labels, cats, conts)
-=======
-        self.writer.add_data(_shuffle_part(gdf))
->>>>>>> Changes class structure
-=======
-        self.writer.add_data(_shuffle_gdf(gdf))
-
-    def close(self):
-        self.writer.close()
->>>>>>> fixes format and adds close method
-
-
-class ThreadedWriter(Writer):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
-    ):
-        # set variables
-        self.out_dir = out_dir
-        self.cats = cats
-        self.conts = conts
-        self.labels = labels
-        self.column_names = None
-        if labels and conts:
-            self.column_names = labels + conts
-
-<<<<<<< HEAD
-        # File names and writers depend on the output format
-        self.metadata_writer = open(os.path.join(out_dir, "metadata.json"), "w")
-        self.data_files = None
-        if output_format == "binary":
-            self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
-        elif output_format == "parquet":
-            self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.data_writers = None
-        if output_format == "binary":
-            self.data_writers = [open(f, "ab") for f in self.data_files]
-        elif output_format == "parquet":
-            self.data_writers = [ParquetWriter(f, compression=None) for f in self.data_files]
-            
-        
->>>>>>> Writing metada in json
         self.num_threads = num_threads
         self.num_out_files = num_out_files
-<<<<<<< HEAD
         self.num_samples = [0] * num_out_files
 
         self.data_files = None
@@ -545,52 +429,18 @@ class ThreadedWriter(Writer):
         self.conts = conts
         self.labels = labels
         self.column_names = labels + conts
-=======
-        self.b_idxs = np.arange(num_out_files)
-=======
-        self.num_threads = num_threads
-        self.num_out_files = num_out_files
->>>>>>> Adds threaded writer
-        self.num_samples = [0] * num_out_files
->>>>>>> Improves metadata
 
-<<<<<<< HEAD
+    def set_col_idx(self, gdf):
+        counter = 0
+        for x in gdf.columns.values:
+            self.col_idx[str(x)] = counter
+            counter += 1
+
     def _write_thread(self):
         return
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-=======
-        self.data_files = None
-
-        # create thread queue and locks
-        self.queue = queue.Queue(num_threads)
-        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
-
-        # signifies that end-of-data and that the thread should shut down
-        self._eod = object()
-
-        # create and start threads
-        for _ in range(num_threads):
-            write_thread = threading.Thread(target=self._write_thread, daemon=True)
-            write_thread.start()
-
-    def set_col_names(self, labels, cats, conts):
-        self.cats = cats
-        self.conts = conts
-        self.labels = labels
-        self.column_names = labels + conts
-
-    def _write_thread(self):
-        return
-
-<<<<<<< HEAD
-    def write_data(self, gdf, arr, b_idxs):
->>>>>>> Adds threaded writer
-=======
-    @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
->>>>>>> Changes class structure
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -600,53 +450,15 @@ class ThreadedWriter(Writer):
             end = start + slice_size
             # check if end is over length
             end = end if end <= gdf.shape[0] else gdf.shape[0]
-<<<<<<< HEAD
-<<<<<<< HEAD
             to_write = gdf.iloc[start:end]
             self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
             self.queue.put((x, to_write))
-=======
-            to_write = gdf.iloc[arr[start:end]]
-            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            b_idx = b_idxs[x]
-            self.queue.put((b_idx, to_write))
->>>>>>> Improves metadata
-=======
-            to_write = gdf.iloc[start:end]
-            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            self.queue.put((x, to_write))
->>>>>>> Changes class structure
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
 
-<<<<<<< HEAD
     def _write_metadata(self):
         return
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-    def _write_filelist(self):
-        file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
-        file_list_writer.write(str(self.num_out_files) + "\n")
-        for f in self.data_files:
-            file_list_writer.write(f + "\n")
-        file_list_writer.close()
-=======
-    def write_metadata(self):
-        data = {}
-        data['num_rows'] = self.num_rows
-        data['cats'] = self.cats
-        data['conts'] = self.conts
-        with open(os.path.join(self.out_dir, "metadata.json"), "w") as outfile:
-            json.dump(data, outfile)
->>>>>>> Writing metada in json
-=======
-=======
->>>>>>> Adds threaded writer
-    def _write_metadata(self):
-        return
->>>>>>> Improves metadata
 
     def _write_filelist(self):
         file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
@@ -663,54 +475,13 @@ class ThreadedWriter(Writer):
         # wait for pending writes to finish
         self.queue.join()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         self._write_filelist()
         self._write_metadata()
 
         # Close writers
-=======
-        # Write headers
-        self._write_header()
->>>>>>> Improves metadata
-=======
-        self._write_filelist()
-        self._write_metadata()
-
-        # Close writers
->>>>>>> Adds threaded writer
         for writer in self.data_writers:
             writer.close()
 
-
-class ParquetWriter(ThreadedWriter):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
-    ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
-        self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.data_writers = [pwriter(f, compression=None) for f in self.data_files]
-
-    def _write_thread(self):
-        while True:
-            item = self.queue.get()
-            try:
-                if item is self._eod:
-                    break
-                idx, data = item
-                with self.write_locks[idx]:
-                    self.data_writers[idx].write_table(data)
-            finally:
-                self.queue.task_done()
-
-<<<<<<< HEAD
-    @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
-        arr = cp.arange(len(gdf))
-        cp.random.shuffle(arr)
-        np.random.shuffle(self.b_idxs)
-
-        Writer.add_data(self, gdf, arr)
 
 class ParquetWriter(ThreadedWriter):
     def __init__(
@@ -738,62 +509,30 @@ class ParquetWriter(ThreadedWriter):
         data["file_stats"] = []
         for i in range(len(self.data_files)):
             data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
-        data["cats_name"] = self.cats
-        data["conts_name"] = self.conts
-        data["conts_labels"] = self.labels
-        json.dump(data, metadata_writer)
-        metadata_writer.close()
+        # cats
+        data["cats"] = []
+        for c in self.cats:
+          data["cats"].append((c, self.col_idx[c]))
+        # conts
+        data["conts"] = []
+        for c in self.conts:
+          data["conts"].append((c, self.col_idx[c])) 
+        # labels
+        data["labels"] = []
+        for c in self.labels:
+          data["labels"].append((c, self.col_idx[c])) 
 
-
-<<<<<<< HEAD
-class HugeCTRWriter(ThreadedWriter):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None, 
-    ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
-        self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
-        self.data_writers = [open(f, "ab") for f in self.data_files]
-=======
-    def __init__(self, out_dir, num_out_files=30, num_threads=4, output_format="binary", cats=None, conts=None, labels=None):
-        Writer.__init__(self, out_dir, num_out_files, num_threads, output_format, cats, conts, labels)
-       
-        file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
-        file_list_writer.write(str(num_out_files) + "\n")
-        for f in self.data_files:
-            file_list_writer.write(f + "\n")
-        file_list_writer.close()
-        
-        self.output_format = output_format
-
-        # signifies that end-of-data and that the thread should shut down
-        self._eod = object()
-
-        for _ in range(num_threads):
-            write_thread = threading.Thread(target=self._write_thread, daemon=True)
-            write_thread.start()
->>>>>>> Writing metada in json
-=======
-    def _write_metadata(self):
-        metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
-        data = {}
-        data["file_stats"] = []
-        for i in range(len(self.data_files)):
-            data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
-        data["cats_name"] = self.cats
-        data["conts_name"] = self.conts
-        data["conts_labels"] = self.labels
         json.dump(data, metadata_writer)
         metadata_writer.close()
 
 
 class HugeCTRWriter(ThreadedWriter):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None,
+        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
     ):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_files]
->>>>>>> Adds threaded writer
 
     def _write_thread(self):
         while True:
@@ -803,36 +542,15 @@ class HugeCTRWriter(ThreadedWriter):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Adds threaded writer
                     ones = np.array(([1] * data.shape[0]), dtype=np.intc)
                     df = data[self.column_names].to_pandas().astype(np.single)
                     for i in range(len(self.cats)):
                         df["___" + str(i) + "___" + self.cats[i]] = ones
                         df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
                         self.data_writers[idx].write(df.to_numpy().tobytes())
-<<<<<<< HEAD
-=======
-                    if self.output_format == "binary":
-                        ones = np.array(([1] * data.shape[0]), dtype=np.intc)
-                        df = data[self.column_names].to_pandas().astype(np.single)
-                        for i in range(len(self.cats)):
-                            df["___" + str(i) + "___" + self.cats[i]] = ones
-                            df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
-                            self.data_writers[idx].write(df.to_numpy().tobytes())
-                    elif self.output_format == "parquet":
-<<<<<<< HEAD
-                        self.writers[idx].write_table(data)
->>>>>>> Improving HugeCTR write
-=======
-                        self.data_writers[idx].write_table(data)
->>>>>>> Improves metadata
             finally:
                 self.queue.task_done()
 
-<<<<<<< HEAD
     def _write_metadata(self):
         for i in range(len(self.data_writers)):
             self.data_writers[i].seek(0)
@@ -857,39 +575,6 @@ class HugeCTRWriter(ThreadedWriter):
             )
 
             self.data_writers[i].write(header.tobytes())
-=======
-    @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
-        arr = cp.arange(len(gdf))
-        Writer.add_data(self, gdf, arr)
-
-    def _write_header(self):
-        if self.output_format == "binary":
-            for i in range(len(self.data_writers)):
-                self.data_writers[i].seek(0)
-                # error_check (0: no error check; 1: check_num)
-                # num of samples in this file
-                # Dimension of the labels
-                # Dimension of the features
-                # slot_num for each embedding
-                # reserved for future use
-                header = np.array(
-                    [
-                        0,
-                        self.num_samples[i],
-                        len(self.labels),
-                        len(self.conts),
-                        len(self.cats),
-                        0,
-                        0,
-                        0,
-                    ],
-                    dtype=np.longlong,
-                )
-
-<<<<<<< HEAD
-                self.writers[i].write(header.tobytes())
->>>>>>> HugeCTR parquet format and metadata file working
 
 
 def device_mem_size(kind="total"):
@@ -909,6 +594,7 @@ def device_mem_size(kind="total"):
         size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
         pynvml.nvmlShutdown()
     return size
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 
@@ -1412,3 +1098,5 @@ def _shuffle_gdf(gdf, gdf_size=None):
 >>>>>>> Fixing formatting
 =======
 >>>>>>> fixes format and adds close method
+=======
+>>>>>>> Updates hugectr metadata json
