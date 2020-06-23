@@ -224,6 +224,7 @@ def test_dropna(tmpdir, df, dataset, engine):
         assert new_gdf.columns.all() == gdf.columns.all()
         assert new_gdf.isnull().all().sum() < 1, "null values exist"
 
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
@@ -275,10 +276,11 @@ def test_normalize(tmpdir, datasets, gpu_memory_frac, engine, op_columns):
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
 
-    #for gdf in data_itr:
+    # for gdf in data_itr:
     new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
     df["x"] = (df["x"] - processor.stats["means"]["x"]) / processor.stats["stds"]["x"]
     assert new_gdf["x"].equals(df["x"])
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
@@ -331,7 +333,9 @@ def test_normalize_minmax(tmpdir, datasets, gpu_memory_frac, engine, op_columns)
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
 
-    #for gdf in data_itr:
+    # for gdf in data_itr:
     new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
-    df["x"] = (df["x"] - processor.stats["mins"]["x"]) / (processor.stats["maxs"]["x"] - processor.stats["mins"]["x"])
+    df["x"] = (df["x"] - processor.stats["mins"]["x"]) / (
+        processor.stats["maxs"]["x"] - processor.stats["mins"]["x"]
+    )
     assert new_gdf["x"].equals(df["x"])
