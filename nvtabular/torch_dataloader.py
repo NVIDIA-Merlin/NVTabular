@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import queue
+import threading
 
 import cudf
 import torch
@@ -62,11 +64,10 @@ class TensorItr:
     """
 
     def __init__(self, tensors, batch_size=1, pin_memory=False, shuffle=False):
-        assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
         self.tensors = tensors
         self.batch_size = batch_size
-        self.cur_idx = 0
-        self.num_samples = tensors[0].size(0)
+
+        self.num_samples = self.tensors[0].size(0)
         if shuffle:
             self.shuffle()
 
@@ -74,28 +75,16 @@ class TensorItr:
             for tensor in self.tensors:
                 tensor.pin_memory()
 
-    def __iter__(self):
-        self.cur_idx = 0
-        return self
-
     def __len__(self):
         if self.num_samples % self.batch_size == 0:
             return self.num_samples // self.batch_size
         else:
             return self.num_samples // self.batch_size + 1
 
-    def __next__(self):
-        idx = self.cur_idx * self.batch_size
-        self.cur_idx += 1
-        # Need to handle odd sized batches if data isn't divisible by batchsize
-        if idx < self.num_samples and (idx + self.batch_size <= self.num_samples):
+    def __iter__(self):
+        for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
-            return (tens[0], tens[1]), tens[2]
-        elif idx < self.num_samples and idx + self.batch_size > self.num_samples:
-            tens = [tensor[idx:] for tensor in self.tensors]
-            return (tens[0], tens[1]), tens[2]
-        else:
-            raise StopIteration
+            yield tens[0], tens[1], tens[2]
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
@@ -126,7 +115,7 @@ def create_tensors(preproc, itr=None, gdf=None, apply_ops=True):
     return combine_tensors(cats, conts, label)
 
 
-def create_tensors_plain(gdf, cat_cols, cont_cols, label_cols):
+def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
     cats, conts, label = {}, {}, {}
     _one_df(
         gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols
@@ -153,11 +142,7 @@ def combine_tensors(cats, conts, label):
 def _one_df(
     gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None,
 ):
-    gdf_cats, gdf_conts, gdf_label = (
-        gdf[cat_names],
-        gdf[cont_names],
-        gdf[label_names],
-    )
+    gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
     if len(gdf_cats) > 0:
         _to_tensor(gdf_cats, torch.long, cats, to_cpu=False)
@@ -238,9 +223,21 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         return self.num_chunks
 
     def __iter__(self):
+        buff = queue.Queue(1)
+        threading.Thread(target=self.load_chunk, args=(buff,)).start()
+        for _ in range(self.num_chunks):
+            chunk = buff.get()
+            yield from TensorItr(
+                chunk,
+                batch_size=self.batch_size,
+            )
+
+    def load_chunk(self, out):
         for chunk in self.itr:
-            for idx in range(0, len(chunk), self.batch_size):
-                yield chunk.iloc[idx : idx + self.batch_size]
+            chunk = create_tensors_plain(
+                chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
+            )
+            out.put(chunk)
 
 
 class DLCollator:

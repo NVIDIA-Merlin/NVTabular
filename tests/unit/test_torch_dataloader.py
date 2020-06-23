@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import glob
 import math
 import os
@@ -176,15 +175,15 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     count_tens_itr = 0
     for data_gd in itr_ds:
         count_tens_itr += len(data_gd[1])
-        assert data_gd[0][0].shape[1] > 0
-        assert data_gd[0][1].shape[1] > 0
+        assert data_gd[0].shape[1] > 0
+        assert data_gd[1].shape[1] > 0
 
     assert len_df_pp == count_tens_itr
     if os.path.exists(processor.ds_exports):
         shutil.rmtree(processor.ds_exports)
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.000001, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
@@ -225,16 +224,29 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
         names=mycols_csv,
         sep="\t",
     )
-
+    df_test = cudf.read_parquet(tar_paths[0])
+    df_test.columns = [x for x in range(0, len(columns))]
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
+    # works with iterator alone, needs to test inside torch dataloader
     for idx, chunk in enumerate(data_itr):
-        rows += len(chunk)
+        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        rows += len(chunk[0])
         del chunk
-
     # accounts for incomplete batches at the end of chunks
     # that dont necesssarily have the full batch_size
-    assert (idx + 1) * batch_size >= rows
     assert rows == num_rows
+
+    def gen_col(batch):
+        batch = batch[0]
+        return batch[0], batch[1], batch[2]
+
+    t_dl = nvt.torch_dataloader.DLDataLoader(
+        data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
+    )
+    rows = 0
+    for idx, chunk in enumerate(t_dl):
+        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        rows += len(chunk[0])
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
