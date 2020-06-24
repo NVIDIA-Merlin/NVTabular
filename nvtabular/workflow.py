@@ -474,10 +474,10 @@ class BaseWorkflow:
         -----------
         col_type : str
         """
-        col_names = []
+        col_names = set()
         for c_names in self.columns_ctx[col_type].values():
-            col_names.extend(c_names)
-        return list(set(col_names))
+            col_names.add(c_names)
+        return list(col_names)
 
     def _build_tasks(self, task_dict: dict, task_set, master_task_list):
         """
