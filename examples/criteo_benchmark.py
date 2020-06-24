@@ -40,7 +40,7 @@ from fastai.tabular import TabularModel
 
 from nvtabular import Workflow
 from nvtabular.io import GPUDatasetIterator, device_mem_size
-from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill
+from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill, get_embedding_size
 from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
 
 
@@ -144,9 +144,7 @@ print(proc.timings)
 
 embeddings = [
     x[1]
-    for x in proc.df_ops["Categorify"].get_emb_sz(
-        proc.stats["categories"], proc.columns_ctx["categorical"]["base"]
-    )
+    for x in get_embedding_size(proc.stats["categories"], proc.columns_ctx["categorical"]["base"])
 ]
 print("Creating Iterators for dataloader")
 start = time()

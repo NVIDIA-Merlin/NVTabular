@@ -21,6 +21,7 @@ import torch
 from torch.utils.dlpack import from_dlpack
 
 from nvtabular.io import GPUFileIterator
+from nvtabular.ops import get_embedding_order
 
 
 class FileItrDataset(torch.utils.data.IterableDataset):
@@ -124,11 +125,7 @@ def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
 
 
 def combine_tensors(cats, conts, label):
-    cats_list = (
-        [cats[x] for x in sorted(cats.keys(), key=lambda entry: entry.split("_")[0])]
-        if cats
-        else None
-    )
+    cats_list = [cats[x] for x in get_embedding_order(cats.keys())] if cats else None
     conts_list = [conts[x] for x in sorted(conts.keys())] if conts else None
     label_list = [label[x] for x in sorted(label.keys())] if label else None
 
@@ -152,12 +149,10 @@ def _one_df(
         _to_tensor(gdf_label, torch.float32, label, to_cpu=False)
 
 
-def get_final_cols(preproc):
+def _get_final_cols(preproc):
     if "cols" not in preproc.columns_ctx["final"]:
         preproc.create_final_cols()
-    cat_names = sorted(
-        preproc.columns_ctx["final"]["cols"]["categorical"], key=lambda entry: entry.split("_")[0],
-    )
+    cat_names = get_embedding_order(preproc.columns_ctx["final"]["cols"]["categorical"])
     cont_names = sorted(preproc.columns_ctx["final"]["cols"]["continuous"])
     label_name = sorted(preproc.columns_ctx["final"]["cols"]["label"])
     return cat_names, cont_names, label_name
@@ -178,7 +173,7 @@ def process_one_df(
         gdf = preproc.apply_ops(gdf)
 
     if preproc:
-        cat_names, cont_names, label_names = get_final_cols(preproc)
+        cat_names, cont_names, label_names = _get_final_cols(preproc)
 
     _one_df(
         gdf,
@@ -228,8 +223,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         for _ in range(self.num_chunks):
             chunk = buff.get()
             yield from TensorItr(
-                chunk,
-                batch_size=self.batch_size,
+                chunk, batch_size=self.batch_size,
             )
 
     def load_chunk(self, out):
