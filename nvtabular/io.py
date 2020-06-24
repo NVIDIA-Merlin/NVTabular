@@ -404,7 +404,6 @@ class ThreadedWriter(Writer):
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
-        self.col_idx = {}
 
         self.num_threads = num_threads
         self.num_out_files = num_out_files
@@ -429,12 +428,6 @@ class ThreadedWriter(Writer):
         self.conts = conts
         self.labels = labels
         self.column_names = labels + conts
-
-    def set_col_idx(self, gdf):
-        counter = 0
-        for x in gdf.columns.values:
-            self.col_idx[str(x)] = counter
-            counter += 1
 
     def _write_thread(self):
         return
@@ -490,6 +483,11 @@ class ParquetWriter(ThreadedWriter):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
         self.data_writers = [pwriter(f, compression=None) for f in self.data_files]
+        self.col_idx = {}
+
+    def set_col_idx(self, gdf):
+        for i, x in enumerate(gdf.columns.values):
+            self.col_idx[str(x)] = i
 
     def _write_thread(self):
         while True:
@@ -510,21 +508,19 @@ class ParquetWriter(ThreadedWriter):
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
-            data["file_stats"].append(
-                {"file_name": f"{i}.parquet", "num_rows": self.num_samples[i]}
-            )
+            data["file_stats"].append({"file_name": f"{i}.parquet", "num_rows": self.num_samples[i]})
         # cats
         data["cats"] = []
         for c in self.cats:
-            data["cats"].append((c, self.col_idx[c]))
+          data["cats"].append((c, self.col_idx[c]))
         # conts
         data["conts"] = []
         for c in self.conts:
-            data["conts"].append((c, self.col_idx[c]))
+          data["conts"].append((c, self.col_idx[c])) 
         # labels
         data["labels"] = []
         for c in self.labels:
-            data["labels"].append((c, self.col_idx[c]))
+          data["labels"].append((c, self.col_idx[c])) 
 
         json.dump(data, metadata_writer)
         metadata_writer.close()
