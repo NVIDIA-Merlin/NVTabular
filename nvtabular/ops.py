@@ -1248,7 +1248,7 @@ def get_embedding_order(cat_names):
     cat_names : list of str
         names of the categorical columns
     """
-    return sorted(cat_names, key=lambda entry: entry.split("_")[0])
+    return sorted(cat_names)
 
 
 def get_embedding_size(encoders, cat_names):
