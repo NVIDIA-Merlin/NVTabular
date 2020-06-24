@@ -6,8 +6,9 @@ from functools import wraps
 import cudf
 import numpy as np
 import pytest
+from dask.distributed import Client, LocalCluster
 
-import nvtabular.io
+import nvtabular.dask.io
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -50,6 +51,13 @@ sample_stats = {
     "counts": {"id": 4321.0, "x": 4321.0, "y": 4321.0},
     "encoders": {"name-cat": ("name-cat", mynames), "name-string": ("name-string", mynames)},
 }
+
+
+@pytest.fixture(scope="session")
+def client(request):
+    client = Client(LocalCluster(n_workers=2))
+    request.addfinalizer(lambda: client.close())
+    return client
 
 
 @pytest.fixture(scope="session")
@@ -113,7 +121,7 @@ def datasets(tmpdir_factory):
 def paths(request):
     engine = request.getfixturevalue("engine")
     datasets = request.getfixturevalue("datasets")
-    return glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    return sorted(glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0]))
 
 
 @pytest.fixture(scope="function")
@@ -145,15 +153,11 @@ def dataset(request):
     except Exception:
         gpu_memory_frac = 0.01
 
-    columns = mycols_pq if engine == "parquet" else mycols_csv
+    kwargs = {}
+    if engine == "csv-no-header":
+        kwargs["names"] = allcols_csv
 
-    return nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv if engine == "csv-no-header" else None,
-    )
+    return nvtabular.dask.io.DaskDataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
 def cleanup(func):

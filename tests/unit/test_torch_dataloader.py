@@ -36,7 +36,7 @@ torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     df_itr = cudf.DataFrame()
-    for data_gd in dataset:
+    for data_gd in dataset.to_iter(columns=mycols_csv):
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
@@ -129,7 +129,6 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
     cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
-    print(cats1)
     assert cats1 == ["None"] + cats_expected1
 
     #     Write to new "shuffled" and "processed" dataset

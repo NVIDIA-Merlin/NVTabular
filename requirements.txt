@@ -1,2 +1,8 @@
 cudf>=0.14
+dask-cudf>=0.14
+dask-cuda>=0.14
 PyYAML>=5.3
+cupy>=7
+dask>=2.12.0
+distributed>=2.12.0
+
