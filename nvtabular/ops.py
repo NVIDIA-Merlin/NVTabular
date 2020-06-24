@@ -743,6 +743,8 @@ class Normalize(DFOperator):
     different units. This operation can be added to the workflow
     to standardize the features.
 
+    It performs Normalization using the mean std method.
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -772,6 +774,48 @@ class Normalize(DFOperator):
                     stats_context["stds"][name]
                 )
                 new_gdf[new_col] = new_gdf[new_col].astype("float32")
+        return new_gdf
+
+
+class NormalizeMinMax(DFOperator):
+    """
+    Standardizing the features around 0 with a standard deviation
+    of 1 is a common technique to compare measurements that have
+    different units. This operation can be added to the workflow
+    to standardize the features.
+
+    It performs Normalization using the min max method.
+
+    Although you can directly call methods of this class to
+    transform your continuous features, it's typically used within a
+    Workflow class.
+    """
+
+    default_in = CONT
+    default_out = CONT
+
+    @property
+    def req_stats(self):
+        return [MinMax()]
+
+    @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        cont_names = target_columns
+        if not cont_names or not stats_context["mins"]:
+            return
+        gdf = self.apply_min_max(gdf, stats_context, cont_names)
+        return gdf
+
+    def apply_min_max(self, gdf, stats_context, cont_names):
+        new_gdf = cudf.DataFrame()
+        for name in cont_names:
+            dif = stats_context["maxs"][name] - stats_context["mins"][name]
+            new_col = f"{name}_{self._id}"
+            if dif > 0:
+                new_gdf[new_col] = (gdf[name] - stats_context["mins"][name]) / dif
+            elif dif == 0:
+                new_gdf[new_col] = gdf[name] / (2 * gdf[name])
+            new_gdf[new_col] = new_gdf[new_col].astype("float32")
         return new_gdf
 
 
@@ -1217,3 +1261,11 @@ class Categorify(DFOperator):
         sz = sz_dict.get(n, int(self.emb_sz_rule(n_cat)))  # rule of thumb
         self.embed_sz[n] = sz
         return n_cat, sz
+
+    def get_embeddings(self, encoders, cat_names):
+        embeddings = {}
+        for col in sorted(cat_names):
+            path = encoders[col]
+            num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+            embeddings[col] = (num_rows, self.emb_sz_rule(num_rows))
+        return embeddings
