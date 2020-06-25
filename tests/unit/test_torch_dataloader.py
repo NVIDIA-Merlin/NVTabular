@@ -200,7 +200,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
     os.mkdir(output_train)
 
     processor.apply(
-        dataset,
+        dataset.to_iter(columns=mycols_pq),
         apply_offline=True,
         record_stats=True,
         shuffle=True,

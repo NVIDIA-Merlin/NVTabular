@@ -52,12 +52,15 @@ sample_stats = {
     "encoders": {"name-cat": ("name-cat", mynames), "name-string": ("name-string", mynames)},
 }
 
+_CLIENT = None
+
 
 @pytest.fixture(scope="session")
 def client(request):
-    client = Client(LocalCluster(n_workers=2))
-    request.addfinalizer(lambda: client.close())
-    return client
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = Client(LocalCluster(n_workers=2))
+    return _CLIENT
 
 
 @pytest.fixture(scope="session")
@@ -81,7 +84,7 @@ def datasets(tmpdir_factory):
     # Add two random null values to each column
     imax = len(df) - 1
     for col in df.columns:
-        if col in ["name-cat", "label"]:
+        if col in ["name-cat", "label", "id"]:
             break
         df[col].iloc[random.randint(1, imax - 1)] = None
         df[col].iloc[random.randint(1, imax - 1)] = None
@@ -139,6 +142,7 @@ def df(request):
         df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
     else:
         raise ValueError("unknown engine:" + engine)
+
     gdf = cudf.concat([df1, df2], axis=0)
     gdf["id"] = gdf["id"].astype("int64")
     return gdf

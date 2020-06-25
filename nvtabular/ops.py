@@ -126,6 +126,9 @@ class TransformOperator(Operator):
         if self.replace and self.preprocessing and target_columns:
             if new_gdf.shape[0] < origin_gdf.shape[0]:
                 return new_gdf
+            # handle case when the dropna operator doesn't drop any rows
+            elif new_gdf.shape[1] > len(target_columns):
+                return new_gdf
             else:
                 origin_gdf[target_columns] = new_gdf
                 return origin_gdf
