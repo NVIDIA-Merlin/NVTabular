@@ -1212,7 +1212,6 @@ class Categorify(DFOperator):
         Replaces the transformed column with the original input
         if set Yes
     cat_names :
-    embed_sz :
     """
 
     default_in = CAT
@@ -1229,7 +1228,6 @@ class Categorify(DFOperator):
         preprocessing=True,
         replace=True,
         cat_names=None,
-        embed_sz=None,
         out_path=None,
         split_out=None,
         na_sentinel=None,
@@ -1244,7 +1242,6 @@ class Categorify(DFOperator):
         self.gpu_mem_util_limit = gpu_mem_util_limit
         self.gpu_mem_trans_use = gpu_mem_trans_use
         self.cat_names = cat_names if cat_names else []
-        self.embed_sz = embed_sz if embed_sz else {}
         self.out_path = out_path or "./"
         self.split_out = split_out
         self.na_sentinel = na_sentinel or 0
@@ -1302,30 +1299,32 @@ class Categorify(DFOperator):
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
         return new_gdf
 
-    def get_emb_sz(self, encoders, cat_names):
-        # sorted key required to ensure same sort occurs for all values
-        ret_list = [
-            (n, self.def_emb_sz(encoders, n))
-            for n in sorted(cat_names, key=lambda entry: entry.split("_")[0])
-        ]
-        return ret_list
 
-    def emb_sz_rule(self, n_cat: int) -> int:
-        return min(16, round(1.6 * n_cat ** 0.56))
+def get_embedding_order(cat_names):
+    """ Returns a consistent sorder order for categorical variables
 
-    def def_emb_sz(self, classes, n, sz_dict=None):
-        """Pick an embedding size for `n` depending on `classes` if not given in `sz_dict`.
-        """
-        sz_dict = sz_dict if sz_dict else {}
-        n_cat = classes[n]
-        sz = sz_dict.get(n, int(self.emb_sz_rule(n_cat)))  # rule of thumb
-        self.embed_sz[n] = sz
-        return n_cat, sz
+    Parameters
+    -----------
+    cat_names : list of str
+        names of the categorical columns
+    """
+    return sorted(cat_names)
 
-    def get_embeddings(self, encoders, cat_names):
-        embeddings = {}
-        for col in sorted(cat_names):
-            path = encoders[col]
-            num_rows, _, _ = cudf.io.read_parquet_metadata(path)
-            embeddings[col] = (num_rows, self.emb_sz_rule(num_rows))
-        return embeddings
+
+def get_embedding_size(encoders, cat_names):
+    """ Returns a suggested size of embeddings based off cardinality of encoding categorical
+    variables
+    Parameters
+    -----------
+    encoders : dict
+        The encoding statistics of the categorical variables (ie. from workflow.stats["categories"])
+    cat_names : list of str
+        names of the categorical columns
+    """
+    # sorted key required to ensure same sort occurs for all values
+    ret_list = [(n, _emb_sz_rule(encoders[n])) for n in get_embedding_order(cat_names)]
+    return ret_list
+
+
+def _emb_sz_rule(n_cat: int) -> int:
+    return n_cat, int(min(16, round(1.6 * n_cat ** 0.56)))
