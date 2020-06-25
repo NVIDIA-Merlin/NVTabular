@@ -902,7 +902,6 @@ class DaskWorkflow(BaseWorkflow):
             raise NotImplementedError("""TODO: Implement online apply""")
 
     def reorder_tasks(self, end):
-        return
         if end != 2:
             # Opt only works for two phases (for now)
             return
