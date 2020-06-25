@@ -574,7 +574,6 @@ class BaseWorkflow:
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
                     huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    huge_ctr.set_col_idx(gdf)
                     self.cal_col_names = True
 
                 huge_ctr.add_data(gdf)
@@ -714,7 +713,6 @@ class BaseWorkflow:
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
                     huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    huge_ctr.set_col_idx(gdf)
                     self.cal_col_names = True
                 huge_ctr.add_data(gdf)
 

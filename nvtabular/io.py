@@ -404,6 +404,7 @@ class ThreadedWriter(Writer):
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
+        self.col_idx = {}
 
         self.num_threads = num_threads
         self.num_out_files = num_out_files
@@ -434,6 +435,10 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
+        # Populate columns idxs
+        if not self.col_idx:
+            for i, x in enumerate(gdf.columns.values):
+                self.col_idx[str(x)] = i
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -483,11 +488,6 @@ class ParquetWriter(ThreadedWriter):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
         self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
         self.data_writers = [pwriter(f, compression=None) for f in self.data_files]
-        self.col_idx = {}
-
-    def set_col_idx(self, gdf):
-        for i, x in enumerate(gdf.columns.values):
-            self.col_idx[str(x)] = i
 
     def _write_thread(self):
         while True:
