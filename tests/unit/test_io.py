@@ -21,7 +21,12 @@ import dask_cudf
 import pytest
 from dask.dataframe import assert_eq
 
+<<<<<<< HEAD
 import nvtabular.io
+=======
+from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
+from nvtabular.dask.io import DaskDataset
+>>>>>>> Adds unit test
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -33,7 +38,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = nvtabular.io.Shuffler(tmpdir, num_files)
+    shuf = Shuffler(tmpdir, num_files)
     shuf.add_data(df1)
     writer_files = shuf.writer.data_files
     shuf.close()
@@ -82,3 +87,26 @@ def test_dask_dataset(datasets, engine, num_files):
         result = dataset.to_ddf(columns=mycols_csv)
 
     assert_eq(ddf0, result)
+
+
+@pytest.mark.parametrize("output_format", ["binary", "parquet"])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("op_columns", [["x"], None])
+def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
+    label_names = ["label"]
+
+    if output_format == "binary":
+        huge_ctr = HugeCTRWriter(tmpdir, num_out_files=10)
+    elif output_format == "parquet":
+        huge_ctr = ParquetWriter(tmpdir, num_out_files=10)
+
+    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+
+    for gdf in dataset:
+        huge_ctr.add_data(df)
+
+    huge_ctr.close()
+
+    assert 1 == 1

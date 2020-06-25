@@ -508,19 +508,21 @@ class ParquetWriter(ThreadedWriter):
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
-            data["file_stats"].append({"file_name": f"{i}.parquet", "num_rows": self.num_samples[i]})
+            data["file_stats"].append(
+                {"file_name": f"{i}.parquet", "num_rows": self.num_samples[i]}
+            )
         # cats
         data["cats"] = []
         for c in self.cats:
-          data["cats"].append((c, self.col_idx[c]))
+            data["cats"].append((c, self.col_idx[c]))
         # conts
         data["conts"] = []
         for c in self.conts:
-          data["conts"].append((c, self.col_idx[c])) 
+            data["conts"].append((c, self.col_idx[c]))
         # labels
         data["labels"] = []
         for c in self.labels:
-          data["labels"].append((c, self.col_idx[c])) 
+            data["labels"].append((c, self.col_idx[c]))
 
         json.dump(data, metadata_writer)
         metadata_writer.close()
