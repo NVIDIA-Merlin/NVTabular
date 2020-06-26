@@ -290,7 +290,15 @@ class ParquetDatasetEngine(DatasetEngine):
                 cudf.io.read_parquet(path0, row_group=0).memory_usage(deep=True, index=True).sum()
             )
             row_groups_per_part = self.part_size / rg_byte_size_0
+            if row_groups_per_part < 1.0:
+                warnings.warn(
+                    f"Row group size {rg_byte_size_0} is bigger than requested part_size "
+                    f"{self.part_size}"
+                )
+                row_groups_per_part = 1.0
+
         self.row_groups_per_part = int(row_groups_per_part)
+
         assert self.row_groups_per_part > 0
 
     @property
@@ -392,14 +400,13 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        itr = GPUDatasetIterator(
+        return GPUDatasetIterator(
             self.paths,
             engine="parquet",
             row_group_size=self.row_groups_per_part,
             gpu_memory_frac=part_mem_fraction,
             columns=columns,
         )
-        return iter(itr)
 
 
 class CSVDatasetEngine(DatasetEngine):
@@ -422,11 +429,10 @@ class CSVDatasetEngine(DatasetEngine):
 
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        itr = GPUDatasetIterator(
+        return GPUDatasetIterator(
             self.paths,
             engine="csv",
             gpu_memory_frac=part_mem_fraction,
             names=self.csv_kwargs.get("names", None),
             columns=columns,
         )
-        return iter(itr)

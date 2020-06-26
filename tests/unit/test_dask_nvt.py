@@ -21,26 +21,10 @@ import cudf
 import dask_cudf
 import pytest
 from dask.dataframe import assert_eq
-from dask.distributed import Client, LocalCluster
 
 import nvtabular.ops as ops
 from nvtabular import DaskDataset, Workflow
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
-
-# LocalCluster Client Fixture
-client = None
-
-
-@pytest.fixture(scope="module")
-def dask_cluster(request):
-    global client
-    client = Client(LocalCluster(n_workers=2))
-
-    def client_close():
-        global client
-        client.close()
-
-    request.addfinalizer(client_close)
 
 
 # Dummy operator logic to test stats
@@ -60,7 +44,7 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("freq_threshold", [0, 150])
 def test_dask_workflow_api_dlrm(
-    dask_cluster, tmpdir, datasets, freq_threshold, part_mem_fraction, engine
+    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine
 ):
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
@@ -126,7 +110,7 @@ def test_dask_workflow_api_dlrm(
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dask_minmax_dummyop(dask_cluster, tmpdir, datasets, engine):
+def test_dask_minmax_dummyop(client, tmpdir, datasets, engine):
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     cat_names = ["name-cat", "name-string"]
@@ -163,7 +147,7 @@ def test_dask_minmax_dummyop(dask_cluster, tmpdir, datasets, engine):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dask_median_dummyop(dask_cluster, tmpdir, datasets, engine):
+def test_dask_median_dummyop(client, tmpdir, datasets, engine):
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     cat_names = ["name-cat", "name-string"]
@@ -200,7 +184,7 @@ def test_dask_median_dummyop(dask_cluster, tmpdir, datasets, engine):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dask_normalize(dask_cluster, tmpdir, datasets, engine):
+def test_dask_normalize(client, tmpdir, datasets, engine):
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     df1 = cudf.read_parquet(paths[0])[mycols_pq]
