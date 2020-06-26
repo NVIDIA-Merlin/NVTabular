@@ -961,7 +961,6 @@ class DaskWorkflow(BaseWorkflow):
         ddf = self.get_ddf()
         nsplits = nsplits or 1
         fs = get_fs_token_paths(output_path)[0]
-        output_path = fs.sep.join([output_path, "processed"])
         fs.mkdirs(output_path, exist_ok=True)
 
         if shuffle:

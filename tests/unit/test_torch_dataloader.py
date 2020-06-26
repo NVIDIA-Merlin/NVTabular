@@ -26,7 +26,7 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq
+from tests.conftest import allcols_csv, get_cats, mycols_csv, mycols_pq
 
 torch = pytest.importorskip("torch")
 torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
@@ -44,7 +44,7 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
-def test_gpu_file_iterator_dl(datasets, batch, dskey):
+def test_gpu_file_iterator_dl(datasets, batch, dskey, client):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
     header = None if dskey == "csv-no-header" else 0
@@ -53,7 +53,7 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     df_itr = cudf.DataFrame()
 
     processor = nvt.Workflow(
-        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"],
+        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"], client=client
     )
 
     data_itr = torch_dataloader.FileItrDataset(
@@ -80,12 +80,14 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("preprocessing", [True, False])
-def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preprocessing):
+def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preprocessing, client):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
+    )
 
     processor.add_feature([ops.FillMedian(), ops.LogOp(preprocessing=preprocessing)])
     processor.add_preprocess(ops.Normalize())
@@ -125,10 +127,10 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    cats1 = get_cats(processor, "name-string")
     assert cats1 == ["None"] + cats_expected1
 
     #     Write to new "shuffled" and "processed" dataset
@@ -185,12 +187,14 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
 @pytest.mark.parametrize("gpu_memory_frac", [0.000001, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
-def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
+def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine, client):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
+    )
 
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
@@ -200,7 +204,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
     os.mkdir(output_train)
 
     processor.apply(
-        dataset.to_iter(columns=mycols_pq),
+        dataset,
         apply_offline=True,
         record_stats=True,
         shuffle=True,
@@ -225,7 +229,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
     )
 
     columns = mycols_pq if engine == "parquet" else mycols_csv
-    df_test = cudf.read_parquet(tar_paths[0])
+    df_test = cudf.read_parquet(tar_paths[0])[columns]
     df_test.columns = [x for x in range(0, len(columns))]
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0

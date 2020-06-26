@@ -21,11 +21,12 @@ import cudf
 import numpy as np
 import pytest
 from cudf.tests.utils import assert_eq
+from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
+from tests.conftest import allcols_csv, cleanup, get_cats, mycols_csv, mycols_pq
 
 
 @cleanup
@@ -33,12 +34,14 @@ from tests.conftest import allcols_csv, cleanup, mycols_csv, mycols_pq
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_gpu_workflow_api(tmpdir, df, dataset, gpu_memory_frac, engine, dump, op_columns):
+def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
+    )
 
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
@@ -70,11 +73,11 @@ def test_gpu_workflow_api(tmpdir, df, dataset, gpu_memory_frac, engine, dump, op
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
     assert cats1 == ["None"] + cats_expected1
 
@@ -92,8 +95,8 @@ def test_gpu_workflow_api(tmpdir, df, dataset, gpu_memory_frac, engine, dump, op
         df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
 
     if engine == "parquet":
-        assert df_pp["name-cat"].dtype == "int64"
-    assert df_pp["name-string"].dtype == "int64"
+        assert is_integer_dtype(df_pp["name-cat"].dtype)
+    assert is_integer_dtype(df_pp["name-string"].dtype)
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
@@ -157,7 +160,7 @@ def test_gpu_dataset_iterator_csv(df, dataset, engine):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
-def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
+def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -168,7 +171,11 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+        config=config,
+        client=client,
     )
 
     processor.update_stats(dataset)
@@ -195,11 +202,11 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
     assert cats1 == ["None"] + cats_expected1
 
@@ -217,8 +224,8 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
         df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
 
     if engine == "parquet":
-        assert df_pp["name-cat"].dtype == "int64"
-    assert df_pp["name-string"].dtype == "int64"
+        assert is_integer_dtype(df_pp["name-cat"].dtype)
+    assert is_integer_dtype(df_pp["name-string"].dtype)
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
@@ -229,7 +236,7 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("replace", [True, False])
-def test_gpu_workflow_config(tmpdir, df, dataset, gpu_memory_frac, engine, dump, replace):
+def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump, replace):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -241,7 +248,11 @@ def test_gpu_workflow_config(tmpdir, df, dataset, gpu_memory_frac, engine, dump,
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+        config=config,
+        client=client,
     )
 
     processor.update_stats(dataset)
@@ -280,11 +291,11 @@ def test_gpu_workflow_config(tmpdir, df, dataset, gpu_memory_frac, engine, dump,
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
     assert cats1 == ["None"] + cats_expected1
 
@@ -302,8 +313,8 @@ def test_gpu_workflow_config(tmpdir, df, dataset, gpu_memory_frac, engine, dump,
         df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
 
     if engine == "parquet":
-        assert df_pp["name-cat"].dtype == "int64"
-    assert df_pp["name-string"].dtype == "int64"
+        assert is_integer_dtype(df_pp["name-cat"].dtype)
+    assert is_integer_dtype(df_pp["name-string"].dtype)
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)

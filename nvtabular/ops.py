@@ -569,10 +569,6 @@ class Encoder(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def cat_read_all_files(self, cat_obj):
-        cat_size = cat_obj.get_cats().shape[0]
-        return cat_size + cat_obj.cat_exp_count
-
     def registered_stats(self):
         return ["encoders", "categories"]
 
