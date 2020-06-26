@@ -44,10 +44,11 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("part_mem_fraction", [0.01, None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("freq_threshold", [0, 150])
+@pytest.mark.parametrize("cat_cache", ["device", None])
+@pytest.mark.parametrize("on_host", [True, False])
 def test_dask_workflow_api_dlrm(
-    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine
+    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host
 ):
-
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
@@ -73,7 +74,13 @@ def test_dask_workflow_api_dlrm(
 
     processor.add_feature([ops.ZeroFill(), ops.LogOp()])
     processor.add_preprocess(
-        ops.Categorify(freq_threshold=freq_threshold, out_path=str(tmpdir), split_out=2)
+        ops.Categorify(
+            freq_threshold=freq_threshold,
+            out_path=str(tmpdir),
+            split_out=2,
+            cat_cache=cat_cache,
+            on_host=on_host,
+        )
     )
     processor.finalize()
 
