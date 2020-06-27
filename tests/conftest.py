@@ -182,7 +182,10 @@ def remove_sub_files_folders(path):
 
 
 def get_cats(processor, col):
-    filename = processor.stats["categories"][col]
-    gdf = cudf.read_parquet(filename)
-    gdf.reset_index(drop=True, inplace=True)
-    return gdf[col].values_to_string()
+    if isinstance(processor, nvtabular.workflow.DaskWorkflow):
+        filename = processor.stats["categories"][col]
+        gdf = cudf.read_parquet(filename)
+        gdf.reset_index(drop=True, inplace=True)
+        return gdf[col].values_to_string()
+    else:
+        return processor.stats["encoders"][col].get_cats().values_to_string()

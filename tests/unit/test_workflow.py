@@ -34,14 +34,20 @@ from tests.conftest import allcols_csv, cleanup, get_cats, mycols_csv, mycols_pq
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump, op_columns):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_gpu_workflow_api(
+    tmpdir, client, df, dataset, gpu_memory_frac, engine, dump, op_columns, use_client
+):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
-    )
+    if use_client:
+        processor = nvt.Workflow(
+            cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client,
+        )
+    else:
+        processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
 
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
