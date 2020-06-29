@@ -6,8 +6,9 @@ from functools import wraps
 import cudf
 import numpy as np
 import pytest
+from dask.distributed import Client, LocalCluster
 
-import nvtabular.io
+import nvtabular.dask.io
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -51,6 +52,16 @@ sample_stats = {
     "encoders": {"name-cat": ("name-cat", mynames), "name-string": ("name-string", mynames)},
 }
 
+_CLIENT = None
+
+
+@pytest.fixture(scope="session")
+def client(request):
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = Client(LocalCluster(n_workers=2))
+    return _CLIENT
+
 
 @pytest.fixture(scope="session")
 def datasets(tmpdir_factory):
@@ -73,7 +84,7 @@ def datasets(tmpdir_factory):
     # Add two random null values to each column
     imax = len(df) - 1
     for col in df.columns:
-        if col in ["name-cat", "label"]:
+        if col in ["name-cat", "label", "id"]:
             break
         df[col].iloc[random.randint(1, imax - 1)] = None
         df[col].iloc[random.randint(1, imax - 1)] = None
@@ -113,7 +124,7 @@ def datasets(tmpdir_factory):
 def paths(request):
     engine = request.getfixturevalue("engine")
     datasets = request.getfixturevalue("datasets")
-    return glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    return sorted(glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0]))
 
 
 @pytest.fixture(scope="function")
@@ -131,6 +142,7 @@ def df(request):
         df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
     else:
         raise ValueError("unknown engine:" + engine)
+
     gdf = cudf.concat([df1, df2], axis=0)
     gdf["id"] = gdf["id"].astype("int64")
     return gdf
@@ -145,15 +157,11 @@ def dataset(request):
     except Exception:
         gpu_memory_frac = 0.01
 
-    columns = mycols_pq if engine == "parquet" else mycols_csv
+    kwargs = {}
+    if engine == "csv-no-header":
+        kwargs["names"] = allcols_csv
 
-    return nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv if engine == "csv-no-header" else None,
-    )
+    return nvtabular.dask.io.DaskDataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
 def cleanup(func):

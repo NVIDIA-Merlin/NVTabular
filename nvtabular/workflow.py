@@ -258,9 +258,14 @@ class BaseWorkflow:
         """
         self.load_config(self.config)
 
-    def write_to_dataset(self, path, itr, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
+    def write_to_dataset(self, path, dataset, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
         """ Write data to shuffled parquet dataset.
         """
+        if isinstance(dataset, dask_io.DaskDataset):
+            itr = dataset.to_iter()
+        else:
+            itr = dataset
+
         writer = DatasetWriter(path, nfiles=nfiles)
 
         for gdf in itr:
@@ -541,7 +546,7 @@ class BaseWorkflow:
     # run phase
     def exec_phase(
         self,
-        itr,
+        dataset,
         phase_index,
         export_path=None,
         record_stats=True,
@@ -553,6 +558,10 @@ class BaseWorkflow:
         Gather necessary column statistics in single pass.
         Execute one phase only, given by phase index
         """
+        if isinstance(dataset, dask_io.DaskDataset):
+            itr = dataset.to_iter()
+        else:
+            itr = dataset
         LOG.debug("running phase %s", phase_index)
         stat_ops_ran = []
         for gdf in itr:
@@ -661,7 +670,7 @@ class BaseWorkflow:
 
     def update_stats(
         self,
-        itr,
+        dataset,
         end_phase=None,
         output_path=None,
         record_stats=True,
@@ -672,7 +681,7 @@ class BaseWorkflow:
         end = end_phase if end_phase else len(self.phases)
         for idx, _ in enumerate(self.phases[:end]):
             self.exec_phase(
-                itr,
+                dataset,
                 idx,
                 export_path=output_path,
                 record_stats=record_stats,

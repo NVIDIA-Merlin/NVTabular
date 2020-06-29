@@ -147,12 +147,9 @@ def test_gpu_dataset_iterator_parquet(datasets, batch):
     assert_eq(df_itr.reset_index(drop=True), df_expect.reset_index(drop=True))
 
 
-@pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
-def test_gpu_dataset_iterator_csv(datasets, df, dataset, batch, engine):
-    df_itr = cudf.DataFrame()
-    for data_gd in dataset:
-        df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
+def test_gpu_dataset_iterator_csv(df, dataset, engine):
+    df_itr = cudf.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
@@ -244,7 +241,7 @@ def test_gpu_workflow_config(tmpdir, df, dataset, gpu_memory_frac, engine, dump,
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
