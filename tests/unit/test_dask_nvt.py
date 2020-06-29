@@ -111,7 +111,7 @@ def test_dask_workflow_api_dlrm(
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
-def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
+def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
 
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
@@ -152,7 +152,7 @@ def test_dask_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction):
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
 @pytest.mark.parametrize("backend", ["dask", "serial"])
-def test_cats_and_groupby_stats(dask_cluster, tmpdir, datasets, part_mem_fraction, backend):
+def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, backend):
 
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
