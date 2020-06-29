@@ -23,16 +23,16 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import cleanup, get_cats, mycols_csv, mycols_pq
+from tests.conftest import get_cats, mycols_csv, mycols_pq
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"]])
-def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns, use_client):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
@@ -45,7 +45,7 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
         cont_names=cont_names,
         label_name=label_name,
         config=config,
-        client=client,
+        **{"client": client} if use_client else {}
     )
     processor.update_stats(dataset)
     x_min = df["x"].min()
@@ -62,10 +62,8 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
         assert y_max == processor.stats["maxs"]["y"]
         assert name_max == processor.stats["maxs"]["name-string"]
         assert y_min == processor.stats["mins"]["y"]
-    return processor.ds_exports
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
@@ -99,14 +97,13 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
 
         assert math.isclose(df.y.std(), processor.stats["stds"]["y"], rel_tol=1e-3)
         assert math.isclose(df.id.std(), processor.stats["stds"]["id"], rel_tol=1e-3)
-    return processor.ds_exports
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client, use_client):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -114,13 +111,12 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, clien
     encoder = ops.Encoder(columns=op_columns)
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
-
     processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
         config=config,
-        client=client,
+        **{"client": client} if use_client else {}
     )
     processor.update_stats(dataset)
 
@@ -132,14 +128,13 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, clien
     cats_expected1 = df["name-string"].unique().values_to_string()
     cats1 = get_cats(processor, "name-string")
     assert cats1 == ["None"] + cats_expected1
-    return processor.ds_exports
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client, use_client):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -152,7 +147,7 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client
         cont_names=cont_names,
         label_name=label_name,
         config=config,
-        client=client,
+        **{"client": client} if use_client else {}
     )
 
     processor.update_stats(dataset)
@@ -165,7 +160,6 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client
         id_median = df.id.dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(y_median, processor.stats["medians"]["y"], rel_tol=1e1)
         assert math.isclose(id_median, processor.stats["medians"]["id"], rel_tol=1e1)
-    return processor.ds_exports
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

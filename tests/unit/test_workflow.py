@@ -26,10 +26,9 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, cleanup, get_cats, mycols_csv, mycols_pq
+from tests.conftest import allcols_csv, get_cats, mycols_csv, mycols_pq
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
@@ -106,7 +105,6 @@ def test_gpu_workflow_api(
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
-    return processor.ds_exports
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -162,7 +160,6 @@ def test_gpu_dataset_iterator_csv(df, dataset, engine):
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
@@ -235,7 +232,6 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
-    return processor.ds_exports
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -324,4 +320,3 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
-    return processor.ds_exports

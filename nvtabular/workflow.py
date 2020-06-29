@@ -61,16 +61,10 @@ class BaseWorkflow:
     label_name : list of str
         Names of the label column.
     config : object
-    export_path : str, default "./ds_export"
     """
 
     def __init__(
-        self,
-        cat_names=None,
-        cont_names=None,
-        label_name=None,
-        config=None,
-        export_path="./ds_export",
+        self, cat_names=None, cont_names=None, label_name=None, config=None,
     ):
         self.phases = []
 
@@ -85,7 +79,6 @@ class BaseWorkflow:
         self.columns_ctx["label"]["base"] = label_name
 
         self.stats = {}
-        self.ds_exports = export_path
         self.current_file_num = 0
         self.timings = {
             "shuffle_df": 0.0,

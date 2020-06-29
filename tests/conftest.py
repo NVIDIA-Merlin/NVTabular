@@ -1,7 +1,5 @@
 import glob
-import os
 import random
-from functools import wraps
 
 import cudf
 import numpy as np
@@ -162,23 +160,6 @@ def dataset(request):
         kwargs["names"] = allcols_csv
 
     return nvtabular.dask.io.DaskDataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
-
-
-def cleanup(func):
-    @wraps(func)
-    def func_up(*args, **kwargs):
-        target = func(*args, **kwargs)
-        remove_sub_files_folders(target)
-        remove_sub_files_folders(kwargs["tmpdir"])
-
-    return func_up
-
-
-def remove_sub_files_folders(path):
-    if os.path.exists(path):
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                os.remove(os.path.join(root, file))
 
 
 def get_cats(processor, col):

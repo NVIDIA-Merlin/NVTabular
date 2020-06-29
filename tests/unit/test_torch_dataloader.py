@@ -180,8 +180,6 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
         assert data_gd[1].shape[1] > 0
 
     assert len_df_pp == count_tens_itr
-    if os.path.exists(processor.ds_exports):
-        shutil.rmtree(processor.ds_exports)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.000001, 0.1])
