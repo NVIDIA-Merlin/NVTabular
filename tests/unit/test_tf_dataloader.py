@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-import glob
-
 import pytest
 
 import nvtabular as nvt
@@ -28,8 +26,7 @@ tf_dataloader = pytest.importorskip("nvtabular.tf_dataloader")
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
-def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+def test_tf_gpu_dl(tmpdir, client, paths, dataset, batch_size, gpu_memory_frac, engine):
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
     label_name = ["label"]
@@ -38,7 +35,9 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
 
     columns = cont_names + cat_names
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
+    )
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
@@ -53,7 +52,7 @@ def test_tf_gpu_dl(tmpdir, datasets, batch_size, gpu_memory_frac, engine):
         engine=engine,
         shuffle=False,
     )
-    processor.update_stats(data_itr.nvt_dataset, record_stats=True)
+    processor.update_stats(dataset, record_stats=True)
     data_itr.map(processor)
 
     rows = 0

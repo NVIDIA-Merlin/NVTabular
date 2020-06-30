@@ -18,13 +18,9 @@ import glob
 import os
 
 import cudf
+import cupy as cp
 import numpy as np
 import pyarrow.parquet as pq
-
-try:
-    import cupy as cp
-except ImportError:
-    import numpy as cp
 
 
 class FileIterator:
