@@ -43,6 +43,11 @@ except ImportError:
     pa_ds = False
 
 
+# Use global variable as the default
+# cache when there are no distributed workers
+DEFAULT_CACHE = None
+
+
 class WriterCache:
     def __init__(self):
         self.pq_writer_cache = {}
@@ -70,16 +75,26 @@ def get_cache():
     try:
         worker = get_worker()
     except ValueError:
-        # This is a metadata operation, so there is no "worker"
-        # TODO: Handle metadata operations in a smarter way
-        return None
+        # There is no dask.distributed worker.
+        # Assume client/worker are same process
+        global DEFAULT_CACHE
+        if DEFAULT_CACHE is None:
+            DEFAULT_CACHE = WriterCache()
+        return DEFAULT_CACHE
     if not hasattr(worker, "pw_cache"):
         worker.pw_cache = WriterCache()
     return worker.pw_cache
 
 
 def clean_pw_cache():
-    worker = get_worker()
+    try:
+        worker = get_worker()
+    except ValueError:
+        global DEFAULT_CACHE
+        if DEFAULT_CACHE is not None:
+            del DEFAULT_CACHE
+            DEFAULT_CACHE = None
+        return
     if hasattr(worker, "pw_cache"):
         del worker.pw_cache
     return

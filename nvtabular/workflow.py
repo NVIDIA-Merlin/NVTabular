@@ -958,11 +958,6 @@ class Workflow(BaseWorkflow):
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
 
-        # TODO: Implement shuffle for client==None
-        if shuffle and self.client is None:
-            warnings.warn("shuffle currently requires distributed client.")
-            shuffle = False
-
         if shuffle:
             name = "write-processed"
             write_name = name + tokenize(ddf, shuffle, nsplits)
@@ -985,14 +980,25 @@ class Workflow(BaseWorkflow):
 
             # Would also be nice to clean the categorical
             # cache before the write (TODO)
-            self.client.cancel(self.ddf_base_dataset)
-            self.ddf_base_dataset = None
-            out = self.client.compute(out).result()
-            if shuffle == "full":
-                self.client.cancel(self.ddf)
-                self.ddf = None
-                self.client.run(dask_io._worker_shuffle, output_path, fs)
-            self.client.run(dask_io.clean_pw_cache)
+
+            # Trigger the Dask-based write and do a
+            # full (per-worker) shuffle if requested
+            if self.client:
+                self.client.cancel(self.ddf_base_dataset)
+                self.ddf_base_dataset = None
+                out = self.client.compute(out).result()
+                if shuffle == "full":
+                    self.client.cancel(self.ddf)
+                    self.ddf = None
+                    self.client.run(dask_io._worker_shuffle, output_path, fs)
+                self.client.run(dask_io.clean_pw_cache)
+            else:
+                self.ddf_base_dataset = None
+                out = dask.compute(out, scheduler="synchronous")[0]
+                if shuffle == "full":
+                    self.ddf = None
+                    dask_io._worker_shuffle(output_path, fs)
+                dask_io.clean_pw_cache()
 
             return out
 
