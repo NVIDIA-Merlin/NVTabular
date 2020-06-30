@@ -35,13 +35,14 @@ except ImportError:
 
 class CategoryCache:
     def __init__(self):
-        self.cat_cache = {}
-        self.gb_stat_cache = {}
+        self.cat_cache = {"cats": {}, "stats": {}}
 
-    @annotate("get_categories", color="green", domain="nvt_python")
-    def get_categories(self, col, path, cache="disk"):
-        table = self.cat_cache.get(col, None)
+    @annotate("fetch_data", color="green", domain="nvt_python")
+    def fetch_data(self, col, path, cache="disk", kind="stats"):
+        table = self.cat_cache[kind].get(col, None)
         if table and not isinstance(table, cudf.DataFrame):
+            if kind == "stats":
+                return cudf.io.read_parquet(table, index=False)
             df = cudf.io.read_parquet(table, index=False, columns=[col])
             df.index.name = "labels"
             df.reset_index(drop=False, inplace=True)
@@ -49,32 +50,19 @@ class CategoryCache:
 
         if table is None:
             if cache in ("device", "disk"):
-                table = cudf.io.read_parquet(path, index=False, columns=[col])
+                table = cudf.io.read_parquet(
+                    path, index=False, columns=None if kind == "stats" else [col]
+                )
             elif cache == "host":
                 with open(path, "rb") as f:
-                    self.cat_cache[col] = BytesIO(f.read())
-                table = cudf.io.read_parquet(self.cat_cache[col], index=False, columns=[col])
-            table.index.name = "labels"
-            table.reset_index(drop=False, inplace=True)
+                    self.cat_cache[kind][col] = BytesIO(f.read())
+                table = cudf.io.read_parquet(
+                    self.cat_cache[kind][col],
+                    index=False,
+                    columns=None if kind == "stats" else [col],
+                )
             if cache == "device":
-                self.cat_cache[col] = table.copy(deep=False)
-        return table
-
-    @annotate("get_gb_stats", color="green", domain="nvt_python")
-    def get_gb_stats(self, col, path, cache="disk"):
-        table = self.gb_stat_cache.get(col, None)
-        if table and not isinstance(table, cudf.DataFrame):
-            return cudf.io.read_parquet(table, index=False)
-
-        if table is None:
-            if cache in ("device", "disk"):
-                table = cudf.io.read_parquet(path, index=False)
-            elif cache == "host":
-                with open(path, "rb") as f:
-                    self.gb_stat_cache[col] = BytesIO(f.read())
-                table = cudf.io.read_parquet(self.gb_stat_cache[col], index=False)
-            if cache == "device":
-                self.gb_stat_cache[col] = table.copy(deep=False)
+                self.cat_cache[kind][col] = table.copy(deep=False)
         return table
 
 
@@ -331,7 +319,7 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
             cat_cache = cat_cache.get(name, "disk")
             cache = _get_cache()
             if cache:
-                value = cache.get_categories(name, path, cache=cat_cache)
+                value = cache.fetch_data(name, path, cache=cat_cache, kind="cats")
         else:
             value = cudf.io.read_parquet(path, index=False, columns=[name])
             value.index.name = "labels"
@@ -361,5 +349,5 @@ def _read_groupby_stat_df(path, name, cat_cache):
         cat_cache = cat_cache.get(name, "disk")
         cache = _get_cache()
         if cache:
-            return cache.get_gb_stats(name, path, cache=cat_cache)
+            return cache.fetch_data(name, path, cache=cat_cache, kind="stats")
     return cudf.io.read_parquet(path, index=False)
