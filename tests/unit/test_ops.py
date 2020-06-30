@@ -23,7 +23,7 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import cleanup, mycols_csv, mycols_pq
+from tests.conftest import cleanup, get_cats, mycols_csv, mycols_pq
 
 
 @cleanup
@@ -111,8 +111,9 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
+    encoder = ops.Encoder(columns=op_columns)
     config = nvt.workflow.get_new_config()
-    config["PP"]["categorical"] = [ops.Encoder(columns=op_columns)]
+    config["PP"]["categorical"] = [encoder]
 
     processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
@@ -123,10 +124,10 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     # Check that categories match
     if engine == "parquet" and not op_columns:
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    cats1 = get_cats(processor, "name-string")
     assert cats1 == ["None"] + cats_expected1
     return processor.ds_exports
 
@@ -144,7 +145,7 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -247,7 +248,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     config["PP"]["continuous"] = [ops.Moments()]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -275,7 +276,7 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     config["PP"]["continuous"] = [ops.MinMax()]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)

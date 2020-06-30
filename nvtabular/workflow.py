@@ -20,6 +20,7 @@ import time
 import warnings
 
 import cudf
+import dask
 import yaml
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
@@ -34,16 +35,6 @@ from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
-
-
-def workflow_factory(*args, **kwargs):
-    if kwargs.get("client", None) is None:
-        return BaseWorkflow(*args, **kwargs)
-    else:
-        return DaskWorkflow(*args, **kwargs)
-
-
-Workflow = workflow_factory
 
 
 class BaseWorkflow:
@@ -800,20 +791,17 @@ def get_new_config():
     return config
 
 
-class DaskWorkflow(BaseWorkflow):
+class Workflow(BaseWorkflow):
     """
-    Dask NVTabular Workflow Class
-    Dask-parallel version of `nvtabular.preproc.Workflow`. Intended
-    to wrap most `Workflow` attributes, but operates on dask_cudf
-    DataFrame objects, rather than `GPUDatasetIterator` objects.
+    Dask-based NVTabular Workflow Class
+    All statistics operations require a dask_cudf
+    DataFrame object (rather than a `GPUDatasetIterator` object).
     """
 
     def __init__(self, client=None, **kwargs):
         super().__init__(**kwargs)
         self.ddf = None
         self.ddf_base_dataset = None
-        if client is None:
-            raise ValueError("Dask Workflow requires distributed client!")
         self.client = client
 
     def set_ddf(self, ddf):
@@ -883,11 +871,18 @@ class DaskWorkflow(BaseWorkflow):
 
         # Compute statistics if necessary
         if stats:
-            for r in self.client.compute(stats):
-                computed_stats, op = r.result()
-                op.dask_fin(computed_stats)
-                self._update_stats(op)
-                op.clear()
+            if self.client:
+                for r in self.client.compute(stats):
+                    computed_stats, op = r.result()
+                    op.dask_fin(computed_stats)
+                    self._update_stats(op)
+                    op.clear()
+            else:
+                for r in dask.compute(stats, scheduler="synchronous")[0]:
+                    computed_stats, op = r
+                    op.dask_fin(computed_stats)
+                    self._update_stats(op)
+                    op.clear()
             del stats
 
     def apply(
@@ -961,8 +956,12 @@ class DaskWorkflow(BaseWorkflow):
         ddf = self.get_ddf()
         nsplits = nsplits or 1
         fs = get_fs_token_paths(output_path)[0]
-        output_path = fs.sep.join([output_path, "processed"])
         fs.mkdirs(output_path, exist_ok=True)
+
+        # TODO: Implement shuffle for client==None
+        if shuffle and self.client is None:
+            warnings.warn("shuffle currently requires distributed client.")
+            shuffle = False
 
         if shuffle:
             name = "write-processed"
@@ -997,4 +996,9 @@ class DaskWorkflow(BaseWorkflow):
 
             return out
 
-        ddf.to_parquet(output_path, compression=None, write_index=False)
+        # Default (shuffle=False): Just use dask_cudf.to_parquet
+        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
+        if self.client is None:
+            fut.compute(scheduler="synchronous")
+        else:
+            fut.compute()

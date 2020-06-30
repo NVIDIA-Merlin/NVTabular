@@ -179,3 +179,13 @@ def remove_sub_files_folders(path):
         for root, dirs, files in os.walk(path):
             for file in files:
                 os.remove(os.path.join(root, file))
+
+
+def get_cats(processor, col):
+    if isinstance(processor, nvtabular.workflow.Workflow):
+        filename = processor.stats["categories"][col]
+        gdf = cudf.read_parquet(filename)
+        gdf.reset_index(drop=True, inplace=True)
+        return gdf[col].values_to_string()
+    else:
+        return processor.stats["encoders"][col].get_cats().values_to_string()
