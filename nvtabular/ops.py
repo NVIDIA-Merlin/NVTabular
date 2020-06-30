@@ -1180,7 +1180,7 @@ class GroupBy(DFOperator):
                 tran_gdf = tran_gdf.sort_values(tmp)
                 tran_gdf.drop(columns=[col, tmp], inplace=True)
                 new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-                new_gdf[new_cols] = tran_gdf[new_cols]
+                new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
             gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 

@@ -140,14 +140,35 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
 
     dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
     processor.apply(dataset)
-    result = processor.get_ddf().compute()
+    result = processor.get_ddf().compute(scheduler="synchronous")
 
-    # TODO:  Add correctness assertions...
+    # Validate result
     assert len(df0) == len(result)
     assert "name-cat_x_std" in result.columns
     assert "name-cat_x_var" not in result.columns
     assert "name-string_x_std" in result.columns
     assert "name-string_x_var" not in result.columns
+
+    # Check "count"
+    assert_eq(
+        result[["name-cat", "name-cat_count"]]
+        .drop_duplicates()
+        .sort_values("name-cat")["name-cat_count"],
+        df0.groupby("name-cat").agg({"x": "count"})["x"],
+        check_index=False,
+        check_dtype=False,  # May get int64 vs int32
+        check_names=False,
+    )
+
+    # Check "std"
+    assert_eq(
+        result[["name-string", "name-string_x_std"]]
+        .drop_duplicates()
+        .sort_values("name-string")["name-string_x_std"],
+        df0.groupby("name-string").agg({"x": "std"})["x"],
+        check_index=False,
+        check_names=False,
+    )
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])

@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import os
 from io import BytesIO
 from operator import getitem
 
@@ -157,7 +158,7 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
             x2 = gb[_make_name(col, cont_col, "pow2", "sum")]
             result = x2 - x ** 2 / n
             div = n - ddof
-            div[div < 0] = 0
+            div[div < 1] = 1
             result /= div
             result[(n - ddof) == 0] = np.nan
 
@@ -184,7 +185,7 @@ def _write_gb_stats(dfs, base_path, col, on_host):
     if on_host:
         df = cudf.from_pandas(df)
     rel_path = "cat_stats.%s.parquet" % (col)
-    path = "/".join([base_path, rel_path])
+    path = os.path.join(base_path, rel_path)
     if len(df):
         df = df.sort_values(col, na_position="first")
         df.to_parquet(path, write_index=False, compression=None)
