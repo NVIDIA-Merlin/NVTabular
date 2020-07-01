@@ -32,7 +32,7 @@ import nvtabular.dask.io as dask_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
-from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
+from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
 
@@ -52,20 +52,9 @@ class BaseWorkflow:
     label_name : list of str
         Names of the label column.
     config : object
-    export : bool, default False
-    export_path : str, default "./ds_export"
     """
 
-    def __init__(
-        self,
-        cat_names=None,
-        cont_names=None,
-        label_name=None,
-        config=None,
-        # TODO: move these out
-        export=False,
-        export_path="./ds_export",
-    ):
+    def __init__(self, cat_names=None, cont_names=None, label_name=None, config=None):
         self.phases = []
 
         self.columns_ctx = {}
@@ -79,8 +68,6 @@ class BaseWorkflow:
         self.columns_ctx["label"]["base"] = label_name
 
         self.stats = {}
-        self.ds_exports = export_path
-        self.export = export
         self.current_file_num = 0
         self.timings = {
             "shuffle_df": 0.0,
@@ -290,9 +277,6 @@ class BaseWorkflow:
         baseline, leftovers = self._sort_task_types(master_task_list)
         self.phases.append(baseline)
         self._phase_creator(leftovers)
-        # check if export wanted
-        if self.export:
-            self._phases_export()
         self._create_final_col_refs(task_sets)
 
     def _phase_creator(self, task_list):
@@ -323,22 +307,6 @@ class BaseWorkflow:
 
             if not added:
                 self.phases.append([task])
-
-    def _phases_export(self):
-        """
-        Export each phase from the dependency dictionary, that creates transformations.
-        """
-        for idx, phase in enumerate(self.phases[:-1]):
-            trans_op = False
-            # only export if the phase has a transform operator on the dataset
-            # otherwise all stats will be saved in the tabular object
-            for task in phase:
-                if isinstance(task[0], TransformOperator):
-                    trans_op = True
-                    break
-            if trans_op:
-                tar_path = os.path.join(self.ds_exports, str(idx))
-                phase.append([Export(path=f"{tar_path}"), None, [], []])
 
     def _find_parents(self, ops_list, phase_idx):
         """

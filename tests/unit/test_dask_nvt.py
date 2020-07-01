@@ -60,7 +60,6 @@ def test_dask_workflow_api_dlrm(
     shuffle,
     use_client,
 ):
-
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
