@@ -1135,7 +1135,7 @@ class Categorify(DFOperator):
         na_sentinel=None,
         cat_cache=None,
         dtype=None,
-        on_host=None,
+        on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency

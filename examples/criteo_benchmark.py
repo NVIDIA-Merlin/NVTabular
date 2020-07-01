@@ -92,28 +92,46 @@ proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"]
 proc.add_feature([ZeroFill(replace=True), LogOp(replace=True)])
 proc.add_preprocess(Normalize(replace=True))
 if int(args.freq_thresh) == 0:
-    proc.add_preprocess(Categorify(replace=True))
+    proc.add_preprocess(
+        Categorify(replace=True, on_host=True, split_out=4, cat_cache="host", out_path=args.out_dir)
+    )
 else:
     proc.add_preprocess(
-        Categorify(replace=True, use_frequency=True, freq_threshold=int(args.freq_thresh))
+        Categorify(
+            replace=True,
+            use_frequency=True,
+            freq_threshold=int(args.freq_thresh),
+            on_host=True,
+            split_out=4,
+            cat_cache="host",
+            out_path=args.out_dir,
+        )
     )
 print("Creating Dataset Iterator")
 trains_ds = None
 
-trains_ds = Dataset(
-    train_set,
-    names=cols,
-    engine=args.in_file_type,
-    part_mem_fraction=float(args.gpu_mem_frac),
-    sep="\t",
-)
-valids_ds = Dataset(
-    valid_set,
-    names=cols,
-    engine=args.in_file_type,
-    part_mem_fraction=float(args.gpu_mem_frac),
-    sep="\t",
-)
+if args.in_file_type == "csv":
+    trains_ds = Dataset(
+        train_set,
+        names=cols,
+        engine=args.in_file_type,
+        part_mem_fraction=float(args.gpu_mem_frac),
+        sep="\t",
+    )
+    valids_ds = Dataset(
+        valid_set,
+        names=cols,
+        engine=args.in_file_type,
+        part_mem_fraction=float(args.gpu_mem_frac),
+        sep="\t",
+    )
+else:
+    trains_ds = Dataset(
+        train_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac)
+    )
+    valids_ds = Dataset(
+        valid_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac)
+    )
 print("Running apply")
 
 out_train = os.path.join(args.out_dir, "train")
@@ -142,6 +160,7 @@ proc.apply(
 print(f"valid preprocess time: {time() - start}")
 print(proc.timings)
 
+# TODO: Implement the get_embedding_size for dask-based workflow
 embeddings = [
     x[1]
     for x in get_embedding_size(proc.stats["categories"], proc.columns_ctx["categorical"]["base"])
