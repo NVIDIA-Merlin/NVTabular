@@ -1215,7 +1215,7 @@ class LambdaOp(TransformOperator):
     Parameters
     -----------
     op_name : str
-        name of the operator column. It is used as a post_fix for the 
+        name of the operator column. It is used as a post_fix for the
         modified column names (if replace=False)
     f : lambda function
         defines the function executed on dataframe level, expectation is lambda col, gdf: ...
@@ -1252,4 +1252,3 @@ class LambdaOp(TransformOperator):
             new_gdf[col] = self.f(gdf[col], gdf)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
         return new_gdf
-
