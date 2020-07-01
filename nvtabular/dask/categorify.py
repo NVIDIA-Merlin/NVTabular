@@ -57,6 +57,9 @@ class CategoryCache:
                     index=False,
                     columns=None if kind == "stats" else [col],
                 )
+            if kind == "cats":
+                table.index.name = "labels"
+                table.reset_index(drop=False, inplace=True)
             if cache == "device":
                 self.cat_cache[kind][col] = table.copy(deep=False)
         return table
