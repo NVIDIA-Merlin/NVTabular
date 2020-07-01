@@ -979,6 +979,6 @@ class CSVDatasetEngine(DatasetEngine):
             self.paths,
             engine="csv",
             gpu_memory_frac=part_mem_fraction,
-            names=self.csv_kwargs.get("names", None),
             columns=columns,
+            **self.csv_kwargs,
         )

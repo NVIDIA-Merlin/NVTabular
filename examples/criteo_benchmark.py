@@ -39,7 +39,7 @@ from fastai.metrics import accuracy
 from fastai.tabular import TabularModel
 
 from nvtabular import Workflow
-from nvtabular.io import GPUDatasetIterator, device_mem_size
+from nvtabular.io import Dataset, device_mem_size
 from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill, get_embedding_size
 from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
 
@@ -98,20 +98,20 @@ else:
         Categorify(replace=True, use_frequency=True, freq_threshold=int(args.freq_thresh))
     )
 print("Creating Dataset Iterator")
-trains_itrs = None
+trains_ds = None
 
-trains_itrs = GPUDatasetIterator(
+trains_ds = Dataset(
     train_set,
     names=cols,
     engine=args.in_file_type,
-    gpu_memory_frac=float(args.gpu_mem_frac),
+    part_mem_fraction=float(args.gpu_mem_frac),
     sep="\t",
 )
-valids_itrs = GPUDatasetIterator(
+valids_ds = Dataset(
     valid_set,
     names=cols,
     engine=args.in_file_type,
-    gpu_memory_frac=float(args.gpu_mem_frac),
+    part_mem_fraction=float(args.gpu_mem_frac),
     sep="\t",
 )
 print("Running apply")
@@ -121,7 +121,7 @@ out_valid = os.path.join(args.out_dir, "valid")
 
 start = time()
 proc.apply(
-    trains_itrs,
+    trains_ds,
     apply_offline=True,
     record_stats=True,
     shuffle=shuffle_arg,
@@ -132,7 +132,7 @@ print(f"train preprocess time: {time() - start}")
 
 start = time()
 proc.apply(
-    valids_itrs,
+    valids_ds,
     apply_offline=True,
     record_stats=False,
     shuffle=shuffle_arg,

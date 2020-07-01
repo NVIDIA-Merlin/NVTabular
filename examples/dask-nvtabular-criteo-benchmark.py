@@ -9,7 +9,7 @@ from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
 
 import nvtabular.ops as ops
-from nvtabular import DaskDataset, Workflow
+from nvtabular import Dataset, Workflow
 from nvtabular.io import device_mem_size
 
 
@@ -126,7 +126,7 @@ def main(args):
     )
     processor.finalize()
 
-    dataset = DaskDataset(data_path, "parquet", part_size=part_size)
+    dataset = Dataset(data_path, "parquet", part_size=part_size)
 
     # Execute the dask graph
     runtime = time.time()

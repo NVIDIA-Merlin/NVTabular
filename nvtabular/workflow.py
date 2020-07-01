@@ -31,6 +31,7 @@ from fsspec.core import get_fs_token_paths
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
+from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -702,6 +703,10 @@ class Workflow(BaseWorkflow):
         shuffle=None,
         output_path="./ds_export",
         out_files_per_proc=None,
+        hugectr_gen_output=False,
+        hugectr_output_path="./hugectr",
+        hugectr_num_out_files=None,
+        hugectr_output_format=None,
         **kwargs,
     ):
         """
@@ -736,13 +741,16 @@ class Workflow(BaseWorkflow):
             warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
             if out_files_per_proc is None:
                 out_files_per_proc = num_out_files
-        shuffler = kwargs.get("shuffler", None)
-        huge_ctr = kwargs.get("huge_ctr", None)
 
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
             self.finalize()
         if apply_offline:
+            if hugectr_gen_output:
+                raise ValueError(
+                    "TODO: Support HugeCTR output for offline processing with Dask."
+                    " This is part of the larger task of aligning online/offline API."
+                )
             self.update_stats(
                 dataset,
                 output_path=output_path,
@@ -753,6 +761,22 @@ class Workflow(BaseWorkflow):
         else:
             if record_stats:
                 warnings.warn("Cannot record global statistics online")
+            shuffler = None
+            huge_ctr = None
+            if shuffle:
+                if isinstance(shuffle, str):
+                    raise ValueError("TODO: Align shuffling/writing API for online/offline.")
+                shuffler = Shuffler(output_path, num_out_files=num_out_files)
+            if hugectr_gen_output:
+                self.cal_col_names = False
+                if hugectr_output_format == "binary":
+                    huge_ctr = HugeCTRWriter(
+                        hugectr_output_path, num_out_files=hugectr_num_out_files
+                    )
+                elif hugectr_output_format == "parquet":
+                    huge_ctr = ParquetWriter(
+                        hugectr_output_path, num_out_files=hugectr_num_out_files
+                    )
             self.apply_ops(
                 dataset,
                 output_path=output_path,
@@ -760,10 +784,10 @@ class Workflow(BaseWorkflow):
                 num_out_files=out_files_per_proc,
                 huge_ctr=huge_ctr,
             )
-        if shuffler:
-            shuffler.close()
-        if huge_ctr:
-            huge_ctr.close()
+            if shuffler:
+                shuffler.close()
+            if huge_ctr:
+                huge_ctr.close()
 
     def reorder_tasks(self, end):
         if end != 2:
