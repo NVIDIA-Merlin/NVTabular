@@ -31,7 +31,6 @@ from fsspec.core import get_fs_token_paths
 import nvtabular.dask.io as dask_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
-from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -486,175 +485,20 @@ class BaseWorkflow:
                 return True
         return False
 
-    def run_ops_for_phase(self, gdf, tasks, record_stats=True):
-        run_stat_ops = []
+    def _run_trans_ops_for_phase(self, gdf, tasks):
         for task in tasks:
             op, cols_grp, target_cols, _ = task
-            if record_stats and isinstance(op, StatOperator):
-                op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
-                run_stat_ops.append(op) if op not in run_stat_ops else None
-
-            elif isinstance(op, DFOperator):
+            if isinstance(op, DFOperator):
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols, self.stats)
-
             elif isinstance(op, TransformOperator):
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
-
-        return gdf, run_stat_ops
-
-    # run phase
-    def exec_phase(
-        self,
-        dataset,
-        phase_index,
-        export_path=None,
-        record_stats=True,
-        shuffler=None,
-        num_out_files=None,
-        huge_ctr=None,
-    ):
-        """
-        Gather necessary column statistics in single pass.
-        Execute one phase only, given by phase index
-        """
-        if isinstance(dataset, dask_io.DaskDataset):
-            itr = dataset.to_iter()
-        else:
-            itr = dataset
-        LOG.debug("running phase %s", phase_index)
-        stat_ops_ran = []
-        for gdf in itr:
-            # run all previous phases to get df to correct state
-            start = time.time()
-            for i in range(phase_index):
-                gdf, _ = self.run_ops_for_phase(gdf, self.phases[i], record_stats=False)
-            self.timings["preproc_reapply"] += time.time() - start
-            start = time.time()
-            gdf, stat_ops_ran = self.run_ops_for_phase(
-                gdf, self.phases[phase_index], record_stats=record_stats
-            )
-            self.timings["preproc_apply"] += time.time() - start
-
-            if export_path and phase_index == len(self.phases) - 1:
-                self.write_df(gdf, export_path, shuffler=shuffler, num_out_files=num_out_files)
-
-            if huge_ctr and phase_index == len(self.phases) - 1:
-                if not self.cal_col_names:
-                    cat_names = self.get_final_cols_names("categorical")
-                    cont_names = self.get_final_cols_names("continuous")
-                    label_names = self.get_final_cols_names("label")
-                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    self.cal_col_names = True
-
-                huge_ctr.add_data(gdf)
-
-            gdf = None
-
-        # if export is activated combine as many GDFs as possible and
-        # then write them out cudf.concat([exp_gdf, gdf], axis=0)
-        for stat_op in stat_ops_ran:
-            stat_op.read_fin()
-            self._update_stats(stat_op)
-            stat_op.clear()
-
-    def apply(
-        self,
-        dataset,
-        apply_offline=True,
-        record_stats=True,
-        shuffle=False,
-        output_path="./ds_export",
-        num_out_files=None,
-        hugectr_gen_output=False,
-        hugectr_output_path="./hugectr",
-        hugectr_num_out_files=None,
-        hugectr_output_format=None,
-    ):
-
-        """
-        Runs all the preprocessing and feature engineering operators.
-        Also, shuffles the data if shuffle is set to True.
-
-        Parameters
-        -----------
-        dataset : object
-        apply_offline : boolean
-            runs operators in offline mode or not
-        record_stats : boolean
-            record the stats in file or not
-        shuffle : boolean
-            shuffles the data or not
-        output_path : string
-            path to export stats
-        num_out_files : integer
-            number of files to create after shuffling
-            the data
-        """
-
-        # if no tasks have been loaded then we need to load internal config\
-        shuffler = None
-        huge_ctr = None
-        if not self.phases:
-            self.finalize()
-        if shuffle:
-            shuffler = Shuffler(output_path, num_out_files=num_out_files)
-        if hugectr_gen_output:
-            self.cal_col_names = False
-            if hugectr_output_format == "binary":
-                huge_ctr = HugeCTRWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
-            elif hugectr_output_format == "parquet":
-                huge_ctr = ParquetWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
-        if apply_offline:
-            self.update_stats(
-                dataset,
-                output_path=output_path,
-                record_stats=record_stats,
-                shuffler=shuffler,
-                num_out_files=num_out_files,
-                huge_ctr=huge_ctr,
-            )
-        else:
-            self.apply_ops(
-                dataset,
-                output_path=output_path,
-                record_stats=record_stats,
-                shuffler=shuffler,
-                num_out_files=num_out_files,
-                huge_ctr=huge_ctr,
-            )
-        if shuffle:
-            shuffler.close()
-        if huge_ctr:
-            huge_ctr.close()
-
-    def update_stats(
-        self,
-        dataset,
-        end_phase=None,
-        output_path=None,
-        record_stats=True,
-        shuffler=None,
-        num_out_files=None,
-        huge_ctr=None,
-    ):
-        end = end_phase if end_phase else len(self.phases)
-        for idx, _ in enumerate(self.phases[:end]):
-            self.exec_phase(
-                dataset,
-                idx,
-                export_path=output_path,
-                record_stats=record_stats,
-                shuffler=shuffler,
-                num_out_files=num_out_files,
-                huge_ctr=huge_ctr,
-            )
+        return gdf
 
     def apply_ops(
         self,
         gdf,
         start_phase=None,
         end_phase=None,
-        record_stats=False,
         shuffler=None,
         output_path=None,
         num_out_files=None,
@@ -662,7 +506,6 @@ class BaseWorkflow:
     ):
         """
         gdf: cudf dataframe
-        record_stats: bool; run stats recording within run
         Controls the application of registered preprocessing phase op
         tasks, can only be used after apply has been performed
         """
@@ -673,9 +516,7 @@ class BaseWorkflow:
         end = end_phase if end_phase else len(self.phases)
         for phase_index in range(start, end):
             start = time.time()
-            gdf, _ = self.run_ops_for_phase(
-                gdf, self.phases[phase_index], record_stats=record_stats
-            )
+            gdf = self._run_trans_ops_for_phase(gdf, self.phases[phase_index])
             self.timings["preproc_apply"] += time.time() - start
             if phase_index == len(self.phases) - 1 and output_path:
                 self.write_df(gdf, output_path, shuffler=shuffler, num_out_files=num_out_files)
@@ -857,26 +698,72 @@ class Workflow(BaseWorkflow):
         self,
         dataset,
         apply_offline=True,
-        record_stats=True,
+        record_stats=None,
         shuffle=None,
         output_path="./ds_export",
-        nsplits=None,
+        out_files_per_proc=None,
         **kwargs,
     ):
+        """
+        Runs all the preprocessing and feature engineering operators.
+        Also, shuffles the data if shuffle is set to True.
 
-        # if no tasks have been loaded then we need to load internal config\
+        Parameters
+        -----------
+        dataset : object
+        apply_offline : boolean
+            runs operators in offline mode or not
+        record_stats : boolean
+            record the stats in file or not. Only available
+            for apply_offline=True
+        shuffle : boolean
+            shuffles the data or not
+        output_path : string
+            path to export stats
+        out_files_per_proc : integer
+            number of files to create (per process) after
+            shuffling the data
+        """
+
+        # Deal with single-gpu compatibility
+        num_splits = kwargs.get("num_splits", None)
+        if num_splits:
+            warnings.warn("num_splits is deprecated. Use out_files_per_proc")
+            if out_files_per_proc is None:
+                out_files_per_proc = num_splits
+        num_out_files = kwargs.get("num_out_files", None)
+        if num_out_files:
+            warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
+            if out_files_per_proc is None:
+                out_files_per_proc = num_out_files
+        shuffler = kwargs.get("shuffler", None)
+        huge_ctr = kwargs.get("huge_ctr", None)
+
+        # If no tasks have been loaded then we need to load internal config
         if not self.phases:
             self.finalize()
         if apply_offline:
             self.update_stats(
                 dataset,
                 output_path=output_path,
-                record_stats=record_stats,
+                record_stats=record_stats or True,
                 shuffle=shuffle,
-                nsplits=nsplits,
+                nsplits=out_files_per_proc,
             )
         else:
-            raise NotImplementedError("""TODO: Implement online apply""")
+            if record_stats:
+                warnings.warn("Cannot record global statistics online")
+            self.apply_ops(
+                dataset,
+                output_path=output_path,
+                shuffler=shuffler,
+                num_out_files=out_files_per_proc,
+                huge_ctr=huge_ctr,
+            )
+        if shuffler:
+            shuffler.close()
+        if huge_ctr:
+            huge_ctr.close()
 
     def reorder_tasks(self, end):
         if end != 2:
