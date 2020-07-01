@@ -1252,3 +1252,4 @@ class LambdaOp(TransformOperator):
             new_gdf[col] = self.f(gdf[col], gdf)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
         return new_gdf
+
