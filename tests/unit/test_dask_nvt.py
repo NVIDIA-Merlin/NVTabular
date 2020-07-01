@@ -24,7 +24,7 @@ import pytest
 from dask.dataframe import assert_eq
 
 import nvtabular.ops as ops
-from nvtabular import DaskDataset, Workflow
+from nvtabular import Dataset, Workflow
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -86,9 +86,9 @@ def test_dask_workflow_api_dlrm(
     processor.finalize()
 
     if engine in ("parquet", "csv"):
-        dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
     else:
-        dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
     output_path = os.path.join(tmpdir, "processed")
     processor.apply(dataset, output_path=output_path, shuffle=shuffle)
 
@@ -153,7 +153,7 @@ def test_dask_minmax_dummyop(client, tmpdir, datasets, engine):
     processor.add_preprocess(DummyOp())
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    dataset = Dataset(paths, engine)
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 
@@ -190,7 +190,7 @@ def test_dask_median_dummyop(client, tmpdir, datasets, engine):
     processor.add_preprocess(DummyOp())
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    dataset = Dataset(paths, engine)
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 
@@ -220,7 +220,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine):
     processor.add_preprocess(ops.Normalize())
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    dataset = Dataset(paths, engine)
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 

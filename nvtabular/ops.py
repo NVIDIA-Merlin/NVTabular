@@ -19,7 +19,7 @@ import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-from nvtabular.dask.categorify import _encode, _get_categories
+from nvtabular.categorify import _encode, _get_categories
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 

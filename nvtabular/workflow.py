@@ -28,7 +28,7 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
-import nvtabular.dask.io as dask_io
+import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
@@ -238,7 +238,7 @@ class BaseWorkflow:
     def write_to_dataset(self, path, dataset, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
         """ Write data to shuffled parquet dataset.
         """
-        if isinstance(dataset, dask_io.DaskDataset):
+        if isinstance(dataset, nvt_io.Dataset):
             itr = dataset.to_iter()
         else:
             itr = dataset
@@ -614,7 +614,7 @@ class Workflow(BaseWorkflow):
         self.client = client
 
     def set_ddf(self, ddf):
-        if isinstance(ddf, dask_io.DaskDataset):
+        if isinstance(ddf, nvt_io.Dataset):
             self.ddf_base_dataset = ddf
             self.ddf = self.ddf_base_dataset
         else:
@@ -628,7 +628,7 @@ class Workflow(BaseWorkflow):
         else:
             if self.ddf is None:
                 raise ValueError("No dask_cudf frame available.")
-            elif isinstance(self.ddf, dask_io.DaskDataset):
+            elif isinstance(self.ddf, nvt_io.Dataset):
                 columns = self.columns_ctx["all"]["base"]
                 return self.ddf.to_ddf(columns=columns)
             return self.ddf
@@ -821,7 +821,7 @@ class Workflow(BaseWorkflow):
             for idx in range(ddf.npartitions):
                 key = (write_name, idx)
                 dsk[key] = (
-                    dask_io._write_output_partition,
+                    nvt_io._write_output_partition,
                     (ddf._name, idx),
                     output_path,
                     shuffle,
@@ -829,7 +829,7 @@ class Workflow(BaseWorkflow):
                     fs,
                 )
                 task_list.append(key)
-            dsk[name] = (dask_io._write_metadata, task_list)
+            dsk[name] = (nvt_io._write_metadata, task_list)
             graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
             out = Delayed(name, graph)
 
@@ -845,15 +845,15 @@ class Workflow(BaseWorkflow):
                 if shuffle == "full":
                     self.client.cancel(self.ddf)
                     self.ddf = None
-                    self.client.run(dask_io._worker_shuffle, output_path, fs)
-                self.client.run(dask_io.clean_pw_cache)
+                    self.client.run(nvt_io._worker_shuffle, output_path, fs)
+                self.client.run(nvt_io.clean_pw_cache)
             else:
                 self.ddf_base_dataset = None
                 out = dask.compute(out, scheduler="synchronous")[0]
                 if shuffle == "full":
                     self.ddf = None
-                    dask_io._worker_shuffle(output_path, fs)
-                dask_io.clean_pw_cache()
+                    nvt_io._worker_shuffle(output_path, fs)
+                nvt_io.clean_pw_cache()
 
             return out
 
