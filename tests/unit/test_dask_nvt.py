@@ -47,18 +47,8 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("cat_cache", ["device", None])
 @pytest.mark.parametrize("on_host", [True, False])
 @pytest.mark.parametrize("shuffle", ["full", None])
-@pytest.mark.parametrize("use_client", [True, False])
 def test_dask_workflow_api_dlrm(
-    client,
-    tmpdir,
-    datasets,
-    freq_threshold,
-    part_mem_fraction,
-    engine,
-    cat_cache,
-    on_host,
-    shuffle,
-    use_client,
+    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
 ):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
@@ -80,10 +70,7 @@ def test_dask_workflow_api_dlrm(
     label_name = ["label"]
 
     processor = Workflow(
-        client=client if use_client else None,
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
 
     processor.add_feature([ops.ZeroFill(), ops.LogOp()])

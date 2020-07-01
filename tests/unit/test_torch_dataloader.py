@@ -44,7 +44,7 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
-def test_gpu_file_iterator_dl(datasets, batch, dskey, client):
+def test_gpu_file_iterator_dl(datasets, batch, dskey):
     paths = glob.glob(str(datasets[dskey]) + "/*.csv")
     names = allcols_csv if dskey == "csv-no-header" else None
     header = None if dskey == "csv-no-header" else 0
@@ -53,7 +53,7 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey, client):
     df_itr = cudf.DataFrame()
 
     processor = nvt.Workflow(
-        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"], client=client
+        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"]
     )
 
     data_itr = torch_dataloader.FileItrDataset(
@@ -80,14 +80,12 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey, client):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("preprocessing", [True, False])
-def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preprocessing, client):
+def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preprocessing):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_feature([ops.FillMedian(), ops.LogOp(preprocessing=preprocessing)])
     processor.add_preprocess(ops.Normalize())

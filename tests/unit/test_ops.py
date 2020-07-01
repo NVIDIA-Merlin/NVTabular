@@ -31,8 +31,7 @@ from tests.conftest import get_cats, mycols_csv, mycols_pq
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"]])
-@pytest.mark.parametrize("use_client", [True, False])
-def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns, use_client):
+def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
@@ -41,11 +40,7 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
     config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        **{"client": client} if use_client else {}
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
     x_min = df["x"].min()
@@ -67,7 +62,7 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+def test_moments(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -76,11 +71,7 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
     config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -102,8 +93,7 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-@pytest.mark.parametrize("use_client", [True, False])
-def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client, use_client):
+def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -113,11 +103,7 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, clien
     config["PP"]["categorical"] = [encoder]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        **{"client": client} if use_client else {}
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
 
@@ -134,8 +120,7 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, clien
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-@pytest.mark.parametrize("use_client", [True, False])
-def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client, use_client):
+def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -144,11 +129,7 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client if use_client else None,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
