@@ -13,5 +13,12 @@ RUN conda install -c conda-forge -c rapidsai jupyterlab dask-cudf && \
         tensorflow==2.1.0 \
         tfdlpack-gpu \
         tensorboard==2.2.0 \
-        jupyter-tensorboard
+        jupyter-tensorboard \
+        ipywidgets
+
+RUN conda install nodejs>=10.0.0
+
+RUN jupyter nbextension enable --py widgetsnbextension && \
+      jupyter labextension install @jupyter-widgets/jupyterlab-manager
+      
 ENTRYPOINT jupyter lab --ip=0.0.0.0 --LabApp.token=${token}
