@@ -19,6 +19,7 @@ from io import BytesIO
 from operator import getitem
 
 import cudf
+import cupy as cp
 import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
@@ -26,11 +27,6 @@ from dask.dataframe.core import _concat
 from dask.distributed import get_worker
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
-
-try:
-    import cupy as cp
-except ImportError:
-    import numpy as cp
 
 
 class CategoryCache:
