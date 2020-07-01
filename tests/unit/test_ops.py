@@ -19,6 +19,7 @@ import cudf
 import numpy as np
 import pytest
 from cudf.tests.utils import assert_eq
+from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
@@ -302,110 +303,251 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     )
     assert new_gdf["x"].equals(df["x"])
 
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dflambda(tmpdir, datasets, gpu_memory_frac, engine):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y"]
+    label_name = ["label"]
+    columns = mycols_pq if engine == "parquet" else mycols_csv
 
-    if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[allcols_csv]
-        df2 = cudf.read_parquet(paths[1])[allcols_csv]
-    else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[allcols_csv]
-        df2 = cudf.read_csv(paths[1], header=False, names=allcols_csv)[allcols_csv]
-    df = cudf.concat([df1, df2], axis=0)
-    df["id"] = df["id"].astype("int64")
+    df_copy = df.copy()
 
-    if engine == "parquet":
-        columns = allcols_csv
-    else:
-        columns = allcols_csv
+    config = nvt.workflow.get_new_config()
 
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
+    processor = nvtabular.Workflow(
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+        config=config,
+        client=client,
     )
 
     columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = cont_names
     columns_ctx["all"] = {}
     columns_ctx["all"]["base"] = columns
 
     # Substring
     # Replacement
-    op_seriesOp = ops.DFLambda(
-        f=lambda gdf: gdf["name-string"].str.slice(1, 3),
-        name_new="name-string",
+    op = ops.LambdaOp(
+        op_name="slice",
+        f=lambda col, gdf: col.str.slice(1, 3),
+        columns=["name-cat", "name-string"],
         preprocessing=True,
         replace=True,
     )
 
-    for gdf in data_itr:
-        str_slice = gdf["name-string"].str.slice(1, 3)
-        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
-        assert np.sum(new_gdf["name-string"] != str_slice) == 0
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.slice(1, 3))
+    assert new_gdf["name-string"].equals(df_copy["name-string"].str.slice(1, 3))
 
     # No Replacement
-    op_seriesOp = ops.DFLambda(
-        f=lambda gdf: gdf["name-string"].str.slice(1, 3),
-        name_new="name-string-new",
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="slice",
+        f=lambda col, gdf: col.str.slice(1, 3),
+        columns=["name-cat", "name-string"],
         preprocessing=True,
         replace=False,
     )
-
-    for gdf in data_itr:
-        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
-        assert np.sum(new_gdf["name-string-new"] != gdf["name-string"].str.slice(1, 3)) == 0
-        assert np.sum(new_gdf["name-string"] != gdf["name-string"]) == 0
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat_slice"].equals(df_copy["name-cat"].str.slice(1, 3))
+    assert new_gdf["name-string_slice"].equals(df_copy["name-string"].str.slice(1, 3))
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
+    assert new_gdf["name-string"].equals(df_copy["name-string"])
 
     # Replace
     # Replacement
-    op_seriesOp = ops.DFLambda(
-        f=lambda gdf: gdf["name-string"].str.replace("e", "XX"),
-        name_new="name-string",
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="replace",
+        f=lambda col, gdf: col.str.replace("e", "XX"),
+        columns=["name-cat", "name-string"],
         preprocessing=True,
         replace=True,
     )
 
-    for gdf in data_itr:
-        str_replace = gdf["name-string"].str.replace("e", "XX")
-        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
-        assert np.sum(new_gdf["name-string"] != str_replace) == 0
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.replace("e", "XX"))
+    assert new_gdf["name-string"].equals(df_copy["name-string"].str.replace("e", "XX"))
 
     # No Replacement
-    op_seriesOp = ops.DFLambda(
-        f=lambda gdf: gdf["name-string"].str.replace("e", "XX"),
-        name_new="name-string-new",
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="replace",
+        f=lambda col, gdf: col.str.replace("e", "XX"),
+        columns=["name-cat", "name-string"],
         preprocessing=True,
         replace=False,
     )
-
-    for gdf in data_itr:
-        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
-        assert np.sum(new_gdf["name-string-new"] != gdf["name-string"].str.replace("e", "XX")) == 0
-        assert np.sum(new_gdf["name-string"] != gdf["name-string"]) == 0
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat_replace"].equals(df_copy["name-cat"].str.replace("e", "XX"))
+    assert new_gdf["name-string_replace"].equals(df_copy["name-string"].str.replace("e", "XX"))
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
+    assert new_gdf["name-string"].equals(df_copy["name-string"])
 
     # astype
     # Replacement
-    op_seriesOp = ops.DFLambda(
-        f=lambda gdf: gdf["id"].astype(float), name_new="id", preprocessing=True, replace=True,
-    )
-
-    for gdf in data_itr:
-        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
-        assert new_gdf["id"].dtype == "float64"
-
-    # weekday
-    # No Replacement
-    op_seriesOp = ops.DFLambda(
-        f=lambda gdf: gdf["timestamp"].dt.weekday,
-        name_new="weekday",
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="astype",
+        f=lambda col, gdf: col.astype(float),
+        columns=["id"],
         preprocessing=True,
-        replace=False,
+        replace=True,
+    )
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["id"].dtype == "float64"
+
+    # Workflow
+    # Replacement
+    import glob
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.LambdaOp(
+                op_name="slice",
+                f=lambda col, gdf: col.astype(str).str.slice(0, 1),
+                columns=["name-cat"],
+                preprocessing=True,
+                replace=True,
+            ),
+            ops.Categorify(),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
     )
 
-    for gdf in data_itr:
-        gdf = gdf[~(gdf["timestamp"].isnull())]
-        new_gdf = op_seriesOp.apply_op(gdf, columns_ctx, "all")
-        assert np.sum(new_gdf["weekday"] != gdf["timestamp"].dt.weekday) == 0
+    df_pp = None
+    for chunk in data_itr_2:
+        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    assert is_integer_dtype(df_pp["name-cat"].dtype)
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.Categorify(),
+            ops.LambdaOp(
+                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=True
+            ),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+    )
+
+    df_pp = None
+    for chunk in data_itr_2:
+        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    assert is_integer_dtype(df_pp["name-cat"].dtype)
+    assert np.sum(df_pp["name-cat"] < 100) == 0
+
+    # Workflow
+    # No Replacement
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.LambdaOp(
+                op_name="slice",
+                f=lambda col, gdf: col.astype(str).str.slice(0, 1),
+                columns=["name-cat"],
+                preprocessing=True,
+                replace=False,
+            ),
+            ops.Categorify(),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+    )
+
+    df_pp = None
+    for chunk in data_itr_2:
+        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    assert df_pp["name-cat"].dtype == "O"
+    print(df_pp)
+    assert is_integer_dtype(df_pp["name-cat_slice"].dtype)
+    assert np.sum(df_pp["name-cat_slice"] == 0) == 0
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.Categorify(),
+            ops.LambdaOp(
+                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
+            ),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+    )
+
+    df_pp = None
+    for chunk in data_itr_2:
+        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    assert is_integer_dtype(df_pp["name-cat_add100"].dtype)
+    assert np.sum(df_pp["name-cat_add100"] < 100) == 0
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.LambdaOp(
+                op_name="mul0",
+                f=lambda col, gdf: col * 0,
+                columns=["x"],
+                preprocessing=True,
+                replace=False,
+            ),
+            ops.LambdaOp(
+                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
+            ),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
+        use_row_groups=True,
+        gpu_memory_frac=gpu_memory_frac,
+    )
+
+    df_pp = None
+    for chunk in data_itr_2:
+        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
