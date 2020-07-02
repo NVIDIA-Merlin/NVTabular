@@ -699,7 +699,7 @@ class Workflow(BaseWorkflow):
         self,
         dataset,
         apply_offline=True,
-        record_stats=None,
+        record_stats=False,
         shuffle=None,
         output_path="./ds_export",
         out_files_per_proc=None,
