@@ -195,6 +195,7 @@ class StatOperator(Operator):
 class MinMax(StatOperator):
     """
     MinMax operation calculates min and max statistics of features.
+
     Parameters
     -----------
     columns :
@@ -283,6 +284,7 @@ class Moments(StatOperator):
     """
     Moments operation calculates some of the statistics of features including
     mean, variance, standarded deviation, and count.
+
     Parameters
     -----------
     columns :
@@ -384,6 +386,7 @@ class Moments(StatOperator):
 class Median(StatOperator):
     """
     This operation calculates median of features.
+
     Parameters
     -----------
     columns :
@@ -453,6 +456,7 @@ class Encoder(StatOperator):
     This is an internal operation. Encoder operation is used by
     the Categorify operation to calculate the unique numerical
     values to transform the categorical features.
+
     Parameters
     -----------
     use_frequency : bool
@@ -577,6 +581,7 @@ class Encoder(StatOperator):
 class ZeroFill(TransformOperator):
     """
     This operation sets negative values to zero.
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -600,6 +605,7 @@ class Dropna(TransformOperator):
     """
     This operation detects missing values, and returns
     a cudf DataFrame with Null entries dropped from it.
+
     Although you can directly call methods of this class to
     transform your categorical and/or continuous features, it's typically used within a
     Workflow class.
@@ -631,6 +637,7 @@ class LogOp(TransformOperator):
     of 1 is a common technique to compare measurements that have
     different units. This operation can be added to the workflow
     to standardize the features.
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -693,7 +700,9 @@ class Normalize(DFOperator):
     of 1 is a common technique to compare measurements that have
     different units. This operation can be added to the workflow
     to standardize the features.
+
     It performs Normalization using the mean std method.
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -732,7 +741,9 @@ class NormalizeMinMax(DFOperator):
     of 1 is a common technique to compare measurements that have
     different units. This operation can be added to the workflow
     to standardize the features.
+
     It performs Normalization using the min max method.
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
@@ -767,12 +778,13 @@ class NormalizeMinMax(DFOperator):
 
 
 class FillMissing(DFOperator):
-
     """
     This operation replaces missing values with a constant pre-defined value
+
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
+
     Parameters
     -----------
     fill_val : float, default 0
@@ -809,6 +821,7 @@ class FillMedian(DFOperator):
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
     Workflow class.
+
     Parameters
     -----------
     columns :
@@ -843,9 +856,11 @@ class GroupByMoments(StatOperator):
     feature(s) and calculates the std, variance, and sum of requested continuous
     features along with count of every group. Then, merges these new statistics
     with the data using the unique ids of categorical data.
+
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
+
     Parameters
     -----------
     cat_names : list of str
@@ -972,9 +987,11 @@ class GroupBy(DFOperator):
     feature(s) and calculates the std, variance, and sum of requested continuous
     features along with count of every group. Then, merges these new statistics
     with the data using the unique ids of categorical data.
+
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
+
     Parameters
     -----------
     cat_names : list of str
@@ -1058,16 +1075,17 @@ class GroupBy(DFOperator):
 
 
 class Categorify(DFOperator):
-
     """
     Most of the data set will contain categorical features,
     and these variables are typically stored as text values.
     Machine Learning algorithms don't support these text values.
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
+
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
     Workflow class.
+
     Parameters
     -----------
     use_frequency : bool
@@ -1179,6 +1197,7 @@ class Categorify(DFOperator):
 
 def get_embedding_order(cat_names):
     """ Returns a consistent sorder order for categorical variables
+
     Parameters
     -----------
     cat_names : list of str
@@ -1190,6 +1209,7 @@ def get_embedding_order(cat_names):
 def get_embedding_size(encoders, cat_names):
     """ Returns a suggested size of embeddings based off cardinality of encoding categorical
     variables
+
     Parameters
     -----------
     encoders : dict
@@ -1230,12 +1250,12 @@ class LambdaOp(TransformOperator):
     default_in = ALL
     default_out = ALL
 
-    def __init__(self, op_name=None, f=None, columns=None, preprocessing=True, replace=True):
+    def __init__(self, op_name, f, columns=None, preprocessing=True, replace=True):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         if op_name is None:
             raise ValueError("op_name cannot be None. It is required for naming the column.")
         if f is None:
-            raise ValueError("f cannot be None. DFLambda op applies f to dataframe")
+            raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
         self.f = f
         self.op_name = op_name
 
