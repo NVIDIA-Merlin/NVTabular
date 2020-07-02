@@ -215,11 +215,12 @@ def test_fill_missing(tmpdir, df, dataset, engine):
     columns_ctx = {}
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
+    for col in cont_names:
+        idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
+        df[col].iloc[idx] = None
 
-    transformed = cudf.concat(
-        [op.apply_op(df, columns_ctx, "continuous") for df in dataset.to_iter()]
-    )
-    assert_eq(transformed[cont_names], df[cont_names].dropna(42))
+    transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous")])
+    assert_eq(transformed[cont_names], df[cont_names].fillna(42))
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
