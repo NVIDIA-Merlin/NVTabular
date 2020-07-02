@@ -693,7 +693,7 @@ class Workflow(BaseWorkflow):
         self,
         dataset,
         apply_offline=True,
-        record_stats=False,
+        record_stats=True,
         shuffle=None,
         output_path="./ds_export",
         out_files_per_proc=None,
@@ -748,13 +748,11 @@ class Workflow(BaseWorkflow):
             self.update_stats(
                 dataset,
                 output_path=output_path,
-                record_stats=record_stats or True,
+                record_stats=record_stats,
                 shuffle=shuffle,
                 nsplits=out_files_per_proc,
             )
         else:
-            if record_stats:
-                warnings.warn("Cannot record global statistics online")
             shuffler = None
             huge_ctr = None
             if shuffle:
