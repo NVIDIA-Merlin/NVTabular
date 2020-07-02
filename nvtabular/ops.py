@@ -1226,5 +1226,19 @@ def get_embedding_size(encoders, cat_names):
     return ret_list
 
 
+def get_embeddings(workflow):
+    cols = get_embedding_order(workflow.columns_ctx["categorical"]["base"])
+    return get_embeddings_dask(workflow.stats["categories"], cols) 
+
+
+def get_embeddings_dask(paths, cat_names):
+    embeddings = {}
+    for col in sorted(cat_names):
+        path = encoders[col]
+        num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+        embeddings[col] = (num_rows, _emb_sz_rule(num_rows))
+    return embeddings
+
+
 def _emb_sz_rule(n_cat: int) -> int:
     return n_cat, int(min(16, round(1.6 * n_cat ** 0.56)))

@@ -40,7 +40,7 @@ from fastai.tabular import TabularModel
 
 from nvtabular import Workflow
 from nvtabular.io import Dataset, device_mem_size
-from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill, get_embedding_size
+from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill, get_embeddings
 from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
 
 
@@ -163,7 +163,7 @@ print(proc.timings)
 # TODO: Implement the get_embedding_size for dask-based workflow
 embeddings = [
     x[1]
-    for x in get_embedding_size(proc.stats["categories"], proc.columns_ctx["categorical"]["base"])
+    for x in get_embeddings(proc)
 ]
 print("Creating Iterators for dataloader")
 start = time()
