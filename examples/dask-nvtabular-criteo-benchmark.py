@@ -153,7 +153,7 @@ def main(args):
     print(f"protocol           | {args.protocol}")
     print(f"device(s)          | {args.devs}")
     print(f"rmm-pool           | {(not args.no_rmm_pool)}")
-    print(f"out_files_per_proc | {args.out_files_per_proc}")
+    print(f"out_files_per_proc | {args.splits}")
     print(f"worker-shuffle     | {args.worker_shuffle}")
     print("======================================")
     print(f"Runtime[s]         | {runtime}")
