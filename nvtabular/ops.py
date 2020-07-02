@@ -813,7 +813,7 @@ class FillMissing(DFOperator):
         cont_names = target_columns
         if not cont_names:
             return gdf
-        z_gdf = gdf[cont_names].fillna(0)
+        z_gdf = gdf[cont_names].fillna(self.fill_val)
         z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
         return z_gdf
 
