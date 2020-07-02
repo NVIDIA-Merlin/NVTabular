@@ -15,11 +15,11 @@
 #
 
 import glob
+import os
 
 import cudf
 import dask_cudf
 import pytest
-import os
 from dask.dataframe import assert_eq
 
 <<<<<<< HEAD
@@ -30,6 +30,7 @@ import nvtabular.io
 import nvtabular as nvt
 import nvtabular.ops as ops
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> Add unit test for HugeCTR
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 =======
@@ -37,6 +38,10 @@ from nvtabular.io import Shuffler
 >>>>>>> remove unused test
 from nvtabular.dask.io import DaskDataset
 >>>>>>> Adds unit test
+=======
+from nvtabular.dask.io import DaskDataset
+from nvtabular.io import Shuffler
+>>>>>>> Sort imports
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
