@@ -20,6 +20,7 @@ import time
 import warnings
 
 import cudf
+import dask
 import yaml
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
@@ -27,23 +28,13 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
-import nvtabular.dask.io as dask_io
+import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
-
-
-def workflow_factory(*args, **kwargs):
-    if kwargs.get("client", None) is None:
-        return BaseWorkflow(*args, **kwargs)
-    else:
-        return DaskWorkflow(*args, **kwargs)
-
-
-Workflow = workflow_factory
 
 
 class BaseWorkflow:
@@ -63,9 +54,7 @@ class BaseWorkflow:
     config : object
     """
 
-    def __init__(
-        self, cat_names=None, cont_names=None, label_name=None, config=None,
-    ):
+    def __init__(self, cat_names=None, cont_names=None, label_name=None, config=None):
         self.phases = []
 
         self.columns_ctx = {}
@@ -250,7 +239,7 @@ class BaseWorkflow:
     def write_to_dataset(self, path, dataset, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
         """ Write data to shuffled parquet dataset.
         """
-        if isinstance(dataset, dask_io.DaskDataset):
+        if isinstance(dataset, nvt_io.Dataset):
             itr = dataset.to_iter()
         else:
             itr = dataset
@@ -497,175 +486,20 @@ class BaseWorkflow:
                 return True
         return False
 
-    def run_ops_for_phase(self, gdf, tasks, record_stats=True):
-        run_stat_ops = []
+    def _run_trans_ops_for_phase(self, gdf, tasks):
         for task in tasks:
             op, cols_grp, target_cols, _ = task
-            if record_stats and isinstance(op, StatOperator):
-                op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
-                run_stat_ops.append(op) if op not in run_stat_ops else None
-
-            elif isinstance(op, DFOperator):
+            if isinstance(op, DFOperator):
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols, self.stats)
-
             elif isinstance(op, TransformOperator):
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
-
-        return gdf, run_stat_ops
-
-    # run phase
-    def exec_phase(
-        self,
-        dataset,
-        phase_index,
-        export_path=None,
-        record_stats=True,
-        shuffler=None,
-        num_out_files=None,
-        huge_ctr=None,
-    ):
-        """
-        Gather necessary column statistics in single pass.
-        Execute one phase only, given by phase index
-        """
-        if isinstance(dataset, dask_io.DaskDataset):
-            itr = dataset.to_iter()
-        else:
-            itr = dataset
-        LOG.debug("running phase %s", phase_index)
-        stat_ops_ran = []
-        for gdf in itr:
-            # run all previous phases to get df to correct state
-            start = time.time()
-            for i in range(phase_index):
-                gdf, _ = self.run_ops_for_phase(gdf, self.phases[i], record_stats=False)
-            self.timings["preproc_reapply"] += time.time() - start
-            start = time.time()
-            gdf, stat_ops_ran = self.run_ops_for_phase(
-                gdf, self.phases[phase_index], record_stats=record_stats
-            )
-            self.timings["preproc_apply"] += time.time() - start
-
-            if export_path and phase_index == len(self.phases) - 1:
-                self.write_df(gdf, export_path, shuffler=shuffler, num_out_files=num_out_files)
-
-            if huge_ctr and phase_index == len(self.phases) - 1:
-                if not self.cal_col_names:
-                    cat_names = self.get_final_cols_names("categorical")
-                    cont_names = self.get_final_cols_names("continuous")
-                    label_names = self.get_final_cols_names("label")
-                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    self.cal_col_names = True
-
-                huge_ctr.add_data(gdf)
-
-            gdf = None
-
-        # if export is activated combine as many GDFs as possible and
-        # then write them out cudf.concat([exp_gdf, gdf], axis=0)
-        for stat_op in stat_ops_ran:
-            stat_op.read_fin()
-            self._update_stats(stat_op)
-            stat_op.clear()
-
-    def apply(
-        self,
-        dataset,
-        apply_offline=True,
-        record_stats=True,
-        shuffle=False,
-        output_path="./ds_export",
-        num_out_files=None,
-        hugectr_gen_output=False,
-        hugectr_output_path="./hugectr",
-        hugectr_num_out_files=None,
-        hugectr_output_format=None,
-    ):
-
-        """
-        Runs all the preprocessing and feature engineering operators.
-        Also, shuffles the data if shuffle is set to True.
-
-        Parameters
-        -----------
-        dataset : object
-        apply_offline : boolean
-            runs operators in offline mode or not
-        record_stats : boolean
-            record the stats in file or not
-        shuffle : boolean
-            shuffles the data or not
-        output_path : string
-            path to export stats
-        num_out_files : integer
-            number of files to create after shuffling
-            the data
-        """
-
-        # if no tasks have been loaded then we need to load internal config\
-        shuffler = None
-        huge_ctr = None
-        if not self.phases:
-            self.finalize()
-        if shuffle:
-            shuffler = Shuffler(output_path, num_out_files=num_out_files)
-        if hugectr_gen_output:
-            self.cal_col_names = False
-            if hugectr_output_format == "binary":
-                huge_ctr = HugeCTRWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
-            elif hugectr_output_format == "parquet":
-                huge_ctr = ParquetWriter(hugectr_output_path, num_out_files=hugectr_num_out_files)
-        if apply_offline:
-            self.update_stats(
-                dataset,
-                output_path=output_path,
-                record_stats=record_stats,
-                shuffler=shuffler,
-                num_out_files=num_out_files,
-                huge_ctr=huge_ctr,
-            )
-        else:
-            self.apply_ops(
-                dataset,
-                output_path=output_path,
-                record_stats=record_stats,
-                shuffler=shuffler,
-                num_out_files=num_out_files,
-                huge_ctr=huge_ctr,
-            )
-        if shuffle:
-            shuffler.close()
-        if huge_ctr:
-            huge_ctr.close()
-
-    def update_stats(
-        self,
-        dataset,
-        end_phase=None,
-        output_path=None,
-        record_stats=True,
-        shuffler=None,
-        num_out_files=None,
-        huge_ctr=None,
-    ):
-        end = end_phase if end_phase else len(self.phases)
-        for idx, _ in enumerate(self.phases[:end]):
-            self.exec_phase(
-                dataset,
-                idx,
-                export_path=output_path,
-                record_stats=record_stats,
-                shuffler=shuffler,
-                num_out_files=num_out_files,
-                huge_ctr=huge_ctr,
-            )
+        return gdf
 
     def apply_ops(
         self,
         gdf,
         start_phase=None,
         end_phase=None,
-        record_stats=False,
         shuffler=None,
         output_path=None,
         num_out_files=None,
@@ -673,7 +507,6 @@ class BaseWorkflow:
     ):
         """
         gdf: cudf dataframe
-        record_stats: bool; run stats recording within run
         Controls the application of registered preprocessing phase op
         tasks, can only be used after apply has been performed
         """
@@ -684,9 +517,7 @@ class BaseWorkflow:
         end = end_phase if end_phase else len(self.phases)
         for phase_index in range(start, end):
             start = time.time()
-            gdf, _ = self.run_ops_for_phase(
-                gdf, self.phases[phase_index], record_stats=record_stats
-            )
+            gdf = self._run_trans_ops_for_phase(gdf, self.phases[phase_index])
             self.timings["preproc_apply"] += time.time() - start
             if phase_index == len(self.phases) - 1 and output_path:
                 self.write_df(gdf, output_path, shuffler=shuffler, num_out_files=num_out_files)
@@ -770,24 +601,21 @@ def get_new_config():
     return config
 
 
-class DaskWorkflow(BaseWorkflow):
+class Workflow(BaseWorkflow):
     """
-    Dask NVTabular Workflow Class
-    Dask-parallel version of `nvtabular.preproc.Workflow`. Intended
-    to wrap most `Workflow` attributes, but operates on dask_cudf
-    DataFrame objects, rather than `GPUDatasetIterator` objects.
+    Dask-based NVTabular Workflow Class
+    All statistics operations require a dask_cudf
+    DataFrame object (rather than a `GPUDatasetIterator` object).
     """
 
     def __init__(self, client=None, **kwargs):
         super().__init__(**kwargs)
         self.ddf = None
         self.ddf_base_dataset = None
-        if client is None:
-            raise ValueError("Dask Workflow requires distributed client!")
         self.client = client
 
     def set_ddf(self, ddf):
-        if isinstance(ddf, dask_io.DaskDataset):
+        if isinstance(ddf, nvt_io.Dataset):
             self.ddf_base_dataset = ddf
             self.ddf = self.ddf_base_dataset
         else:
@@ -801,7 +629,7 @@ class DaskWorkflow(BaseWorkflow):
         else:
             if self.ddf is None:
                 raise ValueError("No dask_cudf frame available.")
-            elif isinstance(self.ddf, dask_io.DaskDataset):
+            elif isinstance(self.ddf, nvt_io.Dataset):
                 columns = self.columns_ctx["all"]["base"]
                 return self.ddf.to_ddf(columns=columns)
             return self.ddf
@@ -853,37 +681,113 @@ class DaskWorkflow(BaseWorkflow):
 
         # Compute statistics if necessary
         if stats:
-            for r in self.client.compute(stats):
-                computed_stats, op = r.result()
-                op.dask_fin(computed_stats)
-                self._update_stats(op)
-                op.clear()
+            if self.client:
+                for r in self.client.compute(stats):
+                    computed_stats, op = r.result()
+                    op.dask_fin(computed_stats)
+                    self._update_stats(op)
+                    op.clear()
+            else:
+                for r in dask.compute(stats, scheduler="synchronous")[0]:
+                    computed_stats, op = r
+                    op.dask_fin(computed_stats)
+                    self._update_stats(op)
+                    op.clear()
             del stats
 
     def apply(
         self,
         dataset,
         apply_offline=True,
-        record_stats=True,
+        record_stats=False,
         shuffle=None,
         output_path="./ds_export",
-        nsplits=None,
+        out_files_per_proc=None,
+        hugectr_gen_output=False,
+        hugectr_output_path="./hugectr",
+        hugectr_num_out_files=None,
+        hugectr_output_format=None,
         **kwargs,
     ):
+        """
+        Runs all the preprocessing and feature engineering operators.
+        Also, shuffles the data if shuffle is set to True.
 
-        # if no tasks have been loaded then we need to load internal config\
+        Parameters
+        -----------
+        dataset : object
+        apply_offline : boolean
+            runs operators in offline mode or not
+        record_stats : boolean
+            record the stats in file or not. Only available
+            for apply_offline=True
+        shuffle : boolean
+            shuffles the data or not
+        output_path : string
+            path to export stats
+        out_files_per_proc : integer
+            number of files to create (per process) after
+            shuffling the data
+        """
+
+        # Deal with single-gpu compatibility
+        num_splits = kwargs.get("num_splits", None)
+        if num_splits:
+            warnings.warn("num_splits is deprecated. Use out_files_per_proc")
+            if out_files_per_proc is None:
+                out_files_per_proc = num_splits
+        num_out_files = kwargs.get("num_out_files", None)
+        if num_out_files:
+            warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
+            if out_files_per_proc is None:
+                out_files_per_proc = num_out_files
+
+        # If no tasks have been loaded then we need to load internal config
         if not self.phases:
             self.finalize()
         if apply_offline:
+            if hugectr_gen_output:
+                raise ValueError(
+                    "TODO: Support HugeCTR output for offline processing with Dask."
+                    " This is part of the larger task of aligning online/offline API."
+                )
             self.update_stats(
                 dataset,
                 output_path=output_path,
-                record_stats=record_stats,
+                record_stats=record_stats or True,
                 shuffle=shuffle,
-                nsplits=nsplits,
+                nsplits=out_files_per_proc,
             )
         else:
-            raise NotImplementedError("""TODO: Implement online apply""")
+            if record_stats:
+                warnings.warn("Cannot record global statistics online")
+            shuffler = None
+            huge_ctr = None
+            if shuffle:
+                if isinstance(shuffle, str):
+                    raise ValueError("TODO: Align shuffling/writing API for online/offline.")
+                shuffler = Shuffler(output_path, num_out_files=num_out_files)
+            if hugectr_gen_output:
+                self.cal_col_names = False
+                if hugectr_output_format == "binary":
+                    huge_ctr = HugeCTRWriter(
+                        hugectr_output_path, num_out_files=hugectr_num_out_files
+                    )
+                elif hugectr_output_format == "parquet":
+                    huge_ctr = ParquetWriter(
+                        hugectr_output_path, num_out_files=hugectr_num_out_files
+                    )
+            self.apply_ops(
+                dataset,
+                output_path=output_path,
+                shuffler=shuffler,
+                num_out_files=out_files_per_proc,
+                huge_ctr=huge_ctr,
+            )
+            if shuffler:
+                shuffler.close()
+            if huge_ctr:
+                huge_ctr.close()
 
     def reorder_tasks(self, end):
         if end != 2:
@@ -941,7 +845,7 @@ class DaskWorkflow(BaseWorkflow):
             for idx in range(ddf.npartitions):
                 key = (write_name, idx)
                 dsk[key] = (
-                    dask_io._write_output_partition,
+                    nvt_io._write_output_partition,
                     (ddf._name, idx),
                     output_path,
                     shuffle,
@@ -949,21 +853,37 @@ class DaskWorkflow(BaseWorkflow):
                     fs,
                 )
                 task_list.append(key)
-            dsk[name] = (dask_io._write_metadata, task_list)
+            dsk[name] = (nvt_io._write_metadata, task_list)
             graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
             out = Delayed(name, graph)
 
             # Would also be nice to clean the categorical
             # cache before the write (TODO)
-            self.client.cancel(self.ddf_base_dataset)
-            self.ddf_base_dataset = None
-            out = self.client.compute(out).result()
-            if shuffle == "full":
-                self.client.cancel(self.ddf)
-                self.ddf = None
-                self.client.run(dask_io._worker_shuffle, output_path, fs)
-            self.client.run(dask_io.clean_pw_cache)
+
+            # Trigger the Dask-based write and do a
+            # full (per-worker) shuffle if requested
+            if self.client:
+                self.client.cancel(self.ddf_base_dataset)
+                self.ddf_base_dataset = None
+                out = self.client.compute(out).result()
+                if shuffle == "full":
+                    self.client.cancel(self.ddf)
+                    self.ddf = None
+                    self.client.run(nvt_io._worker_shuffle, output_path, fs)
+                self.client.run(nvt_io.clean_pw_cache)
+            else:
+                self.ddf_base_dataset = None
+                out = dask.compute(out, scheduler="synchronous")[0]
+                if shuffle == "full":
+                    self.ddf = None
+                    nvt_io._worker_shuffle(output_path, fs)
+                nvt_io.clean_pw_cache()
 
             return out
 
-        ddf.to_parquet(output_path, compression=None, write_index=False)
+        # Default (shuffle=False): Just use dask_cudf.to_parquet
+        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
+        if self.client is None:
+            fut.compute(scheduler="synchronous")
+        else:
+            fut.compute()
