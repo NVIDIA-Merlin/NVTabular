@@ -19,7 +19,7 @@ import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-from nvtabular.dask.categorify import _encode, _get_categories
+from nvtabular.categorify import _encode, _get_categories
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -798,7 +798,7 @@ class FillMissing(DFOperator):
         cont_names = target_columns
         if not cont_names:
             return gdf
-        z_gdf = gdf[cont_names].fillna(0)
+        z_gdf = gdf[cont_names].fillna(self.fill_val)
         z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
         return z_gdf
 
@@ -1112,7 +1112,7 @@ class Categorify(DFOperator):
         na_sentinel=None,
         cat_cache=None,
         dtype=None,
-        on_host=None,
+        on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency

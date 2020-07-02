@@ -39,7 +39,7 @@ from fastai.metrics import accuracy
 from fastai.tabular import TabularModel
 
 from nvtabular import Workflow
-from nvtabular.io import GPUDatasetIterator, device_mem_size
+from nvtabular.io import Dataset, device_mem_size
 from nvtabular.ops import Categorify, LogOp, Normalize, ZeroFill, get_embedding_size
 from nvtabular.torch_dataloader import DLCollator, DLDataLoader, FileItrDataset
 
@@ -92,27 +92,28 @@ proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"]
 proc.add_feature([ZeroFill(replace=True), LogOp(replace=True)])
 proc.add_preprocess(Normalize(replace=True))
 if int(args.freq_thresh) == 0:
-    proc.add_preprocess(Categorify(replace=True))
+    proc.add_preprocess(
+        Categorify(replace=True, on_host=True, split_out=4, cat_cache="host", out_path=args.out_dir)
+    )
 else:
     proc.add_preprocess(
-        Categorify(replace=True, use_frequency=True, freq_threshold=int(args.freq_thresh))
+        Categorify(
+            replace=True,
+            use_frequency=True,
+            freq_threshold=int(args.freq_thresh),
+            on_host=True,
+            split_out=4,
+            cat_cache="host",
+            out_path=args.out_dir,
+        )
     )
 print("Creating Dataset Iterator")
-trains_itrs = None
-
-trains_itrs = GPUDatasetIterator(
-    train_set,
-    names=cols,
-    engine=args.in_file_type,
-    gpu_memory_frac=float(args.gpu_mem_frac),
-    sep="\t",
+dataset_args = {"sep": "\t"} if args.in_file_type == "csv" else {}
+trains_ds = Dataset(
+    train_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac), **dataset_args
 )
-valids_itrs = GPUDatasetIterator(
-    valid_set,
-    names=cols,
-    engine=args.in_file_type,
-    gpu_memory_frac=float(args.gpu_mem_frac),
-    sep="\t",
+valids_ds = Dataset(
+    valid_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac), **dataset_args
 )
 print("Running apply")
 
@@ -121,7 +122,7 @@ out_valid = os.path.join(args.out_dir, "valid")
 
 start = time()
 proc.apply(
-    trains_itrs,
+    trains_ds,
     apply_offline=True,
     record_stats=True,
     shuffle=shuffle_arg,
@@ -132,7 +133,7 @@ print(f"train preprocess time: {time() - start}")
 
 start = time()
 proc.apply(
-    valids_itrs,
+    valids_ds,
     apply_offline=True,
     record_stats=False,
     shuffle=shuffle_arg,
@@ -142,6 +143,7 @@ proc.apply(
 print(f"valid preprocess time: {time() - start}")
 print(proc.timings)
 
+# TODO: Implement the get_embedding_size for dask-based workflow
 embeddings = [
     x[1]
     for x in get_embedding_size(proc.stats["categories"], proc.columns_ctx["categorical"]["base"])

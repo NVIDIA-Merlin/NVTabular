@@ -8,6 +8,7 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
+from .dask.io import DaskDataset
 from .io import GPUDatasetIterator, _shuffle_gdf, device_mem_size
 from .workflow import BaseWorkflow
 
@@ -124,12 +125,13 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
 
   Parameters
   -------------
-  - file_pattern: str or list(str)
+  - paths_or_dataset: str or list(str)
       Either a string representing a file pattern (see `tf.glob` for
-      pattern rules) or a list of filenames to be iterated through
+      pattern rules), a list of filenames to be iterated through, or
+      ad DaskDataset object.
   - columns: list(str) or list(tf.feature_column)
       Either a list of string column names to use from the dataframe(s)
-      specified by `file_pattern`, or a ist of TensorFlow feature columns
+      specified by `paths_or_dataset`, or a ist of TensorFlow feature columns
       representing the inputs exposed to the model to be trained.
       Columns with parent columns will climb the parent tree, and the
       names of the columns in the unique set of terminal columns
@@ -138,7 +140,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
       Number of samples to yield at each iteration
   - label_name: str
       Column name of the target variable in the dataframe specified by
-      `file_pattern`
+      `paths_or_dataset`
   - engine: {'csv', 'parquet', None}, default None
       String specifying the type of read engine to use. If left as `None`,
       will try to infer the engine type from the file extension.
@@ -167,7 +169,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
 
     def __init__(
         self,
-        file_pattern,
+        paths_or_dataset,
         columns,
         batch_size,
         label_name,
@@ -177,19 +179,24 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
         dataset_size=None,
         reader_kwargs={},
     ):
-        # use tf glob to find matching files
-        if isinstance(file_pattern, str):
-            files = tf.io.gfile.glob(file_pattern)
-            _is_empty_msg = "Couldn't find file pattern {} in directory {}".format(
-                *os.path.split(file_pattern)
-            )
-        else:
-            files = file_pattern
-            _is_empty_msg = "file_pattern list must contain at least one filename"
 
-        assert isinstance(files, list)
-        if len(files) == 0:
-            raise ValueError(_is_empty_msg)
+        construct_iter = True
+        if isinstance(paths_or_dataset, DaskDataset):
+            construct_iter = False
+        else:
+            # use tf glob to find matching files
+            if isinstance(paths_or_dataset, str):
+                files = tf.io.gfile.glob(paths_or_dataset)
+                _is_empty_msg = "Couldn't find file pattern {} in directory {}".format(
+                    *os.path.split(paths_or_dataset)
+                )
+            else:
+                files = paths_or_dataset
+                _is_empty_msg = "paths_or_dataset list must contain at least one filename"
+
+            assert isinstance(files, list)
+            if len(files) == 0:
+                raise ValueError(_is_empty_msg)
 
         if all([isinstance(col, fc.FeatureColumn) for col in columns]):
             # get column names by traversing parent tree of columns
@@ -206,20 +213,23 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
                 "feature_columns or list of all strings. Got {}".format(columns)
             )
 
-        # intialize the dataset iterator with a batch_size increased
-        # by buffer_factor to do as few loads as possible
-        # TODO: what's the syntax for byte range read?
-        if buffer_size >= 1:
-            if buffer_size < batch_size:
-                reader_kwargs["batch_size"] = int(batch_size * buffer_size)
+        if construct_iter:
+            # intialize the dataset iterator with a batch_size increased
+            # by buffer_factor to do as few loads as possible
+            # TODO: what's the syntax for byte range read?
+            if buffer_size >= 1:
+                if buffer_size < batch_size:
+                    reader_kwargs["batch_size"] = int(batch_size * buffer_size)
+                else:
+                    reader_kwargs["batch_size"] = buffer_size
             else:
-                reader_kwargs["batch_size"] = buffer_size
-        else:
-            reader_kwargs["gpu_memory_frac"] = buffer_size
+                reader_kwargs["gpu_memory_frac"] = buffer_size
 
-        self._nvt_dataset = GPUDatasetIterator(
-            files, columns=column_names + [label_name], engine=engine, **reader_kwargs
-        )
+            self._nvt_dataset = GPUDatasetIterator(
+                files, columns=column_names + [label_name], engine=engine, **reader_kwargs
+            )
+        else:
+            self._nvt_dataset = paths_or_dataset.to_iter(columns=column_names + [label_name])
 
         # get dataset size if it wasn't provided
         if dataset_size is None:
