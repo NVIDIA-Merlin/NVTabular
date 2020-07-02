@@ -108,30 +108,13 @@ else:
         )
     )
 print("Creating Dataset Iterator")
-trains_ds = None
-
-if args.in_file_type == "csv":
-    trains_ds = Dataset(
-        train_set,
-        names=cols,
-        engine=args.in_file_type,
-        part_mem_fraction=float(args.gpu_mem_frac),
-        sep="\t",
-    )
-    valids_ds = Dataset(
-        valid_set,
-        names=cols,
-        engine=args.in_file_type,
-        part_mem_fraction=float(args.gpu_mem_frac),
-        sep="\t",
-    )
-else:
-    trains_ds = Dataset(
-        train_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac)
-    )
-    valids_ds = Dataset(
-        valid_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac)
-    )
+dataset_args = {"sep": "\t"} if args.in_file_type == "csv" else {}
+trains_ds = Dataset(
+    train_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac), **dataset_args
+)
+valids_ds = Dataset(
+    valid_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac), **dataset_args
+ )
 print("Running apply")
 
 out_train = os.path.join(args.out_dir, "train")
