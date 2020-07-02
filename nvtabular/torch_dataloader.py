@@ -243,7 +243,6 @@ class ChunkQueue:
             self.create_chunk()
             # send bug out
             self.q_out.put(obj)
-            pdb.set_trace()
             return
         self.q_in.put(obj)
         if self.q_in.full():
@@ -306,6 +305,9 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
             buff.put(chunk)
         # done iterating
         buff.put("end")
+
+    def __len__(self):
+        return len(self.itr)
 
 class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
     """
