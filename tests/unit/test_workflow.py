@@ -24,8 +24,8 @@ from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-import nvtabular.io
 import nvtabular.ops as ops
+from nvtabular.io import GPUDatasetIterator, GPUFileIterator
 from tests.conftest import allcols_csv, get_cats, mycols_csv, mycols_pq
 
 
@@ -41,16 +41,16 @@ def test_gpu_workflow_api(
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    if use_client:
-        processor = nvt.Workflow(
-            cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client,
-        )
-    else:
-        processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
+    processor = nvt.Workflow(
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+        client=client if use_client else None,
+    )
 
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
+    processor.add_preprocess(ops.Categorify(cat_cache="host"))
     processor.finalize()
 
     processor.update_stats(dataset)
@@ -70,10 +70,10 @@ def test_gpu_workflow_api(
     # Check mean and std - No good right now we have to add all other changes; Zerofill, Log
 
     if not op_columns:
-        assert math.isclose(get_norms(df.y).mean(), processor.stats["means"]["y"], rel_tol=1e-1,)
-        assert math.isclose(get_norms(df.y).std(), processor.stats["stds"]["y"], rel_tol=1e-1,)
-    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"]["x"], rel_tol=1e-1,)
-    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"]["x"], rel_tol=1e-1,)
+        assert math.isclose(get_norms(df.y).mean(), processor.stats["means"]["y"], rel_tol=1e-1)
+        assert math.isclose(get_norms(df.y).std(), processor.stats["stds"]["y"], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"]["x"], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"]["x"], rel_tol=1e-1)
 
     # Check that categories match
     if engine == "parquet":
@@ -89,7 +89,7 @@ def test_gpu_workflow_api(
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+    data_itr_2 = GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
         use_row_groups=True,
         gpu_memory_frac=gpu_memory_frac,
@@ -112,9 +112,7 @@ def test_gpu_file_iterator_parquet(datasets, batch):
     paths = glob.glob(str(datasets["parquet"]) + "/*.parquet")
     df_expect = cudf.read_parquet(paths[0], columns=mycols_pq)
     df_itr = cudf.DataFrame()
-    data_itr = nvtabular.io.GPUFileIterator(
-        paths[0], batch_size=batch, gpu_memory_frac=0.01, columns=mycols_pq
-    )
+    data_itr = GPUFileIterator(paths[0], batch_size=batch, gpu_memory_frac=0.01, columns=mycols_pq)
     for data_gd in data_itr:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
@@ -130,8 +128,8 @@ def test_gpu_file_iterator_csv(datasets, batch, dskey):
     df_expect = cudf.read_csv(paths[0], header=header, names=names)[mycols_csv]
     df_expect["id"] = df_expect["id"].astype("int64")
     df_itr = cudf.DataFrame()
-    data_itr = nvtabular.io.GPUFileIterator(
-        paths[0], batch_size=batch, gpu_memory_frac=0.01, columns=mycols_csv, names=names,
+    data_itr = GPUFileIterator(
+        paths[0], batch_size=batch, gpu_memory_frac=0.01, columns=mycols_csv, names=names
     )
     for data_gd in data_itr:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
@@ -145,9 +143,7 @@ def test_gpu_dataset_iterator_parquet(datasets, batch):
     df_expect = cudf.read_parquet(paths[0], columns=mycols_pq)
     df_expect = cudf.concat([df_expect, cudf.read_parquet(paths[1], columns=mycols_pq)], axis=0)
     df_itr = cudf.DataFrame()
-    data_itr = nvtabular.io.GPUDatasetIterator(
-        paths, batch_size=batch, gpu_memory_frac=0.01, columns=mycols_pq
-    )
+    data_itr = GPUDatasetIterator(paths, batch_size=batch, gpu_memory_frac=0.01, columns=mycols_pq)
     for data_gd in data_itr:
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
@@ -216,7 +212,7 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+    data_itr_2 = GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
         use_row_groups=True,
         gpu_memory_frac=gpu_memory_frac,
@@ -277,17 +273,17 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     if replace:
         concat_ops = ""
     assert math.isclose(
-        get_norms(df.x).mean(), processor.stats["means"]["x" + concat_ops], rel_tol=1e-1,
+        get_norms(df.x).mean(), processor.stats["means"]["x" + concat_ops], rel_tol=1e-1
     )
     assert math.isclose(
-        get_norms(df.y).mean(), processor.stats["means"]["y" + concat_ops], rel_tol=1e-1,
+        get_norms(df.y).mean(), processor.stats["means"]["y" + concat_ops], rel_tol=1e-1
     )
 
     assert math.isclose(
-        get_norms(df.x).std(), processor.stats["stds"]["x" + concat_ops], rel_tol=1e-1,
+        get_norms(df.x).std(), processor.stats["stds"]["x" + concat_ops], rel_tol=1e-1
     )
     assert math.isclose(
-        get_norms(df.y).std(), processor.stats["stds"]["y" + concat_ops], rel_tol=1e-1,
+        get_norms(df.y).std(), processor.stats["stds"]["y" + concat_ops], rel_tol=1e-1
     )
 
     # Check that categories match
@@ -304,7 +300,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
+    data_itr_2 = GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
         use_row_groups=True,
         gpu_memory_frac=gpu_memory_frac,
