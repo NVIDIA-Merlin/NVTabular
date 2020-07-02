@@ -1,13 +1,12 @@
 import glob
-import os
 import random
-from functools import wraps
 
 import cudf
 import numpy as np
 import pytest
+from dask.distributed import Client, LocalCluster
 
-import nvtabular.io
+import nvtabular
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -51,6 +50,16 @@ sample_stats = {
     "encoders": {"name-cat": ("name-cat", mynames), "name-string": ("name-string", mynames)},
 }
 
+_CLIENT = None
+
+
+@pytest.fixture(scope="session")
+def client(request):
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = Client(LocalCluster(n_workers=2))
+    return _CLIENT
+
 
 @pytest.fixture(scope="session")
 def datasets(tmpdir_factory):
@@ -73,7 +82,7 @@ def datasets(tmpdir_factory):
     # Add two random null values to each column
     imax = len(df) - 1
     for col in df.columns:
-        if col in ["name-cat", "label"]:
+        if col in ["name-cat", "label", "id"]:
             break
         df[col].iloc[random.randint(1, imax - 1)] = None
         df[col].iloc[random.randint(1, imax - 1)] = None
@@ -113,7 +122,7 @@ def datasets(tmpdir_factory):
 def paths(request):
     engine = request.getfixturevalue("engine")
     datasets = request.getfixturevalue("datasets")
-    return glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    return sorted(glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0]))
 
 
 @pytest.fixture(scope="function")
@@ -131,6 +140,7 @@ def df(request):
         df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
     else:
         raise ValueError("unknown engine:" + engine)
+
     gdf = cudf.concat([df1, df2], axis=0)
     gdf["id"] = gdf["id"].astype("int64")
     return gdf
@@ -145,29 +155,18 @@ def dataset(request):
     except Exception:
         gpu_memory_frac = 0.01
 
-    columns = mycols_pq if engine == "parquet" else mycols_csv
+    kwargs = {}
+    if engine == "csv-no-header":
+        kwargs["names"] = allcols_csv
 
-    return nvtabular.io.GPUDatasetIterator(
-        paths,
-        columns=columns,
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv if engine == "csv-no-header" else None,
-    )
+    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
-def cleanup(func):
-    @wraps(func)
-    def func_up(*args, **kwargs):
-        target = func(*args, **kwargs)
-        remove_sub_files_folders(target)
-        remove_sub_files_folders(kwargs["tmpdir"])
-
-    return func_up
-
-
-def remove_sub_files_folders(path):
-    if os.path.exists(path):
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                os.remove(os.path.join(root, file))
+def get_cats(processor, col):
+    if isinstance(processor, nvtabular.workflow.Workflow):
+        filename = processor.stats["categories"][col]
+        gdf = cudf.read_parquet(filename)
+        gdf.reset_index(drop=True, inplace=True)
+        return gdf[col].values_to_string()
+    else:
+        return processor.stats["encoders"][col].get_cats().values_to_string()

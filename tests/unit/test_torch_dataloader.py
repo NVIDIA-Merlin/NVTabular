@@ -24,9 +24,9 @@ import pytest
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
-import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq
+from nvtabular.io import GPUDatasetIterator
+from tests.conftest import allcols_csv, get_cats, mycols_csv, mycols_pq
 
 torch = pytest.importorskip("torch")
 torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
@@ -36,7 +36,7 @@ torch_dataloader = pytest.importorskip("nvtabular.torch_dataloader")
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     df_itr = cudf.DataFrame()
-    for data_gd in dataset:
+    for data_gd in dataset.to_iter(columns=mycols_csv):
         df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
@@ -53,7 +53,7 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     df_itr = cudf.DataFrame()
 
     processor = nvt.Workflow(
-        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"],
+        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"]
     )
 
     data_itr = torch_dataloader.FileItrDataset(
@@ -109,10 +109,10 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     # Check mean and std - No good right now we have to add all other changes; Zerofill, Log
     x_col = "x" if preprocessing else "x_LogOp"
     y_col = "y" if preprocessing else "y_LogOp"
-    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"][x_col], rel_tol=1e-2,)
-    assert math.isclose(get_norms(df.y).mean(), processor.stats["means"][y_col], rel_tol=1e-2,)
-    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"][x_col], rel_tol=1e-2,)
-    assert math.isclose(get_norms(df.y).std(), processor.stats["stds"][y_col], rel_tol=1e-2,)
+    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"][x_col], rel_tol=1e-2)
+    assert math.isclose(get_norms(df.y).mean(), processor.stats["means"][y_col], rel_tol=1e-2)
+    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"][x_col], rel_tol=1e-2)
+    assert math.isclose(get_norms(df.y).std(), processor.stats["stds"][y_col], rel_tol=1e-2)
 
     # Check median (TODO: Improve the accuracy)
     x_median = df.x.dropna().quantile(0.5, interpolation="linear")
@@ -125,11 +125,10 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         assert cats0 == ["None"] + cats_expected0
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
-    print(cats1)
+    cats1 = get_cats(processor, "name-string")
     assert cats1 == ["None"] + cats_expected1
 
     #     Write to new "shuffled" and "processed" dataset
@@ -145,7 +144,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     dlc = torch_dataloader.DLCollator(preproc=processor, apply_ops=False)
     data_files = [
         torch_dataloader.FileItrDataset(
-            x, use_row_groups=True, gpu_memory_frac=gpu_memory_frac, names=allcols_csv,
+            x, use_row_groups=True, gpu_memory_frac=gpu_memory_frac, names=allcols_csv
         )
         for x in glob.glob(str(tmpdir) + "/ds_part.*.parquet")
     ]
@@ -159,7 +158,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     for chunk in dl:
         len_df_pp += len(chunk[0][0])
 
-    data_itr = nvtabular.io.GPUDatasetIterator(
+    data_itr = GPUDatasetIterator(
         glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
         use_row_groups=True,
         gpu_memory_frac=gpu_memory_frac,
@@ -179,8 +178,6 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
         assert data_gd[1].shape[1] > 0
 
     assert len_df_pp == count_tens_itr
-    if os.path.exists(processor.ds_exports):
-        shutil.rmtree(processor.ds_exports)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.000001, 0.1])
@@ -191,7 +188,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name,)
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
@@ -226,7 +223,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
     )
 
     columns = mycols_pq if engine == "parquet" else mycols_csv
-    df_test = cudf.read_parquet(tar_paths[0])
+    df_test = cudf.read_parquet(tar_paths[0])[columns]
     df_test.columns = [x for x in range(0, len(columns))]
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
