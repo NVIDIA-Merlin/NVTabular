@@ -24,7 +24,7 @@ def main(args):
     data_path = args.data_path
     out_path = args.out_path
     freq_limit = args.freq_limit
-    nsplits = args.splits
+    out_files_per_proc = args.splits
     if args.protocol == "ucx":
         os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
 
@@ -135,28 +135,28 @@ def main(args):
             processor.apply(
                 dataset,
                 shuffle="full" if args.worker_shuffle else "partial",
-                nsplits=nsplits,
+                out_files_per_proc=out_files_per_proc,
                 output_path=out_path,
             )
     else:
         processor.apply(
             dataset,
             shuffle="full" if args.worker_shuffle else "partial",
-            nsplits=nsplits,
+            out_files_per_proc=out_files_per_proc,
             output_path=out_path,
         )
     runtime = time.time() - runtime
 
     print("\nDask-NVTabular DLRM/Criteo benchmark")
     print("--------------------------------------")
-    print(f"partition size  | {part_size}")
-    print(f"protocol        | {args.protocol}")
-    print(f"device(s)       | {args.devs}")
-    print(f"rmm-pool        | {(not args.no_rmm_pool)}")
-    print(f"nsplits         | {args.splits}")
-    print(f"worker-shuffle  | {args.worker_shuffle}")
+    print(f"partition size     | {part_size}")
+    print(f"protocol           | {args.protocol}")
+    print(f"device(s)          | {args.devs}")
+    print(f"rmm-pool           | {(not args.no_rmm_pool)}")
+    print(f"out_files_per_proc | {args.out_files_per_proc}")
+    print(f"worker-shuffle     | {args.worker_shuffle}")
     print("======================================")
-    print(f"Runtime[s]      | {runtime}")
+    print(f"Runtime[s]         | {runtime}")
     print("======================================\n")
 
     client.close()

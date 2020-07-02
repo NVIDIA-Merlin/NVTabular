@@ -725,11 +725,11 @@ class Workflow(BaseWorkflow):
         """
 
         # Deal with single-gpu compatibility
-        num_splits = kwargs.get("num_splits", None)
-        if num_splits:
-            warnings.warn("num_splits is deprecated. Use out_files_per_proc")
+        nsplits = kwargs.get("nsplits", None)
+        if nsplits:
+            warnings.warn("nsplits is deprecated. Use out_files_per_proc")
             if out_files_per_proc is None:
-                out_files_per_proc = num_splits
+                out_files_per_proc = nsplits
         num_out_files = kwargs.get("num_out_files", None)
         if num_out_files:
             warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
@@ -750,7 +750,7 @@ class Workflow(BaseWorkflow):
                 output_path=output_path,
                 record_stats=record_stats,
                 shuffle=shuffle,
-                nsplits=out_files_per_proc,
+                out_files_per_proc=out_files_per_proc,
             )
         else:
             shuffler = None
@@ -810,7 +810,7 @@ class Workflow(BaseWorkflow):
         output_path=None,
         record_stats=True,
         shuffle=None,
-        nsplits=None,
+        out_files_per_proc=None,
     ):
         end = end_phase if end_phase else len(self.phases)
 
@@ -821,17 +821,17 @@ class Workflow(BaseWorkflow):
         for idx, _ in enumerate(self.phases[:end]):
             self.exec_phase(idx, record_stats=record_stats)
         if output_path:
-            self.to_dataset(output_path, shuffle=shuffle, nsplits=nsplits)
+            self.to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
 
-    def to_dataset(self, output_path, shuffle=None, nsplits=None):
+    def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()
-        nsplits = nsplits or 1
+        out_files_per_proc = out_files_per_proc or 1
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
 
         if shuffle:
             name = "write-processed"
-            write_name = name + tokenize(ddf, shuffle, nsplits)
+            write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
             task_list = []
             dsk = {}
             for idx in range(ddf.npartitions):
@@ -841,7 +841,7 @@ class Workflow(BaseWorkflow):
                     (ddf._name, idx),
                     output_path,
                     shuffle,
-                    nsplits,
+                    out_files_per_proc,
                     fs,
                 )
                 task_list.append(key)
