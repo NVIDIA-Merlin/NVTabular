@@ -29,8 +29,12 @@ import nvtabular.io
 =======
 import nvtabular as nvt
 import nvtabular.ops as ops
+<<<<<<< HEAD
 >>>>>>> Add unit test for HugeCTR
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
+=======
+from nvtabular.io import Shuffler
+>>>>>>> remove unused test
 from nvtabular.dask.io import DaskDataset
 >>>>>>> Adds unit test
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
