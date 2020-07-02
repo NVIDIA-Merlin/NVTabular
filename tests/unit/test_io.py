@@ -102,12 +102,12 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
-   
+
     # set variables
     nfiles = 10
     ext = ""
-    outdir = tmpdir+"/dontcare"
-    h_outdir = tmpdir+"/hugectr"
+    outdir = tmpdir + "/dontcare"
+    h_outdir = tmpdir + "/hugectr"
     os.mkdir(outdir)
     os.mkdir(h_outdir)
 
@@ -117,18 +117,28 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
-   
-    processor.apply(dataset, apply_offline=True, record_stats=True, output_path=outdir, shuffle=False, hugectr_gen_output=True, hugectr_output_path=h_outdir, hugectr_num_out_files=nfiles, hugectr_output_format=output_format)
+
+    processor.apply(
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        output_path=outdir,
+        shuffle=False,
+        hugectr_gen_output=True,
+        hugectr_output_path=h_outdir,
+        hugectr_num_out_files=nfiles,
+        hugectr_output_format=output_format,
+    )
 
     # Check files
     ext = ""
     if output_format == "parquet":
         ext = "parquet"
-        assert os.path.isfile(h_outdir+"/metadata.json")
+        assert os.path.isfile(h_outdir + "/metadata.json")
     elif output_format == "binary":
         ext = "data"
 
-    assert os.path.isfile(h_outdir+"/file_list.txt")
-    
+    assert os.path.isfile(h_outdir + "/file_list.txt")
+
     for n in range(nfiles):
-        assert os.path.isfile(os.path.join(h_outdir,str(n)+"."+ext))
+        assert os.path.isfile(os.path.join(h_outdir, str(n) + "." + ext))

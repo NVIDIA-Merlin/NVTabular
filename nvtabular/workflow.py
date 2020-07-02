@@ -42,30 +42,11 @@ from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 <<<<<<< HEAD
->>>>>>> HugeCTR parquet format and metadata file working
-from nvtabular.ops import DFOperator, StatOperator, TransformOperator
-=======
-from nvtabular.ops import DFOperator, Export, StatOperator, TransformOperator
 <<<<<<< HEAD
-=======
-from nvtabular.io import HugeCTR, Shuffler
-=======
-from nvtabular.io import Writer, Shuffler
->>>>>>> Adds threaded writer
-=======
-from nvtabular.io import Shuffler, Writer
->>>>>>> Fixing formatting
-=======
-from nvtabular.io import Shuffler, HugeCTRWriter, ParquetWriter
->>>>>>> Update workflow.py
-=======
-from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
->>>>>>> Sort imports
-from nvtabular.ops import DFOperator, Export, OperatorRegistry, StatOperator, TransformOperator
->>>>>>> HugeCTR parquet format and metadata file working
 >>>>>>> HugeCTR parquet format and metadata file working
 =======
->>>>>>> Updates hugectr metadata json
+>>>>>>> Format and rebase
+from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
 
@@ -474,10 +455,10 @@ class BaseWorkflow:
         -----------
         col_type : str
         """
-        col_names = set()
+        col_names = []
         for c_names in self.columns_ctx[col_type].values():
-            col_names.update(c_names)
-        return list(col_names)
+            col_names.extend(c_names)
+        return col_names
 
     def _build_tasks(self, task_dict: dict, task_set, master_task_list):
         """

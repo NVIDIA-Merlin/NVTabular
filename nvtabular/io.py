@@ -514,21 +514,15 @@ class ParquetWriter(ThreadedWriter):
         # cats
         data["cats"] = []
         for c in self.cats:
-            data["cats"].append(
-                {"col_name": c, "index": self.col_idx[c]}
-            )
+            data["cats"].append({"col_name": c, "index": self.col_idx[c]})
         # conts
         data["conts"] = []
         for c in self.conts:
-            data["conts"].append(
-                {"col_name": c, "index": self.col_idx[c]}
-            )
+            data["conts"].append({"col_name": c, "index": self.col_idx[c]})
         # labels
         data["labels"] = []
         for c in self.labels:
-            data["labels"].append(
-                {"col_name": c, "index": self.col_idx[c]}
-            )
+            data["labels"].append({"col_name": c, "index": self.col_idx[c]})
 
         json.dump(data, metadata_writer)
         metadata_writer.close()
