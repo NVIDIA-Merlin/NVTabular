@@ -18,4 +18,5 @@ class ThroughputLogger(tf.keras.callbacks.Callback):
             del self.times[0]
 
         time_delta = self.times[-1] - self.times[0]
-        logs['throughput'] = self.batch_size*len(self.times) / time_delta
+        tf.summary.scalar(
+            'throughput', self.batch_size*len(self.times) / time_delta, step=batch)
