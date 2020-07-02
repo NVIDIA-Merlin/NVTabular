@@ -20,7 +20,7 @@ import cudf
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.io import GPUFileIterator
+from nvtabular.io import GPUFileIterator, _shuffle_gdf
 from nvtabular.ops import get_embedding_order
 
 
@@ -218,21 +218,52 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         return self.num_chunks
 
     def __iter__(self):
-        buff = queue.Queue(1)
-        threading.Thread(target=self.load_chunk, args=(buff,)).start()
-        for _ in range(self.num_chunks):
-            chunk = buff.get()
-            yield from TensorItr(
-                chunk, batch_size=self.batch_size,
-            )
-
-    def load_chunk(self, out):
         for chunk in self.itr:
-            chunk = create_tensors_plain(
-                chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
-            )
-            out.put(chunk)
+            yield chunk
 
+
+class ChunkQueue:
+
+    def __init__(self, num_chunks=2, shuffle=False, cat_cols=None, cont_cols=None, label_cols=None):
+        self.num_chunks = num_chunks
+        self.q_in = queue.Queue(num_chunks)
+        self.q_out = queue.Queue(1)
+        self.cat_cols = cat_cols
+        self.cont_cols = cont_cols
+        self.label_cols = label_cols
+        self.shuffle = shuffle
+
+    def get(self):
+        return self.q_out.get()
+
+    def put(self, obj):
+        #check first for "end"
+        if isinstance(obj, str):
+            # clear the buffer
+            self.create_chunk()
+            # send bug out
+            self.q_out.put(obj)
+            pdb.set_trace()
+            return
+        self.q_in.put(obj)
+        if self.q_in.full():
+            self.create_chunk()
+
+    def create_chunk(self):
+        chunks = []
+        for _ in range(self.q_in.qsize()):
+            chunks.append(self.q_in.get())
+        if not chunks:
+            return
+        chunks = cudf.core.reshape.concat(chunks)
+        if self.shuffle:
+            _shuffle_gdf(chunks)
+        chunks = create_tensors_plain(
+                chunks, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
+            )
+        
+        # chunk tensorized
+        self.q_out.put(chunks)
 
 class DLCollator:
     transform = None
@@ -249,7 +280,34 @@ class DLCollator:
         return (batch[0], batch[1]), batch[2].long()
 
 
-class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
+class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
+    
+    def __init__(self, paths, **kwargs):
+        self.paths = paths
+        self.kwargs = kwargs
+        self.batch_size = kwargs.get("sub_batch_size", 1)
+        self.itr = TorchTensorBatchDatasetItr(paths, **kwargs)
+
+    def __iter__(self):
+        cats = self.kwargs.get("cats")
+        conts = self.kwargs.get("conts")
+        labels = self.kwargs.get("labels")
+        buff = ChunkQueue(cat_cols=cats, cont_cols=conts, label_cols=labels)
+        threading.Thread(target=self.load_chunk, args=(buff,)).start()
+        while True:
+            #self.load_chunk(buff)    
+            chunk = buff.get()
+            if isinstance(chunk, str):
+                return 
+            yield from TensorItr(chunk, batch_size=self.batch_size)
+
+    def load_chunk(self, buff):
+        for chunk in self.itr:
+            buff.put(chunk)
+        # done iterating
+        buff.put("end")
+
+class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
     """
         For Torch Only:
         Batch Tensor dataset, takes in list of files
@@ -280,6 +338,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
         for path in self.paths:
             self.cur_path = path
             yield from TorchTensorBatchFileItr(path, **self.kwargs)
+
 
     def __len__(self):
         return self.rows

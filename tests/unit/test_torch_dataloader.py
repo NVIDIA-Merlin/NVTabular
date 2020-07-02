@@ -214,7 +214,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine, client
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
-    data_itr = nvt.torch_dataloader.TorchTensorBatchDatasetItr(
+    data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
         tar_paths[0],
         engine="parquet",
         sub_batch_size=batch_size,
