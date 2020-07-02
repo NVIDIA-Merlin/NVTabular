@@ -501,7 +501,7 @@ class Encoder(StatOperator):
         categories=None,
         out_path=None,
         split_out=None,
-        on_host=None,
+        on_host=True,
     ):
         super(Encoder, self).__init__(columns)
         self.use_frequency = use_frequency
@@ -913,7 +913,7 @@ class GroupByMoments(StatOperator):
         order_column_name="order-nvtabular",
         split_out=None,
         out_path=None,
-        on_host=None,
+        on_host=True,
     ):
         super(GroupByMoments, self).__init__(columns)
         self.cat_names = cat_names
@@ -1077,9 +1077,9 @@ class GroupBy(DFOperator):
         replace=False,
         order_column_name="order-nvtabular",
         split_out=None,
-        cat_cache=None,
+        cat_cache="host",
         out_path=None,
-        on_host=None,
+        on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.cat_names = cat_names
@@ -1191,7 +1191,7 @@ class Categorify(DFOperator):
         out_path=None,
         split_out=None,
         na_sentinel=None,
-        cat_cache=None,
+        cat_cache="host",
         dtype=None,
         on_host=True,
     ):
