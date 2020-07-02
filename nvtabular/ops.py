@@ -95,8 +95,6 @@ class TransformOperator(Operator):
 
         new_key = self._id
 
-        if not pro:
-            input_cols = self.default_out
         columns_ctx[input_cols][new_key] = []
         if self.replace and self.preprocessing:
             # not making new columns instead using old ones
