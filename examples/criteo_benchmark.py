@@ -114,7 +114,7 @@ trains_ds = Dataset(
 )
 valids_ds = Dataset(
     valid_set, engine=args.in_file_type, part_mem_fraction=float(args.gpu_mem_frac), **dataset_args
- )
+)
 print("Running apply")
 
 out_train = os.path.join(args.out_dir, "train")
