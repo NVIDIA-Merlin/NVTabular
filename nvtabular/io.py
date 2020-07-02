@@ -560,6 +560,8 @@ class HugeCTRWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         for i in range(len(self.data_writers)):
             self.data_writers[i].seek(0)
             # error_check (0: no error check; 1: check_num)
