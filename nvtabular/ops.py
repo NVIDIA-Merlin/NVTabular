@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-import os
-
 import cudf
 import numpy as np
 from cudf._lib.nvtx import annotate
@@ -569,10 +567,6 @@ class Encoder(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def cat_read_all_files(self, cat_obj):
-        cat_size = cat_obj.get_cats().shape[0]
-        return cat_size + cat_obj.cat_exp_count
-
     def registered_stats(self):
         return ["encoders", "categories"]
 
@@ -583,49 +577,6 @@ class Encoder(StatOperator):
     def clear(self):
         self.encoders = {}
         self.categories = {}
-        return
-
-
-class Export(TransformOperator):
-
-    """
-    This operation exports a dataframe to a file.
-
-    Parameters
-    -----------
-    path : str, default "./ds_export"
-        path to write the dataframe
-    nfiles : int, default 1
-        how many files to create
-    shuffle : bool, default True
-        shuffle the data or not
-    columns :
-    preprocessing : bool, default False
-    replace : bool, default False
-    """
-
-    default_in = ALL
-    default_out = ALL
-
-    def __init__(
-        self,
-        path="./ds_export",
-        nfiles=1,
-        shuffle=True,
-        columns=None,
-        preprocessing=False,
-        replace=False,
-    ):
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.path = path
-        if not os.path.exists(path):
-            os.makedirs(path)
-        self.nfiles = nfiles
-        self.shuffle = True
-
-    @annotate("Export_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        gdf.to_parquet(self.path, compression=None)
         return
 
 
@@ -862,7 +813,7 @@ class FillMissing(DFOperator):
         cont_names = target_columns
         if not cont_names:
             return gdf
-        z_gdf = gdf[cont_names].fillna(0)
+        z_gdf = gdf[cont_names].fillna(self.fill_val)
         z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
         return z_gdf
 
