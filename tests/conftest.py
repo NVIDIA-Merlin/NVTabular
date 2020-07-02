@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from dask.distributed import Client, LocalCluster
 
-import nvtabular.dask.io
+import nvtabular
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -159,11 +159,11 @@ def dataset(request):
     if engine == "csv-no-header":
         kwargs["names"] = allcols_csv
 
-    return nvtabular.dask.io.DaskDataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
+    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
 def get_cats(processor, col):
-    if isinstance(processor, nvtabular.workflow.DaskWorkflow):
+    if isinstance(processor, nvtabular.workflow.Workflow):
         filename = processor.stats["categories"][col]
         gdf = cudf.read_parquet(filename)
         gdf.reset_index(drop=True, inplace=True)

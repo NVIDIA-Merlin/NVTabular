@@ -16,14 +16,12 @@
 import warnings
 
 from . import io, workflow
-from .dask import DaskDataset
 
 Workflow = workflow.Workflow
-dataset = io.GPUDatasetIterator
-dask_dataset = DaskDataset  # Avoiding flake8 error
+Dataset = io.Dataset
 
 
-__all__ = ["Workflow", "dataset"]
+__all__ = ["Workflow", "Dataset"]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")

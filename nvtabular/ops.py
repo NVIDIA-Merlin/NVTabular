@@ -20,7 +20,7 @@ import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-import nvtabular.dask.categorify as dask_cats
+import nvtabular.categorify as nvt_cat
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -558,7 +558,7 @@ class Encoder(StatOperator):
     @annotate("Encoder_dask_graph", color="green", domain="nvt_python")
     def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        dsk, key = dask_cats._get_categories(
+        dsk, key = nvt_cat._get_categories(
             ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
         )
         return Delayed(key, dsk)
@@ -995,7 +995,7 @@ class GroupByMoments(StatOperator):
 
         agg_cols = self.cont_names
         agg_list = self.stats
-        dsk, key = dask_cats._groupby_stats(
+        dsk, key = nvt_cat._groupby_stats(
             ddf, cols, agg_cols, agg_list, self.out_path, 0, self.split_out, self.on_host
         )
         return Delayed(key, dsk)
@@ -1126,7 +1126,7 @@ class GroupBy(DFOperator):
             tmp = "__tmp__"  # Temporary column for sorting
             gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
             for col, path in stats_context["gb_categories"].items():
-                stat_gdf = dask_cats._read_groupby_stat_df(path, col, self.cat_cache)
+                stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
                 tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
                 tran_gdf = tran_gdf.sort_values(tmp)
                 tran_gdf.drop(columns=[col, tmp], inplace=True)
@@ -1193,7 +1193,7 @@ class Categorify(DFOperator):
         na_sentinel=None,
         cat_cache=None,
         dtype=None,
-        on_host=None,
+        on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.use_frequency = use_frequency
@@ -1245,7 +1245,7 @@ class Categorify(DFOperator):
             new_cols.append(new_col)
             if use_multi:
                 path = stats_context["categories"][name]
-                new_gdf[new_col] = dask_cats._encode(
+                new_gdf[new_col] = nvt_cat._encode(
                     name,
                     path,
                     gdf,
