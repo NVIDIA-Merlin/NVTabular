@@ -15,11 +15,12 @@
 #
 
 import cudf
+import cupy
 import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-from nvtabular.categorify import _encode, _get_categories
+import nvtabular.categorify as nvt_cat
 from nvtabular.encoder import DLLabelEncoder
 from nvtabular.groupby import GroupByMomentsCal
 
@@ -498,7 +499,7 @@ class Encoder(StatOperator):
         categories=None,
         out_path=None,
         split_out=None,
-        on_host=None,
+        on_host=True,
     ):
         super(Encoder, self).__init__(columns)
         self.use_frequency = use_frequency
@@ -555,7 +556,7 @@ class Encoder(StatOperator):
     @annotate("Encoder_dask_graph", color="green", domain="nvt_python")
     def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        dsk, key = _get_categories(
+        dsk, key = nvt_cat._get_categories(
             ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
         )
         return Delayed(key, dsk)
@@ -886,6 +887,14 @@ class GroupByMoments(StatOperator):
         cudf's merge function doesn't preserve the order of the data
         and this column name is used to create a column with integer
         values in ascending order.
+    split_out : dict, optional
+        Used for multi-GPU groupby reduction.  Each key in the dict
+        should correspond to a column name, and the value is the number
+        of hash partitions to use for the categorical tree reduction.
+        Only a single partition is used by default.
+    out_path : str, optional
+        Used for multi-GPU groupby output.  Root directory where
+        groupby statistics will be written out in parquet format.
     """
 
     def __init__(
@@ -898,6 +907,9 @@ class GroupByMoments(StatOperator):
         gpu_mem_trans_use=0.5,
         columns=None,
         order_column_name="order-nvtabular",
+        split_out=None,
+        out_path=None,
+        on_host=True,
     ):
         super(GroupByMoments, self).__init__(columns)
         self.cat_names = cat_names
@@ -909,6 +921,9 @@ class GroupByMoments(StatOperator):
         self.order_column_name = order_column_name
         self.moments = {}
         self.categories = {}
+        self.out_path = out_path or "./"
+        self.split_out = split_out
+        self.on_host = on_host
 
     def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
         if self.cat_names is None:
@@ -966,11 +981,30 @@ class GroupByMoments(StatOperator):
             self.categories[name] = val.fit_finalize()
         return
 
+    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+
+        supported_ops = ["count", "sum", "mean", "std", "var"]
+        for op in self.stats:
+            if op not in supported_ops:
+                raise ValueError(op + " operation is not supported.")
+
+        agg_cols = self.cont_names
+        agg_list = self.stats
+        dsk, key = nvt_cat._groupby_stats(
+            ddf, cols, agg_cols, agg_list, self.out_path, 0, self.split_out, self.on_host
+        )
+        return Delayed(key, dsk)
+
+    def dask_fin(self, dask_stats):
+        for col in dask_stats:
+            self.categories[col] = dask_stats[col]
+
     def registered_stats(self):
-        return ["moments", "categories"]
+        return ["moments", "gb_categories"]
 
     def stats_collected(self):
-        result = [("moments", self.moments), ("categories", self.categories)]
+        result = [("moments", self.moments), ("gb_categories", self.categories)]
         return result
 
     def clear(self):
@@ -1038,6 +1072,10 @@ class GroupBy(DFOperator):
         preprocessing=True,
         replace=False,
         order_column_name="order-nvtabular",
+        split_out=None,
+        cat_cache="host",
+        out_path=None,
+        on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.cat_names = cat_names
@@ -1047,6 +1085,12 @@ class GroupBy(DFOperator):
         self.limit_frac = limit_frac
         self.gpu_mem_util_limit = gpu_mem_util_limit
         self.gpu_mem_trans_use = gpu_mem_trans_use
+        self.split_out = split_out
+        self.out_path = out_path
+        self.on_host = on_host
+        self.cat_cache = cat_cache
+        if isinstance(self.cat_cache, str):
+            self.cat_cache = {name: cat_cache for name in self.cat_names}
 
     @property
     def req_stats(self):
@@ -1059,6 +1103,9 @@ class GroupBy(DFOperator):
                 gpu_mem_util_limit=self.gpu_mem_util_limit,
                 gpu_mem_trans_use=self.gpu_mem_trans_use,
                 order_column_name=self.order_column_name,
+                split_out=self.split_out,
+                out_path=self.out_path,
+                on_host=self.on_host,
             )
         ]
 
@@ -1067,10 +1114,21 @@ class GroupBy(DFOperator):
             raise ValueError("cat_names cannot be None.")
 
         new_gdf = cudf.DataFrame()
-        for name in stats_context["moments"]:
-            tran_gdf = stats_context["moments"][name].merge(gdf)
-            new_gdf[tran_gdf.columns] = tran_gdf
-
+        if stats_context["moments"]:
+            for name in stats_context["moments"]:
+                tran_gdf = stats_context["moments"][name].merge(gdf)
+                new_gdf[tran_gdf.columns] = tran_gdf
+        else:  # Dask-based version
+            tmp = "__tmp__"  # Temporary column for sorting
+            gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+            for col, path in stats_context["gb_categories"].items():
+                stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
+                tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
+                tran_gdf = tran_gdf.sort_values(tmp)
+                tran_gdf.drop(columns=[col, tmp], inplace=True)
+                new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
+                new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+            gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 
 
@@ -1128,7 +1186,7 @@ class Categorify(DFOperator):
         out_path=None,
         split_out=None,
         na_sentinel=None,
-        cat_cache=None,
+        cat_cache="host",
         dtype=None,
         on_host=True,
     ):
@@ -1172,7 +1230,9 @@ class Categorify(DFOperator):
         if not cat_names:
             return gdf
         # Use multi-GPU version if the "encoders" are empty
-        use_multi = len(stats_context["encoders"]) < len(cat_names)
+        use_multi = "encoders" not in stats_context or len(stats_context["encoders"]) < len(
+            cat_names
+        )
         cat_names = [name for name in cat_names if name in gdf.columns]
         new_cols = []
         for name in cat_names:
@@ -1180,7 +1240,7 @@ class Categorify(DFOperator):
             new_cols.append(new_col)
             if use_multi:
                 path = stats_context["categories"][name]
-                new_gdf[new_col] = _encode(
+                new_gdf[new_col] = nvt_cat._encode(
                     name,
                     path,
                     gdf,

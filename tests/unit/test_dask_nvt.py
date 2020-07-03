@@ -128,6 +128,109 @@ def test_dask_workflow_api_dlrm(
         assert len(df0) == len(df_disk)
 
 
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
+def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
+
+    engine = "parquet"
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    df1 = cudf.read_parquet(paths[0])[mycols_pq]
+    df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    df0 = cudf.concat([df1, df2], axis=0)
+
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = Workflow(
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    )
+
+    processor.add_preprocess(
+        ops.GroupBy(
+            cat_names=cat_names,
+            cont_names=cont_names,
+            stats=["count", "sum", "std"],
+            out_path=str(tmpdir),
+            split_out=2,
+        )
+    )
+    processor.finalize()
+
+    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+    processor.apply(dataset)
+    result = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Validate result
+    assert len(df0) == len(result)
+    assert "name-cat_x_std" in result.columns
+    assert "name-cat_x_var" not in result.columns
+    assert "name-string_x_std" in result.columns
+    assert "name-string_x_var" not in result.columns
+
+    # Check "count"
+    assert_eq(
+        result[["name-cat", "name-cat_count"]]
+        .drop_duplicates()
+        .sort_values("name-cat")["name-cat_count"],
+        df0.groupby("name-cat").agg({"x": "count"})["x"],
+        check_index=False,
+        check_dtype=False,  # May get int64 vs int32
+        check_names=False,
+    )
+
+    # Check "std"
+    assert_eq(
+        result[["name-string", "name-string_x_std"]]
+        .drop_duplicates()
+        .sort_values("name-string")["name-string_x_std"],
+        df0.groupby("name-string").agg({"x": "std"})["x"],
+        check_index=False,
+        check_names=False,
+    )
+
+
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
+@pytest.mark.parametrize("use_client", [True, False])
+def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use_client):
+
+    engine = "parquet"
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = Workflow(
+        client=client if use_client else None,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+    )
+
+    processor.add_preprocess(
+        ops.Categorify(out_path=str(tmpdir), split_out=2, freq_threshold=10, on_host=True)
+    )
+
+    processor.add_cat_feature(
+        ops.GroupBy(
+            cat_names=cat_names,
+            cont_names=cont_names,
+            stats=["count", "sum"],
+            out_path=str(tmpdir),
+            split_out=2,
+        )
+    )
+
+    processor.finalize()
+    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+
+    processor.apply(dataset, output_path=str(tmpdir))
+    result = processor.get_ddf().compute()
+
+    assert "name-cat_x_sum" in result.columns
+    assert "name-string_x_sum" in result.columns
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_dask_minmax_dummyop(client, tmpdir, datasets, engine):
 
