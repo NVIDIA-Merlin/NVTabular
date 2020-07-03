@@ -21,8 +21,6 @@ from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
 import nvtabular.categorify as nvt_cat
-from nvtabular.encoder import DLLabelEncoder
-from nvtabular.groupby import GroupByMomentsCal
 
 CONT = "continuous"
 CAT = "categorical"
@@ -156,26 +154,14 @@ class StatOperator(Operator):
     def __init__(self, columns=None):
         super(StatOperator, self).__init__(columns)
 
-    def read_itr(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
-        raise NotImplementedError(
-            """The operation to conduct on the dataframe to observe the desired statistics."""
-        )
-
-    def read_fin(self):
-        raise NotImplementedError(
-            """Upon finalization of the statistics on all data frame chunks,
-                this function allows for final transformations on the statistics recorded.
-                Can be 'pass' if unneeded."""
-        )
-
-    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         raise NotImplementedError(
             """The dask operations needed to return a dictionary of uncomputed statistics."""
         )
 
-    def dask_fin(self, dask_stats):
+    def finalize(self, dask_stats):
         raise NotImplementedError(
-            """Follow-up operations to convert dask statistcs in to member variables"""
+            """Follow-up operations to convert dask statistics in to member variables"""
         )
 
     def registered_stats(self):
@@ -214,52 +200,18 @@ class MinMax(StatOperator):
         self.maxs = maxs if maxs is not None else {}
 
     @annotate("MinMax_op", color="green", domain="nvt_python")
-    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
-        """ Iteration level Min Max collection, a chunk at a time
-        """
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        for col in cols:
-            gdf_col = gdf[col].dropna()
-            if gdf_col.dtype != "object":
-                col_min = gdf_col.min()
-                col_max = gdf_col.max()
-            else:
-                # StringColumn etc doesn't have min/max methods yet, convert
-                # to host memory and take the min there.
-                col_min = min(gdf_col.tolist())
-                col_max = max(gdf_col.tolist())
-            if col not in self.batch_mins:
-                self.batch_mins[col] = []
-                self.batch_maxs[col] = []
-            self.batch_mins[col].append(col_min)
-            self.batch_maxs[col].append(col_max)
-        return
-
-    @annotate("MinMax_fin", color="green", domain="nvt_python")
-    def read_fin(self):
-
-        for col in self.batch_mins.keys():
-            # required for exporting values later,
-            # must move values from gpu if cupy->numpy not supported
-            self.batch_mins[col] = cudf.Series(self.batch_mins[col]).tolist()
-            self.batch_maxs[col] = cudf.Series(self.batch_maxs[col]).tolist()
-            self.mins[col] = min(self.batch_mins[col])
-            self.maxs[col] = max(self.batch_maxs[col])
-        return
-
-    @annotate("MinMax_dask_graph", color="green", domain="nvt_python")
-    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
         dask_stats = {}
         dask_stats["mins"] = ddf[cols].min()
         dask_stats["maxs"] = ddf[cols].max()
         return dask_stats
 
-    @annotate("MinMax_dask_fin", color="green", domain="nvt_python")
-    def dask_fin(self, dask_stats):
-        for col in dask_stats["mins"].index:
-            self.mins[col] = dask_stats["mins"][col]
-            self.maxs[col] = dask_stats["maxs"][col]
+    @annotate("MinMax_finalize", color="green", domain="nvt_python")
+    def finalize(self, stats):
+        for col in stats["mins"].index:
+            self.mins[col] = stats["mins"][col]
+            self.maxs[col] = stats["maxs"][col]
 
     def registered_stats(self):
         return ["mins", "maxs", "batch_mins", "batch_maxs"]
@@ -303,52 +255,7 @@ class Moments(StatOperator):
         self.stds = stds if stds is not None else {}
 
     @annotate("Moments_op", color="green", domain="nvt_python")
-    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
-        """ Iteration-level moment algorithm (mean/std).
-        """
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        for col in cols:
-            if col not in self.counts:
-                self.counts[col] = 0.0
-                self.means[col] = 0.0
-                self.varis[col] = 0.0
-                self.stds[col] = 0.0
-
-            # TODO: Harden this routine to handle 0-division.
-            #       This algo may also break/overflow at scale.
-
-            n1 = self.counts[col]
-            n2 = float(len(gdf))
-
-            v1 = self.varis[col]
-            v2 = gdf[col].var()
-
-            m1 = self.means[col]
-            m2 = gdf[col].mean()
-
-            self.counts[col] += n2
-            self.means[col] = (m1 * n1 + m2 * n2) / self.counts[col]
-
-            #  Variance
-            t1 = n1 * v1
-            t2 = n2 * v2
-            t3 = n1 * ((m1 - self.means[col]) ** 2)
-            t4 = n2 * ((m2 - self.means[col]) ** 2)
-            t5 = n1 + n2
-            self.varis[col] = (t1 + t2 + t3 + t4) / t5
-        return
-
-    @annotate("Moments_fin", color="green", domain="nvt_python")
-    def read_fin(self):
-        """ Finalize statistical-moments algorithm.
-        """
-        for col in self.varis.keys():
-            self.stds[col] = float(np.sqrt(self.varis[col]))
-            self.varis[col] = float(self.varis[col])
-            self.means[col] = float(self.means[col])
-
-    @annotate("Moments_dask_graph", color="green", domain="nvt_python")
-    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
         dask_stats = {}
         dask_stats["count"] = ddf[cols].count()
@@ -356,8 +263,8 @@ class Moments(StatOperator):
         dask_stats["std"] = ddf[cols].std()
         return dask_stats
 
-    @annotate("Moments_dask_fin", color="green", domain="nvt_python")
-    def dask_fin(self, dask_stats):
+    @annotate("Moments_finalize", color="green", domain="nvt_python")
+    def finalize(self, dask_stats):
         for col in dask_stats["count"].index:
             self.counts[col] = float(dask_stats["count"][col])
             self.means[col] = float(dask_stats["mean"][col])
@@ -403,39 +310,14 @@ class Median(StatOperator):
         self.medians = medians if medians is not None else {}
 
     @annotate("Median_op", color="green", domain="nvt_python")
-    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
-        """ Iteration-level median algorithm.
-        """
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        for name in cols:
-            if name not in self.batch_medians:
-                self.batch_medians[name] = []
-            col = gdf[name].copy()
-            col = col.dropna().reset_index(drop=True).sort_values()
-            if len(col) > 1:
-                self.batch_medians[name].append(float(col[len(col) // 2]))
-            else:
-                self.batch_medians[name].append(0.0)
-        return
-
-    @annotate("Median_fin", color="green", domain="nvt_python")
-    def read_fin(self, *args):
-        """ Finalize median algorithm.
-        """
-        for col, val in self.batch_medians.items():
-            self.batch_medians[col].sort()
-            self.medians[col] = float(self.batch_medians[col][len(self.batch_medians[col]) // 2])
-        return
-
-    @annotate("Median_dask_graph", color="green", domain="nvt_python")
-    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
         # TODO: Use `method="tidigest"` when crick supports device
         dask_stats = ddf[cols].quantile(q=0.5, method="dask")
         return dask_stats
 
-    @annotate("Median_dask_fin", color="green", domain="nvt_python")
-    def dask_fin(self, dask_stats):
+    @annotate("Median_finalize", color="green", domain="nvt_python")
+    def finalize(self, dask_stats):
         for col in dask_stats.index:
             self.medians[col] = float(dask_stats[col])
 
@@ -495,7 +377,6 @@ class Encoder(StatOperator):
         gpu_mem_util_limit=0.5,
         gpu_mem_trans_use=0.5,
         columns=None,
-        encoders=None,
         categories=None,
         out_path=None,
         split_out=None,
@@ -507,76 +388,32 @@ class Encoder(StatOperator):
         self.limit_frac = limit_frac
         self.gpu_mem_util_limit = gpu_mem_util_limit
         self.gpu_mem_trans_use = gpu_mem_trans_use
-        self.encoders = encoders if encoders is not None else {}
         self.categories = categories if categories is not None else {}
         self.out_path = out_path or "./"
         self.split_out = split_out
         self.on_host = on_host
 
     @annotate("Encoder_op", color="green", domain="nvt_python")
-    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
-        """ Iteration-level categorical encoder update.
-        """
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        if not cols:
-            return
-        for name in cols:
-            if name not in self.encoders:
-                if self.use_frequency:
-                    threshold_freq = (
-                        self.freq_threshold.get(name, 0)
-                        if type(self.freq_threshold) is dict
-                        else self.freq_threshold
-                    )
-                    self.encoders[name] = DLLabelEncoder(
-                        name,
-                        use_frequency=self.use_frequency,
-                        limit_frac=self.limit_frac,
-                        gpu_mem_util_limit=self.gpu_mem_util_limit,
-                        # This one is used during transform
-                        gpu_mem_trans_use=self.gpu_mem_trans_use,
-                        freq_threshold=threshold_freq,
-                    )
-                else:
-                    self.encoders[name] = DLLabelEncoder(name)
-
-                gdf[name].append([None])
-
-            self.encoders[name].fit(gdf[name])
-        return
-
-    @annotate("Encoder_fin", color="green", domain="nvt_python")
-    def read_fin(self, *args):
-        """ Finalize categorical encoders (get categories).
-        """
-        for name, val in self.encoders.items():
-            self.categories[name] = val.fit_finalize()
-        return
-
-    @annotate("Encoder_dask_graph", color="green", domain="nvt_python")
-    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
         dsk, key = nvt_cat._get_categories(
             ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
         )
         return Delayed(key, dsk)
 
-    @annotate("Encoder_dask_fin", color="green", domain="nvt_python")
-    def dask_fin(self, dask_stats):
+    @annotate("Encoder_finalize", color="green", domain="nvt_python")
+    def finalize(self, dask_stats):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
     def registered_stats(self):
-        return ["encoders", "categories"]
+        return ["categories"]
 
     def stats_collected(self):
-        result = [("encoders", self.encoders), ("categories", self.categories)]
-        return result
+        return [("categories", self.categories)]
 
     def clear(self):
-        self.encoders = {}
         self.categories = {}
-        return
 
 
 class ZeroFill(TransformOperator):
@@ -925,63 +762,7 @@ class GroupByMoments(StatOperator):
         self.split_out = split_out
         self.on_host = on_host
 
-    def apply_op(self, gdf: cudf.DataFrame, columns_ctx: dict, input_cols, target_cols="base"):
-        if self.cat_names is None:
-            raise ValueError("cat_names cannot be None for group by operations.")
-
-        if self.cont_names is None:
-            if "count" not in self.stats:
-                raise ValueError(
-                    "count operations is only supported when there is no continuous columns."
-                )
-
-        supported_ops = ["count", "sum"]
-        for ops in self.stats:
-            if ops not in supported_ops:
-                raise ValueError(ops + " operation is not supported.")
-
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        if not cols:
-            return
-        for name in cols:
-            if name not in self.cat_names:
-                continue
-
-            col_count = None
-            if self.cont_names is None:
-                if cols[0] == name:
-                    col_count = cols[0]
-                else:
-                    col_count = cols[1]
-                col_names = [name, col_count]
-            else:
-                col_count = self.cont_names[0]
-                col_names = self.cont_names.copy()
-                col_names.append(name)
-
-            if name not in self.moments:
-                self.moments[name] = GroupByMomentsCal(
-                    col=name,
-                    col_count=col_count,
-                    cont_col=self.cont_names,
-                    stats=self.stats,
-                    limit_frac=self.limit_frac,
-                    gpu_mem_util_limit=self.gpu_mem_util_limit,
-                    gpu_mem_trans_use=self.gpu_mem_trans_use,
-                    order_column_name=self.order_column_name,
-                )
-
-            self.moments[name].fit(gdf[col_names])
-        return
-
-    def read_fin(self, *args):
-        """ Finalize categorical moments (get categories).
-        """
-        for name, val in self.moments.items():
-            self.categories[name] = val.fit_finalize()
-        return
-
-    def dask_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
 
         supported_ops = ["count", "sum", "mean", "std", "var"]
@@ -996,7 +777,7 @@ class GroupByMoments(StatOperator):
         )
         return Delayed(key, dsk)
 
-    def dask_fin(self, dask_stats):
+    def finalize(self, dask_stats):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
@@ -1229,27 +1010,20 @@ class Categorify(DFOperator):
         new_gdf = cudf.DataFrame()
         if not cat_names:
             return gdf
-        # Use multi-GPU version if the "encoders" are empty
-        use_multi = "encoders" not in stats_context or len(stats_context["encoders"]) < len(
-            cat_names
-        )
         cat_names = [name for name in cat_names if name in gdf.columns]
         new_cols = []
         for name in cat_names:
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
-            if use_multi:
-                path = stats_context["categories"][name]
-                new_gdf[new_col] = nvt_cat._encode(
-                    name,
-                    path,
-                    gdf,
-                    self.cat_cache,
-                    na_sentinel=self.na_sentinel,
-                    freq_threshold=self.freq_threshold,
-                )
-            else:
-                new_gdf[new_col] = stats_context["encoders"][name].transform(gdf[name])
+            path = stats_context["categories"][name]
+            new_gdf[new_col] = nvt_cat._encode(
+                name,
+                path,
+                gdf,
+                self.cat_cache,
+                na_sentinel=self.na_sentinel,
+                freq_threshold=self.freq_threshold,
+            )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
         return new_gdf
