@@ -28,7 +28,8 @@ And navigate to `<your ip address>:8888/?token=nvidia`
     <td><img src="imgs/accelerated-fp16/perf-summary.PNG"></td>
   </tr>
 </table>
-## Device Kernel Time Divisions
+
+### Device Kernel Time Divisions
 <table>
   <tr>
     <td>GPU Native</td>
@@ -42,4 +43,17 @@ And navigate to `<your ip address>:8888/?token=nvidia`
   </tr>
 </table>
 
+### Trace Views
+<table>
+  <tr>
+    <td>GPU Native</td>
+    <td>GPU Accelerated</td>
+    <td>GPU Accelerated Mixed Precision</td>
+  </tr>
+  <tr>
+    <td><img src="imgs/native/trace-view.PNG"></td>
+    <td><img src="imgs/accelerated/trace-view.PNG"></td>
+    <td><img src="imgs/accelerated-fp16/trace-view.PNG"></td>
+  </tr>
+</table>
 <img src="dlrm-train.PNG"></img>
