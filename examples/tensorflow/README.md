@@ -28,5 +28,18 @@ And navigate to `<your ip address>:8888/?token=nvidia`
     <td><img src="imgs/accelerated-fp16/perf-summary.PNG"></td>
   </tr>
 </table>
+## Device Kernel Time Divisions
+<table>
+  <tr>
+    <td>GPU Native</td>
+    <td>GPU Accelerated</td>
+    <td>GPU Accelerated Mixed Precision</td>
+  </tr>
+  <tr>
+    <td><img src="imgs/native/kernel-pie-chart.PNG"></td>
+    <td><img src="imgs/accelerated/kernel-pie-chart.PNG"></td>
+    <td><img src="imgs/accelerated-fp16/kernel-pie-chart.PNG"></td>
+  </tr>
+</table>
 
 <img src="dlrm-train.PNG"></img>
