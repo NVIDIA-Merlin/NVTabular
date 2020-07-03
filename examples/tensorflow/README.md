@@ -59,6 +59,7 @@ And navigate to `<your ip address>:8888/?token=nvidia`
 
 Note the enormous amount of empty device time on the GPU native implementation. Let's zoom in on just the embedding section (where the GPU kernels start):
 <img src="imgs/native/trace-view-zoomed.PNG"></img>
+Lots of tiny kernels doing small ops like reshapes, assert checks, etc. = bad GPU performance.
 
 ### Example Throughput Curves (Mixed Precision not included yet)
 <img src="dlrm-train.PNG"></img>
