@@ -44,7 +44,7 @@ _CLIENT = None
 
 
 @pytest.fixture(scope="session")
-def client(request):
+def client():
     global _CLIENT
     if _CLIENT is None:
         _CLIENT = Client(LocalCluster(n_workers=2))
@@ -109,16 +109,12 @@ def datasets(tmpdir_factory):
 
 
 @pytest.fixture(scope="function")
-def paths(request):
-    engine = request.getfixturevalue("engine")
-    datasets = request.getfixturevalue("datasets")
+def paths(engine, datasets):
     return sorted(glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0]))
 
 
 @pytest.fixture(scope="function")
-def df(request):
-    engine = request.getfixturevalue("engine")
-    paths = request.getfixturevalue("paths")
+def df(engine, paths):
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
         df2 = cudf.read_parquet(paths[1])[mycols_pq]
@@ -137,9 +133,7 @@ def df(request):
 
 
 @pytest.fixture(scope="function")
-def dataset(request):
-    paths = request.getfixturevalue("paths")
-    engine = request.getfixturevalue("engine")
+def dataset(request, paths, engine):
     try:
         gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
     except Exception:

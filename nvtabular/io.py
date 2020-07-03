@@ -833,7 +833,9 @@ class ParquetDatasetEngine(DatasetEngine):
 
         if row_groups_per_part is None:
             rg_byte_size_0 = (
-                cudf.io.read_parquet(path0, row_group=0).memory_usage(deep=True, index=True).sum()
+                cudf.io.read_parquet(path0, row_groups=0, row_group=0)
+                .memory_usage(deep=True, index=True)
+                .sum()
             )
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
@@ -923,6 +925,9 @@ class ParquetDatasetEngine(DatasetEngine):
         path, row_groups = piece
         return cudf.io.read_parquet(
             path,
+            # cudf 0.15
+            row_groups=row_groups,
+            # cudf 0.14
             row_group=row_groups[0],
             row_group_count=len(row_groups),
             columns=columns,
@@ -931,7 +936,15 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def meta_empty(self, columns=None):
         path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_group=0, columns=columns, index=False).iloc[:0]
+        return cudf.io.read_parquet(
+            path,
+            # cudf 0.15
+            row_groups=0,
+            # cudf 0.14
+            row_group=0,
+            columns=columns,
+            index=False,
+        ).iloc[:0]
 
     def to_ddf(self, columns=None):
         pieces = self.pieces
