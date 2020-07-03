@@ -31,7 +31,6 @@ from fsspec.core import get_fs_token_paths
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.encoder import DLLabelEncoder
-from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -621,18 +620,13 @@ class Workflow(BaseWorkflow):
         else:
             self.ddf = ddf
 
-    def get_ddf(self, base=False, columns=None):
-        if base:
-            if self.ddf_base_dataset is None:
-                raise ValueError("No dataset object available.")
-            return self.ddf_base_dataset.to_ddf(columns=columns)
-        else:
-            if self.ddf is None:
-                raise ValueError("No dask_cudf frame available.")
-            elif isinstance(self.ddf, nvt_io.Dataset):
-                columns = self.columns_ctx["all"]["base"]
-                return self.ddf.to_ddf(columns=columns)
-            return self.ddf
+    def get_ddf(self):
+        if self.ddf is None:
+            raise ValueError("No dask_cudf frame available.")
+        elif isinstance(self.ddf, nvt_io.Dataset):
+            columns = self.columns_ctx["all"]["base"]
+            return self.ddf.to_ddf(columns=columns)
+        return self.ddf
 
     @staticmethod
     def _aggregated_op(gdf, ops):
@@ -675,9 +669,9 @@ class Workflow(BaseWorkflow):
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    columns = op.get_columns(self.columns_ctx, cols_grp, target_cols)
-                    ddf = self.get_ddf(base=("base" in cols_grp), columns=columns)
-                    stats.append((op.dask_logic(ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    stats.append(
+                        (op.dask_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
+                    )
 
         # Compute statistics if necessary
         if stats:
@@ -699,7 +693,7 @@ class Workflow(BaseWorkflow):
         self,
         dataset,
         apply_offline=True,
-        record_stats=False,
+        record_stats=True,
         shuffle=None,
         output_path="./ds_export",
         out_files_per_proc=None,
@@ -731,11 +725,11 @@ class Workflow(BaseWorkflow):
         """
 
         # Deal with single-gpu compatibility
-        num_splits = kwargs.get("num_splits", None)
-        if num_splits:
-            warnings.warn("num_splits is deprecated. Use out_files_per_proc")
+        nsplits = kwargs.get("nsplits", None)
+        if nsplits:
+            warnings.warn("nsplits is deprecated. Use out_files_per_proc")
             if out_files_per_proc is None:
-                out_files_per_proc = num_splits
+                out_files_per_proc = nsplits
         num_out_files = kwargs.get("num_out_files", None)
         if num_out_files:
             warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
@@ -754,27 +748,25 @@ class Workflow(BaseWorkflow):
             self.update_stats(
                 dataset,
                 output_path=output_path,
-                record_stats=record_stats or True,
+                record_stats=record_stats,
                 shuffle=shuffle,
-                nsplits=out_files_per_proc,
+                out_files_per_proc=out_files_per_proc,
             )
         else:
-            if record_stats:
-                warnings.warn("Cannot record global statistics online")
             shuffler = None
             huge_ctr = None
             if shuffle:
                 if isinstance(shuffle, str):
                     raise ValueError("TODO: Align shuffling/writing API for online/offline.")
-                shuffler = Shuffler(output_path, num_out_files=num_out_files)
+                shuffler = nvt_io.Shuffler(output_path, num_out_files=num_out_files)
             if hugectr_gen_output:
                 self.cal_col_names = False
                 if hugectr_output_format == "binary":
-                    huge_ctr = HugeCTRWriter(
+                    huge_ctr = nvt_io.HugeCTRWriter(
                         hugectr_output_path, num_out_files=hugectr_num_out_files
                     )
                 elif hugectr_output_format == "parquet":
-                    huge_ctr = ParquetWriter(
+                    huge_ctr = nvt_io.ParquetWriter(
                         hugectr_output_path, num_out_files=hugectr_num_out_files
                     )
             self.apply_ops(
@@ -818,7 +810,7 @@ class Workflow(BaseWorkflow):
         output_path=None,
         record_stats=True,
         shuffle=None,
-        nsplits=None,
+        out_files_per_proc=None,
     ):
         end = end_phase if end_phase else len(self.phases)
 
@@ -829,17 +821,17 @@ class Workflow(BaseWorkflow):
         for idx, _ in enumerate(self.phases[:end]):
             self.exec_phase(idx, record_stats=record_stats)
         if output_path:
-            self.to_dataset(output_path, shuffle=shuffle, nsplits=nsplits)
+            self.to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
 
-    def to_dataset(self, output_path, shuffle=None, nsplits=None):
+    def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()
-        nsplits = nsplits or 1
+        out_files_per_proc = out_files_per_proc or 1
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
 
         if shuffle:
             name = "write-processed"
-            write_name = name + tokenize(ddf, shuffle, nsplits)
+            write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
             task_list = []
             dsk = {}
             for idx in range(ddf.npartitions):
@@ -849,7 +841,7 @@ class Workflow(BaseWorkflow):
                     (ddf._name, idx),
                     output_path,
                     shuffle,
-                    nsplits,
+                    out_files_per_proc,
                     fs,
                 )
                 task_list.append(key)
