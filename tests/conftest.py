@@ -40,16 +40,6 @@ mynames = [
     "Zelda",
 ]
 
-sample_stats = {
-    "batch_medians": {"id": [999.0, 1000.0], "x": [-0.051, -0.001], "y": [-0.009, -0.001]},
-    "medians": {"id": 1000.0, "x": -0.001, "y": -0.001},
-    "means": {"id": 1000.0, "x": -0.008, "y": -0.001},
-    "vars": {"id": 993.65, "x": 0.338, "y": 0.335},
-    "stds": {"id": 31.52, "x": 0.581, "y": 0.578},
-    "counts": {"id": 4321.0, "x": 4321.0, "y": 4321.0},
-    "encoders": {"name-cat": ("name-cat", mynames), "name-string": ("name-string", mynames)},
-}
-
 _CLIENT = None
 
 

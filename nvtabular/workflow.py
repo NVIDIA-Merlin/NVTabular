@@ -19,7 +19,6 @@ import os
 import time
 import warnings
 
-import cudf
 import dask
 import yaml
 from cudf._lib.nvtx import annotate
@@ -30,7 +29,6 @@ from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
-from nvtabular.encoder import DLLabelEncoder
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -550,10 +548,6 @@ class BaseWorkflow:
     def save_stats(self, path):
         main_obj = {}
         stats_drop = {}
-        stats_drop["encoders"] = {}
-        encoders = self.stats.get("encoders", {})
-        for name, enc in encoders.items():
-            stats_drop["encoders"][name] = (enc.get_cats().values_to_string(),)
         for name, stat in self.stats.items():
             if name not in stats_drop.keys():
                 stats_drop[name] = stat
@@ -571,9 +565,6 @@ class BaseWorkflow:
             main_obj = yaml.safe_load(infile)
             _set_stats(self, main_obj["stats"])
             self.columns_ctx = main_obj["columns_ctx"]
-        encoders = self.stats.get("encoders", {})
-        for col, cats in encoders.items():
-            self.stats["encoders"][col] = DLLabelEncoder(col, cats=cudf.Series(cats[0]))
 
     def clear_stats(self):
         self.stats = {}
@@ -670,7 +661,7 @@ class Workflow(BaseWorkflow):
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
                     stats.append(
-                        (op.dask_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
+                        (op.stat_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
                     )
 
         # Compute statistics if necessary
@@ -678,13 +669,13 @@ class Workflow(BaseWorkflow):
             if self.client:
                 for r in self.client.compute(stats):
                     computed_stats, op = r.result()
-                    op.dask_fin(computed_stats)
+                    op.finalize(computed_stats)
                     self._update_stats(op)
                     op.clear()
             else:
                 for r in dask.compute(stats, scheduler="synchronous")[0]:
                     computed_stats, op = r
-                    op.dask_fin(computed_stats)
+                    op.finalize(computed_stats)
                     self._update_stats(op)
                     op.clear()
             del stats
