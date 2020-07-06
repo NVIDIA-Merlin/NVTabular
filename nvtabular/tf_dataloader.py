@@ -8,8 +8,7 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from .dask.io import DaskDataset
-from .io import GPUDatasetIterator, _shuffle_gdf, device_mem_size
+from .io import Dataset, GPUDatasetIterator, _shuffle_gdf, device_mem_size
 from .workflow import BaseWorkflow
 
 free_gpu_mem_mb = device_mem_size(kind="free") / (1024 ** 2)
@@ -128,7 +127,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
   - paths_or_dataset: str or list(str)
       Either a string representing a file pattern (see `tf.glob` for
       pattern rules), a list of filenames to be iterated through, or
-      ad DaskDataset object.
+      a Dataset object.
   - columns: list(str) or list(tf.feature_column)
       Either a list of string column names to use from the dataframe(s)
       specified by `paths_or_dataset`, or a ist of TensorFlow feature columns
@@ -181,7 +180,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
     ):
 
         construct_iter = True
-        if isinstance(paths_or_dataset, DaskDataset):
+        if isinstance(paths_or_dataset, Dataset):
             construct_iter = False
         else:
             # use tf glob to find matching files
