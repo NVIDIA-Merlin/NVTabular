@@ -22,7 +22,6 @@ import pytest
 from dask.dataframe import assert_eq
 
 import nvtabular.io
-from nvtabular.dask.io import DaskDataset
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -60,7 +59,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     else:
         columns = mycols_csv
 
-    dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
+    dd = nvtabular.io.Dataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
     size = 0
     for chunk in dd.to_iter(columns=columns):
         size += chunk.shape[0]
@@ -75,11 +74,11 @@ def test_dask_dataset(datasets, engine, num_files):
     paths = paths[:num_files]
     if engine == "parquet":
         ddf0 = dask_cudf.read_parquet(paths)[mycols_pq]
-        dataset = DaskDataset(paths)
+        dataset = nvtabular.io.Dataset(paths)
         result = dataset.to_ddf(columns=mycols_pq)
     else:
         ddf0 = dask_cudf.read_csv(paths, header=False, names=allcols_csv)[mycols_csv]
-        dataset = DaskDataset(paths, header=False, names=allcols_csv)
+        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
         result = dataset.to_ddf(columns=mycols_csv)
 
     assert_eq(ddf0, result)
