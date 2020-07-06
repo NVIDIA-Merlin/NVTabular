@@ -643,13 +643,13 @@ def _write_metadata(meta_list):
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
-def _write_output_partition(gdf, processed_path, shuffle, nsplits, fs):
+def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs):
     gdf_size = len(gdf)
     if shuffle == "full":
         # Dont need a real sort if we are doing in memory later
-        typ = np.min_scalar_type(nsplits * 2)
-        ind = cp.random.choice(cp.arange(nsplits, dtype=typ), gdf_size)
-        result = group_split_dispatch(gdf, ind, nsplits, ignore_index=True)
+        typ = np.min_scalar_type(out_files_per_proc * 2)
+        ind = cp.random.choice(cp.arange(out_files_per_proc, dtype=typ), gdf_size)
+        result = group_split_dispatch(gdf, ind, out_files_per_proc, ignore_index=True)
         del ind
         del gdf
         # Write each split to a separate file
@@ -661,7 +661,7 @@ def _write_output_partition(gdf, processed_path, shuffle, nsplits, fs):
         # We should do a real sort here
         if shuffle == "partial":
             gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
-        splits = list(range(0, gdf_size, int(gdf_size / nsplits)))
+        splits = list(range(0, gdf_size, int(gdf_size / out_files_per_proc)))
         if splits[-1] < gdf_size:
             splits.append(gdf_size)
         # Write each split to a separate file
@@ -833,7 +833,9 @@ class ParquetDatasetEngine(DatasetEngine):
 
         if row_groups_per_part is None:
             rg_byte_size_0 = (
-                cudf.io.read_parquet(path0, row_group=0).memory_usage(deep=True, index=True).sum()
+                cudf.io.read_parquet(path0, row_groups=0, row_group=0)
+                .memory_usage(deep=True, index=True)
+                .sum()
             )
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
@@ -858,11 +860,11 @@ class ParquetDatasetEngine(DatasetEngine):
         fs = self.fs
         if len(paths) > 1:
             # This is a list of files
-            dataset = pq.ParquetDataset(paths, filesystem=fs)
+            dataset = pq.ParquetDataset(paths, filesystem=fs, validate_schema=False)
             base, fns = _analyze_paths(paths, fs)
         elif fs.isdir(paths[0]):
             # This is a directory
-            dataset = pq.ParquetDataset(paths[0], filesystem=fs)
+            dataset = pq.ParquetDataset(paths[0], filesystem=fs, validate_schema=False)
             allpaths = fs.glob(paths[0] + fs.sep + "*")
             base, fns = _analyze_paths(allpaths, fs)
         else:
@@ -923,6 +925,9 @@ class ParquetDatasetEngine(DatasetEngine):
         path, row_groups = piece
         return cudf.io.read_parquet(
             path,
+            # cudf 0.15
+            row_groups=row_groups,
+            # cudf 0.14
             row_group=row_groups[0],
             row_group_count=len(row_groups),
             columns=columns,
@@ -931,7 +936,15 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def meta_empty(self, columns=None):
         path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_group=0, columns=columns, index=False).iloc[:0]
+        return cudf.io.read_parquet(
+            path,
+            # cudf 0.15
+            row_groups=0,
+            # cudf 0.14
+            row_group=0,
+            columns=columns,
+            index=False,
+        ).iloc[:0]
 
     def to_ddf(self, columns=None):
         pieces = self.pieces
