@@ -18,6 +18,7 @@ from io import BytesIO
 from operator import getitem
 
 import cudf
+import cupy as cp
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.dataframe.core import _concat
@@ -25,10 +26,9 @@ from dask.distributed import get_worker
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
-try:
-    import cupy as cp
-except ImportError:
-    import numpy as cp
+# Use global variable as the default
+# cache when there are no distributed workers
+DEFAULT_CACHE = None
 
 
 class CategoryCache:
@@ -188,9 +188,12 @@ def _get_cache():
     try:
         worker = get_worker()
     except ValueError:
-        # This is a metadata operation, so there is no "worker"
-        # TODO: Handle metadata operations in a smarter way
-        return None
+        # There is no dask.distributed worker.
+        # Assume client/worker are same process
+        global DEFAULT_CACHE
+        if DEFAULT_CACHE is None:
+            DEFAULT_CACHE = CategoryCache()
+        return DEFAULT_CACHE
     if not hasattr(worker, "cats_cache"):
         worker.cats_cache = CategoryCache()
     return worker.cats_cache
@@ -201,7 +204,7 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
     if path:
         if cat_cache is not None:
             cat_cache = cat_cache.get(name, "disk")
-            cache = _get_cache()
+            cache = _get_cache() if len(gdf) else None
             if cache:
                 value = cache.get_categories(name, path, cache=cat_cache)
         else:

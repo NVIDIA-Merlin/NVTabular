@@ -23,10 +23,9 @@ from cudf.tests.utils import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from tests.conftest import cleanup, mycols_csv, mycols_pq
+from tests.conftest import get_cats, mycols_csv, mycols_pq
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
@@ -41,11 +40,7 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
     config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
     x_min = df["x"].min()
@@ -62,14 +57,12 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
         assert y_max == processor.stats["maxs"]["y"]
         assert name_max == processor.stats["maxs"]["name-string"]
         assert y_min == processor.stats["mins"]["y"]
-    return processor.ds_exports
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+def test_moments(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -78,11 +71,7 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
     config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -99,10 +88,8 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
 
         assert math.isclose(df.y.std(), processor.stats["stds"]["y"], rel_tol=1e-3)
         assert math.isclose(df.id.std(), processor.stats["stds"]["id"], rel_tol=1e-3)
-    return processor.ds_exports
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
@@ -111,27 +98,25 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
+    encoder = ops.Encoder(columns=op_columns)
     config = nvt.workflow.get_new_config()
-    config["PP"]["categorical"] = [ops.Encoder(columns=op_columns)]
+    config["PP"]["categorical"] = [encoder]
 
     processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
 
-    # TODO: dask categorify isn't storing stats in this format
-    # Check that categories match
     if engine == "parquet" and not op_columns:
         cats_expected0 = df["name-cat"].unique().values_to_string()
-        cats0 = processor.stats["encoders"]["name-cat"].get_cats().values_to_string()
+        cats0 = get_cats(processor, "name-cat")
         assert cats0 == ["None"] + cats_expected0
+
     cats_expected1 = df["name-string"].unique().values_to_string()
-    cats1 = processor.stats["encoders"]["name-string"].get_cats().values_to_string()
+    cats1 = get_cats(processor, "name-string")
     assert cats1 == ["None"] + cats_expected1
-    return processor.ds_exports
 
 
-@cleanup
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
@@ -144,7 +129,7 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -157,7 +142,6 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
         id_median = df.id.dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(y_median, processor.stats["medians"]["y"], rel_tol=1e1)
         assert math.isclose(id_median, processor.stats["medians"]["id"], rel_tol=1e1)
-    return processor.ds_exports
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -213,11 +197,12 @@ def test_fill_missing(tmpdir, df, dataset, engine):
     columns_ctx = {}
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
+    for col in cont_names:
+        idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
+        df[col].iloc[idx] = None
 
-    transformed = cudf.concat(
-        [op.apply_op(df, columns_ctx, "continuous") for df in dataset.to_iter()]
-    )
-    assert_eq(transformed[cont_names], df[cont_names].dropna(42))
+    transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous")])
+    assert_eq(transformed[cont_names], df[cont_names].fillna(42))
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -247,7 +232,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     config["PP"]["continuous"] = [ops.Moments()]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -275,7 +260,7 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     config["PP"]["continuous"] = [ops.MinMax()]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)

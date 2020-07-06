@@ -1,14 +1,12 @@
 import glob
-import os
 import random
-from functools import wraps
 
 import cudf
 import numpy as np
 import pytest
 from dask.distributed import Client, LocalCluster
 
-import nvtabular.dask.io
+import nvtabular
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -161,21 +159,14 @@ def dataset(request):
     if engine == "csv-no-header":
         kwargs["names"] = allcols_csv
 
-    return nvtabular.dask.io.DaskDataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
+    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
-def cleanup(func):
-    @wraps(func)
-    def func_up(*args, **kwargs):
-        target = func(*args, **kwargs)
-        remove_sub_files_folders(target)
-        remove_sub_files_folders(kwargs["tmpdir"])
-
-    return func_up
-
-
-def remove_sub_files_folders(path):
-    if os.path.exists(path):
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                os.remove(os.path.join(root, file))
+def get_cats(processor, col):
+    if isinstance(processor, nvtabular.workflow.Workflow):
+        filename = processor.stats["categories"][col]
+        gdf = cudf.read_parquet(filename)
+        gdf.reset_index(drop=True, inplace=True)
+        return gdf[col].values_to_string()
+    else:
+        return processor.stats["encoders"][col].get_cats().values_to_string()
