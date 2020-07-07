@@ -20,7 +20,10 @@ import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
 
-tf_dataloader = pytest.importorskip("nvtabular.tf_dataloader")
+# If tensorflow isn't installed skip these tests. Note that the
+# tf_dataloader import needs to happen after this line
+pytest.importorskip("tensorflow")
+import nvtabular.tf_dataloader as tf_dataloader  # noqa isort:skip
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
