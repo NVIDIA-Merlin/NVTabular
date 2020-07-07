@@ -75,12 +75,12 @@ train_set = [
     data_path + df_train + x
     for x in os.listdir(data_path + df_train)
     if x.startswith("day") and x.split(".")[0].split("_")[-1] in train_days
-]
+][:1]
 valid_set = [
     data_path + df_valid + x
     for x in os.listdir(data_path + df_valid)
     if x.startswith("day") and x.split(".")[0].split("_")[-1] in valid_days
-]
+][:1]
 
 print(train_set, valid_set)
 
@@ -127,7 +127,7 @@ proc.apply(
     record_stats=True,
     shuffle=shuffle_arg,
     output_path=out_train,
-    num_out_files=35,
+    out_files_per_proc=2,
 )
 print(f"train preprocess time: {time() - start}")
 
@@ -138,16 +138,15 @@ proc.apply(
     record_stats=False,
     shuffle=shuffle_arg,
     output_path=out_valid,
-    num_out_files=35,
+    out_files_per_proc=2,
 )
 print(f"valid preprocess time: {time() - start}")
 print(proc.timings)
 
+
 # TODO: Implement the get_embedding_size for dask-based workflow
-embeddings = [
-    x[1]
-    for x in get_embeddings(proc)
-]
+embeddings = [v for k,v in get_embeddings(proc).items()]
+import pdb; pdb.set_trace()
 print("Creating Iterators for dataloader")
 start = time()
 

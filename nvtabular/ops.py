@@ -1064,9 +1064,9 @@ def get_embeddings(workflow):
 def get_embeddings_dask(paths, cat_names):
     embeddings = {}
     for col in sorted(cat_names):
-        path = encoders[col]
+        path = paths[col]
         num_rows, _, _ = cudf.io.read_parquet_metadata(path)
-        embeddings[col] = (num_rows, _emb_sz_rule(num_rows))
+        embeddings[col] =  _emb_sz_rule(num_rows)
     return embeddings
 
 
