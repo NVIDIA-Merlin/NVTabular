@@ -307,7 +307,7 @@ class GPUFileIterator:
         for col, dtype in self.dtypes.items():
             if type(dtype) is str:
                 if "hex" in dtype:
-                    chunk[col] = chunk[col]._column.nvstrings.htoi()
+                    chunk[col] = chunk[col].str.htoi()
                     chunk[col] = chunk[col].astype(np.int32)
             else:
                 chunk[col] = chunk[col].astype(dtype)
