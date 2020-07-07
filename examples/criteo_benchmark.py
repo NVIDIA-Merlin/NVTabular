@@ -75,12 +75,12 @@ train_set = [
     data_path + df_train + x
     for x in os.listdir(data_path + df_train)
     if x.startswith("day") and x.split(".")[0].split("_")[-1] in train_days
-][:1]
+]
 valid_set = [
     data_path + df_valid + x
     for x in os.listdir(data_path + df_valid)
     if x.startswith("day") and x.split(".")[0].split("_")[-1] in valid_days
-][:1]
+]
 
 print(train_set, valid_set)
 
@@ -145,10 +145,8 @@ print(proc.timings)
 
 
 # TODO: Implement the get_embedding_size for dask-based workflow
-embeddings = [v for k, v in get_embeddings(proc).items()]
-import pdb
+embeddings = list(get_embeddings(proc).values())
 
-pdb.set_trace()
 print("Creating Iterators for dataloader")
 start = time()
 
