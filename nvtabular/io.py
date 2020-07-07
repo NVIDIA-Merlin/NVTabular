@@ -316,52 +316,6 @@ class GPUFileIterator:
                 chunk[col] = chunk[col].astype(dtype)
 
 
-#
-# GPUDatasetIterator (Iterates through multiple files)
-#
-
-
-class GPUDatasetIterator:
-
-    """
-    Iterates through the files and returns a part of the
-    data as a GPU dataframe
-
-    Parameters
-    -----------
-    paths : list of str
-        Path(s) of the data file(s)
-    names : list of str
-        names of the columns in the dataset
-    engine : str
-        supported file types are: 'parquet' or 'csv'
-    gpu_memory_frac : float
-        fraction of the GPU memory to fill
-    batch_size : int
-        number of samples in each batch
-    columns :
-    use_row_groups :
-    dtypes :
-    row_size: int
-    """
-
-    def __init__(self, paths, **kwargs):
-        if isinstance(paths, str):
-            paths = [paths]
-        if not isinstance(paths, list):
-            raise TypeError("paths must be a string or a list.")
-        if len(paths) < 1:
-            raise ValueError("len(paths) must be > 0.")
-        self.paths = paths
-        self.kwargs = kwargs
-        self.cur_path = None
-
-    def __iter__(self):
-        for path in self.paths:
-            self.cur_path = path
-            yield from GPUFileIterator(path, **self.kwargs)
-
-
 def _shuffle_gdf(gdf, gdf_size=None):
     """ Shuffles a cudf dataframe, returning a new dataframe with randomly
     ordered rows """
