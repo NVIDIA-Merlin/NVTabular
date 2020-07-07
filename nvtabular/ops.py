@@ -13,14 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import cudf
 import cupy
 import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-import nvtabular.categorify as nvt_cat
+from nvtabular import categorify as nvt_cat
 
 CONT = "continuous"
 CAT = "categorical"
@@ -1029,7 +1028,7 @@ class Categorify(DFOperator):
         return new_gdf
 
 
-def get_embedding_order(cat_names):
+def _get_embedding_order(cat_names):
     """ Returns a consistent sorder order for categorical variables
 
     Parameters
@@ -1040,20 +1039,18 @@ def get_embedding_order(cat_names):
     return sorted(cat_names)
 
 
-def get_embedding_size(encoders, cat_names):
-    """ Returns a suggested size of embeddings based off cardinality of encoding categorical
-    variables
+def get_embedding_sizes(workflow):
+    cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
+    return _get_embeddings_dask(workflow.stats["categories"], cols)
 
-    Parameters
-    -----------
-    encoders : dict
-        The encoding statistics of the categorical variables (ie. from workflow.stats["categories"])
-    cat_names : list of str
-        names of the categorical columns
-    """
-    # sorted key required to ensure same sort occurs for all values
-    ret_list = [(n, _emb_sz_rule(encoders[n])) for n in get_embedding_order(cat_names)]
-    return ret_list
+
+def _get_embeddings_dask(paths, cat_names):
+    embeddings = {}
+    for col in cat_names:
+        path = paths[col]
+        num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+        embeddings[col] = _emb_sz_rule(num_rows)
+    return embeddings
 
 
 def _emb_sz_rule(n_cat: int) -> int:
