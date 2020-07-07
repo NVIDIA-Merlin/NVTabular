@@ -40,21 +40,11 @@ mynames = [
     "Zelda",
 ]
 
-sample_stats = {
-    "batch_medians": {"id": [999.0, 1000.0], "x": [-0.051, -0.001], "y": [-0.009, -0.001]},
-    "medians": {"id": 1000.0, "x": -0.001, "y": -0.001},
-    "means": {"id": 1000.0, "x": -0.008, "y": -0.001},
-    "vars": {"id": 993.65, "x": 0.338, "y": 0.335},
-    "stds": {"id": 31.52, "x": 0.581, "y": 0.578},
-    "counts": {"id": 4321.0, "x": 4321.0, "y": 4321.0},
-    "encoders": {"name-cat": ("name-cat", mynames), "name-string": ("name-string", mynames)},
-}
-
 _CLIENT = None
 
 
 @pytest.fixture(scope="session")
-def client(request):
+def client():
     global _CLIENT
     if _CLIENT is None:
         _CLIENT = Client(LocalCluster(n_workers=2))
@@ -119,16 +109,12 @@ def datasets(tmpdir_factory):
 
 
 @pytest.fixture(scope="function")
-def paths(request):
-    engine = request.getfixturevalue("engine")
-    datasets = request.getfixturevalue("datasets")
+def paths(engine, datasets):
     return sorted(glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0]))
 
 
 @pytest.fixture(scope="function")
-def df(request):
-    engine = request.getfixturevalue("engine")
-    paths = request.getfixturevalue("paths")
+def df(engine, paths):
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
         df2 = cudf.read_parquet(paths[1])[mycols_pq]
@@ -147,9 +133,7 @@ def df(request):
 
 
 @pytest.fixture(scope="function")
-def dataset(request):
-    paths = request.getfixturevalue("paths")
-    engine = request.getfixturevalue("engine")
+def dataset(request, paths, engine):
     try:
         gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
     except Exception:
