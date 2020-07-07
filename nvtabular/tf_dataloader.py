@@ -232,7 +232,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
         if dataset_size is None:
             dataset_size = 0
             # TODO: loading up the entire dataset just to get the size is pretty inefficient
-            for chunk in self._dataset.to_iter():
+            for chunk in self._nvt_dataset.to_iter():
                 dataset_size += chunk.shape[0]
         self.dataset_size = dataset_size
 

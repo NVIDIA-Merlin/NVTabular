@@ -68,6 +68,7 @@ def _allowable_batch_size(gpu_memory_frac, row_size):
 
 
 def _get_read_engine(engine, file_path, **kwargs):
+    fs, _, _ = get_fs_token_paths(file_path, mode="rb")
     LOG.debug("opening '%s' as %s", file_path, engine)
     if engine is None:
         engine = file_path.split(".")[-1]
@@ -75,9 +76,9 @@ def _get_read_engine(engine, file_path, **kwargs):
         raise TypeError("Expecting engine as string type.")
 
     if engine == "csv":
-        return CSVFileReader(file_path, **kwargs)
+        return CSVFileReader(file_path, fs, **kwargs)
     elif engine == "parquet":
-        return PQFileReader(file_path, **kwargs)
+        return PQFileReader(file_path, fs, **kwargs)
     else:
         raise ValueError("Unrecognized read engine.")
 
@@ -276,6 +277,7 @@ class GPUFileIterator:
         dtypes=None,
         names=None,
         row_size=None,
+        fs=None,
         **kwargs,
     ):
         self.file_path = file_path

@@ -161,9 +161,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
         len_df_pp += len(chunk[0][0])
 
     dataset = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        part_mem_fraction=gpu_memory_frac,
-        names=allcols_csv,
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
     x = processor.ds_to_tensors(dataset.to_iter(), apply_ops=False)
 
