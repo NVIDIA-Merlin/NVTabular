@@ -145,8 +145,10 @@ print(proc.timings)
 
 
 # TODO: Implement the get_embedding_size for dask-based workflow
-embeddings = [v for k,v in get_embeddings(proc).items()]
-import pdb; pdb.set_trace()
+embeddings = [v for k, v in get_embeddings(proc).items()]
+import pdb
+
+pdb.set_trace()
 print("Creating Iterators for dataloader")
 start = time()
 

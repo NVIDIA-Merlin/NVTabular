@@ -13,14 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import cudf
 import cupy
 import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
-import nvtabular.categorify as nvt_cat
+from nvtabular import categorify as nvt_cat
 
 CONT = "continuous"
 CAT = "categorical"
@@ -1058,7 +1057,7 @@ def get_embedding_size(encoders, cat_names):
 
 def get_embeddings(workflow):
     cols = get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    return get_embeddings_dask(workflow.stats["categories"], cols) 
+    return get_embeddings_dask(workflow.stats["categories"], cols)
 
 
 def get_embeddings_dask(paths, cat_names):
@@ -1066,7 +1065,7 @@ def get_embeddings_dask(paths, cat_names):
     for col in sorted(cat_names):
         path = paths[col]
         num_rows, _, _ = cudf.io.read_parquet_metadata(path)
-        embeddings[col] =  _emb_sz_rule(num_rows)
+        embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
 
