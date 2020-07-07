@@ -1028,7 +1028,7 @@ class Categorify(DFOperator):
         return new_gdf
 
 
-def get_embedding_order(cat_names):
+def _get_embedding_order(cat_names):
     """ Returns a consistent sorder order for categorical variables
 
     Parameters
@@ -1039,30 +1039,14 @@ def get_embedding_order(cat_names):
     return sorted(cat_names)
 
 
-def get_embedding_size(encoders, cat_names):
-    """ Returns a suggested size of embeddings based off cardinality of encoding categorical
-    variables
-
-    Parameters
-    -----------
-    encoders : dict
-        The encoding statistics of the categorical variables (ie. from workflow.stats["categories"])
-    cat_names : list of str
-        names of the categorical columns
-    """
-    # sorted key required to ensure same sort occurs for all values
-    ret_list = [(n, _emb_sz_rule(encoders[n])) for n in get_embedding_order(cat_names)]
-    return ret_list
+def get_embedding_sizes(workflow):
+    cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
+    return _get_embeddings_dask(workflow.stats["categories"], cols)
 
 
-def get_embeddings(workflow):
-    cols = get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    return get_embeddings_dask(workflow.stats["categories"], cols)
-
-
-def get_embeddings_dask(paths, cat_names):
+def _get_embeddings_dask(paths, cat_names):
     embeddings = {}
-    for col in sorted(cat_names):
+    for col in cat_names:
         path = paths[col]
         num_rows, _, _ = cudf.io.read_parquet_metadata(path)
         embeddings[col] = _emb_sz_rule(num_rows)
