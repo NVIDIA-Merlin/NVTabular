@@ -594,8 +594,6 @@ def get_new_config():
 class Workflow(BaseWorkflow):
     """
     Dask-based NVTabular Workflow Class
-    All statistics operations require a dask_cudf
-    DataFrame object (rather than a `GPUDatasetIterator` object).
     """
 
     def __init__(self, client=None, **kwargs):

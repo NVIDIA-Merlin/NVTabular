@@ -68,6 +68,7 @@ def _allowable_batch_size(gpu_memory_frac, row_size):
 
 
 def _get_read_engine(engine, file_path, **kwargs):
+    fs, _, _ = get_fs_token_paths(file_path, mode="rb")
     LOG.debug("opening '%s' as %s", file_path, engine)
     if engine is None:
         engine = file_path.split(".")[-1]
@@ -75,9 +76,9 @@ def _get_read_engine(engine, file_path, **kwargs):
         raise TypeError("Expecting engine as string type.")
 
     if engine == "csv":
-        return CSVFileReader(file_path, **kwargs)
+        return CSVFileReader(file_path, fs, **kwargs)
     elif engine == "parquet":
-        return PQFileReader(file_path, **kwargs)
+        return PQFileReader(file_path, fs, **kwargs)
     else:
         raise ValueError("Unrecognized read engine.")
 
@@ -89,11 +90,12 @@ def _get_read_engine(engine, file_path, **kwargs):
 
 class GPUFileReader:
     def __init__(
-        self, file_path, gpu_memory_frac, batch_size, row_size=None, columns=None, **kwargs
+        self, file_path, fs, gpu_memory_frac, batch_size=None, row_size=None, columns=None, **kwargs
     ):
         """ GPUFileReader Constructor
         """
         self.file_path = file_path
+        self.fs = fs
         self.row_size = row_size
         self.columns = columns
         self.intialize_reader(gpu_memory_frac, batch_size, **kwargs)
@@ -128,7 +130,7 @@ class PQFileReader(GPUFileReader):
 
         # Read Parquet-file metadata
         (self.num_rows, self.num_row_groups, columns) = cudf.io.read_parquet_metadata(
-            self.file_path
+            self.fs.open(self.file_path)
         )
         # Use first row-group metadata to estimate memory-rqs
         # NOTE: We could also use parquet metadata here, but
@@ -194,7 +196,7 @@ class CSVFileReader(GPUFileReader):
             self.row_size = 0
             estimate_row_size = True
         self.offset = 0
-        self.file_bytes = os.stat(str(self.file_path)).st_size
+        self.file_bytes = self.fs.stat(str(self.file_path))["size"]
 
         # Use first row to estimate memory-reqs
         names = kwargs.get("names", None)
@@ -205,7 +207,7 @@ class CSVFileReader(GPUFileReader):
         self.names = []
         dtype_inf = {}
         nrows = 10
-        head = "".join(islice(open(self.file_path), nrows))
+        head = "".join(islice(self.fs.open(self.file_path, "r"), nrows))
         snippet = self.reader(
             io.StringIO(head), nrows=nrows, names=names, dtype=dtype, sep=sep, header=0
         )
@@ -275,6 +277,7 @@ class GPUFileIterator:
         dtypes=None,
         names=None,
         row_size=None,
+        fs=None,
         **kwargs,
     ):
         self.file_path = file_path
@@ -311,52 +314,6 @@ class GPUFileIterator:
                     chunk[col] = chunk[col].astype(np.int32)
             else:
                 chunk[col] = chunk[col].astype(dtype)
-
-
-#
-# GPUDatasetIterator (Iterates through multiple files)
-#
-
-
-class GPUDatasetIterator:
-
-    """
-    Iterates through the files and returns a part of the
-    data as a GPU dataframe
-
-    Parameters
-    -----------
-    paths : list of str
-        Path(s) of the data file(s)
-    names : list of str
-        names of the columns in the dataset
-    engine : str
-        supported file types are: 'parquet' or 'csv'
-    gpu_memory_frac : float
-        fraction of the GPU memory to fill
-    batch_size : int
-        number of samples in each batch
-    columns :
-    use_row_groups :
-    dtypes :
-    row_size: int
-    """
-
-    def __init__(self, paths, **kwargs):
-        if isinstance(paths, str):
-            paths = [paths]
-        if not isinstance(paths, list):
-            raise TypeError("paths must be a string or a list.")
-        if len(paths) < 1:
-            raise ValueError("len(paths) must be > 0.")
-        self.paths = paths
-        self.kwargs = kwargs
-        self.cur_path = None
-
-    def __iter__(self):
-        for path in self.paths:
-            self.cur_path = path
-            yield from GPUFileIterator(path, **self.kwargs)
 
 
 def _shuffle_gdf(gdf, gdf_size=None):
@@ -405,6 +362,8 @@ class ThreadedWriter(Writer):
         if labels and conts:
             self.column_names = labels + conts
 
+        self.col_idx = {}
+
         self.num_threads = num_threads
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
@@ -434,6 +393,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
+        # Populate columns idxs
+        if not self.col_idx:
+            for i, x in enumerate(gdf.columns.values):
+                self.col_idx[str(x)] = i
+
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -497,14 +461,26 @@ class ParquetWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
             data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
-        data["cats_name"] = self.cats
-        data["conts_name"] = self.conts
-        data["conts_labels"] = self.labels
+        # cats
+        data["cats"] = []
+        for c in self.cats:
+            data["cats"].append({"col_name": c, "index": self.col_idx[c]})
+        # conts
+        data["conts"] = []
+        for c in self.conts:
+            data["conts"].append({"col_name": c, "index": self.col_idx[c]})
+        # labels
+        data["labels"] = []
+        for c in self.labels:
+            data["labels"].append({"col_name": c, "index": self.col_idx[c]})
+
         json.dump(data, metadata_writer)
         metadata_writer.close()
 
@@ -535,6 +511,8 @@ class HugeCTRWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         for i in range(len(self.data_writers)):
             self.data_writers[i].seek(0)
             # error_check (0: no error check; 1: check_num)
@@ -715,13 +693,11 @@ class Dataset:
         custom kwargs to override this argument.
     storage_options: None or dict
         Further parameters to pass to the bytes backend.
-    **kwargs :
-        Other arguments to be passed to DatasetEngine.
     """
 
     def __init__(
         self,
-        path,
+        paths,
         engine=None,
         part_size=None,
         part_mem_fraction=None,
@@ -743,24 +719,28 @@ class Dataset:
             part_size = int(device_mem_size(kind="total") * part_mem_fraction)
 
         # Engine-agnostic path handling
-        if hasattr(path, "name"):
-            path = stringify_path(path)
-        storage_options = storage_options or {}
-        fs, fs_token, paths = get_fs_token_paths(path, mode="rb", storage_options=storage_options)
-        paths = sorted(paths, key=natural_sort_key)
+        if hasattr(paths, "name"):
+            paths = stringify_path(paths)
+        if isinstance(paths, str):
+            paths = [paths]
 
+        storage_options = storage_options or {}
         # If engine is not provided, try to infer from end of paths[0]
         if engine is None:
             engine = paths[0].split(".")[-1]
         if isinstance(engine, str):
             if engine == "parquet":
-                self.engine = ParquetDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
+                self.engine = ParquetDatasetEngine(
+                    paths, part_size, storage_options=storage_options, **kwargs
+                )
             elif engine == "csv":
-                self.engine = CSVDatasetEngine(paths, part_size, fs, fs_token, **kwargs)
+                self.engine = CSVDatasetEngine(
+                    paths, part_size, storage_options=storage_options, **kwargs
+                )
             else:
                 raise ValueError("Only parquet and csv supported (for now).")
         else:
-            self.engine = engine(paths, part_size, fs, fs_token, **kwargs)
+            self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
@@ -776,9 +756,12 @@ class DatasetEngine:
         a ``to_ddf`` method.
     """
 
-    def __init__(self, paths, part_size, fs, fs_token):
+    def __init__(self, paths, part_size, storage_options=None):
+        paths = sorted(paths, key=natural_sort_key)
         self.paths = paths
         self.part_size = part_size
+
+        fs, fs_token, _ = get_fs_token_paths(paths, mode="rb", storage_options=storage_options)
         self.fs = fs
         self.fs_token = fs_token
 
@@ -786,7 +769,7 @@ class DatasetEngine:
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
 
     def to_iter(self, columns=None):
-        raise NotImplementedError(""" Return a GPUDatasetIterator  """)
+        raise NotImplementedError(""" Return a Iterator over the cudf chunks of the dataset  """)
 
 
 class ParquetDatasetEngine(DatasetEngine):
@@ -795,10 +778,16 @@ class ParquetDatasetEngine(DatasetEngine):
         Dask-based version of cudf.read_parquet.
     """
 
-    def __init__(self, *args, row_groups_per_part=None, legacy=False):
+    def __init__(self, paths, part_size, storage_options, row_groups_per_part=None, legacy=False):
         # TODO: Improve dask_cudf.read_parquet performance so that
         # this class can be slimmed down.
-        super().__init__(*args)
+        super().__init__(paths, part_size, storage_options)
+
+        # the newer pyarrow dataset doesn't seem to be compatible with s3fs
+        # (and instead uses its own fs abstraction) fallback to the legacy api
+        # if we're not using a non-local filesystem
+        if self.fs.protocol != "file":
+            legacy = True
 
         if pa_ds and not legacy:
             # Use pyarrow.dataset API for "newer" pyarrow versions.
@@ -959,13 +948,8 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        return GPUDatasetIterator(
-            self.paths,
-            engine="parquet",
-            row_group_size=self.row_groups_per_part,
-            gpu_memory_frac=part_mem_fraction,
-            columns=columns,
-        )
+        for path in self.paths:
+            yield from PQFileReader(path, self.fs, part_mem_fraction, columns=columns)
 
 
 class CSVDatasetEngine(DatasetEngine):
@@ -988,10 +972,7 @@ class CSVDatasetEngine(DatasetEngine):
 
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        return GPUDatasetIterator(
-            self.paths,
-            engine="csv",
-            gpu_memory_frac=part_mem_fraction,
-            columns=columns,
-            **self.csv_kwargs,
-        )
+        for path in self.paths:
+            yield from CSVFileReader(
+                path, self.fs, part_mem_fraction, columns=columns, **self.csv_kwargs
+            )

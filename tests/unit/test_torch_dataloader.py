@@ -25,7 +25,7 @@ from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular.io import GPUDatasetIterator
+from nvtabular.io import Dataset
 from tests.conftest import allcols_csv, get_cats, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
@@ -160,14 +160,10 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     for chunk in dl:
         len_df_pp += len(chunk[0][0])
 
-    data_itr = GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
-        names=allcols_csv,
+    dataset = Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
-
-    x = processor.ds_to_tensors(data_itr, apply_ops=False)
+    x = processor.ds_to_tensors(dataset.to_iter(), apply_ops=False)
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert len(x[0]) == len_df_pp

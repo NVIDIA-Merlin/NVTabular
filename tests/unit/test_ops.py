@@ -399,15 +399,10 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
-
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat"].dtype)
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
@@ -424,15 +419,10 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
-
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert np.sum(df_pp["name-cat"] < 100) == 0
 
@@ -455,16 +445,11 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.finalize()
     processor.update_stats(dataset)
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
     assert df_pp["name-cat"].dtype == "O"
     print(df_pp)
     assert is_integer_dtype(df_pp["name-cat_slice"].dtype)
@@ -484,15 +469,10 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
-
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat_add100"].dtype)
     assert np.sum(df_pp["name-cat_add100"] < 100) == 0
 
@@ -516,13 +496,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
     )
-
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
