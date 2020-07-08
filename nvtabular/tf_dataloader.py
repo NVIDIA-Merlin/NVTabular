@@ -8,7 +8,7 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from .io import Dataset, GPUDatasetIterator, _shuffle_gdf, device_mem_size
+from .io import Dataset, _shuffle_gdf, device_mem_size
 from .workflow import BaseWorkflow
 
 free_gpu_mem_mb = device_mem_size(kind="free") / (1024 ** 2)
@@ -113,7 +113,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
   vectorized continuous and multi-hot categorical features are not
   currently supported, since cuDF doesn't support array-like columns.
 
-  The underlying NVTabular `dataset` object is stored in the `nvt_dataset`
+  The underlying NVTabular `Dataset` object is stored in the `nvt_dataset`
   property, and should be used for updating NVTabular `Workflow`
   statistics:
   ```python
@@ -222,18 +222,17 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
                 else:
                     reader_kwargs["batch_size"] = buffer_size
             else:
-                reader_kwargs["gpu_memory_frac"] = buffer_size
+                reader_kwargs["part_mem_fraction"] = buffer_size
 
-            self._nvt_dataset = GPUDatasetIterator(
-                files, columns=column_names + [label_name], engine=engine, **reader_kwargs
-            )
+            self._nvt_dataset = Dataset(files, engine=engine, **reader_kwargs)
         else:
-            self._nvt_dataset = paths_or_dataset.to_iter(columns=column_names + [label_name])
+            self._nvt_dataset = paths_or_dataset
 
         # get dataset size if it wasn't provided
         if dataset_size is None:
             dataset_size = 0
-            for chunk in self._nvt_dataset:
+            # TODO: loading up the entire dataset just to get the size is pretty inefficient
+            for chunk in self._nvt_dataset.to_iter():
                 dataset_size += chunk.shape[0]
         self.dataset_size = dataset_size
 
@@ -272,7 +271,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
         return self
 
     def _initialize_iterator(self):
-        self.iter_obj = iter(self._nvt_dataset)
+        self.iter_obj = self._nvt_dataset.to_iter(columns=self.column_names + [self.label_name])
         self.chunk_idx = 0
         self.batches_in_chunk = None
 
