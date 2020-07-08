@@ -405,6 +405,8 @@ class ThreadedWriter(Writer):
         if labels and conts:
             self.column_names = labels + conts
 
+        self.col_idx = {}
+
         self.num_threads = num_threads
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
@@ -434,6 +436,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
+        # Populate columns idxs
+        if not self.col_idx:
+            for i, x in enumerate(gdf.columns.values):
+                self.col_idx[str(x)] = i
+
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -497,14 +504,26 @@ class ParquetWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
             data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
-        data["cats_name"] = self.cats
-        data["conts_name"] = self.conts
-        data["conts_labels"] = self.labels
+        # cats
+        data["cats"] = []
+        for c in self.cats:
+            data["cats"].append({"col_name": c, "index": self.col_idx[c]})
+        # conts
+        data["conts"] = []
+        for c in self.conts:
+            data["conts"].append({"col_name": c, "index": self.col_idx[c]})
+        # labels
+        data["labels"] = []
+        for c in self.labels:
+            data["labels"].append({"col_name": c, "index": self.col_idx[c]})
+
         json.dump(data, metadata_writer)
         metadata_writer.close()
 
@@ -535,6 +554,8 @@ class HugeCTRWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         for i in range(len(self.data_writers)):
             self.data_writers[i].seek(0)
             # error_check (0: no error check; 1: check_num)
