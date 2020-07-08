@@ -22,26 +22,11 @@ import dask_cudf
 import pytest
 from dask.dataframe import assert_eq
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-import nvtabular.io
-=======
-=======
 import nvtabular as nvt
 import nvtabular.ops as ops
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> Add unit test for HugeCTR
-from nvtabular.io import HugeCTRWriter, ParquetWriter, Shuffler
-=======
+
+import nvtabular.io
 from nvtabular.io import Shuffler
->>>>>>> remove unused test
-from nvtabular.dask.io import DaskDataset
->>>>>>> Adds unit test
-=======
-from nvtabular.dask.io import DaskDataset
-from nvtabular.io import Shuffler
->>>>>>> Sort imports
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -104,6 +89,7 @@ def test_dask_dataset(datasets, engine, num_files):
     assert_eq(ddf0, result)
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("output_format", ["binary", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])

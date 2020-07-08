@@ -404,6 +404,7 @@ class ThreadedWriter(Writer):
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
+
         self.col_idx = {}
 
         self.num_threads = num_threads
@@ -439,6 +440,7 @@ class ThreadedWriter(Writer):
         if not self.col_idx:
             for i, x in enumerate(gdf.columns.values):
                 self.col_idx[str(x)] = i
+
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -508,9 +510,7 @@ class ParquetWriter(ThreadedWriter):
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
-            data["file_stats"].append(
-                {"file_name": f"{i}.parquet", "num_rows": self.num_samples[i]}
-            )
+            data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
         # cats
         data["cats"] = []
         for c in self.cats:
@@ -598,8 +598,6 @@ def device_mem_size(kind="total"):
         size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
         pynvml.nvmlShutdown()
     return size
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 
 class WriterCache:
@@ -1018,89 +1016,3 @@ class CSVDatasetEngine(DatasetEngine):
             columns=columns,
             **self.csv_kwargs,
         )
-=======
-=======
-                self.data_writers[i].write(header.tobytes())
-
-    def _write_metadata(self):
-        if self.output_format == "parquet":
-            data = {}
-<<<<<<< HEAD
-            for i in range(len(self.metadata_writers)):
-                data['num_rows'] = self.num_samples[i]
-                data['cats_name'] = self.cats
-                data['conts_name'] = self.conts
-                data['conts_labels'] = self.labels
-                json.dump(data, self.metadata_writers[i])
->>>>>>> Improves metadata
-<<<<<<< HEAD
->>>>>>> Improves metadata
-=======
-=======
-            data['file_stats'] = []
-            for i in range(len(self.data_files)):
-                data['file_stats'].append({'file_name': f"{i}.data", 'num_rows': self.num_samples[i]})
-            data['cats_name'] = self.cats
-            data['conts_name'] = self.conts
-            data['conts_labels'] = self.labels
-            json.dump(data, self.metadata_writer)
->>>>>>> Creates only 1 metadata file
-<<<<<<< HEAD
->>>>>>> Creates only 1 metadata file
-=======
-=======
-            finally:
-                self.queue.task_done()
-
-    def _write_metadata(self):
-        for i in range(len(self.data_writers)):
-            self.data_writers[i].seek(0)
-            # error_check (0: no error check; 1: check_num)
-            # num of samples in this file
-            # Dimension of the labels
-            # Dimension of the features
-            # slot_num for each embedding
-            # reserved for future use
-            header = np.array(
-                [
-                    0,
-                    self.num_samples[i],
-                    len(self.labels),
-                    len(self.conts),
-                    len(self.cats),
-                    0,
-                    0,
-                    0,
-                ],
-                dtype=np.longlong,
-            )
-
-            self.data_writers[i].write(header.tobytes())
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> Adds threaded writer
-<<<<<<< HEAD
->>>>>>> Adds threaded writer
-=======
-=======
-
-
-def _shuffle_gdf(gdf, gdf_size=None):
-    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
-    ordered rows """
-    gdf_size = gdf_size or len(gdf)
-    arr = cp.arange(gdf_size)
-    cp.random.shuffle(arr)
-    return gdf.iloc[arr]
-<<<<<<< HEAD
->>>>>>> Updates unit test
-<<<<<<< HEAD
->>>>>>> Updates unit test
-=======
-=======
->>>>>>> Fixing formatting
->>>>>>> Fixing formatting
-=======
->>>>>>> fixes format and adds close method
-=======
->>>>>>> Updates hugectr metadata json
