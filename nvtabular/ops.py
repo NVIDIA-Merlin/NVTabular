@@ -333,70 +333,6 @@ class Median(StatOperator):
         return
 
 
-class Encoder(StatOperator):
-    """
-    This is an internal operation. Encoder operation is used by
-    the Categorify operation to calculate the unique numerical
-    values to transform the categorical features.
-
-    Parameters
-    -----------
-    freq_threshold : int, default 0
-        Categories with a count/frequency below this threshold will be
-        ommited from the encoding and corresponding data will be mapped
-        to the "null" category.
-    split_out : dict, optional
-        Used for multi-GPU category calculation.  Each key in the dict
-        should correspond to a column name, and the value is the number
-        of hash partitions to use for the categorical tree reduction.
-        Only a single partition is used by default.
-    out_path : str, optional
-        Used for multi-GPU category calculation.  Root directory where
-        unique categories will be written out in parquet format.
-    columns :
-    preprocessing : bool
-    replace : bool
-    """
-
-    def __init__(
-        self,
-        freq_threshold=0,
-        columns=None,
-        categories=None,
-        out_path=None,
-        split_out=None,
-        on_host=True,
-    ):
-        super(Encoder, self).__init__(columns)
-        self.freq_threshold = freq_threshold
-        self.categories = categories if categories is not None else {}
-        self.out_path = out_path or "./"
-        self.split_out = split_out
-        self.on_host = on_host
-
-    @annotate("Encoder_op", color="green", domain="nvt_python")
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        dsk, key = nvt_cat._get_categories(
-            ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
-        )
-        return Delayed(key, dsk)
-
-    @annotate("Encoder_finalize", color="green", domain="nvt_python")
-    def finalize(self, dask_stats):
-        for col in dask_stats:
-            self.categories[col] = dask_stats[col]
-
-    def registered_stats(self):
-        return ["categories"]
-
-    def stats_collected(self):
-        return [("categories", self.categories)]
-
-    def clear(self):
-        self.categories = {}
-
-
 class ZeroFill(TransformOperator):
     """
     This operation sets negative values to zero.
@@ -667,7 +603,7 @@ class FillMedian(DFOperator):
         return new_gdf
 
 
-class GroupByStatistics(StatOperator):
+class CategoryStatistics(StatOperator):
     """
     One of the ways to create new features is to calculate
     the basic statistics of the data that is grouped by a categorical
@@ -700,7 +636,7 @@ class GroupByStatistics(StatOperator):
         groupby statistics will be written out in parquet format.
     freq_threshold : int, default 0
         Categories with a `count` statistic less than this number will
-        be ommited from the `GroupByStatistics` output.
+        be ommited from the `CategoryStatistics` output.
     """
 
     def __init__(
@@ -713,17 +649,24 @@ class GroupByStatistics(StatOperator):
         out_path=None,
         on_host=True,
         freq_threshold=0,
+        stat_name="categories",
     ):
-        super(GroupByStatistics, self).__init__(columns)
+        super(CategoryStatistics, self).__init__(columns)
         self.cat_names = cat_names
         self.cont_names = cont_names
         self.stats = stats
         self.moments = {}
         self.categories = {}
-        self.out_path = out_path or "./"
         self.split_out = split_out
         self.on_host = on_host
         self.freq_threshold = freq_threshold
+        self.out_path = out_path or "./"
+        self.stat_name = stat_name
+        self.op_name = "CategoryStatistics-" + self.stat_name
+
+    @property
+    def _id(self):
+        return str(self.op_name)
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -736,7 +679,14 @@ class GroupByStatistics(StatOperator):
         agg_cols = self.cont_names
         agg_list = self.stats
         dsk, key = nvt_cat._groupby_stats(
-            ddf, cols, agg_cols, agg_list, self.out_path, 0, self.split_out, self.on_host
+            ddf,
+            cols,
+            agg_cols,
+            agg_list,
+            self.out_path,
+            self.freq_threshold,
+            self.split_out,
+            self.on_host,
         )
         return Delayed(key, dsk)
 
@@ -745,14 +695,13 @@ class GroupByStatistics(StatOperator):
             self.categories[col] = dask_stats[col]
 
     def registered_stats(self):
-        return ["moments", "gb_categories"]
+        return [self.stat_name]
 
     def stats_collected(self):
-        result = [("moments", self.moments), ("gb_categories", self.categories)]
+        result = [(self.stat_name, self.categories)]
         return result
 
     def clear(self):
-        self.moments = {}
         self.categories = {}
         return
 
@@ -812,17 +761,19 @@ class GroupBy(DFOperator):
         self.cat_cache = cat_cache
         if isinstance(self.cat_cache, str):
             self.cat_cache = {name: cat_cache for name in self.cat_names}
+        self.stat_name = "gb_categories"
 
     @property
     def req_stats(self):
         return [
-            GroupByStatistics(
+            CategoryStatistics(
                 cat_names=self.cat_names,
                 cont_names=self.cont_names,
                 stats=self.stats,
                 split_out=self.split_out,
                 out_path=self.out_path,
                 on_host=self.on_host,
+                stat_name=self.stat_name,
             )
         ]
 
@@ -831,21 +782,16 @@ class GroupBy(DFOperator):
             raise ValueError("cat_names cannot be None.")
 
         new_gdf = cudf.DataFrame()
-        if stats_context["moments"]:
-            for name in stats_context["moments"]:
-                tran_gdf = stats_context["moments"][name].merge(gdf)
-                new_gdf[tran_gdf.columns] = tran_gdf
-        else:  # Dask-based version
-            tmp = "__tmp__"  # Temporary column for sorting
-            gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-            for col, path in stats_context["gb_categories"].items():
-                stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
-                tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
-                tran_gdf = tran_gdf.sort_values(tmp)
-                tran_gdf.drop(columns=[col, tmp], inplace=True)
-                new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-                new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
-            gdf.drop(columns=[tmp], inplace=True)
+        tmp = "__tmp__"  # Temporary column for sorting
+        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+        for col, path in stats_context[self.stat_name].items():
+            stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
+            tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
+            tran_gdf = tran_gdf.sort_values(tmp)
+            tran_gdf.drop(columns=[col, tmp], inplace=True)
+            new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
+            new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+        gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 
 
@@ -906,15 +852,20 @@ class Categorify(DFOperator):
         # E.g. cat_cache = "device"
         if isinstance(self.cat_cache, str):
             self.cat_cache = {name: cat_cache for name in self.cat_names}
+        self.stat_name = "categories"
 
     @property
     def req_stats(self):
         return [
-            Encoder(
+            CategoryStatistics(
+                cat_names=self.cat_names,
+                cont_names=[],
+                stats=[],
                 freq_threshold=self.freq_threshold,
-                out_path=self.out_path,
                 split_out=self.split_out,
+                out_path=self.out_path,
                 on_host=self.on_host,
+                stat_name=self.stat_name,
             )
         ]
 
@@ -929,7 +880,7 @@ class Categorify(DFOperator):
         for name in cat_names:
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
-            path = stats_context["categories"][name]
+            path = stats_context[self.stat_name][name]
             new_gdf[new_col] = nvt_cat._encode(
                 name,
                 path,
