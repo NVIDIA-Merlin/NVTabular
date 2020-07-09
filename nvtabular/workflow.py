@@ -30,6 +30,7 @@ from fsspec.core import get_fs_token_paths
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
+from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
 
@@ -805,6 +806,12 @@ class Workflow(BaseWorkflow):
 
         # Reorder tasks for two-phase workflows
         self.reorder_tasks(end)
+
+        # Clear worker caches to be "safe"
+        if self.client:
+            self.client.run(clean_worker_cache)
+        else:
+            clean_worker_cache()
 
         self.set_ddf(dataset)
         for idx, _ in enumerate(self.phases[:end]):
