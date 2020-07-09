@@ -298,6 +298,11 @@ def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
 def _groupby_stats(ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host):
     if isinstance(agg_cols, str):
         agg_cols = [agg_cols]
+
+    if agg_cols + agg_list == []:
+        return _groupby_to_disk(
+            ddf, _write_uniques, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+        )
     return _groupby_to_disk(
         ddf, _write_gb_stats, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
     )
