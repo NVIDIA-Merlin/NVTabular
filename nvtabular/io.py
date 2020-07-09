@@ -778,10 +778,19 @@ class ParquetDatasetEngine(DatasetEngine):
         Dask-based version of cudf.read_parquet.
     """
 
-    def __init__(self, paths, part_size, storage_options, row_groups_per_part=None, legacy=False):
+    def __init__(
+        self,
+        paths,
+        part_size,
+        storage_options,
+        row_groups_per_part=None,
+        legacy=False,
+        batch_size=None,
+    ):
         # TODO: Improve dask_cudf.read_parquet performance so that
         # this class can be slimmed down.
         super().__init__(paths, part_size, storage_options)
+        self.batch_size = batch_size
 
         # the newer pyarrow dataset doesn't seem to be compatible with s3fs
         # (and instead uses its own fs abstraction) fallback to the legacy api
@@ -949,7 +958,9 @@ class ParquetDatasetEngine(DatasetEngine):
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / device_mem_size(kind="total")
         for path in self.paths:
-            yield from PQFileReader(path, self.fs, part_mem_fraction, columns=columns)
+            yield from PQFileReader(
+                path, self.fs, part_mem_fraction, columns=columns, batch_size=self.batch_size
+            )
 
 
 class CSVDatasetEngine(DatasetEngine):
