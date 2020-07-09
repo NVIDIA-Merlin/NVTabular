@@ -780,7 +780,7 @@ class ParquetDatasetEngine(DatasetEngine):
         row_groups_per_part=None,
         legacy=False,
         batch_size=None,
-    ):      
+    ):
         # TODO: Improve dask_cudf.read_parquet performance so that
         # this class can be slimmed down.
         super().__init__(paths, part_size, storage_options)
