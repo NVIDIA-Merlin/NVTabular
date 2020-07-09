@@ -43,12 +43,6 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
-try:
-    import pyarrow.dataset as pa_ds
-except ImportError:
-    pa_ds = False
-
-
 # Use global variable as the default
 # cache when there are no distributed workers
 DEFAULT_CACHE = None
@@ -778,47 +772,28 @@ class ParquetDatasetEngine(DatasetEngine):
         Dask-based version of cudf.read_parquet.
     """
 
-    def __init__(self, paths, part_size, storage_options, row_groups_per_part=None, legacy=False):
+    def __init__(
+        self,
+        paths,
+        part_size,
+        storage_options,
+        row_groups_per_part=None,
+        legacy=False,
+        batch_size=None,
+    ):
         # TODO: Improve dask_cudf.read_parquet performance so that
         # this class can be slimmed down.
         super().__init__(paths, part_size, storage_options)
-
-        # the newer pyarrow dataset doesn't seem to be compatible with s3fs
-        # (and instead uses its own fs abstraction) fallback to the legacy api
-        # if we're not using a non-local filesystem
-        if self.fs.protocol != "file":
-            legacy = True
-
-        if pa_ds and not legacy:
-            # Use pyarrow.dataset API for "newer" pyarrow versions.
-            # Note that datasets API cannot handle a directory path
-            # within a list.
-            if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
-                self.paths = self.paths[0]
-            self._legacy = False
-            self._pieces = None
-            self._metadata, self._base = defaultdict(int), ""
-            path0 = None
-            ds = pa_ds.dataset(self.paths, format="parquet")
-            # TODO: Allow filtering while accessing fragments.
-            #       This will require us to specify specific row-group indices
-            for file_frag in ds.get_fragments():
-                if path0 is None:
-                    path0 = file_frag.path
-                for rg_frag in file_frag.get_row_group_fragments():
-                    self._metadata[rg_frag.path] += len(list(rg_frag.row_groups))
-        else:
-            # Use pq.ParquetDataset API for <0.17.1
-            self._legacy = True
-            self._metadata, self._base = self.get_metadata()
-            self._pieces = None
-            if row_groups_per_part is None:
-                file_path = self._metadata.row_group(0).column(0).file_path
-                path0 = (
-                    self.fs.sep.join([self._base, file_path])
-                    if file_path != ""
-                    else self._base  # This is a single file
-                )
+        self.batch_size = batch_size
+        self._metadata, self._base = self.get_metadata()
+        self._pieces = None
+        if row_groups_per_part is None:
+            file_path = self._metadata.row_group(0).column(0).file_path
+            path0 = (
+                self.fs.sep.join([self._base, file_path])
+                if file_path != ""
+                else self._base  # This is a single file
+            )
 
         if row_groups_per_part is None:
             rg_byte_size_0 = (
@@ -883,16 +858,12 @@ class ParquetDatasetEngine(DatasetEngine):
     def _get_pieces(self, metadata, data_path):
 
         # get the number of row groups per file
-        if self._legacy:
-            file_row_groups = defaultdict(int)
-            for rg in range(metadata.num_row_groups):
-                fpath = metadata.row_group(rg).column(0).file_path
-                if fpath is None:
-                    raise ValueError("metadata is missing file_path string.")
-                file_row_groups[fpath] += 1
-        else:
-            # We already have this for pyarrow.datasets
-            file_row_groups = metadata
+        file_row_groups = defaultdict(int)
+        for rg in range(metadata.num_row_groups):
+            fpath = metadata.row_group(rg).column(0).file_path
+            if fpath is None:
+                raise ValueError("metadata is missing file_path string.")
+            file_row_groups[fpath] += 1
 
         # create pieces from each file, limiting the number of row_groups in each piece
         pieces = []
@@ -914,9 +885,9 @@ class ParquetDatasetEngine(DatasetEngine):
         path, row_groups = piece
         return cudf.io.read_parquet(
             path,
-            # cudf 0.15
+            # cudf 0.15 (only need `row_groups`)
             row_groups=row_groups,
-            # cudf 0.14
+            # cudf 0.14 (need `row_group` and `row_group_count`)
             row_group=row_groups[0],
             row_group_count=len(row_groups),
             columns=columns,
@@ -949,7 +920,9 @@ class ParquetDatasetEngine(DatasetEngine):
     def to_iter(self, columns=None):
         part_mem_fraction = self.part_size / device_mem_size(kind="total")
         for path in self.paths:
-            yield from PQFileReader(path, self.fs, part_mem_fraction, columns=columns)
+            yield from PQFileReader(
+                path, self.fs, part_mem_fraction, columns=columns, batch_size=self.batch_size
+            )
 
 
 class CSVDatasetEngine(DatasetEngine):
