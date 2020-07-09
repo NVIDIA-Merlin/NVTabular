@@ -341,20 +341,10 @@ class Encoder(StatOperator):
 
     Parameters
     -----------
-    use_frequency : bool
-        use frequency based transformation or not.
     freq_threshold : int, default 0
-        threshold value for frequency based transformation.
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.8
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.8
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
+        Categories with a count/frequency below this threshold will be
+        ommited from the encoding and corresponding data will be mapped
+        to the "null" category.
     split_out : dict, optional
         Used for multi-GPU category calculation.  Each key in the dict
         should correspond to a column name, and the value is the number
@@ -370,11 +360,7 @@ class Encoder(StatOperator):
 
     def __init__(
         self,
-        use_frequency=False,
         freq_threshold=0,
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
         columns=None,
         categories=None,
         out_path=None,
@@ -382,11 +368,7 @@ class Encoder(StatOperator):
         on_host=True,
     ):
         super(Encoder, self).__init__(columns)
-        self.use_frequency = use_frequency
         self.freq_threshold = freq_threshold
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
         self.categories = categories if categories is not None else {}
         self.out_path = out_path or "./"
         self.split_out = split_out
@@ -685,7 +667,7 @@ class FillMedian(DFOperator):
         return new_gdf
 
 
-class GroupByMoments(StatOperator):
+class GroupByStatistics(StatOperator):
     """
     One of the ways to create new features is to calculate
     the basic statistics of the data that is grouped by a categorical
@@ -707,22 +689,7 @@ class GroupByMoments(StatOperator):
     stats : list of str, default ['count']
         count of groups = ['count']
         sum of cont_col = ['sum']
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.5
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.5
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
     columns :
-    order_column_name : str, default "order-nvtabular"
-        a column name to be used to preserve the order of input data.
-        cudf's merge function doesn't preserve the order of the data
-        and this column name is used to create a column with integer
-        values in ascending order.
     split_out : dict, optional
         Used for multi-GPU groupby reduction.  Each key in the dict
         should correspond to a column name, and the value is the number
@@ -731,6 +698,9 @@ class GroupByMoments(StatOperator):
     out_path : str, optional
         Used for multi-GPU groupby output.  Root directory where
         groupby statistics will be written out in parquet format.
+    freq_threshold : int, default 0
+        Categories with a `count` statistic less than this number will
+        be ommited from the `GroupByStatistics` output.
     """
 
     def __init__(
@@ -738,28 +708,22 @@ class GroupByMoments(StatOperator):
         cat_names=None,
         cont_names=None,
         stats=["count"],
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
         columns=None,
-        order_column_name="order-nvtabular",
         split_out=None,
         out_path=None,
         on_host=True,
+        freq_threshold=0,
     ):
-        super(GroupByMoments, self).__init__(columns)
+        super(GroupByStatistics, self).__init__(columns)
         self.cat_names = cat_names
         self.cont_names = cont_names
         self.stats = stats
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
-        self.order_column_name = order_column_name
         self.moments = {}
         self.categories = {}
         self.out_path = out_path or "./"
         self.split_out = split_out
         self.on_host = on_host
+        self.freq_threshold = freq_threshold
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -815,26 +779,11 @@ class GroupBy(DFOperator):
     stats : list of str, default ['count']
         count of groups = ['count']
         sum of cont_col = ['sum']
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.5
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.5
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
     columns :
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default False
         This parameter is ignored
-    order_column_name : str, default "order-nvtabular"
-        a column name to be used to preserve the order of input data.
-        cudf's merge function doesn't preserve the order of the data
-        and this column name is used to create a column with integer
-        values in ascending order.
     """
 
     default_in = CAT
@@ -845,13 +794,9 @@ class GroupBy(DFOperator):
         cat_names=None,
         cont_names=None,
         stats=["count"],
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
         columns=None,
         preprocessing=True,
         replace=False,
-        order_column_name="order-nvtabular",
         split_out=None,
         cat_cache="host",
         out_path=None,
@@ -861,10 +806,6 @@ class GroupBy(DFOperator):
         self.cat_names = cat_names
         self.cont_names = cont_names
         self.stats = stats
-        self.order_column_name = order_column_name
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
         self.split_out = split_out
         self.out_path = out_path
         self.on_host = on_host
@@ -875,14 +816,10 @@ class GroupBy(DFOperator):
     @property
     def req_stats(self):
         return [
-            GroupByMoments(
+            GroupByStatistics(
                 cat_names=self.cat_names,
                 cont_names=self.cont_names,
                 stats=self.stats,
-                limit_frac=self.limit_frac,
-                gpu_mem_util_limit=self.gpu_mem_util_limit,
-                gpu_mem_trans_use=self.gpu_mem_trans_use,
-                order_column_name=self.order_column_name,
                 split_out=self.split_out,
                 out_path=self.out_path,
                 on_host=self.on_host,
@@ -926,20 +863,10 @@ class Categorify(DFOperator):
 
     Parameters
     -----------
-    use_frequency : bool
-        freq
-    freq_threshold : float
-        threshold
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.5
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.5
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
+    freq_threshold : int, default 0
+        Categories with a count/frequency below this threshold will be
+        ommited from the encoding and corresponding data will be mapped
+        to the "null" category.
     columns :
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
@@ -954,11 +881,7 @@ class Categorify(DFOperator):
 
     def __init__(
         self,
-        use_frequency=False,
         freq_threshold=0,
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
         columns=None,
         preprocessing=True,
         replace=True,
@@ -971,11 +894,7 @@ class Categorify(DFOperator):
         on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.use_frequency = use_frequency
         self.freq_threshold = freq_threshold
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
         self.cat_names = cat_names if cat_names else []
         self.out_path = out_path or "./"
         self.split_out = split_out
@@ -992,11 +911,7 @@ class Categorify(DFOperator):
     def req_stats(self):
         return [
             Encoder(
-                use_frequency=self.use_frequency,
                 freq_threshold=self.freq_threshold,
-                limit_frac=self.limit_frac,
-                gpu_mem_util_limit=self.gpu_mem_util_limit,
-                gpu_mem_trans_use=self.gpu_mem_trans_use,
                 out_path=self.out_path,
                 split_out=self.split_out,
                 on_host=self.on_host,
