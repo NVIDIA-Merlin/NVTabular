@@ -206,7 +206,16 @@ def _finish_labels(paths, cols):
 
 
 def _groupby_to_disk(
-    ddf, write_func, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+    ddf,
+    write_func,
+    cols,
+    agg_cols,
+    agg_list,
+    out_path,
+    freq_limit,
+    split_out,
+    on_host,
+    stat_name="categories",
 ):
     if not cols:
         return {}
@@ -223,7 +232,7 @@ def _groupby_to_disk(
 
     # Make dedicated output directory for the categories
     fs = get_fs_token_paths(out_path)[0]
-    out_path = fs.sep.join([out_path, "categories"])
+    out_path = fs.sep.join([out_path, stat_name])
     fs.mkdirs(out_path, exist_ok=True)
 
     dsk = {}
@@ -232,7 +241,7 @@ def _groupby_to_disk(
     split_name = "split-" + token
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
-    finalize_labels_name = "categories-" + token
+    finalize_labels_name = stat_name + "-" + token
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (
             _top_level_groupby,
@@ -278,20 +287,23 @@ def _groupby_to_disk(
     return graph, finalize_labels_name
 
 
-def _get_categories(ddf, cols, out_path, freq_limit, split_out, on_host):
-    agg_cols = []
-    agg_list = []
-    return _groupby_to_disk(
-        ddf, _write_uniques, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
-    )
-
-
-def _groupby_stats(ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host):
+def _category_stats(
+    ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host, stat_name="categories"
+):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
         agg_list = ["count"]
         return _groupby_to_disk(
-            ddf, _write_uniques, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+            ddf,
+            _write_uniques,
+            cols,
+            agg_cols,
+            agg_list,
+            out_path,
+            freq_limit,
+            split_out,
+            on_host,
+            stat_name=stat_name,
         )
 
     # Otherwise, getting category-statistics
@@ -300,7 +312,16 @@ def _groupby_stats(ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_ou
     if agg_list == []:
         agg_list = ["count"]
     return _groupby_to_disk(
-        ddf, _write_gb_stats, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host
+        ddf,
+        _write_gb_stats,
+        cols,
+        agg_cols,
+        agg_list,
+        out_path,
+        freq_limit,
+        split_out,
+        on_host,
+        stat_name=stat_name,
     )
 
 

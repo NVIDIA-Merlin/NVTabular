@@ -146,9 +146,9 @@ def dataset(request, paths, engine):
     return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
-def get_cats(processor, col):
+def get_cats(processor, col, stat_name="categories"):
     if isinstance(processor, nvtabular.workflow.Workflow):
-        filename = processor.stats["categories"][col]
+        filename = processor.stats[stat_name][col]
         gdf = cudf.read_parquet(filename)
         gdf.reset_index(drop=True, inplace=True)
         return gdf[col].values_to_string()

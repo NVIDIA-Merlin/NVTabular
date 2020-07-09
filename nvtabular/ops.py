@@ -673,7 +673,7 @@ class CategoryStatistics(StatOperator):
 
         agg_cols = self.cont_names
         agg_list = self.stats
-        dsk, key = nvt_cat._groupby_stats(
+        dsk, key = nvt_cat._category_stats(
             ddf,
             cols,
             agg_cols,
@@ -682,6 +682,7 @@ class CategoryStatistics(StatOperator):
             self.freq_threshold,
             self.split_out,
             self.on_host,
+            stat_name=self.stat_name,
         )
         return Delayed(key, dsk)
 
