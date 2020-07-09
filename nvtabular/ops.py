@@ -618,8 +618,6 @@ class CategoryStatistics(StatOperator):
 
     Parameters
     -----------
-    cat_names : list of str
-        names of the categorical columns
     cont_names : list of str
         names of the continuous columns
     stats : list of str, default ['count']
@@ -641,9 +639,8 @@ class CategoryStatistics(StatOperator):
 
     def __init__(
         self,
-        cat_names=None,
         cont_names=None,
-        stats=["count"],
+        stats=None,
         columns=None,
         split_out=None,
         out_path=None,
@@ -652,10 +649,8 @@ class CategoryStatistics(StatOperator):
         stat_name="categories",
     ):
         super(CategoryStatistics, self).__init__(columns)
-        self.cat_names = cat_names
-        self.cont_names = cont_names
-        self.stats = stats
-        self.moments = {}
+        self.cont_names = cont_names or []
+        self.stats = stats or []
         self.categories = {}
         self.split_out = split_out
         self.on_host = on_host
@@ -721,8 +716,6 @@ class GroupBy(DFOperator):
 
     Parameters
     -----------
-    cat_names : list of str
-        names of the categorical columns
     cont_names : list of str
         names of the continuous columns
     stats : list of str, default ['count']
@@ -740,7 +733,6 @@ class GroupBy(DFOperator):
 
     def __init__(
         self,
-        cat_names=None,
         cont_names=None,
         stats=["count"],
         columns=None,
@@ -752,22 +744,19 @@ class GroupBy(DFOperator):
         on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
-        self.cat_names = cat_names
         self.cont_names = cont_names
         self.stats = stats
         self.split_out = split_out
         self.out_path = out_path
         self.on_host = on_host
         self.cat_cache = cat_cache
-        if isinstance(self.cat_cache, str):
-            self.cat_cache = {name: cat_cache for name in self.cat_names}
         self.stat_name = "gb_categories"
 
     @property
     def req_stats(self):
         return [
             CategoryStatistics(
-                cat_names=self.cat_names,
+                columns=self.columns,
                 cont_names=self.cont_names,
                 stats=self.stats,
                 split_out=self.split_out,
@@ -778,9 +767,6 @@ class GroupBy(DFOperator):
         ]
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        if self.cat_names is None:
-            raise ValueError("cat_names cannot be None.")
-
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
@@ -819,7 +805,6 @@ class Categorify(DFOperator):
     replace : bool, default True
         Replaces the transformed column with the original input
         if set Yes
-    cat_names :
     """
 
     default_in = CAT
@@ -831,7 +816,6 @@ class Categorify(DFOperator):
         columns=None,
         preprocessing=True,
         replace=True,
-        cat_names=None,
         out_path=None,
         split_out=None,
         na_sentinel=None,
@@ -841,24 +825,19 @@ class Categorify(DFOperator):
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.freq_threshold = freq_threshold
-        self.cat_names = cat_names if cat_names else []
         self.out_path = out_path or "./"
         self.split_out = split_out
         self.na_sentinel = na_sentinel or 0
         self.dtype = dtype
         self.on_host = on_host
         self.cat_cache = cat_cache
-        # Allow user to specify a single string value for all columns
-        # E.g. cat_cache = "device"
-        if isinstance(self.cat_cache, str):
-            self.cat_cache = {name: cat_cache for name in self.cat_names}
         self.stat_name = "categories"
 
     @property
     def req_stats(self):
         return [
             CategoryStatistics(
-                cat_names=self.cat_names,
+                columns=self.columns,
                 cont_names=[],
                 stats=[],
                 freq_threshold=self.freq_threshold,
