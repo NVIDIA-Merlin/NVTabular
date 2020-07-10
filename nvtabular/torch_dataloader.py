@@ -223,7 +223,6 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
 
 class ChunkQueue:
-
     def __init__(self, num_chunks=2, shuffle=False, cat_cols=None, cont_cols=None, label_cols=None):
         self.num_chunks = num_chunks
         self.q_in = queue.Queue(num_chunks)
@@ -237,7 +236,7 @@ class ChunkQueue:
         return self.q_out.get()
 
     def put(self, obj):
-        #check first for "end"
+        # check first for "end"
         if isinstance(obj, str):
             # clear the buffer
             self.create_chunk()
@@ -258,11 +257,12 @@ class ChunkQueue:
         if self.shuffle:
             _shuffle_gdf(chunks)
         chunks = create_tensors_plain(
-                chunks, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
-            )
-        
+            chunks, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
+        )
+
         # chunk tensorized
         self.q_out.put(chunks)
+
 
 class DLCollator:
     transform = None
@@ -280,7 +280,6 @@ class DLCollator:
 
 
 class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
-    
     def __init__(self, paths, **kwargs):
         self.paths = paths
         self.kwargs = kwargs
@@ -294,10 +293,10 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         buff = ChunkQueue(cat_cols=cats, cont_cols=conts, label_cols=labels)
         threading.Thread(target=self.load_chunk, args=(buff,)).start()
         while True:
-            #self.load_chunk(buff)    
+            # self.load_chunk(buff)
             chunk = buff.get()
             if isinstance(chunk, str):
-                return 
+                return
             yield from TensorItr(chunk, batch_size=self.batch_size)
 
     def load_chunk(self, buff):
@@ -308,6 +307,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
 
     def __len__(self):
         return len(self.itr)
+
 
 class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
     """
@@ -340,7 +340,6 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         for path in self.paths:
             self.cur_path = path
             yield from TorchTensorBatchFileItr(path, **self.kwargs)
-
 
     def __len__(self):
         return self.rows
