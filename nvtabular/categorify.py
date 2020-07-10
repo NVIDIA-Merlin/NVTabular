@@ -65,7 +65,7 @@ def _make_name(*args):
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
+def _top_level_groupby(gdf, cat_cols, tree_width, cont_cols, sum_sq, on_host):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
@@ -95,7 +95,7 @@ def _top_level_groupby(gdf, cat_cols, split_out, cont_cols, sum_sq, on_host):
 
         # Split the result by the hash value of the categorical column
         for j, split in enumerate(
-            gb.partition_by_hash([cat_col], split_out[cat_col], keep_index=False)
+            gb.partition_by_hash([cat_col], tree_width[cat_col], keep_index=False)
         ):
             if on_host:
                 output[k] = split.to_pandas()
@@ -213,22 +213,22 @@ def _groupby_to_disk(
     agg_list,
     out_path,
     freq_limit,
-    split_out,
+    tree_width,
     on_host,
     stat_name="categories",
 ):
     if not cols:
         return {}
 
-    # Update split_out
-    if split_out is None:
-        split_out = {c: 8 for c in cols}
-    elif isinstance(split_out, int):
-        split_out = {c: split_out for c in cols}
+    # Update tree_width
+    if tree_width is None:
+        tree_width = {c: 8 for c in cols}
+    elif isinstance(tree_width, int):
+        tree_width = {c: tree_width for c in cols}
     else:
         for col in cols:
-            if col not in split_out:
-                split_out[col] = 8
+            if col not in tree_width:
+                tree_width[col] = 8
 
     # Make dedicated output directory for the categories
     fs = get_fs_token_paths(out_path)[0]
@@ -236,7 +236,7 @@ def _groupby_to_disk(
     fs.mkdirs(out_path, exist_ok=True)
 
     dsk = {}
-    token = tokenize(ddf, cols, out_path, freq_limit, split_out, on_host)
+    token = tokenize(ddf, cols, out_path, freq_limit, tree_width, on_host)
     level_1_name = "level_1-" + token
     split_name = "split-" + token
     level_2_name = "level_2-" + token
@@ -247,19 +247,19 @@ def _groupby_to_disk(
             _top_level_groupby,
             (ddf._name, p),
             cols,
-            split_out,
+            tree_width,
             agg_cols,
             ("std" in agg_list or "var" in agg_list),
             on_host,
         )
         k = 0
         for c, col in enumerate(cols):
-            for s in range(split_out[col]):
+            for s in range(tree_width[col]):
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
 
     for c, col in enumerate(cols):
-        for s in range(split_out[col]):
+        for s in range(tree_width[col]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
@@ -272,7 +272,7 @@ def _groupby_to_disk(
 
         dsk[(level_3_name, c)] = (
             write_func,
-            [(level_2_name, c, s) for s in range(split_out[col])],
+            [(level_2_name, c, s) for s in range(tree_width[col])],
             out_path,
             col,
             on_host,
@@ -288,7 +288,7 @@ def _groupby_to_disk(
 
 
 def _category_stats(
-    ddf, cols, agg_cols, agg_list, out_path, freq_limit, split_out, on_host, stat_name="categories"
+    ddf, cols, agg_cols, agg_list, out_path, freq_limit, tree_width, on_host, stat_name="categories"
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -301,7 +301,7 @@ def _category_stats(
             agg_list,
             out_path,
             freq_limit,
-            split_out,
+            tree_width,
             on_host,
             stat_name=stat_name,
         )
@@ -319,7 +319,7 @@ def _category_stats(
         agg_list,
         out_path,
         freq_limit,
-        split_out,
+        tree_width,
         on_host,
         stat_name=stat_name,
     )
