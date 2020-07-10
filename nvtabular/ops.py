@@ -605,36 +605,42 @@ class FillMedian(DFOperator):
 
 class CategoryStatistics(StatOperator):
     """
-    One of the ways to create new features is to calculate
-    the basic statistics of the data that is grouped by a categorical
-    feature. This operator groups the data by the given categorical
-    feature(s) and calculates the std, variance, and sum of requested continuous
-    features along with count of every group. Then, merges these new statistics
-    with the data using the unique ids of categorical data.
-
-    Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
-    Workflow class.
+    Uses groupby aggregation to determine the unique groups of a categorical
+    feature and calculates the desired statistics of requested continuous
+    features (along with the count of rows in each group).  The statistics
+    for each category will be written to a distinct parquet file, and a
+    dictionary of paths will be returned as the final "statistics".
 
     Parameters
     -----------
     cont_names : list of str
-        names of the continuous columns
-    stats : list of str, default ['count']
-        count of groups = ['count']
-        sum of cont_col = ['sum']
-    columns :
-    split_out : dict, optional
-        Used for multi-GPU groupby reduction.  Each key in the dict
-        should correspond to a column name, and the value is the number
-        of hash partitions to use for the categorical tree reduction.
-        Only a single partition is used by default.
+        The continuous column names to calculate statistics for
+        (for each unique group in each column in `columns`)
+    stats : list of str, default []
+        List of statistics to calculate for each unique group. Note
+        that "count" corresponds to the group itself, while all
+        other statistics correspond to a specific continuous column.
+        Supported statistics include ["count", "sum", "mean", "std", "var"].
+    columns : list of str, default None
+        Categorical columns to collect statistics for.  If None,
+        the operation will target all known categorical columns.
+    tree_width : dict or int, optional
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Used for multi-GPU groupby output.  Root directory where
-        groupby statistics will be written out in parquet format.
+        Root directory where groupby statistics will be written out in
+        parquet format.
     freq_threshold : int, default 0
         Categories with a `count` statistic less than this number will
-        be ommited from the `CategoryStatistics` output.
+        be omitted from the `CategoryStatistics` output.
+    on_host : bool, default True
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     """
 
     def __init__(
@@ -642,21 +648,21 @@ class CategoryStatistics(StatOperator):
         cont_names=None,
         stats=None,
         columns=None,
-        split_out=None,
+        tree_width=None,
         out_path=None,
         on_host=True,
-        freq_threshold=0,
-        stat_name="categories",
+        freq_threshold=None,
+        stat_name=None,
     ):
         super(CategoryStatistics, self).__init__(columns)
         self.cont_names = cont_names or []
         self.stats = stats or []
         self.categories = {}
-        self.split_out = split_out
+        self.tree_width = tree_width or 8
         self.on_host = on_host
-        self.freq_threshold = freq_threshold
+        self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
-        self.stat_name = stat_name
+        self.stat_name = stat_name or "categories"
         self.op_name = "CategoryStatistics-" + self.stat_name
 
     @property
@@ -680,7 +686,7 @@ class CategoryStatistics(StatOperator):
             agg_list,
             self.out_path,
             self.freq_threshold,
-            self.split_out,
+            self.tree_width,
             self.on_host,
             stat_name=self.stat_name,
         )
@@ -707,9 +713,10 @@ class GroupBy(DFOperator):
     One of the ways to create new features is to calculate
     the basic statistics of the data that is grouped by a categorical
     feature. This operator groups the data by the given categorical
-    feature(s) and calculates the std, variance, and sum of requested continuous
-    features along with count of every group. Then, merges these new statistics
-    with the data using the unique ids of categorical data.
+    feature(s) and calculates the desired statistics of requested continuous
+    features (along with the count of rows in each group). The aggregated
+    statistics are merged with the data (by joining on the desired
+    categorical columns).
 
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
@@ -718,15 +725,26 @@ class GroupBy(DFOperator):
     Parameters
     -----------
     cont_names : list of str
-        names of the continuous columns
-    stats : list of str, default ['count']
-        count of groups = ['count']
-        sum of cont_col = ['sum']
-    columns :
+        The continuous column names to calculate statistics for
+        (for each unique group in each column in `columns`)
+    stats : list of str, default []
+        List of statistics to calculate for each unique group. Note
+        that "count" corresponds to the group itself, while all
+        other statistics correspond to a specific continuous column.
+        Supported statistics include ["count", "sum", "mean", "std", "var"].
+    columns : list of str, default None
+        Categorical columns to target for this operation.  If None,
+        the operation will target all known categorical columns.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default False
         This parameter is ignored
+    tree_width : dict or int, optional
+        Passed to `CategoryStatistics` dependency.
+    out_path : str, optional
+        Passed to `CategoryStatistics` dependency.
+    on_host : bool, default True
+        Passed to `CategoryStatistics` dependency.
     """
 
     default_in = CAT
@@ -739,7 +757,7 @@ class GroupBy(DFOperator):
         columns=None,
         preprocessing=True,
         replace=False,
-        split_out=None,
+        tree_width=None,
         cat_cache="host",
         out_path=None,
         on_host=True,
@@ -747,7 +765,7 @@ class GroupBy(DFOperator):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.cont_names = cont_names
         self.stats = stats
-        self.split_out = split_out
+        self.tree_width = tree_width
         self.out_path = out_path
         self.on_host = on_host
         self.cat_cache = cat_cache
@@ -760,7 +778,7 @@ class GroupBy(DFOperator):
                 columns=self.columns,
                 cont_names=self.cont_names,
                 stats=self.stats,
-                split_out=self.split_out,
+                tree_width=self.tree_width,
                 out_path=self.out_path,
                 on_host=self.on_host,
                 stat_name=self.stat_name,
@@ -800,12 +818,30 @@ class Categorify(DFOperator):
         Categories with a count/frequency below this threshold will be
         ommited from the encoding and corresponding data will be mapped
         to the "null" category.
-    columns :
+    columns : list of str, default None
+        Categorical columns to target for this operation.  If None,
+        the operation will target all known categorical columns.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
         Replaces the transformed column with the original input
         if set Yes
+    tree_width : dict or int, optional
+        Passed to `CategoryStatistics` dependency.
+    out_path : str, optional
+        Passed to `CategoryStatistics` dependency.
+    on_host : bool, default True
+        Passed to `CategoryStatistics` dependency.
+    na_sentinel : default 0
+        Label to use for null-category mapping
+    cat_cache : {"device", "host", "disk"} or dict
+        Location to cache the list of unique categories for
+        each categorical column. If passing a dict, each key and value
+        should correspond to the column name and location, respectively.
+        Default is "host" for all columns.
+    dtype :
+        If specified, categorical labels will be cast to this dtype
+        after encoding is performed.
     """
 
     default_in = CAT
@@ -818,7 +854,7 @@ class Categorify(DFOperator):
         preprocessing=True,
         replace=True,
         out_path=None,
-        split_out=None,
+        tree_width=None,
         na_sentinel=None,
         cat_cache="host",
         dtype=None,
@@ -827,7 +863,7 @@ class Categorify(DFOperator):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
-        self.split_out = split_out
+        self.tree_width = tree_width
         self.na_sentinel = na_sentinel or 0
         self.dtype = dtype
         self.on_host = on_host
@@ -842,7 +878,7 @@ class Categorify(DFOperator):
                 cont_names=[],
                 stats=[],
                 freq_threshold=self.freq_threshold,
-                split_out=self.split_out,
+                tree_width=self.tree_width,
                 out_path=self.out_path,
                 on_host=self.on_host,
                 stat_name=self.stat_name,
