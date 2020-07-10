@@ -22,7 +22,6 @@ from torch.utils.dlpack import from_dlpack
 
 from nvtabular.io import GPUFileIterator, _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
-from nvtabular.ops import _get_embedding_order
 
 
 class FileItrDataset(torch.utils.data.IterableDataset):
