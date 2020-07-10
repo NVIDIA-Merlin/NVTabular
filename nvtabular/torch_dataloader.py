@@ -21,7 +21,8 @@ import torch
 from torch.utils.dlpack import from_dlpack
 
 from nvtabular.io import GPUFileIterator, _shuffle_gdf
-from nvtabular.ops import get_embedding_order
+from nvtabular.ops import _get_embedding_order
+from nvtabular.ops import _get_embedding_order
 
 
 class FileItrDataset(torch.utils.data.IterableDataset):
@@ -125,7 +126,7 @@ def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
 
 
 def combine_tensors(cats, conts, label):
-    cats_list = [cats[x] for x in get_embedding_order(cats.keys())] if cats else None
+    cats_list = [cats[x] for x in _get_embedding_order(cats.keys())] if cats else None
     conts_list = [conts[x] for x in sorted(conts.keys())] if conts else None
     label_list = [label[x] for x in sorted(label.keys())] if label else None
 
@@ -152,7 +153,7 @@ def _one_df(
 def _get_final_cols(preproc):
     if "cols" not in preproc.columns_ctx["final"]:
         preproc.create_final_cols()
-    cat_names = get_embedding_order(preproc.columns_ctx["final"]["cols"]["categorical"])
+    cat_names = _get_embedding_order(preproc.columns_ctx["final"]["cols"]["categorical"])
     cont_names = sorted(preproc.columns_ctx["final"]["cols"]["continuous"])
     label_name = sorted(preproc.columns_ctx["final"]["cols"]["label"])
     return cat_names, cont_names, label_name

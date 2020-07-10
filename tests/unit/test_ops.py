@@ -19,6 +19,7 @@ import cudf
 import numpy as np
 import pytest
 from cudf.tests.utils import assert_eq
+from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
@@ -31,8 +32,7 @@ from tests.conftest import get_cats, mycols_csv, mycols_pq
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"]])
-@pytest.mark.parametrize("use_client", [True, False])
-def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns, use_client):
+def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
@@ -41,11 +41,7 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
     config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        **{"client": client} if use_client else {}
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
     x_min = df["x"].min()
@@ -67,7 +63,7 @@ def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+def test_moments(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -76,11 +72,7 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
     config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -102,8 +94,7 @@ def test_moments(client, tmpdir, df, dataset, gpu_memory_frac, engine, op_column
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-@pytest.mark.parametrize("use_client", [True, False])
-def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client, use_client):
+def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -111,12 +102,9 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, clien
     encoder = ops.Encoder(columns=op_columns)
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
+
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        **{"client": client} if use_client else {}
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
 
@@ -133,8 +121,7 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, clien
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-@pytest.mark.parametrize("use_client", [True, False])
-def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client, use_client):
+def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -143,11 +130,7 @@ def test_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client
     config["PP"]["continuous"] = [ops.Median(columns=op_columns)]
 
     processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        **{"client": client} if use_client else {}
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -215,11 +198,12 @@ def test_fill_missing(tmpdir, df, dataset, engine):
     columns_ctx = {}
     columns_ctx["continuous"] = {}
     columns_ctx["continuous"]["base"] = cont_names
+    for col in cont_names:
+        idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
+        df[col].iloc[idx] = None
 
-    transformed = cudf.concat(
-        [op.apply_op(df, columns_ctx, "continuous") for df in dataset.to_iter()]
-    )
-    assert_eq(transformed[cont_names], df[cont_names].dropna(42))
+    transformed = cudf.concat([op.apply_op(df, columns_ctx, "continuous")])
+    assert_eq(transformed[cont_names], df[cont_names].fillna(42))
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -240,7 +224,7 @@ def test_dropna(tmpdir, df, dataset, engine):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client):
+def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
@@ -249,11 +233,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cli
     config["PP"]["continuous"] = [ops.Moments()]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -272,7 +252,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cli
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, client):
+def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
@@ -281,11 +261,7 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     config["PP"]["continuous"] = [ops.MinMax()]
 
     processor = nvtabular.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
 
     processor.update_stats(dataset)
@@ -301,3 +277,227 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
         processor.stats["maxs"]["x"] - processor.stats["mins"]["x"]
     )
     assert new_gdf["x"].equals(df["x"])
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.1])
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y"]
+    label_name = ["label"]
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+
+    df_copy = df.copy()
+
+    config = nvt.workflow.get_new_config()
+
+    processor = nvtabular.Workflow(
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+        config=config,
+        client=client,
+    )
+
+    columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = cont_names
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    # Substring
+    # Replacement
+    op = ops.LambdaOp(
+        op_name="slice",
+        f=lambda col, gdf: col.str.slice(1, 3),
+        columns=["name-cat", "name-string"],
+        preprocessing=True,
+        replace=True,
+    )
+
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.slice(1, 3))
+    assert new_gdf["name-string"].equals(df_copy["name-string"].str.slice(1, 3))
+
+    # No Replacement
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="slice",
+        f=lambda col, gdf: col.str.slice(1, 3),
+        columns=["name-cat", "name-string"],
+        preprocessing=True,
+        replace=False,
+    )
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat_slice"].equals(df_copy["name-cat"].str.slice(1, 3))
+    assert new_gdf["name-string_slice"].equals(df_copy["name-string"].str.slice(1, 3))
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
+    assert new_gdf["name-string"].equals(df_copy["name-string"])
+
+    # Replace
+    # Replacement
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="replace",
+        f=lambda col, gdf: col.str.replace("e", "XX"),
+        columns=["name-cat", "name-string"],
+        preprocessing=True,
+        replace=True,
+    )
+
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.replace("e", "XX"))
+    assert new_gdf["name-string"].equals(df_copy["name-string"].str.replace("e", "XX"))
+
+    # No Replacement
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="replace",
+        f=lambda col, gdf: col.str.replace("e", "XX"),
+        columns=["name-cat", "name-string"],
+        preprocessing=True,
+        replace=False,
+    )
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["name-cat_replace"].equals(df_copy["name-cat"].str.replace("e", "XX"))
+    assert new_gdf["name-string_replace"].equals(df_copy["name-string"].str.replace("e", "XX"))
+    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
+    assert new_gdf["name-string"].equals(df_copy["name-string"])
+
+    # astype
+    # Replacement
+    df = df_copy.copy()
+    op = ops.LambdaOp(
+        op_name="astype",
+        f=lambda col, gdf: col.astype(float),
+        columns=["id"],
+        preprocessing=True,
+        replace=True,
+    )
+    new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
+    assert new_gdf["id"].dtype == "float64"
+
+    # Workflow
+    # Replacement
+    import glob
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.LambdaOp(
+                op_name="slice",
+                f=lambda col, gdf: col.astype(str).str.slice(0, 1),
+                columns=["name-cat"],
+                preprocessing=True,
+                replace=True,
+            ),
+            ops.Categorify(),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    assert is_integer_dtype(df_pp["name-cat"].dtype)
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.Categorify(),
+            ops.LambdaOp(
+                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=True
+            ),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    assert is_integer_dtype(df_pp["name-cat"].dtype)
+    assert np.sum(df_pp["name-cat"] < 100) == 0
+
+    # Workflow
+    # No Replacement
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.LambdaOp(
+                op_name="slice",
+                f=lambda col, gdf: col.astype(str).str.slice(0, 1),
+                columns=["name-cat"],
+                preprocessing=True,
+                replace=False,
+            ),
+            ops.Categorify(),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+
+    assert df_pp["name-cat"].dtype == "O"
+    print(df_pp)
+    assert is_integer_dtype(df_pp["name-cat_slice"].dtype)
+    assert np.sum(df_pp["name-cat_slice"] == 0) == 0
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.Categorify(),
+            ops.LambdaOp(
+                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
+            ),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    assert is_integer_dtype(df_pp["name-cat_add100"].dtype)
+    assert np.sum(df_pp["name-cat_add100"] < 100) == 0
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        [
+            ops.LambdaOp(
+                op_name="mul0",
+                f=lambda col, gdf: col * 0,
+                columns=["x"],
+                preprocessing=True,
+                replace=False,
+            ),
+            ops.LambdaOp(
+                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
+            ),
+        ]
+    )
+    processor.finalize()
+    processor.update_stats(dataset)
+    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    assert np.sum(df_pp["x_mul0_add100"] < 100) == 0

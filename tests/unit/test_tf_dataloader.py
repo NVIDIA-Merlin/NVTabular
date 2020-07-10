@@ -20,13 +20,17 @@ import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
 
-tf_dataloader = pytest.importorskip("nvtabular.tf_dataloader")
+# If tensorflow isn't installed skip these tests. Note that the
+# tf_dataloader import needs to happen after this line
+pytest.importorskip("tensorflow")
+import nvtabular.tf_dataloader as tf_dataloader  # noqa isort:skip
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
-def test_tf_gpu_dl(tmpdir, client, paths, dataset, batch_size, gpu_memory_frac, engine):
+@pytest.mark.parametrize("use_paths", [True, False])
+def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine):
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
     label_name = ["label"]
@@ -35,16 +39,14 @@ def test_tf_gpu_dl(tmpdir, client, paths, dataset, batch_size, gpu_memory_frac, 
 
     columns = cont_names + cat_names
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
     data_itr = tf_dataloader.KerasSequenceDataset(
-        paths,
+        paths if use_paths else dataset,
         columns=columns,
         batch_size=batch_size,
         buffer_size=gpu_memory_frac,

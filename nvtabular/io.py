@@ -21,14 +21,32 @@ import os
 import queue
 import threading
 import warnings
+from collections import defaultdict
+from io import BytesIO
 from itertools import islice
+from uuid import uuid4
 
 import cudf
 import cupy as cp
+import dask_cudf
 import numba.cuda as cuda
 import numpy as np
+import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
+from dask.base import tokenize
+from dask.dataframe.core import new_dd_object
+from dask.dataframe.io.parquet.utils import _analyze_paths
+from dask.dataframe.utils import group_split_dispatch
+from dask.distributed import get_worker
+from dask.utils import natural_sort_key, parse_bytes
+from fsspec.core import get_fs_token_paths
+from fsspec.utils import stringify_path
+
+# Use global variable as the default
+# cache when there are no distributed workers
+DEFAULT_CACHE = None
+
 
 LOG = logging.getLogger("nvtabular")
 
@@ -44,6 +62,7 @@ def _allowable_batch_size(gpu_memory_frac, row_size):
 
 
 def _get_read_engine(engine, file_path, **kwargs):
+    fs, _, _ = get_fs_token_paths(file_path, mode="rb")
     LOG.debug("opening '%s' as %s", file_path, engine)
     if engine is None:
         engine = file_path.split(".")[-1]
@@ -51,9 +70,9 @@ def _get_read_engine(engine, file_path, **kwargs):
         raise TypeError("Expecting engine as string type.")
 
     if engine == "csv":
-        return CSVFileReader(file_path, **kwargs)
+        return CSVFileReader(file_path, fs, **kwargs)
     elif engine == "parquet":
-        return PQFileReader(file_path, **kwargs)
+        return PQFileReader(file_path, fs, **kwargs)
     else:
         raise ValueError("Unrecognized read engine.")
 
@@ -65,11 +84,12 @@ def _get_read_engine(engine, file_path, **kwargs):
 
 class GPUFileReader:
     def __init__(
-        self, file_path, gpu_memory_frac, batch_size, row_size=None, columns=None, **kwargs
+        self, file_path, fs, gpu_memory_frac, batch_size=None, row_size=None, columns=None, **kwargs
     ):
         """ GPUFileReader Constructor
         """
         self.file_path = file_path
+        self.fs = fs
         self.row_size = row_size
         self.columns = columns
         self.intialize_reader(gpu_memory_frac, batch_size, **kwargs)
@@ -104,7 +124,7 @@ class PQFileReader(GPUFileReader):
 
         # Read Parquet-file metadata
         (self.num_rows, self.num_row_groups, columns) = cudf.io.read_parquet_metadata(
-            self.file_path
+            self.fs.open(self.file_path)
         )
         # Use first row-group metadata to estimate memory-rqs
         # NOTE: We could also use parquet metadata here, but
@@ -170,7 +190,7 @@ class CSVFileReader(GPUFileReader):
             self.row_size = 0
             estimate_row_size = True
         self.offset = 0
-        self.file_bytes = os.stat(str(self.file_path)).st_size
+        self.file_bytes = self.fs.stat(str(self.file_path))["size"]
 
         # Use first row to estimate memory-reqs
         names = kwargs.get("names", None)
@@ -181,7 +201,7 @@ class CSVFileReader(GPUFileReader):
         self.names = []
         dtype_inf = {}
         nrows = 10
-        head = "".join(islice(open(self.file_path), nrows))
+        head = "".join(islice(self.fs.open(self.file_path, "r"), nrows))
         snippet = self.reader(
             io.StringIO(head), nrows=nrows, names=names, dtype=dtype, sep=sep, header=0
         )
@@ -251,6 +271,7 @@ class GPUFileIterator:
         dtypes=None,
         names=None,
         row_size=None,
+        fs=None,
         **kwargs,
     ):
         self.file_path = file_path
@@ -283,56 +304,10 @@ class GPUFileIterator:
         for col, dtype in self.dtypes.items():
             if type(dtype) is str:
                 if "hex" in dtype:
-                    chunk[col] = chunk[col]._column.nvstrings.htoi()
+                    chunk[col] = chunk[col].str.htoi()
                     chunk[col] = chunk[col].astype(np.int32)
             else:
                 chunk[col] = chunk[col].astype(dtype)
-
-
-#
-# GPUDatasetIterator (Iterates through multiple files)
-#
-
-
-class GPUDatasetIterator:
-
-    """
-    Iterates through the files and returns a part of the
-    data as a GPU dataframe
-
-    Parameters
-    -----------
-    paths : list of str
-        Path(s) of the data file(s)
-    names : list of str
-        names of the columns in the dataset
-    engine : str
-        supported file types are: 'parquet' or 'csv'
-    gpu_memory_frac : float
-        fraction of the GPU memory to fill
-    batch_size : int
-        number of samples in each batch
-    columns :
-    use_row_groups :
-    dtypes :
-    row_size: int
-    """
-
-    def __init__(self, paths, **kwargs):
-        if isinstance(paths, str):
-            paths = [paths]
-        if not isinstance(paths, list):
-            raise TypeError("paths must be a string or a list.")
-        if len(paths) < 1:
-            raise ValueError("len(paths) must be > 0.")
-        self.paths = paths
-        self.kwargs = kwargs
-        self.cur_path = None
-
-    def __iter__(self):
-        for path in self.paths:
-            self.cur_path = path
-            yield from GPUFileIterator(path, **self.kwargs)
 
 
 def _shuffle_gdf(gdf, gdf_size=None):
@@ -381,6 +356,8 @@ class ThreadedWriter(Writer):
         if labels and conts:
             self.column_names = labels + conts
 
+        self.col_idx = {}
+
         self.num_threads = num_threads
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
@@ -410,6 +387,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
+        # Populate columns idxs
+        if not self.col_idx:
+            for i, x in enumerate(gdf.columns.values):
+                self.col_idx[str(x)] = i
+
         # get slice info
         int_slice_size = gdf.shape[0] // self.num_out_files
         slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
@@ -473,14 +455,26 @@ class ParquetWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
         data = {}
         data["file_stats"] = []
         for i in range(len(self.data_files)):
             data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
-        data["cats_name"] = self.cats
-        data["conts_name"] = self.conts
-        data["conts_labels"] = self.labels
+        # cats
+        data["cats"] = []
+        for c in self.cats:
+            data["cats"].append({"col_name": c, "index": self.col_idx[c]})
+        # conts
+        data["conts"] = []
+        for c in self.conts:
+            data["conts"].append({"col_name": c, "index": self.col_idx[c]})
+        # labels
+        data["labels"] = []
+        for c in self.labels:
+            data["labels"].append({"col_name": c, "index": self.col_idx[c]})
+
         json.dump(data, metadata_writer)
         metadata_writer.close()
 
@@ -511,6 +505,8 @@ class HugeCTRWriter(ThreadedWriter):
                 self.queue.task_done()
 
     def _write_metadata(self):
+        if self.cats is None:
+            return
         for i in range(len(self.data_writers)):
             self.data_writers[i].seek(0)
             # error_check (0: no error check; 1: check_num)
@@ -553,3 +549,403 @@ def device_mem_size(kind="total"):
         size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
         pynvml.nvmlShutdown()
     return size
+
+
+class WriterCache:
+    def __init__(self):
+        self.pq_writer_cache = {}
+
+    def __del__(self):
+        for path, (pw, fpath) in self.pq_writer_cache.items():
+            pw.close()
+
+    def get_pq_writer(self, prefix, s, mem):
+        pw, fil = self.pq_writer_cache.get(prefix, (None, None))
+        if pw is None:
+            if mem:
+                fil = BytesIO()
+                pw = pwriter(fil, compression=None)
+                self.pq_writer_cache[prefix] = (pw, fil)
+            else:
+                outfile_id = guid() + ".parquet"
+                full_path = ".".join([prefix, outfile_id])
+                pw = pwriter(full_path, compression=None)
+                self.pq_writer_cache[prefix] = (pw, full_path)
+        return pw
+
+
+def get_cache():
+    try:
+        worker = get_worker()
+    except ValueError:
+        # There is no dask.distributed worker.
+        # Assume client/worker are same process
+        global DEFAULT_CACHE
+        if DEFAULT_CACHE is None:
+            DEFAULT_CACHE = WriterCache()
+        return DEFAULT_CACHE
+    if not hasattr(worker, "pw_cache"):
+        worker.pw_cache = WriterCache()
+    return worker.pw_cache
+
+
+def clean_pw_cache():
+    try:
+        worker = get_worker()
+    except ValueError:
+        global DEFAULT_CACHE
+        if DEFAULT_CACHE is not None:
+            del DEFAULT_CACHE
+            DEFAULT_CACHE = None
+        return
+    if hasattr(worker, "pw_cache"):
+        del worker.pw_cache
+    return
+
+
+def guid():
+    """ Simple utility function to get random hex string
+    """
+    return uuid4().hex
+
+
+def _write_metadata(meta_list):
+    # TODO: Write _metadata file here (need to collect metadata)
+    return meta_list
+
+
+@annotate("write_output_partition", color="green", domain="nvt_python")
+def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs):
+    gdf_size = len(gdf)
+    if shuffle == "full":
+        # Dont need a real sort if we are doing in memory later
+        typ = np.min_scalar_type(out_files_per_proc * 2)
+        ind = cp.random.choice(cp.arange(out_files_per_proc, dtype=typ), gdf_size)
+        result = group_split_dispatch(gdf, ind, out_files_per_proc, ignore_index=True)
+        del ind
+        del gdf
+        # Write each split to a separate file
+        for s, df in result.items():
+            prefix = fs.sep.join([processed_path, "split." + str(s)])
+            pw = get_cache().get_pq_writer(prefix, s, mem=True)
+            pw.write_table(df)
+    else:
+        # We should do a real sort here
+        if shuffle == "partial":
+            gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
+        splits = list(range(0, gdf_size, int(gdf_size / out_files_per_proc)))
+        if splits[-1] < gdf_size:
+            splits.append(gdf_size)
+        # Write each split to a separate file
+        for s in range(0, len(splits) - 1):
+            prefix = fs.sep.join([processed_path, "split." + str(s)])
+            pw = get_cache().get_pq_writer(prefix, s, mem=False)
+            pw.write_table(gdf.iloc[splits[s] : splits[s + 1]])
+    return gdf_size  # TODO: Make this metadata
+
+
+@annotate("worker_shuffle", color="green", domain="nvt_python")
+def _worker_shuffle(processed_path, fs):
+    paths = []
+    for path, (pw, bio) in get_cache().pq_writer_cache.items():
+        pw.close()
+
+        gdf = cudf.io.read_parquet(bio, index=False)
+        bio.close()
+
+        gdf = _shuffle_gdf(gdf)
+        rel_path = "shuffled.%s.parquet" % (guid())
+        full_path = fs.sep.join([processed_path, rel_path])
+        gdf.to_parquet(full_path, compression=None, index=False)
+        paths.append(full_path)
+    return paths
+
+
+class Dataset:
+    """ Dask-based Dataset Class
+        Converts a dataset into a dask_cudf DataFrame on demand
+
+    Parameters
+    -----------
+    path : str or list of str
+        Dataset path (or list of paths). If string, should specify
+        a specific file or directory path. If this is a directory
+        path, the directory structure must be flat (nested directories
+        are not yet supported).
+    engine : str or DatasetEngine
+        DatasetEngine object or string identifier of engine. Current
+        string options include: ("parquet").
+    part_size : str or int
+        Desired size (in bytes) of each Dask partition.
+        If None, part_mem_fraction will be used to calculate the
+        partition size.  Note that the underlying engine may allow
+        other custom kwargs to override this argument.
+    part_mem_fraction : float (default 0.125)
+        Fractional size of desired dask partitions (relative
+        to GPU memory capacity). Ignored if part_size is passed
+        directly. Note that the underlying engine may allow other
+        custom kwargs to override this argument.
+    storage_options: None or dict
+        Further parameters to pass to the bytes backend.
+    """
+
+    def __init__(
+        self,
+        paths,
+        engine=None,
+        part_size=None,
+        part_mem_fraction=None,
+        storage_options=None,
+        **kwargs,
+    ):
+        if part_size:
+            # If a specific partition size is given, use it directly
+            part_size = parse_bytes(part_size)
+        else:
+            # If a fractional partition size is given, calculate part_size
+            part_mem_fraction = part_mem_fraction or 0.125
+            assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+            if part_mem_fraction > 0.25:
+                warnings.warn(
+                    "Using very large partitions sizes for Dask. "
+                    "Memory-related errors are likely."
+                )
+            part_size = int(device_mem_size(kind="total") * part_mem_fraction)
+
+        # Engine-agnostic path handling
+        if hasattr(paths, "name"):
+            paths = stringify_path(paths)
+        if isinstance(paths, str):
+            paths = [paths]
+
+        storage_options = storage_options or {}
+        # If engine is not provided, try to infer from end of paths[0]
+        if engine is None:
+            engine = paths[0].split(".")[-1]
+        if isinstance(engine, str):
+            if engine == "parquet":
+                self.engine = ParquetDatasetEngine(
+                    paths, part_size, storage_options=storage_options, **kwargs
+                )
+            elif engine == "csv":
+                self.engine = CSVDatasetEngine(
+                    paths, part_size, storage_options=storage_options, **kwargs
+                )
+            else:
+                raise ValueError("Only parquet and csv supported (for now).")
+        else:
+            self.engine = engine(paths, part_size, storage_options=storage_options)
+
+    def to_ddf(self, columns=None):
+        return self.engine.to_ddf(columns=columns)
+
+    def to_iter(self, columns=None):
+        return self.engine.to_iter(columns=columns)
+
+
+class DatasetEngine:
+    """ DatasetEngine Class
+
+        Base class for Dask-powered IO engines. Engines must provide
+        a ``to_ddf`` method.
+    """
+
+    def __init__(self, paths, part_size, storage_options=None):
+        paths = sorted(paths, key=natural_sort_key)
+        self.paths = paths
+        self.part_size = part_size
+
+        fs, fs_token, _ = get_fs_token_paths(paths, mode="rb", storage_options=storage_options)
+        self.fs = fs
+        self.fs_token = fs_token
+
+    def to_ddf(self, columns=None):
+        raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
+
+    def to_iter(self, columns=None):
+        raise NotImplementedError(""" Return a Iterator over the cudf chunks of the dataset  """)
+
+
+class ParquetDatasetEngine(DatasetEngine):
+    """ ParquetDatasetEngine
+
+        Dask-based version of cudf.read_parquet.
+    """
+
+    def __init__(
+        self,
+        paths,
+        part_size,
+        storage_options,
+        row_groups_per_part=None,
+        legacy=False,
+        batch_size=None,
+    ):
+        # TODO: Improve dask_cudf.read_parquet performance so that
+        # this class can be slimmed down.
+        super().__init__(paths, part_size, storage_options)
+        self.batch_size = batch_size
+        self._metadata, self._base = self.get_metadata()
+        self._pieces = None
+        if row_groups_per_part is None:
+            file_path = self._metadata.row_group(0).column(0).file_path
+            path0 = (
+                self.fs.sep.join([self._base, file_path])
+                if file_path != ""
+                else self._base  # This is a single file
+            )
+
+        if row_groups_per_part is None:
+            rg_byte_size_0 = (
+                cudf.io.read_parquet(path0, row_groups=0, row_group=0)
+                .memory_usage(deep=True, index=True)
+                .sum()
+            )
+            row_groups_per_part = self.part_size / rg_byte_size_0
+            if row_groups_per_part < 1.0:
+                warnings.warn(
+                    f"Row group size {rg_byte_size_0} is bigger than requested part_size "
+                    f"{self.part_size}"
+                )
+                row_groups_per_part = 1.0
+
+        self.row_groups_per_part = int(row_groups_per_part)
+
+        assert self.row_groups_per_part > 0
+
+    @property
+    def pieces(self):
+        if self._pieces is None:
+            self._pieces = self._get_pieces(self._metadata, self._base)
+        return self._pieces
+
+    def get_metadata(self):
+        paths = self.paths
+        fs = self.fs
+        if len(paths) > 1:
+            # This is a list of files
+            dataset = pq.ParquetDataset(paths, filesystem=fs, validate_schema=False)
+            base, fns = _analyze_paths(paths, fs)
+        elif fs.isdir(paths[0]):
+            # This is a directory
+            dataset = pq.ParquetDataset(paths[0], filesystem=fs, validate_schema=False)
+            allpaths = fs.glob(paths[0] + fs.sep + "*")
+            base, fns = _analyze_paths(allpaths, fs)
+        else:
+            # This is a single file
+            dataset = pq.ParquetDataset(paths[0], filesystem=fs)
+            base = paths[0]
+            fns = [None]
+
+        metadata = None
+        if dataset.metadata:
+            # We have a metadata file
+            return dataset.metadata, base
+        else:
+            # Collect proper metadata manually
+            metadata = None
+            for piece, fn in zip(dataset.pieces, fns):
+                md = piece.get_metadata()
+                if fn:
+                    md.set_file_path(fn)
+                if metadata:
+                    metadata.append_row_groups(md)
+                else:
+                    metadata = md
+            return metadata, base
+
+    @annotate("get_pieces", color="green", domain="nvt_python")
+    def _get_pieces(self, metadata, data_path):
+
+        # get the number of row groups per file
+        file_row_groups = defaultdict(int)
+        for rg in range(metadata.num_row_groups):
+            fpath = metadata.row_group(rg).column(0).file_path
+            if fpath is None:
+                raise ValueError("metadata is missing file_path string.")
+            file_row_groups[fpath] += 1
+
+        # create pieces from each file, limiting the number of row_groups in each piece
+        pieces = []
+        for filename, row_group_count in file_row_groups.items():
+            row_groups = range(row_group_count)
+            for i in range(0, row_group_count, self.row_groups_per_part):
+                rg_list = list(row_groups[i : i + self.row_groups_per_part])
+                full_path = (
+                    self.fs.sep.join([data_path, filename])
+                    if filename != ""
+                    else data_path  # This is a single file
+                )
+                pieces.append((full_path, rg_list))
+        return pieces
+
+    @staticmethod
+    @annotate("read_piece", color="green", domain="nvt_python")
+    def read_piece(piece, columns):
+        path, row_groups = piece
+        return cudf.io.read_parquet(
+            path,
+            # cudf 0.15 (only need `row_groups`)
+            row_groups=row_groups,
+            # cudf 0.14 (need `row_group` and `row_group_count`)
+            row_group=row_groups[0],
+            row_group_count=len(row_groups),
+            columns=columns,
+            index=False,
+        )
+
+    def meta_empty(self, columns=None):
+        path, _ = self.pieces[0]
+        return cudf.io.read_parquet(
+            path,
+            # cudf 0.15
+            row_groups=0,
+            # cudf 0.14
+            row_group=0,
+            columns=columns,
+            index=False,
+        ).iloc[:0]
+
+    def to_ddf(self, columns=None):
+        pieces = self.pieces
+        name = "parquet-to-ddf-" + tokenize(self.fs_token, pieces, columns)
+        dsk = {
+            (name, p): (ParquetDatasetEngine.read_piece, piece, columns)
+            for p, piece in enumerate(pieces)
+        }
+        meta = self.meta_empty(columns=columns)
+        divisions = [None] * (len(pieces) + 1)
+        return new_dd_object(dsk, name, meta, divisions)
+
+    def to_iter(self, columns=None):
+        part_mem_fraction = self.part_size / device_mem_size(kind="total")
+        for path in self.paths:
+            yield from PQFileReader(
+                path, self.fs, part_mem_fraction, columns=columns, batch_size=self.batch_size
+            )
+
+
+class CSVDatasetEngine(DatasetEngine):
+    """ CSVDatasetEngine
+
+        Thin wrapper around dask_cudf.read_csv.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+        self._meta = {}
+        self.csv_kwargs = kwargs
+        # CSV reader needs a list of files
+        # (Assume flat directory structure if this is a dir)
+        if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
+            self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
+
+    def to_ddf(self, columns=None):
+        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
+
+    def to_iter(self, columns=None):
+        part_mem_fraction = self.part_size / device_mem_size(kind="total")
+        for path in self.paths:
+            yield from CSVFileReader(
+                path, self.fs, part_mem_fraction, columns=columns, **self.csv_kwargs
+            )

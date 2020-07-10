@@ -24,7 +24,7 @@ import pytest
 from dask.dataframe import assert_eq
 
 import nvtabular.ops as ops
-from nvtabular import DaskDataset, Workflow
+from nvtabular import Dataset, Workflow
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -41,13 +41,14 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
     return new_gdf
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.01, None])
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("freq_threshold", [0, 150])
 @pytest.mark.parametrize("cat_cache", ["device", None])
 @pytest.mark.parametrize("on_host", [True, False])
+@pytest.mark.parametrize("shuffle", ["full", None])
 def test_dask_workflow_api_dlrm(
-    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host
+    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
 ):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
@@ -85,37 +86,149 @@ def test_dask_workflow_api_dlrm(
     processor.finalize()
 
     if engine in ("parquet", "csv"):
-        dataset = DaskDataset(paths, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
     else:
-        dataset = DaskDataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
     output_path = os.path.join(tmpdir, "processed")
-    processor.apply(dataset, output_path=output_path)
+    processor.apply(dataset, output_path=output_path, shuffle=shuffle)
+
+    # Can still access the final ddf if we didn't shuffle
+    if not shuffle:
+        result = processor.get_ddf().compute()
+        assert len(df0) == len(result)
+        assert result["x"].min() == 0.0
+        assert result["x"].isna().sum() == 0
+        assert result["y"].min() == 0.0
+        assert result["y"].isna().sum() == 0
+
+        # Check category counts
+        cat_expect = df0.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
+        cat_result = (
+            result.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
+        )
+        if freq_threshold:
+            cat_expect = cat_expect[cat_expect["name-string"] >= freq_threshold]
+            # Note that we may need to skip the 0th element in result (null mapping)
+            assert_eq(
+                cat_expect,
+                cat_result.iloc[1:] if len(cat_result) > len(cat_expect) else cat_result,
+                check_index=False,
+            )
+        else:
+            assert_eq(cat_expect, cat_result)
+
+        # Read back from disk
+        df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+        for col in df_disk:
+            assert_eq(result[col], df_disk[col])
+
+    else:
+        # Read back from disk
+        df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+        assert len(df0) == len(df_disk)
+
+
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
+def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
+
+    engine = "parquet"
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    df1 = cudf.read_parquet(paths[0])[mycols_pq]
+    df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    df0 = cudf.concat([df1, df2], axis=0)
+
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = Workflow(
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    )
+
+    processor.add_preprocess(
+        ops.GroupBy(
+            cat_names=cat_names,
+            cont_names=cont_names,
+            stats=["count", "sum", "std"],
+            out_path=str(tmpdir),
+            split_out=2,
+        )
+    )
+    processor.finalize()
+
+    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+    processor.apply(dataset)
+    result = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Validate result
+    assert len(df0) == len(result)
+    assert "name-cat_x_std" in result.columns
+    assert "name-cat_x_var" not in result.columns
+    assert "name-string_x_std" in result.columns
+    assert "name-string_x_var" not in result.columns
+
+    # Check "count"
+    assert_eq(
+        result[["name-cat", "name-cat_count"]]
+        .drop_duplicates()
+        .sort_values("name-cat")["name-cat_count"],
+        df0.groupby("name-cat").agg({"x": "count"})["x"],
+        check_index=False,
+        check_dtype=False,  # May get int64 vs int32
+        check_names=False,
+    )
+
+    # Check "std"
+    assert_eq(
+        result[["name-string", "name-string_x_std"]]
+        .drop_duplicates()
+        .sort_values("name-string")["name-string_x_std"],
+        df0.groupby("name-string").agg({"x": "std"})["x"],
+        check_index=False,
+        check_names=False,
+    )
+
+
+@pytest.mark.parametrize("part_mem_fraction", [0.01])
+@pytest.mark.parametrize("use_client", [True, False])
+def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use_client):
+
+    engine = "parquet"
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = Workflow(
+        client=client if use_client else None,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_name=label_name,
+    )
+
+    processor.add_preprocess(
+        ops.Categorify(out_path=str(tmpdir), split_out=2, freq_threshold=10, on_host=True)
+    )
+
+    processor.add_cat_feature(
+        ops.GroupBy(
+            cat_names=cat_names,
+            cont_names=cont_names,
+            stats=["count", "sum"],
+            out_path=str(tmpdir),
+            split_out=2,
+        )
+    )
+
+    processor.finalize()
+    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+
+    processor.apply(dataset, output_path=str(tmpdir))
     result = processor.get_ddf().compute()
 
-    assert len(df0) == len(result)
-    assert result["x"].min() == 0.0
-    assert result["x"].isna().sum() == 0
-    assert result["y"].min() == 0.0
-    assert result["y"].isna().sum() == 0
-
-    # Check category counts
-    cat_expect = df0.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
-    cat_result = result.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
-    if freq_threshold:
-        cat_expect = cat_expect[cat_expect["name-string"] >= freq_threshold]
-        # Note that we may need to skip the 0th element in result (null mapping)
-        assert_eq(
-            cat_expect,
-            cat_result.iloc[1:] if len(cat_result) > len(cat_expect) else cat_result,
-            check_index=False,
-        )
-    else:
-        assert_eq(cat_expect, cat_result)
-
-    # Read back from disk
-    df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
-    for col in df_disk:
-        assert_eq(result[col], df_disk[col])
+    assert "name-cat_x_sum" in result.columns
+    assert "name-string_x_sum" in result.columns
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -143,7 +256,7 @@ def test_dask_minmax_dummyop(client, tmpdir, datasets, engine):
     processor.add_preprocess(DummyOp())
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    dataset = Dataset(paths, engine)
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 
@@ -180,7 +293,7 @@ def test_dask_median_dummyop(client, tmpdir, datasets, engine):
     processor.add_preprocess(DummyOp())
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    dataset = Dataset(paths, engine)
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 
@@ -210,7 +323,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine):
     processor.add_preprocess(ops.Normalize())
     processor.finalize()
 
-    dataset = DaskDataset(paths, engine)
+    dataset = Dataset(paths, engine)
     processor.apply(dataset)
     result = processor.get_ddf().compute()
 

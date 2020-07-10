@@ -15,14 +15,18 @@
 #
 
 import glob
+import os
 
 import cudf
 import dask_cudf
 import pytest
 from dask.dataframe import assert_eq
 
+import nvtabular as nvt
+import nvtabular.ops as ops
+
 import nvtabular.io
-from nvtabular.dask.io import DaskDataset
+from nvtabular.io import Shuffler
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -34,7 +38,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = nvtabular.io.Shuffler(tmpdir, num_files)
+    shuf = Shuffler(tmpdir, num_files)
     shuf.add_data(df1)
     writer_files = shuf.writer.data_files
     shuf.close()
@@ -60,7 +64,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     else:
         columns = mycols_csv
 
-    dd = DaskDataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
+    dd = nvtabular.io.Dataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
     size = 0
     for chunk in dd.to_iter(columns=columns):
         size += chunk.shape[0]
@@ -75,11 +79,61 @@ def test_dask_dataset(datasets, engine, num_files):
     paths = paths[:num_files]
     if engine == "parquet":
         ddf0 = dask_cudf.read_parquet(paths)[mycols_pq]
-        dataset = DaskDataset(paths)
+        dataset = nvtabular.io.Dataset(paths)
         result = dataset.to_ddf(columns=mycols_pq)
     else:
         ddf0 = dask_cudf.read_csv(paths, header=False, names=allcols_csv)[mycols_csv]
-        dataset = DaskDataset(paths, header=False, names=allcols_csv)
+        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
         result = dataset.to_ddf(columns=mycols_csv)
 
     assert_eq(ddf0, result)
+
+
+@pytest.mark.xfail
+@pytest.mark.parametrize("output_format", ["binary", "parquet"])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("op_columns", [["x"], None])
+def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
+    label_names = ["label"]
+
+    # set variables
+    nfiles = 10
+    ext = ""
+    outdir = tmpdir + "/dontcare"
+    h_outdir = tmpdir + "/hugectr"
+    os.mkdir(outdir)
+    os.mkdir(h_outdir)
+
+    # process data
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
+    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess(ops.Categorify())
+    processor.finalize()
+
+    processor.apply(
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        output_path=outdir,
+        shuffle=False,
+        hugectr_gen_output=True,
+        hugectr_output_path=h_outdir,
+        hugectr_num_out_files=nfiles,
+        hugectr_output_format=output_format,
+    )
+
+    # Check files
+    ext = ""
+    if output_format == "parquet":
+        ext = "parquet"
+        assert os.path.isfile(h_outdir + "/metadata.json")
+    elif output_format == "binary":
+        ext = "data"
+
+    assert os.path.isfile(h_outdir + "/file_list.txt")
+
+    for n in range(nfiles):
+        assert os.path.isfile(os.path.join(h_outdir, str(n) + "." + ext))
