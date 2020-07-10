@@ -759,13 +759,15 @@ class Workflow(BaseWorkflow):
                     huge_ctr = nvt_io.ParquetWriter(
                         hugectr_output_path, num_out_files=hugectr_num_out_files
                     )
-            self.apply_ops(
-                dataset,
-                output_path=output_path,
-                shuffler=shuffler,
-                num_out_files=out_files_per_proc,
-                huge_ctr=huge_ctr,
-            )
+            # "Online" apply currently requires manual iteration
+            for gdf in dataset.to_iter():
+                self.apply_ops(
+                    gdf,
+                    output_path=output_path,
+                    shuffler=shuffler,
+                    num_out_files=out_files_per_proc,
+                    huge_ctr=huge_ctr,
+                )
             if shuffler:
                 shuffler.close()
             if huge_ctr:

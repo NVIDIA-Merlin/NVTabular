@@ -23,9 +23,8 @@ import pytest
 from dask.dataframe import assert_eq
 
 import nvtabular as nvt
-import nvtabular.ops as ops
-
 import nvtabular.io
+import nvtabular.ops as ops
 from nvtabular.io import Shuffler
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
@@ -89,7 +88,6 @@ def test_dask_dataset(datasets, engine, num_files):
     assert_eq(ddf0, result)
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("output_format", ["binary", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
@@ -113,10 +111,14 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
+    # Need to collect statistics first (for now)
+    processor.update_stats(dataset)
+
+    # Second "online" pass to write HugeCTR output
     processor.apply(
         dataset,
-        apply_offline=True,
-        record_stats=True,
+        apply_offline=False,
+        record_stats=False,
         output_path=outdir,
         shuffle=False,
         hugectr_gen_output=True,
