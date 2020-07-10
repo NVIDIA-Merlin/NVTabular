@@ -222,13 +222,13 @@ def _groupby_to_disk(
 
     # Update split_out
     if split_out is None:
-        split_out = {c: 1 for c in cols}
+        split_out = {c: 8 for c in cols}
     elif isinstance(split_out, int):
         split_out = {c: split_out for c in cols}
     else:
         for col in cols:
             if col not in split_out:
-                split_out[col] = 1
+                split_out[col] = 8
 
     # Make dedicated output directory for the categories
     fs = get_fs_token_paths(out_path)[0]
