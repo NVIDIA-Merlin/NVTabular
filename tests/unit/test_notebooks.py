@@ -4,10 +4,12 @@ import os
 from os.path import dirname, realpath
 
 import cudf
+import pytest
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
 
+@pytest.mark.skip(reason="this currently segfaults in pytorch")
 def test_criteo_notebook(tmpdir):
     for i in range(24):
         df = _get_random_criteo_data(10000)
