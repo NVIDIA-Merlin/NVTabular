@@ -18,24 +18,24 @@ from dask.distributed import get_worker
 
 # Use global variable as the default
 # cache when there are no distributed workers
-worker_cache = {}
+WORKER_CACHE = {}
 
 
 def get_worker_cache(name):
     """ Utility to get the `name` element of the cache
         dictionary for the current worker.  If executed
         by anything other than a distributed Dask worker,
-        we will use the global `worker_cache` variable.
+        we will use the global `WORKER_CACHE` variable.
     """
     try:
         worker = get_worker()
     except ValueError:
         # There is no dask.distributed worker.
         # Assume client/worker are same process
-        global worker_cache
-        if name not in worker_cache:
-            worker_cache[name] = {}
-        return worker_cache[name]
+        global WORKER_CACHE
+        if name not in WORKER_CACHE:
+            WORKER_CACHE[name] = {}
+        return WORKER_CACHE[name]
     if not hasattr(worker, "worker_cache"):
         worker.worker_cache = {}
     if name not in worker.worker_cache:
@@ -51,13 +51,13 @@ def clean_worker_cache(name=None):
     try:
         worker = get_worker()
     except ValueError:
-        global worker_cache
-        if worker_cache != {}:
+        global WORKER_CACHE
+        if WORKER_CACHE != {}:
             if name:
-                del worker_cache[name]
+                del WORKER_CACHE[name]
             else:
-                del worker_cache
-                worker_cache = {}
+                del WORKER_CACHE
+                WORKER_CACHE = {}
         return
     if hasattr(worker, "worker_cache"):
         if name:
