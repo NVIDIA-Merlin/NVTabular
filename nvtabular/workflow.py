@@ -30,6 +30,7 @@ from fsspec.core import get_fs_token_paths
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
+from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
 
@@ -758,13 +759,15 @@ class Workflow(BaseWorkflow):
                     huge_ctr = nvt_io.ParquetWriter(
                         hugectr_output_path, num_out_files=hugectr_num_out_files
                     )
-            self.apply_ops(
-                dataset,
-                output_path=output_path,
-                shuffler=shuffler,
-                num_out_files=out_files_per_proc,
-                huge_ctr=huge_ctr,
-            )
+            # "Online" apply currently requires manual iteration
+            for gdf in dataset.to_iter():
+                self.apply_ops(
+                    gdf,
+                    output_path=output_path,
+                    shuffler=shuffler,
+                    num_out_files=out_files_per_proc,
+                    huge_ctr=huge_ctr,
+                )
             if shuffler:
                 shuffler.close()
             if huge_ctr:
@@ -805,6 +808,12 @@ class Workflow(BaseWorkflow):
 
         # Reorder tasks for two-phase workflows
         self.reorder_tasks(end)
+
+        # Clear worker caches to be "safe"
+        if self.client:
+            self.client.run(clean_worker_cache)
+        else:
+            clean_worker_cache()
 
         self.set_ddf(dataset)
         for idx, _ in enumerate(self.phases[:end]):
