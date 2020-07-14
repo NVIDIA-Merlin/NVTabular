@@ -265,7 +265,8 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     assert num_rows == len(df_pp)
 
 
-def test_output_count(tmpdir):
+@pytest.mark.parametrize("shuffle", ["full", "partial", None])
+def test_output_count(tmpdir, shuffle):
     out_files_per_proc = 2
     out_path = os.path.join(tmpdir, "processed")
     path = os.path.join(tmpdir, "simple.parquet")
@@ -281,7 +282,7 @@ def test_output_count(tmpdir):
     processor.finalize()
 
     processor.update_stats(
-        dataset, output_path=out_path, shuffle="partial", out_files_per_proc=out_files_per_proc
+        dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
     result = glob.glob(os.path.join(out_path, "*"))
 

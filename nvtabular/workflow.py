@@ -830,11 +830,9 @@ class Workflow(BaseWorkflow):
 
     def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()
-        out_files_per_proc = out_files_per_proc or 1
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-
-        if shuffle:
+        if shuffle or out_files_per_proc:
             name = "write-processed"
             write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
             task_list = []
