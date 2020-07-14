@@ -617,30 +617,18 @@ def _write_metadata(meta_list):
 @annotate("write_output_partition", color="green", domain="nvt_python")
 def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs):
     gdf_size = len(gdf)
-    if shuffle == "full":
-        # Dont need a real sort if we are doing in memory later
-        typ = np.min_scalar_type(out_files_per_proc * 2)
-        ind = cp.random.choice(cp.arange(out_files_per_proc, dtype=typ), gdf_size)
-        result = group_split_dispatch(gdf, ind, out_files_per_proc, ignore_index=True)
-        del ind
-        del gdf
-        # Write each split to a separate file
-        for s, df in result.items():
-            prefix = fs.sep.join([processed_path, "split." + str(s)])
-            pw = get_cache().get_pq_writer(prefix, s, mem=True)
-            pw.write_table(df)
-    else:
+    if shuffle != "full":
         # We should do a real sort here
-        if shuffle == "partial":
-            gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
-        splits = list(range(0, gdf_size, int(gdf_size / out_files_per_proc)))
-        if splits[-1] < gdf_size:
-            splits.append(gdf_size)
-        # Write each split to a separate file
-        for s in range(0, len(splits) - 1):
-            prefix = fs.sep.join([processed_path, "split." + str(s)])
-            pw = get_cache().get_pq_writer(prefix, s, mem=False)
-            pw.write_table(gdf.iloc[splits[s] : splits[s + 1]])
+        gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
+    typ = np.min_scalar_type(out_files_per_proc * 2)
+    ind = cp.random.choice(cp.arange(out_files_per_proc, dtype=typ), gdf_size)
+    result = group_split_dispatch(gdf, ind, out_files_per_proc, ignore_index=True)
+    del ind
+    for s, df in result.items():
+        prefix = fs.sep.join([processed_path, "split." + str(s)])
+        pw = get_cache().get_pq_writer(prefix, s, mem=(shuffle == "full"))
+        pw.write_table(df)
+
     return gdf_size  # TODO: Make this metadata
 
 
