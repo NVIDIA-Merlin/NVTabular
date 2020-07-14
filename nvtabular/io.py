@@ -38,7 +38,6 @@ from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
-from dask.dataframe.utils import group_split_dispatch
 from dask.distributed import get_worker
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
@@ -618,18 +617,17 @@ def _write_metadata(meta_list):
 @annotate("write_output_partition", color="green", domain="nvt_python")
 def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs):
     gdf_size = len(gdf)
+    out_files_per_proc = out_files_per_proc or 1
     if shuffle and shuffle != "full":
         # We should do a real sort here
         gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
-    typ = np.min_scalar_type(out_files_per_proc * 2)
     split_size = math.ceil(gdf_size / out_files_per_proc)
-    ind = cp.ones(gdf_size, dtype=typ).cumsum() // split_size
-    result = group_split_dispatch(gdf, ind, out_files_per_proc, ignore_index=True)
+    ind = cp.ones(gdf_size).cumsum() // split_size
     del ind
-    for s, df in result.items():
+    for s in range(out_files_per_proc):
         prefix = fs.sep.join([processed_path, "split." + str(s)])
         pw = get_cache().get_pq_writer(prefix, s, mem=(shuffle == "full"))
-        pw.write_table(df)
+        pw.write_table(gdf.iloc[s * split_size : (s + 1) * split_size])
 
     return gdf_size  # TODO: Make this metadata
 
