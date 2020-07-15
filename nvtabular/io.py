@@ -15,6 +15,7 @@
 #
 
 import contextlib
+import functools
 import io
 import json
 import logging
@@ -778,7 +779,7 @@ class Dataset:
     def to_iter(self, columns=None):
         return self.engine.to_iter(columns=columns)
 
-    @property
+    @functools.cached_property
     def num_rows(self):
         return self.engine.num_rows
 
