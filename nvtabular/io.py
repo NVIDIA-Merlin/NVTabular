@@ -778,6 +778,10 @@ class Dataset:
     def to_iter(self, columns=None):
         return self.engine.to_iter(columns=columns)
 
+    @property
+    def num_rows(self):
+        return self.engine.num_rows
+
 
 class DatasetEngine:
     """ DatasetEngine Class
@@ -800,6 +804,10 @@ class DatasetEngine:
 
     def to_iter(self, columns=None):
         raise NotImplementedError(""" Return a Iterator over the cudf chunks of the dataset  """)
+
+    @property
+    def num_rows(self):
+        raise NotImplementedError(""" Returns the number of rows in the dataset """)
 
 
 class ParquetDatasetEngine(DatasetEngine):
@@ -889,6 +897,11 @@ class ParquetDatasetEngine(DatasetEngine):
                 else:
                     metadata = md
             return metadata, base
+
+    @property
+    def num_rows(self):
+        metadata, _ = self.get_metadata()
+        return metadata.num_rows
 
     @annotate("get_pieces", color="green", domain="nvt_python")
     def _get_pieces(self, metadata, data_path):
