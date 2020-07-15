@@ -705,10 +705,17 @@ class Workflow(BaseWorkflow):
         record_stats : boolean
             record the stats in file or not. Only available
             for apply_offline=True
-        shuffle : boolean
-            shuffles the data or not
+        shuffle : {"full", "partial", None}
+            Whether to shuffle output dataset. "partial" means
+            each worker will randomly shuffle data into a number
+            (`out_files_per_proc`) of different output files as the data
+            is processed. The output files are distinctly mapped to
+            each worker process. "full" means the workers will perform the
+            "partial" shuffle into BytesIO files, and then perform
+            a full shuffle of each in-memory file before writing to
+            disk. A "true" full shuffle is not yet implemented.
         output_path : string
-            path to export stats
+            path to output data
         out_files_per_proc : integer
             number of files to create (per process) after
             shuffling the data
@@ -748,7 +755,7 @@ class Workflow(BaseWorkflow):
             if shuffle:
                 if isinstance(shuffle, str):
                     raise ValueError("TODO: Align shuffling/writing API for online/offline.")
-                shuffler = nvt_io.Shuffler(output_path, num_out_files=num_out_files)
+                shuffler = nvt_io.Shuffler(output_path, num_out_files=out_files_per_proc)
             if hugectr_gen_output:
                 self.cal_col_names = False
                 if hugectr_output_format == "binary":
@@ -823,11 +830,9 @@ class Workflow(BaseWorkflow):
 
     def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()
-        out_files_per_proc = out_files_per_proc or 1
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-
-        if shuffle:
+        if shuffle or out_files_per_proc:
             name = "write-processed"
             write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
             task_list = []
