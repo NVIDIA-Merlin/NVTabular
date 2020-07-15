@@ -303,7 +303,7 @@ class GPUFileIterator:
     def _set_dtypes(self, chunk):
         for col, dtype in self.dtypes.items():
             if type(dtype) is str:
-                if "hex" in dtype:
+                if "hex" in dtype and chunk[col].dtype == "object":
                     chunk[col] = chunk[col].str.htoi()
                     chunk[col] = chunk[col].astype(np.int32)
             else:
