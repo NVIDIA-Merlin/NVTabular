@@ -22,9 +22,6 @@ import warnings
 import dask
 import yaml
 from cudf._lib.nvtx import annotate
-from dask.base import tokenize
-from dask.delayed import Delayed
-from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
@@ -833,24 +830,9 @@ class Workflow(BaseWorkflow):
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc:
-            name = "write-processed"
-            write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
-            task_list = []
-            dsk = {}
-            for idx in range(ddf.npartitions):
-                key = (write_name, idx)
-                dsk[key] = (
-                    nvt_io._write_output_partition,
-                    (ddf._name, idx),
-                    output_path,
-                    shuffle,
-                    out_files_per_proc,
-                    fs,
-                )
-                task_list.append(key)
-            dsk[name] = (nvt_io._write_metadata, task_list)
-            graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
-            out = Delayed(name, graph)
+
+            # Construct graph for Dask-based dataset write
+            out = nvt_io._to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc)
 
             # Would also be nice to clean the categorical
             # cache before the write (TODO)
