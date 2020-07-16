@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import contextlib
 import io
 import json
 import logging
@@ -45,7 +46,8 @@ from fsspec.utils import stringify_path
 
 # Use global variable as the default
 # cache when there are no distributed workers
-DEFAULT_CACHE = None
+_DEFAULT_CACHE = None
+_DEFAULT_CACHE_LOCK = threading.RLock()
 
 
 LOG = logging.getLogger("nvtabular")
@@ -574,33 +576,40 @@ class WriterCache:
         return pw
 
 
+@contextlib.contextmanager
 def get_cache():
+    with _DEFAULT_CACHE_LOCK:
+        yield _get_cache()
+
+
+def _get_cache():
     try:
         worker = get_worker()
     except ValueError:
         # There is no dask.distributed worker.
         # Assume client/worker are same process
-        global DEFAULT_CACHE
-        if DEFAULT_CACHE is None:
-            DEFAULT_CACHE = WriterCache()
-        return DEFAULT_CACHE
+        global _DEFAULT_CACHE
+        if _DEFAULT_CACHE is None:
+            _DEFAULT_CACHE = WriterCache()
+        return _DEFAULT_CACHE
     if not hasattr(worker, "pw_cache"):
         worker.pw_cache = WriterCache()
     return worker.pw_cache
 
 
 def clean_pw_cache():
-    try:
-        worker = get_worker()
-    except ValueError:
-        global DEFAULT_CACHE
-        if DEFAULT_CACHE is not None:
-            del DEFAULT_CACHE
-            DEFAULT_CACHE = None
+    with _DEFAULT_CACHE_LOCK:
+        try:
+            worker = get_worker()
+        except ValueError:
+            global _DEFAULT_CACHE
+            if _DEFAULT_CACHE is not None:
+                del _DEFAULT_CACHE
+                _DEFAULT_CACHE = None
+            return
+        if hasattr(worker, "pw_cache"):
+            del worker.pw_cache
         return
-    if hasattr(worker, "pw_cache"):
-        del worker.pw_cache
-    return
 
 
 def guid():
@@ -626,8 +635,9 @@ def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs
     del ind
     for s in range(out_files_per_proc):
         prefix = fs.sep.join([processed_path, "split." + str(s)])
-        pw = get_cache().get_pq_writer(prefix, s, mem=(shuffle == "full"))
-        pw.write_table(gdf.iloc[s * split_size : (s + 1) * split_size])
+        with get_cache() as cache:
+            pw = cache.get_pq_writer(prefix, s, mem=(shuffle == "full"))
+            pw.write_table(gdf.iloc[s * split_size : (s + 1) * split_size])
 
     return gdf_size  # TODO: Make this metadata
 
@@ -635,17 +645,19 @@ def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs
 @annotate("worker_shuffle", color="green", domain="nvt_python")
 def _worker_shuffle(processed_path, fs):
     paths = []
-    for path, (pw, bio) in get_cache().pq_writer_cache.items():
-        pw.close()
 
-        gdf = cudf.io.read_parquet(bio, index=False)
-        bio.close()
+    with get_cache() as cache:
+        for path, (pw, bio) in cache.pq_writer_cache.items():
+            pw.close()
 
-        gdf = _shuffle_gdf(gdf)
-        rel_path = "shuffled.%s.parquet" % (guid())
-        full_path = fs.sep.join([processed_path, rel_path])
-        gdf.to_parquet(full_path, compression=None, index=False)
-        paths.append(full_path)
+            gdf = cudf.io.read_parquet(bio, index=False)
+            bio.close()
+
+            gdf = _shuffle_gdf(gdf)
+            rel_path = "shuffled.%s.parquet" % (guid())
+            full_path = fs.sep.join([processed_path, rel_path])
+            gdf.to_parquet(full_path, compression=None, index=False)
+            paths.append(full_path)
     return paths
 
 
