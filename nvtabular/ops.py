@@ -800,6 +800,56 @@ class GroupBy(DFOperator):
         return new_gdf
 
 
+class MergeExternalUnique(TransformOperator):
+    """
+    "Left" of each dataset partition to an external table. The `on_ext` column
+    cannot have duplicates.  This transformation assumes that we are not changing
+    the number of rows in the dataset.
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    def __init__(
+        self,
+        df_ext,
+        on,
+        on_ext,
+        kind_ext="cudf",
+        columns=None,
+        columns_ext=None,
+        preprocessing=True,
+    ):
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
+        self.on = on
+        self.df_ext = df_ext
+        self.on_ext = on_ext
+        self.kind_ext = kind_ext
+        if self.kind_ext not in ("cudf", "pandas", "parquet", "csv"):
+            raise ValueError("kind_ext option not recognized.")
+
+    @property
+    def _ext(self):
+        # TODO: Add caching for "parquet" and csv
+        # TODO: Handle csv/parquet file paths, pandas, and arrow
+        assert isinstance(self.df_ext, cudf.DataFrame)
+        return self.df_ext
+
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        new_gdf = cudf.DataFrame()
+        tmp = "__tmp__"  # Temporary column for sorting
+        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+        tran_gdf = gdf[[self.on, tmp]].merge(
+            self._ext, left_on=self.on, right_on=self.on_ext, how="left"
+        )
+        tran_gdf = tran_gdf.sort_values(tmp)
+        tran_gdf.drop(columns=[self.on, tmp], inplace=True)
+        new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
+        new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+        gdf.drop(columns=[tmp], inplace=True)
+        return new_gdf
+
+
 class Categorify(DFOperator):
     """
     Most of the data set will contain categorical features,

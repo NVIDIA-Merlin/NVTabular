@@ -501,3 +501,25 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_merge_external(tmpdir, df, dataset, engine):
+
+    shift = 100
+    df_ext = df[["id"]].copy().sort_values("id").drop_duplicates()
+    df_ext["new_col"] = df_ext["id"] + shift
+
+    on = "id"
+    on_ext = "id"
+    merge_op = ops.MergeExternalUnique(df_ext, on, on_ext)
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    for gdf in dataset.to_iter():
+        new_gdf = merge_op.apply_op(gdf, columns_ctx, "all")
+        assert (new_gdf["id"] + shift).all() == new_gdf["new_col"].all()
+        assert gdf["id"].all() == new_gdf["id"].all()
