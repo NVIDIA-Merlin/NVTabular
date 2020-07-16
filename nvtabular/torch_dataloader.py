@@ -86,7 +86,6 @@ class TensorItr:
         for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
             yield tens[0], tens[1], tens[2]
-                
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
@@ -141,7 +140,9 @@ def _one_df(
     gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None,
 ):
     if gdf.empty:
-        import pdb; pdb.set_trace()
+        import pdb
+
+        pdb.set_trace()
     gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
     if len(gdf_cats) > 0:
@@ -226,7 +227,15 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
 
 
 class ChunkQueue:
-    def __init__(self, num_chunks=2, batch_size=1, shuffle=False, cat_cols=None, cont_cols=None, label_cols=None):
+    def __init__(
+        self,
+        num_chunks=2,
+        batch_size=1,
+        shuffle=False,
+        cat_cols=None,
+        cont_cols=None,
+        label_cols=None,
+    ):
         self.num_chunks = num_chunks
         self.batch_size = batch_size
         self.q_in = queue.Queue(num_chunks)
@@ -271,9 +280,9 @@ class ChunkQueue:
         )
         # chunk tensorized
         self.q_out.put(chunks)
-    
+
     def stitch_run(self, chunks):
-        spill_idx = int(chunks.shape[0]  / self.batch_size) * self.batch_size
+        spill_idx = int(chunks.shape[0] / self.batch_size) * self.batch_size
         spill = cudf.DataFrame(chunks.iloc[spill_idx:])
         chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
         if not chunks.empty:
@@ -310,7 +319,9 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         cats = self.kwargs.get("cats")
         conts = self.kwargs.get("conts")
         labels = self.kwargs.get("labels")
-        buff = ChunkQueue(batch_size=self.batch_size, cat_cols=cats, cont_cols=conts, label_cols=labels)
+        buff = ChunkQueue(
+            batch_size=self.batch_size, cat_cols=cats, cont_cols=conts, label_cols=labels
+        )
         threading.Thread(target=self.load_chunk, args=(buff,)).start()
         while True:
             # self.load_chunk(buff)
@@ -356,7 +367,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         for file_path in self.paths:
             (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
             chunks = int(num_rows / batch_size)
-            self.rows +=  chunks + 1 if num_rows % batch_size > 0 else chunks
+            self.rows += chunks + 1 if num_rows % batch_size > 0 else chunks
 
     def __iter__(self):
         for path in self.paths:
