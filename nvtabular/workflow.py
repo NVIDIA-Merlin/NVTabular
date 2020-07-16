@@ -15,13 +15,11 @@
 #
 import collections
 import logging
-import os
 import time
 import warnings
 
 import dask
 import yaml
-from cudf._lib.nvtx import annotate
 from dask.utils import natural_sort_key
 from fsspec.core import get_fs_token_paths
 
@@ -492,14 +490,7 @@ class BaseWorkflow:
         return gdf
 
     def apply_ops(
-        self,
-        gdf,
-        start_phase=None,
-        end_phase=None,
-        shuffler=None,
-        output_path=None,
-        num_out_files=None,
-        huge_ctr=None,
+        self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None, shuffle=None
     ):
         """
         gdf: cudf dataframe
@@ -516,30 +507,20 @@ class BaseWorkflow:
             gdf = self._run_trans_ops_for_phase(gdf, self.phases[phase_index])
             self.timings["preproc_apply"] += time.time() - start
             if phase_index == len(self.phases) - 1 and output_path:
-                self.write_df(gdf, output_path, shuffler=shuffler, num_out_files=num_out_files)
 
-            if huge_ctr and phase_index == len(self.phases) - 1:
-                if not self.cal_col_names:
+                if hasattr(writer, "need_cal_col_names"):
+                    # HugeCTR-specific
                     cat_names = self.get_final_cols_names("categorical")
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
-                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    self.cal_col_names = True
-                huge_ctr.add_data(gdf)
+                    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    delattr(writer, "need_cal_col_names")
+
+                start_write = time.time()
+                writer.add_data(gdf)
+                self.timings["shuffle_df"] += time.time() - start_write
 
         return gdf
-
-    @annotate("Write_df", color="red", domain="nvt_python")
-    def write_df(self, gdf, export_path, shuffler, num_out_files):
-        if shuffler:
-            start = time.time()
-            shuffler.add_data(gdf)
-            self.timings["shuffle_df"] += time.time() - start
-        else:
-            file_name = f"{self.current_file_num}.parquet"
-            path = os.path.join(export_path, file_name)
-            gdf.to_parquet(path, compression=None)
-            self.current_file_num += 1
 
     def _update_stats(self, stat_op):
         self.stats.update(stat_op.stats_collected())
@@ -677,6 +658,28 @@ class Workflow(BaseWorkflow):
                     op.clear()
             del stats
 
+    def reorder_tasks(self, end):
+        if end != 2:
+            # Opt only works for two phases (for now)
+            return
+        stat_tasks = []
+        trans_tasks = []
+        for idx, _ in enumerate(self.phases[:end]):
+            for task in self.phases[idx]:
+                deps = task[2]
+                if isinstance(task[0], StatOperator):
+                    if deps == ["base"]:
+                        stat_tasks.append(task)
+                    else:
+                        # This statistics depends on a transform
+                        # (Opt wont work)
+                        return
+                elif isinstance(task[0], TransformOperator):
+                    trans_tasks.append(task)
+
+        self.phases[0] = stat_tasks
+        self.phases[1] = trans_tasks
+
     def apply(
         self,
         dataset,
@@ -684,11 +687,8 @@ class Workflow(BaseWorkflow):
         record_stats=True,
         shuffle=None,
         output_path="./ds_export",
+        output_format="parquet",
         out_files_per_proc=None,
-        hugectr_gen_output=False,
-        hugectr_output_path="./hugectr",
-        hugectr_num_out_files=None,
-        hugectr_output_format=None,
         **kwargs,
     ):
         """
@@ -714,6 +714,9 @@ class Workflow(BaseWorkflow):
             disk. A "true" full shuffle is not yet implemented.
         output_path : string
             path to output data
+        output_format : {"parquet", "hugectr", None}
+            Output format for processed/shuffled dataset. If None,
+            no output dataset will be written.
         out_files_per_proc : integer
             number of files to create (per process) after
             shuffling the data
@@ -734,71 +737,59 @@ class Workflow(BaseWorkflow):
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
             self.finalize()
+
+        # Gather statstics (if apply_offline), and/or transform
+        # and write out processed data
         if apply_offline:
-            if hugectr_gen_output:
-                raise ValueError(
-                    "TODO: Support HugeCTR output for offline processing with Dask."
-                    " This is part of the larger task of aligning online/offline API."
-                )
             self.update_stats(
                 dataset,
                 output_path=output_path,
                 record_stats=record_stats,
                 shuffle=shuffle,
+                output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
             )
         else:
-            shuffler = None
-            huge_ctr = None
-            if shuffle:
-                if isinstance(shuffle, str):
-                    raise ValueError("TODO: Align shuffling/writing API for online/offline.")
-                shuffler = nvt_io.Shuffler(output_path, num_out_files=out_files_per_proc)
-            if hugectr_gen_output:
-                self.cal_col_names = False
-                if hugectr_output_format == "binary":
-                    huge_ctr = nvt_io.HugeCTRWriter(
-                        hugectr_output_path, num_out_files=hugectr_num_out_files
-                    )
-                elif hugectr_output_format == "parquet":
-                    huge_ctr = nvt_io.ParquetWriter(
-                        hugectr_output_path, num_out_files=hugectr_num_out_files
-                    )
-            # "Online" apply currently requires manual iteration
-            for gdf in dataset.to_iter():
-                self.apply_ops(
-                    gdf,
-                    output_path=output_path,
-                    shuffler=shuffler,
-                    num_out_files=out_files_per_proc,
-                    huge_ctr=huge_ctr,
+            self._iterate_and_apply(
+                dataset,
+                output_path=output_path,
+                shuffle=shuffle,
+                output_format=output_format,
+                out_files_per_proc=out_files_per_proc,
+            )
+
+    def _iterate_and_apply(
+        self,
+        dataset,
+        end_phase=None,
+        output_path=None,
+        shuffle=None,
+        output_format=None,
+        out_files_per_proc=None,
+    ):
+        # Check if we have a (supported) writer
+        writer = None
+        if output_format:
+            if output_format == "parquet":
+                writer = nvt_io.ParquetWriter(
+                    output_path, num_out_files=out_files_per_proc, shuffle=shuffle
                 )
-            if shuffler:
-                shuffler.close()
-            if huge_ctr:
-                huge_ctr.close()
+                writer.need_cal_col_names = True
+            elif output_format == "hugectr":
+                writer = nvt_io.HugeCTRWriter(
+                    output_path, num_out_files=out_files_per_proc, shuffle=shuffle
+                )
+                writer.need_cal_col_names = True
+            else:
+                raise ValueError("Output format not yet supported.")
 
-    def reorder_tasks(self, end):
-        if end != 2:
-            # Opt only works for two phases (for now)
-            return
-        stat_tasks = []
-        trans_tasks = []
-        for idx, _ in enumerate(self.phases[:end]):
-            for task in self.phases[idx]:
-                deps = task[2]
-                if isinstance(task[0], StatOperator):
-                    if deps == ["base"]:
-                        stat_tasks.append(task)
-                    else:
-                        # This statistics depends on a transform
-                        # (Opt wont work)
-                        return
-                elif isinstance(task[0], TransformOperator):
-                    trans_tasks.append(task)
+        # Iterate through dataset, apply ops, and write out processed data
+        for gdf in dataset.to_iter():
+            self.apply_ops(gdf, output_path=output_path, writer=writer, shuffle=shuffle)
 
-        self.phases[0] = stat_tasks
-        self.phases[1] = trans_tasks
+        # Close writer
+        if writer:
+            writer.close()
 
     def update_stats(
         self,
@@ -807,9 +798,13 @@ class Workflow(BaseWorkflow):
         output_path=None,
         record_stats=True,
         shuffle=None,
+        output_format=None,
         out_files_per_proc=None,
     ):
         end = end_phase if end_phase else len(self.phases)
+
+        if output_format not in ("parquet", None):
+            raise ValueError("Output format not yet supported with Dask.")
 
         # Reorder tasks for two-phase workflows
         self.reorder_tasks(end)

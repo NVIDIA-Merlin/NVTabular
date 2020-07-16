@@ -25,7 +25,7 @@ from dask.dataframe import assert_eq
 import nvtabular as nvt
 import nvtabular.io
 import nvtabular.ops as ops
-from nvtabular.io import Shuffler
+from nvtabular.io import ParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -37,9 +37,9 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = Shuffler(tmpdir, num_files)
+    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle=True)
     shuf.add_data(df1)
-    writer_files = shuf.writer.data_files
+    writer_files = shuf.data_files
     shuf.close()
     if engine == "parquet":
         df3 = cudf.read_parquet(writer_files[0])[mycols_pq]
@@ -88,7 +88,7 @@ def test_dask_dataset(datasets, engine, num_files):
     assert_eq(ddf0, result)
 
 
-@pytest.mark.parametrize("output_format", ["binary", "parquet"])
+@pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
 def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
@@ -99,10 +99,8 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     # set variables
     nfiles = 10
     ext = ""
-    outdir = tmpdir + "/dontcare"
-    h_outdir = tmpdir + "/hugectr"
+    outdir = tmpdir + "/hugectr"
     os.mkdir(outdir)
-    os.mkdir(h_outdir)
 
     # process data
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
@@ -120,22 +118,19 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
         apply_offline=False,
         record_stats=False,
         output_path=outdir,
+        out_files_per_proc=nfiles,
+        output_format=output_format,
         shuffle=False,
-        hugectr_gen_output=True,
-        hugectr_output_path=h_outdir,
-        hugectr_num_out_files=nfiles,
-        hugectr_output_format=output_format,
     )
 
     # Check files
     ext = ""
     if output_format == "parquet":
         ext = "parquet"
-        assert os.path.isfile(h_outdir + "/metadata.json")
-    elif output_format == "binary":
+        assert os.path.isfile(outdir + "/metadata.json")
+    elif output_format == "hugectr":
         ext = "data"
 
-    assert os.path.isfile(h_outdir + "/file_list.txt")
-
+    assert os.path.isfile(outdir + "/file_list.txt")
     for n in range(nfiles):
-        assert os.path.isfile(os.path.join(h_outdir, str(n) + "." + ext))
+        assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))

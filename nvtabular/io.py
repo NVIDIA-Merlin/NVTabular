@@ -81,6 +81,15 @@ def _get_read_engine(engine, file_path, **kwargs):
         raise ValueError("Unrecognized read engine.")
 
 
+def _shuffle_gdf(gdf, gdf_size=None):
+    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
+    ordered rows """
+    gdf_size = gdf_size or len(gdf)
+    arr = cp.arange(gdf_size)
+    cp.random.shuffle(arr)
+    return gdf.iloc[arr]
+
+
 #
 # GPUFileReader Base Class
 #
@@ -314,15 +323,6 @@ class GPUFileIterator:
                 chunk[col] = chunk[col].astype(dtype)
 
 
-def _shuffle_gdf(gdf, gdf_size=None):
-    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
-    ordered rows """
-    gdf_size = gdf_size or len(gdf)
-    arr = cp.arange(gdf_size)
-    cp.random.shuffle(arr)
-    return gdf.iloc[arr]
-
-
 class Writer:
     def __init__(self):
         pass
@@ -334,28 +334,23 @@ class Writer:
         pass
 
 
-class Shuffler(Writer):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
-    ):
-        self.writer = ParquetWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
-
-    def add_data(self, gdf):
-        self.writer.add_data(_shuffle_gdf(gdf))
-
-    def close(self):
-        self.writer.close()
-
-
 class ThreadedWriter(Writer):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+        shuffle=None,
     ):
         # set variables
         self.out_dir = out_dir
         self.cats = cats
         self.conts = conts
         self.labels = labels
+        self.shuffle = shuffle
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
@@ -391,6 +386,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
+
+        # Shuffle if necessary
+        if self.shuffle:
+            gdf = _shuffle_gdf(gdf)
+
         # Populate columns idxs
         if not self.col_idx:
             for i, x in enumerate(gdf.columns.values):
@@ -440,9 +440,16 @@ class ThreadedWriter(Writer):
 
 class ParquetWriter(ThreadedWriter):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+        shuffle=None,
     ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
+        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle)
         self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
         self.data_writers = [pwriter(f, compression=None) for f in self.data_files]
 
@@ -485,9 +492,16 @@ class ParquetWriter(ThreadedWriter):
 
 class HugeCTRWriter(ThreadedWriter):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+        shuffle=None,
     ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
+        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle)
         self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_files]
 
