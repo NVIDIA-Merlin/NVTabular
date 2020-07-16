@@ -789,7 +789,17 @@ class Workflow(BaseWorkflow):
 
         # Close writer
         if writer:
-            writer.close()
+            md = writer.close()
+            if md:
+                # Sort metadata by file name and convert list of
+                # tuples to a list of metadata byte-blobs
+                md_list = [
+                    m[1] for m in sorted(list(md.items()), key=lambda x: natural_sort_key(x[0]))
+                ]
+
+                # Aggregate metadata and write _metadata file
+                fs = get_fs_token_paths(str(output_path))[0]
+                nvt_io._write_pq_metadata_file(md_list, fs, str(output_path))
 
     def update_stats(
         self,
