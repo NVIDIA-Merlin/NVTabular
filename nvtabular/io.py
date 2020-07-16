@@ -616,9 +616,10 @@ def clean_pw_cache():
 
 def close_cached_pw(fs):
     md_dict = {}
-    for path, (pw, bio) in get_cache().pq_writer_cache.items():
-        fn = bio.split(fs.sep)[-1]
-        md_dict[fn] = pw.close(metadata_file_path=fn)
+    with get_cache() as cache:
+        for path, (pw, bio) in cache.pq_writer_cache.items():
+            fn = bio.split(fs.sep)[-1]
+            md_dict[fn] = pw.close(metadata_file_path=fn)
     return md_dict
 
 
