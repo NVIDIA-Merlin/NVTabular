@@ -39,7 +39,9 @@ from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
+from dask.delayed import Delayed
 from dask.distributed import get_worker
+from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
@@ -612,15 +614,19 @@ def clean_pw_cache():
         return
 
 
+def close_cached_pw(fs):
+    md_dict = {}
+    with get_cache() as cache:
+        for path, (pw, bio) in cache.pq_writer_cache.items():
+            fn = bio.split(fs.sep)[-1]
+            md_dict[fn] = pw.close(metadata_file_path=fn)
+    return md_dict
+
+
 def guid():
     """ Simple utility function to get random hex string
     """
     return uuid4().hex
-
-
-def _write_metadata(meta_list):
-    # TODO: Write _metadata file here (need to collect metadata)
-    return meta_list
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
@@ -639,13 +645,42 @@ def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs
             pw = cache.get_pq_writer(prefix, s, mem=(shuffle == "full"))
             pw.write_table(gdf.iloc[s * split_size : (s + 1) * split_size])
 
-    return gdf_size  # TODO: Make this metadata
+    return gdf_size
+
+
+def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
+    name = "write-processed"
+    write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
+    task_list = []
+    dsk = {}
+    for idx in range(ddf.npartitions):
+        key = (write_name, idx)
+        dsk[key] = (
+            _write_output_partition,
+            (ddf._name, idx),
+            output_path,
+            shuffle,
+            out_files_per_proc,
+            fs,
+        )
+        task_list.append(key)
+    dsk[name] = (lambda x: x, task_list)
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    return Delayed(name, graph)
+
+
+def _write_pq_metadata_file(md_list, fs, path):
+    if md_list:
+        metadata_path = fs.sep.join([path, "_metadata"])
+        _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
+        with fs.open(metadata_path, "wb") as fil:
+            _meta.tofile(fil)
+    return
 
 
 @annotate("worker_shuffle", color="green", domain="nvt_python")
 def _worker_shuffle(processed_path, fs):
-    paths = []
-
+    metadata_dict = {}
     with get_cache() as cache:
         for path, (pw, bio) in cache.pq_writer_cache.items():
             pw.close()
@@ -656,9 +691,10 @@ def _worker_shuffle(processed_path, fs):
             gdf = _shuffle_gdf(gdf)
             rel_path = "shuffled.%s.parquet" % (guid())
             full_path = fs.sep.join([processed_path, rel_path])
-            gdf.to_parquet(full_path, compression=None, index=False)
-            paths.append(full_path)
-    return paths
+            metadata_dict[rel_path] = gdf.to_parquet(
+                full_path, compression=None, index=False, metadata_file_path=rel_path
+            )
+        return metadata_dict
 
 
 class Dataset:
