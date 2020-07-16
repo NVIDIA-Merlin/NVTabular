@@ -25,6 +25,7 @@ import warnings
 from collections import defaultdict
 from io import BytesIO
 from itertools import islice
+from threading import Lock
 from uuid import uuid4
 
 import cudf
@@ -48,6 +49,7 @@ from fsspec.utils import stringify_path
 # Use global variable as the default
 # cache when there are no distributed workers
 DEFAULT_CACHE = None
+lock = Lock()
 
 
 LOG = logging.getLogger("nvtabular")
@@ -562,6 +564,7 @@ class WriterCache:
             pw.close()
 
     def get_pq_writer(self, prefix, s, mem):
+        lock.acquire()
         pw, fil = self.pq_writer_cache.get(prefix, (None, None))
         if pw is None:
             if mem:
@@ -573,6 +576,7 @@ class WriterCache:
                 full_path = ".".join([prefix, outfile_id])
                 pw = pwriter(full_path, compression=None)
                 self.pq_writer_cache[prefix] = (pw, full_path)
+        lock.release()
         return pw
 
 
