@@ -588,10 +588,10 @@ def _get_cache():
     except ValueError:
         # There is no dask.distributed worker.
         # Assume client/worker are same process
-        global DEFAULT_CACHE
-        if DEFAULT_CACHE is None:
-            DEFAULT_CACHE = WriterCache()
-        return DEFAULT_CACHE
+        global _DEFAULT_CACHE
+        if _DEFAULT_CACHE is None:
+            _DEFAULT_CACHE = WriterCache()
+        return _DEFAULT_CACHE
     if not hasattr(worker, "pw_cache"):
         worker.pw_cache = WriterCache()
     return worker.pw_cache
@@ -602,10 +602,10 @@ def clean_pw_cache():
         try:
             worker = get_worker()
         except ValueError:
-            global DEFAULT_CACHE
-            if DEFAULT_CACHE is not None:
-                del DEFAULT_CACHE
-                DEFAULT_CACHE = None
+            global _DEFAULT_CACHE
+            if _DEFAULT_CACHE is not None:
+                del _DEFAULT_CACHE
+                _DEFAULT_CACHE = None
             return
         if hasattr(worker, "pw_cache"):
             del worker.pw_cache
