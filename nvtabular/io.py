@@ -605,6 +605,14 @@ def clean_pw_cache():
     return
 
 
+def close_cached_pw(fs):
+    md_dict = {}
+    for path, (pw, bio) in get_cache().pq_writer_cache.items():
+        fn = bio.split(fs.sep)[-1]
+        md_dict[fn] = pw.close(metadata_file_path=fn)
+    return md_dict
+
+
 def guid():
     """ Simple utility function to get random hex string
     """
@@ -650,9 +658,18 @@ def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
     return Delayed(name, graph)
 
 
+def _write_pq_metadata_file(md_list, fs, path):
+    if md_list:
+        metadata_path = fs.sep.join([path, "_metadata"])
+        _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
+        with fs.open(metadata_path, "wb") as fil:
+            _meta.tofile(fil)
+    return
+
+
 @annotate("worker_shuffle", color="green", domain="nvt_python")
 def _worker_shuffle(processed_path, fs):
-    paths = []
+    metadata_dict = {}
     for path, (pw, bio) in get_cache().pq_writer_cache.items():
         pw.close()
 
@@ -662,9 +679,10 @@ def _worker_shuffle(processed_path, fs):
         gdf = _shuffle_gdf(gdf)
         rel_path = "shuffled.%s.parquet" % (guid())
         full_path = fs.sep.join([processed_path, rel_path])
-        gdf.to_parquet(full_path, compression=None, index=False)
-        paths.append(full_path)
-    return paths
+        metadata_dict[rel_path] = gdf.to_parquet(
+            full_path, compression=None, index=False, metadata_file_path=rel_path
+        )
+    return metadata_dict
 
 
 class Dataset:
