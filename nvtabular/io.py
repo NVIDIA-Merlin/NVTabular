@@ -14,9 +14,11 @@
 # limitations under the License.
 #
 
+import contextlib
 import io
 import json
 import logging
+import math
 import os
 import queue
 import threading
@@ -37,15 +39,17 @@ from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
-from dask.dataframe.utils import group_split_dispatch
+from dask.delayed import Delayed
 from dask.distributed import get_worker
+from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
 # Use global variable as the default
 # cache when there are no distributed workers
-DEFAULT_CACHE = None
+_DEFAULT_CACHE = None
+_DEFAULT_CACHE_LOCK = threading.RLock()
 
 
 LOG = logging.getLogger("nvtabular")
@@ -303,7 +307,7 @@ class GPUFileIterator:
     def _set_dtypes(self, chunk):
         for col, dtype in self.dtypes.items():
             if type(dtype) is str:
-                if "hex" in dtype:
+                if "hex" in dtype and chunk[col].dtype == "object":
                     chunk[col] = chunk[col].str.htoi()
                     chunk[col] = chunk[col].astype(np.int32)
             else:
@@ -574,33 +578,49 @@ class WriterCache:
         return pw
 
 
+@contextlib.contextmanager
 def get_cache():
+    with _DEFAULT_CACHE_LOCK:
+        yield _get_cache()
+
+
+def _get_cache():
     try:
         worker = get_worker()
     except ValueError:
         # There is no dask.distributed worker.
         # Assume client/worker are same process
-        global DEFAULT_CACHE
-        if DEFAULT_CACHE is None:
-            DEFAULT_CACHE = WriterCache()
-        return DEFAULT_CACHE
+        global _DEFAULT_CACHE
+        if _DEFAULT_CACHE is None:
+            _DEFAULT_CACHE = WriterCache()
+        return _DEFAULT_CACHE
     if not hasattr(worker, "pw_cache"):
         worker.pw_cache = WriterCache()
     return worker.pw_cache
 
 
 def clean_pw_cache():
-    try:
-        worker = get_worker()
-    except ValueError:
-        global DEFAULT_CACHE
-        if DEFAULT_CACHE is not None:
-            del DEFAULT_CACHE
-            DEFAULT_CACHE = None
+    with _DEFAULT_CACHE_LOCK:
+        try:
+            worker = get_worker()
+        except ValueError:
+            global _DEFAULT_CACHE
+            if _DEFAULT_CACHE is not None:
+                del _DEFAULT_CACHE
+                _DEFAULT_CACHE = None
+            return
+        if hasattr(worker, "pw_cache"):
+            del worker.pw_cache
         return
-    if hasattr(worker, "pw_cache"):
-        del worker.pw_cache
-    return
+
+
+def close_cached_pw(fs):
+    md_dict = {}
+    with get_cache() as cache:
+        for path, (pw, bio) in cache.pq_writer_cache.items():
+            fn = bio.split(fs.sep)[-1]
+            md_dict[fn] = pw.close(metadata_file_path=fn)
+    return md_dict
 
 
 def guid():
@@ -609,56 +629,72 @@ def guid():
     return uuid4().hex
 
 
-def _write_metadata(meta_list):
-    # TODO: Write _metadata file here (need to collect metadata)
-    return meta_list
-
-
 @annotate("write_output_partition", color="green", domain="nvt_python")
 def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs):
     gdf_size = len(gdf)
-    if shuffle == "full":
-        # Dont need a real sort if we are doing in memory later
-        typ = np.min_scalar_type(out_files_per_proc * 2)
-        ind = cp.random.choice(cp.arange(out_files_per_proc, dtype=typ), gdf_size)
-        result = group_split_dispatch(gdf, ind, out_files_per_proc, ignore_index=True)
-        del ind
-        del gdf
-        # Write each split to a separate file
-        for s, df in result.items():
-            prefix = fs.sep.join([processed_path, "split." + str(s)])
-            pw = get_cache().get_pq_writer(prefix, s, mem=True)
-            pw.write_table(df)
-    else:
+    out_files_per_proc = out_files_per_proc or 1
+    if shuffle and shuffle != "full":
         # We should do a real sort here
-        if shuffle == "partial":
-            gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
-        splits = list(range(0, gdf_size, int(gdf_size / out_files_per_proc)))
-        if splits[-1] < gdf_size:
-            splits.append(gdf_size)
-        # Write each split to a separate file
-        for s in range(0, len(splits) - 1):
-            prefix = fs.sep.join([processed_path, "split." + str(s)])
-            pw = get_cache().get_pq_writer(prefix, s, mem=False)
-            pw.write_table(gdf.iloc[splits[s] : splits[s + 1]])
-    return gdf_size  # TODO: Make this metadata
+        gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
+    split_size = math.ceil(gdf_size / out_files_per_proc)
+    ind = cp.ones(gdf_size).cumsum() // split_size
+    del ind
+    for s in range(out_files_per_proc):
+        prefix = fs.sep.join([processed_path, "split." + str(s)])
+        with get_cache() as cache:
+            pw = cache.get_pq_writer(prefix, s, mem=(shuffle == "full"))
+            pw.write_table(gdf.iloc[s * split_size : (s + 1) * split_size])
+
+    return gdf_size
+
+
+def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
+    name = "write-processed"
+    write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
+    task_list = []
+    dsk = {}
+    for idx in range(ddf.npartitions):
+        key = (write_name, idx)
+        dsk[key] = (
+            _write_output_partition,
+            (ddf._name, idx),
+            output_path,
+            shuffle,
+            out_files_per_proc,
+            fs,
+        )
+        task_list.append(key)
+    dsk[name] = (lambda x: x, task_list)
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    return Delayed(name, graph)
+
+
+def _write_pq_metadata_file(md_list, fs, path):
+    if md_list:
+        metadata_path = fs.sep.join([path, "_metadata"])
+        _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
+        with fs.open(metadata_path, "wb") as fil:
+            _meta.tofile(fil)
+    return
 
 
 @annotate("worker_shuffle", color="green", domain="nvt_python")
 def _worker_shuffle(processed_path, fs):
-    paths = []
-    for path, (pw, bio) in get_cache().pq_writer_cache.items():
-        pw.close()
+    metadata_dict = {}
+    with get_cache() as cache:
+        for path, (pw, bio) in cache.pq_writer_cache.items():
+            pw.close()
 
-        gdf = cudf.io.read_parquet(bio, index=False)
-        bio.close()
+            gdf = cudf.io.read_parquet(bio, index=False)
+            bio.close()
 
-        gdf = _shuffle_gdf(gdf)
-        rel_path = "shuffled.%s.parquet" % (guid())
-        full_path = fs.sep.join([processed_path, rel_path])
-        gdf.to_parquet(full_path, compression=None, index=False)
-        paths.append(full_path)
-    return paths
+            gdf = _shuffle_gdf(gdf)
+            rel_path = "shuffled.%s.parquet" % (guid())
+            full_path = fs.sep.join([processed_path, rel_path])
+            metadata_dict[rel_path] = gdf.to_parquet(
+                full_path, compression=None, index=False, metadata_file_path=rel_path
+            )
+        return metadata_dict
 
 
 class Dataset:

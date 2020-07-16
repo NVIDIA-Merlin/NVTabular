@@ -22,14 +22,13 @@ import warnings
 import dask
 import yaml
 from cudf._lib.nvtx import annotate
-from dask.base import tokenize
-from dask.delayed import Delayed
-from dask.highlevelgraph import HighLevelGraph
+from dask.utils import natural_sort_key
 from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
 from nvtabular.ds_writer import DatasetWriter
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
+from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
 
@@ -704,10 +703,17 @@ class Workflow(BaseWorkflow):
         record_stats : boolean
             record the stats in file or not. Only available
             for apply_offline=True
-        shuffle : boolean
-            shuffles the data or not
+        shuffle : {"full", "partial", None}
+            Whether to shuffle output dataset. "partial" means
+            each worker will randomly shuffle data into a number
+            (`out_files_per_proc`) of different output files as the data
+            is processed. The output files are distinctly mapped to
+            each worker process. "full" means the workers will perform the
+            "partial" shuffle into BytesIO files, and then perform
+            a full shuffle of each in-memory file before writing to
+            disk. A "true" full shuffle is not yet implemented.
         output_path : string
-            path to export stats
+            path to output data
         out_files_per_proc : integer
             number of files to create (per process) after
             shuffling the data
@@ -747,7 +753,7 @@ class Workflow(BaseWorkflow):
             if shuffle:
                 if isinstance(shuffle, str):
                     raise ValueError("TODO: Align shuffling/writing API for online/offline.")
-                shuffler = nvt_io.Shuffler(output_path, num_out_files=num_out_files)
+                shuffler = nvt_io.Shuffler(output_path, num_out_files=out_files_per_proc)
             if hugectr_gen_output:
                 self.cal_col_names = False
                 if hugectr_output_format == "binary":
@@ -758,13 +764,15 @@ class Workflow(BaseWorkflow):
                     huge_ctr = nvt_io.ParquetWriter(
                         hugectr_output_path, num_out_files=hugectr_num_out_files
                     )
-            self.apply_ops(
-                dataset,
-                output_path=output_path,
-                shuffler=shuffler,
-                num_out_files=out_files_per_proc,
-                huge_ctr=huge_ctr,
-            )
+            # "Online" apply currently requires manual iteration
+            for gdf in dataset.to_iter():
+                self.apply_ops(
+                    gdf,
+                    output_path=output_path,
+                    shuffler=shuffler,
+                    num_out_files=out_files_per_proc,
+                    huge_ctr=huge_ctr,
+                )
             if shuffler:
                 shuffler.close()
             if huge_ctr:
@@ -806,6 +814,12 @@ class Workflow(BaseWorkflow):
         # Reorder tasks for two-phase workflows
         self.reorder_tasks(end)
 
+        # Clear worker caches to be "safe"
+        if self.client:
+            self.client.run(clean_worker_cache)
+        else:
+            clean_worker_cache()
+
         self.set_ddf(dataset)
         for idx, _ in enumerate(self.phases[:end]):
             self.exec_phase(idx, record_stats=record_stats)
@@ -814,53 +828,61 @@ class Workflow(BaseWorkflow):
 
     def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()
-        out_files_per_proc = out_files_per_proc or 1
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
+        if shuffle or out_files_per_proc:
 
-        if shuffle:
-            name = "write-processed"
-            write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
-            task_list = []
-            dsk = {}
-            for idx in range(ddf.npartitions):
-                key = (write_name, idx)
-                dsk[key] = (
-                    nvt_io._write_output_partition,
-                    (ddf._name, idx),
-                    output_path,
-                    shuffle,
-                    out_files_per_proc,
-                    fs,
-                )
-                task_list.append(key)
-            dsk[name] = (nvt_io._write_metadata, task_list)
-            graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
-            out = Delayed(name, graph)
+            # Construct graph for Dask-based dataset write
+            out = nvt_io._to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc)
 
-            # Would also be nice to clean the categorical
+            # Would be nice to clean the categorical
             # cache before the write (TODO)
 
-            # Trigger the Dask-based write and do a
-            # full (per-worker) shuffle if requested
+            # Trigger write execution
             if self.client:
                 self.client.cancel(self.ddf_base_dataset)
                 self.ddf_base_dataset = None
                 out = self.client.compute(out).result()
-                if shuffle == "full":
-                    self.client.cancel(self.ddf)
-                    self.ddf = None
-                    self.client.run(nvt_io._worker_shuffle, output_path, fs)
-                self.client.run(nvt_io.clean_pw_cache)
             else:
                 self.ddf_base_dataset = None
                 out = dask.compute(out, scheduler="synchronous")[0]
-                if shuffle == "full":
+
+            # Deal with "full" (per-worker) shuffle here.
+            if shuffle == "full":
+                if self.client:
+                    self.client.cancel(self.ddf)
                     self.ddf = None
-                    nvt_io._worker_shuffle(output_path, fs)
+                    worker_md = self.client.run(nvt_io._worker_shuffle, output_path, fs)
+                    worker_md = list(collections.ChainMap(*worker_md.values()).items())
+                else:
+                    self.ddf = None
+                    worker_md = nvt_io._worker_shuffle(output_path, fs)
+                    worker_md = list(worker_md.items())
+
+            else:
+                # Collect parquet metadata while closing
+                # ParquetWriter object(s)
+                if self.client:
+                    worker_md = self.client.run(nvt_io.close_cached_pw, fs)
+                    worker_md = list(collections.ChainMap(*worker_md.values()).items())
+                else:
+                    worker_md = nvt_io.close_cached_pw(fs)
+                    worker_md = list(worker_md.items())
+
+            # Sort metadata by file name and convert list of
+            # tuples to a list of metadata byte-blobs
+            md_list = [m[1] for m in sorted(worker_md, key=lambda x: natural_sort_key(x[0]))]
+
+            # Aggregate metadata and write _metadata file
+            nvt_io._write_pq_metadata_file(md_list, fs, output_path)
+
+            # Close ParquetWriter Objects
+            if self.client:
+                self.client.run(nvt_io.clean_pw_cache)
+            else:
                 nvt_io.clean_pw_cache()
 
-            return out
+            return
 
         # Default (shuffle=False): Just use dask_cudf.to_parquet
         fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
