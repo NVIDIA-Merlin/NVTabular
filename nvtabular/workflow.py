@@ -797,7 +797,7 @@ class Workflow(BaseWorkflow):
     ):
         """ Build Dask-task graph for workflow.
 
-            Graph is only executed if `output_format` is specified.
+            Full graph is only executed if `output_format` is specified.
         """
         end = end_phase if end_phase else len(self.phases)
 
@@ -817,7 +817,9 @@ class Workflow(BaseWorkflow):
         if apply_ops:
             for idx, _ in enumerate(self.phases[:end]):
                 self.exec_phase(idx, record_stats=record_stats)
-        if output_path:
+        if output_format:
+            output_path = output_path or "./"
+            output_path = str(output_path)
             self.ddf_to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
 
     def write_to_dataset(
