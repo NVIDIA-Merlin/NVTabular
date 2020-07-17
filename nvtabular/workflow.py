@@ -23,7 +23,6 @@ import yaml
 from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
-from nvtabular.ds_writer import DatasetWriter
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
@@ -228,22 +227,6 @@ class BaseWorkflow:
         data.
         """
         self.load_config(self.config)
-
-    def write_to_dataset(self, path, dataset, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
-        """ Write data to shuffled parquet dataset.
-        """
-        if isinstance(dataset, nvt_io.Dataset):
-            itr = dataset.to_iter()
-        else:
-            itr = dataset
-
-        writer = DatasetWriter(path, nfiles=nfiles)
-
-        for gdf in itr:
-            if apply_ops:
-                gdf = self.apply_ops(gdf)
-            writer.write(gdf, shuffle=shuffle)
-        writer.write_metadata()
 
     def load_config(self, config, pro=False):
         """
@@ -505,10 +488,9 @@ class BaseWorkflow:
             start = time.time()
             gdf = self._run_trans_ops_for_phase(gdf, self.phases[phase_index])
             self.timings["preproc_apply"] += time.time() - start
-            if phase_index == len(self.phases) - 1 and output_path:
+            if phase_index == len(self.phases) - 1 and writer and output_path:
 
                 if writer.need_cal_col_names:
-                    # HugeCTR-specific
                     cat_names = self.get_final_cols_names("categorical")
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
@@ -765,6 +747,7 @@ class Workflow(BaseWorkflow):
         shuffle=None,
         output_format=None,
         out_files_per_proc=None,
+        apply_ops=True,
     ):
         # Check if we have a (supported) writer
         writer = None
@@ -777,20 +760,22 @@ class Workflow(BaseWorkflow):
             else:
                 raise ValueError("Output format not yet supported.")
             output_path = output_path or "./"
-            fs = get_fs_token_paths(str(output_path))[0]
+            output_path = str(output_path)
+            fs = get_fs_token_paths(output_path)[0]
             writer = writer_cls(
                 output_path, num_out_files=out_files_per_proc, shuffle=shuffle, fs=fs
             )
 
         # Iterate through dataset, apply ops, and write out processed data
-        for gdf in dataset.to_iter():
-            self.apply_ops(gdf, output_path=output_path, writer=writer, shuffle=shuffle)
+        if apply_ops:
+            for gdf in dataset.to_iter():
+                self.apply_ops(gdf, output_path=output_path, writer=writer, shuffle=shuffle)
 
         # Close writer and write general/specialized metadata
         if writer:
             general_md, special_md = writer.close()
-            writer_cls.write_special_metadata(special_md, fs, str(output_path))
-            writer_cls.write_general_metadata(general_md, fs, str(output_path))
+            writer_cls.write_special_metadata(special_md, fs, output_path)
+            writer_cls.write_general_metadata(general_md, fs, output_path)
 
     def update_stats(
         self,
@@ -801,6 +786,7 @@ class Workflow(BaseWorkflow):
         shuffle=None,
         output_format=None,
         out_files_per_proc=None,
+        apply_ops=True,
     ):
         end = end_phase if end_phase else len(self.phases)
 
@@ -817,10 +803,46 @@ class Workflow(BaseWorkflow):
             clean_worker_cache()
 
         self.set_ddf(dataset)
-        for idx, _ in enumerate(self.phases[:end]):
-            self.exec_phase(idx, record_stats=record_stats)
+        if apply_ops:
+            for idx, _ in enumerate(self.phases[:end]):
+                self.exec_phase(idx, record_stats=record_stats)
         if output_path:
             self.ddf_to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
+
+    def write_to_dataset(
+        self,
+        path,
+        dataset,
+        apply_ops=False,
+        nfiles=1,
+        shuffle=True,
+        output_format="parquet",
+        iterate=True,
+    ):
+        """ Write data to shuffled parquet dataset.
+
+            Assumes statistics are already gathered
+        """
+        path = str(path)
+        if iterate:
+            self.online_apply(
+                dataset,
+                output_path=path,
+                shuffle=shuffle,
+                output_format=output_format,
+                out_files_per_proc=nfiles,
+                apply_ops=apply_ops,
+            )
+        else:
+            self.update_stats(
+                dataset,
+                output_path=path,
+                record_stats=False,
+                shuffle=shuffle,
+                output_format=output_format,
+                out_files_per_proc=nfiles,
+                apply_ops=apply_ops,
+            )
 
     def ddf_to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()

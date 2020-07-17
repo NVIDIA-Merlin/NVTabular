@@ -91,9 +91,7 @@ def test_gpu_workflow_api(
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    dataset_2 = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
-    )
+    dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -167,9 +165,7 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    dataset_2 = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
-    )
+    dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -251,9 +247,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
 
-    dataset_2 = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
-    )
+    dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
