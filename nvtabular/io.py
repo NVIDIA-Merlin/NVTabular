@@ -164,6 +164,57 @@ def _shuffle_gdf(gdf, gdf_size=None):
     return gdf.iloc[arr]
 
 
+def _write_filelist(out_dir, num_out_files, data_paths):
+    file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
+    file_list_writer.write(str(num_out_files) + "\n")
+    for f in data_paths:
+        file_list_writer.write(f + "\n")
+    file_list_writer.close()
+
+
+def _write_general_metadata(out_dir, data_paths, num_samples, cats, conts, labels, col_idx):
+    if cats is None:
+        return
+    metadata_writer = open(os.path.join(out_dir, "metadata.json"), "w")
+    data = {}
+    data["file_stats"] = []
+    for i in range(len(data_paths)):
+        data["file_stats"].append({"file_name": f"{i}.data", "num_rows": num_samples[i]})
+    # cats
+    data["cats"] = []
+    for c in cats:
+        data["cats"].append({"col_name": c, "index": col_idx[c]})
+    # conts
+    data["conts"] = []
+    for c in conts:
+        data["conts"].append({"col_name": c, "index": col_idx[c]})
+    # labels
+    data["labels"] = []
+    for c in labels:
+        data["labels"].append({"col_name": c, "index": col_idx[c]})
+
+    json.dump(data, metadata_writer)
+    metadata_writer.close()
+
+
+def _write_hugectr_binary_metadata(data_writers, num_samples, cats, conts, labels):
+    if cats is None:
+        return
+    for i in range(len(data_writers)):
+        data_writers[i].seek(0)
+        # error_check (0: no error check; 1: check_num)
+        # num of samples in this file
+        # Dimension of the labels
+        # Dimension of the features
+        # slot_num for each embedding
+        # reserved for future use
+        header = np.array(
+            [0, num_samples[i], len(labels), len(conts), len(cats), 0, 0, 0], dtype=np.longlong
+        )
+
+        data_writers[i].write(header.tobytes())
+
+
 #
 # GPUFileReader Base Class
 #
@@ -420,6 +471,7 @@ class ThreadedWriter(Writer):
         shuffle=None,
     ):
         # set variables
+        self.hugectr_bin = False
         self.out_dir = out_dir
         self.cats = cats
         self.conts = conts
@@ -486,16 +538,6 @@ class ThreadedWriter(Writer):
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
 
-    def _write_metadata(self):
-        return
-
-    def _write_filelist(self):
-        file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
-        file_list_writer.write(str(self.num_out_files) + "\n")
-        for f in self.data_paths:
-            file_list_writer.write(f + "\n")
-        file_list_writer.close()
-
     def _close_writers(self):
         for writer in self.data_writers:
             writer.close()
@@ -510,8 +552,21 @@ class ThreadedWriter(Writer):
         self.queue.join()
 
         if write_metadata:
-            self._write_filelist()
-            self._write_metadata()
+            _write_filelist(self.out_dir, self.num_out_files, self.data_paths)
+            if self.hugectr_bin:
+                _write_hugectr_binary_metadata(
+                    self.data_writers, self.num_samples, self.cats, self.conts, self.labels
+                )
+            else:
+                _write_general_metadata(
+                    self.out_dir,
+                    self.data_paths,
+                    self.num_samples,
+                    self.cats,
+                    self.conts,
+                    self.labels,
+                    self.col_idx,
+                )
 
         # Close writers
         return self._close_writers()
@@ -551,30 +606,6 @@ class ParquetWriter(ThreadedWriter):
             finally:
                 self.queue.task_done()
 
-    def _write_metadata(self):
-        if self.cats is None:
-            return
-        metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
-        data = {}
-        data["file_stats"] = []
-        for i in range(len(self.data_paths)):
-            data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
-        # cats
-        data["cats"] = []
-        for c in self.cats:
-            data["cats"].append({"col_name": c, "index": self.col_idx[c]})
-        # conts
-        data["conts"] = []
-        for c in self.conts:
-            data["conts"].append({"col_name": c, "index": self.col_idx[c]})
-        # labels
-        data["labels"] = []
-        for c in self.labels:
-            data["labels"].append({"col_name": c, "index": self.col_idx[c]})
-
-        json.dump(data, metadata_writer)
-        metadata_writer.close()
-
     def _close_writers(self):
         md_dict = {}
         for writer, fn in zip(self.data_writers, self.data_fns):
@@ -596,6 +627,7 @@ class HugeCTRWriter(ThreadedWriter):
         super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle)
         self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_paths]
+        self.hugectr_bin = True
 
     def _write_thread(self):
         while True:
@@ -613,33 +645,6 @@ class HugeCTRWriter(ThreadedWriter):
                         self.data_writers[idx].write(df.to_numpy().tobytes())
             finally:
                 self.queue.task_done()
-
-    def _write_metadata(self):
-        if self.cats is None:
-            return
-        for i in range(len(self.data_writers)):
-            self.data_writers[i].seek(0)
-            # error_check (0: no error check; 1: check_num)
-            # num of samples in this file
-            # Dimension of the labels
-            # Dimension of the features
-            # slot_num for each embedding
-            # reserved for future use
-            header = np.array(
-                [
-                    0,
-                    self.num_samples[i],
-                    len(self.labels),
-                    len(self.conts),
-                    len(self.cats),
-                    0,
-                    0,
-                    0,
-                ],
-                dtype=np.longlong,
-            )
-
-            self.data_writers[i].write(header.tobytes())
 
 
 def device_mem_size(kind="total"):
