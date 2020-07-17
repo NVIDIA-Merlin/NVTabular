@@ -570,23 +570,16 @@ class ThreadedWriter(Writer):
 
 
 class ParquetWriter(ThreadedWriter):
-    def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        cats=None,
-        conts=None,
-        labels=None,
-        shuffle=None,
-        fs=None,
-    ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle, fs)
+    def __init__(self, out_dir, use_guid=False, **kwargs):
+        super().__init__(out_dir, **kwargs)
         self.data_fns = []
         self.data_paths = []
         self.data_writers = []
-        for i in range(num_out_files):
-            fn = f"{i}.parquet"
+        for i in range(self.num_out_files):
+            if use_guid:
+                fn = f"{i}.{guid()}.parquet"
+            else:
+                fn = f"{i}.parquet"
             path = os.path.join(out_dir, fn)
             self.data_fns.append(fn)
             self.data_paths.append(path)
@@ -621,19 +614,9 @@ class ParquetWriter(ThreadedWriter):
 
 
 class HugeCTRWriter(ThreadedWriter):
-    def __init__(
-        self,
-        out_dir,
-        num_out_files=30,
-        num_threads=4,
-        cats=None,
-        conts=None,
-        labels=None,
-        shuffle=None,
-        fs=None,
-    ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle, fs)
-        self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
+    def __init__(self, out_dir, **kwargs):
+        super().__init__(out_dir, **kwargs)
+        self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_paths]
         self.hugectr_bin = True
 
