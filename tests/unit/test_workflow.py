@@ -279,7 +279,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     )
     processor.add_preprocess(ops.Normalize())
     processor.finalize()
-    processor.update_stats(
+    processor.apply(
         dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
 

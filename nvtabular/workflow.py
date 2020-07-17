@@ -503,7 +503,7 @@ class BaseWorkflow:
 
         return gdf
 
-    def _update_stats(self, stat_op):
+    def _update_statistics(self, stat_op):
         self.stats.update(stat_op.stats_collected())
 
     def save_stats(self, path):
@@ -629,13 +629,13 @@ class Workflow(BaseWorkflow):
                 for r in self.client.compute(stats):
                     computed_stats, op = r.result()
                     op.finalize(computed_stats)
-                    self._update_stats(op)
+                    self._update_statistics(op)
                     op.clear()
             else:
                 for r in dask.compute(stats, scheduler="synchronous")[0]:
                     computed_stats, op = r
                     op.finalize(computed_stats)
-                    self._update_stats(op)
+                    self._update_statistics(op)
                     op.clear()
             del stats
 
@@ -722,7 +722,7 @@ class Workflow(BaseWorkflow):
         # Gather statstics (if apply_offline), and/or transform
         # and write out processed data
         if apply_offline:
-            self.update_stats(
+            self.build_and_process_graph(
                 dataset,
                 output_path=output_path,
                 record_stats=record_stats,
@@ -731,7 +731,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
             )
         else:
-            self.online_apply(
+            self.iterate_online(
                 dataset,
                 output_path=output_path,
                 shuffle=shuffle,
@@ -739,7 +739,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
             )
 
-    def online_apply(
+    def iterate_online(
         self,
         dataset,
         end_phase=None,
@@ -749,6 +749,8 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
     ):
+        """ Iterate through dataset and (optionally) apply/shuffle/write.
+        """
         # Check if we have a (supported) writer
         writer = None
         writer_cls = None
@@ -777,7 +779,12 @@ class Workflow(BaseWorkflow):
             writer_cls.write_special_metadata(special_md, fs, output_path)
             writer_cls.write_general_metadata(general_md, fs, output_path)
 
-    def update_stats(
+    def update_stats(self, dataset, end_phase=None):
+        """ Colllect statistics only.
+        """
+        self.build_and_process_graph(dataset, end_phase=end_phase, record_stats=True)
+
+    def build_and_process_graph(
         self,
         dataset,
         end_phase=None,
@@ -788,6 +795,10 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
     ):
+        """ Build Dask-task graph for workflow.
+
+            Graph is only executed if `output_format` is specified.
+        """
         end = end_phase if end_phase else len(self.phases)
 
         if output_format not in ("parquet", None):
@@ -821,11 +832,11 @@ class Workflow(BaseWorkflow):
     ):
         """ Write data to shuffled parquet dataset.
 
-            Assumes statistics are already gathered
+            Assumes statistics are already gathered.
         """
         path = str(path)
         if iterate:
-            self.online_apply(
+            self.iterate_online(
                 dataset,
                 output_path=path,
                 shuffle=shuffle,
@@ -834,7 +845,7 @@ class Workflow(BaseWorkflow):
                 apply_ops=apply_ops,
             )
         else:
-            self.update_stats(
+            self.build_and_process_graph(
                 dataset,
                 output_path=path,
                 record_stats=False,
@@ -844,7 +855,16 @@ class Workflow(BaseWorkflow):
                 apply_ops=apply_ops,
             )
 
-    def ddf_to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
+    def ddf_to_dataset(
+        self, output_path, shuffle=None, out_files_per_proc=None, output_format="parquet"
+    ):
+        """ Dask-based dataset output.
+
+            Currently supports parquet only.
+            TODO: Leverage `ThreadedWriter` implementations.
+        """
+        if output_format != "parquet":
+            raise ValueError("Only parquet output supported with Dask.")
         ddf = self.get_ddf()
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
