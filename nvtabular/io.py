@@ -197,24 +197,6 @@ def _write_general_metadata(out_dir, data_paths, num_samples, cats, conts, label
     metadata_writer.close()
 
 
-def _write_hugectr_binary_metadata(data_writers, num_samples, cats, conts, labels):
-    if cats is None:
-        return
-    for i in range(len(data_writers)):
-        data_writers[i].seek(0)
-        # error_check (0: no error check; 1: check_num)
-        # num of samples in this file
-        # Dimension of the labels
-        # Dimension of the features
-        # slot_num for each embedding
-        # reserved for future use
-        header = np.array(
-            [0, num_samples[i], len(labels), len(conts), len(cats), 0, 0, 0], dtype=np.longlong
-        )
-
-        data_writers[i].write(header.tobytes())
-
-
 #
 # GPUFileReader Base Class
 #
@@ -553,11 +535,7 @@ class ThreadedWriter(Writer):
 
         if write_metadata:
             _write_filelist(self.out_dir, self.num_out_files, self.data_paths)
-            if self.hugectr_bin:
-                _write_hugectr_binary_metadata(
-                    self.data_writers, self.num_samples, self.cats, self.conts, self.labels
-                )
-            else:
+            if not self.hugectr_bin:
                 _write_general_metadata(
                     self.out_dir,
                     self.data_paths,
@@ -645,6 +623,34 @@ class HugeCTRWriter(ThreadedWriter):
                         self.data_writers[idx].write(df.to_numpy().tobytes())
             finally:
                 self.queue.task_done()
+
+    def _close_writers(self):
+        for i, writer in enumerate(self.data_writers):
+            if self.cats:
+                # Write HugeCTR Metadata
+                writer.seek(0)
+                # error_check (0: no error check; 1: check_num)
+                # num of samples in this file
+                # Dimension of the labels
+                # Dimension of the features
+                # slot_num for each embedding
+                # reserved for future use
+                header = np.array(
+                    [
+                        0,
+                        self.num_samples[i],
+                        len(self.labels),
+                        len(self.conts),
+                        len(self.cats),
+                        0,
+                        0,
+                        0,
+                    ],
+                    dtype=np.longlong,
+                )
+                writer.write(header.tobytes())
+            writer.close()
+        return None
 
 
 def device_mem_size(kind="total"):
