@@ -164,39 +164,6 @@ def _shuffle_gdf(gdf, gdf_size=None):
     return gdf.iloc[arr]
 
 
-def _write_filelist(out_dir, num_out_files, data_paths):
-    file_list_writer = open(os.path.join(out_dir, "file_list.txt"), "w")
-    file_list_writer.write(str(num_out_files) + "\n")
-    for f in data_paths:
-        file_list_writer.write(f + "\n")
-    file_list_writer.close()
-
-
-def _write_general_metadata(out_dir, data_paths, num_samples, cats, conts, labels, col_idx):
-    if cats is None:
-        return
-    metadata_writer = open(os.path.join(out_dir, "metadata.json"), "w")
-    data = {}
-    data["file_stats"] = []
-    for i in range(len(data_paths)):
-        data["file_stats"].append({"file_name": f"{i}.data", "num_rows": num_samples[i]})
-    # cats
-    data["cats"] = []
-    for c in cats:
-        data["cats"].append({"col_name": c, "index": col_idx[c]})
-    # conts
-    data["conts"] = []
-    for c in conts:
-        data["conts"].append({"col_name": c, "index": col_idx[c]})
-    # labels
-    data["labels"] = []
-    for c in labels:
-        data["labels"].append({"col_name": c, "index": col_idx[c]})
-
-    json.dump(data, metadata_writer)
-    metadata_writer.close()
-
-
 #
 # GPUFileReader Base Class
 #
@@ -437,6 +404,17 @@ class Writer:
     def add_data(self, gdf):
         raise NotImplementedError()
 
+    def package_general_metadata(self):
+        raise NotImplementedError()
+
+    @classmethod
+    def write_general_metadata(cls, data, fs, out_dir):
+        raise NotImplementedError()
+
+    @classmethod
+    def write_special_metadata(cls, data, fs, out_dir):
+        raise NotImplementedError()
+
     def close(self):
         pass
 
@@ -451,6 +429,7 @@ class ThreadedWriter(Writer):
         conts=None,
         labels=None,
         shuffle=None,
+        fs=None,
     ):
         # set variables
         self.hugectr_bin = False
@@ -470,6 +449,10 @@ class ThreadedWriter(Writer):
         self.num_samples = [0] * num_out_files
 
         self.data_paths = None
+        self.need_cal_col_names = True
+
+        # Resolve file system
+        self.fs = fs or get_fs_token_paths(str(out_dir))[0]
 
         # create thread queue and locks
         self.queue = queue.Queue(num_threads)
@@ -520,6 +503,53 @@ class ThreadedWriter(Writer):
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
 
+    def package_general_metadata(self):
+        data = {}
+        if self.cats is None:
+            return data
+        data["data_paths"] = self.data_paths
+        data["file_stats"] = []
+        for i, path in enumerate(self.data_paths):
+            fn = path.split(self.fs.sep)[-1]
+            data["file_stats"].append({"file_name": fn, "num_rows": self.num_samples[i]})
+        # cats
+        data["cats"] = []
+        for c in self.cats:
+            data["cats"].append({"col_name": c, "index": self.col_idx[c]})
+        # conts
+        data["conts"] = []
+        for c in self.conts:
+            data["conts"].append({"col_name": c, "index": self.col_idx[c]})
+        # labels
+        data["labels"] = []
+        for c in self.labels:
+            data["labels"].append({"col_name": c, "index": self.col_idx[c]})
+
+        return data
+
+    @classmethod
+    def write_general_metadata(cls, data, fs, out_dir):
+        if not data:
+            return
+        data_paths = data.pop("data_paths", [])
+        num_out_files = len(data_paths)
+
+        # Write file_list
+        file_list_writer = fs.open(fs.sep.join([out_dir, "file_list.txt"]), "w")
+        file_list_writer.write(str(num_out_files) + "\n")
+        for f in data_paths:
+            file_list_writer.write(f + "\n")
+        file_list_writer.close()
+
+        # Write metadata json
+        metadata_writer = fs.open(fs.sep.join([out_dir, "metadata.json"]), "w")
+        json.dump(data, metadata_writer)
+        metadata_writer.close()
+
+    @classmethod
+    def write_special_metadata(cls, data, fs, out_dir):
+        pass
+
     def _close_writers(self):
         for writer in self.data_writers:
             writer.close()
@@ -533,21 +563,10 @@ class ThreadedWriter(Writer):
         # wait for pending writes to finish
         self.queue.join()
 
-        if write_metadata:
-            _write_filelist(self.out_dir, self.num_out_files, self.data_paths)
-            if not self.hugectr_bin:
-                _write_general_metadata(
-                    self.out_dir,
-                    self.data_paths,
-                    self.num_samples,
-                    self.cats,
-                    self.conts,
-                    self.labels,
-                    self.col_idx,
-                )
-
-        # Close writers
-        return self._close_writers()
+        # Close writers and collect various metadata
+        _gen_meta = self.package_general_metadata()
+        _special_meta = self._close_writers()
+        return _gen_meta, _special_meta
 
 
 class ParquetWriter(ThreadedWriter):
@@ -560,8 +579,9 @@ class ParquetWriter(ThreadedWriter):
         conts=None,
         labels=None,
         shuffle=None,
+        fs=None,
     ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle)
+        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle, fs)
         self.data_fns = []
         self.data_paths = []
         self.data_writers = []
@@ -584,6 +604,15 @@ class ParquetWriter(ThreadedWriter):
             finally:
                 self.queue.task_done()
 
+    @classmethod
+    def write_special_metadata(cls, md, fs, out_dir):
+        # Sort metadata by file name and convert list of
+        # tuples to a list of metadata byte-blobs
+        md_list = [m[1] for m in sorted(list(md.items()), key=lambda x: natural_sort_key(x[0]))]
+
+        # Aggregate metadata and write _metadata file
+        _write_pq_metadata_file(md_list, fs, out_dir)
+
     def _close_writers(self):
         md_dict = {}
         for writer, fn in zip(self.data_writers, self.data_fns):
@@ -601,8 +630,9 @@ class HugeCTRWriter(ThreadedWriter):
         conts=None,
         labels=None,
         shuffle=None,
+        fs=None,
     ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle)
+        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels, shuffle, fs)
         self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_paths]
         self.hugectr_bin = True

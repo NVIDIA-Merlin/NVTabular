@@ -508,13 +508,13 @@ class BaseWorkflow:
             self.timings["preproc_apply"] += time.time() - start
             if phase_index == len(self.phases) - 1 and output_path:
 
-                if hasattr(writer, "need_cal_col_names"):
+                if writer.need_cal_col_names:
                     # HugeCTR-specific
                     cat_names = self.get_final_cols_names("categorical")
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
                     writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    delattr(writer, "need_cal_col_names")
+                    writer.need_cal_col_names = False
 
                 start_write = time.time()
                 writer.add_data(gdf)
@@ -750,7 +750,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
             )
         else:
-            self._iterate_and_apply(
+            self.online_apply(
                 dataset,
                 output_path=output_path,
                 shuffle=shuffle,
@@ -758,7 +758,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
             )
 
-    def _iterate_and_apply(
+    def online_apply(
         self,
         dataset,
         end_phase=None,
@@ -769,37 +769,29 @@ class Workflow(BaseWorkflow):
     ):
         # Check if we have a (supported) writer
         writer = None
+        writer_cls = None
         if output_format:
             if output_format == "parquet":
-                writer = nvt_io.ParquetWriter(
-                    output_path, num_out_files=out_files_per_proc, shuffle=shuffle
-                )
-                writer.need_cal_col_names = True
+                writer_cls = nvt_io.ParquetWriter
             elif output_format == "hugectr":
-                writer = nvt_io.HugeCTRWriter(
-                    output_path, num_out_files=out_files_per_proc, shuffle=shuffle
-                )
-                writer.need_cal_col_names = True
+                writer_cls = nvt_io.HugeCTRWriter
             else:
                 raise ValueError("Output format not yet supported.")
+            output_path = output_path or "./"
+            fs = get_fs_token_paths(str(output_path))[0]
+            writer = writer_cls(
+                output_path, num_out_files=out_files_per_proc, shuffle=shuffle, fs=fs
+            )
 
         # Iterate through dataset, apply ops, and write out processed data
         for gdf in dataset.to_iter():
             self.apply_ops(gdf, output_path=output_path, writer=writer, shuffle=shuffle)
 
-        # Close writer
+        # Close writer and write general/specialized metadata
         if writer:
-            md = writer.close()
-            if md:
-                # Sort metadata by file name and convert list of
-                # tuples to a list of metadata byte-blobs
-                md_list = [
-                    m[1] for m in sorted(list(md.items()), key=lambda x: natural_sort_key(x[0]))
-                ]
-
-                # Aggregate metadata and write _metadata file
-                fs = get_fs_token_paths(str(output_path))[0]
-                nvt_io._write_pq_metadata_file(md_list, fs, str(output_path))
+            general_md, special_md = writer.close()
+            writer_cls.write_special_metadata(special_md, fs, str(output_path))
+            writer_cls.write_general_metadata(general_md, fs, str(output_path))
 
     def update_stats(
         self,
