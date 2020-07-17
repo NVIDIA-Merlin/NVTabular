@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import collections
 import contextlib
 import io
 import json
@@ -710,7 +711,7 @@ def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs
     return gdf_size
 
 
-def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
+def _ddf_to_pq_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
     name = "write-processed"
     write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
     task_list = []
@@ -729,6 +730,42 @@ def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
     dsk[name] = (lambda x: x, task_list)
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
     return Delayed(name, graph)
+
+
+def _finish_pq_dataset(client, ddf, shuffle, output_path, fs):
+    # Deal with "full" (per-worker) shuffle here.
+    if shuffle == "full":
+        if client:
+            client.cancel(ddf)
+            ddf = None
+            worker_md = client.run(_worker_shuffle, output_path, fs)
+            worker_md = list(collections.ChainMap(*worker_md.values()).items())
+        else:
+            ddf = None
+            worker_md = _worker_shuffle(output_path, fs)
+            worker_md = list(worker_md.items())
+    else:
+        # Collect parquet metadata while closing
+        # ParquetWriter object(s)
+        if client:
+            worker_md = client.run(close_cached_pw, fs)
+            worker_md = list(collections.ChainMap(*worker_md.values()).items())
+        else:
+            worker_md = close_cached_pw(fs)
+            worker_md = list(worker_md.items())
+
+    # Sort metadata by file name and convert list of
+    # tuples to a list of metadata byte-blobs
+    md_list = [m[1] for m in sorted(worker_md, key=lambda x: natural_sort_key(x[0]))]
+
+    # Aggregate metadata and write _metadata file
+    _write_pq_metadata_file(md_list, fs, output_path)
+
+    # Close ParquetWriter Objects
+    if client:
+        client.run(clean_pw_cache)
+    else:
+        clean_pw_cache()
 
 
 def _write_pq_metadata_file(md_list, fs, path):

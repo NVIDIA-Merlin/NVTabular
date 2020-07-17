@@ -20,7 +20,6 @@ import warnings
 
 import dask
 import yaml
-from dask.utils import natural_sort_key
 from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
@@ -821,16 +820,16 @@ class Workflow(BaseWorkflow):
         for idx, _ in enumerate(self.phases[:end]):
             self.exec_phase(idx, record_stats=record_stats)
         if output_path:
-            self.to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
+            self.ddf_to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
 
-    def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
+    def ddf_to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
         ddf = self.get_ddf()
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc:
 
             # Construct graph for Dask-based dataset write
-            out = nvt_io._to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc)
+            out = nvt_io._ddf_to_pq_dataset(ddf, fs, output_path, shuffle, out_files_per_proc)
 
             # Would be nice to clean the categorical
             # cache before the write (TODO)
@@ -844,40 +843,8 @@ class Workflow(BaseWorkflow):
                 self.ddf_base_dataset = None
                 out = dask.compute(out, scheduler="synchronous")[0]
 
-            # Deal with "full" (per-worker) shuffle here.
-            if shuffle == "full":
-                if self.client:
-                    self.client.cancel(self.ddf)
-                    self.ddf = None
-                    worker_md = self.client.run(nvt_io._worker_shuffle, output_path, fs)
-                    worker_md = list(collections.ChainMap(*worker_md.values()).items())
-                else:
-                    self.ddf = None
-                    worker_md = nvt_io._worker_shuffle(output_path, fs)
-                    worker_md = list(worker_md.items())
-
-            else:
-                # Collect parquet metadata while closing
-                # ParquetWriter object(s)
-                if self.client:
-                    worker_md = self.client.run(nvt_io.close_cached_pw, fs)
-                    worker_md = list(collections.ChainMap(*worker_md.values()).items())
-                else:
-                    worker_md = nvt_io.close_cached_pw(fs)
-                    worker_md = list(worker_md.items())
-
-            # Sort metadata by file name and convert list of
-            # tuples to a list of metadata byte-blobs
-            md_list = [m[1] for m in sorted(worker_md, key=lambda x: natural_sort_key(x[0]))]
-
-            # Aggregate metadata and write _metadata file
-            nvt_io._write_pq_metadata_file(md_list, fs, output_path)
-
-            # Close ParquetWriter Objects
-            if self.client:
-                self.client.run(nvt_io.clean_pw_cache)
-            else:
-                nvt_io.clean_pw_cache()
+            # Follow-up Shuffling and _metadata creation
+            nvt_io._finish_pq_dataset(self.client, self.ddf, shuffle, output_path, fs)
 
             return
 
