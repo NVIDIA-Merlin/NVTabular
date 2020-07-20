@@ -191,7 +191,9 @@ def _write_uniques(dfs, base_path, col, on_host):
         # Make sure first category is Null
         df = df.sort_values(col, na_position="first")
         if not df[col]._column.has_nulls:
-            df = cudf.DataFrame({col: _concat([cudf.Series([None]), df[col]], ignore_index)})
+            df = cudf.DataFrame(
+                {col: _concat([cudf.Series([None], dtype=df[col].dtype), df[col]], ignore_index)}
+            )
         df.to_parquet(path, write_index=False, compression=None)
     else:
         df_null = cudf.DataFrame({col: [None]})
