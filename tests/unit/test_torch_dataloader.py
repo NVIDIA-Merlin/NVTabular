@@ -126,12 +126,12 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
 
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     #     Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
