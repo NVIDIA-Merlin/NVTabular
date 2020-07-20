@@ -1,24 +1,34 @@
+# base arg is nvtabular image on which to build
+# dev decides whether to copy notebooks in and
+# run as root. For production use to allow cupti
+# profiling and treat examples as self contained
 ARG base
+ARG dev=false
+
+# main container built on top of nvtabular
 FROM ${base} AS nvtabular
 ARG token=nvidia
 
 ENV HOME=/home/docker
 WORKDIR $HOME
 VOLUME $HOME
-EXPOSE 8888
+EXPOSE 8888 6006
 
+ADD examples/tensorflow/requirements.txt requirements.txt
 RUN conda install -c conda-forge -c rapidsai jupyterlab dask-cudf && \
-      pip install -U \
-        grpcio>=1.24.3 \
-        tensorflow==2.1.0 \
-        tfdlpack-gpu \
-        tensorboard==2.2.0 \
-        jupyter-tensorboard \
-        ipywidgets
-
-RUN conda install nodejs>=10.0.0
-
-RUN jupyter nbextension enable --py widgetsnbextension && \
+      pip install -U -r requirements.txt && \
+      rm requirements.txt
+RUN conda install nodejs>=10.0.0 && \
+      jupyter nbextension enable --py widgetsnbextension && \
       jupyter labextension install @jupyter-widgets/jupyterlab-manager
-      
+
+# different images for dev and production
+FROM nvtabular as true
 ENTRYPOINT jupyter lab --ip=0.0.0.0 --LabApp.token=${token}
+
+FROM nvtabular as false
+ENV LD_LIBRARY_PATH="/usr/local/cuda-10.1/extras/CUPTI/lib64/:${LD_LIBRARY_PATH}"
+COPY examples/ $HOME
+ENTRYPOINT jupyter lab --ip=0.0.0.0 --LabApp.token=${token} --allow-root
+
+FROM ${dev}
