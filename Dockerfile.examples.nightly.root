@@ -1,0 +1,24 @@
+ARG base
+FROM ${base} AS nvtabular
+ARG token=nvidia
+
+ENV HOME=/home/docker
+WORKDIR $HOME
+VOLUME $HOME
+EXPOSE 8888 6006
+
+RUN conda install -c conda-forge -c rapidsai jupyterlab dask-cudf && \
+      conda install nodejs>=10.0.0 && \
+      pip install -U \
+        grpcio>=1.24.3 \
+        tf-nightly \
+        tensorboard_plugin_profile \
+        jupyter-tensorboard \
+        ipywidgets && \
+      jupyter nbextension enable --py widgetsnbextension && \
+      jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
+ENV LD_LIBRARY_PATH="/usr/local/cuda-10.1/extras/CUPTI/lib64/:${LD_LIBRARY_PATH}"
+
+COPY examples/ $HOME
+ENTRYPOINT jupyter lab --ip=0.0.0.0 --LabApp.token=${token} --allow-root
