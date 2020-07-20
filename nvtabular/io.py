@@ -15,6 +15,7 @@
 #
 
 import contextlib
+import functools
 import io
 import json
 import logging
@@ -778,6 +779,10 @@ class Dataset:
     def to_iter(self, columns=None):
         return self.engine.to_iter(columns=columns)
 
+    @property
+    def num_rows(self):
+        return self.engine.num_rows
+
 
 class DatasetEngine:
     """ DatasetEngine Class
@@ -801,6 +806,10 @@ class DatasetEngine:
     def to_iter(self, columns=None):
         raise NotImplementedError(""" Return a Iterator over the cudf chunks of the dataset  """)
 
+    @property
+    def num_rows(self):
+        raise NotImplementedError(""" Returns the number of rows in the dataset """)
+
 
 class ParquetDatasetEngine(DatasetEngine):
     """ ParquetDatasetEngine
@@ -821,7 +830,7 @@ class ParquetDatasetEngine(DatasetEngine):
         # this class can be slimmed down.
         super().__init__(paths, part_size, storage_options)
         self.batch_size = batch_size
-        self._metadata, self._base = self.get_metadata()
+        self._metadata, self._base = self.metadata
         self._pieces = None
         if row_groups_per_part is None:
             file_path = self._metadata.row_group(0).column(0).file_path
@@ -855,7 +864,9 @@ class ParquetDatasetEngine(DatasetEngine):
             self._pieces = self._get_pieces(self._metadata, self._base)
         return self._pieces
 
-    def get_metadata(self):
+    @property
+    @functools.lru_cache(1)
+    def metadata(self):
         paths = self.paths
         fs = self.fs
         if len(paths) > 1:
@@ -889,6 +900,11 @@ class ParquetDatasetEngine(DatasetEngine):
                 else:
                     metadata = md
             return metadata, base
+
+    @property
+    def num_rows(self):
+        metadata, _ = self.metadata
+        return metadata.num_rows
 
     @annotate("get_pieces", color="green", domain="nvt_python")
     def _get_pieces(self, metadata, data_path):
