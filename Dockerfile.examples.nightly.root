@@ -11,7 +11,7 @@ RUN conda install -c conda-forge -c rapidsai jupyterlab dask-cudf && \
       conda install nodejs>=10.0.0 && \
       pip install -U \
         grpcio>=1.24.3 \
-        tf-nightly \
+        tensorflow-gpu==2.3.0-rc1 \
         tensorboard_plugin_profile \
         jupyter-tensorboard \
         ipywidgets && \
