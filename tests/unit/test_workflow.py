@@ -79,14 +79,14 @@ def test_gpu_workflow_api(
 
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
@@ -155,14 +155,14 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
@@ -236,17 +236,16 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     assert math.isclose(
         get_norms(df.y).std(), processor.stats["stds"]["y" + concat_ops], rel_tol=1e-1
     )
-
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
@@ -266,24 +265,38 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
 
 @pytest.mark.parametrize("shuffle", ["full", "partial", None])
-def test_output_count(tmpdir, shuffle):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_parquet_output(client, use_client, tmpdir, shuffle):
     out_files_per_proc = 2
-    out_path = os.path.join(tmpdir, "processed")
-    path = os.path.join(tmpdir, "simple.parquet")
+    n_workers = len(client.cluster.workers) if use_client else 1
+    out_path = str(tmpdir.mkdir("processed"))
+    path = str(tmpdir.join("simple.parquet"))
 
-    df = pd.DataFrame({"a": np.arange(25)})
-    df.to_parquet(path, row_group_size=5, engine="pyarrow")
+    size = 25
+    row_group_size = 5
+    df = pd.DataFrame({"a": np.arange(size)})
+    df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
 
     columns = ["a"]
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
-    processor = nvt.Workflow(cat_names=[], cont_names=columns, label_name=[])
-
+    processor = nvt.Workflow(
+        cat_names=[], cont_names=columns, label_name=[], client=client if use_client else None
+    )
     processor.add_preprocess(ops.Normalize())
     processor.finalize()
-
     processor.update_stats(
         dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
-    result = glob.glob(os.path.join(out_path, "*"))
 
-    assert len(result) == out_files_per_proc
+    # Check that the number of output files is correct
+    result = glob.glob(os.path.join(out_path, "*.parquet"))
+    assert len(result) == out_files_per_proc * n_workers
+
+    # Make sure _metadata exists
+    meta_path = os.path.join(out_path, "_metadata")
+    assert os.path.exists(meta_path)
+
+    # Make sure _metadata makes sense
+    _metadata = cudf.io.read_parquet_metadata(meta_path)
+    assert _metadata[0] == size
+    assert _metadata[2] == columns

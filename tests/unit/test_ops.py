@@ -109,13 +109,13 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor.update_stats(dataset)
 
     if engine == "parquet" and not op_columns:
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
-        assert cats0 == ["None"] + cats_expected0
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
 
-    cats_expected1 = df["name-string"].unique().values_to_string()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

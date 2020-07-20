@@ -208,7 +208,7 @@ class MinMax(StatOperator):
 
     @annotate("MinMax_finalize", color="green", domain="nvt_python")
     def finalize(self, stats):
-        for col in stats["mins"].index:
+        for col in stats["mins"].index.values_host:
             self.mins[col] = stats["mins"][col]
             self.maxs[col] = stats["maxs"][col]
 
@@ -264,7 +264,7 @@ class Moments(StatOperator):
 
     @annotate("Moments_finalize", color="green", domain="nvt_python")
     def finalize(self, dask_stats):
-        for col in dask_stats["count"].index:
+        for col in dask_stats["count"].index.values_host:
             self.counts[col] = float(dask_stats["count"][col])
             self.means[col] = float(dask_stats["mean"][col])
             self.stds[col] = float(dask_stats["std"][col])
@@ -317,7 +317,7 @@ class Median(StatOperator):
 
     @annotate("Median_finalize", color="green", domain="nvt_python")
     def finalize(self, dask_stats):
-        for col in dask_stats.index:
+        for col in dask_stats.index.values_host:
             self.medians[col] = float(dask_stats[col])
 
     def registered_stats(self):
