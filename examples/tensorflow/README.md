@@ -62,4 +62,4 @@ Note the enormous amount of empty device time on the GPU native implementation. 
 Lots of tiny kernels doing small ops like reshapes, assert checks, etc. = bad GPU performance.
 
 ### Example Throughput Curves (Mixed Precision not included yet)
-<img src="dlrm-train.PNG"></img>
+<img src="imgs/dlrm-train.PNG"></img>
