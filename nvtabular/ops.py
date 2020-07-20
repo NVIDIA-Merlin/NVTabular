@@ -847,10 +847,8 @@ class LeftJoinExternal(TransformOperator):
             _ext = cudf.DataFrame.from_arrow(self.df_ext)
         else:
             if self.kind_ext == "parquet":
-                # _ext = cudf.read_parquet(self.df_ext, columns=self.columns_ext, **self.kwargs)
                 reader = cudf.read_parquet
             elif self.kind_ext == "csv":
-                # _ext = cudf.read_csv(self.df_ext, columns=self.columns_ext, **self.kwargs)
                 reader = cudf.read_csv
             else:
                 raise ValueError("Disk format not yet supported")
