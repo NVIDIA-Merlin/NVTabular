@@ -399,6 +399,21 @@ class GPUFileIterator:
                 chunk[col] = chunk[col].astype(dtype)
 
 
+def writer_factory(output_format, output_path, out_files_per_proc, shuffle):
+    if output_format is None:
+        return None
+
+    if output_format == "parquet":
+        writer_cls = ParquetWriter
+    elif output_format == "hugectr":
+        writer_cls = HugeCTRWriter
+    else:
+        raise ValueError("Output format not yet supported.")
+
+    fs = get_fs_token_paths(output_path)[0]
+    return writer_cls(output_path, num_out_files=out_files_per_proc, shuffle=shuffle, fs=fs)
+
+
 class Writer:
     def __init__(self):
         pass

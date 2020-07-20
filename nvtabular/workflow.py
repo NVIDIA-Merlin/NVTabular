@@ -752,21 +752,9 @@ class Workflow(BaseWorkflow):
         """ Iterate through dataset and (optionally) apply/shuffle/write.
         """
         # Check if we have a (supported) writer
-        writer = None
-        writer_cls = None
-        if output_format:
-            if output_format == "parquet":
-                writer_cls = nvt_io.ParquetWriter
-            elif output_format == "hugectr":
-                writer_cls = nvt_io.HugeCTRWriter
-            else:
-                raise ValueError("Output format not yet supported.")
-            output_path = output_path or "./"
-            output_path = str(output_path)
-            fs = get_fs_token_paths(output_path)[0]
-            writer = writer_cls(
-                output_path, num_out_files=out_files_per_proc, shuffle=shuffle, fs=fs
-            )
+        output_path = output_path or "./"
+        output_path = str(output_path)
+        writer = nvt_io.writer_factory(output_format, output_path, out_files_per_proc, shuffle)
 
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
@@ -776,8 +764,15 @@ class Workflow(BaseWorkflow):
         # Close writer and write general/specialized metadata
         if writer:
             general_md, special_md = writer.close()
-            writer_cls.write_special_metadata(special_md, fs, output_path)
-            writer_cls.write_general_metadata(general_md, fs, output_path)
+
+            # Note that we "could" have the special and general metadata
+            # written during `writer.close()` (just above) for the single-GPU case.
+            # Instead, the metadata logic is separated from the `Writer` object to
+            # simplify multi-GPU integration. When using Dask, we cannot assume
+            # that the "shared" metadata files can/will be written by the same
+            # process that writes the data.
+            type(writer).write_special_metadata(special_md, writer.fs, output_path)
+            type(writer).write_general_metadata(general_md, writer.fs, output_path)
 
     def update_stats(self, dataset, end_phase=None):
         """ Colllect statistics only.
