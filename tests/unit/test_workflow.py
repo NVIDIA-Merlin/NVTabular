@@ -79,14 +79,14 @@ def test_gpu_workflow_api(
 
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
@@ -155,14 +155,14 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
@@ -236,17 +236,16 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     assert math.isclose(
         get_norms(df.y).std(), processor.stats["stds"]["y" + concat_ops], rel_tol=1e-1
     )
-
     # Check that categories match
     if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
         # adding the None entry as a string because of move from gpu
-        assert cats0 == ["None"] + cats_expected0
-    cats_expected1 = df["name-string"].unique().values_to_string()
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     # adding the None entry as a string because of move from gpu
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
