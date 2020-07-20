@@ -506,7 +506,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
 @pytest.mark.parametrize("cache", ["host", "device"])
-def test_merge_external(tmpdir, df, dataset, engine, kind_ext, cache):
+def test_left_join_external(tmpdir, df, dataset, engine, kind_ext, cache):
 
     # Define "external" table
     shift = 100
@@ -531,7 +531,7 @@ def test_merge_external(tmpdir, df, dataset, engine, kind_ext, cache):
     on = "id"
     on_ext = "id"
     columns_ext = ["id", "new_col", "new_col_2"]
-    merge_op = ops.MergeExternalUnique(
+    merge_op = ops.LeftJoinExternal(
         df_ext, on, on_ext, kind_ext=kind_ext, columns_ext=columns_ext, cache=cache
     )
     columns = mycols_pq if engine == "parquet" else mycols_csv

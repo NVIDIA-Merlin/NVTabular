@@ -801,11 +801,11 @@ class GroupBy(DFOperator):
         return new_gdf
 
 
-class MergeExternalUnique(TransformOperator):
+class LeftJoinExternal(TransformOperator):
     """
-    "Left" of each dataset partition to an external table. The `on_ext` column
-    cannot have duplicates.  This transformation assumes that we are not changing
-    the number of rows in the dataset.
+    "Left" join of each dataset partition to an external table. Duplicates will be removed
+    from the `on_ext` column of `df_ext`.  The transformation assumes that we are not
+    changing the number of rows in the dataset.
     """
 
     default_in = ALL
@@ -846,8 +846,6 @@ class MergeExternalUnique(TransformOperator):
         elif self.kind_ext == "arrow":
             _ext = cudf.DataFrame.from_arrow(self.df_ext)
         else:
-
-            # TODO: Add caching for "parquet" and "csv"
             if self.kind_ext == "parquet":
                 # _ext = cudf.read_parquet(self.df_ext, columns=self.columns_ext, **self.kwargs)
                 reader = cudf.read_parquet
@@ -875,7 +873,7 @@ class MergeExternalUnique(TransformOperator):
         if self.guarenteed_unique:
             return _ext
 
-        return _ext.drop_duplicates()
+        return _ext.drop_duplicates(subset=self.on_ext)
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         new_gdf = cudf.DataFrame()
