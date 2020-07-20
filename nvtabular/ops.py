@@ -20,6 +20,7 @@ from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
 from nvtabular import categorify as nvt_cat
+from nvtabular.worker import fetch_table_data, get_worker_cache
 
 CONT = "continuous"
 CAT = "categorical"
@@ -819,21 +820,62 @@ class MergeExternalUnique(TransformOperator):
         columns=None,
         columns_ext=None,
         preprocessing=True,
+        guarenteed_unique=False,
+        cache="host",
+        **kwargs,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.on = on
         self.df_ext = df_ext
         self.on_ext = on_ext
         self.kind_ext = kind_ext
-        if self.kind_ext not in ("cudf", "pandas", "parquet", "csv"):
+        self.columns_ext = columns_ext
+        self.guarenteed_unique = guarenteed_unique
+        self.cache = cache
+        self.kwargs = kwargs
+        if self.kind_ext not in ("arrow", "cudf", "pandas", "parquet", "csv"):
             raise ValueError("kind_ext option not recognized.")
 
     @property
     def _ext(self):
-        # TODO: Add caching for "parquet" and csv
-        # TODO: Handle csv/parquet file paths, pandas, and arrow
-        assert isinstance(self.df_ext, cudf.DataFrame)
-        return self.df_ext
+        # Define _ext, depending on `kind_ext`
+        if self.kind_ext == "cudf":
+            _ext = self.df_ext
+        elif self.kind_ext == "pandas":
+            _ext = cudf.DataFrame.from_pandas(self.df_ext)
+        elif self.kind_ext == "arrow":
+            _ext = cudf.DataFrame.from_arrow(self.df_ext)
+        else:
+
+            # TODO: Add caching for "parquet" and "csv"
+            if self.kind_ext == "parquet":
+                # _ext = cudf.read_parquet(self.df_ext, columns=self.columns_ext, **self.kwargs)
+                reader = cudf.read_parquet
+            elif self.kind_ext == "csv":
+                # _ext = cudf.read_csv(self.df_ext, columns=self.columns_ext, **self.kwargs)
+                reader = cudf.read_csv
+            else:
+                raise ValueError("Disk format not yet supported")
+
+            _ext = fetch_table_data(
+                get_worker_cache(self.df_ext),
+                self.df_ext,
+                cache=self.cache,
+                columns=self.columns_ext,
+                reader=reader,
+                **self.kwargs,
+            )
+
+        # Take subset of columns if a list is specified
+        if self.columns_ext:
+            _ext = _ext[self.columns_ext]
+
+        # No need to drop duplicates if the user guarentees
+        # the external dataframe has unique rows
+        if self.guarenteed_unique:
+            return _ext
+
+        return _ext.drop_duplicates()
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         new_gdf = cudf.DataFrame()
