@@ -504,22 +504,45 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_merge_external(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
+@pytest.mark.parametrize("cache", ["host", "device"])
+def test_merge_external(tmpdir, df, dataset, engine, kind_ext, cache):
 
+    # Define "external" table
     shift = 100
-    df_ext = df[["id"]].copy().sort_values("id").drop_duplicates()
+    df_ext = df[["id"]].copy().sort_values("id")
     df_ext["new_col"] = df_ext["id"] + shift
+    df_ext["new_col_2"] = "keep"
+    df_ext["new_col_3"] = "ignore"
+    if kind_ext == "pandas":
+        df_ext = df_ext.to_pandas()
+    elif kind_ext == "arrow":
+        df_ext = df_ext.to_arrow()
+    elif kind_ext == "parquet":
+        path = tmpdir.join("external.parquet")
+        df_ext.to_parquet(path)
+        df_ext = path
+    elif kind_ext == "csv":
+        path = tmpdir.join("external.csv")
+        df_ext.to_csv(path)
+        df_ext = path
 
+    # Define Op
     on = "id"
     on_ext = "id"
-    merge_op = ops.MergeExternalUnique(df_ext, on, on_ext)
+    columns_ext = ["id", "new_col", "new_col_2"]
+    merge_op = ops.MergeExternalUnique(
+        df_ext, on, on_ext, kind_ext=kind_ext, columns_ext=columns_ext, cache=cache
+    )
     columns = mycols_pq if engine == "parquet" else mycols_csv
-
     columns_ctx = {}
     columns_ctx["all"] = {}
     columns_ctx["all"]["base"] = columns
 
+    # Iterate, apply op, and check result
     for gdf in dataset.to_iter():
         new_gdf = merge_op.apply_op(gdf, columns_ctx, "all")
         assert (new_gdf["id"] + shift).all() == new_gdf["new_col"].all()
         assert gdf["id"].all() == new_gdf["id"].all()
+        assert "new_col_2" in new_gdf.columns
+        assert "new_col_3" not in new_gdf.columns
