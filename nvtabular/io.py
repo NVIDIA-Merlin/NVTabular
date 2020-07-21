@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import collections
 import contextlib
 import functools
 import io
@@ -55,6 +56,80 @@ _DEFAULT_CACHE_LOCK = threading.RLock()
 
 LOG = logging.getLogger("nvtabular")
 
+
+#
+# Cache-Specific Code
+#
+
+
+class WriterCache:
+    def __init__(self):
+        self.pq_writer_cache = {}
+
+    def __del__(self):
+        for path, (pw, fpath) in self.pq_writer_cache.items():
+            pw.close()
+
+    def get_pq_writer(self, prefix, s, mem):
+        pw, fil = self.pq_writer_cache.get(prefix, (None, None))
+        if pw is None:
+            if mem:
+                fil = BytesIO()
+                pw = pwriter(fil, compression=None)
+                self.pq_writer_cache[prefix] = (pw, fil)
+            else:
+                outfile_id = guid() + ".parquet"
+                full_path = ".".join([prefix, outfile_id])
+                pw = pwriter(full_path, compression=None)
+                self.pq_writer_cache[prefix] = (pw, full_path)
+        return pw
+
+
+@contextlib.contextmanager
+def get_cache():
+    with _DEFAULT_CACHE_LOCK:
+        yield _get_cache()
+
+
+def _get_cache():
+    try:
+        worker = get_worker()
+    except ValueError:
+        # There is no dask.distributed worker.
+        # Assume client/worker are same process
+        global _DEFAULT_CACHE
+        if _DEFAULT_CACHE is None:
+            _DEFAULT_CACHE = WriterCache()
+        return _DEFAULT_CACHE
+    if not hasattr(worker, "pw_cache"):
+        worker.pw_cache = WriterCache()
+    return worker.pw_cache
+
+
+def clean_pw_cache():
+    with _DEFAULT_CACHE_LOCK:
+        try:
+            worker = get_worker()
+        except ValueError:
+            global _DEFAULT_CACHE
+            if _DEFAULT_CACHE is not None:
+                del _DEFAULT_CACHE
+                _DEFAULT_CACHE = None
+            return
+        if hasattr(worker, "pw_cache"):
+            del worker.pw_cache
+        return
+
+
+def close_cached_pw(fs):
+    md_dict = {}
+    with get_cache() as cache:
+        for path, (pw, bio) in cache.pq_writer_cache.items():
+            fn = bio.split(fs.sep)[-1]
+            md_dict[fn] = pw.close(metadata_file_path=fn)
+    return md_dict
+
+
 #
 # Helper Function definitions
 #
@@ -80,6 +155,15 @@ def _get_read_engine(engine, file_path, **kwargs):
         return PQFileReader(file_path, fs, **kwargs)
     else:
         raise ValueError("Unrecognized read engine.")
+
+
+def _shuffle_gdf(gdf, gdf_size=None):
+    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
+    ordered rows """
+    gdf_size = gdf_size or len(gdf)
+    arr = cp.arange(gdf_size)
+    cp.random.shuffle(arr)
+    return gdf.iloc[arr]
 
 
 #
@@ -315,13 +399,19 @@ class GPUFileIterator:
                 chunk[col] = chunk[col].astype(dtype)
 
 
-def _shuffle_gdf(gdf, gdf_size=None):
-    """ Shuffles a cudf dataframe, returning a new dataframe with randomly
-    ordered rows """
-    gdf_size = gdf_size or len(gdf)
-    arr = cp.arange(gdf_size)
-    cp.random.shuffle(arr)
-    return gdf.iloc[arr]
+def writer_factory(output_format, output_path, out_files_per_proc, shuffle):
+    if output_format is None:
+        return None
+
+    if output_format == "parquet":
+        writer_cls = ParquetWriter
+    elif output_format == "hugectr":
+        writer_cls = HugeCTRWriter
+    else:
+        raise ValueError("Output format not yet supported.")
+
+    fs = get_fs_token_paths(output_path)[0]
+    return writer_cls(output_path, num_out_files=out_files_per_proc, shuffle=shuffle, fs=fs)
 
 
 class Writer:
@@ -331,32 +421,39 @@ class Writer:
     def add_data(self, gdf):
         raise NotImplementedError()
 
+    def package_general_metadata(self):
+        raise NotImplementedError()
+
+    @classmethod
+    def write_general_metadata(cls, data, fs, out_dir):
+        raise NotImplementedError()
+
+    @classmethod
+    def write_special_metadata(cls, data, fs, out_dir):
+        raise NotImplementedError()
+
     def close(self):
         pass
 
 
-class Shuffler(Writer):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
-    ):
-        self.writer = ParquetWriter(out_dir, num_out_files, num_threads, cats, conts, labels)
-
-    def add_data(self, gdf):
-        self.writer.add_data(_shuffle_gdf(gdf))
-
-    def close(self):
-        self.writer.close()
-
-
 class ThreadedWriter(Writer):
     def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
+        self,
+        out_dir,
+        num_out_files=30,
+        num_threads=4,
+        cats=None,
+        conts=None,
+        labels=None,
+        shuffle=None,
+        fs=None,
     ):
         # set variables
         self.out_dir = out_dir
         self.cats = cats
         self.conts = conts
         self.labels = labels
+        self.shuffle = shuffle
         self.column_names = None
         if labels and conts:
             self.column_names = labels + conts
@@ -367,7 +464,11 @@ class ThreadedWriter(Writer):
         self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
 
-        self.data_files = None
+        self.data_paths = None
+        self.need_cal_col_names = True
+
+        # Resolve file system
+        self.fs = fs or get_fs_token_paths(str(out_dir))[0]
 
         # create thread queue and locks
         self.queue = queue.Queue(num_threads)
@@ -392,6 +493,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
+
+        # Shuffle if necessary
+        if self.shuffle:
+            gdf = _shuffle_gdf(gdf)
+
         # Populate columns idxs
         if not self.col_idx:
             for i, x in enumerate(gdf.columns.values):
@@ -413,60 +519,15 @@ class ThreadedWriter(Writer):
         # wait for all writes to finish before exitting (so that we aren't using memory)
         self.queue.join()
 
-    def _write_metadata(self):
-        return
-
-    def _write_filelist(self):
-        file_list_writer = open(os.path.join(self.out_dir, "file_list.txt"), "w")
-        file_list_writer.write(str(self.num_out_files) + "\n")
-        for f in self.data_files:
-            file_list_writer.write(f + "\n")
-        file_list_writer.close()
-
-    def close(self):
-        # wake up all the worker threads and signal for them to exit
-        for _ in range(self.num_threads):
-            self.queue.put(self._eod)
-
-        # wait for pending writes to finish
-        self.queue.join()
-
-        self._write_filelist()
-        self._write_metadata()
-
-        # Close writers
-        for writer in self.data_writers:
-            writer.close()
-
-
-class ParquetWriter(ThreadedWriter):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
-    ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
-        self.data_files = [os.path.join(out_dir, f"{i}.parquet") for i in range(num_out_files)]
-        self.data_writers = [pwriter(f, compression=None) for f in self.data_files]
-
-    def _write_thread(self):
-        while True:
-            item = self.queue.get()
-            try:
-                if item is self._eod:
-                    break
-                idx, data = item
-                with self.write_locks[idx]:
-                    self.data_writers[idx].write_table(data)
-            finally:
-                self.queue.task_done()
-
-    def _write_metadata(self):
-        if self.cats is None:
-            return
-        metadata_writer = open(os.path.join(self.out_dir, "metadata.json"), "w")
+    def package_general_metadata(self):
         data = {}
+        if self.cats is None:
+            return data
+        data["data_paths"] = self.data_paths
         data["file_stats"] = []
-        for i in range(len(self.data_files)):
-            data["file_stats"].append({"file_name": f"{i}.data", "num_rows": self.num_samples[i]})
+        for i, path in enumerate(self.data_paths):
+            fn = path.split(self.fs.sep)[-1]
+            data["file_stats"].append({"file_name": fn, "num_rows": self.num_samples[i]})
         # cats
         data["cats"] = []
         for c in self.cats:
@@ -480,17 +541,98 @@ class ParquetWriter(ThreadedWriter):
         for c in self.labels:
             data["labels"].append({"col_name": c, "index": self.col_idx[c]})
 
+        return data
+
+    @classmethod
+    def write_general_metadata(cls, data, fs, out_dir):
+        if not data:
+            return
+        data_paths = data.pop("data_paths", [])
+        num_out_files = len(data_paths)
+
+        # Write file_list
+        file_list_writer = fs.open(fs.sep.join([out_dir, "file_list.txt"]), "w")
+        file_list_writer.write(str(num_out_files) + "\n")
+        for f in data_paths:
+            file_list_writer.write(f + "\n")
+        file_list_writer.close()
+
+        # Write metadata json
+        metadata_writer = fs.open(fs.sep.join([out_dir, "metadata.json"]), "w")
         json.dump(data, metadata_writer)
         metadata_writer.close()
 
+    @classmethod
+    def write_special_metadata(cls, data, fs, out_dir):
+        pass
+
+    def _close_writers(self):
+        for writer in self.data_writers:
+            writer.close()
+        return None
+
+    def close(self, write_metadata=True):
+        # wake up all the worker threads and signal for them to exit
+        for _ in range(self.num_threads):
+            self.queue.put(self._eod)
+
+        # wait for pending writes to finish
+        self.queue.join()
+
+        # Close writers and collect various metadata
+        _gen_meta = self.package_general_metadata()
+        _special_meta = self._close_writers()
+        return _gen_meta, _special_meta
+
+
+class ParquetWriter(ThreadedWriter):
+    def __init__(self, out_dir, use_guid=False, **kwargs):
+        super().__init__(out_dir, **kwargs)
+        self.data_paths = []
+        self.data_writers = []
+        for i in range(self.num_out_files):
+            if use_guid:
+                fn = f"{i}.{guid()}.parquet"
+            else:
+                fn = f"{i}.parquet"
+            path = os.path.join(out_dir, fn)
+            self.data_paths.append(path)
+            self.data_writers.append(pwriter(path, compression=None))
+
+    def _write_thread(self):
+        while True:
+            item = self.queue.get()
+            try:
+                if item is self._eod:
+                    break
+                idx, data = item
+                with self.write_locks[idx]:
+                    self.data_writers[idx].write_table(data)
+            finally:
+                self.queue.task_done()
+
+    @classmethod
+    def write_special_metadata(cls, md, fs, out_dir):
+        # Sort metadata by file name and convert list of
+        # tuples to a list of metadata byte-blobs
+        md_list = [m[1] for m in sorted(list(md.items()), key=lambda x: natural_sort_key(x[0]))]
+
+        # Aggregate metadata and write _metadata file
+        _write_pq_metadata_file(md_list, fs, out_dir)
+
+    def _close_writers(self):
+        md_dict = {}
+        for writer, path in zip(self.data_writers, self.data_paths):
+            fn = path.split(self.fs.sep)[-1]
+            md_dict[fn] = writer.close(metadata_file_path=fn)
+        return md_dict
+
 
 class HugeCTRWriter(ThreadedWriter):
-    def __init__(
-        self, out_dir, num_out_files=30, num_threads=4, cats=None, conts=None, labels=None
-    ):
-        super().__init__(out_dir, num_out_files, num_threads, cats, conts, labels)
-        self.data_files = [os.path.join(out_dir, f"{i}.data") for i in range(num_out_files)]
-        self.data_writers = [open(f, "ab") for f in self.data_files]
+    def __init__(self, out_dir, **kwargs):
+        super().__init__(out_dir, **kwargs)
+        self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)]
+        self.data_writers = [open(f, "ab") for f in self.data_paths]
 
     def _write_thread(self):
         while True:
@@ -509,32 +651,33 @@ class HugeCTRWriter(ThreadedWriter):
             finally:
                 self.queue.task_done()
 
-    def _write_metadata(self):
-        if self.cats is None:
-            return
-        for i in range(len(self.data_writers)):
-            self.data_writers[i].seek(0)
-            # error_check (0: no error check; 1: check_num)
-            # num of samples in this file
-            # Dimension of the labels
-            # Dimension of the features
-            # slot_num for each embedding
-            # reserved for future use
-            header = np.array(
-                [
-                    0,
-                    self.num_samples[i],
-                    len(self.labels),
-                    len(self.conts),
-                    len(self.cats),
-                    0,
-                    0,
-                    0,
-                ],
-                dtype=np.longlong,
-            )
-
-            self.data_writers[i].write(header.tobytes())
+    def _close_writers(self):
+        for i, writer in enumerate(self.data_writers):
+            if self.cats:
+                # Write HugeCTR Metadata
+                writer.seek(0)
+                # error_check (0: no error check; 1: check_num)
+                # num of samples in this file
+                # Dimension of the labels
+                # Dimension of the features
+                # slot_num for each embedding
+                # reserved for future use
+                header = np.array(
+                    [
+                        0,
+                        self.num_samples[i],
+                        len(self.labels),
+                        len(self.conts),
+                        len(self.cats),
+                        0,
+                        0,
+                        0,
+                    ],
+                    dtype=np.longlong,
+                )
+                writer.write(header.tobytes())
+            writer.close()
+        return None
 
 
 def device_mem_size(kind="total"):
@@ -554,74 +697,6 @@ def device_mem_size(kind="total"):
         size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
         pynvml.nvmlShutdown()
     return size
-
-
-class WriterCache:
-    def __init__(self):
-        self.pq_writer_cache = {}
-
-    def __del__(self):
-        for path, (pw, fpath) in self.pq_writer_cache.items():
-            pw.close()
-
-    def get_pq_writer(self, prefix, s, mem):
-        pw, fil = self.pq_writer_cache.get(prefix, (None, None))
-        if pw is None:
-            if mem:
-                fil = BytesIO()
-                pw = pwriter(fil, compression=None)
-                self.pq_writer_cache[prefix] = (pw, fil)
-            else:
-                outfile_id = guid() + ".parquet"
-                full_path = ".".join([prefix, outfile_id])
-                pw = pwriter(full_path, compression=None)
-                self.pq_writer_cache[prefix] = (pw, full_path)
-        return pw
-
-
-@contextlib.contextmanager
-def get_cache():
-    with _DEFAULT_CACHE_LOCK:
-        yield _get_cache()
-
-
-def _get_cache():
-    try:
-        worker = get_worker()
-    except ValueError:
-        # There is no dask.distributed worker.
-        # Assume client/worker are same process
-        global _DEFAULT_CACHE
-        if _DEFAULT_CACHE is None:
-            _DEFAULT_CACHE = WriterCache()
-        return _DEFAULT_CACHE
-    if not hasattr(worker, "pw_cache"):
-        worker.pw_cache = WriterCache()
-    return worker.pw_cache
-
-
-def clean_pw_cache():
-    with _DEFAULT_CACHE_LOCK:
-        try:
-            worker = get_worker()
-        except ValueError:
-            global _DEFAULT_CACHE
-            if _DEFAULT_CACHE is not None:
-                del _DEFAULT_CACHE
-                _DEFAULT_CACHE = None
-            return
-        if hasattr(worker, "pw_cache"):
-            del worker.pw_cache
-        return
-
-
-def close_cached_pw(fs):
-    md_dict = {}
-    with get_cache() as cache:
-        for path, (pw, bio) in cache.pq_writer_cache.items():
-            fn = bio.split(fs.sep)[-1]
-            md_dict[fn] = pw.close(metadata_file_path=fn)
-    return md_dict
 
 
 def guid():
@@ -649,7 +724,7 @@ def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs
     return gdf_size
 
 
-def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
+def _ddf_to_pq_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
     name = "write-processed"
     write_name = name + tokenize(ddf, shuffle, out_files_per_proc)
     task_list = []
@@ -668,6 +743,42 @@ def _to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc):
     dsk[name] = (lambda x: x, task_list)
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
     return Delayed(name, graph)
+
+
+def _finish_pq_dataset(client, ddf, shuffle, output_path, fs):
+    # Deal with "full" (per-worker) shuffle here.
+    if shuffle == "full":
+        if client:
+            client.cancel(ddf)
+            ddf = None
+            worker_md = client.run(_worker_shuffle, output_path, fs)
+            worker_md = list(collections.ChainMap(*worker_md.values()).items())
+        else:
+            ddf = None
+            worker_md = _worker_shuffle(output_path, fs)
+            worker_md = list(worker_md.items())
+    else:
+        # Collect parquet metadata while closing
+        # ParquetWriter object(s)
+        if client:
+            worker_md = client.run(close_cached_pw, fs)
+            worker_md = list(collections.ChainMap(*worker_md.values()).items())
+        else:
+            worker_md = close_cached_pw(fs)
+            worker_md = list(worker_md.items())
+
+    # Sort metadata by file name and convert list of
+    # tuples to a list of metadata byte-blobs
+    md_list = [m[1] for m in sorted(worker_md, key=lambda x: natural_sort_key(x[0]))]
+
+    # Aggregate metadata and write _metadata file
+    _write_pq_metadata_file(md_list, fs, output_path)
+
+    # Close ParquetWriter Objects
+    if client:
+        client.run(clean_pw_cache)
+    else:
+        clean_pw_cache()
 
 
 def _write_pq_metadata_file(md_list, fs, path):

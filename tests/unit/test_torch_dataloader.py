@@ -148,7 +148,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
         torch_dataloader.FileItrDataset(
             x, use_row_groups=True, gpu_memory_frac=gpu_memory_frac, names=allcols_csv
         )
-        for x in glob.glob(str(tmpdir) + "/ds_part.*.parquet")
+        for x in glob.glob(str(tmpdir) + "/*.parquet")
     ]
 
     data_itr = torch.utils.data.ChainDataset(data_files)
@@ -160,9 +160,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     for chunk in dl:
         len_df_pp += len(chunk[0][0])
 
-    dataset = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac,
-    )
+    dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
     x = processor.ds_to_tensors(dataset.to_iter(), apply_ops=False)
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
