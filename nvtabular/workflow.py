@@ -867,8 +867,22 @@ class Workflow(BaseWorkflow):
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc:
 
+            cat_names = self.get_final_cols_names("categorical")
+            cont_names = self.get_final_cols_names("continuous")
+            label_names = self.get_final_cols_names("label")
+
             # Construct graph for Dask-based dataset write
-            out = nvt_io._ddf_to_pq_dataset(ddf, fs, output_path, shuffle, out_files_per_proc)
+            out = nvt_io._ddf_to_dataset(
+                ddf,
+                fs,
+                output_path,
+                shuffle,
+                out_files_per_proc,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+            )
 
             # Would be nice to clean the categorical
             # cache before the write (TODO)
@@ -883,7 +897,7 @@ class Workflow(BaseWorkflow):
                 out = dask.compute(out, scheduler="synchronous")[0]
 
             # Follow-up Shuffling and _metadata creation
-            nvt_io._finish_pq_dataset(self.client, self.ddf, shuffle, output_path, fs)
+            nvt_io._finish_dataset(self.client, self.ddf, shuffle, output_path, fs, "parquet")
 
             return
 
