@@ -61,12 +61,7 @@ class BaseWorkflow:
 
         self.stats = {}
         self.current_file_num = 0
-        self.timings = {
-            "shuffle_df": 0.0,
-            "shuffle_fin": 0.0,
-            "preproc_apply": 0.0,
-            "preproc_reapply": 0.0,
-        }
+        self.timings = {"write_df": 0.0, "preproc_apply": 0.0}
         if config:
             self.load_config(config)
         else:
@@ -473,9 +468,7 @@ class BaseWorkflow:
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
         return gdf
 
-    def apply_ops(
-        self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None, shuffle=None
-    ):
+    def apply_ops(self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None):
         """
         gdf: cudf dataframe
         Controls the application of registered preprocessing phase op
@@ -501,7 +494,7 @@ class BaseWorkflow:
 
                 start_write = time.time()
                 writer.add_data(gdf)
-                self.timings["shuffle_df"] += time.time() - start_write
+                self.timings["write_df"] += time.time() - start_write
 
         return gdf
 
@@ -763,7 +756,7 @@ class Workflow(BaseWorkflow):
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
             for gdf in dataset.to_iter():
-                self.apply_ops(gdf, output_path=output_path, writer=writer, shuffle=shuffle)
+                self.apply_ops(gdf, output_path=output_path, writer=writer)
 
         # Close writer and write general/specialized metadata
         if writer:
@@ -827,15 +820,22 @@ class Workflow(BaseWorkflow):
         path,
         dataset,
         apply_ops=False,
-        nfiles=1,
-        shuffle=True,
+        out_files_per_proc=None,
+        shuffle=None,
         output_format="parquet",
-        iterate=True,
+        iterate=False,
+        nfiles=None,
     ):
         """ Write data to shuffled parquet dataset.
 
             Assumes statistics are already gathered.
         """
+        if nfiles:
+            warnings.warn("nfiles is deprecated. Use out_files_per_proc")
+            if out_files_per_proc is None:
+                out_files_per_proc = nfiles
+        out_files_per_proc = out_files_per_proc or 1
+
         path = str(path)
         if iterate:
             self.iterate_online(
@@ -843,7 +843,7 @@ class Workflow(BaseWorkflow):
                 output_path=path,
                 shuffle=shuffle,
                 output_format=output_format,
-                out_files_per_proc=nfiles,
+                out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
             )
         else:
@@ -853,7 +853,7 @@ class Workflow(BaseWorkflow):
                 record_stats=False,
                 shuffle=shuffle,
                 output_format=output_format,
-                out_files_per_proc=nfiles,
+                out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
             )
 
