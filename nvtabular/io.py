@@ -707,22 +707,22 @@ def _write_output_partition(
         gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
 
     # Get cached writer (or create/cache a new one)
-    writer_cache = get_worker_cache("writer")
-    writer = writer_cache.get(processed_path, None)
-    if writer is None:
-        writer = writer_factory(
-            output_format,
-            processed_path,
-            out_files_per_proc,
-            shuffle,
-            use_guid=True,
-            bytes_io=(shuffle == "full"),
-        )
-        writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-        writer_cache[processed_path] = writer
+    with get_worker_cache("writer") as writer_cache:
+        writer = writer_cache.get(processed_path, None)
+        if writer is None:
+            writer = writer_factory(
+                output_format,
+                processed_path,
+                out_files_per_proc,
+                shuffle,
+                use_guid=True,
+                bytes_io=(shuffle == "full"),
+            )
+            writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+            writer_cache[processed_path] = writer
 
-    # Add data
-    writer.add_data(gdf)
+        # Add data
+        writer.add_data(gdf)
 
     return gdf_size
 
@@ -797,22 +797,22 @@ def _finish_dataset(client, ddf, shuffle, output_path, fs, output_format):
 
 def _worker_finish(processed_path, fs, mem_shuffle=False, output_format="parquet"):
     general_md, special_md = {}, {}
-    writer_cache = get_worker_cache("writer")
-    writer = writer_cache.get(processed_path, None)
-    if writer:
-        general_md, special_md = writer.close()
+    with get_worker_cache("writer") as writer_cache:
+        writer = writer_cache.get(processed_path, None)
+        if writer:
+            general_md, special_md = writer.close()
 
-        if mem_shuffle:
+            if mem_shuffle:
 
-            if output_format != "parquet":
-                raise ValueError("Full (per-worker) shuffle requires parquet.")
+                if output_format != "parquet":
+                    raise ValueError("Full (per-worker) shuffle requires parquet.")
 
-            for bio, path in zip(writer.data_bios, writer.data_paths):
-                gdf = cudf.io.read_parquet(bio, index=False)
-                bio.close()
+                for bio, path in zip(writer.data_bios, writer.data_paths):
+                    gdf = cudf.io.read_parquet(bio, index=False)
+                    bio.close()
 
-                gdf = _shuffle_gdf(gdf)
-                gdf.to_parquet(path, compression=None, index=False)
+                    gdf = _shuffle_gdf(gdf)
+                    gdf.to_parquet(path, compression=None, index=False)
 
     return general_md, special_md
 

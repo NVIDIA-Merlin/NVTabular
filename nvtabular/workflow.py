@@ -771,8 +771,8 @@ class Workflow(BaseWorkflow):
             # simplify multi-GPU integration. When using Dask, we cannot assume
             # that the "shared" metadata files can/will be written by the same
             # process that writes the data.
-            type(writer).write_special_metadata(special_md, writer.fs, output_path)
-            type(writer).write_general_metadata(general_md, writer.fs, output_path)
+            writer.write_special_metadata(special_md, writer.fs, output_path)
+            writer.write_general_metadata(general_md, writer.fs, output_path)
 
     def update_stats(self, dataset, end_phase=None):
         """ Colllect statistics only.
