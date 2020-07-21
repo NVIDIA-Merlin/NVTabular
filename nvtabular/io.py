@@ -935,28 +935,11 @@ class ParquetDatasetEngine(DatasetEngine):
     @annotate("read_piece", color="green", domain="nvt_python")
     def read_piece(piece, columns):
         path, row_groups = piece
-        return cudf.io.read_parquet(
-            path,
-            # cudf 0.15 (only need `row_groups`)
-            row_groups=row_groups,
-            # cudf 0.14 (need `row_group` and `row_group_count`)
-            row_group=row_groups[0],
-            row_group_count=len(row_groups),
-            columns=columns,
-            index=False,
-        )
+        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False,)
 
     def meta_empty(self, columns=None):
         path, _ = self.pieces[0]
-        return cudf.io.read_parquet(
-            path,
-            # cudf 0.15
-            row_groups=0,
-            # cudf 0.14
-            row_group=0,
-            columns=columns,
-            index=False,
-        ).iloc[:0]
+        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False,).iloc[:0]
 
     def to_ddf(self, columns=None):
         pieces = self.pieces
