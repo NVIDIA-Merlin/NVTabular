@@ -800,6 +800,7 @@ class Workflow(BaseWorkflow):
             raise ValueError("Output format not yet supported with Dask.")
 
         # Reorder tasks for two-phase workflows
+        # TODO: Generalize this type of optimization
         self.reorder_tasks(end)
 
         # Clear worker caches to be "safe"
@@ -858,7 +859,6 @@ class Workflow(BaseWorkflow):
         """ Dask-based dataset output.
 
             Currently supports parquet only.
-            TODO: Leverage `ThreadedWriter` implementations.
         """
         if output_format != "parquet":
             raise ValueError("Only parquet output supported with Dask.")
@@ -883,9 +883,6 @@ class Workflow(BaseWorkflow):
                 label_names,
                 output_format,
             )
-
-            # Would be nice to clean the categorical
-            # cache before the write (TODO)
 
             # Trigger write execution
             if self.client:
