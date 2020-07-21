@@ -419,7 +419,9 @@ class BaseWorkflow:
         """
         col_names = []
         for c_names in self.columns_ctx[col_type].values():
-            col_names.extend(c_names)
+            for name in c_names:
+                if name not in col_names:
+                    col_names.append(name)
         return col_names
 
     def _build_tasks(self, task_dict: dict, task_set, master_task_list):
@@ -754,7 +756,9 @@ class Workflow(BaseWorkflow):
         # Check if we have a (supported) writer
         output_path = output_path or "./"
         output_path = str(output_path)
-        writer = nvt_io.writer_factory(output_format, output_path, out_files_per_proc, shuffle)
+        writer = nvt_io.writer_factory(
+            output_format, output_path, out_files_per_proc, shuffle, bytes_io=(shuffle == "full")
+        )
 
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
@@ -894,7 +898,7 @@ class Workflow(BaseWorkflow):
                 out = dask.compute(out, scheduler="synchronous")[0]
 
             # Follow-up Shuffling and _metadata creation
-            nvt_io._finish_dataset(self.client, self.ddf, shuffle, output_path, fs, "parquet")
+            nvt_io._finish_dataset(self.client, self.ddf, output_path, fs, output_format)
 
             return
 

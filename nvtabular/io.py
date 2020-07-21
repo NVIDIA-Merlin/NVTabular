@@ -578,7 +578,15 @@ class ThreadedWriter(Writer):
         # Close writers and collect various metadata
         _general_meta = self.package_general_metadata()
         _special_meta = self._close_writers()
+
+        # Move in-meomory file to disk
+        if self.bytes_io:
+            self._bytesio_to_disk()
+
         return _general_meta, _special_meta
+
+    def _bytesio_to_disk(self):
+        raise NotImplementedError("In-memory buffering/shuffling not implemented for this format.")
 
 
 class ParquetWriter(ThreadedWriter):
@@ -629,6 +637,15 @@ class ParquetWriter(ThreadedWriter):
             fn = path.split(self.fs.sep)[-1]
             md_dict[fn] = writer.close(metadata_file_path=fn)
         return md_dict
+
+    def _bytesio_to_disk(self):
+        for bio, path in zip(self.data_bios, self.data_paths):
+            gdf = cudf.io.read_parquet(bio, index=False)
+            bio.close()
+            if self.shuffle == "full":
+                gdf = _shuffle_gdf(gdf)
+            gdf.to_parquet(path, compression=None, index=False)
+        return
 
 
 class HugeCTRWriter(ThreadedWriter):
@@ -764,12 +781,12 @@ def _ddf_to_dataset(
     return Delayed(name, graph)
 
 
-def _finish_dataset(client, ddf, shuffle, output_path, fs, output_format):
+def _finish_dataset(client, ddf, output_path, fs, output_format):
     # Finish data writing
     if client:
         client.cancel(ddf)
         ddf = None
-        out = client.run(_worker_finish, output_path, fs, (shuffle == "full"), output_format)
+        out = client.run(_worker_finish, output_path)
 
         general_md = []
         special_md = []
@@ -781,7 +798,7 @@ def _finish_dataset(client, ddf, shuffle, output_path, fs, output_format):
         special_md = dict(collections.ChainMap(*special_md))
     else:
         ddf = None
-        general_md, special_md = _worker_finish(output_path, fs, (shuffle == "full"), output_format)
+        general_md, special_md = _worker_finish(output_path)
 
     # Write metadata on client
     wc, fs = _writer_cls_factory(output_format, output_path)
@@ -795,24 +812,12 @@ def _finish_dataset(client, ddf, shuffle, output_path, fs, output_format):
         clean_worker_cache("writer")
 
 
-def _worker_finish(processed_path, fs, mem_shuffle=False, output_format="parquet"):
+def _worker_finish(processed_path):
     general_md, special_md = {}, {}
     with get_worker_cache("writer") as writer_cache:
         writer = writer_cache.get(processed_path, None)
         if writer:
             general_md, special_md = writer.close()
-
-            if mem_shuffle:
-
-                if output_format != "parquet":
-                    raise ValueError("Full (per-worker) shuffle requires parquet.")
-
-                for bio, path in zip(writer.data_bios, writer.data_paths):
-                    gdf = cudf.io.read_parquet(bio, index=False)
-                    bio.close()
-
-                    gdf = _shuffle_gdf(gdf)
-                    gdf.to_parquet(path, compression=None, index=False)
 
     return general_md, special_md
 

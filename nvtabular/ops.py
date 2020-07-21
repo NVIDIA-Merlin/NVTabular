@@ -598,7 +598,8 @@ class FillMedian(DFOperator):
 
         new_gdf = cudf.DataFrame()
         for col in target_columns:
-            new_gdf[col] = gdf[col].fillna(stats_context["medians"][col])
+            stat_val = stats_context["medians"][col]
+            new_gdf[col] = gdf[col].fillna(stat_val)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
         return new_gdf
 

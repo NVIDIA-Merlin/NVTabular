@@ -20,7 +20,9 @@ import threading
 from dask.distributed import get_worker
 
 # Use global variable as the default
-# cache when there are no distributed workers
+# cache when there are no distributed workers.
+# Use a thread lock to "handle" multiple Dask
+# worker threads.
 _WORKER_CACHE = {}
 _WORKER_CACHE_LOCK = threading.RLock()
 
