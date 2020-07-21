@@ -47,7 +47,7 @@ _CLIENT = None
 def client():
     global _CLIENT
     if _CLIENT is None:
-        _CLIENT = Client(LocalCluster(n_workers=2, threads_per_worker=1))
+        _CLIENT = Client(LocalCluster(n_workers=2))
     return _CLIENT
 
 

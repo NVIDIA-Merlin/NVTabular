@@ -127,10 +127,10 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     ext = ""
     if output_format == "parquet":
         ext = "parquet"
-        assert os.path.isfile(outdir + "/metadata.json")
+        assert os.path.isfile(outdir + "/_metadata.json")
     elif output_format == "hugectr":
         ext = "data"
 
-    assert os.path.isfile(outdir + "/file_list.txt")
+    assert os.path.isfile(outdir + "/_file_list.txt")
     for n in range(nfiles):
         assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))

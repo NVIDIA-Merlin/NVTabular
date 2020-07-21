@@ -15,7 +15,6 @@
 #
 
 import collections
-import contextlib
 import functools
 import io
 import json
@@ -41,7 +40,6 @@ from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.delayed import Delayed
-from dask.distributed import get_worker
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
@@ -49,86 +47,7 @@ from fsspec.utils import stringify_path
 
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
-# Use global variable as the default
-# cache when there are no distributed workers
-_DEFAULT_CACHE = None
-_DEFAULT_CACHE_LOCK = threading.RLock()
-
-
 LOG = logging.getLogger("nvtabular")
-
-
-#
-# Cache-Specific Code
-#
-
-
-class WriterCache:
-    def __init__(self):
-        self.pq_writer_cache = {}
-
-    def __del__(self):
-        for path, (pw, fpath) in self.pq_writer_cache.items():
-            pw.close()
-
-    def get_pq_writer(self, prefix, s, mem):
-        pw, fil = self.pq_writer_cache.get(prefix, (None, None))
-        if pw is None:
-            if mem:
-                fil = BytesIO()
-                pw = pwriter(fil, compression=None)
-                self.pq_writer_cache[prefix] = (pw, fil)
-            else:
-                outfile_id = guid() + ".parquet"
-                full_path = ".".join([prefix, outfile_id])
-                pw = pwriter(full_path, compression=None)
-                self.pq_writer_cache[prefix] = (pw, full_path)
-        return pw
-
-
-@contextlib.contextmanager
-def get_cache():
-    with _DEFAULT_CACHE_LOCK:
-        yield _get_cache()
-
-
-def _get_cache():
-    try:
-        worker = get_worker()
-    except ValueError:
-        # There is no dask.distributed worker.
-        # Assume client/worker are same process
-        global _DEFAULT_CACHE
-        if _DEFAULT_CACHE is None:
-            _DEFAULT_CACHE = WriterCache()
-        return _DEFAULT_CACHE
-    if not hasattr(worker, "pw_cache"):
-        worker.pw_cache = WriterCache()
-    return worker.pw_cache
-
-
-def clean_pw_cache():
-    with _DEFAULT_CACHE_LOCK:
-        try:
-            worker = get_worker()
-        except ValueError:
-            global _DEFAULT_CACHE
-            if _DEFAULT_CACHE is not None:
-                del _DEFAULT_CACHE
-                _DEFAULT_CACHE = None
-            return
-        if hasattr(worker, "pw_cache"):
-            del worker.pw_cache
-        return
-
-
-def close_cached_pw(fs):
-    md_dict = {}
-    with get_cache() as cache:
-        for path, (pw, bio) in cache.pq_writer_cache.items():
-            fn = bio.split(fs.sep)[-1]
-            md_dict[fn] = pw.close(metadata_file_path=fn)
-    return md_dict
 
 
 #
@@ -165,6 +84,59 @@ def _shuffle_gdf(gdf, gdf_size=None):
     arr = cp.arange(gdf_size)
     cp.random.shuffle(arr)
     return gdf.iloc[arr]
+
+
+def device_mem_size(kind="total"):
+    if kind not in ["free", "total"]:
+        raise ValueError("{0} not a supported option for device_mem_size.".format(kind))
+    try:
+        if kind == "free":
+            return int(cuda.current_context().get_memory_info()[0])
+        else:
+            return int(cuda.current_context().get_memory_info()[1])
+    except NotImplementedError:
+        import pynvml
+
+        pynvml.nvmlInit()
+        if kind == "free":
+            warnings.warn("get_memory_info is not supported. Using total device memory from NVML.")
+        size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
+        pynvml.nvmlShutdown()
+    return size
+
+
+def guid():
+    """ Simple utility function to get random hex string
+    """
+    return uuid4().hex
+
+
+def _merge_general_metadata(meta_list):
+    """ Combine list of "general" metadata dicts into
+        a single dict
+    """
+    if not meta_list:
+        return {}
+    meta = None
+    for md in meta_list:
+        if meta:
+            meta["data_paths"] += md["data_paths"]
+            meta["file_stats"] += md["file_stats"]
+        else:
+            meta = md.copy()
+    return meta
+
+
+def _write_pq_metadata_file(md_list, fs, path):
+    """ Converts list of parquet metadata objects into
+        a single shared _metadata file.
+    """
+    if md_list:
+        metadata_path = fs.sep.join([path, "_metadata"])
+        _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
+        with fs.open(metadata_path, "wb") as fil:
+            _meta.tofile(fil)
+    return
 
 
 #
@@ -398,6 +370,11 @@ class GPUFileIterator:
                     chunk[col] = chunk[col].astype(np.int32)
             else:
                 chunk[col] = chunk[col].astype(dtype)
+
+
+#
+# Writer Definitions
+#
 
 
 def _writer_cls_factory(output_format, output_path):
@@ -706,48 +683,9 @@ class HugeCTRWriter(ThreadedWriter):
         return None
 
 
-def device_mem_size(kind="total"):
-    if kind not in ["free", "total"]:
-        raise ValueError("{0} not a supported option for device_mem_size.".format(kind))
-    try:
-        if kind == "free":
-            return int(cuda.current_context().get_memory_info()[0])
-        else:
-            return int(cuda.current_context().get_memory_info()[1])
-    except NotImplementedError:
-        import pynvml
-
-        pynvml.nvmlInit()
-        if kind == "free":
-            warnings.warn("get_memory_info is not supported. Using total device memory from NVML.")
-        size = int(pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(0)).total)
-        pynvml.nvmlShutdown()
-    return size
-
-
-def guid():
-    """ Simple utility function to get random hex string
-    """
-    return uuid4().hex
-
-
-# @annotate("write_output_partition", color="green", domain="nvt_python")
-# def _write_output_partition(gdf, processed_path, shuffle, out_files_per_proc, fs):
-#     gdf_size = len(gdf)
-#     out_files_per_proc = out_files_per_proc or 1
-#     if shuffle and shuffle != "full":
-#         # We should do a real sort here
-#         gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
-#     split_size = math.ceil(gdf_size / out_files_per_proc)
-#     ind = cp.ones(gdf_size).cumsum() // split_size
-#     del ind
-#     for s in range(out_files_per_proc):
-#         prefix = fs.sep.join([processed_path, "split." + str(s)])
-#         with get_cache() as cache:
-#             pw = cache.get_pq_writer(prefix, s, mem=(shuffle == "full"))
-#             pw.write_table(gdf.iloc[s * split_size : (s + 1) * split_size])
-
-#     return gdf_size
+#
+# Dask-based IO
+#
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
@@ -826,19 +764,6 @@ def _ddf_to_dataset(
     return Delayed(name, graph)
 
 
-def _merge_general_metadata(meta_list):
-    if not meta_list:
-        return {}
-    meta = None
-    for md in meta_list:
-        if meta:
-            meta["data_paths"] += md["data_paths"]
-            meta["file_stats"] += md["file_stats"]
-        else:
-            meta = md.copy()
-    return meta
-
-
 def _finish_dataset(client, ddf, shuffle, output_path, fs, output_format):
     # Finish data writing
     if client:
@@ -868,34 +793,6 @@ def _finish_dataset(client, ddf, shuffle, output_path, fs, output_format):
         client.run(clean_worker_cache, "writer")
     else:
         clean_worker_cache("writer")
-
-
-def _write_pq_metadata_file(md_list, fs, path):
-    if md_list:
-        metadata_path = fs.sep.join([path, "_metadata"])
-        _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
-        with fs.open(metadata_path, "wb") as fil:
-            _meta.tofile(fil)
-    return
-
-
-# @annotate("worker_shuffle", color="green", domain="nvt_python")
-# def _worker_shuffle(processed_path, fs):
-#     metadata_dict = {}
-#     with get_cache() as cache:
-#         for path, (pw, bio) in cache.pq_writer_cache.items():
-#             pw.close()
-
-#             gdf = cudf.io.read_parquet(bio, index=False)
-#             bio.close()
-
-#             gdf = _shuffle_gdf(gdf)
-#             rel_path = "shuffled.%s.parquet" % (guid())
-#             full_path = fs.sep.join([processed_path, rel_path])
-#             metadata_dict[rel_path] = gdf.to_parquet(
-#                 full_path, compression=None, index=False, metadata_file_path=rel_path
-#             )
-#         return metadata_dict
 
 
 def _worker_finish(processed_path, fs, mem_shuffle=False, output_format="parquet"):
