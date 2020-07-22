@@ -89,11 +89,11 @@ def test_gpu_workflow_api(
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    dataset_2 = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+    processor.write_to_dataset(
+        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
     )
+
+    dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -165,11 +165,11 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    dataset_2 = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+    processor.write_to_dataset(
+        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
     )
+
+    dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -248,11 +248,11 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    dataset_2 = Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+    processor.write_to_dataset(
+        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
     )
+
+    dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -284,7 +284,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     )
     processor.add_preprocess(ops.Normalize())
     processor.finalize()
-    processor.update_stats(
+    processor.apply(
         dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
 

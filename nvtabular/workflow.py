@@ -15,18 +15,14 @@
 #
 import collections
 import logging
-import os
 import time
 import warnings
 
 import dask
 import yaml
-from cudf._lib.nvtx import annotate
-from dask.utils import natural_sort_key
 from fsspec.core import get_fs_token_paths
 
 import nvtabular.io as nvt_io
-from nvtabular.ds_writer import DatasetWriter
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
@@ -65,12 +61,7 @@ class BaseWorkflow:
 
         self.stats = {}
         self.current_file_num = 0
-        self.timings = {
-            "shuffle_df": 0.0,
-            "shuffle_fin": 0.0,
-            "preproc_apply": 0.0,
-            "preproc_reapply": 0.0,
-        }
+        self.timings = {"write_df": 0.0, "preproc_apply": 0.0}
         if config:
             self.load_config(config)
         else:
@@ -231,22 +222,6 @@ class BaseWorkflow:
         data.
         """
         self.load_config(self.config)
-
-    def write_to_dataset(self, path, dataset, apply_ops=False, nfiles=1, shuffle=True, **kwargs):
-        """ Write data to shuffled parquet dataset.
-        """
-        if isinstance(dataset, nvt_io.Dataset):
-            itr = dataset.to_iter()
-        else:
-            itr = dataset
-
-        writer = DatasetWriter(path, nfiles=nfiles)
-
-        for gdf in itr:
-            if apply_ops:
-                gdf = self.apply_ops(gdf)
-            writer.write(gdf, shuffle=shuffle)
-        writer.write_metadata()
 
     def load_config(self, config, pro=False):
         """
@@ -439,7 +414,9 @@ class BaseWorkflow:
         """
         col_names = []
         for c_names in self.columns_ctx[col_type].values():
-            col_names.extend(c_names)
+            for name in c_names:
+                if name not in col_names:
+                    col_names.append(name)
         return col_names
 
     def _build_tasks(self, task_dict: dict, task_set, master_task_list):
@@ -491,16 +468,7 @@ class BaseWorkflow:
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
         return gdf
 
-    def apply_ops(
-        self,
-        gdf,
-        start_phase=None,
-        end_phase=None,
-        shuffler=None,
-        output_path=None,
-        num_out_files=None,
-        huge_ctr=None,
-    ):
+    def apply_ops(self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None):
         """
         gdf: cudf dataframe
         Controls the application of registered preprocessing phase op
@@ -515,33 +483,22 @@ class BaseWorkflow:
             start = time.time()
             gdf = self._run_trans_ops_for_phase(gdf, self.phases[phase_index])
             self.timings["preproc_apply"] += time.time() - start
-            if phase_index == len(self.phases) - 1 and output_path:
-                self.write_df(gdf, output_path, shuffler=shuffler, num_out_files=num_out_files)
+            if phase_index == len(self.phases) - 1 and writer and output_path:
 
-            if huge_ctr and phase_index == len(self.phases) - 1:
-                if not self.cal_col_names:
+                if writer.need_cal_col_names:
                     cat_names = self.get_final_cols_names("categorical")
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
-                    huge_ctr.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-                    self.cal_col_names = True
-                huge_ctr.add_data(gdf)
+                    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    writer.need_cal_col_names = False
+
+                start_write = time.time()
+                writer.add_data(gdf)
+                self.timings["write_df"] += time.time() - start_write
 
         return gdf
 
-    @annotate("Write_df", color="red", domain="nvt_python")
-    def write_df(self, gdf, export_path, shuffler, num_out_files):
-        if shuffler:
-            start = time.time()
-            shuffler.add_data(gdf)
-            self.timings["shuffle_df"] += time.time() - start
-        else:
-            file_name = f"{self.current_file_num}.parquet"
-            path = os.path.join(export_path, file_name)
-            gdf.to_parquet(path, compression=None)
-            self.current_file_num += 1
-
-    def _update_stats(self, stat_op):
+    def _update_statistics(self, stat_op):
         self.stats.update(stat_op.stats_collected())
 
     def save_stats(self, path):
@@ -667,15 +624,37 @@ class Workflow(BaseWorkflow):
                 for r in self.client.compute(stats):
                     computed_stats, op = r.result()
                     op.finalize(computed_stats)
-                    self._update_stats(op)
+                    self._update_statistics(op)
                     op.clear()
             else:
                 for r in dask.compute(stats, scheduler="synchronous")[0]:
                     computed_stats, op = r
                     op.finalize(computed_stats)
-                    self._update_stats(op)
+                    self._update_statistics(op)
                     op.clear()
             del stats
+
+    def reorder_tasks(self, end):
+        if end != 2:
+            # Opt only works for two phases (for now)
+            return
+        stat_tasks = []
+        trans_tasks = []
+        for idx, _ in enumerate(self.phases[:end]):
+            for task in self.phases[idx]:
+                deps = task[2]
+                if isinstance(task[0], StatOperator):
+                    if deps == ["base"]:
+                        stat_tasks.append(task)
+                    else:
+                        # This statistics depends on a transform
+                        # (Opt wont work)
+                        return
+                elif isinstance(task[0], TransformOperator):
+                    trans_tasks.append(task)
+
+        self.phases[0] = stat_tasks
+        self.phases[1] = trans_tasks
 
     def apply(
         self,
@@ -684,11 +663,8 @@ class Workflow(BaseWorkflow):
         record_stats=True,
         shuffle=None,
         output_path="./ds_export",
+        output_format="parquet",
         out_files_per_proc=None,
-        hugectr_gen_output=False,
-        hugectr_output_path="./hugectr",
-        hugectr_num_out_files=None,
-        hugectr_output_format=None,
         **kwargs,
     ):
         """
@@ -714,6 +690,9 @@ class Workflow(BaseWorkflow):
             disk. A "true" full shuffle is not yet implemented.
         output_path : string
             path to output data
+        output_format : {"parquet", "hugectr", None}
+            Output format for processed/shuffled dataset. If None,
+            no output dataset will be written.
         out_files_per_proc : integer
             number of files to create (per process) after
             shuffling the data
@@ -734,84 +713,91 @@ class Workflow(BaseWorkflow):
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
             self.finalize()
+
+        # Gather statstics (if apply_offline), and/or transform
+        # and write out processed data
         if apply_offline:
-            if hugectr_gen_output:
-                raise ValueError(
-                    "TODO: Support HugeCTR output for offline processing with Dask."
-                    " This is part of the larger task of aligning online/offline API."
-                )
-            self.update_stats(
+            self.build_and_process_graph(
                 dataset,
                 output_path=output_path,
                 record_stats=record_stats,
                 shuffle=shuffle,
+                output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
             )
         else:
-            shuffler = None
-            huge_ctr = None
-            if shuffle:
-                if isinstance(shuffle, str):
-                    raise ValueError("TODO: Align shuffling/writing API for online/offline.")
-                shuffler = nvt_io.Shuffler(output_path, num_out_files=out_files_per_proc)
-            if hugectr_gen_output:
-                self.cal_col_names = False
-                if hugectr_output_format == "binary":
-                    huge_ctr = nvt_io.HugeCTRWriter(
-                        hugectr_output_path, num_out_files=hugectr_num_out_files
-                    )
-                elif hugectr_output_format == "parquet":
-                    huge_ctr = nvt_io.ParquetWriter(
-                        hugectr_output_path, num_out_files=hugectr_num_out_files
-                    )
-            # "Online" apply currently requires manual iteration
+            self.iterate_online(
+                dataset,
+                output_path=output_path,
+                shuffle=shuffle,
+                output_format=output_format,
+                out_files_per_proc=out_files_per_proc,
+            )
+
+    def iterate_online(
+        self,
+        dataset,
+        end_phase=None,
+        output_path=None,
+        shuffle=None,
+        output_format=None,
+        out_files_per_proc=None,
+        apply_ops=True,
+    ):
+        """ Iterate through dataset and (optionally) apply/shuffle/write.
+        """
+        # Check if we have a (supported) writer
+        output_path = output_path or "./"
+        output_path = str(output_path)
+        writer = nvt_io.writer_factory(
+            output_format, output_path, out_files_per_proc, shuffle, bytes_io=(shuffle == "full")
+        )
+
+        # Iterate through dataset, apply ops, and write out processed data
+        if apply_ops:
             for gdf in dataset.to_iter():
-                self.apply_ops(
-                    gdf,
-                    output_path=output_path,
-                    shuffler=shuffler,
-                    num_out_files=out_files_per_proc,
-                    huge_ctr=huge_ctr,
-                )
-            if shuffler:
-                shuffler.close()
-            if huge_ctr:
-                huge_ctr.close()
+                self.apply_ops(gdf, output_path=output_path, writer=writer)
 
-    def reorder_tasks(self, end):
-        if end != 2:
-            # Opt only works for two phases (for now)
-            return
-        stat_tasks = []
-        trans_tasks = []
-        for idx, _ in enumerate(self.phases[:end]):
-            for task in self.phases[idx]:
-                deps = task[2]
-                if isinstance(task[0], StatOperator):
-                    if deps == ["base"]:
-                        stat_tasks.append(task)
-                    else:
-                        # This statistics depends on a transform
-                        # (Opt wont work)
-                        return
-                elif isinstance(task[0], TransformOperator):
-                    trans_tasks.append(task)
+        # Close writer and write general/specialized metadata
+        if writer:
+            general_md, special_md = writer.close()
 
-        self.phases[0] = stat_tasks
-        self.phases[1] = trans_tasks
+            # Note that we "could" have the special and general metadata
+            # written during `writer.close()` (just above) for the single-GPU case.
+            # Instead, the metadata logic is separated from the `Writer` object to
+            # simplify multi-GPU integration. When using Dask, we cannot assume
+            # that the "shared" metadata files can/will be written by the same
+            # process that writes the data.
+            writer.write_special_metadata(special_md, writer.fs, output_path)
+            writer.write_general_metadata(general_md, writer.fs, output_path)
 
-    def update_stats(
+    def update_stats(self, dataset, end_phase=None):
+        """ Colllect statistics only.
+        """
+        self.build_and_process_graph(dataset, end_phase=end_phase, record_stats=True)
+
+    def build_and_process_graph(
         self,
         dataset,
         end_phase=None,
         output_path=None,
         record_stats=True,
         shuffle=None,
+        output_format=None,
         out_files_per_proc=None,
+        apply_ops=True,
     ):
+        """ Build Dask-task graph for workflow.
+
+            Full graph is only executed if `output_format` is specified.
+        """
         end = end_phase if end_phase else len(self.phases)
 
+        if output_format not in ("parquet", None):
+            raise ValueError("Output format not yet supported with Dask.")
+
         # Reorder tasks for two-phase workflows
+        # TODO: Generalize this type of optimization
         self.reorder_tasks(end)
 
         # Clear worker caches to be "safe"
@@ -821,22 +807,86 @@ class Workflow(BaseWorkflow):
             clean_worker_cache()
 
         self.set_ddf(dataset)
-        for idx, _ in enumerate(self.phases[:end]):
-            self.exec_phase(idx, record_stats=record_stats)
-        if output_path:
-            self.to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
+        if apply_ops:
+            for idx, _ in enumerate(self.phases[:end]):
+                self.exec_phase(idx, record_stats=record_stats)
+        if output_format:
+            output_path = output_path or "./"
+            output_path = str(output_path)
+            self.ddf_to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
 
-    def to_dataset(self, output_path, shuffle=None, out_files_per_proc=None):
+    def write_to_dataset(
+        self,
+        path,
+        dataset,
+        apply_ops=False,
+        out_files_per_proc=None,
+        shuffle=None,
+        output_format="parquet",
+        iterate=False,
+        nfiles=None,
+    ):
+        """ Write data to shuffled parquet dataset.
+
+            Assumes statistics are already gathered.
+        """
+        if nfiles:
+            warnings.warn("nfiles is deprecated. Use out_files_per_proc")
+            if out_files_per_proc is None:
+                out_files_per_proc = nfiles
+        out_files_per_proc = out_files_per_proc or 1
+
+        path = str(path)
+        if iterate:
+            self.iterate_online(
+                dataset,
+                output_path=path,
+                shuffle=shuffle,
+                output_format=output_format,
+                out_files_per_proc=out_files_per_proc,
+                apply_ops=apply_ops,
+            )
+        else:
+            self.build_and_process_graph(
+                dataset,
+                output_path=path,
+                record_stats=False,
+                shuffle=shuffle,
+                output_format=output_format,
+                out_files_per_proc=out_files_per_proc,
+                apply_ops=apply_ops,
+            )
+
+    def ddf_to_dataset(
+        self, output_path, shuffle=None, out_files_per_proc=None, output_format="parquet"
+    ):
+        """ Dask-based dataset output.
+
+            Currently supports parquet only.
+        """
+        if output_format != "parquet":
+            raise ValueError("Only parquet output supported with Dask.")
         ddf = self.get_ddf()
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc:
 
-            # Construct graph for Dask-based dataset write
-            out = nvt_io._to_parquet_dataset(ddf, fs, output_path, shuffle, out_files_per_proc)
+            cat_names = self.get_final_cols_names("categorical")
+            cont_names = self.get_final_cols_names("continuous")
+            label_names = self.get_final_cols_names("label")
 
-            # Would be nice to clean the categorical
-            # cache before the write (TODO)
+            # Construct graph for Dask-based dataset write
+            out = nvt_io._ddf_to_dataset(
+                ddf,
+                fs,
+                output_path,
+                shuffle,
+                out_files_per_proc,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+            )
 
             # Trigger write execution
             if self.client:
@@ -847,40 +897,8 @@ class Workflow(BaseWorkflow):
                 self.ddf_base_dataset = None
                 out = dask.compute(out, scheduler="synchronous")[0]
 
-            # Deal with "full" (per-worker) shuffle here.
-            if shuffle == "full":
-                if self.client:
-                    self.client.cancel(self.ddf)
-                    self.ddf = None
-                    worker_md = self.client.run(nvt_io._worker_shuffle, output_path, fs)
-                    worker_md = list(collections.ChainMap(*worker_md.values()).items())
-                else:
-                    self.ddf = None
-                    worker_md = nvt_io._worker_shuffle(output_path, fs)
-                    worker_md = list(worker_md.items())
-
-            else:
-                # Collect parquet metadata while closing
-                # ParquetWriter object(s)
-                if self.client:
-                    worker_md = self.client.run(nvt_io.close_cached_pw, fs)
-                    worker_md = list(collections.ChainMap(*worker_md.values()).items())
-                else:
-                    worker_md = nvt_io.close_cached_pw(fs)
-                    worker_md = list(worker_md.items())
-
-            # Sort metadata by file name and convert list of
-            # tuples to a list of metadata byte-blobs
-            md_list = [m[1] for m in sorted(worker_md, key=lambda x: natural_sort_key(x[0]))]
-
-            # Aggregate metadata and write _metadata file
-            nvt_io._write_pq_metadata_file(md_list, fs, output_path)
-
-            # Close ParquetWriter Objects
-            if self.client:
-                self.client.run(nvt_io.clean_pw_cache)
-            else:
-                nvt_io.clean_pw_cache()
+            # Follow-up Shuffling and _metadata creation
+            nvt_io._finish_dataset(self.client, self.ddf, output_path, fs, output_format)
 
             return
 

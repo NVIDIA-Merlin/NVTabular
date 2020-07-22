@@ -332,9 +332,9 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
     if path:
         if cat_cache is not None:
             cat_cache = cat_cache if isinstance(cat_cache, str) else cat_cache.get(name, "disk")
-            cache = get_worker_cache("cats") if len(gdf) else None
-            if cache is not None:
-                value = fetch_data(cache, name, path, cache=cat_cache, kind="cats")
+            if len(gdf):
+                with get_worker_cache("cats") as cache:
+                    value = fetch_data(cache, name, path, cache=cat_cache, kind="cats")
         else:
             value = cudf.io.read_parquet(path, index=False, columns=[name])
             value.index.name = "labels"
@@ -362,7 +362,7 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
 def _read_groupby_stat_df(path, name, cat_cache):
     if cat_cache is not None:
         cat_cache = cat_cache if isinstance(cat_cache, str) else cat_cache.get(name, "disk")
-        cache = get_worker_cache("stats")
-        if cache:
-            return fetch_data(cache, name, path, cache=cat_cache, kind="stats")
+        with get_worker_cache("stats") as cache:
+            if cache:
+                return fetch_data(cache, name, path, cache=cat_cache, kind="stats")
     return cudf.io.read_parquet(path, index=False)
