@@ -854,14 +854,15 @@ class LeftJoinExternal(TransformOperator):
             else:
                 raise ValueError("Disk format not yet supported")
 
-            _ext = fetch_table_data(
-                get_worker_cache(self.df_ext),
-                self.df_ext,
-                cache=self.cache,
-                columns=self.columns_ext,
-                reader=reader,
-                **self.kwargs,
-            )
+            with get_worker_cache(self.df_ext) as cached_table:
+                _ext = fetch_table_data(
+                    cached_table,
+                    self.df_ext,
+                    cache=self.cache,
+                    columns=self.columns_ext,
+                    reader=reader,
+                    **self.kwargs,
+                )
 
         # Take subset of columns if a list is specified
         if self.columns_ext:
