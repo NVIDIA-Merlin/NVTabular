@@ -134,7 +134,9 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     #     Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    processor.write_to_dataset(
+        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+    )
 
     processor.create_final_cols()
 
@@ -197,7 +199,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
         dataset,
         apply_offline=True,
         record_stats=True,
-        shuffle=True,
+        shuffle="partial",
         output_path=output_train,
         num_out_files=2,
     )
