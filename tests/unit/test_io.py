@@ -15,6 +15,7 @@
 #
 
 import glob
+import json
 import os
 
 import cudf
@@ -37,7 +38,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle=True)
+    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle="partial")
     shuf.add_data(df1)
     writer_files = shuf.data_paths
     shuf.close()
@@ -123,14 +124,38 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
         shuffle=False,
     )
 
-    # Check files
+    # Check for _file_list.txt
+    assert os.path.isfile(outdir + "/_file_list.txt")
+
+    # Check for _metadata.json
+    assert os.path.isfile(outdir + "/_metadata.json")
+
+    # Check contents of _metadata.json
+    data = {}
+    col_summary = {}
+    with open(outdir + "/_metadata.json", "r") as fil:
+        for k, v in json.load(fil).items():
+            data[k] = v
+    assert "cats" in data
+    assert "conts" in data
+    assert "labels" in data
+    assert "file_stats" in data
+    assert len(data["file_stats"]) == nfiles
+    for cdata in data["cats"] + data["conts"] + data["labels"]:
+        col_summary[cdata["index"]] = cdata["col_name"]
+
+    # Check that data files exist
     ext = ""
     if output_format == "parquet":
         ext = "parquet"
-        assert os.path.isfile(outdir + "/metadata.json")
     elif output_format == "hugectr":
         ext = "data"
-
-    assert os.path.isfile(outdir + "/file_list.txt")
     for n in range(nfiles):
         assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))
+
+    # Make sure the columns in "_metadata.json" make sense
+    if output_format == "parquet":
+        df_check = cudf.read_parquet(os.path.join(outdir, "0.parquet"))
+        for i, name in enumerate(df_check.columns):
+            if i in col_summary:
+                assert col_summary[i] == name
