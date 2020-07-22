@@ -22,9 +22,6 @@ RUN conda install nodejs>=10.0.0 && \
       jupyter nbextension enable --py widgetsnbextension && \
       jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
-# set up cupti profiling
-RUN apt-get install -y modprobe && modprobe -r nvidia_uvm nvidia_drm nvidia_modeset nvidia-vgpu-vfio nvidia && \
-      modprobe nvidia NVreg_RestrictProfilingToAdminUsers=0
 ENV LD_LIBRARY_PATH="/usr/local/cuda-10.1/extras/CUPTI/lib64/:${LD_LIBRARY_PATH}"
 
 # different images for dev and production
