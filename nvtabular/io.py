@@ -601,7 +601,7 @@ class Dataset:
 
     Parameters
     -----------
-    path_or_source : str, list of str, or <dask_cudf|cudf>.DataFrame
+    path_or_source : str, list of str, or <dask.dataframe|cudf|pd>.DataFrame
         Dataset path (or list of paths), or a DataFrame. If string,
         should specify a specific file or directory path. If this is a
         directory path, the directory structure must be flat (nested
@@ -638,8 +638,8 @@ class Dataset:
         **kwargs,
     ):
         self.dtypes = dtypes
-        if isinstance(path_or_source, (dask_cudf.DataFrame, cudf.DataFrame, pd.DataFrame)):
-            # User is passing in a <dask_cudf|cudf|pd>.DataFrame
+        if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
+            # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
             if isinstance(path_or_source, cudf.DataFrame):
                 path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
@@ -647,6 +647,8 @@ class Dataset:
                 path_or_source = dask_cudf.from_cudf(
                     cudf.from_pandas(path_or_source), npartitions=1
                 )
+            elif not isinstance(path_or_source, dask_cudf.DataFrame):
+                path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
