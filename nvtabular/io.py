@@ -30,9 +30,11 @@ from uuid import uuid4
 
 import cudf
 import cupy as cp
+import dask
 import dask_cudf
 import numba.cuda as cuda
 import numpy as np
+import pandas as pd
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
@@ -754,7 +756,9 @@ def _ddf_to_dataset(
     cont_names,
     label_names,
     output_format,
+    client,
 ):
+    # Construct graph for Dask-based dataset write
     name = "write-processed"
     write_name = name + tokenize(
         ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
@@ -778,7 +782,16 @@ def _ddf_to_dataset(
         task_list.append(key)
     dsk[name] = (lambda x: x, task_list)
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
-    return Delayed(name, graph)
+    out = Delayed(name, graph)
+
+    # Trigger write execution
+    if client:
+        out = client.compute(out).result()
+    else:
+        out = dask.compute(out, scheduler="synchronous")[0]
+
+    # Follow-up Shuffling and _metadata creation
+    _finish_dataset(client, ddf, output_path, fs, output_format)
 
 
 def _finish_dataset(client, ddf, output_path, fs, output_format):
@@ -828,74 +841,95 @@ class Dataset:
 
     Parameters
     -----------
-    path : str or list of str
-        Dataset path (or list of paths). If string, should specify
-        a specific file or directory path. If this is a directory
-        path, the directory structure must be flat (nested directories
-        are not yet supported).
+    path_or_source : str, list of str, or <dask_cudf|cudf>.DataFrame
+        Dataset path (or list of paths), or a DataFrame. If string,
+        should specify a specific file or directory path. If this is a
+        directory path, the directory structure must be flat (nested
+        directories are not yet supported).
     engine : str or DatasetEngine
         DatasetEngine object or string identifier of engine. Current
-        string options include: ("parquet").
+        string options include: ("parquet", "csv"). This argument
+        is ignored if path_or_source is a DataFrame type.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
         If None, part_mem_fraction will be used to calculate the
         partition size.  Note that the underlying engine may allow
-        other custom kwargs to override this argument.
+        other custom kwargs to override this argument. This argument
+        is ignored if path_or_source is a DataFrame type.
     part_mem_fraction : float (default 0.125)
         Fractional size of desired dask partitions (relative
         to GPU memory capacity). Ignored if part_size is passed
         directly. Note that the underlying engine may allow other
-        custom kwargs to override this argument.
+        custom kwargs to override this argument. This argument
+        is ignored if path_or_source is a DataFrame type.
     storage_options: None or dict
-        Further parameters to pass to the bytes backend.
+        Further parameters to pass to the bytes backend. This argument
+        is ignored if path_or_source is a DataFrame type.
     """
 
     def __init__(
         self,
-        paths,
+        path_or_source,
         engine=None,
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
         **kwargs,
     ):
-        if part_size:
-            # If a specific partition size is given, use it directly
-            part_size = parse_bytes(part_size)
+
+        if isinstance(path_or_source, (dask_cudf.DataFrame, cudf.DataFrame, pd.DataFrame)):
+            # User is passing in a <dask_cudf|cudf|pd>.DataFrame
+            # Use DataFrameDatasetEngine
+            if isinstance(path_or_source, cudf.DataFrame):
+                path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
+            elif isinstance(path_or_source, pd.DataFrame):
+                path_or_source = dask_cudf.from_cudf(
+                    cudf.from_pandas(path_or_source), npartitions=1
+                )
+            if part_size:
+                warnings.warn("part_size is ignored for DataFrame input.")
+            if part_mem_fraction:
+                warnings.warn("part_mem_fraction is ignored for DataFrame input.")
+            self.engine = DataFrameDatasetEngine(path_or_source)
         else:
-            # If a fractional partition size is given, calculate part_size
-            part_mem_fraction = part_mem_fraction or 0.125
-            assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
-            if part_mem_fraction > 0.25:
-                warnings.warn(
-                    "Using very large partitions sizes for Dask. "
-                    "Memory-related errors are likely."
-                )
-            part_size = int(device_mem_size(kind="total") * part_mem_fraction)
-
-        # Engine-agnostic path handling
-        if hasattr(paths, "name"):
-            paths = stringify_path(paths)
-        if isinstance(paths, str):
-            paths = [paths]
-
-        storage_options = storage_options or {}
-        # If engine is not provided, try to infer from end of paths[0]
-        if engine is None:
-            engine = paths[0].split(".")[-1]
-        if isinstance(engine, str):
-            if engine == "parquet":
-                self.engine = ParquetDatasetEngine(
-                    paths, part_size, storage_options=storage_options, **kwargs
-                )
-            elif engine == "csv":
-                self.engine = CSVDatasetEngine(
-                    paths, part_size, storage_options=storage_options, **kwargs
-                )
+            if part_size:
+                # If a specific partition size is given, use it directly
+                part_size = parse_bytes(part_size)
             else:
-                raise ValueError("Only parquet and csv supported (for now).")
-        else:
-            self.engine = engine(paths, part_size, storage_options=storage_options)
+                # If a fractional partition size is given, calculate part_size
+                part_mem_fraction = part_mem_fraction or 0.125
+                assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+                if part_mem_fraction > 0.25:
+                    warnings.warn(
+                        "Using very large partitions sizes for Dask. "
+                        "Memory-related errors are likely."
+                    )
+                part_size = int(device_mem_size(kind="total") * part_mem_fraction)
+
+            # Engine-agnostic path handling
+            paths = path_or_source
+            if hasattr(paths, "name"):
+                paths = stringify_path(paths)
+            if isinstance(paths, str):
+                paths = [paths]
+
+            storage_options = storage_options or {}
+            # If engine is not provided, try to infer from end of paths[0]
+            if engine is None:
+                engine = paths[0].split(".")[-1]
+            if isinstance(engine, str):
+                if engine == "parquet":
+                    self.engine = ParquetDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
+                elif engine == "csv":
+                    self.engine = CSVDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
+                else:
+                    raise ValueError("Only parquet and csv supported (for now).")
+            else:
+                self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None):
         return self.engine.to_ddf(columns=columns)
@@ -1059,11 +1093,11 @@ class ParquetDatasetEngine(DatasetEngine):
     @annotate("read_piece", color="green", domain="nvt_python")
     def read_piece(piece, columns):
         path, row_groups = piece
-        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False,)
+        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False)
 
     def meta_empty(self, columns=None):
         path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False,).iloc[:0]
+        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False).iloc[:0]
 
     def to_ddf(self, columns=None):
         pieces = self.pieces
@@ -1108,3 +1142,35 @@ class CSVDatasetEngine(DatasetEngine):
             yield from CSVFileReader(
                 path, self.fs, part_mem_fraction, columns=columns, **self.csv_kwargs
             )
+
+
+class DataFrameDatasetEngine(DatasetEngine):
+    """ DataFrameDatasetEngine
+
+        Allow NVT to interact with a dask_cudf.DataFrame object
+        in the same way as a dataset on disk.
+    """
+
+    def __init__(self, ddf):
+        self._ddf = ddf
+
+    def to_ddf(self, columns=None):
+        if isinstance(columns, list):
+            return self._ddf[columns]
+        elif isinstance(columns, str):
+            return self._ddf[[columns]]
+        return self._ddf
+
+    def to_iter(self, columns=None):
+        if isinstance(columns, str):
+            columns = [columns]
+
+        for part in self._ddf.partitions:
+            if columns:
+                yield part[columns].compute(scheduler="synchronous")
+            else:
+                yield part.compute(scheduler="synchronous")
+
+    @property
+    def num_rows(self):
+        return len(self._ddf)
