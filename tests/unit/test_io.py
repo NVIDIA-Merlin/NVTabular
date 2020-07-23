@@ -159,3 +159,12 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
         for i, name in enumerate(df_check.columns):
             if i in col_summary:
                 assert col_summary[i] == name
+
+
+def test_ddf_dataset_itr(tmpdir, datasets):
+    paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
+    ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
+    df1 = ddf1.compute()
+
+    ds = nvtabular.io.Dataset(ddf1)
+    assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
