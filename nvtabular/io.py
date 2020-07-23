@@ -962,7 +962,8 @@ class DatasetEngine:
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
 
     def to_iter(self, columns=None):
-        raise NotImplementedError(""" Return a Iterator over the cudf chunks of the dataset  """)
+        for part in self.to_ddf(columns=columns).partitions:
+            yield part.compute(scheduler="synchronous")
 
     @property
     def num_rows(self):
@@ -1110,13 +1111,6 @@ class ParquetDatasetEngine(DatasetEngine):
         divisions = [None] * (len(pieces) + 1)
         return new_dd_object(dsk, name, meta, divisions)
 
-    def to_iter(self, columns=None):
-        part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        for path in self.paths:
-            yield from PQFileReader(
-                path, self.fs, part_mem_fraction, columns=columns, batch_size=self.batch_size
-            )
-
 
 class CSVDatasetEngine(DatasetEngine):
     """ CSVDatasetEngine
@@ -1134,14 +1128,11 @@ class CSVDatasetEngine(DatasetEngine):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
     def to_ddf(self, columns=None):
-        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
-
-    def to_iter(self, columns=None):
-        part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        for path in self.paths:
-            yield from CSVFileReader(
-                path, self.fs, part_mem_fraction, columns=columns, **self.csv_kwargs
-            )
+        if columns:
+            return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[
+                columns
+            ]
+        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
 
 
 class DataFrameDatasetEngine(DatasetEngine):
