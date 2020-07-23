@@ -109,13 +109,13 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor.update_stats(dataset)
 
     if engine == "parquet" and not op_columns:
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
-        assert cats0 == ["None"] + cats_expected0
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
 
-    cats_expected1 = df["name-string"].unique().values_to_string()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -397,10 +397,13 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    outdir = tmpdir.mkdir("out1")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+    )
 
     dataset_2 = nvtabular.io.Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat"].dtype)
@@ -417,10 +420,13 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    outdir = tmpdir.mkdir("out2")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+    )
 
     dataset_2 = nvtabular.io.Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat"].dtype)
@@ -444,9 +450,12 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    outdir = tmpdir.mkdir("out3")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+    )
     dataset_2 = nvtabular.io.Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -467,10 +476,13 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    outdir = tmpdir.mkdir("out4")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+    )
 
     dataset_2 = nvtabular.io.Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat_add100"].dtype)
@@ -494,10 +506,13 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
+    outdir = tmpdir.mkdir("out5")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+    )
 
     dataset_2 = nvtabular.io.Dataset(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"), part_mem_fraction=gpu_memory_frac
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0

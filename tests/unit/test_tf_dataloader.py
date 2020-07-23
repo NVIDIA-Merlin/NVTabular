@@ -54,7 +54,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         engine=engine,
         shuffle=False,
     )
-    processor.update_stats(dataset, record_stats=True)
+    processor.update_stats(dataset)
     data_itr.map(processor)
 
     rows = 0
