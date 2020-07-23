@@ -24,11 +24,11 @@ requirements:
   build:
     - python x.x
     - setuptools
-    - cudf 0.14.*
+    - cudf 0.15.*
   run:
     - python x.x
-    - cudf 0.14.*
-    - dask-cudf 0.14.*
+    - cudf 0.15.*
+    - dask-cudf 0.15.*
     - cupy>=7,<8.0.0a0
     - dask>=2.12.0
     - distributed>=2.12.0
