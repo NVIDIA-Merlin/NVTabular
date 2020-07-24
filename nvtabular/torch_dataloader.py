@@ -18,37 +18,12 @@ import threading
 
 import cudf
 import torch
+import cupy as cp
 from torch.utils.dlpack import from_dlpack
+
 
 from nvtabular.io import Dataset, _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
-
-
-# class FileItrDataset(torch.utils.data.IterableDataset):
-#     gpu_itr = None
-
-
-#     def __init__(self, file, **kwargs):
-#         self.gpu_itr = GPUFileIterator(file, **kwargs)
-
-#     def __iter__(self):
-#         return self.gpu_itr.__iter__()
-
-#     def __len__(self):
-#         return len(self.gpu_itr)
-
-
-# class TensorItrDataset(torch.utils.data.IterableDataset):
-#     tensor_itr = None
-
-#     def __init__(self, tensors, **kwargs):
-#         self.tensor_itr = TensorItr(tensors, **kwargs)
-
-#     def __iter__(self):
-#         return self.tensor_itr.__iter__()
-
-#     def __len__(self):
-#         return len(self.tensor_itr)
 
 
 class TensorItr:
@@ -178,44 +153,6 @@ def process_one_df(
         gdf, cats, conts, label, cat_names=cat_names, cont_names=cont_names, label_names=label_names
     )
 
-
-# class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
-#     """
-#         For Torch Only:
-#         Batch Tensor dataset, takes in a file and converts to tensors
-#         supplying user defined size chunks.
-
-#         Parameters
-#         -----------
-#         path : path of input file
-#         sub_batch_size: the size of each batch to return.
-#         cats: categorical columns
-#         conts: continuous columns
-#         labels: label columns
-#         pin_memory: allows pinning of cpu memory, if used.
-
-#     """
-
-#     def __init__(
-#         self, path, sub_batch_size=1, cats=None, conts=None, labels=None, pin_memory=False, **kwargs
-#     ):
-#         self.apply_ops = kwargs.get("apply_ops", False)
-#         self.cat_cols = cats
-#         self.cont_cols = conts
-#         self.label_cols = labels
-#         self.itr = GPUFileIterator(path, **kwargs)
-#         self.batch_size = sub_batch_size
-#         self.num_chunks = len(self.itr.engine)
-
-#     def __len__(self):
-#         return self.num_chunks
-
-
-#     def __iter__(self):
-#         for chunk in self.itr:
-#             yield chunk
-
-
 class ChunkQueue:
     def __init__(
         self,
@@ -344,13 +281,28 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         paths : list of input files that represent complete dataset
     """
 
-    def __init__(self, dataset, **kwargs):
+    def __init__(self, dataset, shuffle=None, **kwargs):
         self.dataset = dataset
+        self.indices = cp.arange(dataset.to_ddf().npartitions)
+        if shuffle:
+            self.indices = cp.random.shuffle(self.indices)
         
 
     def __iter__(self):
-        yield from self.dataset.to_iter()
+        indices = self.gather_indices()
+        yield from self.dataset.to_iter(indices=indices)
 
+    def gather_indices(self):
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            return self.indices
+        else:
+            per_worker = int(math.ceil(len(self.indices)/ float(worker_info.num_workers)))
+            worker_id = worker_info.id
+            start = worker_id * per_worker
+            return self.indices[start:start + per_worker]
+    
+    
 
     def __len__(self):
         return self.rows
