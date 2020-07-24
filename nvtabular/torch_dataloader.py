@@ -20,34 +20,34 @@ import cudf
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.io import GPUFileIterator, _shuffle_gdf
+from nvtabular.io import Dataset, _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
 
 
-class FileItrDataset(torch.utils.data.IterableDataset):
-    gpu_itr = None
+# class FileItrDataset(torch.utils.data.IterableDataset):
+#     gpu_itr = None
 
-    def __init__(self, file, **kwargs):
-        self.gpu_itr = GPUFileIterator(file, **kwargs)
+#     def __init__(self, file, **kwargs):
+#         self.gpu_itr = GPUFileIterator(file, **kwargs)
 
-    def __iter__(self):
-        return self.gpu_itr.__iter__()
+#     def __iter__(self):
+#         return self.gpu_itr.__iter__()
 
-    def __len__(self):
-        return len(self.gpu_itr)
+#     def __len__(self):
+#         return len(self.gpu_itr)
 
 
-class TensorItrDataset(torch.utils.data.IterableDataset):
-    tensor_itr = None
+# class TensorItrDataset(torch.utils.data.IterableDataset):
+#     tensor_itr = None
 
-    def __init__(self, tensors, **kwargs):
-        self.tensor_itr = TensorItr(tensors, **kwargs)
+#     def __init__(self, tensors, **kwargs):
+#         self.tensor_itr = TensorItr(tensors, **kwargs)
 
-    def __iter__(self):
-        return self.tensor_itr.__iter__()
+#     def __iter__(self):
+#         return self.tensor_itr.__iter__()
 
-    def __len__(self):
-        return len(self.tensor_itr)
+#     def __len__(self):
+#         return len(self.tensor_itr)
 
 
 class TensorItr:
@@ -190,40 +190,40 @@ def process_one_df(
     )
 
 
-class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
-    """
-        For Torch Only:
-        Batch Tensor dataset, takes in a file and converts to tensors
-        supplying user defined size chunks.
+# class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
+#     """
+#         For Torch Only:
+#         Batch Tensor dataset, takes in a file and converts to tensors
+#         supplying user defined size chunks.
 
-        Parameters
-        -----------
-        path : path of input file
-        sub_batch_size: the size of each batch to return.
-        cats: categorical columns
-        conts: continuous columns
-        labels: label columns
-        pin_memory: allows pinning of cpu memory, if used.
+#         Parameters
+#         -----------
+#         path : path of input file
+#         sub_batch_size: the size of each batch to return.
+#         cats: categorical columns
+#         conts: continuous columns
+#         labels: label columns
+#         pin_memory: allows pinning of cpu memory, if used.
 
-    """
+#     """
 
-    def __init__(
-        self, path, sub_batch_size=1, cats=None, conts=None, labels=None, pin_memory=False, **kwargs
-    ):
-        self.apply_ops = kwargs.get("apply_ops", False)
-        self.cat_cols = cats
-        self.cont_cols = conts
-        self.label_cols = labels
-        self.itr = GPUFileIterator(path, **kwargs)
-        self.batch_size = sub_batch_size
-        self.num_chunks = len(self.itr.engine)
+#     def __init__(
+#         self, path, sub_batch_size=1, cats=None, conts=None, labels=None, pin_memory=False, **kwargs
+#     ):
+#         self.apply_ops = kwargs.get("apply_ops", False)
+#         self.cat_cols = cats
+#         self.cont_cols = conts
+#         self.label_cols = labels
+#         self.itr = GPUFileIterator(path, **kwargs)
+#         self.batch_size = sub_batch_size
+#         self.num_chunks = len(self.itr.engine)
 
-    def __len__(self):
-        return self.num_chunks
+#     def __len__(self):
+#         return self.num_chunks
 
-    def __iter__(self):
-        for chunk in self.itr:
-            yield chunk
+#     def __iter__(self):
+#         for chunk in self.itr:
+#             yield chunk
 
 
 class ChunkQueue:
@@ -309,18 +309,17 @@ class DLCollator:
 
 
 class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
-    def __init__(self, paths, **kwargs):
+    def __init__(self, paths, cats=None, conts=None, labels=None, batch_size=1, **kwargs):
         self.paths = paths
-        self.kwargs = kwargs
-        self.batch_size = kwargs.get("sub_batch_size", 1)
-        self.itr = TorchTensorBatchDatasetItr(paths, **kwargs)
+        self.batch_size = batch_size
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.itr = TorchTensorBatchDatasetItr(paths, batch_size=batch_size, **kwargs)
 
     def __iter__(self):
-        cats = self.kwargs.get("cats")
-        conts = self.kwargs.get("conts")
-        labels = self.kwargs.get("labels")
         buff = ChunkQueue(
-            batch_size=self.batch_size, cat_cols=cats, cont_cols=conts, label_cols=labels
+            batch_size=self.batch_size, cat_cols=self.cats, cont_cols=self.conts, label_cols=self.labels
         )
         threading.Thread(target=self.load_chunk, args=(buff,)).start()
         while True:
@@ -352,7 +351,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         paths : list of input files that represent complete dataset
     """
 
-    def __init__(self, paths, **kwargs):
+    def __init__(self, paths, batch_size=1, **kwargs):
         if isinstance(paths, str):
             paths = [paths]
         if not isinstance(paths, list):
@@ -363,16 +362,16 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         self.cur_path = None
         self.kwargs = kwargs
         self.rows = 0
-        batch_size = kwargs.get("sub_batch_size", 1)
+        batch_size = batch_size
+        self.itr = Dataset(paths, **kwargs)
         for file_path in self.paths:
             (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
             chunks = int(num_rows / batch_size)
             self.rows += chunks + 1 if num_rows % batch_size > 0 else chunks
 
     def __iter__(self):
-        for path in self.paths:
-            self.cur_path = path
-            yield from TorchTensorBatchFileItr(path, **self.kwargs)
+        for part in self.itr.to_ddf().partitions:
+            yield part.compute()
 
     def __len__(self):
         return self.rows
