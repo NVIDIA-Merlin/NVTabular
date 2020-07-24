@@ -299,13 +299,13 @@ class DLCollator:
 
 
 class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
-    def __init__(self, paths, cats=None, conts=None, labels=None, batch_size=1, **kwargs):
-        self.paths = paths
+    def __init__(self, dataset, cats=None, conts=None, labels=None, batch_size=1, **kwargs):
         self.batch_size = batch_size
         self.cats = cats
         self.conts = conts
         self.labels = labels
-        self.itr = TorchTensorBatchDatasetItr(paths, batch_size=batch_size, **kwargs)
+        self.itr = TorchTensorBatchDatasetItr(dataset, **kwargs)
+
 
     def __iter__(self):
         buff = ChunkQueue(
@@ -344,27 +344,13 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         paths : list of input files that represent complete dataset
     """
 
-    def __init__(self, paths, batch_size=1, **kwargs):
-        if isinstance(paths, str):
-            paths = [paths]
-        if not isinstance(paths, list):
-            raise TypeError("paths must be a string or a list.")
-        if len(paths) < 1:
-            raise ValueError("len(paths) must be > 0.")
-        self.paths = paths
-        self.cur_path = None
-        self.kwargs = kwargs
-        self.rows = 0
-        batch_size = batch_size
-        self.itr = Dataset(paths, **kwargs)
-        for file_path in self.paths:
-            (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
-            chunks = int(num_rows / batch_size)
-            self.rows += chunks + 1 if num_rows % batch_size > 0 else chunks
+    def __init__(self, dataset, **kwargs):
+        self.dataset = dataset
+        
 
     def __iter__(self):
-        for part in self.itr.to_ddf().partitions:
-            yield part.compute()
+        yield from self.dataset.to_iter()
+
 
     def __len__(self):
         return self.rows
@@ -372,4 +358,4 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
 
 class DLDataLoader(torch.utils.data.DataLoader):
     def __len__(self):
-        return len(self.dataset)
+        return self.dataset.num_rows
