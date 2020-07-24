@@ -268,7 +268,9 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
         return self
 
     def _initialize_iterator(self):
-        self.iter_obj = self._nvt_dataset.to_iter(columns=self.column_names + [self.label_name])
+        self.iter_obj = iter(
+            self._nvt_dataset.to_iter(columns=self.column_names + [self.label_name])
+        )
         self.chunk_idx = 0
         self.batches_in_chunk = None
 
