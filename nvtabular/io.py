@@ -549,7 +549,7 @@ def _ddf_to_dataset(
         out = dask.compute(out, scheduler="synchronous")[0]
 
     # Follow-up Shuffling and _metadata creation
-    # _finish_dataset(client, ddf, output_path, fs, output_format)
+    _finish_dataset(client, ddf, output_path, fs, output_format)
 
 
 def _finish_dataset(client, ddf, output_path, fs, output_format):
