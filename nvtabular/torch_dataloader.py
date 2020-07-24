@@ -137,7 +137,6 @@ def combine_tensors(cats, conts, label):
     return cats, conts, label
 
 
-
 def _one_df(gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None):
     gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
@@ -310,7 +309,10 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         buff = ChunkQueue(
-            batch_size=self.batch_size, cat_cols=self.cats, cont_cols=self.conts, label_cols=self.labels
+            batch_size=self.batch_size,
+            cat_cols=self.cats,
+            cont_cols=self.conts,
+            label_cols=self.labels,
         )
         threading.Thread(target=self.load_chunk, args=(buff,)).start()
         while True:
