@@ -27,6 +27,7 @@ from nvtabular.ops import _get_embedding_order
 # class FileItrDataset(torch.utils.data.IterableDataset):
 #     gpu_itr = None
 
+
 #     def __init__(self, file, **kwargs):
 #         self.gpu_itr = GPUFileIterator(file, **kwargs)
 
@@ -136,13 +137,8 @@ def combine_tensors(cats, conts, label):
     return cats, conts, label
 
 
-def _one_df(
-    gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None,
-):
-    if gdf.empty:
-        import pdb
 
-        pdb.set_trace()
+def _one_df(gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None):
     gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
     if len(gdf_cats) > 0:
@@ -180,13 +176,7 @@ def process_one_df(
         cat_names, cont_names, label_names = _get_final_cols(preproc)
 
     _one_df(
-        gdf,
-        cats,
-        conts,
-        label,
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_names=label_names,
+        gdf, cats, conts, label, cat_names=cat_names, cont_names=cont_names, label_names=label_names
     )
 
 
@@ -220,6 +210,7 @@ def process_one_df(
 
 #     def __len__(self):
 #         return self.num_chunks
+
 
 #     def __iter__(self):
 #         for chunk in self.itr:

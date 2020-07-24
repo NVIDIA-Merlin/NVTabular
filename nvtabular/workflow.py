@@ -19,6 +19,7 @@ import time
 import warnings
 
 import dask
+import dask_cudf
 import yaml
 from fsspec.core import get_fs_token_paths
 
@@ -555,15 +556,13 @@ class Workflow(BaseWorkflow):
     def __init__(self, client=None, **kwargs):
         super().__init__(**kwargs)
         self.ddf = None
-        self.ddf_base_dataset = None
         self.client = client
 
     def set_ddf(self, ddf):
-        if isinstance(ddf, nvt_io.Dataset):
-            self.ddf_base_dataset = ddf
-            self.ddf = self.ddf_base_dataset
-        else:
+        if isinstance(ddf, (dask_cudf.DataFrame, nvt_io.Dataset)):
             self.ddf = ddf
+        else:
+            raise TypeError("ddf type not supported.")
 
     def get_ddf(self):
         if self.ddf is None:
@@ -875,8 +874,8 @@ class Workflow(BaseWorkflow):
             cont_names = self.get_final_cols_names("continuous")
             label_names = self.get_final_cols_names("label")
 
-            # Construct graph for Dask-based dataset write
-            out = nvt_io._ddf_to_dataset(
+            # Output dask_cudf DataFrame to dataset
+            nvt_io._ddf_to_dataset(
                 ddf,
                 fs,
                 output_path,
@@ -886,20 +885,8 @@ class Workflow(BaseWorkflow):
                 cont_names,
                 label_names,
                 output_format,
+                self.client,
             )
-
-            # Trigger write execution
-            if self.client:
-                self.client.cancel(self.ddf_base_dataset)
-                self.ddf_base_dataset = None
-                out = self.client.compute(out).result()
-            else:
-                self.ddf_base_dataset = None
-                out = dask.compute(out, scheduler="synchronous")[0]
-
-            # Follow-up Shuffling and _metadata creation
-            nvt_io._finish_dataset(self.client, self.ddf, output_path, fs, output_format)
-
             return
 
         # Default (shuffle=False): Just use dask_cudf.to_parquet
