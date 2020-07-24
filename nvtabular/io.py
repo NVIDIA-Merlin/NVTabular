@@ -253,7 +253,8 @@ class ThreadedWriter(Writer):
     def add_data(self, gdf):
 
         # Shuffle if necessary
-        if self.shuffle:
+        # (Skip shuffle if "full", because we will do it later)
+        if self.shuffle and self.shuffle != "full":
             gdf = _shuffle_gdf(gdf)
 
         # Populate columns idxs
@@ -481,9 +482,6 @@ def _write_output_partition(
 ):
     gdf_size = len(gdf)
     out_files_per_proc = out_files_per_proc or 1
-    if shuffle and shuffle != "full":
-        # We should do a real sort here
-        gdf = _shuffle_gdf(gdf, gdf_size=gdf_size)
 
     # Get cached writer (or create/cache a new one)
     with get_worker_cache("writer") as writer_cache:
@@ -551,7 +549,7 @@ def _ddf_to_dataset(
         out = dask.compute(out, scheduler="synchronous")[0]
 
     # Follow-up Shuffling and _metadata creation
-    _finish_dataset(client, ddf, output_path, fs, output_format)
+    # _finish_dataset(client, ddf, output_path, fs, output_format)
 
 
 def _finish_dataset(client, ddf, output_path, fs, output_format):
