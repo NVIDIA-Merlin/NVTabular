@@ -16,7 +16,6 @@
 
 import collections
 import functools
-import io
 import json
 import logging
 import os
@@ -25,14 +24,15 @@ import threading
 import warnings
 from collections import defaultdict
 from io import BytesIO
-from itertools import islice
 from uuid import uuid4
 
 import cudf
 import cupy as cp
+import dask
 import dask_cudf
 import numba.cuda as cuda
 import numpy as np
+import pandas as pd
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
@@ -59,22 +59,6 @@ def _allowable_batch_size(gpu_memory_frac, row_size):
     free_mem = device_mem_size(kind="free")
     gpu_memory = free_mem * gpu_memory_frac
     return max(int(gpu_memory / row_size), 1)
-
-
-def _get_read_engine(engine, file_path, **kwargs):
-    fs, _, _ = get_fs_token_paths(file_path, mode="rb")
-    LOG.debug("opening '%s' as %s", file_path, engine)
-    if engine is None:
-        engine = file_path.split(".")[-1]
-    if not isinstance(engine, str):
-        raise TypeError("Expecting engine as string type.")
-
-    if engine == "csv":
-        return CSVFileReader(file_path, fs, **kwargs)
-    elif engine == "parquet":
-        return PQFileReader(file_path, fs, **kwargs)
-    else:
-        raise ValueError("Unrecognized read engine.")
 
 
 def _shuffle_gdf(gdf, gdf_size=None):
@@ -139,237 +123,15 @@ def _write_pq_metadata_file(md_list, fs, path):
     return
 
 
-#
-# GPUFileReader Base Class
-#
-
-
-class GPUFileReader:
-    def __init__(
-        self, file_path, fs, gpu_memory_frac, batch_size=None, row_size=None, columns=None, **kwargs
-    ):
-        """ GPUFileReader Constructor
-        """
-        self.file_path = file_path
-        self.fs = fs
-        self.row_size = row_size
-        self.columns = columns
-        self.intialize_reader(gpu_memory_frac, batch_size, **kwargs)
-
-    def intialize_reader(self, **kwargs):
-        """ Define necessary file statistics and properties for reader
-        """
-        raise NotImplementedError()
-
-    def __iter__(self):
-        """ Iterates through the file, yielding a series of cudf.DataFrame objects
-        """
-        raise NotImplementedError()
-
-    def __len__(self):
-        """ Returns the number of dataframe chunks in the file """
-        raise NotImplementedError()
-
-    @property
-    def estimated_row_size(self):
-        return self.row_size
-
-
-#
-# GPUFileReader Sub Classes (Parquet and CSV Engines)
-#
-
-
-class PQFileReader(GPUFileReader):
-    def intialize_reader(self, gpu_memory_frac, batch_size, **kwargs):
-        self.reader = cudf.read_parquet
-
-        # Read Parquet-file metadata
-        (self.num_rows, self.num_row_groups, columns) = cudf.io.read_parquet_metadata(
-            self.fs.open(self.file_path)
-        )
-        # Use first row-group metadata to estimate memory-rqs
-        # NOTE: We could also use parquet metadata here, but
-        #       `total_uncompressed_size` for each column is
-        #       not representative of dataframe size for
-        #       strings/categoricals (parquet only stores uniques)
-        self.row_size = self.row_size or 0
-        if self.num_rows > 0 and self.row_size == 0:
-            for col in self.reader(self.file_path, num_rows=1)._columns:
-                # removed logic for max in first x rows, it was
-                # causing infinite loops for our customers on their datasets.
-                self.row_size += col.dtype.itemsize
-        # Check if we are using row groups
-        self.use_row_groups = kwargs.get("use_row_groups", None)
-        self.row_group_batch = 1
-        self.next_row_group = 0
-
-        # Determine batch size if needed
-        if batch_size and not self.use_row_groups:
-            self.batch_size = batch_size
-            self.use_row_groups = False
+def _set_dtypes(chunk, dtypes):
+    for col, dtype in dtypes.items():
+        if type(dtype) is str:
+            if "hex" in dtype and chunk[col].dtype == "object":
+                chunk[col] = chunk[col].str.htoi()
+                chunk[col] = chunk[col].astype(np.int32)
         else:
-            # Use row size to calculate "allowable" batch size
-            gpu_memory_batch = _allowable_batch_size(gpu_memory_frac, self.row_size)
-            self.batch_size = min(gpu_memory_batch, self.num_rows)
-
-            # Use row-groups if they meet memory constraints
-            rg_size = int(self.num_rows / self.num_row_groups)
-            if (self.use_row_groups is None) and (rg_size <= gpu_memory_batch):
-                self.use_row_groups = True
-            elif self.use_row_groups is None:
-                self.use_row_groups = False
-
-            # Determine row-groups per batch
-            if self.use_row_groups:
-                self.row_group_batch = max(int(gpu_memory_batch / rg_size), 1)
-
-    def __len__(self):
-        return int((self.num_rows + self.batch_size - 1) // self.batch_size)
-
-    def __iter__(self):
-        for nskip in range(0, self.num_rows, self.batch_size):
-            # not using row groups because concat uses up double memory
-            # making iterator unable to use selected gpu memory fraction.
-            batch = min(self.batch_size, self.num_rows - nskip)
-            LOG.debug(
-                "loading chunk from %s, (skip_rows=%s, num_rows=%s)", self.file_path, nskip, batch
-            )
-            gdf = self.reader(
-                self.file_path, num_rows=batch, skip_rows=nskip, engine="cudf", columns=self.columns
-            )
-            gdf.reset_index(drop=True, inplace=True)
-            yield gdf
-            gdf = None
-
-
-class CSVFileReader(GPUFileReader):
-    def intialize_reader(self, gpu_memory_frac, batch_size, **kwargs):
-        self.reader = cudf.read_csv
-        # Count rows and determine column names
-        estimate_row_size = False
-        if self.row_size is None:
-            self.row_size = 0
-            estimate_row_size = True
-        self.offset = 0
-        self.file_bytes = self.fs.stat(str(self.file_path))["size"]
-
-        # Use first row to estimate memory-reqs
-        names = kwargs.get("names", None)
-        dtype = kwargs.get("dtype", None)
-        # default csv delim is ","
-        sep = kwargs.get("sep", ",")
-        self.sep = sep
-        self.names = []
-        dtype_inf = {}
-        nrows = 10
-        head = "".join(islice(self.fs.open(self.file_path, "r"), nrows))
-        snippet = self.reader(
-            io.StringIO(head), nrows=nrows, names=names, dtype=dtype, sep=sep, header=0
-        )
-        self.inferred_names = not names
-        if self.file_bytes > 0:
-            for i, col in enumerate(snippet.columns):
-                if names:
-                    name = names[i]
-                else:
-                    name = col
-                self.names.append(name)
-            for i, col in enumerate(snippet._columns):
-                if estimate_row_size:
-                    self.row_size += col.dtype.itemsize
-                dtype_inf[self.names[i]] = col.dtype
-        self.dtype = dtype or dtype_inf
-
-        # Determine batch size if needed
-        if batch_size:
-            self.batch_size = batch_size * self.row_size
-        else:
-            free_mem = device_mem_size(kind="free")
-            self.batch_size = free_mem * gpu_memory_frac
-        self.num_chunks = int((self.file_bytes + self.batch_size - 1) // self.batch_size)
-
-    def __len__(self):
-        return self.num_chunks
-
-    def __iter__(self):
-        for chunks in range(self.num_chunks):
-            LOG.debug(
-                "loading chunk from %s, byte_range=%s",
-                self.file_path,
-                (chunks * self.batch_size, self.batch_size),
-            )
-            chunk = self.reader(
-                self.file_path,
-                byte_range=(chunks * self.batch_size, self.batch_size),
-                names=self.names,
-                header=0 if chunks == 0 and self.inferred_names else None,
-                sep=self.sep,
-            )
-
-            if self.columns:
-                for col in self.columns:
-                    chunk[col] = chunk[col].astype(self.dtype[col])
-                chunk = chunk[self.columns]
-
-            yield chunk
-            chunk = None
-
-
-#
-# GPUFileIterator (Single File Iterator)
-#
-
-
-class GPUFileIterator:
-    def __init__(
-        self,
-        file_path,
-        engine=None,
-        gpu_memory_frac=0.5,
-        batch_size=None,
-        columns=None,
-        use_row_groups=None,
-        dtypes=None,
-        names=None,
-        row_size=None,
-        fs=None,
-        **kwargs,
-    ):
-        self.file_path = file_path
-        self.engine = _get_read_engine(
-            engine,
-            file_path,
-            columns=columns,
-            batch_size=batch_size,
-            gpu_memory_frac=gpu_memory_frac,
-            use_row_groups=use_row_groups,
-            dtypes=dtypes,
-            names=names,
-            row_size=None,
-            **kwargs,
-        )
-        self.dtypes = dtypes
-        self.columns = columns
-
-    def __iter__(self):
-        for chunk in self.engine:
-            if self.dtypes:
-                self._set_dtypes(chunk)
-            yield chunk
-            chunk = None
-
-    def __len__(self):
-        return len(self.engine)
-
-    def _set_dtypes(self, chunk):
-        for col, dtype in self.dtypes.items():
-            if type(dtype) is str:
-                if "hex" in dtype and chunk[col].dtype == "object":
-                    chunk[col] = chunk[col].str.htoi()
-                    chunk[col] = chunk[col].astype(np.int32)
-            else:
-                chunk[col] = chunk[col].astype(dtype)
+            chunk[col] = chunk[col].astype(dtype)
+    return chunk
 
 
 #
@@ -754,7 +516,9 @@ def _ddf_to_dataset(
     cont_names,
     label_names,
     output_format,
+    client,
 ):
+    # Construct graph for Dask-based dataset write
     name = "write-processed"
     write_name = name + tokenize(
         ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
@@ -778,7 +542,16 @@ def _ddf_to_dataset(
         task_list.append(key)
     dsk[name] = (lambda x: x, task_list)
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
-    return Delayed(name, graph)
+    out = Delayed(name, graph)
+
+    # Trigger write execution
+    if client:
+        out = client.compute(out).result()
+    else:
+        out = dask.compute(out, scheduler="synchronous")[0]
+
+    # Follow-up Shuffling and _metadata creation
+    _finish_dataset(client, ddf, output_path, fs, output_format)
 
 
 def _finish_dataset(client, ddf, output_path, fs, output_format):
@@ -828,80 +601,108 @@ class Dataset:
 
     Parameters
     -----------
-    path : str or list of str
-        Dataset path (or list of paths). If string, should specify
-        a specific file or directory path. If this is a directory
-        path, the directory structure must be flat (nested directories
-        are not yet supported).
+    path_or_source : str, list of str, or <dask.dataframe|cudf|pd>.DataFrame
+        Dataset path (or list of paths), or a DataFrame. If string,
+        should specify a specific file or directory path. If this is a
+        directory path, the directory structure must be flat (nested
+        directories are not yet supported).
     engine : str or DatasetEngine
         DatasetEngine object or string identifier of engine. Current
-        string options include: ("parquet").
+        string options include: ("parquet", "csv"). This argument
+        is ignored if path_or_source is a DataFrame type.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
         If None, part_mem_fraction will be used to calculate the
         partition size.  Note that the underlying engine may allow
-        other custom kwargs to override this argument.
+        other custom kwargs to override this argument. This argument
+        is ignored if path_or_source is a DataFrame type.
     part_mem_fraction : float (default 0.125)
         Fractional size of desired dask partitions (relative
         to GPU memory capacity). Ignored if part_size is passed
         directly. Note that the underlying engine may allow other
-        custom kwargs to override this argument.
+        custom kwargs to override this argument. This argument
+        is ignored if path_or_source is a DataFrame type.
     storage_options: None or dict
-        Further parameters to pass to the bytes backend.
+        Further parameters to pass to the bytes backend. This argument
+        is ignored if path_or_source is a DataFrame type.
     """
 
     def __init__(
         self,
-        paths,
+        path_or_source,
         engine=None,
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
+        dtypes=None,
         **kwargs,
     ):
-        if part_size:
-            # If a specific partition size is given, use it directly
-            part_size = parse_bytes(part_size)
+        self.dtypes = dtypes
+        if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
+            # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
+            # Use DataFrameDatasetEngine
+            if isinstance(path_or_source, cudf.DataFrame):
+                path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
+            elif isinstance(path_or_source, pd.DataFrame):
+                path_or_source = dask_cudf.from_cudf(
+                    cudf.from_pandas(path_or_source), npartitions=1
+                )
+            elif not isinstance(path_or_source, dask_cudf.DataFrame):
+                path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
+            if part_size:
+                warnings.warn("part_size is ignored for DataFrame input.")
+            if part_mem_fraction:
+                warnings.warn("part_mem_fraction is ignored for DataFrame input.")
+            self.engine = DataFrameDatasetEngine(path_or_source)
         else:
-            # If a fractional partition size is given, calculate part_size
-            part_mem_fraction = part_mem_fraction or 0.125
-            assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
-            if part_mem_fraction > 0.25:
-                warnings.warn(
-                    "Using very large partitions sizes for Dask. "
-                    "Memory-related errors are likely."
-                )
-            part_size = int(device_mem_size(kind="total") * part_mem_fraction)
-
-        # Engine-agnostic path handling
-        if hasattr(paths, "name"):
-            paths = stringify_path(paths)
-        if isinstance(paths, str):
-            paths = [paths]
-
-        storage_options = storage_options or {}
-        # If engine is not provided, try to infer from end of paths[0]
-        if engine is None:
-            engine = paths[0].split(".")[-1]
-        if isinstance(engine, str):
-            if engine == "parquet":
-                self.engine = ParquetDatasetEngine(
-                    paths, part_size, storage_options=storage_options, **kwargs
-                )
-            elif engine == "csv":
-                self.engine = CSVDatasetEngine(
-                    paths, part_size, storage_options=storage_options, **kwargs
-                )
+            if part_size:
+                # If a specific partition size is given, use it directly
+                part_size = parse_bytes(part_size)
             else:
-                raise ValueError("Only parquet and csv supported (for now).")
-        else:
-            self.engine = engine(paths, part_size, storage_options=storage_options)
+                # If a fractional partition size is given, calculate part_size
+                part_mem_fraction = part_mem_fraction or 0.125
+                assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+                if part_mem_fraction > 0.25:
+                    warnings.warn(
+                        "Using very large partitions sizes for Dask. "
+                        "Memory-related errors are likely."
+                    )
+                part_size = int(device_mem_size(kind="total") * part_mem_fraction)
+
+            # Engine-agnostic path handling
+            paths = path_or_source
+            if hasattr(paths, "name"):
+                paths = stringify_path(paths)
+            if isinstance(paths, str):
+                paths = [paths]
+
+            storage_options = storage_options or {}
+            # If engine is not provided, try to infer from end of paths[0]
+            if engine is None:
+                engine = paths[0].split(".")[-1]
+            if isinstance(engine, str):
+                if engine == "parquet":
+                    self.engine = ParquetDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
+                elif engine == "csv":
+                    self.engine = CSVDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
+                else:
+                    raise ValueError("Only parquet and csv supported (for now).")
+            else:
+                self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None):
-        return self.engine.to_ddf(columns=columns)
+        ddf = self.engine.to_ddf(columns=columns)
+        if self.dtypes:
+            _meta = _set_dtypes(ddf._meta, self.dtypes)
+            ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
+        return ddf
 
     def to_iter(self, columns=None):
-        return self.engine.to_iter(columns=columns)
+        return self.engine.make_iter(columns=columns)
 
     @property
     def num_rows(self):
@@ -927,8 +728,8 @@ class DatasetEngine:
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
 
-    def to_iter(self, columns=None):
-        raise NotImplementedError(""" Return a Iterator over the cudf chunks of the dataset  """)
+    def make_iter(self, columns=None):
+        return DataFrameIter(self.to_ddf(columns=columns))
 
     @property
     def num_rows(self):
@@ -1059,11 +860,11 @@ class ParquetDatasetEngine(DatasetEngine):
     @annotate("read_piece", color="green", domain="nvt_python")
     def read_piece(piece, columns):
         path, row_groups = piece
-        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False,)
+        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False)
 
     def meta_empty(self, columns=None):
         path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False,).iloc[:0]
+        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False).iloc[:0]
 
     def to_ddf(self, columns=None):
         pieces = self.pieces
@@ -1075,13 +876,6 @@ class ParquetDatasetEngine(DatasetEngine):
         meta = self.meta_empty(columns=columns)
         divisions = [None] * (len(pieces) + 1)
         return new_dd_object(dsk, name, meta, divisions)
-
-    def to_iter(self, columns=None):
-        part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        for path in self.paths:
-            yield from PQFileReader(
-                path, self.fs, part_mem_fraction, columns=columns, batch_size=self.batch_size
-            )
 
 
 class CSVDatasetEngine(DatasetEngine):
@@ -1100,11 +894,53 @@ class CSVDatasetEngine(DatasetEngine):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
     def to_ddf(self, columns=None):
-        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
+        if columns:
+            return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[
+                columns
+            ]
+        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
 
-    def to_iter(self, columns=None):
-        part_mem_fraction = self.part_size / device_mem_size(kind="total")
-        for path in self.paths:
-            yield from CSVFileReader(
-                path, self.fs, part_mem_fraction, columns=columns, **self.csv_kwargs
-            )
+
+class DataFrameDatasetEngine(DatasetEngine):
+    """ DataFrameDatasetEngine
+
+        Allow NVT to interact with a dask_cudf.DataFrame object
+        in the same way as a dataset on disk.
+    """
+
+    def __init__(self, ddf):
+        self._ddf = ddf
+
+    def to_ddf(self, columns=None):
+        if isinstance(columns, list):
+            return self._ddf[columns]
+        elif isinstance(columns, str):
+            return self._ddf[[columns]]
+        return self._ddf
+
+    def make_iter(self, columns=None):
+        if isinstance(columns, str):
+            columns = [columns]
+
+        return DataFrameIter(self._ddf, columns=columns)
+
+    @property
+    def num_rows(self):
+        return len(self._ddf)
+
+
+class DataFrameIter:
+    def __init__(self, ddf, columns=None):
+        self._ddf = ddf
+        self.columns = columns
+
+    def __len__(self):
+        return self._ddf.npartitions
+
+    def __iter__(self):
+        for part in self._ddf.partitions:
+            if self.columns:
+                yield part[self.columns].compute(scheduler="synchronous")
+            else:
+                yield part.compute(scheduler="synchronous")
+            part = None
