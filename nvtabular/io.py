@@ -882,10 +882,12 @@ class CSVDatasetEngine(DatasetEngine):
         Thin wrapper around dask_cudf.read_csv.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+    def __init__(self, paths, part_size, storage_options=None, **kwargs):
+        super().__init__(paths, part_size, storage_options)
         self._meta = {}
         self.csv_kwargs = kwargs
+        self.csv_kwargs["storage_options"] = storage_options
+
         # CSV reader needs a list of files
         # (Assume flat directory structure if this is a dir)
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
