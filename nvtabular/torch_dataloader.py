@@ -17,12 +17,11 @@ import queue
 import threading
 
 import cudf
-import torch
 import cupy as cp
+import torch
 from torch.utils.dlpack import from_dlpack
 
-
-from nvtabular.io import Dataset, _shuffle_gdf
+from nvtabular.io import _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
 
 
@@ -153,6 +152,7 @@ def process_one_df(
         gdf, cats, conts, label, cat_names=cat_names, cont_names=cont_names, label_names=label_names
     )
 
+
 class ChunkQueue:
     def __init__(
         self,
@@ -243,7 +243,6 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         self.labels = labels
         self.itr = TorchTensorBatchDatasetItr(dataset, **kwargs)
 
-
     def __iter__(self):
         buff = ChunkQueue(
             batch_size=self.batch_size,
@@ -286,7 +285,6 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         if shuffle:
             self.indices = cp.random.shuffle(self.indices)
-        
 
     def __iter__(self):
         indices = self.gather_indices()
@@ -297,12 +295,10 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         if worker_info is None:
             return self.indices
         else:
-            per_worker = int(math.ceil(len(self.indices)/ float(worker_info.num_workers)))
+            per_worker = int(len(self.indices) // float(worker_info.num_workers)) + 1
             worker_id = worker_info.id
             start = worker_id * per_worker
-            return self.indices[start:start + per_worker]
-    
-    
+            return self.indices[start : start + per_worker]
 
     def __len__(self):
         return self.rows

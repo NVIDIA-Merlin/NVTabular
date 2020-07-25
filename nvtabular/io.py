@@ -931,16 +931,18 @@ class DataFrameDatasetEngine(DatasetEngine):
 
 class DataFrameIter:
     def __init__(self, ddf, columns=None, indices=None):
-        self.indices = indices if isinstance(indices, list) and len(indices) > 0 else range(ddf.npartitions)
+        self.indices = (
+            indices if isinstance(indices, list) and len(indices) > 0 else range(ddf.npartitions)
+        )
         self._ddf = ddf
         self.columns = columns
-        
 
     def __len__(self):
-        return len(indices)
+        return len(self.indices)
 
     def __iter__(self):
         for i in self.indices:
+            print(i)
             part = self._ddf.get_partition(i)
             if self.columns:
                 yield part[self.columns].compute(scheduler="synchronous")
