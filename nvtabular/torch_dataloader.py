@@ -180,7 +180,7 @@ class ChunkQueue:
         if isinstance(obj, str):
             # clear the buffer
             self.create_chunk(final=True)
-            # send bug out
+            # send end signal to queue
             self.q_out.put(obj)
             return
         self.q_in.put(obj)
@@ -197,7 +197,7 @@ class ChunkQueue:
         chunks.reset_index(drop=True, inplace=True)
         if not final:
             # stitching
-            chunks = self.stitch_run(chunks)
+            chunks = self.get_batch_div_chunk(chunks)
             if not chunks or chunks.empty:
                 return
         if self.shuffle:
@@ -208,7 +208,7 @@ class ChunkQueue:
         # chunk tensorized
         self.q_out.put(chunks)
 
-    def stitch_run(self, chunks):
+    def get_batch_div_chunk(self, chunks):
         spill_idx = int(chunks.shape[0] / self.batch_size) * self.batch_size
         spill = cudf.DataFrame(chunks.iloc[spill_idx:])
         chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
