@@ -44,138 +44,6 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
-@pytest.mark.parametrize("batch", [0, 100, 1000])
-@pytest.mark.parametrize("dskey", ["csv", "csv-no-header"])
-def test_gpu_file_iterator_dl(datasets, batch, dskey):
-    paths = glob.glob(str(datasets[dskey]) + "/*.csv")
-    names = allcols_csv if dskey == "csv-no-header" else None
-    header = None if dskey == "csv-no-header" else 0
-    df_expect = cudf.read_csv(paths[0], header=header, names=names)[mycols_csv]
-    df_expect["id"] = df_expect["id"].astype("int64")
-    df_itr = cudf.DataFrame()
-
-    processor = nvt.Workflow(
-        cat_names=["name-string"], cont_names=["x", "y", "id"], label_name=["label"]
-    )
-
-    data_itr = torch_dataloader.FileItrDataset(
-        paths[0],
-        engine="csv",
-        batch_size=batch,
-        part_mem_fraction=0.01,
-        columns=mycols_csv,
-        names=names,
-    )
-
-    data_chain = torch.utils.data.ChainDataset([data_itr])
-    dlc = torch_dataloader.DLCollator(processor)
-    torch_dataloader.DLDataLoader(data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0)
-
-    for data_gd in data_itr:
-        df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
-
-    assert len(data_itr) == len(data_chain)
-    assert_eq(df_itr.reset_index(drop=True), df_expect.reset_index(drop=True))
-
-
-@pytest.mark.parametrize("part_mem_fraction", [0.01, 0.1])
-@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-@pytest.mark.parametrize("dump", [True, False])
-@pytest.mark.parametrize("preprocessing", [True, False])
-def test_gpu_preproc(tmpdir, df, dataset, dump, part_mem_fraction, engine, preprocessing):
-    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
-    processor.add_feature([ops.FillMedian(), ops.LogOp(preprocessing=preprocessing)])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
-
-    processor.update_stats(dataset)
-
-    if dump:
-        config_file = tmpdir + "/temp.yaml"
-        processor.save_stats(config_file)
-        processor.clear_stats()
-        processor.load_stats(config_file)
-
-    def get_norms(tar: cudf.Series):
-        ser_median = tar.dropna().quantile(0.5, interpolation="linear")
-        gdf = tar.fillna(ser_median)
-        gdf = np.log(gdf + 1)
-        return gdf
-
-    # Check mean and std - No good right now we have to add all other changes; Zerofill, Log
-    x_col = "x" if preprocessing else "x_LogOp"
-    y_col = "y" if preprocessing else "y_LogOp"
-    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"][x_col], rel_tol=1e-2)
-    assert math.isclose(get_norms(df.y).mean(), processor.stats["means"][y_col], rel_tol=1e-2)
-    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"][x_col], rel_tol=1e-2)
-    assert math.isclose(get_norms(df.y).std(), processor.stats["stds"][y_col], rel_tol=1e-2)
-
-    # Check median (TODO: Improve the accuracy)
-    x_median = df.x.dropna().quantile(0.5, interpolation="linear")
-    y_median = df.y.dropna().quantile(0.5, interpolation="linear")
-    id_median = df.id.dropna().quantile(0.5, interpolation="linear")
-    assert math.isclose(x_median, processor.stats["medians"]["x"], rel_tol=1e1)
-    assert math.isclose(y_median, processor.stats["medians"]["y"], rel_tol=1e1)
-    assert math.isclose(id_median, processor.stats["medians"]["id"], rel_tol=1e1)
-
-    # Check that categories match
-    if engine == "parquet":
-        cats_expected0 = df["name-cat"].unique().values_host
-        cats0 = get_cats(processor, "name-cat")
-        assert cats0.tolist() == [None] + cats_expected0.tolist()
-    cats_expected1 = df["name-string"].unique().values_host
-    cats1 = get_cats(processor, "name-string")
-    assert cats1.tolist() == [None] + cats_expected1.tolist()
-
-    #     Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
-    )
-
-    processor.create_final_cols()
-
-    # if preprocessing
-    if not preprocessing:
-        for col in cont_names:
-            assert f"{col}_LogOp" in processor.columns_ctx["final"]["cols"]["continuous"]
-
-    dlc = torch_dataloader.DLCollator(preproc=processor, apply_ops=False)
-    data_files = [
-        torch_dataloader.FileItrDataset(x, part_mem_fraction=part_mem_fraction)
-        for x in glob.glob(str(tmpdir) + "/*.parquet")
-    ]
-
-    data_itr = torch.utils.data.ChainDataset(data_files)
-    dl = torch_dataloader.DLDataLoader(
-        data_itr, collate_fn=dlc.gdf_col, pin_memory=False, num_workers=0
-    )
-
-    len_df_pp = 0
-    for chunk in dl:
-        len_df_pp += len(chunk[0][0])
-
-    dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=part_mem_fraction)
-    x = processor.ds_to_tensors(dataset.to_iter(), apply_ops=False)
-
-    num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
-    assert len(x[0]) == len_df_pp
-
-    itr_ds = torch_dataloader.TensorItrDataset([x[0], x[1], x[2]], batch_size=512000)
-    count_tens_itr = 0
-    for data_gd in itr_ds:
-        count_tens_itr += len(data_gd[1])
-        assert data_gd[0].shape[1] > 0
-        assert data_gd[1].shape[1] > 0
-
-    assert len_df_pp == count_tens_itr
-
-
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -206,11 +74,11 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
+    nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
+
     data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
-        tar_paths[0],
-        engine="parquet",
-        sub_batch_size=batch_size,
-        part_mem_fraction=part_mem_fraction,
+        nvt_data,
+        batch_size=batch_size,
         cats=cat_names,
         conts=cont_names,
         labels=["label"],

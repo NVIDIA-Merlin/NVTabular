@@ -265,7 +265,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         buff.put("end")
 
     def __len__(self):
-        return len(self.itr)
+        return len(self.itr) // self.batch_size
 
 
 class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
@@ -301,9 +301,9 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
             return self.indices[start : start + per_worker]
 
     def __len__(self):
-        return self.rows
+        return self.dataset.num_rows
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
     def __len__(self):
-        return self.dataset.num_rows
+        return len(self.dataset)
