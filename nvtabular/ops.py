@@ -805,9 +805,28 @@ class GroupBy(DFOperator):
 
 class JoinExternal(TransformOperator):
     """
-    Join each dataset partition to an external table. Duplicates will be removed
-    from the `on_ext` column of `df_ext`.  The transformation assumes that we are not
-    changing the number of rows in the dataset.
+    Join each dataset partition to an external table. For performance
+    reasons, only "left" and "inner" join transofrmations are supported.
+
+    Parameters
+    -----------
+    df_ext : DataFrame, pyarrow.Table, or file path
+        The external table to join to each partition of the dataset.
+    on : str or list(str)
+        Column name(s) to merge on
+    how : {"left", "inner"}; default "left"
+        Type of join operation to perform.
+    on_ext : str or list(str); Optional
+        Column name(s) on external table to join on. By default,
+        we assume ``on_ext`` is the same as ``on``.
+    columns_ext : list(str); Optional
+        Subset of columns to select from external table before join.
+    kind_ext : {"arrow", "cudf", "pandas", "parquet", "csv"}
+        Format of ``df_ext``.  If nothing is specified, the format
+        will be inferred.
+    cache : {"device", "host", "disk"}
+        Where to cache ``df_ext`` between transformations. Only used
+        if the data is originally stored on disk.
     """
 
     default_in = ALL
@@ -818,15 +837,14 @@ class JoinExternal(TransformOperator):
         df_ext,
         on,
         how="left",
-        columns=None,
         on_ext=None,
         columns_ext=None,
         kind_ext=None,
-        preprocessing=True,
         cache="host",
+        preprocessing=True,
         **kwargs,
     ):
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
+        super().__init__(preprocessing=preprocessing, replace=False)
         self.on = on
         self.df_ext = df_ext
         self.on_ext = on_ext or self.on
@@ -835,7 +853,7 @@ class JoinExternal(TransformOperator):
         self.columns_ext = columns_ext
         self.cache = cache
         self.kwargs = kwargs
-        if self.how not in ("left"):
+        if self.how not in ("left", "inner"):
             raise ValueError("Only left join is currently supported.")
         if self.kind_ext not in ("arrow", "cudf", "pandas", "parquet", "csv"):
             raise ValueError("kind_ext option not recognized.")
@@ -868,23 +886,25 @@ class JoinExternal(TransformOperator):
                 )
 
         # Take subset of columns if a list is specified
-        if self.columns_ext:
-            _ext = _ext[self.columns_ext]
+        return _ext[self.columns_ext] if self.columns_ext else _ext
 
-        return _ext.drop_duplicates(subset=self.on_ext)
-
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        new_gdf = cudf.DataFrame()
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context=None,
+    ):
+        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-        tran_gdf = gdf[[self.on, tmp]].merge(
-            self._ext, left_on=self.on, right_on=self.on_ext, how="left"
-        )
-        tran_gdf = tran_gdf.sort_values(tmp)
-        tran_gdf.drop(columns=[self.on, tmp], inplace=True)
-        new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-        new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+        new_gdf = gdf.merge(self._ext, left_on=self.on, right_on=self.on_ext, how=self.how)
+        new_gdf = new_gdf.sort_values(tmp)
+        new_gdf.drop(columns=[tmp], inplace=True)
         gdf.drop(columns=[tmp], inplace=True)
+        new_gdf.reset_index(drop=True, inplace=True)
+        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
 
 
