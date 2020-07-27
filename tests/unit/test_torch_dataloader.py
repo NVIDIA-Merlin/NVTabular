@@ -13,20 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import glob
-import math
 import os
 import shutil
 
 import cudf
-import numpy as np
 import pytest
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular.io import Dataset
-from tests.conftest import allcols_csv, get_cats, mycols_csv, mycols_pq
+from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
