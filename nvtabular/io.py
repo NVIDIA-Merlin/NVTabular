@@ -33,6 +33,7 @@ import dask_cudf
 import numba.cuda as cuda
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
@@ -132,6 +133,23 @@ def _set_dtypes(chunk, dtypes):
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
+
+
+def _detect_format(data):
+    """ Utility to detect the format of `data`
+    """
+
+    if isinstance(data, cudf.DataFrame):
+        return "cudf"
+    elif isinstance(data, pd.DataFrame):
+        return "pandas"
+    elif isinstance(data, pa.Table):
+        return "arrow"
+    else:
+        file_type = str(data).split(".")[-1]
+        if file_type not in ("parquet", "csv"):
+            raise ValueError("Data format not recognized.")
+        return file_type
 
 
 #

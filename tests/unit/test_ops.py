@@ -544,11 +544,8 @@ def test_left_join_external(tmpdir, df, dataset, engine, kind_ext, cache):
 
     # Define Op
     on = "id"
-    on_ext = "id"
     columns_ext = ["id", "new_col", "new_col_2"]
-    merge_op = ops.LeftJoinExternal(
-        df_ext, on, on_ext, kind_ext=kind_ext, columns_ext=columns_ext, cache=cache
-    )
+    merge_op = ops.JoinExternal(df_ext, on, columns_ext=columns_ext, cache=cache)
     columns = mycols_pq if engine == "parquet" else mycols_csv
     columns_ctx = {}
     columns_ctx["all"] = {}

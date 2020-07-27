@@ -20,6 +20,7 @@ from cudf._lib.nvtx import annotate
 from dask.delayed import Delayed
 
 from nvtabular import categorify as nvt_cat
+from nvtabular.io import _detect_format
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 CONT = "continuous"
@@ -802,9 +803,9 @@ class GroupBy(DFOperator):
         return new_gdf
 
 
-class LeftJoinExternal(TransformOperator):
+class JoinExternal(TransformOperator):
     """
-    "Left" join of each dataset partition to an external table. Duplicates will be removed
+    Join each dataset partition to an external table. Duplicates will be removed
     from the `on_ext` column of `df_ext`.  The transformation assumes that we are not
     changing the number of rows in the dataset.
     """
@@ -816,24 +817,26 @@ class LeftJoinExternal(TransformOperator):
         self,
         df_ext,
         on,
-        on_ext,
-        kind_ext="cudf",
+        how="left",
         columns=None,
+        on_ext=None,
         columns_ext=None,
+        kind_ext=None,
         preprocessing=True,
-        guarenteed_unique=False,
         cache="host",
         **kwargs,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.on = on
         self.df_ext = df_ext
-        self.on_ext = on_ext
-        self.kind_ext = kind_ext
+        self.on_ext = on_ext or self.on
+        self.how = how
+        self.kind_ext = kind_ext or _detect_format(self.df_ext)
         self.columns_ext = columns_ext
-        self.guarenteed_unique = guarenteed_unique
         self.cache = cache
         self.kwargs = kwargs
+        if self.how not in ("left"):
+            raise ValueError("Only left join is currently supported.")
         if self.kind_ext not in ("arrow", "cudf", "pandas", "parquet", "csv"):
             raise ValueError("kind_ext option not recognized.")
 
@@ -867,11 +870,6 @@ class LeftJoinExternal(TransformOperator):
         # Take subset of columns if a list is specified
         if self.columns_ext:
             _ext = _ext[self.columns_ext]
-
-        # No need to drop duplicates if the user guarentees
-        # the external dataframe has unique rows
-        if self.guarenteed_unique:
-            return _ext
 
         return _ext.drop_duplicates(subset=self.on_ext)
 
