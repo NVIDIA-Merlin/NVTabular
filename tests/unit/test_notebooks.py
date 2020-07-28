@@ -1,6 +1,8 @@
 import itertools
 import json
 import os
+import subprocess
+import sys
 from os.path import dirname, realpath
 
 import cudf
@@ -9,65 +11,72 @@ import pytest
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
 
-@pytest.mark.skip(reason="this currently segfaults in pytorch")
 def test_criteo_notebook(tmpdir):
+    # create a toy dataset in tmpdir, and point environment variables so the notebook
+    # will read from it
     for i in range(24):
-        df = _get_random_criteo_data(10000)
+        df = _get_random_criteo_data(1000)
         df.to_parquet(os.path.join(tmpdir, f"day_{i}.parquet"))
-
-    # read in the notebook
-    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb")
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
-    source = _read_notebook_source(notebook_path)
-    exec(source, {})  # pylint: disable=exec-used
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
+        # disable rmm.reinitialize, seems to be causing issues
+        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize"),
+    )
 
 
 def test_optimize_criteo(tmpdir):
     _get_random_criteo_data(1000).to_csv(os.path.join(tmpdir, "day_0"), sep="\t", header=False)
-
-    # read in the notebook
-    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
     os.environ["INPUT_PATH"] = str(tmpdir)
     os.environ["OUTPUT_PATH"] = str(tmpdir)
-    source = _read_notebook_source(notebook_path)
-    exec(source, {})  # pylint: disable=exec-used
+
+    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
+    _run_notebook(tmpdir, notebook_path)
 
 
 def test_rossman_example(tmpdir):
     pytest.importorskip("tensorflow")
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
+    os.environ["DATA_DIR"] = str(tmpdir)
 
-    # read in the notebook
     notebook_path = os.path.join(
         dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
     )
-    source = _read_notebook_source(notebook_path)
-    source = source.replace("EPOCHS = 25", "EPOCHS = 1")
-
-    # execute the notebook, passing in the datadir to the toy dataset
-    os.environ["DATA_DIR"] = str(tmpdir)
-    exec(source, {})  # pylint: disable=exec-used
+    _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
 
 
-def _read_notebook_source(notebook_path):
-    """ reads in the python code from a jupyter notebook """
+def _run_notebook(tmpdir, notebook_path, transform=None):
+    # read in the notebook as JSON, and extract a python script from it
     notebook = json.load(open(notebook_path))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
     lines = [
-        line.rstrip()
+        transform(line.rstrip()) if transform else line
         for line in itertools.chain(*source_cells)
         if not (line.startswith("%") or line.startswith("!"))
     ]
-    return "\n".join(lines)
+
+    # save the script to a file, and run with the current python executable
+    # we're doing this in a subprocess to avoid some issues using 'exec'
+    # that were causing a segfault with globals of the exec'ed function going
+    # out of scope
+    script_path = os.path.join(tmpdir, "notebook.py")
+    with open(script_path, "w") as script:
+        script.write("\n".join(lines))
+    subprocess.check_output([sys.executable, script_path])
 
 
 def _get_random_criteo_data(rows):
     dtypes = {col: float for col in [f"I{x}" for x in range(1, 14)]}
     dtypes.update({col: int for col in [f"C{x}" for x in range(1, 27)]})
     dtypes["label"] = int
-    return cudf.datasets.randomdata(rows, dtypes=dtypes)
+    ret = cudf.datasets.randomdata(rows, dtypes=dtypes)
+    # binarize the labels
+    ret.label = ret.label % 2
+    return ret
 
 
 def _get_random_rossmann_data(rows):
