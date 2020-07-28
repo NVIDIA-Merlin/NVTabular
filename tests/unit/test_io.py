@@ -15,6 +15,7 @@
 #
 
 import glob
+import json
 import os
 
 import cudf
@@ -23,10 +24,9 @@ import pytest
 from dask.dataframe import assert_eq
 
 import nvtabular as nvt
-import nvtabular.ops as ops
-
 import nvtabular.io
-from nvtabular.io import Shuffler
+import nvtabular.ops as ops
+from nvtabular.io import ParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -38,9 +38,9 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = Shuffler(tmpdir, num_files)
+    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle="partial")
     shuf.add_data(df1)
-    writer_files = shuf.writer.data_files
+    writer_files = shuf.data_paths
     shuf.close()
     if engine == "parquet":
         df3 = cudf.read_parquet(writer_files[0])[mycols_pq]
@@ -89,8 +89,7 @@ def test_dask_dataset(datasets, engine, num_files):
     assert_eq(ddf0, result)
 
 
-@pytest.mark.xfail
-@pytest.mark.parametrize("output_format", ["binary", "parquet"])
+@pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
 def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
@@ -101,10 +100,8 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     # set variables
     nfiles = 10
     ext = ""
-    outdir = tmpdir + "/dontcare"
-    h_outdir = tmpdir + "/hugectr"
+    outdir = tmpdir + "/hugectr"
     os.mkdir(outdir)
-    os.mkdir(h_outdir)
 
     # process data
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
@@ -113,27 +110,68 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
+    # Need to collect statistics first (for now)
+    processor.update_stats(dataset)
+
+    # Second "online" pass to write HugeCTR output
     processor.apply(
         dataset,
-        apply_offline=True,
-        record_stats=True,
+        apply_offline=False,
+        record_stats=False,
         output_path=outdir,
+        out_files_per_proc=nfiles,
+        output_format=output_format,
         shuffle=False,
-        hugectr_gen_output=True,
-        hugectr_output_path=h_outdir,
-        hugectr_num_out_files=nfiles,
-        hugectr_output_format=output_format,
     )
 
-    # Check files
+    # Check for _file_list.txt
+    assert os.path.isfile(outdir + "/_file_list.txt")
+
+    # Check for _metadata.json
+    assert os.path.isfile(outdir + "/_metadata.json")
+
+    # Check contents of _metadata.json
+    data = {}
+    col_summary = {}
+    with open(outdir + "/_metadata.json", "r") as fil:
+        for k, v in json.load(fil).items():
+            data[k] = v
+    assert "cats" in data
+    assert "conts" in data
+    assert "labels" in data
+    assert "file_stats" in data
+    assert len(data["file_stats"]) == nfiles
+    for cdata in data["cats"] + data["conts"] + data["labels"]:
+        col_summary[cdata["index"]] = cdata["col_name"]
+
+    # Check that data files exist
     ext = ""
     if output_format == "parquet":
         ext = "parquet"
-        assert os.path.isfile(h_outdir + "/metadata.json")
-    elif output_format == "binary":
+    elif output_format == "hugectr":
         ext = "data"
-
-    assert os.path.isfile(h_outdir + "/file_list.txt")
-
     for n in range(nfiles):
-        assert os.path.isfile(os.path.join(h_outdir, str(n) + "." + ext))
+        assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))
+
+    # Make sure the columns in "_metadata.json" make sense
+    if output_format == "parquet":
+        df_check = cudf.read_parquet(os.path.join(outdir, "0.parquet"))
+        for i, name in enumerate(df_check.columns):
+            if i in col_summary:
+                assert col_summary[i] == name
+
+
+@pytest.mark.parametrize("inp_format", ["dask", "dask_cudf", "cudf", "pandas"])
+def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
+    paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
+    ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
+    df1 = ddf1.compute()
+    if inp_format == "dask":
+        ds = nvtabular.io.Dataset(ddf1.to_dask_dataframe())
+    elif inp_format == "dask_cudf":
+        ds = nvtabular.io.Dataset(ddf1)
+    elif inp_format == "cudf":
+        ds = nvtabular.io.Dataset(df1)
+    elif inp_format == "pandas":
+        ds = nvtabular.io.Dataset(df1.to_pandas())
+    assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))

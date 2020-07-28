@@ -208,7 +208,7 @@ class MinMax(StatOperator):
 
     @annotate("MinMax_finalize", color="green", domain="nvt_python")
     def finalize(self, stats):
-        for col in stats["mins"].index:
+        for col in stats["mins"].index.values_host:
             self.mins[col] = stats["mins"][col]
             self.maxs[col] = stats["maxs"][col]
 
@@ -264,7 +264,7 @@ class Moments(StatOperator):
 
     @annotate("Moments_finalize", color="green", domain="nvt_python")
     def finalize(self, dask_stats):
-        for col in dask_stats["count"].index:
+        for col in dask_stats["count"].index.values_host:
             self.counts[col] = float(dask_stats["count"][col])
             self.means[col] = float(dask_stats["mean"][col])
             self.stds[col] = float(dask_stats["std"][col])
@@ -317,7 +317,7 @@ class Median(StatOperator):
 
     @annotate("Median_finalize", color="green", domain="nvt_python")
     def finalize(self, dask_stats):
-        for col in dask_stats.index:
+        for col in dask_stats.index.values_host:
             self.medians[col] = float(dask_stats[col])
 
     def registered_stats(self):
@@ -331,88 +331,6 @@ class Median(StatOperator):
         self.batch_medians = {}
         self.medians = {}
         return
-
-
-class Encoder(StatOperator):
-    """
-    This is an internal operation. Encoder operation is used by
-    the Categorify operation to calculate the unique numerical
-    values to transform the categorical features.
-
-    Parameters
-    -----------
-    use_frequency : bool
-        use frequency based transformation or not.
-    freq_threshold : int, default 0
-        threshold value for frequency based transformation.
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.8
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.8
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
-    split_out : dict, optional
-        Used for multi-GPU category calculation.  Each key in the dict
-        should correspond to a column name, and the value is the number
-        of hash partitions to use for the categorical tree reduction.
-        Only a single partition is used by default.
-    out_path : str, optional
-        Used for multi-GPU category calculation.  Root directory where
-        unique categories will be written out in parquet format.
-    columns :
-    preprocessing : bool
-    replace : bool
-    """
-
-    def __init__(
-        self,
-        use_frequency=False,
-        freq_threshold=0,
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
-        columns=None,
-        categories=None,
-        out_path=None,
-        split_out=None,
-        on_host=True,
-    ):
-        super(Encoder, self).__init__(columns)
-        self.use_frequency = use_frequency
-        self.freq_threshold = freq_threshold
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
-        self.categories = categories if categories is not None else {}
-        self.out_path = out_path or "./"
-        self.split_out = split_out
-        self.on_host = on_host
-
-    @annotate("Encoder_op", color="green", domain="nvt_python")
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        dsk, key = nvt_cat._get_categories(
-            ddf, cols, self.out_path, self.freq_threshold, self.split_out, self.on_host
-        )
-        return Delayed(key, dsk)
-
-    @annotate("Encoder_finalize", color="green", domain="nvt_python")
-    def finalize(self, dask_stats):
-        for col in dask_stats:
-            self.categories[col] = dask_stats[col]
-
-    def registered_stats(self):
-        return ["categories"]
-
-    def stats_collected(self):
-        return [("categories", self.categories)]
-
-    def clear(self):
-        self.categories = {}
 
 
 class ZeroFill(TransformOperator):
@@ -680,86 +598,77 @@ class FillMedian(DFOperator):
 
         new_gdf = cudf.DataFrame()
         for col in target_columns:
-            new_gdf[col] = gdf[col].fillna(stats_context["medians"][col])
+            stat_val = stats_context["medians"][col]
+            new_gdf[col] = gdf[col].fillna(stat_val)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
         return new_gdf
 
 
-class GroupByMoments(StatOperator):
+class CategoryStatistics(StatOperator):
     """
-    One of the ways to create new features is to calculate
-    the basic statistics of the data that is grouped by a categorical
-    feature. This operator groups the data by the given categorical
-    feature(s) and calculates the std, variance, and sum of requested continuous
-    features along with count of every group. Then, merges these new statistics
-    with the data using the unique ids of categorical data.
-
-    Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
-    Workflow class.
+    Uses groupby aggregation to determine the unique groups of a categorical
+    feature and calculates the desired statistics of requested continuous
+    features (along with the count of rows in each group).  The statistics
+    for each category will be written to a distinct parquet file, and a
+    dictionary of paths will be returned as the final "statistics".
 
     Parameters
     -----------
-    cat_names : list of str
-        names of the categorical columns
     cont_names : list of str
-        names of the continuous columns
-    stats : list of str, default ['count']
-        count of groups = ['count']
-        sum of cont_col = ['sum']
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.5
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.5
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
-    columns :
-    order_column_name : str, default "order-nvtabular"
-        a column name to be used to preserve the order of input data.
-        cudf's merge function doesn't preserve the order of the data
-        and this column name is used to create a column with integer
-        values in ascending order.
-    split_out : dict, optional
-        Used for multi-GPU groupby reduction.  Each key in the dict
-        should correspond to a column name, and the value is the number
-        of hash partitions to use for the categorical tree reduction.
-        Only a single partition is used by default.
+        The continuous column names to calculate statistics for
+        (for each unique group in each column in `columns`)
+    stats : list of str, default []
+        List of statistics to calculate for each unique group. Note
+        that "count" corresponds to the group itself, while all
+        other statistics correspond to a specific continuous column.
+        Supported statistics include ["count", "sum", "mean", "std", "var"].
+    columns : list of str, default None
+        Categorical columns to collect statistics for.  If None,
+        the operation will target all known categorical columns.
+    tree_width : dict or int, optional
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Used for multi-GPU groupby output.  Root directory where
-        groupby statistics will be written out in parquet format.
+        Root directory where groupby statistics will be written out in
+        parquet format.
+    freq_threshold : int, default 0
+        Categories with a `count` statistic less than this number will
+        be omitted from the `CategoryStatistics` output.
+    on_host : bool, default True
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     """
 
     def __init__(
         self,
-        cat_names=None,
         cont_names=None,
-        stats=["count"],
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
+        stats=None,
         columns=None,
-        order_column_name="order-nvtabular",
-        split_out=None,
+        tree_width=None,
         out_path=None,
         on_host=True,
+        freq_threshold=None,
+        stat_name=None,
     ):
-        super(GroupByMoments, self).__init__(columns)
-        self.cat_names = cat_names
-        self.cont_names = cont_names
-        self.stats = stats
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
-        self.order_column_name = order_column_name
-        self.moments = {}
+        super(CategoryStatistics, self).__init__(columns)
+        self.cont_names = cont_names or []
+        self.stats = stats or []
         self.categories = {}
-        self.out_path = out_path or "./"
-        self.split_out = split_out
+        self.tree_width = tree_width or 8
         self.on_host = on_host
+        self.freq_threshold = freq_threshold or 0
+        self.out_path = out_path or "./"
+        self.stat_name = stat_name or "categories"
+        self.op_name = "CategoryStatistics-" + self.stat_name
+
+    @property
+    def _id(self):
+        return str(self.op_name)
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -771,8 +680,16 @@ class GroupByMoments(StatOperator):
 
         agg_cols = self.cont_names
         agg_list = self.stats
-        dsk, key = nvt_cat._groupby_stats(
-            ddf, cols, agg_cols, agg_list, self.out_path, 0, self.split_out, self.on_host
+        dsk, key = nvt_cat._category_stats(
+            ddf,
+            cols,
+            agg_cols,
+            agg_list,
+            self.out_path,
+            self.freq_threshold,
+            self.tree_width,
+            self.on_host,
+            stat_name=self.stat_name,
         )
         return Delayed(key, dsk)
 
@@ -781,14 +698,13 @@ class GroupByMoments(StatOperator):
             self.categories[col] = dask_stats[col]
 
     def registered_stats(self):
-        return ["moments", "gb_categories"]
+        return [self.stat_name]
 
     def stats_collected(self):
-        result = [("moments", self.moments), ("gb_categories", self.categories)]
+        result = [(self.stat_name, self.categories)]
         return result
 
     def clear(self):
-        self.moments = {}
         self.categories = {}
         return
 
@@ -798,9 +714,10 @@ class GroupBy(DFOperator):
     One of the ways to create new features is to calculate
     the basic statistics of the data that is grouped by a categorical
     feature. This operator groups the data by the given categorical
-    feature(s) and calculates the std, variance, and sum of requested continuous
-    features along with count of every group. Then, merges these new statistics
-    with the data using the unique ids of categorical data.
+    feature(s) and calculates the desired statistics of requested continuous
+    features (along with the count of rows in each group). The aggregated
+    statistics are merged with the data (by joining on the desired
+    categorical columns).
 
     Although you can directly call methods of this class to
     transform your categorical features, it's typically used within a
@@ -808,33 +725,27 @@ class GroupBy(DFOperator):
 
     Parameters
     -----------
-    cat_names : list of str
-        names of the categorical columns
     cont_names : list of str
-        names of the continuous columns
-    stats : list of str, default ['count']
-        count of groups = ['count']
-        sum of cont_col = ['sum']
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.5
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.5
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
-    columns :
+        The continuous column names to calculate statistics for
+        (for each unique group in each column in `columns`)
+    stats : list of str, default []
+        List of statistics to calculate for each unique group. Note
+        that "count" corresponds to the group itself, while all
+        other statistics correspond to a specific continuous column.
+        Supported statistics include ["count", "sum", "mean", "std", "var"].
+    columns : list of str, default None
+        Categorical columns to target for this operation.  If None,
+        the operation will target all known categorical columns.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default False
         This parameter is ignored
-    order_column_name : str, default "order-nvtabular"
-        a column name to be used to preserve the order of input data.
-        cudf's merge function doesn't preserve the order of the data
-        and this column name is used to create a column with integer
-        values in ascending order.
+    tree_width : dict or int, optional
+        Passed to `CategoryStatistics` dependency.
+    out_path : str, optional
+        Passed to `CategoryStatistics` dependency.
+    on_host : bool, default True
+        Passed to `CategoryStatistics` dependency.
     """
 
     default_in = CAT
@@ -842,73 +753,51 @@ class GroupBy(DFOperator):
 
     def __init__(
         self,
-        cat_names=None,
         cont_names=None,
         stats=["count"],
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
         columns=None,
         preprocessing=True,
         replace=False,
-        order_column_name="order-nvtabular",
-        split_out=None,
+        tree_width=None,
         cat_cache="host",
         out_path=None,
         on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
-        self.cat_names = cat_names
         self.cont_names = cont_names
         self.stats = stats
-        self.order_column_name = order_column_name
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
-        self.split_out = split_out
+        self.tree_width = tree_width
         self.out_path = out_path
         self.on_host = on_host
         self.cat_cache = cat_cache
-        if isinstance(self.cat_cache, str):
-            self.cat_cache = {name: cat_cache for name in self.cat_names}
+        self.stat_name = "gb_categories"
 
     @property
     def req_stats(self):
         return [
-            GroupByMoments(
-                cat_names=self.cat_names,
+            CategoryStatistics(
+                columns=self.columns,
                 cont_names=self.cont_names,
                 stats=self.stats,
-                limit_frac=self.limit_frac,
-                gpu_mem_util_limit=self.gpu_mem_util_limit,
-                gpu_mem_trans_use=self.gpu_mem_trans_use,
-                order_column_name=self.order_column_name,
-                split_out=self.split_out,
+                tree_width=self.tree_width,
                 out_path=self.out_path,
                 on_host=self.on_host,
+                stat_name=self.stat_name,
             )
         ]
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        if self.cat_names is None:
-            raise ValueError("cat_names cannot be None.")
-
         new_gdf = cudf.DataFrame()
-        if stats_context["moments"]:
-            for name in stats_context["moments"]:
-                tran_gdf = stats_context["moments"][name].merge(gdf)
-                new_gdf[tran_gdf.columns] = tran_gdf
-        else:  # Dask-based version
-            tmp = "__tmp__"  # Temporary column for sorting
-            gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-            for col, path in stats_context["gb_categories"].items():
-                stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
-                tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
-                tran_gdf = tran_gdf.sort_values(tmp)
-                tran_gdf.drop(columns=[col, tmp], inplace=True)
-                new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-                new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
-            gdf.drop(columns=[tmp], inplace=True)
+        tmp = "__tmp__"  # Temporary column for sorting
+        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+        for col, path in stats_context[self.stat_name].items():
+            stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
+            tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
+            tran_gdf = tran_gdf.sort_values(tmp)
+            tran_gdf.drop(columns=[col, tmp], inplace=True)
+            new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
+            new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+        gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 
 
@@ -926,27 +815,34 @@ class Categorify(DFOperator):
 
     Parameters
     -----------
-    use_frequency : bool
-        freq
-    freq_threshold : float
-        threshold
-    limit_frac : float, default 0.5
-        fraction of memory to use during unique id calculation.
-    gpu_mem_util_limit : float, default 0.5
-        GPU memory utilization limit during frequency based
-        calculation. If limit is exceeded, unique ids are moved
-        to host memory.
-    gpu_mem_trans_use : float, default 0.5
-        GPU memory utilization limit during transformation. How much
-        GPU memory will be used during transformation is calculated
-        using this parameter.
-    columns :
+    freq_threshold : int, default 0
+        Categories with a count/frequency below this threshold will be
+        ommited from the encoding and corresponding data will be mapped
+        to the "null" category.
+    columns : list of str, default None
+        Categorical columns to target for this operation.  If None,
+        the operation will target all known categorical columns.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
         Replaces the transformed column with the original input
         if set Yes
-    cat_names :
+    tree_width : dict or int, optional
+        Passed to `CategoryStatistics` dependency.
+    out_path : str, optional
+        Passed to `CategoryStatistics` dependency.
+    on_host : bool, default True
+        Passed to `CategoryStatistics` dependency.
+    na_sentinel : default 0
+        Label to use for null-category mapping
+    cat_cache : {"device", "host", "disk"} or dict
+        Location to cache the list of unique categories for
+        each categorical column. If passing a dict, each key and value
+        should correspond to the column name and location, respectively.
+        Default is "host" for all columns.
+    dtype :
+        If specified, categorical labels will be cast to this dtype
+        after encoding is performed.
     """
 
     default_in = CAT
@@ -954,52 +850,39 @@ class Categorify(DFOperator):
 
     def __init__(
         self,
-        use_frequency=False,
         freq_threshold=0,
-        limit_frac=0.5,
-        gpu_mem_util_limit=0.5,
-        gpu_mem_trans_use=0.5,
         columns=None,
         preprocessing=True,
         replace=True,
-        cat_names=None,
         out_path=None,
-        split_out=None,
+        tree_width=None,
         na_sentinel=None,
         cat_cache="host",
         dtype=None,
         on_host=True,
     ):
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.use_frequency = use_frequency
         self.freq_threshold = freq_threshold
-        self.limit_frac = limit_frac
-        self.gpu_mem_util_limit = gpu_mem_util_limit
-        self.gpu_mem_trans_use = gpu_mem_trans_use
-        self.cat_names = cat_names if cat_names else []
         self.out_path = out_path or "./"
-        self.split_out = split_out
+        self.tree_width = tree_width
         self.na_sentinel = na_sentinel or 0
         self.dtype = dtype
         self.on_host = on_host
         self.cat_cache = cat_cache
-        # Allow user to specify a single string value for all columns
-        # E.g. cat_cache = "device"
-        if isinstance(self.cat_cache, str):
-            self.cat_cache = {name: cat_cache for name in self.cat_names}
+        self.stat_name = "categories"
 
     @property
     def req_stats(self):
         return [
-            Encoder(
-                use_frequency=self.use_frequency,
+            CategoryStatistics(
+                columns=self.columns,
+                cont_names=[],
+                stats=[],
                 freq_threshold=self.freq_threshold,
-                limit_frac=self.limit_frac,
-                gpu_mem_util_limit=self.gpu_mem_util_limit,
-                gpu_mem_trans_use=self.gpu_mem_trans_use,
+                tree_width=self.tree_width,
                 out_path=self.out_path,
-                split_out=self.split_out,
                 on_host=self.on_host,
+                stat_name=self.stat_name,
             )
         ]
 
@@ -1014,7 +897,7 @@ class Categorify(DFOperator):
         for name in cat_names:
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
-            path = stats_context["categories"][name]
+            path = stats_context[self.stat_name][name]
             new_gdf[new_col] = nvt_cat._encode(
                 name,
                 path,

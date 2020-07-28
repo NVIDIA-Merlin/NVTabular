@@ -38,20 +38,20 @@ def main(args):
     label_name = ["label"]
 
     if args.cat_splits:
-        split_out = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
+        tree_width = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
     else:
-        split_out = {col: 1 for col in cat_names}
+        tree_width = {col: 1 for col in cat_names}
         if args.cat_names is None:
             # Using Criteo... Use more hash partitions for
             # known high-cardinality columns
-            split_out["C20"] = 8
-            split_out["C1"] = 8
-            split_out["C22"] = 4
-            split_out["C10"] = 4
-            split_out["C21"] = 2
-            split_out["C11"] = 2
-            split_out["C23"] = 2
-            split_out["C12"] = 2
+            tree_width["C20"] = 8
+            tree_width["C1"] = 8
+            tree_width["C22"] = 4
+            tree_width["C10"] = 4
+            tree_width["C21"] = 2
+            tree_width["C11"] = 2
+            tree_width["C23"] = 2
+            tree_width["C12"] = 2
 
     # Specify categorical caching location
     cat_cache = None
@@ -118,7 +118,7 @@ def main(args):
     processor.add_preprocess(
         ops.Categorify(
             out_path=out_path,
-            split_out=split_out,
+            tree_width=tree_width,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
             on_host=args.cat_on_host,

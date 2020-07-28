@@ -230,10 +230,7 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
 
         # get dataset size if it wasn't provided
         if dataset_size is None:
-            dataset_size = 0
-            # TODO: loading up the entire dataset just to get the size is pretty inefficient
-            for chunk in self._nvt_dataset.to_iter():
-                dataset_size += chunk.shape[0]
+            dataset_size = self._nvt_dataset.num_rows
         self.dataset_size = dataset_size
 
         # set attributes
@@ -271,7 +268,9 @@ class KerasSequenceDataset(tf.keras.utils.Sequence):
         return self
 
     def _initialize_iterator(self):
-        self.iter_obj = self._nvt_dataset.to_iter(columns=self.column_names + [self.label_name])
+        self.iter_obj = iter(
+            self._nvt_dataset.to_iter(columns=self.column_names + [self.label_name])
+        )
         self.chunk_idx = 0
         self.batches_in_chunk = None
 

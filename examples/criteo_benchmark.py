@@ -91,20 +91,10 @@ proc = Workflow(cat_names=cat_names, cont_names=cont_names, label_name=["label"]
 proc.add_feature([ZeroFill(replace=True), LogOp(replace=True)])
 proc.add_preprocess(Normalize(replace=True))
 if int(args.freq_thresh) == 0:
-    proc.add_preprocess(
-        Categorify(replace=True, on_host=True, split_out=4, cat_cache="host", out_path=args.out_dir)
-    )
+    proc.add_preprocess(Categorify(replace=True, out_path=args.out_dir))
 else:
     proc.add_preprocess(
-        Categorify(
-            replace=True,
-            use_frequency=True,
-            freq_threshold=int(args.freq_thresh),
-            on_host=True,
-            split_out=4,
-            cat_cache="host",
-            out_path=args.out_dir,
-        )
+        Categorify(replace=True, freq_threshold=int(args.freq_thresh), out_path=args.out_dir,)
     )
 print("Creating Dataset Iterator")
 dataset_args = {"sep": "\t"} if args.in_file_type == "csv" else {}
