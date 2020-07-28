@@ -20,6 +20,7 @@ import os
 
 import cudf
 import dask_cudf
+import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
@@ -59,15 +60,19 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=0, names=allcols_csv)[mycols_csv]
+    dtypes = {"id": np.int32}
     if engine == "parquet":
         columns = mycols_pq
     else:
         columns = mycols_csv
 
-    dd = nvtabular.io.Dataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
+    dd = nvtabular.io.Dataset(
+        paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes
+    )
     size = 0
     for chunk in dd.to_iter(columns=columns):
         size += chunk.shape[0]
+        assert chunk["id"].dtype == np.int32
 
     assert size == df1.shape[0]
 

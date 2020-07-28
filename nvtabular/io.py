@@ -722,11 +722,14 @@ class Dataset:
         ddf = self.engine.to_ddf(columns=columns)
         if self.dtypes:
             _meta = _set_dtypes(ddf._meta, self.dtypes)
-            ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
+            return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
     def to_iter(self, columns=None):
-        return self.engine.make_iter(columns=columns)
+        if isinstance(columns, str):
+            columns = [columns]
+
+        return DataFrameIter(self.to_ddf(columns=columns))
 
     @property
     def num_rows(self):
@@ -751,9 +754,6 @@ class DatasetEngine:
 
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
-
-    def make_iter(self, columns=None):
-        return DataFrameIter(self.to_ddf(columns=columns))
 
     @property
     def num_rows(self):
@@ -943,12 +943,6 @@ class DataFrameDatasetEngine(DatasetEngine):
         elif isinstance(columns, str):
             return self._ddf[[columns]]
         return self._ddf
-
-    def make_iter(self, columns=None):
-        if isinstance(columns, str):
-            columns = [columns]
-
-        return DataFrameIter(self._ddf, columns=columns)
 
     @property
     def num_rows(self):
