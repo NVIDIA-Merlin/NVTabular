@@ -922,7 +922,7 @@ class DataFrameDatasetEngine(DatasetEngine):
         if isinstance(columns, str):
             columns = [columns]
 
-        return DataFrameIter(self._ddf.partitions, columns=columns, indices=indices)
+        return DataFrameIter(self._ddf, columns=columns, indices=indices)
 
     @property
     def num_rows(self):
