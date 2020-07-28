@@ -92,7 +92,8 @@ def test_dask_dataset(datasets, engine, num_files):
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
+@pytest.mark.parametrize("num_io_threads", [0, 2])
+def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_threads):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -122,6 +123,7 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
         out_files_per_proc=nfiles,
         output_format=output_format,
         shuffle=False,
+        num_io_threads=num_io_threads,
     )
 
     # Check for _file_list.txt

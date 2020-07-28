@@ -664,7 +664,9 @@ class Workflow(BaseWorkflow):
         output_path="./ds_export",
         output_format="parquet",
         out_files_per_proc=None,
-        **kwargs,
+        num_io_threads=0,
+        nsplits=None,  # Deprecated
+        num_out_files=None,  # Deprecated
     ):
         """
         Runs all the preprocessing and feature engineering operators.
@@ -695,15 +697,16 @@ class Workflow(BaseWorkflow):
         out_files_per_proc : integer
             number of files to create (per process) after
             shuffling the data
+        num_io_threads : integer
+            Number of IO threads to use for writing the output dataset.
+            For `0` (default), no dedicated IO threads will be used.
         """
 
-        # Deal with single-gpu compatibility
-        nsplits = kwargs.get("nsplits", None)
+        # Deal with 0.1.1 compatibility
         if nsplits:
             warnings.warn("nsplits is deprecated. Use out_files_per_proc")
             if out_files_per_proc is None:
                 out_files_per_proc = nsplits
-        num_out_files = kwargs.get("num_out_files", None)
         if num_out_files:
             warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
             if out_files_per_proc is None:
@@ -723,6 +726,7 @@ class Workflow(BaseWorkflow):
                 shuffle=shuffle,
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
+                num_io_threads=num_io_threads,
             )
         else:
             self.iterate_online(
@@ -731,6 +735,7 @@ class Workflow(BaseWorkflow):
                 shuffle=shuffle,
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
+                num_io_threads=num_io_threads,
             )
 
     def iterate_online(
@@ -742,6 +747,7 @@ class Workflow(BaseWorkflow):
         output_format=None,
         out_files_per_proc=None,
         apply_ops=True,
+        num_io_threads=0,
     ):
         """ Iterate through dataset and (optionally) apply/shuffle/write.
         """
@@ -749,7 +755,12 @@ class Workflow(BaseWorkflow):
         output_path = output_path or "./"
         output_path = str(output_path)
         writer = nvt_io.writer_factory(
-            output_format, output_path, out_files_per_proc, shuffle, bytes_io=(shuffle == "full")
+            output_format,
+            output_path,
+            out_files_per_proc,
+            shuffle,
+            bytes_io=(shuffle == "full"),
+            num_threads=num_io_threads,
         )
 
         # Iterate through dataset, apply ops, and write out processed data
@@ -785,6 +796,7 @@ class Workflow(BaseWorkflow):
         output_format=None,
         out_files_per_proc=None,
         apply_ops=True,
+        num_io_threads=0,
     ):
         """ Build Dask-task graph for workflow.
 
@@ -812,7 +824,12 @@ class Workflow(BaseWorkflow):
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)
-            self.ddf_to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
+            self.ddf_to_dataset(
+                output_path,
+                shuffle=shuffle,
+                out_files_per_proc=out_files_per_proc,
+                num_threads=num_io_threads,
+            )
 
     def write_to_dataset(
         self,
@@ -824,6 +841,7 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         iterate=False,
         nfiles=None,
+        num_io_threads=0,
     ):
         """ Write data to shuffled parquet dataset.
 
@@ -844,6 +862,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
+                num_io_threads=num_io_threads,
             )
         else:
             self.build_and_process_graph(
@@ -854,10 +873,16 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
+                num_io_threads=num_io_threads,
             )
 
     def ddf_to_dataset(
-        self, output_path, shuffle=None, out_files_per_proc=None, output_format="parquet"
+        self,
+        output_path,
+        shuffle=None,
+        out_files_per_proc=None,
+        output_format="parquet",
+        num_threads=0,
     ):
         """ Dask-based dataset output.
 
@@ -886,6 +911,7 @@ class Workflow(BaseWorkflow):
                 label_names,
                 output_format,
                 self.client,
+                num_threads,
             )
             return
 
