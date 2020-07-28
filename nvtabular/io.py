@@ -696,12 +696,12 @@ class Dataset:
         ddf = self.engine.to_ddf(columns=columns)
         if self.dtypes:
             _meta = _set_dtypes(ddf._meta, self.dtypes)
-            ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
+            return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
     def to_iter(self, columns=None, indices=None):
-        return self.engine.make_iter(columns=columns, indices=indices)
-
+        return DataFrameIter(self.to_ddf(columns=columns), indices=indices)
+    
     @property
     def num_rows(self):
         return self.engine.num_rows
@@ -899,6 +899,7 @@ class CSVDatasetEngine(DatasetEngine):
                 columns
             ]
         return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
+    
 
 
 class DataFrameDatasetEngine(DatasetEngine):
