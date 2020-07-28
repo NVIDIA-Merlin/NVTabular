@@ -696,7 +696,7 @@ class Dataset:
         ddf = self.engine.to_ddf(columns=columns)
         if self.dtypes:
             _meta = _set_dtypes(ddf._meta, self.dtypes)
-            ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
+            return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
     def to_iter(self, columns=None):
