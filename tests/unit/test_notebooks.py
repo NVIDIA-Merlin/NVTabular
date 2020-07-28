@@ -24,7 +24,7 @@ def test_criteo_notebook(tmpdir):
         tmpdir,
         os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
         # disable rmm.reinitialize, seems to be causing issues
-        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize"),
+        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
     )
 
 
