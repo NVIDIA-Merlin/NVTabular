@@ -61,6 +61,7 @@ class TensorItr:
         for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
             yield tens[0], tens[1], tens[2]
+            tens = None
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
@@ -257,6 +258,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
             if isinstance(chunk, str):
                 return
             yield from TensorItr(chunk, batch_size=self.batch_size)
+            chunk = None
 
     def load_chunk(self, buff):
         for chunk in self.itr:
@@ -265,7 +267,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         buff.put("end")
 
     def __len__(self):
-        return len(self.itr)
+        return int(len(self.itr) / self.batch_size)
 
 
 class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
@@ -301,9 +303,9 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
             return self.indices[start : start + per_worker]
 
     def __len__(self):
-        return self.rows
+        return self.dataset.num_rows
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
     def __len__(self):
-        return self.dataset.num_rows
+        return len(self.dataset)
