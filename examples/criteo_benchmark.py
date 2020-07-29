@@ -94,12 +94,7 @@ if int(args.freq_thresh) == 0:
     proc.add_preprocess(Categorify(replace=True, out_path=args.out_dir))
 else:
     proc.add_preprocess(
-        Categorify(
-            replace=True,
-            use_frequency=True,
-            freq_threshold=int(args.freq_thresh),
-            out_path=args.out_dir,
-        )
+        Categorify(replace=True, freq_threshold=int(args.freq_thresh), out_path=args.out_dir,)
     )
 print("Creating Dataset Iterator")
 dataset_args = {"sep": "\t"} if args.in_file_type == "csv" else {}
