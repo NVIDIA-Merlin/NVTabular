@@ -235,8 +235,9 @@ class ThreadedWriter(Writer):
         # Resolve file system
         self.fs = fs or get_fs_token_paths(str(out_dir))[0]
 
-        # Only use threading if num_threads > 0
-        if self.num_threads:
+        # Only use threading if num_threads > 1
+        self.queue = None
+        if self.num_threads > 1:
 
             # create thread queue and locks
             self.queue = queue.Queue(num_threads)
@@ -277,7 +278,7 @@ class ThreadedWriter(Writer):
         nrows = gdf.shape[0]
         typ = np.min_scalar_type(nrows * 2)
         if self.shuffle and self.shuffle != "full":
-            ind = cp.random.choice(np.arange(self.num_out_files, dtype=typ), nrows)
+            ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
         else:
             ind = cp.arange(nrows, dtype=typ)
             cp.floor_divide(ind, (nrows // self.num_out_files), out=ind)
@@ -287,7 +288,7 @@ class ThreadedWriter(Writer):
             gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
         ):
             self.num_samples[x] += len(group)
-            if self.num_threads:
+            if self.num_threads > 1:
                 self.queue.put((x, group))
             else:
                 self._write_table(x, group)
@@ -295,7 +296,7 @@ class ThreadedWriter(Writer):
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)
-        if self.num_threads:
+        if self.num_threads > 1:
             self.queue.join()
 
     def package_general_metadata(self):
@@ -351,7 +352,7 @@ class ThreadedWriter(Writer):
         return None
 
     def close(self):
-        if self.num_threads:
+        if self.num_threads > 1:
             # wake up all the worker threads and signal for them to exit
             for _ in range(self.num_threads):
                 self.queue.put(self._eod)

@@ -665,8 +665,6 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         out_files_per_proc=None,
         num_io_threads=0,
-        nsplits=None,  # Deprecated
-        num_out_files=None,  # Deprecated
     ):
         """
         Runs all the preprocessing and feature engineering operators.
@@ -701,16 +699,6 @@ class Workflow(BaseWorkflow):
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
         """
-
-        # Deal with 0.1.1 compatibility
-        if nsplits:
-            warnings.warn("nsplits is deprecated. Use out_files_per_proc")
-            if out_files_per_proc is None:
-                out_files_per_proc = nsplits
-        if num_out_files:
-            warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
-            if out_files_per_proc is None:
-                out_files_per_proc = num_out_files
 
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
