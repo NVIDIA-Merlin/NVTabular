@@ -270,7 +270,6 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         return len(self.itr) // self.batch_size
 
 
-
 class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
     """
         For Torch Only:

@@ -701,7 +701,7 @@ class Dataset:
 
     def to_iter(self, columns=None, indices=None):
         return DataFrameIter(self.to_ddf(columns=columns), indices=indices)
-    
+
     @property
     def num_rows(self):
         return self.engine.num_rows
@@ -899,7 +899,6 @@ class CSVDatasetEngine(DatasetEngine):
                 columns
             ]
         return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
-    
 
 
 class DataFrameDatasetEngine(DatasetEngine):
