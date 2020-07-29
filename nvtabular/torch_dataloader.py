@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
 import queue
 import threading
 
@@ -267,7 +268,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         buff.put("end")
 
     def __len__(self):
-        return len(self.itr) // self.batch_size
+        return math.ceil(len(self.itr) / self.batch_size)
 
 
 class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
