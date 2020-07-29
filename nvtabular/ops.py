@@ -17,6 +17,7 @@ import cudf
 import cupy
 import numpy as np
 from cudf._lib.nvtx import annotate
+from dask.core import flatten
 from dask.delayed import Delayed
 
 from nvtabular import categorify as nvt_cat
@@ -655,6 +656,14 @@ class CategoryStatistics(StatOperator):
         freq_threshold=None,
         stat_name=None,
     ):
+        # Set column_groups if the user has passed in a list of columns
+        self.column_groups = None
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            self.column_groups = columns
+            columns = list(set(flatten(columns, container=list)))
+
         super(CategoryStatistics, self).__init__(columns)
         self.cont_names = cont_names or []
         self.stats = stats or []
@@ -671,8 +680,7 @@ class CategoryStatistics(StatOperator):
         return str(self.op_name)
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-
+        col_groups = self.column_groups or self.get_columns(columns_ctx, input_cols, target_cols)
         supported_ops = ["count", "sum", "mean", "std", "var"]
         for op in self.stats:
             if op not in supported_ops:
@@ -682,7 +690,7 @@ class CategoryStatistics(StatOperator):
         agg_list = self.stats
         dsk, key = nvt_cat._category_stats(
             ddf,
-            cols,
+            col_groups,
             agg_cols,
             agg_list,
             self.out_path,

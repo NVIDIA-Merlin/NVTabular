@@ -65,17 +65,17 @@ def _make_name(*args):
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(gdf, cat_cols, tree_width, cont_cols, sum_sq, on_host):
+def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_host):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
-    for i, cat_col in enumerate(cat_cols):
+    for i, cat_col_group in enumerate(cat_col_groups):
 
         # Compile aggregation dictionary and add "squared-sum"
         # column(s) (necessary when `cont_cols` is non-empty)
-        df_gb = gdf[[cat_col] + cont_cols].copy(deep=False)
+        df_gb = gdf[[cat_col_group] + cont_cols].copy(deep=False)
         agg_dict = {}
-        agg_dict[cat_col] = ["count"]
+        agg_dict[cat_col_group] = ["count"]
         for col in cont_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
@@ -85,18 +85,22 @@ def _top_level_groupby(gdf, cat_cols, tree_width, cont_cols, sum_sq, on_host):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
-        gb = df_gb.groupby(cat_col, dropna=False).agg(agg_dict)
+        gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
         gb.columns = [
-            _make_name(*name) if name[0] == cat_col else _make_name(*((cat_col,) + name))
+            _make_name(*name)
+            if name[0] == cat_col_group
+            else _make_name(*((cat_col_group,) + name))
             for name in gb.columns.to_flat_index()
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        for j, split in enumerate(
-            gb.partition_by_hash([cat_col], tree_width[cat_col], keep_index=False)
-        ):
+        import pdb
+
+        pdb.set_trace()
+        splits = gb.partition_by_hash(cat_col_group, tree_width[cat_col_group], keep_index=False)
+        for j, split in enumerate(splits):
             if on_host:
                 output[k] = split.to_pandas()
             else:
@@ -210,7 +214,7 @@ def _finish_labels(paths, cols):
 def _groupby_to_disk(
     ddf,
     write_func,
-    cols,
+    col_groups,
     agg_cols,
     agg_list,
     out_path,
@@ -219,16 +223,16 @@ def _groupby_to_disk(
     on_host,
     stat_name="categories",
 ):
-    if not cols:
+    if not col_groups:
         return {}
 
     # Update tree_width
     if tree_width is None:
-        tree_width = {c: 8 for c in cols}
+        tree_width = {c: 8 for c in col_groups}
     elif isinstance(tree_width, int):
-        tree_width = {c: tree_width for c in cols}
+        tree_width = {c: tree_width for c in col_groups}
     else:
-        for col in cols:
+        for col in col_groups:
             if col not in tree_width:
                 tree_width[col] = 8
 
@@ -238,7 +242,7 @@ def _groupby_to_disk(
     fs.mkdirs(out_path, exist_ok=True)
 
     dsk = {}
-    token = tokenize(ddf, cols, out_path, freq_limit, tree_width, on_host)
+    token = tokenize(ddf, col_groups, out_path, freq_limit, tree_width, on_host)
     level_1_name = "level_1-" + token
     split_name = "split-" + token
     level_2_name = "level_2-" + token
@@ -248,19 +252,19 @@ def _groupby_to_disk(
         dsk[(level_1_name, p)] = (
             _top_level_groupby,
             (ddf._name, p),
-            cols,
+            col_groups,
             tree_width,
             agg_cols,
             ("std" in agg_list or "var" in agg_list),
             on_host,
         )
         k = 0
-        for c, col in enumerate(cols):
+        for c, col in enumerate(col_groups):
             for s in range(tree_width[col]):
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
 
-    for c, col in enumerate(cols):
+    for c, col in enumerate(col_groups):
         for s in range(tree_width[col]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
@@ -282,15 +286,23 @@ def _groupby_to_disk(
 
     dsk[finalize_labels_name] = (
         _finish_labels,
-        [(level_3_name, c) for c, col in enumerate(cols)],
-        cols,
+        [(level_3_name, c) for c, col in enumerate(col_groups)],
+        col_groups,
     )
     graph = HighLevelGraph.from_collections(finalize_labels_name, dsk, dependencies=[ddf])
     return graph, finalize_labels_name
 
 
 def _category_stats(
-    ddf, cols, agg_cols, agg_list, out_path, freq_limit, tree_width, on_host, stat_name="categories"
+    ddf,
+    col_groups,
+    agg_cols,
+    agg_list,
+    out_path,
+    freq_limit,
+    tree_width,
+    on_host,
+    stat_name="categories",
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -298,7 +310,7 @@ def _category_stats(
         return _groupby_to_disk(
             ddf,
             _write_uniques,
-            cols,
+            col_groups,
             agg_cols,
             agg_list,
             out_path,
@@ -316,7 +328,7 @@ def _category_stats(
     return _groupby_to_disk(
         ddf,
         _write_gb_stats,
-        cols,
+        col_groups,
         agg_cols,
         agg_list,
         out_path,

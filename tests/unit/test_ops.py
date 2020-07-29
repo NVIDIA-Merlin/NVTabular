@@ -118,6 +118,32 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize(
+    "groups",
+    [
+        None,
+        # [["name-cat", "name-string"], "name-cat"], None,
+    ],
+)
+def test_multicolumn_cats(tmpdir, df, dataset, engine, groups):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    # encoder = ops.CategoryStatistics(columns=groups)
+    encoder = ops.CategoryStatistics()
+    config = nvt.workflow.get_new_config()
+    config["PP"]["categorical"] = [encoder]
+
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+    processor.update_stats(dataset)
+
+    pass
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
