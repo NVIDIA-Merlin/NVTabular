@@ -23,6 +23,7 @@ def test_criteo_notebook(tmpdir):
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
+        gpu_id=3,
     )
 
     
@@ -37,6 +38,7 @@ def test_optimize_criteo(tmpdir):
         notebook_path,
         input_path,
         output_path,
+        gpu_id=2,
     )
 
     
@@ -55,6 +57,7 @@ def test_rossman_example(tmpdir):
         notebookex_path, 
         None,
         input_path,
+        gpu_id=1
     )    
     
 
@@ -66,12 +69,13 @@ def test_rossman_example(tmpdir):
         notebookex_path, 
         input_path,
         output_path,
+        gpu_id=1,
     )
 
 
 def test_gpu_benchmark(tmpdir):
     input_path = os.path.join(DATA_START, "outbrains/input")
-    output_path = os.path.join(DATA_START, "outbrains_test")
+    output_path = os.path.join(DATA_START, "outbrains/output")
 
     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "gpu_benchmark.ipynb")
     _run_notebook(
@@ -79,10 +83,13 @@ def test_gpu_benchmark(tmpdir):
         notebook_path,
         input_path,
         output_path,
+        gpu_id=0
     )
     
 
-def _run_notebook(tmpdir, notebook_path, input_path, output_path, transform=None):
+def _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=0, transform=None):
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+
     if not os.path.exists(input_path):
         os.makedirs(input_path)
     if not os.path.exists(output_path):
