@@ -39,6 +39,7 @@ from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
+from dask.dataframe.utils import group_split_dispatch
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
@@ -265,29 +266,26 @@ class ThreadedWriter(Writer):
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
 
-        # Shuffle if necessary
-        # (Skip shuffle if "full", because we will do it later)
-        if self.shuffle and self.shuffle != "full":
-            gdf = _shuffle_gdf(gdf)
-
         # Populate columns idxs
         if not self.col_idx:
             for i, x in enumerate(gdf.columns.values):
                 self.col_idx[str(x)] = i
 
-        # get slice info
         nrows = gdf.shape[0]
-        int_slice_size = nrows // self.num_out_files
-        slice_size = int_slice_size if nrows % int_slice_size == 0 else int_slice_size + 1
-        for x in range(self.num_out_files):
-            start = x * slice_size
-            end = start + slice_size
-            end = end if end <= nrows else nrows  # check if end is over length
-            self.num_samples[x] += end - start
+        typ = np.min_scalar_type(nrows * 2)
+        if self.shuffle and self.shuffle != "full":
+            ind = cp.random.choice(np.arange(self.num_out_files, dtype=typ), nrows)
+        else:
+            ind = cp.arange(nrows, dtype=typ)
+            np.floor_divide(ind, (nrows // self.num_out_files), out=ind)
+
+        for x, df in group_split_dispatch(gdf, ind, self.num_out_files, ignore_index=True).items():
+            self.num_samples[x] += len(df)
             if self.num_threads:
-                self.queue.put((x, gdf.iloc[start:end].copy(deep=False)))
+                self.queue.put((x, df))
             else:
-                self._write_table(x, gdf.iloc[start:end].copy(deep=False))
+                self._write_table(x, df)
+                del df
 
         # wait for all writes to finish before exitting (so that we aren't using memory)
         if self.num_threads:
@@ -572,7 +570,7 @@ def _ddf_to_dataset(
     if client:
         out = client.compute(out).result()
     else:
-        out = dask.compute(out, scheduler="synchronous")[0]
+        out = dask.compute(out, scheduler="threads", num_workers=1)[0]
 
     # Follow-up Shuffling and _metadata creation
     _finish_dataset(client, ddf, output_path, fs, output_format)
@@ -960,7 +958,7 @@ class DataFrameIter:
     def __iter__(self):
         for part in self._ddf.partitions:
             if self.columns:
-                yield part[self.columns].compute(scheduler="synchronous")
+                yield part[self.columns].compute(scheduler="threads", num_workers=1)
             else:
-                yield part.compute(scheduler="synchronous")
+                yield part.compute(scheduler="threads", num_workers=1)
             part = None
