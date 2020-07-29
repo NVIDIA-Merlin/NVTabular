@@ -626,7 +626,7 @@ class Workflow(BaseWorkflow):
                     self._update_statistics(op)
                     op.clear()
             else:
-                for r in dask.compute(stats, scheduler="threads", num_workers=1)[0]:
+                for r in dask.compute(stats, scheduler="synchronous")[0]:
                     computed_stats, op = r
                     op.finalize(computed_stats)
                     self._update_statistics(op)
@@ -918,6 +918,6 @@ class Workflow(BaseWorkflow):
         # Default (shuffle=False): Just use dask_cudf.to_parquet
         fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
         if self.client is None:
-            fut.compute(scheduler="threads", num_workers=1)
+            fut.compute(scheduler="synchronous")
         else:
             fut.compute()
