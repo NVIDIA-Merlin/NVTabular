@@ -96,9 +96,6 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        import pdb
-
-        pdb.set_trace()
         splits = gb.partition_by_hash(cat_col_group, tree_width[cat_col_group], keep_index=False)
         for j, split in enumerate(splits):
             if on_host:
