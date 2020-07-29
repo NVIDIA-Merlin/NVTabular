@@ -102,7 +102,7 @@ def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
 
 
 def combine_tensors(cats, conts, label):
-    cats_list = [cats[x] for x in sorted(cats.keys())] if cats else None
+    cats_list = [cats[x] for x in _get_embedding_order(cats.keys())] if cats else None
     conts_list = [conts[x] for x in sorted(conts.keys())] if conts else None
     label_list = [label[x] for x in sorted(label.keys())] if label else None
 
