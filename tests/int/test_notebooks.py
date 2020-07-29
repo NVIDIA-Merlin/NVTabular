@@ -76,7 +76,7 @@ def test_gpu_benchmark(tmpdir):
     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "gpu_benchmark.ipynb", input_path, output_path)
     _run_notebook(
         tmpdir, 
-        notebook_path
+        notebook_path,
         input_path,
         output_path,
     )
@@ -88,7 +88,7 @@ def _run_notebook(tmpdir, notebook_path, input_path, output_path, transform=None
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     
-    os.environ["INPUT_DATA_DIR"] = in_put
+    os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
     # read in the notebook as JSON, and extract a python script from it
     notebook = json.load(open(notebook_path))
