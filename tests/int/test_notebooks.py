@@ -10,7 +10,7 @@ import cudf
 import pytest
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
-DATA_START = "/raid/data"
+DATA_START = os.environ.get('DATASET_DIR', "/raid/data")
 
 def test_criteo_notebook(tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
@@ -27,8 +27,8 @@ def test_criteo_notebook(tmpdir):
 
     
 def test_optimize_criteo(tmpdir):
-    input_path = os.path.join(DATA_START, "crit_orig")
-    output_path = os.path.join(DATA_START, "crit_test_opt")
+    input_path = os.path.join(DATA_START, "criteo/crit_orig")
+    output_path = os.path.join(DATA_START, "criteo/crit_test_opt")
 
 
     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
@@ -70,10 +70,10 @@ def test_rossman_example(tmpdir):
 
 
 def test_gpu_benchmark(tmpdir):
-    input_path = os.path.join(DATA_START, "crit_orig")
-    output_path = os.path.join(DATA_START, "crit_test_opt")
+    input_path = os.path.join(DATA_START, "outbrains/input")
+    output_path = os.path.join(DATA_START, "outbrains_test")
 
-    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "gpu_benchmark.ipynb", input_path, output_path)
+    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "gpu_benchmark.ipynb")
     _run_notebook(
         tmpdir, 
         notebook_path,
@@ -109,7 +109,7 @@ def _run_notebook(tmpdir, notebook_path, input_path, output_path, transform=None
     subprocess.check_output([sys.executable, script_path])
     
     # clear out products
-    shutil.rmtree(out_put)
+    shutil.rmtree(output_path)
 
 
 def _get_random_criteo_data(rows):
