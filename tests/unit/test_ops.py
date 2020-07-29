@@ -119,20 +119,13 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize(
-    "groups",
-    [
-        None,
-        # [["name-cat", "name-string"], "name-cat"], None,
-    ],
-)
+@pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], None])
 def test_multicolumn_cats(tmpdir, df, dataset, engine, groups):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    # encoder = ops.CategoryStatistics(columns=groups)
-    encoder = ops.CategoryStatistics()
+    encoder = ops.CategoryStatistics(columns=groups, cont_names=["x"], stats=["count", "mean"])
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
 

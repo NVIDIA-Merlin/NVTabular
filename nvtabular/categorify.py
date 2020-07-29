@@ -71,11 +71,14 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
     k = 0
     for i, cat_col_group in enumerate(cat_col_groups):
 
+        if isinstance(cat_col_group, str):
+            cat_col_group = [cat_col_group]
+
         # Compile aggregation dictionary and add "squared-sum"
         # column(s) (necessary when `cont_cols` is non-empty)
-        df_gb = gdf[[cat_col_group] + cont_cols].copy(deep=False)
+        df_gb = gdf[cat_col_group + cont_cols].copy(deep=False)
         agg_dict = {}
-        agg_dict[cat_col_group] = ["count"]
+        agg_dict[cat_col_group[0]] = ["count"]
         for col in cont_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
@@ -87,17 +90,18 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
         # (flattening provides better cudf support)
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
         gb.columns = [
-            _make_name(*name)
-            if name[0] == cat_col_group
-            else _make_name(*((cat_col_group,) + name))
+            _make_name(*(tuple(cat_col_group) + name[1:]))
+            if name[0] == cat_col_group[0]
+            else _make_name(*(tuple(cat_col_group) + name))
             for name in gb.columns.to_flat_index()
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        splits = gb.partition_by_hash(cat_col_group, tree_width[cat_col_group], keep_index=False)
-        for j, split in enumerate(splits):
+        for j, split in enumerate(
+            gb.partition_by_hash(cat_col_group, tree_width[str(cat_col_group)], keep_index=False)
+        ):
             if on_host:
                 output[k] = split.to_pandas()
             else:
@@ -225,13 +229,13 @@ def _groupby_to_disk(
 
     # Update tree_width
     if tree_width is None:
-        tree_width = {c: 8 for c in col_groups}
+        tree_width = {str(c): 8 for c in col_groups}
     elif isinstance(tree_width, int):
-        tree_width = {c: tree_width for c in col_groups}
+        tree_width = {str(c): tree_width for c in col_groups}
     else:
         for col in col_groups:
-            if col not in tree_width:
-                tree_width[col] = 8
+            if str(col) not in tree_width:
+                tree_width[str(col)] = 8
 
     # Make dedicated output directory for the categories
     fs = get_fs_token_paths(out_path)[0]
@@ -257,12 +261,12 @@ def _groupby_to_disk(
         )
         k = 0
         for c, col in enumerate(col_groups):
-            for s in range(tree_width[col]):
+            for s in range(tree_width[str(col)]):
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
 
     for c, col in enumerate(col_groups):
-        for s in range(tree_width[col]):
+        for s in range(tree_width[str(col)]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
@@ -275,7 +279,7 @@ def _groupby_to_disk(
 
         dsk[(level_3_name, c)] = (
             write_func,
-            [(level_2_name, c, s) for s in range(tree_width[col])],
+            [(level_2_name, c, s) for s in range(tree_width[str(col)])],
             out_path,
             col,
             on_host,
