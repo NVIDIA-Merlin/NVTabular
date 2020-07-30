@@ -821,6 +821,8 @@ class JoinExternal(TransformOperator):
         we assume ``on_ext`` is the same as ``on``.
     columns_ext : list(str); Optional
         Subset of columns to select from external table before join.
+    drop_duplicates_ext : bool; Default False
+        Drop duplicates from external table before join.
     kind_ext : {"arrow", "cudf", "pandas", "parquet", "csv"}
         Format of ``df_ext``.  If nothing is specified, the format
         will be inferred.
@@ -839,6 +841,7 @@ class JoinExternal(TransformOperator):
         how="left",
         on_ext=None,
         columns_ext=None,
+        drop_duplicates_ext=None,
         kind_ext=None,
         cache="host",
         preprocessing=True,
@@ -851,6 +854,7 @@ class JoinExternal(TransformOperator):
         self.how = how
         self.kind_ext = kind_ext or _detect_format(self.df_ext)
         self.columns_ext = columns_ext
+        self.drop_duplicates_ext = drop_duplicates_ext
         self.cache = cache
         self.kwargs = kwargs
         if self.how not in ("left", "inner"):
@@ -886,7 +890,14 @@ class JoinExternal(TransformOperator):
                 )
 
         # Take subset of columns if a list is specified
-        return _ext[self.columns_ext] if self.columns_ext else _ext
+        if self.columns_ext:
+            _ext = _ext[self.columns_ext]
+
+        # Drop duplicates if requested
+        if self.drop_duplicates_ext:
+            _ext.drop_duplicates(ignore_index=True, inplace=True)
+
+        return _ext
 
     def apply_op(
         self,
