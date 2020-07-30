@@ -1,3 +1,5 @@
-examples/.local
+.git
 examples/tensorflow/logs
-.bash_history
+examples/tensorflow/docker/Dockerfile
+examples/tensorflow/.*
+examples/.*

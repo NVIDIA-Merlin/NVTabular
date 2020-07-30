@@ -1,65 +1,14 @@
 # Accelerating TensorFlow Tabular Workflows with NVTabular
+## TODO: Include data section?
+Get Criteo, run preproc notebook, mount volume, make sure you have space for tfrecords, etc.
+
 ## Build container
-First, build NVTabular container image from root directory
+From root directory
 ```
-docker build -t $USER/nvtabular -f Dockerfile.nvtab .
+docker build -t $USER/nvtabular-tf-example -f examples/tensorflow/docker/Dockerfile .
 ```
-Then build examples image on top of it
+## Run container
 ```
-docker build -t $USER/nvtabular:examples -f Dockerfile.examples --build-arg base=$USER/nvtabular .
-```
-Now run container
-```
-docker run --rm -it -v /path/to/data:/data -p 8888:8888 -p 6006:6006 --gpus 1 $USER/nvtabular:examples
+docker run --rm -it -v /path/to/data:/data -v /path/to/write/tfrecords:/tfrecords -p 8888:8888 -p 6006:6006 --gpus 1 $USER/nvtabular-tf-example
 ```
 And navigate to `<your ip address>:8888/?token=nvidia`
-
-## Perf Comparisons
-### High level summary
-<table>
-  <tr>
-    <td>GPU Native</td>
-    <td>GPU Accelerated</td>
-    <td>GPU Accelerated Mixed Precision</td>
-  </tr>
-  <tr>
-    <td><img src="imgs/native/perf-summary.PNG"></td>
-    <td><img src="imgs/accelerated/perf-summary.PNG"></td>
-    <td><img src="imgs/accelerated-fp16/perf-summary.PNG"></td>
-  </tr>
-</table>
-
-### Device Kernel Time Divisions
-<table>
-  <tr>
-    <td>GPU Native</td>
-    <td>GPU Accelerated</td>
-    <td>GPU Accelerated Mixed Precision</td>
-  </tr>
-  <tr>
-    <td><img src="imgs/native/kernel-pie-chart.PNG"></td>
-    <td><img src="imgs/accelerated/kernel-pie-chart.PNG"></td>
-    <td><img src="imgs/accelerated-fp16/kernel-pie-chart.PNG"></td>
-  </tr>
-</table>
-
-### Trace Views
-<table>
-  <tr>
-    <td>GPU Native</td>
-    <td>GPU Accelerated</td>
-    <td>GPU Accelerated Mixed Precision</td>
-  </tr>
-  <tr>
-    <td><img src="imgs/native/trace-view.PNG"></td>
-    <td><img src="imgs/accelerated/trace-view.PNG"></td>
-    <td><img src="imgs/accelerated-fp16/trace-view.PNG"></td>
-  </tr>
-</table>
-
-Note the enormous amount of empty device time on the GPU native implementation. Let's zoom in on just the embedding section (where the GPU kernels start):
-<img src="imgs/native/trace-view-zoomed.PNG"></img>
-Lots of tiny kernels doing small ops like reshapes, assert checks, etc. = bad GPU performance.
-
-### Example Throughput Curves (Mixed Precision not included yet)
-<img src="imgs/dlrm-train.PNG"></img>
