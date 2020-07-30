@@ -177,7 +177,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         result[["name-string", "name-string_x_std"]]
         .drop_duplicates()
         .sort_values("name-string")["name-string_x_std"],
-        df0.groupby("name-string").agg({"x": "std"})["x"].astype(np.int64),
+        df0.groupby("name-string").agg({"x": "std"})["x"],
         check_index=False,
         check_names=False,
     )
