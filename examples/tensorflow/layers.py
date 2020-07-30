@@ -8,7 +8,7 @@ _INTERACTION_TYPES = (None, "field_all", "field_each", "field_interaction")
 
 
 class DotProductInteraction(tf.keras.layers.Layer):
-    '''
+    """
     Layer implementing the factorization machine style feature
     interaction layer suggested by the DLRM and DeepFM architectures,
     generalized to include a dot-product version of the parameterized
@@ -27,7 +27,10 @@ class DotProductInteraction(tf.keras.layers.Layer):
         with a dot product).
     self_interaction: bool
         Whether to calculate the interaction of a feature with itself.
-    '''.format(_INTERACTION_TYPES)
+    """.format(
+        _INTERACTION_TYPES
+    )
+
     def __init__(
         self, interaction_type=None, self_interaction=False, name=None, **kwargs
     ):
@@ -98,7 +101,7 @@ class DotProductInteraction(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "interaction_type": self.interaction_type,
-            "self_interaction": self.self_interaction
+            "self_interaction": self.self_interaction,
         }
 
 
@@ -170,10 +173,11 @@ def _validate_feature_columns(feature_columns):
 
 
 class ScalarDenseFeatures(tf.keras.layers.Layer):
-    '''
+    """
     Layer which maps scalar numeric and one-hot categorical
     features to a dense embedding.
-    '''
+    """
+
     def __init__(self, feature_columns, aggregation="concat", name=None, **kwargs):
         # sort feature columns to make layer independent of column order
         feature_columns = _sort_columns(feature_columns)
@@ -209,7 +213,7 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
                     name="{}/embedding_weights".format(feature_name),
                     trainable=False,
                     initializer=tf.constant_initializer(np.eye(num_buckets)),
-                    shape=(num_buckets, num_buckets)
+                    shape=(num_buckets, num_buckets),
                 )
         self.built = True
 
@@ -223,7 +227,7 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
                 table = self.embedding_tables[feature_name]
                 embeddings = tf.gather(table, inputs[feature_name][:, 0])
                 features.append(embeddings)
-    
+
         if self.aggregation == "stack":
             return tf.stack(features, axis=1)
         return tf.concat(features, axis=1)
@@ -242,5 +246,5 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "feature_columns": self.feature_columns,
-            "aggregation": self.aggregation
+            "aggregation": self.aggregation,
         }
