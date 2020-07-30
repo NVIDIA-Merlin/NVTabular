@@ -700,6 +700,9 @@ class Dataset:
         return ddf
 
     def to_iter(self, columns=None, indices=None):
+        if isinstance(columns, str):
+            columns = [columns]
+
         return DataFrameIter(self.to_ddf(columns=columns), indices=indices)
 
     @property
