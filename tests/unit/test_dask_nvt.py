@@ -17,6 +17,7 @@
 import glob
 import math
 import os
+import np
 
 import cudf
 import dask_cudf
@@ -165,7 +166,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         result[["name-cat", "name-cat_count"]]
         .drop_duplicates()
         .sort_values("name-cat")["name-cat_count"],
-        df0.groupby("name-cat").agg({"x": "count"})["x"],
+        df0.groupby("name-cat").agg({"x": "count"})["x"].astype(np.int64),
         check_index=False,
         check_dtype=False,  # May get int64 vs int32
         check_names=False,
@@ -176,7 +177,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         result[["name-string", "name-string_x_std"]]
         .drop_duplicates()
         .sort_values("name-string")["name-string_x_std"],
-        df0.groupby("name-string").agg({"x": "std"})["x"],
+        df0.groupby("name-string").agg({"x": "std"})["x"].astype(np.int64),
         check_index=False,
         check_names=False,
     )
