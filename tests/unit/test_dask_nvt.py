@@ -17,10 +17,10 @@
 import glob
 import math
 import os
-import np
 
 import cudf
 import dask_cudf
+import np
 import pytest
 from dask.dataframe import assert_eq
 
