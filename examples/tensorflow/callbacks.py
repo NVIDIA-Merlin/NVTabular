@@ -1,5 +1,6 @@
-import tensorflow as tf
 import time
+
+import tensorflow as tf
 
 
 class ThroughputLogger(tf.keras.callbacks.Callback):
