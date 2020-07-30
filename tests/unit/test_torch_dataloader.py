@@ -62,7 +62,7 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
         paths[0],
         engine="csv",
         batch_size=batch,
-        gpu_memory_frac=0.01,
+        part_mem_fraction=0.01,
         columns=mycols_csv,
         names=names,
     )
@@ -78,11 +78,11 @@ def test_gpu_file_iterator_dl(datasets, batch, dskey):
     assert_eq(df_itr.reset_index(drop=True), df_expect.reset_index(drop=True))
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("part_mem_fraction", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
 @pytest.mark.parametrize("preprocessing", [True, False])
-def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preprocessing):
+def test_gpu_preproc(tmpdir, df, dataset, dump, part_mem_fraction, engine, preprocessing):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -147,9 +147,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
 
     dlc = torch_dataloader.DLCollator(preproc=processor, apply_ops=False)
     data_files = [
-        torch_dataloader.FileItrDataset(
-            x, use_row_groups=True, gpu_memory_frac=gpu_memory_frac, names=allcols_csv
-        )
+        torch_dataloader.FileItrDataset(x, part_mem_fraction=part_mem_fraction)
         for x in glob.glob(str(tmpdir) + "/*.parquet")
     ]
 
@@ -162,7 +160,7 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     for chunk in dl:
         len_df_pp += len(chunk[0][0])
 
-    dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
+    dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=part_mem_fraction)
     x = processor.ds_to_tensors(dataset.to_iter(), apply_ops=False)
 
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
@@ -178,11 +176,11 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, gpu_memory_frac, engine, preproc
     assert len_df_pp == count_tens_itr
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.000001, 0.1])
-@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
-def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
-    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
+    cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
@@ -201,7 +199,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
         record_stats=True,
         shuffle="partial",
         output_path=output_train,
-        num_out_files=2,
+        out_files_per_proc=2,
     )
 
     tar_paths = [
@@ -212,15 +210,13 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, gpu_memory_frac, engine):
         tar_paths[0],
         engine="parquet",
         sub_batch_size=batch_size,
-        gpu_memory_frac=gpu_memory_frac,
+        part_mem_fraction=part_mem_fraction,
         cats=cat_names,
         conts=cont_names,
         labels=["label"],
-        names=mycols_csv,
-        sep="\t",
     )
 
-    columns = mycols_pq if engine == "parquet" else mycols_csv
+    columns = mycols_pq
     df_test = cudf.read_parquet(tar_paths[0])[columns]
     df_test.columns = [x for x in range(0, len(columns))]
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])

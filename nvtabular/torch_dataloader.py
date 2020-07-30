@@ -20,7 +20,7 @@ import cudf
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.io import GPUFileIterator
+from nvtabular.io import Dataset
 from nvtabular.ops import _get_embedding_order
 
 
@@ -28,7 +28,8 @@ class FileItrDataset(torch.utils.data.IterableDataset):
     gpu_itr = None
 
     def __init__(self, file, **kwargs):
-        self.gpu_itr = GPUFileIterator(file, **kwargs)
+        columns = kwargs.pop("columns", None)
+        self.gpu_itr = Dataset(file, **kwargs).to_iter(columns=columns)
 
     def __iter__(self):
         return self.gpu_itr.__iter__()
@@ -136,9 +137,7 @@ def combine_tensors(cats, conts, label):
     return cats, conts, label
 
 
-def _one_df(
-    gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None,
-):
+def _one_df(gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None):
     gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
     if len(gdf_cats) > 0:
@@ -176,13 +175,7 @@ def process_one_df(
         cat_names, cont_names, label_names = _get_final_cols(preproc)
 
     _one_df(
-        gdf,
-        cats,
-        conts,
-        label,
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_names=label_names,
+        gdf, cats, conts, label, cat_names=cat_names, cont_names=cont_names, label_names=label_names
     )
 
 
@@ -210,9 +203,9 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         self.cat_cols = cats
         self.cont_cols = conts
         self.label_cols = labels
-        self.itr = GPUFileIterator(path, **kwargs)
+        self.itr = Dataset(path, **kwargs).to_iter(columns=cats + conts + labels)
         self.batch_size = sub_batch_size
-        self.num_chunks = len(self.itr.engine)
+        self.num_chunks = len(self.itr)
 
     def __len__(self):
         return self.num_chunks
@@ -222,9 +215,7 @@ class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
         threading.Thread(target=self.load_chunk, args=(buff,)).start()
         for _ in range(self.num_chunks):
             chunk = buff.get()
-            yield from TensorItr(
-                chunk, batch_size=self.batch_size,
-            )
+            yield from TensorItr(chunk, batch_size=self.batch_size)
 
     def load_chunk(self, out):
         for chunk in self.itr:
@@ -273,7 +264,7 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
         self.kwargs = kwargs
         self.rows = 0
         for file_path in self.paths:
-            (num_rows, num_row_groups, columns,) = cudf.io.read_parquet_metadata(file_path)
+            (num_rows, num_row_groups, columns) = cudf.io.read_parquet_metadata(file_path)
             self.rows += (num_rows // kwargs.get("sub_batch_size", 1)) + 1
 
     def __iter__(self):
