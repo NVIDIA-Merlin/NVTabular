@@ -20,7 +20,7 @@ import os
 
 import cudf
 import dask_cudf
-import np
+import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
