@@ -1,5 +1,0 @@
-grpcio>=1.24.3
-tensorflow==2.3.0
-tensorboard_plugin_profile
-jupyter-tensorboard
-ipywidgets
