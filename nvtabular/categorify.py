@@ -72,7 +72,10 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
     for i, cat_col_group in enumerate(cat_col_groups):
 
         if isinstance(cat_col_group, str):
+            cat_col_group_str = cat_col_group
             cat_col_group = [cat_col_group]
+        else:
+            cat_col_group_str = str(cat_col_group)
 
         # Compile aggregation dictionary and add "squared-sum"
         # column(s) (necessary when `cont_cols` is non-empty)
@@ -100,7 +103,7 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
 
         # Split the result by the hash value of the categorical column
         for j, split in enumerate(
-            gb.partition_by_hash(cat_col_group, tree_width[str(cat_col_group)], keep_index=False)
+            gb.partition_by_hash(cat_col_group, tree_width[cat_col_group_str], keep_index=False)
         ):
             if on_host:
                 output[k] = split.to_pandas()
@@ -112,37 +115,41 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
+def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host):
+
+    if isinstance(col_group, str):
+        col_group = [col_group]
+
     ignore_index = True
     if on_host:
-        gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col, dropna=False).sum()
+        gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col_group, dropna=False).sum()
     else:
-        gb = _concat(dfs, ignore_index).groupby(col, dropna=False).sum()
+        gb = _concat(dfs, ignore_index).groupby(col_group, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
 
-    name_count = _make_name(col, "count")
+    name_count = _make_name(*(col_group + ["count"]))
     if freq_limit:
         gb = gb[gb[name_count] >= freq_limit]
 
-    required = [col]
+    required = col_group.copy()
     if "count" in agg_list:
         required.append(name_count)
 
     ddof = 1
     for cont_col in cont_cols:
-        name_sum = _make_name(col, cont_col, "sum")
+        name_sum = _make_name(*(col_group + [cont_col, "sum"]))
         if "sum" in agg_list:
             required.append(name_sum)
 
         if "mean" in agg_list:
-            name_mean = _make_name(col, cont_col, "mean")
+            name_mean = _make_name(*(col_group + [cont_col, "mean"]))
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "var" in agg_list or "std" in agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb[_make_name(col, cont_col, "pow2", "sum")]
+            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]))]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 1] = 1
@@ -150,11 +157,11 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
             result[(n - ddof) == 0] = np.nan
 
             if "var" in agg_list:
-                name_var = _make_name(col, cont_col, "var")
+                name_var = _make_name(*(col_group + [cont_col, "var"]))
                 required.append(name_var)
                 gb[name_var] = result
             if "std" in agg_list:
-                name_std = _make_name(col, cont_col, "std")
+                name_std = _make_name(*(col_group + [cont_col, "std"]))
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
@@ -166,50 +173,64 @@ def _mid_level_groupby(dfs, col, cont_cols, agg_list, freq_limit, on_host):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col, on_host):
+def _write_gb_stats(dfs, base_path, col_group, on_host):
     ignore_index = True
     df = _concat(dfs, ignore_index)
     if on_host:
         df = cudf.from_pandas(df)
-    rel_path = "cat_stats.%s.parquet" % (col)
+    if isinstance(col_group, str):
+        col_group = [col_group]
+    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group))
     path = os.path.join(base_path, rel_path)
     if len(df):
-        df = df.sort_values(col, na_position="first")
+        df = df.sort_values(col_group, na_position="first")
         df.to_parquet(path, write_index=False, compression=None)
     else:
-        df_null = cudf.DataFrame({col: [None]})
-        df_null[col] = df_null[col].astype(df[col].dtype)
+        df_null = cudf.DataFrame({c: [None] for c in col_group})
+        for c in col_group:
+            df_null[c] = df_null[c].astype(df[c].dtype)
         df_null.to_parquet(path, write_index=False, compression=None)
     del df
     return path
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col, on_host):
+def _write_uniques(dfs, base_path, col_group, on_host):
     ignore_index = True
+    if isinstance(col_group, str):
+        col_group = [col_group]
     df = _concat(dfs, ignore_index)
     if on_host:
         df = cudf.from_pandas(df)
-    rel_path = "unique.%s.parquet" % (col)
+    rel_path = "unique.%s.parquet" % (_make_name(*col_group))
     path = "/".join([base_path, rel_path])
     if len(df):
         # Make sure first category is Null
-        df = df.sort_values(col, na_position="first")
-        if not df[col]._column.has_nulls:
-            df = cudf.DataFrame(
-                {col: _concat([cudf.Series([None], dtype=df[col].dtype), df[col]], ignore_index)}
-            )
+        df = df.sort_values(col_group, na_position="first")
+        new_cols = {}
+        nulls_missing = False
+        for col in col_group:
+            if not df[col]._column.has_nulls:
+                nulls_missing = True
+                new_cols[col] = _concat(
+                    [cudf.Series([None], dtype=df[col].dtype), df[col]], ignore_index
+                )
+            else:
+                new_cols[col] = df[col].copy(deep=False)
+        if nulls_missing:
+            df = cudf.DataFrame(new_cols)
         df.to_parquet(path, write_index=False, compression=None)
     else:
-        df_null = cudf.DataFrame({col: [None]})
-        df_null[col] = df_null[col].astype(df[col].dtype)
+        df_null = cudf.DataFrame({c: [None] for c in col_group})
+        for c in col_group:
+            df_null[c] = df_null[c].astype(df[c].dtype)
         df_null.to_parquet(path, write_index=False, compression=None)
     del df
     return path
 
 
 def _finish_labels(paths, cols):
-    return {col: paths[i] for i, col in enumerate(cols)}
+    return {str(col): paths[i] for i, col in enumerate(cols)}
 
 
 def _groupby_to_disk(

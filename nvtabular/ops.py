@@ -623,9 +623,9 @@ class CategoryStatistics(StatOperator):
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
         Supported statistics include ["count", "sum", "mean", "std", "var"].
-    columns : list of str, default None
-        Categorical columns to collect statistics for.  If None,
-        the operation will target all known categorical columns.
+    columns : list of str or list(str), default None
+        Categorical columns (or groups of columns) to collect statistics for.
+        If None, the operation will target all known categorical columns.
     tree_width : dict or int, optional
         Tree width of the hash-based groupby reduction for each categorical
         column. High-cardinality columns may require a large `tree_width`,

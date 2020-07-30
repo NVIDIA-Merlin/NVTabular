@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import math
+import os
 
 import cudf
 import numpy as np
@@ -119,13 +120,15 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], None])
+@pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], "name-string"])
 def test_multicolumn_cats(tmpdir, df, dataset, engine, groups):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    encoder = ops.CategoryStatistics(columns=groups, cont_names=["x"], stats=["count", "mean"])
+    encoder = ops.CategoryStatistics(
+        columns=groups, cont_names=["x"], stats=["count", "mean"], out_path=str(tmpdir)
+    )
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
 
@@ -134,7 +137,12 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups):
     )
     processor.update_stats(dataset)
 
-    pass
+    if groups:
+        groups = [groups] if isinstance(groups, str) else groups
+        for group in groups:
+            group = [group] if isinstance(group, str) else group
+            fn = "cat_stats." + "_".join(group) + ".parquet"
+            cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
