@@ -199,7 +199,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
         record_stats=True,
         shuffle="partial",
         output_path=output_train,
-        num_out_files=2,
+        out_files_per_proc=2,
     )
 
     tar_paths = [

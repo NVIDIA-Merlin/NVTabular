@@ -152,7 +152,13 @@ def _writer_cls_factory(output_format, output_path):
 
 
 def writer_factory(
-    output_format, output_path, out_files_per_proc, shuffle, use_guid=False, bytes_io=False
+    output_format,
+    output_path,
+    out_files_per_proc,
+    shuffle,
+    use_guid=False,
+    bytes_io=False,
+    num_threads=0,
 ):
     if output_format is None:
         return None
@@ -165,6 +171,7 @@ def writer_factory(
         fs=fs,
         use_guid=use_guid,
         bytes_io=bytes_io,
+        num_threads=num_threads,
     )
 
 
@@ -195,7 +202,7 @@ class ThreadedWriter(Writer):
         self,
         out_dir,
         num_out_files=30,
-        num_threads=4,
+        num_threads=0,
         cats=None,
         conts=None,
         labels=None,
@@ -228,17 +235,21 @@ class ThreadedWriter(Writer):
         # Resolve file system
         self.fs = fs or get_fs_token_paths(str(out_dir))[0]
 
-        # create thread queue and locks
-        self.queue = queue.Queue(num_threads)
-        self.write_locks = [threading.Lock() for _ in range(num_out_files)]
+        # Only use threading if num_threads > 1
+        self.queue = None
+        if self.num_threads > 1:
 
-        # signifies that end-of-data and that the thread should shut down
-        self._eod = object()
+            # create thread queue and locks
+            self.queue = queue.Queue(num_threads)
+            self.write_locks = [threading.Lock() for _ in range(num_out_files)]
 
-        # create and start threads
-        for _ in range(num_threads):
-            write_thread = threading.Thread(target=self._write_thread, daemon=True)
-            write_thread.start()
+            # signifies that end-of-data and that the thread should shut down
+            self._eod = object()
+
+            # create and start threads
+            for _ in range(num_threads):
+                write_thread = threading.Thread(target=self._write_thread, daemon=True)
+                write_thread.start()
 
     def set_col_names(self, labels, cats, conts):
         self.cats = cats
@@ -246,37 +257,47 @@ class ThreadedWriter(Writer):
         self.labels = labels
         self.column_names = labels + conts
 
+    def _write_table(self, idx, data):
+        return
+
     def _write_thread(self):
         return
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
 
-        # Shuffle if necessary
-        # (Skip shuffle if "full", because we will do it later)
-        if self.shuffle and self.shuffle != "full":
-            gdf = _shuffle_gdf(gdf)
-
         # Populate columns idxs
         if not self.col_idx:
             for i, x in enumerate(gdf.columns.values):
                 self.col_idx[str(x)] = i
 
-        # get slice info
-        int_slice_size = gdf.shape[0] // self.num_out_files
-        slice_size = int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
+        # Generate `ind` array to map each row to an output file.
+        # This approach is certainly more optimized for shuffling
+        # than it is for non-shuffling, but using a single code
+        # path is probably worth the (possible) minor overhead.
+        nrows = gdf.shape[0]
+        typ = np.min_scalar_type(nrows * 2)
+        if self.shuffle and self.shuffle != "full":
+            ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
+        else:
+            ind = cp.arange(nrows, dtype=typ)
+            cp.floor_divide(ind, (nrows // self.num_out_files), out=ind)
 
-        for x in range(self.num_out_files):
-            start = x * slice_size
-            end = start + slice_size
-            # check if end is over length
-            end = end if end <= gdf.shape[0] else gdf.shape[0]
-            to_write = gdf.iloc[start:end]
-            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-            self.queue.put((x, to_write))
+        # Use `scatter_by_map` to produce contiguous group for each output file
+        for x, group in enumerate(
+            gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
+        ):
+            self.num_samples[x] += len(group)
+            if self.num_threads > 1:
+                self.queue.put((x, group))
+            else:
+                self._write_table(x, group)
+                del group
 
-        # wait for all writes to finish before exitting (so that we aren't using memory)
-        self.queue.join()
+        # wait for all writes to finish before exiting
+        # (so that we aren't using memory)
+        if self.num_threads > 1:
+            self.queue.join()
 
     def package_general_metadata(self):
         data = {}
@@ -331,12 +352,13 @@ class ThreadedWriter(Writer):
         return None
 
     def close(self):
-        # wake up all the worker threads and signal for them to exit
-        for _ in range(self.num_threads):
-            self.queue.put(self._eod)
+        if self.num_threads > 1:
+            # wake up all the worker threads and signal for them to exit
+            for _ in range(self.num_threads):
+                self.queue.put(self._eod)
 
-        # wait for pending writes to finish
-        self.queue.join()
+            # wait for pending writes to finish
+            self.queue.join()
 
         # Close writers and collect various metadata
         _general_meta = self.package_general_metadata()
@@ -373,6 +395,9 @@ class ParquetWriter(ThreadedWriter):
             else:
                 self.data_writers.append(pwriter(path, compression=None))
 
+    def _write_table(self, idx, data):
+        self.data_writers[idx].write_table(data)
+
     def _write_thread(self):
         while True:
             item = self.queue.get()
@@ -381,7 +406,7 @@ class ParquetWriter(ThreadedWriter):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-                    self.data_writers[idx].write_table(data)
+                    self._write_table(idx, data)
             finally:
                 self.queue.task_done()
 
@@ -417,6 +442,14 @@ class HugeCTRWriter(ThreadedWriter):
         self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)]
         self.data_writers = [open(f, "ab") for f in self.data_paths]
 
+    def _write_table(self, idx, data):
+        ones = np.array(([1] * data.shape[0]), dtype=np.intc)
+        df = data[self.column_names].to_pandas().astype(np.single)
+        for i in range(len(self.cats)):
+            df["___" + str(i) + "___" + self.cats[i]] = ones
+            df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
+            self.data_writers[idx].write(df.to_numpy().tobytes())
+
     def _write_thread(self):
         while True:
             item = self.queue.get()
@@ -425,12 +458,7 @@ class HugeCTRWriter(ThreadedWriter):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-                    ones = np.array(([1] * data.shape[0]), dtype=np.intc)
-                    df = data[self.column_names].to_pandas().astype(np.single)
-                    for i in range(len(self.cats)):
-                        df["___" + str(i) + "___" + self.cats[i]] = ones
-                        df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
-                        self.data_writers[idx].write(df.to_numpy().tobytes())
+                    self._write_table(idx, data)
             finally:
                 self.queue.task_done()
 
@@ -479,6 +507,7 @@ def _write_output_partition(
     cont_names,
     label_names,
     output_format,
+    num_threads,
 ):
     gdf_size = len(gdf)
     out_files_per_proc = out_files_per_proc or 1
@@ -494,6 +523,7 @@ def _write_output_partition(
                 shuffle,
                 use_guid=True,
                 bytes_io=(shuffle == "full"),
+                num_threads=num_threads,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
             writer_cache[processed_path] = writer
@@ -515,6 +545,7 @@ def _ddf_to_dataset(
     label_names,
     output_format,
     client,
+    num_threads,
 ):
     # Construct graph for Dask-based dataset write
     name = "write-processed"
@@ -536,6 +567,7 @@ def _ddf_to_dataset(
             cont_names,
             label_names,
             output_format,
+            num_threads,
         )
         task_list.append(key)
     dsk[name] = (lambda x: x, task_list)
