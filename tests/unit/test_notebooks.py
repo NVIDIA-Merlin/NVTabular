@@ -64,7 +64,6 @@ def _run_notebook(tmpdir, notebook_path, transform=None):
     # that were causing a segfault with globals of the exec'ed function going
     # out of scope
     script_path = os.path.join(tmpdir, "notebook.py")
-    lines = ['import sys; sys.path = [f"../../"] + sys.path \n'] + lines
     with open(script_path, "w") as script:
         script.write("\n".join(lines))
     subprocess.check_output([sys.executable, script_path])
