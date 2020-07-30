@@ -18,6 +18,7 @@ import os
 
 import cudf
 import numpy as np
+import pandas as pd
 import pytest
 from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
@@ -550,24 +551,33 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
 
 
-# @pytest.mark.parametrize("engine", ["parquet"])
-# @pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], "name-string"])
-# def test_categorify_(tmpdir, df, dataset, engine, groups):
-#     cat_names = ["name-cat", "name-string"]
-#     cont_names = ["x", "y", "id"]
-#     label_name = ["label"]
+@pytest.mark.parametrize("groups", [[["Author", "Engaging User"]], None])
+def test_categorify_joint(tmpdir, groups):
 
-#     processor = nvt.Workflow(
-#         cat_names=cat_names,
-#         cont_names=cont_names,
-#         label_name=label_name,
-#     )
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
 
-#     processor.add_preprocess(
-#         ops.Categorify(columns=groups, out_path=str(tmpdir), concat_groups=True)
-#     )
-#     processor.finalize()
-#     processor.apply(dataset, output_format=None)
-#     df_out = processor.get_ddf().compute(scheduler="synchronous")
-#     import pdb; pdb; set_trace()
-#     pass
+    cat_names = ["Author", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir)))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    if groups:
+        # Columns are encoded jointly
+        assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
+        assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 4]
+    else:
+        # Columns are encoded independently
+        assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
+        assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]

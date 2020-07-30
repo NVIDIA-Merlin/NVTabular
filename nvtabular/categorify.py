@@ -244,7 +244,7 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups):
 
 
 def _finish_labels(paths, cols):
-    return {str(col): paths[i] for i, col in enumerate(cols)}
+    return {col: paths[i] for i, col in enumerate(cols)}
 
 
 def _groupby_to_disk(
@@ -313,9 +313,11 @@ def _groupby_to_disk(
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
 
+    col_groups_str = []
     for c, col in enumerate(col_groups):
         col = [col] if isinstance(col, str) else col
         col_str = _make_name(*col)
+        col_groups_str.append(col_str)
         for s in range(tree_width[col_str]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
@@ -340,7 +342,7 @@ def _groupby_to_disk(
     dsk[finalize_labels_name] = (
         _finish_labels,
         [(level_3_name, c) for c, col in enumerate(col_groups)],
-        col_groups,
+        col_groups_str,
     )
     graph = HighLevelGraph.from_collections(finalize_labels_name, dsk, dependencies=[ddf])
     return graph, finalize_labels_name
@@ -395,35 +397,39 @@ def _category_stats(
     )
 
 
-def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
+def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
     value = None
     if path:
         if cat_cache is not None:
-            cat_cache = cat_cache if isinstance(cat_cache, str) else cat_cache.get(name, "disk")
+            cat_cache = (
+                cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
+            )
             if len(gdf):
                 with get_worker_cache("cats") as cache:
-                    value = fetch_data(cache, name, path, cache=cat_cache, kind="cats")
+                    value = fetch_data(cache, storage_name, path, cache=cat_cache, kind="cats")
         else:
-            value = cudf.io.read_parquet(path, index=False, columns=[name])
+            value = cudf.io.read_parquet(path, index=False, columns=[storage_name])
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
     vals = gdf[name].copy(deep=False)
     if value is None:
-        value = cudf.DataFrame({name: [None]})
-        value[name] = value[name].astype(vals.dtype)
+        value = cudf.DataFrame({storage_name: [None]})
+        value[storage_name] = value[storage_name].astype(vals.dtype)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
     if freq_threshold > 0:
         codes = cudf.DataFrame({name: vals.copy(), "order": cp.arange(len(vals))})
-        codes = codes.merge(value, on=name, how="left").sort_values("order")["labels"]
+        codes = codes.merge(value, left_on=name, right_on=storage_name, how="left").sort_values(
+            "order"
+        )["labels"]
         codes.fillna(na_sentinel, inplace=True)
         return codes.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
-        labels = value[name].searchsorted(vals, side="left", na_position="first")
-        labels[labels >= len(value[name])] = na_sentinel
+        labels = value[storage_name].searchsorted(vals, side="left", na_position="first")
+        labels[labels >= len(value[storage_name])] = na_sentinel
         return labels
 
 

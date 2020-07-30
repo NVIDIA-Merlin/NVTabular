@@ -841,7 +841,11 @@ class Categorify(DFOperator):
         Categorical columns (or groups of columns) to target for this op.
         If None, the operation will target all known categorical columns.
         If columns contains a list(str) element, the columns within that
-        list will be encoded jointly.
+        list will be encoded jointly if `joint_encode=True`. Note that
+        `joint_encode=False` is not yet supported.
+    joint_encode : bool, default True
+        If True, the columns within any nested list in the ``columns``
+        input will be jointly encoded.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
@@ -880,17 +884,28 @@ class Categorify(DFOperator):
         cat_cache="host",
         dtype=None,
         on_host=True,
+        joint_encode=True,
     ):
         # Set column_groups if the user has passed in a list of columns
         self.column_groups = None
+        self.alias = {}
         if isinstance(columns, str):
             columns = [columns]
         if isinstance(columns, list):
             self.column_groups = columns
             columns_unq = list(set(flatten(columns, container=list)))
             columns = list(flatten(columns, container=list))
-            if sorted(columns) != sorted(columns_unq):
+            if sorted(columns) != sorted(columns_unq) and joint_encode:
                 raise ValueError("Same column name included in multiple groups.")
+            if joint_encode:
+                for group in self.column_groups:
+                    if isinstance(group, list) and len(group) > 1:
+                        name = nvt_cat._make_name(*group)
+                        for col in group:
+                            self.alias[col] = name
+
+        if self.column_groups and not joint_encode:
+            raise ValueError("joint_encode=False not yet supported.")
 
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.freq_threshold = freq_threshold
@@ -901,13 +916,14 @@ class Categorify(DFOperator):
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.stat_name = "categories"
+        self.joint_encode = joint_encode
 
     @property
     def req_stats(self):
         return [
             CategoryStatistics(
                 columns=self.column_groups or self.columns,
-                concat_groups=True,
+                concat_groups=self.joint_encode,
                 cont_names=[],
                 stats=[],
                 freq_threshold=self.freq_threshold,
@@ -920,18 +936,32 @@ class Categorify(DFOperator):
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context={}):
-        cat_names = target_columns
         new_gdf = cudf.DataFrame()
-        if not cat_names:
+        if not target_columns:
             return gdf
-        cat_names = [name for name in cat_names if name in gdf.columns]
+
+        group_cols = {}
+        if self.column_groups and not self.joint_encode:
+            cat_names = []
+            for col_group in self.column_groups:
+                if isinstance(col_group, list):
+                    name = nvt_cat._make_name(*col_group)
+                    cat_names.append(name)
+                    group_cols[name] = col_group
+                elif col_group in gdf.columns:
+                    cat_names.append(col_group)
+        else:
+            cat_names = [name for name in target_columns if name in gdf.columns]
+
         new_cols = []
         for name in cat_names:
             new_col = f"{name}_{self._id}"
             new_cols.append(new_col)
-            path = stats_context[self.stat_name][name]
+            storage_name = self.alias.get(name, name)
+            path = stats_context[self.stat_name][storage_name]
             new_gdf[new_col] = nvt_cat._encode(
-                name,
+                group_cols.get(name, name),
+                storage_name,
                 path,
                 gdf,
                 self.cat_cache,
