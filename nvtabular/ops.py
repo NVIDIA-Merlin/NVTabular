@@ -626,6 +626,13 @@ class CategoryStatistics(StatOperator):
     columns : list of str or list(str), default None
         Categorical columns (or groups of columns) to collect statistics for.
         If None, the operation will target all known categorical columns.
+    concat_groups : bool, default False
+        Applies only if there are list elements in the ``column`` input. If True,
+        the column values within these lists will be concatenated together, and these
+        new (temporary) columns will be used to perform the groupby.  The purpose of
+        this option is to enable multiple columns to be lable-encoded jointly.
+        (see Cateigorify). Note that this option is only allowed for the "count"
+        statistics (with cont_names == None).
     tree_width : dict or int, optional
         Tree width of the hash-based groupby reduction for each categorical
         column. High-cardinality columns may require a large `tree_width`,
@@ -655,6 +662,7 @@ class CategoryStatistics(StatOperator):
         on_host=True,
         freq_threshold=None,
         stat_name=None,
+        concat_groups=False,
     ):
         # Set column_groups if the user has passed in a list of columns
         self.column_groups = None
@@ -674,6 +682,7 @@ class CategoryStatistics(StatOperator):
         self.out_path = out_path or "./"
         self.stat_name = stat_name or "categories"
         self.op_name = "CategoryStatistics-" + self.stat_name
+        self.concat_groups = concat_groups
 
     @property
     def _id(self):
@@ -698,6 +707,7 @@ class CategoryStatistics(StatOperator):
             self.tree_width,
             self.on_host,
             stat_name=self.stat_name,
+            concat_groups=self.concat_groups,
         )
         return Delayed(key, dsk)
 
@@ -827,9 +837,11 @@ class Categorify(DFOperator):
         Categories with a count/frequency below this threshold will be
         ommited from the encoding and corresponding data will be mapped
         to the "null" category.
-    columns : list of str, default None
-        Categorical columns to target for this operation.  If None,
-        the operation will target all known categorical columns.
+    columns : list of str or list(str), default None
+        Categorical columns (or groups of columns) to target for this op.
+        If None, the operation will target all known categorical columns.
+        If columns contains a list(str) element, the columns within that
+        list will be encoded jointly.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
@@ -869,6 +881,17 @@ class Categorify(DFOperator):
         dtype=None,
         on_host=True,
     ):
+        # Set column_groups if the user has passed in a list of columns
+        self.column_groups = None
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            self.column_groups = columns
+            columns_unq = list(set(flatten(columns, container=list)))
+            columns = list(flatten(columns, container=list))
+            if sorted(columns) != sorted(columns_unq):
+                raise ValueError("Same column name included in multiple groups.")
+
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
@@ -883,7 +906,8 @@ class Categorify(DFOperator):
     def req_stats(self):
         return [
             CategoryStatistics(
-                columns=self.columns,
+                columns=self.column_groups or self.columns,
+                concat_groups=True,
                 cont_names=[],
                 stats=[],
                 freq_threshold=self.freq_threshold,

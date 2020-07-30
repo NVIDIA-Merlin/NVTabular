@@ -121,13 +121,18 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], "name-string"])
-def test_multicolumn_cats(tmpdir, df, dataset, engine, groups):
+@pytest.mark.parametrize("concat_groups", [True, False])
+def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
     encoder = ops.CategoryStatistics(
-        columns=groups, cont_names=["x"], stats=["count", "mean"], out_path=str(tmpdir)
+        columns=groups,
+        cont_names=None if concat_groups else ["x"],
+        stats=None if concat_groups else ["count", "mean"],
+        out_path=str(tmpdir),
+        concat_groups=concat_groups,
     )
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
@@ -137,12 +142,12 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups):
     )
     processor.update_stats(dataset)
 
-    if groups:
-        groups = [groups] if isinstance(groups, str) else groups
-        for group in groups:
-            group = [group] if isinstance(group, str) else group
-            fn = "cat_stats." + "_".join(group) + ".parquet"
-            cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
+    groups = [groups] if isinstance(groups, str) else groups
+    for group in groups:
+        group = [group] if isinstance(group, str) else group
+        prefix = "unique." if concat_groups else "cat_stats."
+        fn = prefix + "_".join(group) + ".parquet"
+        cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -543,3 +548,26 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
+
+
+# @pytest.mark.parametrize("engine", ["parquet"])
+# @pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], "name-string"])
+# def test_categorify_(tmpdir, df, dataset, engine, groups):
+#     cat_names = ["name-cat", "name-string"]
+#     cont_names = ["x", "y", "id"]
+#     label_name = ["label"]
+
+#     processor = nvt.Workflow(
+#         cat_names=cat_names,
+#         cont_names=cont_names,
+#         label_name=label_name,
+#     )
+
+#     processor.add_preprocess(
+#         ops.Categorify(columns=groups, out_path=str(tmpdir), concat_groups=True)
+#     )
+#     processor.finalize()
+#     processor.apply(dataset, output_format=None)
+#     df_out = processor.get_ddf().compute(scheduler="synchronous")
+#     import pdb; pdb; set_trace()
+#     pass

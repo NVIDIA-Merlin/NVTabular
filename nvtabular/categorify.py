@@ -65,21 +65,28 @@ def _make_name(*args):
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_host):
+def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_host, concat_groups):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
     for i, cat_col_group in enumerate(cat_col_groups):
 
         if isinstance(cat_col_group, str):
-            cat_col_group_str = cat_col_group
             cat_col_group = [cat_col_group]
-        else:
-            cat_col_group_str = str(cat_col_group)
+        cat_col_group_str = _make_name(*cat_col_group)
 
-        # Compile aggregation dictionary and add "squared-sum"
-        # column(s) (necessary when `cont_cols` is non-empty)
-        df_gb = gdf[cat_col_group + cont_cols].copy(deep=False)
+        if concat_groups and len(cat_col_group) > 1:
+            # Concatenate columns and replace cat_col_group
+            # with the single name
+            df_gb = cudf.DataFrame()
+            ignore_index = True
+            df_gb[cat_col_group_str] = _concat([gdf[col] for col in cat_col_group], ignore_index)
+            cat_col_group = [cat_col_group_str]
+        else:
+            # Compile aggregation dictionary and add "squared-sum"
+            # column(s) (necessary when `cont_cols` is non-empty)
+            df_gb = gdf[cat_col_group + cont_cols].copy(deep=False)
+
         agg_dict = {}
         agg_dict[cat_col_group[0]] = ["count"]
         for col in cont_cols:
@@ -115,10 +122,13 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host):
+def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups):
 
     if isinstance(col_group, str):
         col_group = [col_group]
+
+    if concat_groups and len(col_group) > 1:
+        col_group = [_make_name(*col_group)]
 
     ignore_index = True
     if on_host:
@@ -173,7 +183,9 @@ def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host)
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_group, on_host):
+def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups):
+    if concat_groups and len(col_group) > 1:
+        col_group = [_make_name(*col_group)]
     ignore_index = True
     df = _concat(dfs, ignore_index)
     if on_host:
@@ -195,7 +207,9 @@ def _write_gb_stats(dfs, base_path, col_group, on_host):
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col_group, on_host):
+def _write_uniques(dfs, base_path, col_group, on_host, concat_groups):
+    if concat_groups and len(col_group) > 1:
+        col_group = [_make_name(*col_group)]
     ignore_index = True
     if isinstance(col_group, str):
         col_group = [col_group]
@@ -244,19 +258,29 @@ def _groupby_to_disk(
     tree_width,
     on_host,
     stat_name="categories",
+    concat_groups=False,
 ):
     if not col_groups:
         return {}
 
+    if concat_groups:
+        if agg_list and agg_list != ["count"]:
+            raise ValueError("Cannot use concat_groups=True with aggregations other than count")
+        if agg_cols:
+            raise ValueError("Cannot aggregate continuous-column stats with concat_groups=True")
+
     # Update tree_width
-    if tree_width is None:
-        tree_width = {str(c): 8 for c in col_groups}
-    elif isinstance(tree_width, int):
-        tree_width = {str(c): tree_width for c in col_groups}
-    else:
-        for col in col_groups:
-            if str(col) not in tree_width:
-                tree_width[str(col)] = 8
+    tw = {}
+    for col in col_groups:
+        col = [col] if isinstance(col, str) else col
+        col_str = _make_name(*col)
+        if tree_width is None:
+            tw[col_str] = 8
+        elif isinstance(tree_width, int):
+            tw[col_str] = tree_width
+        else:
+            tw[col_str] = tree_width.get(col_str, None) or 8
+    tree_width = tw
 
     # Make dedicated output directory for the categories
     fs = get_fs_token_paths(out_path)[0]
@@ -279,15 +303,20 @@ def _groupby_to_disk(
             agg_cols,
             ("std" in agg_list or "var" in agg_list),
             on_host,
+            concat_groups,
         )
         k = 0
         for c, col in enumerate(col_groups):
-            for s in range(tree_width[str(col)]):
+            col = [col] if isinstance(col, str) else col
+            col_str = _make_name(*col)
+            for s in range(tree_width[col_str]):
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
 
     for c, col in enumerate(col_groups):
-        for s in range(tree_width[str(col)]):
+        col = [col] if isinstance(col, str) else col
+        col_str = _make_name(*col)
+        for s in range(tree_width[col_str]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
@@ -296,14 +325,16 @@ def _groupby_to_disk(
                 agg_list,
                 freq_limit,
                 on_host,
+                concat_groups,
             )
 
         dsk[(level_3_name, c)] = (
             write_func,
-            [(level_2_name, c, s) for s in range(tree_width[str(col)])],
+            [(level_2_name, c, s) for s in range(tree_width[col_str])],
             out_path,
             col,
             on_host,
+            concat_groups,
         )
 
     dsk[finalize_labels_name] = (
@@ -325,6 +356,7 @@ def _category_stats(
     tree_width,
     on_host,
     stat_name="categories",
+    concat_groups=False,
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -340,6 +372,7 @@ def _category_stats(
             tree_width,
             on_host,
             stat_name=stat_name,
+            concat_groups=concat_groups,
         )
 
     # Otherwise, getting category-statistics
@@ -358,6 +391,7 @@ def _category_stats(
         tree_width,
         on_host,
         stat_name=stat_name,
+        concat_groups=concat_groups,
     )
 
 
