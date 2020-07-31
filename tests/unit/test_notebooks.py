@@ -72,10 +72,10 @@ def _run_notebook(tmpdir, notebook_path, transform=None):
 def _get_random_criteo_data(rows):
     dtypes = {col: float for col in [f"I{x}" for x in range(1, 14)]}
     dtypes.update({col: int for col in [f"C{x}" for x in range(1, 27)]})
-    dtypes["label"] = int
+    dtypes["label"] = bool
     ret = cudf.datasets.randomdata(rows, dtypes=dtypes)
     # binarize the labels
-    ret.label = ret.label % 2
+    ret.label = ret.label.astype(int)
     return ret
 
 
