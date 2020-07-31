@@ -126,9 +126,9 @@ def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
 
 
 def combine_tensors(cats, conts, label):
-    cats_list = [cats[x] for x in _get_embedding_order(cats.keys())] if cats else None
-    conts_list = [conts[x] for x in sorted(conts.keys())] if conts else None
-    label_list = [label[x] for x in sorted(label.keys())] if label else None
+    cats_list = [cats[x] for x in _get_embedding_order(cats.keys())] if cats else []
+    conts_list = [conts[x] for x in sorted(conts.keys())] if conts else []
+    label_list = [label[x] for x in sorted(label.keys())] if label else []
 
     # Change cats, conts to dim=1 for column dim=0 for df sub section
     cats = torch.stack(cats_list, dim=1) if len(cats_list) > 0 else None
@@ -151,8 +151,8 @@ def _one_df(gdf, cats, conts, label, cat_names=None, cont_names=None, label_name
 def _get_final_cols(preproc):
     if "cols" not in preproc.columns_ctx["final"]:
         preproc.create_final_cols()
-    cat_names = _get_embedding_order(preproc.columns_ctx["final"]["cols"]["categorical"])
-    cont_names = sorted(preproc.columns_ctx["final"]["cols"]["continuous"])
+    cat_names = _get_embedding_order(preproc.columns_ctx["final"]["cols"].get("categorical") or [])
+    cont_names = sorted(preproc.columns_ctx["final"]["cols"].get("continuous") or [])
     label_name = sorted(preproc.columns_ctx["final"]["cols"]["label"])
     return cat_names, cont_names, label_name
 

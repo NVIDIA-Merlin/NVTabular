@@ -176,6 +176,23 @@ def test_gpu_preproc(tmpdir, df, dataset, dump, part_mem_fraction, engine, prepr
     assert len_df_pp == count_tens_itr
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_empty_cols(tmpdir, df, dataset, engine):
+    # test out https://github.com/NVIDIA/NVTabular/issues/149
+    # first with not continuous columns
+    proc = nvt.Workflow(cat_names=["name-string"], cont_names=[], label_name=["label"])
+    proc.add_preprocess(ops.Categorify())
+    proc.finalize()
+    proc.apply(dataset)
+    proc.ds_to_tensors(dataset.to_iter())
+    # and with no categorical columns
+    proc2 = nvt.Workflow(cat_names=[], cont_names=["x"], label_name=["label"])
+    proc2.add_preprocess(ops.Normalize())
+    proc2.finalize()
+    proc2.apply(dataset)
+    proc2.ds_to_tensors(dataset.to_iter())
+
+
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
