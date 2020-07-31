@@ -149,7 +149,6 @@ def test_hugectr(
     assert "conts" in data
     assert "labels" in data
     assert "file_stats" in data
-    print(client, dir(client))
     assert len(data["file_stats"]) == nfiles if not client else nfiles * len(client.cluster.workers)
     for cdata in data["cats"] + data["conts"] + data["labels"]:
         col_summary[cdata["index"]] = cdata["col_name"]
