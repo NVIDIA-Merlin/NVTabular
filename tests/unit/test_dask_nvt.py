@@ -20,6 +20,7 @@ import os
 
 import cudf
 import dask_cudf
+import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
@@ -165,7 +166,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         result[["name-cat", "name-cat_count"]]
         .drop_duplicates()
         .sort_values("name-cat")["name-cat_count"],
-        df0.groupby("name-cat").agg({"x": "count"})["x"],
+        df0.groupby("name-cat").agg({"x": "count"})["x"].astype(np.int64),
         check_index=False,
         check_dtype=False,  # May get int64 vs int32
         check_names=False,
