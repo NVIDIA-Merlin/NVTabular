@@ -792,8 +792,8 @@ class Workflow(BaseWorkflow):
         """
         end = end_phase if end_phase else len(self.phases)
 
-        if output_format not in ("parquet", None):
-            raise ValueError("Output format not yet supported with Dask.")
+        if output_format not in ("parquet", "hugectr", None):
+            raise ValueError(f"Output format {output_format} not yet supported with Dask.")
 
         # Reorder tasks for two-phase workflows
         # TODO: Generalize this type of optimization
@@ -814,6 +814,7 @@ class Workflow(BaseWorkflow):
             output_path = str(output_path)
             self.ddf_to_dataset(
                 output_path,
+                output_format=output_format,
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
                 num_threads=num_io_threads,
@@ -876,8 +877,8 @@ class Workflow(BaseWorkflow):
 
             Currently supports parquet only.
         """
-        if output_format != "parquet":
-            raise ValueError("Only parquet output supported with Dask.")
+        if output_format not in ("parquet", "hugectr"):
+            raise ValueError("Only parquet/hugectr output supported with Dask.")
         ddf = self.get_ddf()
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)

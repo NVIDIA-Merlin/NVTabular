@@ -238,7 +238,6 @@ class ThreadedWriter(Writer):
         # Only use threading if num_threads > 1
         self.queue = None
         if self.num_threads > 1:
-
             # create thread queue and locks
             self.queue = queue.Queue(num_threads)
             self.write_locks = [threading.Lock() for _ in range(num_out_files)]
@@ -490,6 +489,9 @@ class HugeCTRWriter(ThreadedWriter):
             writer.close()
         return None
 
+    def _bytesio_to_disk(self):
+        raise ValueError("hugectr binary format doesn't support shuffle=full yet")
+
 
 #
 # Dask-based IO
@@ -595,7 +597,8 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
         special_md = []
         for (gen, spec) in out.values():
             general_md.append(gen)
-            special_md.append(spec)
+            if spec:
+                special_md.append(spec)
 
         general_md = _merge_general_metadata(general_md)
         special_md = dict(collections.ChainMap(*special_md))
