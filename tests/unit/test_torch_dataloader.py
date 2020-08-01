@@ -15,6 +15,7 @@
 #
 import os
 import shutil
+import time
 
 import cudf
 import pytest
@@ -101,5 +102,37 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     for idx, chunk in enumerate(t_dl):
         assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
+
+    results = {}
+    t_batch_sets = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
+        nvt_data, cats=cat_names, conts=cont_names, labels=["label"], batch_size=batch_size,
+    )
+    for batch_size in [2 ** i for i in range(9, 25, 1)]:
+        # train_set = nvt.Dataset(train_paths,engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
+        print("Checking batch size: ", batch_size)
+        num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
+        # import pdb; pdb.set_trace()
+        t_batch_sets.batch_size = batch_size
+        start = time.time()
+        for i, data in enumerate(t_batch_sets):
+            if i >= num_iter:
+                break
+            del data
+
+        stop = time.time()
+
+        throughput = i * batch_size / (stop - start)
+        results[batch_size] = throughput
+        print(
+            "batch size: ",
+            batch_size,
+            ", throughput: ",
+            throughput,
+            "items",
+            i * batch_size,
+            "time",
+            stop - start,
+        )
+
     if os.path.exists(output_train):
         shutil.rmtree(output_train)

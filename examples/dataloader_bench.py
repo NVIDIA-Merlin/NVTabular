@@ -23,30 +23,29 @@ print(args)
 GPU_id = args.gpu_id
 os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU_id)
 
-from nvtabular.torch_dataloader import TorchTensorBatchDatasetItr
+from nvtabular.torch_dataloader import AsyncTensorBatchDatasetItr
+import nvtabular as nvt
 
 logging.basicConfig()
 logging.getLogger("nvtabular").setLevel(logging.DEBUG)
 
 data_path = args.in_dir
-train_set = [os.path.join(data_path, x) for x in os.listdir(data_path) if x.endswith("parquet")]
-print(train_set)
-cont_names = ["I" + str(x) for x in range(1, 14)]
-cat_names = ["C" + str(x) for x in range(1, 24)]
+train_paths = [os.path.join(data_path, x) for x in os.listdir(data_path) if x.endswith("parquet")]
+print(train_paths)
+# import pdb; pdb.set_trace()
+train_set = nvt.Dataset(train_paths, engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
+cont_names = ["I" + str(x).zfill(2) for x in range(1, 14)]
+cat_names = ["C" + str(x).zfill(2) for x in range(1, 24)]
 cols = ["label"] + cont_names + cat_names
 
 results = {}
-for batch_size in [2 ** i for i in range(9, 26, 1)]:
+for batch_size in [2 ** i for i in range(9, 25, 1)]:
+    # train_set = nvt.Dataset(train_paths,engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
     print("Checking batch size: ", batch_size)
     num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
-    t_batch_sets = TorchTensorBatchDatasetItr(
-        train_set,
-        cats=cat_names,
-        conts=cont_names,
-        labels=["label"],
-        sub_batch_size=batch_size,
-        gpu_memory_frac=float(args.gpu_mem_frac),
-        engine=args.in_file_type,
+    # import pdb; pdb.set_trace()
+    t_batch_sets = AsyncTensorBatchDatasetItr(
+        train_set, cats=cat_names, conts=cont_names, labels=["label"], batch_size=batch_size,
     )
 
     start = time.time()
@@ -54,6 +53,7 @@ for batch_size in [2 ** i for i in range(9, 26, 1)]:
         if i >= num_iter:
             break
         del data
+
     stop = time.time()
 
     throughput = i * batch_size / (stop - start)

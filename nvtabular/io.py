@@ -729,9 +729,6 @@ class DatasetEngine:
     def to_ddf(self, columns=None):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
 
-    def make_iter(self, columns=None, indices=None):
-        return DataFrameIter(self.to_ddf(columns=columns), indices=indices)
-
     @property
     def num_rows(self):
         raise NotImplementedError(""" Returns the number of rows in the dataset """)
@@ -920,12 +917,6 @@ class DataFrameDatasetEngine(DatasetEngine):
         elif isinstance(columns, str):
             return self._ddf[[columns]]
         return self._ddf
-
-    def make_iter(self, columns=None, indices=None):
-        if isinstance(columns, str):
-            columns = [columns]
-
-        return DataFrameIter(self._ddf, columns=columns, indices=indices)
 
     @property
     def num_rows(self):
