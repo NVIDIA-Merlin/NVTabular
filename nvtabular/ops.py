@@ -806,7 +806,7 @@ class GroupBy(DFOperator):
 class JoinExternal(TransformOperator):
     """
     Join each dataset partition to an external table. For performance
-    reasons, only "left" and "inner" join transofrmations are supported.
+    reasons, only "left" and "inner" join transformations are supported.
 
     Parameters
     -----------
