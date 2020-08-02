@@ -103,18 +103,57 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
         assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
 
-    results = {}
-    t_batch_sets = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
-        nvt_data, cats=cat_names, conts=cont_names, labels=["label"], batch_size=batch_size,
+
+
+    if os.path.exists(output_train):
+        shutil.rmtree(output_train)
+
+        
+@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
+@pytest.mark.parametrize("engine", ["parquet"])        
+def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_feature([ops.FillMedian()])
+    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess(ops.Categorify())
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    processor.apply(
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        shuffle="partial",
+        output_path=output_train,
+        num_out_files=2,
     )
+
+    tar_paths = [
+        os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
+    ]
+
+    nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
+
+    data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
+        nvt_data, cats=cat_names, conts=cont_names, labels=["label"],
+    )
+    
+    results = {}
+
     for batch_size in [2 ** i for i in range(9, 25, 1)]:
         # train_set = nvt.Dataset(train_paths,engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
         print("Checking batch size: ", batch_size)
         num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
         # import pdb; pdb.set_trace()
-        t_batch_sets.batch_size = batch_size
+        data_itr.batch_size = batch_size
         start = time.time()
-        for i, data in enumerate(t_batch_sets):
+        for i, data in enumerate(data_itr):
             if i >= num_iter:
                 break
             del data
@@ -133,6 +172,3 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
             "time",
             stop - start,
         )
-
-    if os.path.exists(output_train):
-        shutil.rmtree(output_train)
