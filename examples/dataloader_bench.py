@@ -40,7 +40,6 @@ cols = ["label"] + cont_names + cat_names
 
 results = {}
 for batch_size in [2 ** i for i in range(9, 25, 1)]:
-    # train_set = nvt.Dataset(train_paths,engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
     print("Checking batch size: ", batch_size)
     num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
     # import pdb; pdb.set_trace()

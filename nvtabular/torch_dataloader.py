@@ -80,9 +80,11 @@ def _to_tensor(gdf: cudf.DataFrame, dtype, to_cpu=False):
 
 
 def create_tensors(gdf, cat_names=None, cont_names=None, label_names=None):
-    gdf_cats, gdf_conts, gdf_label = (gdf[_get_embedding_order(cat_names)], 
-                                      gdf[cont_names], 
-                                      gdf[label_names])
+    gdf_cats, gdf_conts, gdf_label = (
+        gdf[_get_embedding_order(cat_names)],
+        gdf[cont_names],
+        gdf[label_names],
+    )
     del gdf
     if len(gdf_cats) > 0:
         cats = _to_tensor(gdf_cats, torch.long, to_cpu=False)
@@ -162,7 +164,10 @@ class ChunkQueue:
         # takes care final batch, which is less than batch size
         if spill:
             spill = create_tensors(
-                spill, cat_names=self.cat_cols, cont_names=self.cont_cols, label_names=self.label_cols
+                spill,
+                cat_names=self.cat_cols,
+                cont_names=self.cont_cols,
+                label_names=self.label_cols,
             )
             self.q_out.put(spill)
             spill = None

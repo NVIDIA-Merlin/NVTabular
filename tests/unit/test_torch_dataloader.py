@@ -103,14 +103,12 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
         assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
 
-
-
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
 
-        
+
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
-@pytest.mark.parametrize("engine", ["parquet"])        
+@pytest.mark.parametrize("engine", ["parquet"])
 def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
@@ -143,11 +141,10 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
         nvt_data, cats=cat_names, conts=cont_names, labels=["label"],
     )
-    
+
     results = {}
 
     for batch_size in [2 ** i for i in range(9, 25, 1)]:
-        # train_set = nvt.Dataset(train_paths,engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
         print("Checking batch size: ", batch_size)
         num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
         # import pdb; pdb.set_trace()
