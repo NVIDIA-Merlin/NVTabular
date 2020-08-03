@@ -33,6 +33,7 @@ import dask_cudf
 import numba.cuda as cuda
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
@@ -132,6 +133,23 @@ def _set_dtypes(chunk, dtypes):
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
+
+
+def _detect_format(data):
+    """ Utility to detect the format of `data`
+    """
+
+    if isinstance(data, cudf.DataFrame):
+        return "cudf"
+    elif isinstance(data, pd.DataFrame):
+        return "pandas"
+    elif isinstance(data, pa.Table):
+        return "arrow"
+    else:
+        file_type = str(data).split(".")[-1]
+        if file_type not in ("parquet", "csv"):
+            raise ValueError("Data format not recognized.")
+        return file_type
 
 
 #
@@ -238,7 +256,6 @@ class ThreadedWriter(Writer):
         # Only use threading if num_threads > 1
         self.queue = None
         if self.num_threads > 1:
-
             # create thread queue and locks
             self.queue = queue.Queue(num_threads)
             self.write_locks = [threading.Lock() for _ in range(num_out_files)]
@@ -490,6 +507,9 @@ class HugeCTRWriter(ThreadedWriter):
             writer.close()
         return None
 
+    def _bytesio_to_disk(self):
+        raise ValueError("hugectr binary format doesn't support shuffle=full yet")
+
 
 #
 # Dask-based IO
@@ -595,7 +615,8 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
         special_md = []
         for (gen, spec) in out.values():
             general_md.append(gen)
-            special_md.append(spec)
+            if spec:
+                special_md.append(spec)
 
         general_md = _merge_general_metadata(general_md)
         special_md = dict(collections.ChainMap(*special_md))

@@ -15,7 +15,6 @@
 #
 
 import os
-from io import BytesIO
 from operator import getitem
 
 import cudf
@@ -27,37 +26,7 @@ from dask.dataframe.core import _concat
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
-from nvtabular.worker import get_worker_cache
-
-
-@annotate("fetch_data", color="green", domain="nvt_python")
-def fetch_data(cat_cache, col, path, cache="disk", kind="stats"):
-    table = cat_cache.get(col, None)
-    if table and not isinstance(table, cudf.DataFrame):
-        if kind == "stats":
-            return cudf.io.read_parquet(table, index=False)
-        df = cudf.io.read_parquet(table, index=False, columns=[col])
-        df.index.name = "labels"
-        df.reset_index(drop=False, inplace=True)
-        return df
-
-    if table is None:
-        if cache in ("device", "disk"):
-            table = cudf.io.read_parquet(
-                path, index=False, columns=None if kind == "stats" else [col]
-            )
-        elif cache == "host":
-            with open(path, "rb") as f:
-                cat_cache[col] = BytesIO(f.read())
-            table = cudf.io.read_parquet(
-                cat_cache[col], index=False, columns=None if kind == "stats" else [col]
-            )
-        if kind == "cats":
-            table.index.name = "labels"
-            table.reset_index(drop=False, inplace=True)
-        if cache == "device":
-            cat_cache[col] = table.copy(deep=False)
-    return table
+from nvtabular.worker import fetch_table_data, get_worker_cache
 
 
 def _make_name(*args):
@@ -334,7 +303,9 @@ def _encode(name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
             cat_cache = cat_cache if isinstance(cat_cache, str) else cat_cache.get(name, "disk")
             if len(gdf):
                 with get_worker_cache("cats") as cache:
-                    value = fetch_data(cache, name, path, cache=cat_cache, kind="cats")
+                    value = fetch_table_data(
+                        cache, path, columns=[name], cache=cat_cache, cats_only=True
+                    )
         else:
             value = cudf.io.read_parquet(path, index=False, columns=[name])
             value.index.name = "labels"
@@ -364,5 +335,5 @@ def _read_groupby_stat_df(path, name, cat_cache):
         cat_cache = cat_cache if isinstance(cat_cache, str) else cat_cache.get(name, "disk")
         with get_worker_cache("stats") as cache:
             if cache:
-                return fetch_data(cache, name, path, cache=cat_cache, kind="stats")
+                return fetch_table_data(cache, path, cache=cat_cache)
     return cudf.io.read_parquet(path, index=False)
