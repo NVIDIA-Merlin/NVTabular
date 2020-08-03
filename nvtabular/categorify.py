@@ -427,3 +427,19 @@ def _read_groupby_stat_df(path, name, cat_cache):
             if cache:
                 return fetch_table_data(cache, path, cache=cat_cache)
     return cudf.io.read_parquet(path, index=False)
+
+
+def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
+    cat_names = []
+    multi_col_group = {}
+    for col_group in column_groups:
+        if isinstance(col_group, list):
+            name = _make_name(*col_group, sep=name_sep)
+            if name not in cat_names:
+                cat_names.append(name)
+                # TODO: Perhaps we should check that all columns from the group
+                #       are in gdf here?
+                multi_col_group[name] = col_group
+        elif col_group in gdf_columns:
+            cat_names.append(col_group)
+    return cat_names, multi_col_group

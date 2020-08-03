@@ -101,7 +101,7 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    encoder = ops.CategoryStatistics(columns=op_columns)
+    encoder = ops.GroupbyStatistics(columns=op_columns)
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
 
@@ -128,7 +128,7 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    encoder = ops.CategoryStatistics(
+    encoder = ops.GroupbyStatistics(
         columns=groups,
         cont_names=None if concat_groups else ["x"],
         stats=None if concat_groups else ["count", "mean"],

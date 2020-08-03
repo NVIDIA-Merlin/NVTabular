@@ -607,7 +607,7 @@ class FillMedian(DFOperator):
         return new_gdf
 
 
-class CategoryStatistics(StatOperator):
+class GroupbyStatistics(StatOperator):
     """
     Uses groupby aggregation to determine the unique groups of a categorical
     feature and calculates the desired statistics of requested continuous
@@ -646,7 +646,7 @@ class CategoryStatistics(StatOperator):
         parquet format.
     freq_threshold : int, default 0
         Categories with a `count` statistic less than this number will
-        be omitted from the `CategoryStatistics` output.
+        be omitted from the `GroupbyStatistics` output.
     on_host : bool, default True
         Whether to convert cudf data to pandas between tasks in the hash-based
         groupby reduction. The extra host <-> device data movement can reduce
@@ -678,7 +678,7 @@ class CategoryStatistics(StatOperator):
             self.column_groups = columns
             columns = list(set(flatten(columns, container=list)))
 
-        super(CategoryStatistics, self).__init__(columns)
+        super(GroupbyStatistics, self).__init__(columns)
         self.cont_names = cont_names or []
         self.stats = stats or []
         self.categories = {}
@@ -687,7 +687,7 @@ class CategoryStatistics(StatOperator):
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.stat_name = stat_name or "categories"
-        self.op_name = "CategoryStatistics-" + self.stat_name
+        self.op_name = "GroupbyStatistics-" + self.stat_name
         self.concat_groups = concat_groups
         self.name_sep = name_sep
 
@@ -767,11 +767,11 @@ class JoinGroupby(DFOperator):
     replace : bool, default False
         This parameter is ignored
     tree_width : dict or int, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     out_path : str, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     on_host : bool, default True
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     name_sep : str, default "_"
         String separator to use between concatenated column names
         for multi-column groups.
@@ -819,7 +819,7 @@ class JoinGroupby(DFOperator):
     @property
     def req_stats(self):
         return [
-            CategoryStatistics(
+            GroupbyStatistics(
                 columns=self.column_groups or self.columns,
                 concat_groups=False,
                 cont_names=self.cont_names,
@@ -834,25 +834,16 @@ class JoinGroupby(DFOperator):
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
 
-        multi_col_group = {}
-        if self.column_groups:
-            cat_names = []
-            for col_group in self.column_groups:
-                if isinstance(col_group, list):
-                    name = nvt_cat._make_name(*col_group, sep=self.name_sep)
-                    if name not in cat_names:
-                        cat_names.append(name)
-                        # TODO: Perhaps we should check that all columns from the group
-                        #       are in gdf here?
-                        multi_col_group[name] = col_group
-                elif col_group in gdf.columns:
-                    cat_names.append(col_group)
-        else:
-            cat_names = [name for name in target_columns if name in gdf.columns]
-
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+        if self.column_groups:
+            cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
+                self.column_groups, gdf.columns, self.name_sep
+            )
+        else:
+            multi_col_group = {}
+            cat_names = [name for name in target_columns if name in gdf.columns]
 
         for name in cat_names:
             storage_name = self.storage_name.get(name, name)
@@ -1025,11 +1016,11 @@ class Categorify(DFOperator):
         Note that this does not apply to multi-column groups with
         `encoded_type="combo"`.
     tree_width : dict or int, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     out_path : str, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     on_host : bool, default True
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     na_sentinel : default 0
         Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
@@ -1139,7 +1130,7 @@ class Categorify(DFOperator):
     @property
     def req_stats(self):
         return [
-            CategoryStatistics(
+            GroupbyStatistics(
                 columns=self.column_groups or self.columns,
                 concat_groups=self.encode_type == "joint",
                 cont_names=[],
@@ -1167,7 +1158,6 @@ class Categorify(DFOperator):
         if not target_columns:
             return new_gdf
 
-        multi_col_group = {}  # Case (3)-specific column groups
         if self.column_groups and not self.encode_type == "joint":
             # Case (3) - We want to track multi- and single-column groups separately
             #            when we are NOT performing a joint encoding. This is because
@@ -1175,19 +1165,12 @@ class Categorify(DFOperator):
             #            We use `multi_col_group` for multi-column groups only, and use
             #            `cat_names` for BOTH single- and multi-column groups.
             #
-            cat_names = []
-            for col_group in self.column_groups:
-                if isinstance(col_group, list):
-                    name = nvt_cat._make_name(*col_group, sep=self.name_sep)
-                    if name not in cat_names:
-                        cat_names.append(name)
-                        # TODO: Perhaps we should check that all columns from the group
-                        #       are in gdf here?
-                        multi_col_group[name] = col_group
-                elif col_group in gdf.columns:
-                    cat_names.append(col_group)
+            cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
+                self.column_groups, gdf.columns, self.name_sep
+            )
         else:
             # Case (1) - Simple 1-to-1 mapping
+            multi_col_group = {}
             cat_names = [name for name in target_columns if name in gdf.columns]
 
         # Encode each column-group separately
