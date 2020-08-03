@@ -129,7 +129,6 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
         record_stats=True,
         shuffle="partial",
         output_path=output_train,
-        num_out_files=2,
     )
 
     tar_paths = [
