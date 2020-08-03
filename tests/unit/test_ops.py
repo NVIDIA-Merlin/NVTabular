@@ -588,6 +588,44 @@ def test_categorify_multi(tmpdir, groups, kind):
         assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
 
 
+@pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
+def test_joingroupby_multi(tmpdir, groups):
+
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_A", "User_A", "User_B"],
+            "Engaging-User": ["User_B", "User_B", "User_C", "User_C"],
+            "Cost": [100.0, 200.0, 300.0, 400.0],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    cat_names = ["Author", "Engaging-User"]
+    cont_names = ["Cost"]
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        ops.JoinGroupby(columns=groups, out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"])
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    if isinstance(groups, list):
+        # Join on ["Author", "Engaging-User"]
+        assert df_out["Author_Engaging-User_Cost_sum"].to_arrow().to_pylist() == [
+            300.0,
+            300.0,
+            300.0,
+            400.0,
+        ]
+    else:
+        # Join on ["Author"]
+        assert df_out["Author_Cost_sum"].to_arrow().to_pylist() == [600.0, 600.0, 600.0, 400.0]
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
 @pytest.mark.parametrize("cache", ["host", "device"])

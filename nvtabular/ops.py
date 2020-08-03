@@ -735,11 +735,11 @@ class CategoryStatistics(StatOperator):
         return
 
 
-class GroupBy(DFOperator):
+class JoinGroupby(DFOperator):
     """
     One of the ways to create new features is to calculate
-    the basic statistics of the data that is grouped by a categorical
-    feature. This operator groups the data by the given categorical
+    the basic statistics of the data that is grouped by categorical
+    features. This operator groups the data by the given categorical
     feature(s) and calculates the desired statistics of requested continuous
     features (along with the count of rows in each group). The aggregated
     statistics are merged with the data (by joining on the desired
@@ -759,9 +759,9 @@ class GroupBy(DFOperator):
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
         Supported statistics include ["count", "sum", "mean", "std", "var"].
-    columns : list of str, default None
-        Categorical columns to target for this operation.  If None,
-        the operation will target all known categorical columns.
+    columns : list of str or list(str), default None
+        Categorical columns (or multi-column "groups") to target for this op.
+        If None, the operation will target all known categorical columns.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default False
@@ -772,6 +772,9 @@ class GroupBy(DFOperator):
         Passed to `CategoryStatistics` dependency.
     on_host : bool, default True
         Passed to `CategoryStatistics` dependency.
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
     """
 
     default_in = CAT
@@ -788,7 +791,22 @@ class GroupBy(DFOperator):
         cat_cache="host",
         out_path=None,
         on_host=True,
+        name_sep="_",
     ):
+        self.column_groups = None
+        self.storage_name = {}
+        self.name_sep = name_sep
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            self.column_groups = columns
+            columns = list(set(flatten(columns, container=list)))
+            for group in self.column_groups:
+                if isinstance(group, list) and len(group) > 1:
+                    name = nvt_cat._make_name(*group, sep=self.name_sep)
+                    for col in group:
+                        self.storage_name[col] = name
+
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.cont_names = cont_names
         self.stats = stats
@@ -802,25 +820,53 @@ class GroupBy(DFOperator):
     def req_stats(self):
         return [
             CategoryStatistics(
-                columns=self.columns,
+                columns=self.column_groups or self.columns,
+                concat_groups=False,
                 cont_names=self.cont_names,
                 stats=self.stats,
                 tree_width=self.tree_width,
                 out_path=self.out_path,
                 on_host=self.on_host,
                 stat_name=self.stat_name,
+                name_sep=self.name_sep,
             )
         ]
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+
+        multi_col_group = {}
+        if self.column_groups:
+            cat_names = []
+            for col_group in self.column_groups:
+                if isinstance(col_group, list):
+                    name = nvt_cat._make_name(*col_group, sep=self.name_sep)
+                    if name not in cat_names:
+                        cat_names.append(name)
+                        # TODO: Perhaps we should check that all columns from the group
+                        #       are in gdf here?
+                        multi_col_group[name] = col_group
+                elif col_group in gdf.columns:
+                    cat_names.append(col_group)
+        else:
+            cat_names = [name for name in target_columns if name in gdf.columns]
+
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-        for col, path in stats_context[self.stat_name].items():
-            stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
-            tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
+
+        for name in cat_names:
+            storage_name = self.storage_name.get(name, name)
+            name = multi_col_group.get(name, name)
+            path = stats_context[self.stat_name][storage_name]
+            selection_l = name.copy() if isinstance(name, list) else [name]
+            selection_r = name if isinstance(name, list) else [storage_name]
+
+            stat_gdf = nvt_cat._read_groupby_stat_df(path, storage_name, self.cat_cache)
+            tran_gdf = gdf[selection_l + [tmp]].merge(
+                stat_gdf, left_on=selection_l, right_on=selection_r, how="left"
+            )
             tran_gdf = tran_gdf.sort_values(tmp)
-            tran_gdf.drop(columns=[col, tmp], inplace=True)
+            tran_gdf.drop(columns=selection_l + [tmp], inplace=True)
             new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
             new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
         gdf.drop(columns=[tmp], inplace=True)
@@ -1058,9 +1104,9 @@ class Categorify(DFOperator):
             # if this list contains any multi-column groups, and if there
             # are any (obvious) problems with these groups
             self.column_groups = columns
-            columns_unq = list(set(flatten(columns, container=list)))
-            columns = list(flatten(columns, container=list))
-            if sorted(columns) != sorted(columns_unq) and encode_type == "joint":
+            columns = list(set(flatten(columns, container=list)))
+            columns_all = list(flatten(columns, container=list))
+            if sorted(columns_all) != sorted(columns) and encode_type == "joint":
                 # If we are doing "joint" encoding, there must be unique mapping
                 # between input column names and column groups.  Otherwise, more
                 # than one unique-value table could be used to encode the same
@@ -1121,8 +1167,6 @@ class Categorify(DFOperator):
         if not target_columns:
             return new_gdf
 
-        # See comments in __init__ for explanation of "three cases"...
-
         multi_col_group = {}  # Case (3)-specific column groups
         if self.column_groups and not self.encode_type == "joint":
             # Case (3) - We want to track multi- and single-column groups separately
@@ -1146,7 +1190,7 @@ class Categorify(DFOperator):
             # Case (1) - Simple 1-to-1 mapping
             cat_names = [name for name in target_columns if name in gdf.columns]
 
-        # Encode each column group separately
+        # Encode each column-group separately
         for name in cat_names:
             new_col = f"{name}" if self.replace else f"{name}_{self._id}"
 
