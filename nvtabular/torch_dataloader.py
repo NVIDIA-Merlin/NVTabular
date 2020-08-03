@@ -13,42 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
 import queue
 import threading
 
 import cudf
+import cupy as cp
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.io import Dataset
+from nvtabular.io import _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
-
-
-class FileItrDataset(torch.utils.data.IterableDataset):
-    gpu_itr = None
-
-    def __init__(self, file, **kwargs):
-        columns = kwargs.pop("columns", None)
-        self.gpu_itr = Dataset(file, **kwargs).to_iter(columns=columns)
-
-    def __iter__(self):
-        return self.gpu_itr.__iter__()
-
-    def __len__(self):
-        return len(self.gpu_itr)
-
-
-class TensorItrDataset(torch.utils.data.IterableDataset):
-    tensor_itr = None
-
-    def __init__(self, tensors, **kwargs):
-        self.tensor_itr = TensorItr(tensors, **kwargs)
-
-    def __iter__(self):
-        return self.tensor_itr.__iter__()
-
-    def __len__(self):
-        return len(self.tensor_itr)
 
 
 class TensorItr:
@@ -87,65 +62,38 @@ class TensorItr:
         for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
             yield tens[0], tens[1], tens[2]
+            del tens
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
         self.tensors = [tensor[idx] for tensor in self.tensors]
 
 
-def _to_tensor(gdf: cudf.DataFrame, dtype, tensor_list, to_cpu=False):
+def _to_tensor(gdf: cudf.DataFrame, dtype, to_cpu=False):
     if gdf.empty:
         return
-    for column in gdf.columns:
-        gdf_col = gdf[column]
-        g = gdf_col.to_dlpack()
-        t = from_dlpack(g).type(dtype)
-        t = t.to(torch.device("cpu")) if to_cpu else t
-        tensor_list[column] = (
-            t if column not in tensor_list else torch.cat([tensor_list[column], t])
-        )
-        del g
+    g = gdf.to_dlpack()
+    cols = gdf.columns
+    t = from_dlpack(g).type(dtype)
+    del g, gdf
+    return t, cols
 
 
-def create_tensors(preproc, itr=None, gdf=None, apply_ops=True):
-    cats, conts, label = {}, {}, {}
-    if itr:
-        for gdf in itr:
-            process_one_df(gdf, cats, conts, label, preproc=preproc, apply_ops=apply_ops)
-    elif gdf:
-        process_one_df(gdf, cats, conts, label, preproc=preproc, apply_ops=apply_ops)
-    return combine_tensors(cats, conts, label)
-
-
-def create_tensors_plain(gdf, cat_cols=None, cont_cols=None, label_cols=None):
-    cats, conts, label = {}, {}, {}
-    _one_df(
-        gdf, cats, conts, label, cat_names=cat_cols, cont_names=cont_cols, label_names=label_cols
+def create_tensors(gdf, cat_names=None, cont_names=None, label_names=None):
+    gdf_cats, gdf_conts, gdf_label = (
+        gdf[_get_embedding_order(cat_names)],
+        gdf[cont_names],
+        gdf[label_names],
     )
-    return combine_tensors(cats, conts, label)
-
-
-def combine_tensors(cats, conts, label):
-    cats_list = [cats[x] for x in _get_embedding_order(cats.keys())] if cats else []
-    conts_list = [conts[x] for x in sorted(conts.keys())] if conts else []
-    label_list = [label[x] for x in sorted(label.keys())] if label else []
-
-    # Change cats, conts to dim=1 for column dim=0 for df sub section
-    cats = torch.stack(cats_list, dim=1) if len(cats_list) > 0 else None
-    conts = torch.stack(conts_list, dim=1) if len(conts_list) > 0 else None
-    label = torch.cat(label_list, dim=0) if len(label_list) > 0 else None
-    return cats, conts, label
-
-
-def _one_df(gdf, cats, conts, label, cat_names=None, cont_names=None, label_names=None):
-    gdf_cats, gdf_conts, gdf_label = (gdf[cat_names], gdf[cont_names], gdf[label_names])
     del gdf
     if len(gdf_cats) > 0:
-        _to_tensor(gdf_cats, torch.long, cats, to_cpu=False)
+        cats = _to_tensor(gdf_cats, torch.long, to_cpu=False)
     if len(gdf_conts) > 0:
-        _to_tensor(gdf_conts, torch.float32, conts, to_cpu=False)
+        conts = _to_tensor(gdf_conts, torch.float32, to_cpu=False)
     if len(gdf_label) > 0:
-        _to_tensor(gdf_label, torch.float32, label, to_cpu=False)
+        label = _to_tensor(gdf_label, torch.float32, to_cpu=False)
+    del gdf_cats, gdf_conts, gdf_label
+    return [cats[0], conts[0], label[0]]
 
 
 def _get_final_cols(preproc):
@@ -157,90 +105,150 @@ def _get_final_cols(preproc):
     return cat_names, cont_names, label_name
 
 
-def process_one_df(
-    gdf,
-    cats,
-    conts,
-    label,
-    preproc=None,
-    cat_names=None,
-    cont_names=None,
-    label_names=None,
-    apply_ops=True,
-):
-    if apply_ops and preproc:
-        gdf = preproc.apply_ops(gdf)
+class ChunkQueue:
+    def __init__(
+        self,
+        num_chunks=2,
+        batch_size=None,
+        iterator=None,
+        shuffle=False,
+        cat_cols=None,
+        cont_cols=None,
+        label_cols=None,
+    ):
+        self.num_chunks = num_chunks
+        self.itr = iterator
+        self.batch_size = batch_size
+        self.q_out = queue.Queue(1)
+        self.cat_cols = cat_cols
+        self.cont_cols = cont_cols
+        self.label_cols = label_cols
+        self.shuffle = shuffle
+        self.stopped = False
 
-    if preproc:
-        cat_names, cont_names, label_names = _get_final_cols(preproc)
+    def get(self):
+        return self.q_out.get()
 
-    _one_df(
-        gdf, cats, conts, label, cat_names=cat_names, cont_names=cont_names, label_names=label_names
-    )
+    def batch(self):
+        current = []
+        for value in self.itr:
+            current.append(value)
+            if len(current) == self.num_chunks:
+                yield current
+                current = []
+        if len(current) > 0:
+            yield current
+
+    def load_chunks(self):
+        spill = None
+        for chunks in self.batch():
+            if self.stopped:
+                return
+            if spill and not spill.empty:
+                chunks.insert(0, spill)
+            chunks = cudf.core.reshape.concat(chunks)
+            chunks.reset_index(drop=True, inplace=True)
+            chunks, spill = self.get_batch_div_chunk(chunks)
+            if self.shuffle:
+                _shuffle_gdf(chunks)
+            if len(chunks) > 0:
+                chunks = create_tensors(
+                    chunks,
+                    cat_names=self.cat_cols,
+                    cont_names=self.cont_cols,
+                    label_names=self.label_cols,
+                )
+                # chunks tensorized
+                self.q_out.put(chunks)
+                chunks = None
+        # takes care final batch, which is less than batch size
+        if spill:
+            spill = create_tensors(
+                spill,
+                cat_names=self.cat_cols,
+                cont_names=self.cont_cols,
+                label_names=self.label_cols,
+            )
+            self.q_out.put(spill)
+            spill = None
+        self.q_out.put("end")
+
+    # For when an iterator is stopped before iteration is complete.
+    def stop(self):
+        self.stopped = True
+        self.q_out.queue.clear()
+
+    def get_batch_div_chunk(self, chunks):
+        spill_idx = int(chunks.shape[0] / self.batch_size) * self.batch_size
+        spill = cudf.DataFrame(chunks.iloc[spill_idx:])
+        chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
+        if not chunks.empty:
+            chunks.reset_index(drop=True, inplace=True)
+        if not spill.empty:
+            spill.reset_index(drop=True, inplace=True)
+        return chunks, spill
 
 
-class TorchTensorBatchFileItr(torch.utils.data.IterableDataset):
+class AsyncIterator:
     """
-        For Torch Only:
-        Batch Tensor dataset, takes in a file and converts to tensors
-        supplying user defined size chunks.
-
-        Parameters
-        -----------
-        path : path of input file
-        sub_batch_size: the size of each batch to return.
-        cats: categorical columns
-        conts: continuous columns
-        labels: label columns
-        pin_memory: allows pinning of cpu memory, if used.
-
+    This class serves as the iterator class for the AsyncTensorBatchDatasetItr. This will control
+    iteration and allow for clean up after iteration is complete. Without requiring the destruction
+    of the Parent class.
     """
 
     def __init__(
-        self, path, sub_batch_size=1, cats=None, conts=None, labels=None, pin_memory=False, **kwargs
+        self, dataset=None, cats=None, conts=None, labels=None, batch_size=1, shuffle=False
     ):
-        self.apply_ops = kwargs.get("apply_ops", False)
-        self.cat_cols = cats
-        self.cont_cols = conts
-        self.label_cols = labels
-        self.itr = Dataset(path, **kwargs).to_iter(columns=cats + conts + labels)
-        self.batch_size = sub_batch_size
-        self.num_chunks = len(self.itr)
-
-    def __len__(self):
-        return self.num_chunks
+        self.buff = ChunkQueue(
+            iterator=TorchTensorBatchDatasetItr(dataset, shuffle=shuffle),
+            batch_size=batch_size,
+            cat_cols=cats,
+            cont_cols=conts,
+            label_cols=labels,
+            shuffle=shuffle,
+        )
 
     def __iter__(self):
-        buff = queue.Queue(1)
-        threading.Thread(target=self.load_chunk, args=(buff,)).start()
-        for _ in range(self.num_chunks):
-            chunk = buff.get()
-            yield from TensorItr(chunk, batch_size=self.batch_size)
+        t1 = threading.Thread(target=self.buff.load_chunks)
+        t1.daemon = True
+        t1.start()
+        while True:
+            chunk = self.buff.get()
+            if isinstance(chunk, str):
+                break
+            yield from TensorItr(chunk, batch_size=self.buff.batch_size)
+            chunk = None
 
-    def load_chunk(self, out):
-        for chunk in self.itr:
-            chunk = create_tensors_plain(
-                chunk, cat_cols=self.cat_cols, cont_cols=self.cont_cols, label_cols=self.label_cols
+    def __del__(self):
+        self.buff.stop()
+
+
+class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
+    def __init__(self, dataset, cats=None, conts=None, labels=None, batch_size=1, shuffle=False):
+        self.batch_size = batch_size
+        self.cats = cats
+        self.conts = conts
+        self.labels = labels
+        self.shuffle = shuffle
+        self.data = dataset
+
+    def __iter__(self):
+        return iter(
+            AsyncIterator(
+                dataset=self.data,
+                batch_size=self.batch_size,
+                cats=self.cats,
+                conts=self.conts,
+                labels=self.labels,
+                shuffle=self.shuffle,
             )
-            out.put(chunk)
+        )
+
+    def __len__(self):
+        return math.ceil(self.data.num_rows / self.batch_size)
 
 
-class DLCollator:
-    transform = None
-    preproc = None
-    apply_ops = True
-
-    def __init__(self, transform=create_tensors, preproc=None, apply_ops=True):
-        self.transform = transform
-        self.preproc = preproc
-        self.apply_ops = apply_ops
-
-    def gdf_col(self, gdf):
-        batch = self.transform(self.preproc, gdf=gdf[0], apply_ops=self.apply_ops)
-        return (batch[0], batch[1]), batch[2].long()
-
-
-class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
+class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
     """
         For Torch Only:
         Batch Tensor dataset, takes in list of files
@@ -252,28 +260,28 @@ class TorchTensorBatchDatasetItr(torch.utils.data.ChainDataset):
         paths : list of input files that represent complete dataset
     """
 
-    def __init__(self, paths, **kwargs):
-        if isinstance(paths, str):
-            paths = [paths]
-        if not isinstance(paths, list):
-            raise TypeError("paths must be a string or a list.")
-        if len(paths) < 1:
-            raise ValueError("len(paths) must be > 0.")
-        self.paths = paths
-        self.cur_path = None
-        self.kwargs = kwargs
-        self.rows = 0
-        for file_path in self.paths:
-            (num_rows, num_row_groups, columns) = cudf.io.read_parquet_metadata(file_path)
-            self.rows += (num_rows // kwargs.get("sub_batch_size", 1)) + 1
+    def __init__(self, dataset, shuffle=None, **kwargs):
+        self.data = dataset
+        self.indices = cp.arange(dataset.to_ddf().npartitions)
+        if shuffle:
+            self.indices = cp.random.shuffle(self.indices)
 
     def __iter__(self):
-        for path in self.paths:
-            self.cur_path = path
-            yield from TorchTensorBatchFileItr(path, **self.kwargs)
+        indices = self.gather_indices()
+        yield from self.data.to_iter(indices=indices)
+
+    def gather_indices(self):
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            return self.indices
+        else:
+            per_worker = int(len(self.indices) // float(worker_info.num_workers)) + 1
+            worker_id = worker_info.id
+            start = worker_id * per_worker
+            return self.indices[start : start + per_worker]
 
     def __len__(self):
-        return self.rows
+        return self.data.num_rows
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
