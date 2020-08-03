@@ -752,11 +752,11 @@ class Dataset:
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
-    def to_iter(self, columns=None):
+    def to_iter(self, columns=None, indices=None):
         if isinstance(columns, str):
             columns = [columns]
 
-        return DataFrameIter(self.to_ddf(columns=columns))
+        return DataFrameIter(self.to_ddf(columns=columns), indices=indices)
 
     @property
     def num_rows(self):
@@ -977,15 +977,19 @@ class DataFrameDatasetEngine(DatasetEngine):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None):
+    def __init__(self, ddf, columns=None, indices=None):
+        self.indices = (
+            indices if isinstance(indices, list) and len(indices) > 0 else range(ddf.npartitions)
+        )
         self._ddf = ddf
         self.columns = columns
 
     def __len__(self):
-        return self._ddf.npartitions
+        return len(self.indices)
 
     def __iter__(self):
-        for part in self._ddf.partitions:
+        for i in self.indices:
+            part = self._ddf.get_partition(i)
             if self.columns:
                 yield part[self.columns].compute(scheduler="synchronous")
             else:
