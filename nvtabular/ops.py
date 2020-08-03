@@ -1162,14 +1162,15 @@ class Categorify(DFOperator):
             # Case (3) - We want to track multi- and single-column groups separately
             #            when we are NOT performing a joint encoding. This is because
             #            there is not a 1-to-1 mapping for columns in multi-col groups.
-            #            We use `multi_col_group` for multi-column groups only, and use
-            #            `cat_names` for BOTH single- and multi-column groups.
+            #            We use `multi_col_group` to preserve the list format of
+            #            multi-column groups only, and use `cat_names` to store the
+            #            string representation of both single- and multi-column groups.
             #
             cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
                 self.column_groups, gdf.columns, self.name_sep
             )
         else:
-            # Case (1) - Simple 1-to-1 mapping
+            # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
             cat_names = [name for name in target_columns if name in gdf.columns]
 
