@@ -516,3 +516,60 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
+@pytest.mark.parametrize("cache", ["host", "device"])
+@pytest.mark.parametrize("how", ["left", "inner"])
+@pytest.mark.parametrize("drop_duplicates", [True, False])
+def test_left_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
+
+    # Define "external" table
+    shift = 100
+    df_ext = df[["id"]].copy().sort_values("id")
+    df_ext["new_col"] = df_ext["id"] + shift
+    df_ext["new_col_2"] = "keep"
+    df_ext["new_col_3"] = "ignore"
+    df_ext_check = df_ext.copy()
+    if kind_ext == "pandas":
+        df_ext = df_ext.to_pandas()
+    elif kind_ext == "arrow":
+        df_ext = df_ext.to_arrow()
+    elif kind_ext == "parquet":
+        path = tmpdir.join("external.parquet")
+        df_ext.to_parquet(path)
+        df_ext = path
+    elif kind_ext == "csv":
+        path = tmpdir.join("external.csv")
+        df_ext.to_csv(path)
+        df_ext = path
+
+    # Define Op
+    on = "id"
+    columns_ext = ["id", "new_col", "new_col_2"]
+    df_ext_check = df_ext_check[columns_ext]
+    if drop_duplicates:
+        df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
+    merge_op = ops.JoinExternal(
+        df_ext,
+        on,
+        how=how,
+        columns_ext=columns_ext,
+        cache=cache,
+        drop_duplicates_ext=drop_duplicates,
+    )
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    # Iterate, apply op, and check result
+    for gdf in dataset.to_iter():
+        new_gdf = merge_op.apply_op(gdf, columns_ctx, "all")
+        check_gdf = gdf.merge(df_ext_check, how=how, on=on)
+        assert len(check_gdf) == len(new_gdf)
+        assert (new_gdf["id"] + shift).all() == new_gdf["new_col"].all()
+        assert gdf["id"].all() == new_gdf["id"].all()
+        assert "new_col_2" in new_gdf.columns
+        assert "new_col_3" not in new_gdf.columns
