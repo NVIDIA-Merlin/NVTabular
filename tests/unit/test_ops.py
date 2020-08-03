@@ -552,7 +552,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging User"]], None])
-def test_categorify_joint(tmpdir, groups):
+@pytest.mark.parametrize("kind", ["joint", "combo"])
+def test_categorify_multi(tmpdir, groups, kind):
 
     df = pd.DataFrame(
         {
@@ -568,15 +569,19 @@ def test_categorify_joint(tmpdir, groups):
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir)))
+    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir), encode_type=kind))
     processor.finalize()
     processor.apply(nvt.Dataset(df), output_format=None)
     df_out = processor.get_ddf().compute(scheduler="synchronous")
 
     if groups:
-        # Columns are encoded jointly
-        assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
-        assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 4]
+        if kind == "joint":
+            # Columns are encoded jointly
+            assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
+            assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 4]
+        else:
+            # Column combinations are encoded
+            assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
     else:
         # Columns are encoded independently
         assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]

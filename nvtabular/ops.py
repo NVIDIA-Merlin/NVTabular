@@ -626,11 +626,11 @@ class CategoryStatistics(StatOperator):
         other statistics correspond to a specific continuous column.
         Supported statistics include ["count", "sum", "mean", "std", "var"].
     columns : list of str or list(str), default None
-        Categorical columns (or groups of columns) to collect statistics for.
+        Categorical columns (or "column groups") to collect statistics for.
         If None, the operation will target all known categorical columns.
     concat_groups : bool, default False
         Applies only if there are list elements in the ``column`` input. If True,
-        the column values within these lists will be concatenated together, and these
+        the values within these column groups will be concatenated, and the
         new (temporary) columns will be used to perform the groupby.  The purpose of
         this option is to enable multiple columns to be lable-encoded jointly.
         (see Cateigorify). Note that this option is only allowed for the "count"
@@ -652,6 +652,9 @@ class CategoryStatistics(StatOperator):
         groupby reduction. The extra host <-> device data movement can reduce
         performance.  However, using `on_host=True` typically improves stability
         (by avoiding device-level memory pressure).
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
     """
 
     def __init__(
@@ -665,6 +668,7 @@ class CategoryStatistics(StatOperator):
         freq_threshold=None,
         stat_name=None,
         concat_groups=False,
+        name_sep="_",
     ):
         # Set column_groups if the user has passed in a list of columns
         self.column_groups = None
@@ -685,6 +689,7 @@ class CategoryStatistics(StatOperator):
         self.stat_name = stat_name or "categories"
         self.op_name = "CategoryStatistics-" + self.stat_name
         self.concat_groups = concat_groups
+        self.name_sep = name_sep
 
     @property
     def _id(self):
@@ -710,6 +715,7 @@ class CategoryStatistics(StatOperator):
             self.on_host,
             stat_name=self.stat_name,
             concat_groups=self.concat_groups,
+            name_sep=self.name_sep,
         )
         return Delayed(key, dsk)
 
@@ -956,19 +962,22 @@ class Categorify(DFOperator):
         ommited from the encoding and corresponding data will be mapped
         to the "null" category.
     columns : list of str or list(str), default None
-        Categorical columns (or groups of columns) to target for this op.
+        Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
-        If columns contains a list(str) element, the columns within that
-        list will be encoded jointly if `joint_encode=True`. Note that
-        `joint_encode=False` is not yet supported.
-    joint_encode : bool, default True
-        If True, the columns within any nested list in the ``columns``
-        input will be jointly encoded.
+        If columns contains 1+ list(str) elements, the columns within each
+        list/group will be encoded according to the `encode_type` setting.
+    encode_type : {"joint", "combo"}, default "joint"
+        If "joint", the columns within any multi-column group will be
+        jointly encoded. If "combo", the combination of values will be
+        encoded as a new column. Note that replacement is not allowed for
+        "combo", because the same column name can be included in
+        multiple groups.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
-        Replaces the transformed column with the original input
-        if set Yes
+        Replaces the transformed column with the original input.
+        Note that this does not apply to multi-column groups with
+        `encoded_type="combo"`.
     tree_width : dict or int, optional
         Passed to `CategoryStatistics` dependency.
     out_path : str, optional
@@ -985,6 +994,9 @@ class Categorify(DFOperator):
     dtype :
         If specified, categorical labels will be cast to this dtype
         after encoding is performed.
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
     """
 
     default_in = CAT
@@ -1002,29 +1014,71 @@ class Categorify(DFOperator):
         cat_cache="host",
         dtype=None,
         on_host=True,
-        joint_encode=True,
+        encode_type="joint",
+        name_sep="_",
     ):
-        # Set column_groups if the user has passed in a list of columns
+
+        # We need to handle three types of encoding here:
+        #
+        #   (1) Conventional encoding. There are no multi-column groups. So,
+        #       each categorical column is separately transformed into a new
+        #       "encoded" column (1-to-1).  The unique values are calculated
+        #       separately for each column.
+        #
+        #   (2) Multi-column "Joint" encoding (there are multi-column groups
+        #       in `columns` and `encode_type="joint"`).  Still a
+        #       1-to-1 transofrmation of categorical columns.  However,
+        #       we concatenate column groups to determine uniques (rather
+        #       than getting uniques of each categorical column separately).
+        #
+        #   (3) Multi-column "Group" encoding (there are multi-column groups
+        #       in `columns` and `encode_type="combo"`). No longer
+        #       a 1-to-1 transformation of categorical columns. Each column
+        #       group will be transformed to a single "encoded" column.  This
+        #       means the unique "values" correspond to unique combinations.
+        #       Since the same column may be included in multiple groups,
+        #       replacement is not allowed for this transform.
+
+        # Set column_groups if the user has passed in a list of columns.
+        # The purpose is to capture multi-column groups. If the user doesn't
+        # specify `columns`, there are no multi-column groups to worry about.
         self.column_groups = None
-        self.alias = {}
+        self.name_sep = name_sep
+
+        # For case (2), we need to keep track of the multi-column group name
+        # that will be used for the joint encoding of each column in that group.
+        # For case (3), we also use this "storage name" to signify the name of
+        # the file with the required "combination" groupby statistics.
+        self.storage_name = {}
+
         if isinstance(columns, str):
             columns = [columns]
         if isinstance(columns, list):
+            # User passed in a list of column groups. We need to figure out
+            # if this list contains any multi-column groups, and if there
+            # are any (obvious) problems with these groups
             self.column_groups = columns
             columns_unq = list(set(flatten(columns, container=list)))
             columns = list(flatten(columns, container=list))
-            if sorted(columns) != sorted(columns_unq) and joint_encode:
+            if sorted(columns) != sorted(columns_unq) and encode_type == "joint":
+                # If we are doing "joint" encoding, there must be unique mapping
+                # between input column names and column groups.  Otherwise, more
+                # than one unique-value table could be used to encode the same
+                # column.
                 raise ValueError("Same column name included in multiple groups.")
-            if joint_encode:
-                for group in self.column_groups:
-                    if isinstance(group, list) and len(group) > 1:
-                        name = nvt_cat._make_name(*group)
-                        for col in group:
-                            self.alias[col] = name
+            for group in self.column_groups:
+                if isinstance(group, list) and len(group) > 1:
+                    # For multi-column groups, we concatenate column names
+                    # to get the "group" name.
+                    name = nvt_cat._make_name(*group, sep=self.name_sep)
+                    for col in group:
+                        self.storage_name[col] = name
 
-        if self.column_groups and not joint_encode:
-            raise ValueError("joint_encode=False not yet supported.")
+        # Only support two kinds of multi-column encoding
+        if encode_type not in ("joint", "combo"):
+            raise ValueError(f"encode_type={encode_type} not supported.")
 
+        # Other self-explanatory intialization
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
@@ -1034,14 +1088,14 @@ class Categorify(DFOperator):
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.stat_name = "categories"
-        self.joint_encode = joint_encode
+        self.encode_type = encode_type
 
     @property
     def req_stats(self):
         return [
             CategoryStatistics(
                 columns=self.column_groups or self.columns,
-                concat_groups=self.joint_encode,
+                concat_groups=self.encode_type == "joint",
                 cont_names=[],
                 stats=[],
                 freq_threshold=self.freq_threshold,
@@ -1049,36 +1103,58 @@ class Categorify(DFOperator):
                 out_path=self.out_path,
                 on_host=self.on_host,
                 stat_name=self.stat_name,
+                name_sep=self.name_sep,
             )
         ]
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context={}):
-        new_gdf = cudf.DataFrame()
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context={},
+    ):
+        new_gdf = gdf.copy(deep=False)
+        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         if not target_columns:
-            return gdf
+            return new_gdf
 
-        group_cols = {}
-        if self.column_groups and not self.joint_encode:
+        # See comments in __init__ for explanation of "three cases"...
+
+        multi_col_group = {}  # Case (3)-specific column groups
+        if self.column_groups and not self.encode_type == "joint":
+            # Case (3) - We want to track multi- and single-column groups separately
+            #            when we are NOT performing a joint encoding. This is because
+            #            there is not a 1-to-1 mapping for columns in multi-col groups.
+            #            We use `multi_col_group` for multi-column groups only, and use
+            #            `cat_names` for BOTH single- and multi-column groups.
+            #
             cat_names = []
             for col_group in self.column_groups:
                 if isinstance(col_group, list):
-                    name = nvt_cat._make_name(*col_group)
-                    cat_names.append(name)
-                    group_cols[name] = col_group
+                    name = nvt_cat._make_name(*col_group, sep=self.name_sep)
+                    if name not in cat_names:
+                        cat_names.append(name)
+                        # TODO: Perhaps we should check that all columns from the group
+                        #       are in gdf here?
+                        multi_col_group[name] = col_group
                 elif col_group in gdf.columns:
                     cat_names.append(col_group)
         else:
+            # Case (1) - Simple 1-to-1 mapping
             cat_names = [name for name in target_columns if name in gdf.columns]
 
-        new_cols = []
+        # Encode each column group separately
         for name in cat_names:
-            new_col = f"{name}_{self._id}"
-            new_cols.append(new_col)
-            storage_name = self.alias.get(name, name)
+            new_col = f"{name}" if self.replace else f"{name}_{self._id}"
+
+            # Storage name may be different than group for case (2)
+            storage_name = self.storage_name.get(name, name)
             path = stats_context[self.stat_name][storage_name]
             new_gdf[new_col] = nvt_cat._encode(
-                group_cols.get(name, name),
+                multi_col_group.get(name, name),
                 storage_name,
                 path,
                 gdf,
@@ -1088,6 +1164,8 @@ class Categorify(DFOperator):
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
+
+        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
 
 

@@ -29,12 +29,14 @@ from fsspec.core import get_fs_token_paths
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 
-def _make_name(*args):
-    return "_".join(args)
+def _make_name(*args, sep="_"):
+    return sep.join(args)
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_host, concat_groups):
+def _top_level_groupby(
+    gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_host, concat_groups, name_sep
+):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
@@ -42,7 +44,7 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
 
         if isinstance(cat_col_group, str):
             cat_col_group = [cat_col_group]
-        cat_col_group_str = _make_name(*cat_col_group)
+        cat_col_group_str = _make_name(*cat_col_group, sep=name_sep)
 
         if concat_groups and len(cat_col_group) > 1:
             # Concatenate columns and replace cat_col_group
@@ -61,7 +63,7 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
         for col in cont_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
-                name = _make_name(col, "pow2")
+                name = _make_name(col, "pow2", sep=name_sep)
                 df_gb[name] = df_gb[col].pow(2)
                 agg_dict[name] = ["sum"]
 
@@ -69,9 +71,9 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
         # (flattening provides better cudf support)
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
         gb.columns = [
-            _make_name(*(tuple(cat_col_group) + name[1:]))
+            _make_name(*(tuple(cat_col_group) + name[1:]), sep=name_sep)
             if name[0] == cat_col_group[0]
-            else _make_name(*(tuple(cat_col_group) + name))
+            else _make_name(*(tuple(cat_col_group) + name), sep=name_sep)
             for name in gb.columns.to_flat_index()
         ]
         gb.reset_index(inplace=True, drop=False)
@@ -91,13 +93,15 @@ def _top_level_groupby(gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_ho
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups):
+def _mid_level_groupby(
+    dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep
+):
 
     if isinstance(col_group, str):
         col_group = [col_group]
 
     if concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group)]
+        col_group = [_make_name(*col_group, sep=name_sep)]
 
     ignore_index = True
     if on_host:
@@ -106,7 +110,7 @@ def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host,
         gb = _concat(dfs, ignore_index).groupby(col_group, dropna=False).sum()
     gb.reset_index(drop=False, inplace=True)
 
-    name_count = _make_name(*(col_group + ["count"]))
+    name_count = _make_name(*(col_group + ["count"]), sep=name_sep)
     if freq_limit:
         gb = gb[gb[name_count] >= freq_limit]
 
@@ -116,19 +120,19 @@ def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host,
 
     ddof = 1
     for cont_col in cont_cols:
-        name_sum = _make_name(*(col_group + [cont_col, "sum"]))
+        name_sum = _make_name(*(col_group + [cont_col, "sum"]), sep=name_sep)
         if "sum" in agg_list:
             required.append(name_sum)
 
         if "mean" in agg_list:
-            name_mean = _make_name(*(col_group + [cont_col, "mean"]))
+            name_mean = _make_name(*(col_group + [cont_col, "mean"]), sep=name_sep)
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "var" in agg_list or "std" in agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]))]
+            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]), sep=name_sep)]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 1] = 1
@@ -136,11 +140,11 @@ def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host,
             result[(n - ddof) == 0] = np.nan
 
             if "var" in agg_list:
-                name_var = _make_name(*(col_group + [cont_col, "var"]))
+                name_var = _make_name(*(col_group + [cont_col, "var"]), sep=name_sep)
                 required.append(name_var)
                 gb[name_var] = result
             if "std" in agg_list:
-                name_std = _make_name(*(col_group + [cont_col, "std"]))
+                name_std = _make_name(*(col_group + [cont_col, "std"]), sep=name_sep)
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
@@ -152,16 +156,16 @@ def _mid_level_groupby(dfs, col_group, cont_cols, agg_list, freq_limit, on_host,
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups):
+def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep):
     if concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group)]
+        col_group = [_make_name(*col_group, sep=name_sep)]
     ignore_index = True
     df = _concat(dfs, ignore_index)
     if on_host:
         df = cudf.from_pandas(df)
     if isinstance(col_group, str):
         col_group = [col_group]
-    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group))
+    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = os.path.join(base_path, rel_path)
     if len(df):
         df = df.sort_values(col_group, na_position="first")
@@ -176,16 +180,16 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups):
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col_group, on_host, concat_groups):
+def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
     if concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group)]
+        col_group = [_make_name(*col_group, sep=name_sep)]
     ignore_index = True
     if isinstance(col_group, str):
         col_group = [col_group]
     df = _concat(dfs, ignore_index)
     if on_host:
         df = cudf.from_pandas(df)
-    rel_path = "unique.%s.parquet" % (_make_name(*col_group))
+    rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
         # Make sure first category is Null
@@ -228,6 +232,7 @@ def _groupby_to_disk(
     on_host,
     stat_name="categories",
     concat_groups=False,
+    name_sep="_",
 ):
     if not col_groups:
         return {}
@@ -242,7 +247,7 @@ def _groupby_to_disk(
     tw = {}
     for col in col_groups:
         col = [col] if isinstance(col, str) else col
-        col_str = _make_name(*col)
+        col_str = _make_name(*col, sep=name_sep)
         if tree_width is None:
             tw[col_str] = 8
         elif isinstance(tree_width, int):
@@ -273,11 +278,12 @@ def _groupby_to_disk(
             ("std" in agg_list or "var" in agg_list),
             on_host,
             concat_groups,
+            name_sep,
         )
         k = 0
         for c, col in enumerate(col_groups):
             col = [col] if isinstance(col, str) else col
-            col_str = _make_name(*col)
+            col_str = _make_name(*col, sep=name_sep)
             for s in range(tree_width[col_str]):
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
@@ -285,7 +291,7 @@ def _groupby_to_disk(
     col_groups_str = []
     for c, col in enumerate(col_groups):
         col = [col] if isinstance(col, str) else col
-        col_str = _make_name(*col)
+        col_str = _make_name(*col, sep=name_sep)
         col_groups_str.append(col_str)
         for s in range(tree_width[col_str]):
             dsk[(level_2_name, c, s)] = (
@@ -297,6 +303,7 @@ def _groupby_to_disk(
                 freq_limit,
                 on_host,
                 concat_groups,
+                name_sep,
             )
 
         dsk[(level_3_name, c)] = (
@@ -306,6 +313,7 @@ def _groupby_to_disk(
             col,
             on_host,
             concat_groups,
+            name_sep,
         )
 
     dsk[finalize_labels_name] = (
@@ -328,6 +336,7 @@ def _category_stats(
     on_host,
     stat_name="categories",
     concat_groups=False,
+    name_sep="_",
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -344,6 +353,7 @@ def _category_stats(
             on_host,
             stat_name=stat_name,
             concat_groups=concat_groups,
+            name_sep=name_sep,
         )
 
     # Otherwise, getting category-statistics
@@ -363,11 +373,14 @@ def _category_stats(
         on_host,
         stat_name=stat_name,
         concat_groups=concat_groups,
+        name_sep=name_sep,
     )
 
 
 def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
     value = None
+    selection_l = name if isinstance(name, list) else [name]
+    selection_r = name if isinstance(name, list) else [storage_name]
     if path:
         if cat_cache is not None:
             cat_cache = (
@@ -376,31 +389,34 @@ def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_thres
             if len(gdf):
                 with get_worker_cache("cats") as cache:
                     value = fetch_table_data(
-                        cache, path, columns=[storage_name], cache=cat_cache, cats_only=True
+                        cache, path, columns=selection_r, cache=cat_cache, cats_only=True
                     )
         else:
-            value = cudf.io.read_parquet(path, index=False, columns=[storage_name])
+            value = cudf.io.read_parquet(path, index=False, columns=selection_r)
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
-    vals = gdf[name].copy(deep=False)
     if value is None:
-        value = cudf.DataFrame({storage_name: [None]})
-        value[storage_name] = value[storage_name].astype(vals.dtype)
+        value = cudf.DataFrame()
+        for c in selection_r:
+            typ = gdf[selection_l[0]].dtype if len(selection_l) == 1 else gdf[c].dtype
+            value[c] = cudf.Series([None], dtype=typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
     if freq_threshold > 0:
-        codes = cudf.DataFrame({name: vals.copy(), "order": cp.arange(len(vals))})
-        codes = codes.merge(value, left_on=name, right_on=storage_name, how="left").sort_values(
-            "order"
-        )["labels"]
+        codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
+        for c in selection_l:
+            codes[c] = gdf[c].copy()
+        codes = codes.merge(
+            value, left_on=selection_l, right_on=selection_r, how="left"
+        ).sort_values("order")["labels"]
         codes.fillna(na_sentinel, inplace=True)
         return codes.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
-        labels = value[storage_name].searchsorted(vals, side="left", na_position="first")
-        labels[labels >= len(value[storage_name])] = na_sentinel
+        labels = value[selection_r].searchsorted(gdf[selection_l], side="left", na_position="first")
+        labels[labels >= len(value[selection_r])] = na_sentinel
         return labels
 
 
