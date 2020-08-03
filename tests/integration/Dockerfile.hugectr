@@ -1,0 +1,65 @@
+# Image configuration
+ARG CUDA_VERSION=10.2
+ARG CUDNN_VERSION=7
+ARG LINUX_VERSION=ubuntu18.04
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-${LINUX_VERSION}
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/lib
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Cudf configuration
+ARG CUDF_VERSION=0.15
+ARG PYTHON_VERSION=3.7
+# Needed for cudf.concat(), avoids "OSError: library nvvm not found"
+ENV NUMBAPRO_NVVM=/usr/local/cuda/nvvm/lib64/libnvvm.so
+ENV NUMBAPRO_LIBDEVICE=/usr/local/cuda/nvvm/libdevice/
+
+# Install linux packages
+ARG APTCC=7
+ARG APTCXX=7
+RUN apt update -y --fix-missing && \
+    apt upgrade -y && \
+    apt install -y \
+      cmake \
+      git \
+      gcc-${APTCC} \
+      g++-${APTCXX} \
+      libboost-all-dev \
+      python3-pip \
+      tzdata \
+      vim \
+      wget
+
+# Install Python Packages
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir \
+    "numpy>=1.16,<1.19" \
+    pandas \
+    "setuptools>=41.0" \
+    "six>=1.12" \
+    sklearn \
+    ortools \
+    tensorflow
+
+# Install conda
+ADD https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh /miniconda.sh
+RUN sh /miniconda.sh -b -p /conda && /conda/bin/conda update -n base conda
+ENV PATH=${PATH}:/conda/bin
+# Enables "source activate conda"
+SHELL ["/bin/bash", "-c"]
+ENV CONDA_PREFIX=/conda
+
+# Install cudf
+RUN conda install -c rapidsai-nightly -c nvidia -c conda-forge -c defaults \
+    cudf=${CUDF_VERSION} python=${PYTHON_VERSION} cudatoolkit=${CUDA_VERSION}
+
+RUN conda install -c conda-forge pyyaml
+
+RUN echo 'export PS1="\s \w\$ "' >>/etc/bash.bashrc
+
+# Add HugeCTR installation script
+ADD ./tests/integration/hugectr_setup.sh /hugectr_setup.sh
+
+# Install NVTabular
+COPY . nvtabular/
+
+RUN pip install --no-cache-dir -e nvtabular/.
