@@ -24,6 +24,7 @@ def test_criteo_notebook(tmpdir):
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
         gpu_id=3,
+        batch_size=100000,
     )
 
     
@@ -45,6 +46,7 @@ def test_optimize_criteo(tmpdir):
 
 def test_rossman_example(tmpdir):
     pytest.importorskip("tensorflow")
+    data_path = os.path.join(DATA_START, "rossman/data")
     input_path = os.path.join(DATA_START, "rossman/input")
     output_path = os.path.join(DATA_START, "rossman/output")
     
@@ -55,7 +57,7 @@ def test_rossman_example(tmpdir):
     _run_notebook(
         tmpdir, 
         notebookex_path, 
-        None,
+        data_path,
         input_path,
         gpu_id=1
     )    
@@ -83,17 +85,20 @@ def test_gpu_benchmark(tmpdir):
         notebook_path,
         input_path,
         output_path,
-        gpu_id=0
+        gpu_id=0,
+        batch_size=100000
     )
     
 
-def _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=0, transform=None):
+def _run_notebook(tmpdir, notebook_path, input_path, output_path, batch_size=None, gpu_id=0, transform=None):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     if not os.path.exists(input_path):
         os.makedirs(input_path)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
+    if batch_size:
+        os.environ["BATCH_SIZE"] = batch_size
     
     os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
