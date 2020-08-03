@@ -98,7 +98,12 @@ def test_dask_dataset(datasets, engine, num_files):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
-def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_threads):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_hugectr(
+    tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
+):
+    client = client if use_client else None
+
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -110,20 +115,17 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_
     os.mkdir(outdir)
 
     # process data
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor = nvt.Workflow(
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_names
+    )
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    # Need to collect statistics first (for now)
-    processor.update_stats(dataset)
-
-    # Second "online" pass to write HugeCTR output
+    # apply the workflow and write out the dataset
     processor.apply(
         dataset,
-        apply_offline=False,
-        record_stats=False,
         output_path=outdir,
         out_files_per_proc=nfiles,
         output_format=output_format,
@@ -147,7 +149,7 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_
     assert "conts" in data
     assert "labels" in data
     assert "file_stats" in data
-    assert len(data["file_stats"]) == nfiles
+    assert len(data["file_stats"]) == nfiles if not client else nfiles * len(client.cluster.workers)
     for cdata in data["cats"] + data["conts"] + data["labels"]:
         col_summary[cdata["index"]] = cdata["col_name"]
 
@@ -157,12 +159,14 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_
         ext = "parquet"
     elif output_format == "hugectr":
         ext = "data"
-    for n in range(nfiles):
-        assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))
+
+    data_files = [
+        os.path.join(outdir, filename) for filename in os.listdir(outdir) if filename.endswith(ext)
+    ]
 
     # Make sure the columns in "_metadata.json" make sense
     if output_format == "parquet":
-        df_check = cudf.read_parquet(os.path.join(outdir, "0.parquet"))
+        df_check = cudf.read_parquet(os.path.join(outdir, data_files[0]))
         for i, name in enumerate(df_check.columns):
             if i in col_summary:
                 assert col_summary[i] == name
