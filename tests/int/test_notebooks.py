@@ -51,15 +51,16 @@ def test_rossman_example(tmpdir):
     output_path = os.path.join(DATA_START, "rossman/output")
     
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples", "rossmann-store-sales-preprocess.ipynb"
+        dirname(TEST_PATH), "examples", "rossmann-store-sales-preproc.ipynb"
     )
     
     _run_notebook(
         tmpdir, 
-        notebookex_path, 
+        notebookpre_path, 
         data_path,
         input_path,
-        gpu_id=1
+        gpu_id=1,
+        clean_up=False,
     )    
     
 
@@ -90,7 +91,7 @@ def test_gpu_benchmark(tmpdir):
     )
     
 
-def _run_notebook(tmpdir, notebook_path, input_path, output_path, batch_size=None, gpu_id=0, transform=None):
+def _run_notebook(tmpdir, notebook_path, input_path, output_path, batch_size=None, gpu_id=0, clean_up=True, transform=None):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     if not os.path.exists(input_path):
@@ -98,7 +99,7 @@ def _run_notebook(tmpdir, notebook_path, input_path, output_path, batch_size=Non
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     if batch_size:
-        os.environ["BATCH_SIZE"] = batch_size
+        os.environ["BATCH_SIZE"] = str(batch_size)
     
     os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
@@ -121,7 +122,8 @@ def _run_notebook(tmpdir, notebook_path, input_path, output_path, batch_size=Non
     subprocess.check_output([sys.executable, script_path])
     
     # clear out products
-    shutil.rmtree(output_path)
+    if clean_up:
+        shutil.rmtree(output_path)
 
 
 def _get_random_criteo_data(rows):
