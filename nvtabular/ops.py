@@ -1135,3 +1135,48 @@ class LambdaOp(TransformOperator):
             new_gdf[col] = self.f(gdf[col], gdf)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
         return new_gdf
+
+
+class Filter(TransformOperator):
+    """
+    Enables to call Methods to cudf.Series
+
+    Parameters
+    -----------
+    op_name : str
+        name of the operator column. It is used as a post_fix for the
+        modified column names (if replace=False)
+    f : lambda function
+        defines the function executed on dataframe level, expectation is lambda col, gdf: ...
+        col is the cudf.Series defined by the context
+        gdf is the full cudf.DataFrame
+    columns :
+    preprocessing : bool, default True
+        Sets if this is a pre-processing operation or not
+    replace : bool, default True
+        Replaces the transformed column with the original input
+        if set Yes
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    def __init__(self, f, preprocessing=True, replace=True):
+        super().__init__(preprocessing=preprocessing, replace=replace)
+        if f is None:
+            raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
+        self.f = f
+        # self.op_name = op_name
+
+    @annotate("Filter_op", color="darkgreen", domain="nvt_python")
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context=None,
+    ):
+        new_gdf = self.f(gdf)
+        new_gdf.reset_index(drop=True, inplace=True)
+        return new_gdf
