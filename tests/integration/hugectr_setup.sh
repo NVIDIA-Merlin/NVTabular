@@ -5,6 +5,12 @@ VAL_MODE=OFF
 ENABLE_MULTINODES=OFF
 NCCL_A2A=ON
 
+# Install packages
+pip install jupyterlab 
+pip install pynvml
+pip install torch torchvision
+
+# Install HugeCTR
 git clone -b cgarg/parquet-v2.2-integ https://gitlab-master.nvidia.com/zehuanw/hugectr.git &&\
     cd hugectr && \
     git submodule update --init --recursive && \
