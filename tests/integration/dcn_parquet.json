@@ -17,7 +17,7 @@
     "type": "Adam",
     "global_update": true,
     "adam_hparam": {
-      "alpha": 0.001,
+      "learning_rate": 0.001,
       "beta1": 0.9,
       "beta2": 0.999,
       "epsilon": 0.00000001
