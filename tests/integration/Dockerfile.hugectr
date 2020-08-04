@@ -50,7 +50,7 @@ ENV CONDA_PREFIX=/conda
 
 # Install cudf
 RUN conda install -c rapidsai-nightly -c nvidia -c conda-forge -c defaults \
-    cudf=${CUDF_VERSION} python=${PYTHON_VERSION} cudatoolkit=${CUDA_VERSION}
+    cudf=${CUDF_VERSION} dask-cudf=${CUDF_VERSION} python=${PYTHON_VERSION} cudatoolkit=${CUDA_VERSION}
 
 RUN conda install -c conda-forge pyyaml
 
