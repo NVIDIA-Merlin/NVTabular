@@ -387,6 +387,39 @@ class Dropna(TransformOperator):
         return new_gdf
 
 
+class IsNull(TransformOperator):
+    """
+    This operation detects missing values on a given target column, and returns
+    a cudf DataFrame with Null entries.
+
+    Although you can directly call methods of this class to
+    transform your categorical and/or continuous features, it's typically used within a
+    Workflow class.
+
+    Parameters
+    -----------
+    target_cols : a single column
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    @annotate("IsNull_op", color="darkgreen", domain="nvt_python")
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context=None,
+    ):
+        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
+        new_gdf = gdf[gdf.isnull()[target_columns]]
+        new_gdf.reset_index(drop=True, inplace=True)
+        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
+        return new_gdf
+
+
 class LogOp(TransformOperator):
 
     """
