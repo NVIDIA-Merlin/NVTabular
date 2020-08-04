@@ -10,7 +10,7 @@
     "eval_interval": 0,
     "eval_batches": 1,
     "batchsize_eval": 1,
-    "index_key_type": "I64"
+    "input_key_type": "I64"
   },
   
   "optimizer": {
