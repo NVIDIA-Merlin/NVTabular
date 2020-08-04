@@ -263,7 +263,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     label_name = ["label"]
 
     config = nvt.workflow.get_new_config()
-    config["PP"]["continuous"] = [ops.Moments()]
+    config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvtabular.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
@@ -275,7 +275,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
     columns_ctx = {}
     columns_ctx["continuous"] = {}
-    columns_ctx["continuous"]["base"] = cont_names
+    columns_ctx["continuous"]["base"] = op_columns or cont_names
 
     new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
     df["x"] = (df["x"] - processor.stats["means"]["x"]) / processor.stats["stds"]["x"]
@@ -586,6 +586,35 @@ def test_categorify_multi(tmpdir, groups, kind):
         # Columns are encoded independently
         assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
         assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
+
+
+def test_categorify_multi_combo(tmpdir):
+
+    groups = [["Author", "Engaging User"], ["Author"], "Engaging User"]
+    kind = "combo"
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    cat_names = ["Author", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir), encode_type=kind))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Column combinations are encoded
+    assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
+    assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
+    assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])

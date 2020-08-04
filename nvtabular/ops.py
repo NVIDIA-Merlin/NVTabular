@@ -471,7 +471,7 @@ class Normalize(DFOperator):
 
     @property
     def req_stats(self):
-        return [Moments()]
+        return [Moments(columns=self.columns)]
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
@@ -1176,13 +1176,20 @@ class Categorify(DFOperator):
 
         # Encode each column-group separately
         for name in cat_names:
-            new_col = f"{name}" if self.replace else f"{name}_{self._id}"
+            new_col = f"{name}_{self._id}"
 
+            # Use the column-group `list` directly (not the string name)
+            use_name = multi_col_group.get(name, name)
             # Storage name may be different than group for case (2)
-            storage_name = self.storage_name.get(name, name)
+            # Only use the "aliased" `storage_name` if we are dealing with
+            # a multi-column group, or if we are doing joint encoding
+            if use_name != name or self.encode_type == "joint":
+                storage_name = self.storage_name.get(name, name)
+            else:
+                storage_name = name
             path = stats_context[self.stat_name][storage_name]
             new_gdf[new_col] = nvt_cat._encode(
-                multi_col_group.get(name, name),
+                use_name,
                 storage_name,
                 path,
                 gdf,
@@ -1192,6 +1199,13 @@ class Categorify(DFOperator):
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
+
+        # Deal with replacement
+        if self.replace:
+            for name in cat_names:
+                new_col = f"{name}_{self._id}"
+                new_gdf[name] = new_gdf[new_col]
+                new_gdf.drop(columns=[new_col], inplace=True)
 
         self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
