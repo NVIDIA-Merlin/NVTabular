@@ -1166,7 +1166,6 @@ class Filter(TransformOperator):
         if f is None:
             raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
         self.f = f
-        # self.op_name = op_name
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
     def apply_op(
