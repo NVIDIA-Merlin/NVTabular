@@ -43,21 +43,21 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_empty_cols(tmpdir, df, dataset, engine):
-    # test out https://github.com/NVIDIA/NVTabular/issues/149
-    # first with not continuous columns
-    proc = nvt.Workflow(cat_names=["name-string"], cont_names=[], label_name=["label"])
-    proc.add_preprocess(ops.Categorify())
-    proc.finalize()
-    proc.apply(dataset)
-    proc.ds_to_tensors(dataset.to_iter())
-    # and with no categorical columns
-    proc2 = nvt.Workflow(cat_names=[], cont_names=["x"], label_name=["label"])
-    proc2.add_preprocess(ops.Normalize())
-    proc2.finalize()
-    proc2.apply(dataset)
-    proc2.ds_to_tensors(dataset.to_iter())
+    # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
+    # empty cats/conts
+    # first with no continuous columns
+    no_conts = torch_dataloader.AsyncTensorBatchDatasetItr(
+        dataset, cats=["id"], conts=[], labels=["label"], batch_size=1
+    )
+    assert all(conts is None for _, conts, _ in no_conts)
 
-    
+    # and with no categorical columns
+    no_cats = torch_dataloader.AsyncTensorBatchDatasetItr(
+        dataset, cats=[], conts=["x"], labels=["label"]
+    )
+    assert all(cats is None for cats, _, _ in no_cats)
+
+
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -141,11 +141,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     os.mkdir(output_train)
 
     processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
-        shuffle="partial",
-        output_path=output_train,
+        dataset, apply_offline=True, record_stats=True, shuffle="partial", output_path=output_train,
     )
 
     tar_paths = [

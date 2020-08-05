@@ -526,11 +526,6 @@ class BaseWorkflow:
     def clear_stats(self):
         self.stats = {}
 
-    def ds_to_tensors(self, itr, apply_ops=True):
-        from nvtabular.torch_dataloader import create_tensors
-
-        return create_tensors(self, itr=itr, apply_ops=apply_ops)
-
 
 def get_new_config():
     """

@@ -29,7 +29,6 @@ from nvtabular.ops import _get_embedding_order
 class TensorItr:
     """
         Tensor dataset, for data already in tensor format.
-        (see preproc::ds_to_tensor)
 
         Parameters
         -----------
@@ -44,7 +43,7 @@ class TensorItr:
         self.tensors = tensors
         self.batch_size = batch_size
 
-        self.num_samples = self.tensors[0].size(0)
+        self.num_samples = self.tensors[2].size(0)
         if shuffle:
             self.shuffle()
 
@@ -60,23 +59,23 @@ class TensorItr:
 
     def __iter__(self):
         for idx in range(0, self.num_samples, self.batch_size):
-            tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
-            yield tens[0], tens[1], tens[2]
-            del tens
+            yield [
+                tensor[idx : idx + self.batch_size] if tensor is not None else None
+                for tensor in self.tensors
+            ]
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
         self.tensors = [tensor[idx] for tensor in self.tensors]
 
 
-def _to_tensor(gdf: cudf.DataFrame, dtype, to_cpu=False):
+def _to_tensor(gdf: cudf.DataFrame, dtype):
     if gdf.empty:
         return
     g = gdf.to_dlpack()
-    cols = gdf.columns
     t = from_dlpack(g).type(dtype)
     del g, gdf
-    return t, cols
+    return t
 
 
 def create_tensors(gdf, cat_names=None, cont_names=None, label_names=None):
@@ -86,23 +85,11 @@ def create_tensors(gdf, cat_names=None, cont_names=None, label_names=None):
         gdf[label_names],
     )
     del gdf
-    if len(gdf_cats) > 0:
-        cats = _to_tensor(gdf_cats, torch.long, to_cpu=False)
-    if len(gdf_conts) > 0:
-        conts = _to_tensor(gdf_conts, torch.float32, to_cpu=False)
-    if len(gdf_label) > 0:
-        label = _to_tensor(gdf_label, torch.float32, to_cpu=False)
+    cats = _to_tensor(gdf_cats, torch.long)
+    conts = _to_tensor(gdf_conts, torch.float32)
+    label = _to_tensor(gdf_label, torch.float32)
     del gdf_cats, gdf_conts, gdf_label
-    return [cats[0], conts[0], label[0]]
-
-
-def _get_final_cols(preproc):
-    if "cols" not in preproc.columns_ctx["final"]:
-        preproc.create_final_cols()
-    cat_names = _get_embedding_order(preproc.columns_ctx["final"]["cols"].get("categorical") or [])
-    cont_names = sorted(preproc.columns_ctx["final"]["cols"].get("continuous") or [])
-    label_name = sorted(preproc.columns_ctx["final"]["cols"]["label"])
-    return cat_names, cont_names, label_name
+    return [cats, conts, label]
 
 
 class ChunkQueue:
