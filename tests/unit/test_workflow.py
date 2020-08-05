@@ -339,8 +339,7 @@ def test_join_external_workflow(tmpdir, df, dataset, engine, preproc):
     if preproc == "cat":
         processor.add_cat_preprocess(merge_op)
     elif preproc == "cont":
-        with pytest.warns(UserWarning):
-            processor.add_cont_preprocess(merge_op)
+        processor.add_cont_preprocess(merge_op)
     elif preproc == "feat":
         processor.add_feature(merge_op)
     else:
@@ -352,9 +351,8 @@ def test_join_external_workflow(tmpdir, df, dataset, engine, preproc):
     # Validate
     for gdf, part in zip(dataset.to_iter(), processor.get_ddf().partitions):
         new_gdf = part.compute(scheduler="synchronous")
-        if preproc in ("cat", "all"):
-            assert len(gdf) == len(new_gdf)
-            assert (gdf["id"] + shift).all() == new_gdf["new_col"].all()
-            assert gdf["id"].all() == new_gdf["id"].all()
-            assert "new_col_2" in new_gdf.columns
-            assert "new_col_3" not in new_gdf.columns
+        assert len(gdf) == len(new_gdf)
+        assert (gdf["id"] + shift).all() == new_gdf["new_col"].all()
+        assert gdf["id"].all() == new_gdf["id"].all()
+        assert "new_col_2" in new_gdf.columns
+        assert "new_col_3" not in new_gdf.columns

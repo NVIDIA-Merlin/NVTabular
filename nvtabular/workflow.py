@@ -103,12 +103,13 @@ class BaseWorkflow:
         if not type(operators) is list:
             operators = [operators]
         for op in operators:
-            if op.default_in != default_in:
+            if op.default_in != default_in and op.default_in != "all":
                 warnings.warn(
                     f"{op._id} was not added. This op is not designed for use"
                     f" with {default_in} columns"
                 )
                 operators.remove(op)
+        return operators
 
     def add_feature(self, operators):
         """
@@ -136,7 +137,7 @@ class BaseWorkflow:
             added into the feature engineering phase
         """
 
-        self.op_default_check(operators, "categorical")
+        operators = self.op_default_check(operators, "categorical")
         if operators:
             self.add_feature(operators)
 
@@ -152,7 +153,7 @@ class BaseWorkflow:
             continuous objects such as ZeroFill and LogOp
         """
 
-        self.op_default_check(operators, "continuous")
+        operators = self.op_default_check(operators, "continuous")
         if operators:
             self.add_feature(operators)
 
@@ -168,7 +169,7 @@ class BaseWorkflow:
             categorical objects such as Categorify
         """
 
-        self.op_default_check(operators, "categorical")
+        operators = self.op_default_check(operators, "categorical")
         if operators:
             self.add_preprocess(operators)
 
@@ -184,7 +185,7 @@ class BaseWorkflow:
             categorical objects such as Normalize
         """
 
-        self.op_default_check(operators, "continuous")
+        operators = self.op_default_check(operators, "continuous")
         if operators:
             self.add_preprocess(operators)
 

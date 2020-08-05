@@ -831,7 +831,7 @@ class JoinExternal(TransformOperator):
         if the data is originally stored on disk.
     """
 
-    default_in = CAT
+    default_in = ALL
     default_out = ALL
 
     def __init__(
