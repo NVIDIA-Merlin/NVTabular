@@ -523,7 +523,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 @pytest.mark.parametrize("cache", ["host", "device"])
 @pytest.mark.parametrize("how", ["left", "inner"])
 @pytest.mark.parametrize("drop_duplicates", [True, False])
-def test_left_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
+def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
 
     # Define "external" table
     shift = 100
