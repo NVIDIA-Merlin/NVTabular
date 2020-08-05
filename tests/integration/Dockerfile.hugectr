@@ -61,5 +61,3 @@ ADD ./tests/integration/hugectr_setup.sh /hugectr_setup.sh
 
 # Install NVTabular
 COPY . nvtabular/
-
-RUN pip install --no-cache-dir -e nvtabular/.

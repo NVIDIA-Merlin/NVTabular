@@ -10,6 +10,9 @@ pip install jupyterlab
 pip install pynvml
 pip install torch torchvision
 
+# Install NVTabular
+pip install -e /nvtabular/
+
 # Install HugeCTR
 git clone -b cgarg/parquet-v2.2-integ https://gitlab-master.nvidia.com/zehuanw/hugectr.git &&\
     cd hugectr && \
