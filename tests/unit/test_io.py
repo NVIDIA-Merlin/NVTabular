@@ -220,5 +220,3 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
         df[columns].sort_values(["x", "y"]),
         check_index=False,
     )
-    # import pdb; pdb.set_trace()
-    # pass
