@@ -30,10 +30,6 @@ from nvtabular.worker import clean_worker_cache
 LOG = logging.getLogger("nvtabular")
 
 
-def _ensure_list(operators):
-    return [operators] if not isinstance(operators, list) else operators
-
-
 class BaseWorkflow:
 
     """
@@ -125,7 +121,7 @@ class BaseWorkflow:
             list of operators or single operator, Op/s to be
             added into the feature engineering phase
         """
-        operators = _ensure_list(operators)
+
         self._config_add_ops(operators, "FE")
 
     def add_cat_feature(self, operators):
@@ -139,7 +135,7 @@ class BaseWorkflow:
             list of categorical operators or single operator, Op/s to be
             added into the feature engineering phase
         """
-        operators = _ensure_list(operators)
+
         self.op_default_check(operators, "categorical")
         if operators:
             self.add_feature(operators)
@@ -155,7 +151,7 @@ class BaseWorkflow:
         operators : object
             continuous objects such as ZeroFill and LogOp
         """
-        operators = _ensure_list(operators)
+
         self.op_default_check(operators, "continuous")
         if operators:
             self.add_feature(operators)
@@ -171,7 +167,7 @@ class BaseWorkflow:
         operators : object
             categorical objects such as Categorify
         """
-        operators = _ensure_list(operators)
+
         self.op_default_check(operators, "categorical")
         if operators:
             self.add_preprocess(operators)
@@ -187,7 +183,7 @@ class BaseWorkflow:
         operators : object
             categorical objects such as Normalize
         """
-        operators = _ensure_list(operators)
+
         self.op_default_check(operators, "continuous")
         if operators:
             self.add_preprocess(operators)
@@ -205,7 +201,6 @@ class BaseWorkflow:
             added into the preprocessing phase
         """
         # must add last operator from FE for get_default_in
-        operators = _ensure_list(operators)
         target_cols = self._get_target_cols(operators)
         if self.config["FE"][target_cols]:
             op_to_add = self.config["FE"][target_cols][-1]
