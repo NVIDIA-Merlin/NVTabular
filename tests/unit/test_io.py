@@ -20,6 +20,7 @@ import os
 
 import cudf
 import dask_cudf
+import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
@@ -59,15 +60,19 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=0, names=allcols_csv)[mycols_csv]
+    dtypes = {"id": np.int32}
     if engine == "parquet":
         columns = mycols_pq
     else:
         columns = mycols_csv
 
-    dd = nvtabular.io.Dataset(paths[0], engine=engine, part_mem_fraction=gpu_memory_frac)
+    dd = nvtabular.io.Dataset(
+        paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes
+    )
     size = 0
     for chunk in dd.to_iter(columns=columns):
         size += chunk.shape[0]
+        assert chunk["id"].dtype == np.int32
 
     assert size == df1.shape[0]
 
@@ -92,7 +97,13 @@ def test_dask_dataset(datasets, engine, num_files):
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
-def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
+@pytest.mark.parametrize("num_io_threads", [0, 2])
+@pytest.mark.parametrize("use_client", [True, False])
+def test_hugectr(
+    tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
+):
+    client = client if use_client else None
+
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -104,24 +115,22 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     os.mkdir(outdir)
 
     # process data
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor = nvt.Workflow(
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_names
+    )
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    # Need to collect statistics first (for now)
-    processor.update_stats(dataset)
-
-    # Second "online" pass to write HugeCTR output
+    # apply the workflow and write out the dataset
     processor.apply(
         dataset,
-        apply_offline=False,
-        record_stats=False,
         output_path=outdir,
         out_files_per_proc=nfiles,
         output_format=output_format,
         shuffle=False,
+        num_io_threads=num_io_threads,
     )
 
     # Check for _file_list.txt
@@ -140,7 +149,7 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
     assert "conts" in data
     assert "labels" in data
     assert "file_stats" in data
-    assert len(data["file_stats"]) == nfiles
+    assert len(data["file_stats"]) == nfiles if not client else nfiles * len(client.cluster.workers)
     for cdata in data["cats"] + data["conts"] + data["labels"]:
         col_summary[cdata["index"]] = cdata["col_name"]
 
@@ -150,12 +159,30 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns):
         ext = "parquet"
     elif output_format == "hugectr":
         ext = "data"
-    for n in range(nfiles):
-        assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))
+
+    data_files = [
+        os.path.join(outdir, filename) for filename in os.listdir(outdir) if filename.endswith(ext)
+    ]
 
     # Make sure the columns in "_metadata.json" make sense
     if output_format == "parquet":
-        df_check = cudf.read_parquet(os.path.join(outdir, "0.parquet"))
+        df_check = cudf.read_parquet(os.path.join(outdir, data_files[0]))
         for i, name in enumerate(df_check.columns):
             if i in col_summary:
                 assert col_summary[i] == name
+
+
+@pytest.mark.parametrize("inp_format", ["dask", "dask_cudf", "cudf", "pandas"])
+def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
+    paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
+    ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
+    df1 = ddf1.compute()
+    if inp_format == "dask":
+        ds = nvtabular.io.Dataset(ddf1.to_dask_dataframe())
+    elif inp_format == "dask_cudf":
+        ds = nvtabular.io.Dataset(ddf1)
+    elif inp_format == "cudf":
+        ds = nvtabular.io.Dataset(df1)
+    elif inp_format == "pandas":
+        ds = nvtabular.io.Dataset(df1.to_pandas())
+    assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))

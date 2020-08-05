@@ -19,6 +19,7 @@ import time
 import warnings
 
 import dask
+import dask_cudf
 import yaml
 from fsspec.core import get_fs_token_paths
 
@@ -555,15 +556,13 @@ class Workflow(BaseWorkflow):
     def __init__(self, client=None, **kwargs):
         super().__init__(**kwargs)
         self.ddf = None
-        self.ddf_base_dataset = None
         self.client = client
 
     def set_ddf(self, ddf):
-        if isinstance(ddf, nvt_io.Dataset):
-            self.ddf_base_dataset = ddf
-            self.ddf = self.ddf_base_dataset
-        else:
+        if isinstance(ddf, (dask_cudf.DataFrame, nvt_io.Dataset)):
             self.ddf = ddf
+        else:
+            raise TypeError("ddf type not supported.")
 
     def get_ddf(self):
         if self.ddf is None:
@@ -665,7 +664,7 @@ class Workflow(BaseWorkflow):
         output_path="./ds_export",
         output_format="parquet",
         out_files_per_proc=None,
-        **kwargs,
+        num_io_threads=0,
     ):
         """
         Runs all the preprocessing and feature engineering operators.
@@ -696,19 +695,10 @@ class Workflow(BaseWorkflow):
         out_files_per_proc : integer
             number of files to create (per process) after
             shuffling the data
+        num_io_threads : integer
+            Number of IO threads to use for writing the output dataset.
+            For `0` (default), no dedicated IO threads will be used.
         """
-
-        # Deal with single-gpu compatibility
-        nsplits = kwargs.get("nsplits", None)
-        if nsplits:
-            warnings.warn("nsplits is deprecated. Use out_files_per_proc")
-            if out_files_per_proc is None:
-                out_files_per_proc = nsplits
-        num_out_files = kwargs.get("num_out_files", None)
-        if num_out_files:
-            warnings.warn("num_out_files is deprecated. Use out_files_per_proc")
-            if out_files_per_proc is None:
-                out_files_per_proc = num_out_files
 
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
@@ -724,6 +714,7 @@ class Workflow(BaseWorkflow):
                 shuffle=shuffle,
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
+                num_io_threads=num_io_threads,
             )
         else:
             self.iterate_online(
@@ -732,6 +723,7 @@ class Workflow(BaseWorkflow):
                 shuffle=shuffle,
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
+                num_io_threads=num_io_threads,
             )
 
     def iterate_online(
@@ -743,6 +735,7 @@ class Workflow(BaseWorkflow):
         output_format=None,
         out_files_per_proc=None,
         apply_ops=True,
+        num_io_threads=0,
     ):
         """ Iterate through dataset and (optionally) apply/shuffle/write.
         """
@@ -750,7 +743,12 @@ class Workflow(BaseWorkflow):
         output_path = output_path or "./"
         output_path = str(output_path)
         writer = nvt_io.writer_factory(
-            output_format, output_path, out_files_per_proc, shuffle, bytes_io=(shuffle == "full")
+            output_format,
+            output_path,
+            out_files_per_proc,
+            shuffle,
+            bytes_io=(shuffle == "full"),
+            num_threads=num_io_threads,
         )
 
         # Iterate through dataset, apply ops, and write out processed data
@@ -786,6 +784,7 @@ class Workflow(BaseWorkflow):
         output_format=None,
         out_files_per_proc=None,
         apply_ops=True,
+        num_io_threads=0,
     ):
         """ Build Dask-task graph for workflow.
 
@@ -793,8 +792,8 @@ class Workflow(BaseWorkflow):
         """
         end = end_phase if end_phase else len(self.phases)
 
-        if output_format not in ("parquet", None):
-            raise ValueError("Output format not yet supported with Dask.")
+        if output_format not in ("parquet", "hugectr", None):
+            raise ValueError(f"Output format {output_format} not yet supported with Dask.")
 
         # Reorder tasks for two-phase workflows
         # TODO: Generalize this type of optimization
@@ -813,7 +812,13 @@ class Workflow(BaseWorkflow):
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)
-            self.ddf_to_dataset(output_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc)
+            self.ddf_to_dataset(
+                output_path,
+                output_format=output_format,
+                shuffle=shuffle,
+                out_files_per_proc=out_files_per_proc,
+                num_threads=num_io_threads,
+            )
 
     def write_to_dataset(
         self,
@@ -825,6 +830,7 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         iterate=False,
         nfiles=None,
+        num_io_threads=0,
     ):
         """ Write data to shuffled parquet dataset.
 
@@ -845,6 +851,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
+                num_io_threads=num_io_threads,
             )
         else:
             self.build_and_process_graph(
@@ -855,17 +862,23 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
+                num_io_threads=num_io_threads,
             )
 
     def ddf_to_dataset(
-        self, output_path, shuffle=None, out_files_per_proc=None, output_format="parquet"
+        self,
+        output_path,
+        shuffle=None,
+        out_files_per_proc=None,
+        output_format="parquet",
+        num_threads=0,
     ):
         """ Dask-based dataset output.
 
             Currently supports parquet only.
         """
-        if output_format != "parquet":
-            raise ValueError("Only parquet output supported with Dask.")
+        if output_format not in ("parquet", "hugectr"):
+            raise ValueError("Only parquet/hugectr output supported with Dask.")
         ddf = self.get_ddf()
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
@@ -875,8 +888,8 @@ class Workflow(BaseWorkflow):
             cont_names = self.get_final_cols_names("continuous")
             label_names = self.get_final_cols_names("label")
 
-            # Construct graph for Dask-based dataset write
-            out = nvt_io._ddf_to_dataset(
+            # Output dask_cudf DataFrame to dataset
+            nvt_io._ddf_to_dataset(
                 ddf,
                 fs,
                 output_path,
@@ -886,20 +899,9 @@ class Workflow(BaseWorkflow):
                 cont_names,
                 label_names,
                 output_format,
+                self.client,
+                num_threads,
             )
-
-            # Trigger write execution
-            if self.client:
-                self.client.cancel(self.ddf_base_dataset)
-                self.ddf_base_dataset = None
-                out = self.client.compute(out).result()
-            else:
-                self.ddf_base_dataset = None
-                out = dask.compute(out, scheduler="synchronous")[0]
-
-            # Follow-up Shuffling and _metadata creation
-            nvt_io._finish_dataset(self.client, self.ddf, output_path, fs, output_format)
-
             return
 
         # Default (shuffle=False): Just use dask_cudf.to_parquet
