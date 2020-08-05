@@ -1,5 +1,6 @@
 .git
+.dockerignore
 examples/tensorflow/logs
-examples/tensorflow/docker/Dockerfile
+examples/tensorflow/docker/Dockerfile*
 examples/tensorflow/.*
 examples/.*
