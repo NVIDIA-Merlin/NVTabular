@@ -25,4 +25,4 @@ git clone -b cgarg/parquet-v2.2-integ https://gitlab-master.nvidia.com/zehuanw/h
     chmod +x /usr/local/hugectr/bin/* && \
     rm -rf HugeCTR 
 
-PATH=/usr/local/hugectr/bin:$PATH
+export PATH=/usr/local/hugectr/bin:$PATH
