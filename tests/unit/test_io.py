@@ -186,3 +186,39 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     elif inp_format == "pandas":
         ds = nvtabular.io.Dataset(df1.to_pandas())
     assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
+
+
+@pytest.mark.parametrize("engine", ["csv"])
+@pytest.mark.parametrize("num_io_threads", [0, 2])
+@pytest.mark.parametrize("nfiles", [0, 1, 2])
+@pytest.mark.parametrize("shuffle", [True, False])
+def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
+
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
+    label_names = ["label"]
+    columns = cat_names + cont_names + label_names
+
+    outdir = str(tmpdir.mkdir("out"))
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor.finalize()
+    processor.apply(
+        nvt.Dataset(df),
+        output_format="parquet",
+        output_path=outdir,
+        out_files_per_proc=nfiles,
+        num_io_threads=num_io_threads,
+        shuffle=shuffle,
+    )
+
+    # Check that our output data is exactly the same
+    out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
+    df_check = cudf.read_parquet(out_paths)
+    assert_eq(
+        df_check[columns].sort_values(["x", "y"]),
+        df[columns].sort_values(["x", "y"]),
+        check_index=False,
+    )
+    # import pdb; pdb.set_trace()
+    # pass
