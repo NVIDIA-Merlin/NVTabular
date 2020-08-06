@@ -295,7 +295,7 @@ class ThreadedWriter(Writer):
         # path is probably worth the (possible) minor overhead.
         nrows = gdf.shape[0]
         typ = np.min_scalar_type(nrows * 2)
-        if self.shuffle and self.shuffle != "full":
+        if self.shuffle:
             ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
         else:
             ind = cp.arange(nrows, dtype=typ)

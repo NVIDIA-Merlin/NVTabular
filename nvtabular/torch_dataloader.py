@@ -211,34 +211,34 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
     def __len__(self):
         return math.ceil(self.data.num_rows / self.batch_size)
 
+
 class TensorBatchDatasetItr:
-    
     def __init__(self, dataset, shuffle=None, **kwargs):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         if shuffle:
             self.indices = cp.random.shuffle(self.indices)
-            
+
     def __iter__(self):
         indices = self.gather_indices()
         yield from self.data.to_iter(indices=indices)
-        
+
     def __len__(self):
         return self.data.num_rows
-    
+
     def gather_indices(self):
         return self.indices
-    
+
     def to_dlpack(self, gdf):
         return gdf.to_dlpack()
-    
+
     def to_tensor(self, dl_pack, dtype):
         raise NotImplementedError()
-        
+
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         raise NotImplementedError()
 
-    
+
 class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
     """
         For PyTorch Only:
@@ -251,7 +251,6 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
         paths : list of input files that represent complete dataset
     """
 
-    
     def gather_indices(self):
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
@@ -261,13 +260,12 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
             worker_id = worker_info.id
             start = worker_id * per_worker
             return self.indices[start : start + per_worker]
-    
+
     def _to_tensor(self, gdf, dtype=None):
         dl_pack = self.to_dlpack(gdf)
         tens = torch.utils.dlpack.from_dlpack(dl_pack).type(dtype)
         return tens, gdf.columns, dtype
 
-        
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         gdf_cats, gdf_conts, gdf_label = (
             gdf[_get_embedding_order(cat_names)],
@@ -283,6 +281,7 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
             label = self._to_tensor(gdf_label, torch.float32)
         del gdf_cats, gdf_conts, gdf_label
         return [cats[0], conts[0], label[0]]
+
 
 class DLDataLoader(torch.utils.data.DataLoader):
     def __len__(self):
