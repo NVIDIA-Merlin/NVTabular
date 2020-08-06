@@ -18,6 +18,7 @@ import collections
 import functools
 import json
 import logging
+import math
 import os
 import queue
 import threading
@@ -294,22 +295,21 @@ class ThreadedWriter(Writer):
         # path is probably worth the (possible) minor overhead.
         nrows = gdf.shape[0]
         typ = np.min_scalar_type(nrows * 2)
-        if self.shuffle and self.shuffle != "full":
+        if self.shuffle:
             ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
         else:
             ind = cp.arange(nrows, dtype=typ)
-            cp.floor_divide(ind, (nrows // self.num_out_files), out=ind)
-
-        # Use `scatter_by_map` to produce contiguous group for each output file
+            cp.floor_divide(ind, math.ceil(nrows / self.num_out_files), out=ind)
         for x, group in enumerate(
             gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
         ):
             self.num_samples[x] += len(group)
+            # It seems that the `copy()` operations here are necessary
+            # (test_io.py::test_mulifile_parquet fails otherwise)...
             if self.num_threads > 1:
-                self.queue.put((x, group))
+                self.queue.put((x, group.copy()))
             else:
-                self._write_table(x, group)
-                del group
+                self._write_table(x, group.copy())
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)

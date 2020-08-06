@@ -74,7 +74,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
 
     data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
-        nvt_data, batch_size=batch_size, cats=cat_names, conts=cont_names, labels=["label"],
+        nvt_data, batch_size=batch_size, cats=cat_names, conts=cont_names, labels=["label"]
     )
 
     columns = mycols_pq
@@ -124,11 +124,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     os.mkdir(output_train)
 
     processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
-        shuffle="partial",
-        output_path=output_train,
+        dataset, apply_offline=True, record_stats=True, shuffle="partial", output_path=output_train
     )
 
     tar_paths = [
@@ -138,7 +134,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
 
     data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
-        nvt_data, cats=cat_names, conts=cont_names, labels=["label"],
+        nvt_data, cats=cat_names, conts=cont_names, labels=["label"]
     )
 
     results = {}
