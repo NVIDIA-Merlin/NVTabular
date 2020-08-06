@@ -20,7 +20,6 @@ import threading
 import cudf
 import cupy as cp
 import torch
-from torch.utils.dlpack import from_dlpack
 
 from nvtabular.io import _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
