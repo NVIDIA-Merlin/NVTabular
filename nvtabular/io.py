@@ -65,6 +65,8 @@ def _check_shuffle_arg(shuffle):
             warnings.warn('`shuffle=True` is deprecated. Using `shuffle="per-worker".`')
         elif shuffle is False:
             shuffle = None
+        elif shuffle == "full":
+            raise ValueError('`shuffle="full"` is not yet supported.')
     return shuffle
 
 
