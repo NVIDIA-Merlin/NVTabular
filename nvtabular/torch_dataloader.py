@@ -20,6 +20,7 @@ import threading
 import cudf
 import cupy as cp
 import torch
+from torch.utils.dlpack import from_dlpack
 
 from nvtabular.io import _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
@@ -262,7 +263,7 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
 
     def _to_tensor(self, gdf, dtype=None):
         dl_pack = self.to_dlpack(gdf)
-        tens = torch.utils.dlpack.from_dlpack(dl_pack).type(dtype)
+        tens = from_dlpack(dl_pack).type(dtype)
         return tens, gdf.columns, dtype
 
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
