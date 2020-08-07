@@ -747,6 +747,23 @@ class Dataset:
                 self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
+        """ Convert `Dataset` object to `dask_cudf.DataFrame`
+
+        Parameters
+        -----------
+        columns : str or list(str); default None
+            Columns to include in output `DataFrame`. If not specified,
+            the output will contain all known columns in the Dataset.
+        shuffle : bool; default False
+            Whether to shuffle the order of partitions in the output
+            `dask_cdf.DataFrame`.  Note that this does not shuffle
+            the rows within each partition. This is because the data
+            is not actually loaded into memory for this operation.
+        seed : int; Optional
+            The random seed to use if `shuffle=True`.  If nothing
+            is specified, the current system time will be used by the
+            `random` std library.
+        """
         # Use DatasetEngine to create ddf
         ddf = self.engine.to_ddf(columns=columns)
 
@@ -764,6 +781,31 @@ class Dataset:
         return ddf
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
+        """ Convert `Dataset` object to a `cudf.DataFrame` iterator.
+
+        Note that this method will use `to_ddf` to produce a
+        `dask_cudf.DataFrame`, and materialize a single partition for
+        each iteration.
+
+        Parameters
+        -----------
+        columns : str or list(str); default None
+            Columns to include in each `DataFrame`. If not specified,
+            the outputs will contain all known columns in the Dataset.
+        indices : list(int); default None
+            A specific list of partition indices to iterate over. If
+            nothing is specified, all partitions will be returned in
+            order (or the shuffled order, if `shuffle=True`).
+        shuffle : bool; default False
+            Whether to shuffle the order of `dask_cudf.DataFrame`
+            partitions used by the iterator.  If the `indices`
+            argument is specified, those indices correspond to the
+            partition indices AFTER the shuffle operation.
+        seed : int; Optional
+            The random seed to use if `shuffle=True`.  If nothing
+            is specified, the current system time will be used by the
+            `random` std library.
+        """
         if isinstance(columns, str):
             columns = [columns]
 

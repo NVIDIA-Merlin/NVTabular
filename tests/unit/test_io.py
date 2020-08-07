@@ -16,10 +16,10 @@
 
 import glob
 import json
-import math
 import os
 
 import cudf
+import dask
 import dask_cudf
 import numpy as np
 import pytest
@@ -189,30 +189,36 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
 
 
-def test_dataset_partition_shuffle(tmpdir, datasets):
-    paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
-    ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
+def test_dataset_partition_shuffle(tmpdir):
+    ddf1 = dask.datasets.timeseries(
+        start="2000-01-01", end="2000-01-21", freq="1H", dtypes={"name": str, "id": int}
+    )
+    # Make sure we have enough partitions to ensure
+    # random failure is VERY unlikely (prob ~4e-19)
+    assert ddf1.npartitions == 20
+    columns = list(ddf1.columns)
     ds = nvt.Dataset(ddf1)
-
-    # TODO -- Need example with many more partitions to make this test work...
+    ddf1 = ds.to_ddf()
 
     # Shuffle
     df1 = ddf1.compute().reset_index(drop=True)
     df2_to_ddf = ds.to_ddf(shuffle=True).compute().reset_index(drop=True)
-    df2_to_iter = cudf.concat(list(ds.to_iter(columns=mycols_pq, shuffle=True))).reset_index(
+    df2_to_iter = cudf.concat(list(ds.to_iter(columns=columns, shuffle=True))).reset_index(
         drop=True
     )
 
-    df3 = df2_to_ddf[["x"]]
-    df3["x"] -= df1["x"]
-    assert not math.isclose(df3["x"].sum(), 0.0, rel_tol=1e-3)
+    # If we successfully shuffled partitions,
+    # our data should not be in the same order
+    df3 = df2_to_ddf[["id"]]
+    df3["id"] -= df1["id"]
+    assert df3["id"].abs().sum() > 0
 
     # Re-Sort
-    df1 = df1.sort_values([mycols_pq], ignore_index=True)
-    df2_to_ddf = df2_to_ddf.sort_values([mycols_pq], ignore_index=True)
-    df2_to_iter = df2_to_iter.sort_values([mycols_pq], ignore_index=True)
+    df1 = df1.sort_values(columns, ignore_index=True)
+    df2_to_ddf = df2_to_ddf.sort_values(columns, ignore_index=True)
+    df2_to_iter = df2_to_iter.sort_values(columns, ignore_index=True)
 
-    # Check equality
+    # Check that the shuffle didn't change the data after re-sorting
     assert_eq(df1, df2_to_ddf)
     assert_eq(df1, df2_to_iter)
 
