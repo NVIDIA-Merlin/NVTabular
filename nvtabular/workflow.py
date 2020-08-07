@@ -682,21 +682,21 @@ class Workflow(BaseWorkflow):
         record_stats : boolean
             Record the stats in file or not. Only available
             for apply_offline=True
-        shuffle : {"per-chunk", "per-worker", "full", None}
+        shuffle : nvt.io.Shuffle enum
             How to shuffle the output dataset. Shuffling is only
             performed if the data is written to disk. For all options,
             other than `None` (which means no shuffling), the partitions
             of the underlying dataset/ddf will be randomly ordered. If
-            "per-chunk" is specified, each worker/process will also shuffle
-            the rows within each partition before splitting and appending
-            the data to a number (`out_files_per_proc`) of output files.
-            The output files are distinctly mapped to each worker process.
-            If "per-worker" is specified, each worker will follow the same
-            procedure as "per-chunk", but will re-shuffle each file after
+            `PER_PARTITION` is specified, each worker/process will also
+            shuffle the rows within each partition before splitting and
+            appending the data to a number (`out_files_per_proc`) of output
+            files. Output files are distinctly mapped to each worker process.
+            If `PER_WORKER` is specified, each worker will follow the same
+            procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
-            write stage. The "full" option is not yet implemented.
+            persist stage. The `FULL` option is not yet implemented.
         output_path : string
             Path to write processed/shuffled output data
         output_format : {"parquet", "hugectr", None}
@@ -763,7 +763,7 @@ class Workflow(BaseWorkflow):
             output_path,
             out_files_per_proc,
             shuffle,
-            bytes_io=(shuffle == "per-worker"),
+            bytes_io=(shuffle == nvt_io.shuffle.per_worker),
             num_threads=num_io_threads,
         )
 

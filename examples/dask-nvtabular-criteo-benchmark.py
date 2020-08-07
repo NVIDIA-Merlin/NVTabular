@@ -10,7 +10,7 @@ from dask_cuda import LocalCUDACluster
 
 import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
-from nvtabular.io import device_mem_size
+from nvtabular.io import device_mem_size, Shuffle
 
 
 def setup_rmm_pool(client, pool_size):
@@ -134,14 +134,14 @@ def main(args):
         with performance_report(filename=args.profile):
             processor.apply(
                 dataset,
-                shuffle="per-worker" if args.worker_shuffle else "per-chunk",
+                shuffle=Shuffle.PER_WORKER if args.worker_shuffle else Shuffle.PER_PARTITION,
                 out_files_per_proc=out_files_per_proc,
                 output_path=out_path,
             )
     else:
         processor.apply(
             dataset,
-            shuffle="per-worker" if args.worker_shuffle else "per-chunk",
+            shuffle=Shuffle.PER_WORKER if args.worker_shuffle else Shuffle.PER_PARTITION,
             out_files_per_proc=out_files_per_proc,
             output_path=out_path,
         )

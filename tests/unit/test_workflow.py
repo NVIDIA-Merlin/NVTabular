@@ -90,7 +90,7 @@ def test_gpu_workflow_api(
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="per-chunk", apply_ops=True
+        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -166,7 +166,7 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="per-chunk", apply_ops=True
+        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -249,7 +249,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="per-chunk", apply_ops=True
+        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -264,7 +264,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     assert num_rows == len(df_pp)
 
 
-@pytest.mark.parametrize("shuffle", ["per-worker", "per-chunk", None])
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("use_client", [True, False])
 def test_parquet_output(client, use_client, tmpdir, shuffle):
     out_files_per_proc = 2
