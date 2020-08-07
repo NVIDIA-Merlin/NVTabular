@@ -432,7 +432,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     outdir = tmpdir.mkdir("out1")
     processor.write_to_dataset(
-        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = nvtabular.io.Dataset(
@@ -455,7 +455,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     outdir = tmpdir.mkdir("out2")
     processor.write_to_dataset(
-        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = nvtabular.io.Dataset(
@@ -485,7 +485,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     outdir = tmpdir.mkdir("out3")
     processor.write_to_dataset(
-        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
     dataset_2 = nvtabular.io.Dataset(
         glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
@@ -511,7 +511,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     outdir = tmpdir.mkdir("out4")
     processor.write_to_dataset(
-        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = nvtabular.io.Dataset(
@@ -541,7 +541,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.update_stats(dataset)
     outdir = tmpdir.mkdir("out5")
     processor.write_to_dataset(
-        outdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = nvtabular.io.Dataset(

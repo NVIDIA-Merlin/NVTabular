@@ -15,6 +15,7 @@
 #
 
 import collections
+import enum
 import functools
 import json
 import logging
@@ -53,9 +54,32 @@ from nvtabular.worker import clean_worker_cache, get_worker_cache
 LOG = logging.getLogger("nvtabular")
 
 
+class Shuffle(enum.Enum):
+    PER_PARTITION = 0
+    PER_WORKER = 1
+    FULL = 2
+
+
 #
 # Helper Function definitions
 #
+
+
+def _check_shuffle_arg(shuffle):
+    if shuffle is None:
+        return shuffle
+
+    if isinstance(shuffle, Shuffle):
+        if shuffle == Shuffle.FULL:
+            raise ValueError('`shuffle="full"` is not yet supported.')
+    elif shuffle is True:
+        shuffle = Shuffle.PER_WORKER
+        warnings.warn("`shuffle=True` is deprecated. Using `PER_WORKER`.", DeprecationWarning)
+    elif shuffle is False:
+        shuffle = None
+    else:
+        raise ValueError(f"`shuffle={shuffle}` not recognized.")
+    return shuffle
 
 
 def _allowable_batch_size(gpu_memory_frac, row_size):
@@ -448,7 +472,7 @@ class ParquetWriter(ThreadedWriter):
         for bio, path in zip(self.data_bios, self.data_paths):
             gdf = cudf.io.read_parquet(bio, index=False)
             bio.close()
-            if self.shuffle == "full":
+            if self.shuffle == Shuffle.PER_WORKER:
                 gdf = _shuffle_gdf(gdf)
             gdf.to_parquet(path, compression=None, index=False)
         return
@@ -509,7 +533,7 @@ class HugeCTRWriter(ThreadedWriter):
         return None
 
     def _bytesio_to_disk(self):
-        raise ValueError("hugectr binary format doesn't support shuffle=full yet")
+        raise ValueError("hugectr binary format doesn't support PER_WORKER shuffle yet")
 
 
 #
@@ -543,7 +567,7 @@ def _write_output_partition(
                 out_files_per_proc,
                 shuffle,
                 use_guid=True,
-                bytes_io=(shuffle == "full"),
+                bytes_io=(shuffle == Shuffle.PER_WORKER),
                 num_threads=num_threads,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
