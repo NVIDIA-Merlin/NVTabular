@@ -10,7 +10,7 @@ from dask_cuda import LocalCUDACluster
 
 import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
-from nvtabular.io import device_mem_size, Shuffle
+import nvtabular.io as nvt_io
 
 
 def setup_rmm_pool(client, pool_size):
@@ -79,7 +79,7 @@ def main(args):
                 cat_cache["C10"] = "host"
 
     # Use total device size to calculate args.device_limit_frac
-    device_size = device_mem_size(kind="total")
+    device_size = nvt_io.device_mem_size(kind="total")
     device_limit = int(args.device_limit_frac * device_size)
     device_pool_size = int(args.device_pool_frac * device_size)
     part_size = int(args.part_mem_frac * device_size)
@@ -134,14 +134,18 @@ def main(args):
         with performance_report(filename=args.profile):
             processor.apply(
                 dataset,
-                shuffle=Shuffle.PER_WORKER if args.worker_shuffle else Shuffle.PER_PARTITION,
+                shuffle=nvt_io.Shuffle.PER_WORKER
+                if args.worker_shuffle
+                else nvt_io.Shuffle.PER_PARTITION,
                 out_files_per_proc=out_files_per_proc,
                 output_path=out_path,
             )
     else:
         processor.apply(
             dataset,
-            shuffle=Shuffle.PER_WORKER if args.worker_shuffle else Shuffle.PER_PARTITION,
+            shuffle=nvt_io.Shuffle.PER_WORKER
+            if args.worker_shuffle
+            else nvt_io.Shuffle.PER_PARTITION,
             out_files_per_proc=out_files_per_proc,
             output_path=out_path,
         )
