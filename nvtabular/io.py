@@ -756,7 +756,7 @@ class Dataset:
             the output will contain all known columns in the Dataset.
         shuffle : bool; default False
             Whether to shuffle the order of partitions in the output
-            `dask_cdf.DataFrame`.  Note that this does not shuffle
+            `dask_cudf.DataFrame`.  Note that this does not shuffle
             the rows within each partition. This is because the data
             is not actually loaded into memory for this operation.
         seed : int; Optional
