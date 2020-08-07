@@ -21,6 +21,7 @@ import logging
 import math
 import os
 import queue
+import random
 import threading
 import warnings
 from collections import defaultdict
@@ -745,18 +746,30 @@ class Dataset:
             else:
                 self.engine = engine(paths, part_size, storage_options=storage_options)
 
-    def to_ddf(self, columns=None):
+    def to_ddf(self, columns=None, shuffle=False, seed=None):
+        # Use DatasetEngine to create ddf
         ddf = self.engine.to_ddf(columns=columns)
+
+        # Shuffle the partitions of ddf (optional)
+        if shuffle and ddf.npartitions > 1:
+            parts = ddf.to_delayed()
+            random.seed(seed)
+            random.shuffle(parts)
+            ddf = dask_cudf.from_delayed(parts)
+
+        # Special dtype conversion (optional)
         if self.dtypes:
             _meta = _set_dtypes(ddf._meta, self.dtypes)
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
-    def to_iter(self, columns=None, indices=None):
+    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
         if isinstance(columns, str):
             columns = [columns]
 
-        return DataFrameIter(self.to_ddf(columns=columns), indices=indices)
+        return DataFrameIter(
+            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+        )
 
     @property
     def num_rows(self):

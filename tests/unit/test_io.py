@@ -16,6 +16,7 @@
 
 import glob
 import json
+import math
 import os
 
 import cudf
@@ -186,6 +187,34 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     elif inp_format == "pandas":
         ds = nvtabular.io.Dataset(df1.to_pandas())
     assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
+
+
+def test_dataset_partition_shuffle(tmpdir, datasets):
+    paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
+    ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
+    ds = nvt.Dataset(ddf1)
+
+    # TODO -- Need example with many more partitions to make this test work...
+
+    # Shuffle
+    df1 = ddf1.compute().reset_index(drop=True)
+    df2_to_ddf = ds.to_ddf(shuffle=True).compute().reset_index(drop=True)
+    df2_to_iter = cudf.concat(list(ds.to_iter(columns=mycols_pq, shuffle=True))).reset_index(
+        drop=True
+    )
+
+    df3 = df2_to_ddf[["x"]]
+    df3["x"] -= df1["x"]
+    assert not math.isclose(df3["x"].sum(), 0.0, rel_tol=1e-3)
+
+    # Re-Sort
+    df1 = df1.sort_values([mycols_pq], ignore_index=True)
+    df2_to_ddf = df2_to_ddf.sort_values([mycols_pq], ignore_index=True)
+    df2_to_iter = df2_to_iter.sort_values([mycols_pq], ignore_index=True)
+
+    # Check equality
+    assert_eq(df1, df2_to_ddf)
+    assert_eq(df1, df2_to_iter)
 
 
 @pytest.mark.parametrize("engine", ["csv"])
