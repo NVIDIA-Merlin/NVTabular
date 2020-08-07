@@ -8,9 +8,9 @@ import cudf
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
 
-import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
-import nvtabular.io as nvt_io
+from nvtabular import io as nvt_io
+from nvtabular import ops as ops
 
 
 def setup_rmm_pool(client, pool_size):
