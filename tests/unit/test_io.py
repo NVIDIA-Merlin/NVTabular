@@ -19,6 +19,7 @@ import json
 import os
 
 import cudf
+import dask
 import dask_cudf
 import numpy as np
 import pytest
@@ -186,6 +187,40 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     elif inp_format == "pandas":
         ds = nvtabular.io.Dataset(df1.to_pandas())
     assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
+
+
+def test_dataset_partition_shuffle(tmpdir):
+    ddf1 = dask.datasets.timeseries(
+        start="2000-01-01", end="2000-01-21", freq="1H", dtypes={"name": str, "id": int}
+    )
+    # Make sure we have enough partitions to ensure
+    # random failure is VERY unlikely (prob ~4e-19)
+    assert ddf1.npartitions == 20
+    columns = list(ddf1.columns)
+    ds = nvt.Dataset(ddf1)
+    ddf1 = ds.to_ddf()
+
+    # Shuffle
+    df1 = ddf1.compute().reset_index(drop=True)
+    df2_to_ddf = ds.to_ddf(shuffle=True).compute().reset_index(drop=True)
+    df2_to_iter = cudf.concat(list(ds.to_iter(columns=columns, shuffle=True))).reset_index(
+        drop=True
+    )
+
+    # If we successfully shuffled partitions,
+    # our data should not be in the same order
+    df3 = df2_to_ddf[["id"]]
+    df3["id"] -= df1["id"]
+    assert df3["id"].abs().sum() > 0
+
+    # Re-Sort
+    df1 = df1.sort_values(columns, ignore_index=True)
+    df2_to_ddf = df2_to_ddf.sort_values(columns, ignore_index=True)
+    df2_to_iter = df2_to_iter.sort_values(columns, ignore_index=True)
+
+    # Check that the shuffle didn't change the data after re-sorting
+    assert_eq(df1, df2_to_ddf)
+    assert_eq(df1, df2_to_iter)
 
 
 @pytest.mark.parametrize("engine", ["csv"])
