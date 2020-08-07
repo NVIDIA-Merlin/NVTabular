@@ -19,6 +19,7 @@ import json
 import os
 
 import cudf
+import dask
 import dask_cudf
 import numpy as np
 import pytest
@@ -98,7 +99,12 @@ def test_dask_dataset(datasets, engine, num_files):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
-def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_threads):
+@pytest.mark.parametrize("use_client", [True, False])
+def test_hugectr(
+    tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
+):
+    client = client if use_client else None
+
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -110,20 +116,17 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_
     os.mkdir(outdir)
 
     # process data
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor = nvt.Workflow(
+        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_names
+    )
     processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    # Need to collect statistics first (for now)
-    processor.update_stats(dataset)
-
-    # Second "online" pass to write HugeCTR output
+    # apply the workflow and write out the dataset
     processor.apply(
         dataset,
-        apply_offline=False,
-        record_stats=False,
         output_path=outdir,
         out_files_per_proc=nfiles,
         output_format=output_format,
@@ -147,7 +150,7 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_
     assert "conts" in data
     assert "labels" in data
     assert "file_stats" in data
-    assert len(data["file_stats"]) == nfiles
+    assert len(data["file_stats"]) == nfiles if not client else nfiles * len(client.cluster.workers)
     for cdata in data["cats"] + data["conts"] + data["labels"]:
         col_summary[cdata["index"]] = cdata["col_name"]
 
@@ -157,12 +160,14 @@ def test_hugectr(tmpdir, df, dataset, output_format, engine, op_columns, num_io_
         ext = "parquet"
     elif output_format == "hugectr":
         ext = "data"
-    for n in range(nfiles):
-        assert os.path.isfile(os.path.join(outdir, str(n) + "." + ext))
+
+    data_files = [
+        os.path.join(outdir, filename) for filename in os.listdir(outdir) if filename.endswith(ext)
+    ]
 
     # Make sure the columns in "_metadata.json" make sense
     if output_format == "parquet":
-        df_check = cudf.read_parquet(os.path.join(outdir, "0.parquet"))
+        df_check = cudf.read_parquet(os.path.join(outdir, data_files[0]))
         for i, name in enumerate(df_check.columns):
             if i in col_summary:
                 assert col_summary[i] == name
@@ -182,3 +187,71 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     elif inp_format == "pandas":
         ds = nvtabular.io.Dataset(df1.to_pandas())
     assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
+
+
+def test_dataset_partition_shuffle(tmpdir):
+    ddf1 = dask.datasets.timeseries(
+        start="2000-01-01", end="2000-01-21", freq="1H", dtypes={"name": str, "id": int}
+    )
+    # Make sure we have enough partitions to ensure
+    # random failure is VERY unlikely (prob ~4e-19)
+    assert ddf1.npartitions == 20
+    columns = list(ddf1.columns)
+    ds = nvt.Dataset(ddf1)
+    ddf1 = ds.to_ddf()
+
+    # Shuffle
+    df1 = ddf1.compute().reset_index(drop=True)
+    df2_to_ddf = ds.to_ddf(shuffle=True).compute().reset_index(drop=True)
+    df2_to_iter = cudf.concat(list(ds.to_iter(columns=columns, shuffle=True))).reset_index(
+        drop=True
+    )
+
+    # If we successfully shuffled partitions,
+    # our data should not be in the same order
+    df3 = df2_to_ddf[["id"]]
+    df3["id"] -= df1["id"]
+    assert df3["id"].abs().sum() > 0
+
+    # Re-Sort
+    df1 = df1.sort_values(columns, ignore_index=True)
+    df2_to_ddf = df2_to_ddf.sort_values(columns, ignore_index=True)
+    df2_to_iter = df2_to_iter.sort_values(columns, ignore_index=True)
+
+    # Check that the shuffle didn't change the data after re-sorting
+    assert_eq(df1, df2_to_ddf)
+    assert_eq(df1, df2_to_iter)
+
+
+@pytest.mark.parametrize("engine", ["csv"])
+@pytest.mark.parametrize("num_io_threads", [0, 2])
+@pytest.mark.parametrize("nfiles", [0, 1, 2])
+@pytest.mark.parametrize("shuffle", [True, False])
+def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
+
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
+    label_names = ["label"]
+    columns = cat_names + cont_names + label_names
+
+    outdir = str(tmpdir.mkdir("out"))
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor.finalize()
+    processor.apply(
+        nvt.Dataset(df),
+        output_format="parquet",
+        output_path=outdir,
+        out_files_per_proc=nfiles,
+        num_io_threads=num_io_threads,
+        shuffle=shuffle,
+    )
+
+    # Check that our output data is exactly the same
+    out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
+    df_check = cudf.read_parquet(out_paths)
+    assert_eq(
+        df_check[columns].sort_values(["x", "y"]),
+        df[columns].sort_values(["x", "y"]),
+        check_index=False,
+    )

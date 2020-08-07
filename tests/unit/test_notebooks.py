@@ -30,8 +30,8 @@ def test_criteo_notebook(tmpdir):
 
 def test_optimize_criteo(tmpdir):
     _get_random_criteo_data(1000).to_csv(os.path.join(tmpdir, "day_0"), sep="\t", header=False)
-    os.environ["INPUT_PATH"] = str(tmpdir)
-    os.environ["OUTPUT_PATH"] = str(tmpdir)
+    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
     _run_notebook(tmpdir, notebook_path)
@@ -41,7 +41,7 @@ def test_rossman_example(tmpdir):
     pytest.importorskip("tensorflow")
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
-    os.environ["DATA_DIR"] = str(tmpdir)
+    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
 
     notebook_path = os.path.join(
         dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
@@ -72,10 +72,10 @@ def _run_notebook(tmpdir, notebook_path, transform=None):
 def _get_random_criteo_data(rows):
     dtypes = {col: float for col in [f"I{x}" for x in range(1, 14)]}
     dtypes.update({col: int for col in [f"C{x}" for x in range(1, 27)]})
-    dtypes["label"] = int
+    dtypes["label"] = bool
     ret = cudf.datasets.randomdata(rows, dtypes=dtypes)
     # binarize the labels
-    ret.label = ret.label % 2
+    ret.label = ret.label.astype(int)
     return ret
 
 

@@ -103,12 +103,13 @@ class BaseWorkflow:
         if not type(operators) is list:
             operators = [operators]
         for op in operators:
-            if op.default_in not in default_in:
+            if op.default_in != default_in and op.default_in != "all":
                 warnings.warn(
                     f"{op._id} was not added. This op is not designed for use"
                     f" with {default_in} columns"
                 )
                 operators.remove(op)
+        return operators
 
     def add_feature(self, operators):
         """
@@ -136,7 +137,7 @@ class BaseWorkflow:
             added into the feature engineering phase
         """
 
-        self.op_default_check(operators, "categorical")
+        operators = self.op_default_check(operators, "categorical")
         if operators:
             self.add_feature(operators)
 
@@ -152,7 +153,7 @@ class BaseWorkflow:
             continuous objects such as ZeroFill and LogOp
         """
 
-        self.op_default_check(operators, "continuous")
+        operators = self.op_default_check(operators, "continuous")
         if operators:
             self.add_feature(operators)
 
@@ -168,7 +169,7 @@ class BaseWorkflow:
             categorical objects such as Categorify
         """
 
-        self.op_default_check(operators, "categorical")
+        operators = self.op_default_check(operators, "categorical")
         if operators:
             self.add_preprocess(operators)
 
@@ -184,7 +185,7 @@ class BaseWorkflow:
             categorical objects such as Normalize
         """
 
-        self.op_default_check(operators, "continuous")
+        operators = self.op_default_check(operators, "continuous")
         if operators:
             self.add_preprocess(operators)
 
@@ -792,8 +793,8 @@ class Workflow(BaseWorkflow):
         """
         end = end_phase if end_phase else len(self.phases)
 
-        if output_format not in ("parquet", None):
-            raise ValueError("Output format not yet supported with Dask.")
+        if output_format not in ("parquet", "hugectr", None):
+            raise ValueError(f"Output format {output_format} not yet supported with Dask.")
 
         # Reorder tasks for two-phase workflows
         # TODO: Generalize this type of optimization
@@ -814,6 +815,7 @@ class Workflow(BaseWorkflow):
             output_path = str(output_path)
             self.ddf_to_dataset(
                 output_path,
+                output_format=output_format,
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
                 num_threads=num_io_threads,
@@ -876,8 +878,8 @@ class Workflow(BaseWorkflow):
 
             Currently supports parquet only.
         """
-        if output_format != "parquet":
-            raise ValueError("Only parquet output supported with Dask.")
+        if output_format not in ("parquet", "hugectr"):
+            raise ValueError("Only parquet/hugectr output supported with Dask.")
         ddf = self.get_ddf()
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)

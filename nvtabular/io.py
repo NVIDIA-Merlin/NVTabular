@@ -18,8 +18,10 @@ import collections
 import functools
 import json
 import logging
+import math
 import os
 import queue
+import random
 import threading
 import warnings
 from collections import defaultdict
@@ -33,6 +35,7 @@ import dask_cudf
 import numba.cuda as cuda
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
@@ -132,6 +135,23 @@ def _set_dtypes(chunk, dtypes):
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
+
+
+def _detect_format(data):
+    """ Utility to detect the format of `data`
+    """
+
+    if isinstance(data, cudf.DataFrame):
+        return "cudf"
+    elif isinstance(data, pd.DataFrame):
+        return "pandas"
+    elif isinstance(data, pa.Table):
+        return "arrow"
+    else:
+        file_type = str(data).split(".")[-1]
+        if file_type not in ("parquet", "csv"):
+            raise ValueError("Data format not recognized.")
+        return file_type
 
 
 #
@@ -238,7 +258,6 @@ class ThreadedWriter(Writer):
         # Only use threading if num_threads > 1
         self.queue = None
         if self.num_threads > 1:
-
             # create thread queue and locks
             self.queue = queue.Queue(num_threads)
             self.write_locks = [threading.Lock() for _ in range(num_out_files)]
@@ -277,22 +296,21 @@ class ThreadedWriter(Writer):
         # path is probably worth the (possible) minor overhead.
         nrows = gdf.shape[0]
         typ = np.min_scalar_type(nrows * 2)
-        if self.shuffle and self.shuffle != "full":
+        if self.shuffle:
             ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
         else:
             ind = cp.arange(nrows, dtype=typ)
-            cp.floor_divide(ind, (nrows // self.num_out_files), out=ind)
-
-        # Use `scatter_by_map` to produce contiguous group for each output file
+            cp.floor_divide(ind, math.ceil(nrows / self.num_out_files), out=ind)
         for x, group in enumerate(
             gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
         ):
             self.num_samples[x] += len(group)
+            # It seems that the `copy()` operations here are necessary
+            # (test_io.py::test_mulifile_parquet fails otherwise)...
             if self.num_threads > 1:
-                self.queue.put((x, group))
+                self.queue.put((x, group.copy()))
             else:
-                self._write_table(x, group)
-                del group
+                self._write_table(x, group.copy())
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)
@@ -490,6 +508,9 @@ class HugeCTRWriter(ThreadedWriter):
             writer.close()
         return None
 
+    def _bytesio_to_disk(self):
+        raise ValueError("hugectr binary format doesn't support shuffle=full yet")
+
 
 #
 # Dask-based IO
@@ -595,7 +616,8 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
         special_md = []
         for (gen, spec) in out.values():
             general_md.append(gen)
-            special_md.append(spec)
+            if spec:
+                special_md.append(spec)
 
         general_md = _merge_general_metadata(general_md)
         special_md = dict(collections.ChainMap(*special_md))
@@ -724,18 +746,72 @@ class Dataset:
             else:
                 self.engine = engine(paths, part_size, storage_options=storage_options)
 
-    def to_ddf(self, columns=None):
+    def to_ddf(self, columns=None, shuffle=False, seed=None):
+        """ Convert `Dataset` object to `dask_cudf.DataFrame`
+
+        Parameters
+        -----------
+        columns : str or list(str); default None
+            Columns to include in output `DataFrame`. If not specified,
+            the output will contain all known columns in the Dataset.
+        shuffle : bool; default False
+            Whether to shuffle the order of partitions in the output
+            `dask_cudf.DataFrame`.  Note that this does not shuffle
+            the rows within each partition. This is because the data
+            is not actually loaded into memory for this operation.
+        seed : int; Optional
+            The random seed to use if `shuffle=True`.  If nothing
+            is specified, the current system time will be used by the
+            `random` std library.
+        """
+        # Use DatasetEngine to create ddf
         ddf = self.engine.to_ddf(columns=columns)
+
+        # Shuffle the partitions of ddf (optional)
+        if shuffle and ddf.npartitions > 1:
+            parts = ddf.to_delayed()
+            random.seed(seed)
+            random.shuffle(parts)
+            ddf = dask_cudf.from_delayed(parts)
+
+        # Special dtype conversion (optional)
         if self.dtypes:
             _meta = _set_dtypes(ddf._meta, self.dtypes)
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
-    def to_iter(self, columns=None):
+    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
+        """ Convert `Dataset` object to a `cudf.DataFrame` iterator.
+
+        Note that this method will use `to_ddf` to produce a
+        `dask_cudf.DataFrame`, and materialize a single partition for
+        each iteration.
+
+        Parameters
+        -----------
+        columns : str or list(str); default None
+            Columns to include in each `DataFrame`. If not specified,
+            the outputs will contain all known columns in the Dataset.
+        indices : list(int); default None
+            A specific list of partition indices to iterate over. If
+            nothing is specified, all partitions will be returned in
+            order (or the shuffled order, if `shuffle=True`).
+        shuffle : bool; default False
+            Whether to shuffle the order of `dask_cudf.DataFrame`
+            partitions used by the iterator.  If the `indices`
+            argument is specified, those indices correspond to the
+            partition indices AFTER the shuffle operation.
+        seed : int; Optional
+            The random seed to use if `shuffle=True`.  If nothing
+            is specified, the current system time will be used by the
+            `random` std library.
+        """
         if isinstance(columns, str):
             columns = [columns]
 
-        return DataFrameIter(self.to_ddf(columns=columns))
+        return DataFrameIter(
+            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+        )
 
     @property
     def num_rows(self):
@@ -956,15 +1032,19 @@ class DataFrameDatasetEngine(DatasetEngine):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None):
+    def __init__(self, ddf, columns=None, indices=None):
+        self.indices = (
+            indices if isinstance(indices, list) and len(indices) > 0 else range(ddf.npartitions)
+        )
         self._ddf = ddf
         self.columns = columns
 
     def __len__(self):
-        return self._ddf.npartitions
+        return len(self.indices)
 
     def __iter__(self):
-        for part in self._ddf.partitions:
+        for i in self.indices:
+            part = self._ddf.get_partition(i)
             if self.columns:
                 yield part[self.columns].compute(scheduler="synchronous")
             else:
