@@ -134,14 +134,14 @@ def main(args):
         with performance_report(filename=args.profile):
             processor.apply(
                 dataset,
-                shuffle="full" if args.worker_shuffle else "partial",
+                shuffle="per-worker" if args.worker_shuffle else "per-chunk",
                 out_files_per_proc=out_files_per_proc,
                 output_path=out_path,
             )
     else:
         processor.apply(
             dataset,
-            shuffle="full" if args.worker_shuffle else "partial",
+            shuffle="per-worker" if args.worker_shuffle else "per-chunk",
             out_files_per_proc=out_files_per_proc,
             output_path=out_path,
         )

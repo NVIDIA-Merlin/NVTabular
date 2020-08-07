@@ -62,7 +62,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
         dataset,
         apply_offline=True,
         record_stats=True,
-        shuffle="partial",
+        shuffle="per-chunk",
         output_path=output_train,
         out_files_per_proc=2,
     )
@@ -124,7 +124,11 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     os.mkdir(output_train)
 
     processor.apply(
-        dataset, apply_offline=True, record_stats=True, shuffle="partial", output_path=output_train
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        shuffle="per-chunk",
+        output_path=output_train,
     )
 
     tar_paths = [

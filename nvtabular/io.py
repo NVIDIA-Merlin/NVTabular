@@ -58,6 +58,16 @@ LOG = logging.getLogger("nvtabular")
 #
 
 
+def _check_shuffle_arg(shuffle):
+    if shuffle not in ("per-chunk", "per-worker", "full", None):
+        if shuffle is True:
+            shuffle = "per-worker"
+            warnings.warn('`shuffle=True` is deprecated. Using `shuffle="per-worker".`')
+        elif shuffle is False:
+            shuffle = None
+    return shuffle
+
+
 def _allowable_batch_size(gpu_memory_frac, row_size):
     free_mem = device_mem_size(kind="free")
     gpu_memory = free_mem * gpu_memory_frac
@@ -448,7 +458,7 @@ class ParquetWriter(ThreadedWriter):
         for bio, path in zip(self.data_bios, self.data_paths):
             gdf = cudf.io.read_parquet(bio, index=False)
             bio.close()
-            if self.shuffle == "full":
+            if self.shuffle == "per-worker":
                 gdf = _shuffle_gdf(gdf)
             gdf.to_parquet(path, compression=None, index=False)
         return
@@ -509,7 +519,7 @@ class HugeCTRWriter(ThreadedWriter):
         return None
 
     def _bytesio_to_disk(self):
-        raise ValueError("hugectr binary format doesn't support shuffle=full yet")
+        raise ValueError('hugectr binary format doesn\'t support "per-worker" shuffle yet')
 
 
 #
@@ -543,7 +553,7 @@ def _write_output_partition(
                 out_files_per_proc,
                 shuffle,
                 use_guid=True,
-                bytes_io=(shuffle == "full"),
+                bytes_io=(shuffle == "per-worker"),
                 num_threads=num_threads,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)

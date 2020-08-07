@@ -40,7 +40,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle="partial")
+    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle="per-chunk")
     shuf.add_data(df1)
     writer_files = shuf.data_paths
     shuf.close()
@@ -130,7 +130,7 @@ def test_hugectr(
         output_path=outdir,
         out_files_per_proc=nfiles,
         output_format=output_format,
-        shuffle=False,
+        shuffle=None,
         num_io_threads=num_io_threads,
     )
 
