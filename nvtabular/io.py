@@ -62,11 +62,15 @@ def _check_shuffle_arg(shuffle):
     if shuffle not in ("per-chunk", "per-worker", "full", None):
         if shuffle is True:
             shuffle = "per-worker"
-            warnings.warn('`shuffle=True` is deprecated. Using `shuffle="per-worker".`')
+            warnings.warn(
+                '`shuffle=True` is deprecated. Using `shuffle="per-worker".`', DeprecationWarning
+            )
         elif shuffle is False:
             shuffle = None
         elif shuffle == "full":
             raise ValueError('`shuffle="full"` is not yet supported.')
+        else:
+            raise ValueError(f"`shuffle={shuffle}` not recognized.")
     return shuffle
 
 
