@@ -329,12 +329,10 @@ class ThreadedWriter(Writer):
             gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
         ):
             self.num_samples[x] += len(group)
-            # It seems that the `copy()` operations here are necessary
-            # (test_io.py::test_mulifile_parquet fails otherwise)...
             if self.num_threads > 1:
-                self.queue.put((x, group.copy()))
+                self.queue.put((x, group))
             else:
-                self._write_table(x, group.copy())
+                self._write_table(x, group)
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)
