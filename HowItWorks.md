@@ -65,8 +65,8 @@ proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_
 Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
 
 ```python
-# zero fill and then take log(1+x)
-workflow.add_cont_feature([ZeroFill(), LogOp()])
+# Replace negative and missing values with 0 and then take log(1+x)
+workflow.add_cont_feature([ReLu(), LogOp()])
 
 # then normalize
 workflow.add_cont_preprocess(Normalize())

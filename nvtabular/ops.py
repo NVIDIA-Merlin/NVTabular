@@ -335,9 +335,9 @@ class Median(StatOperator):
         return
 
 
-class ZeroFill(TransformOperator):
+class ReLu(TransformOperator):
     """
-    This operation sets negative values to zero.
+    This operation sets negative values and missing values to zero.
 
     Although you can directly call methods of this class to
     transform your continuous features, it's typically used within a
@@ -347,7 +347,7 @@ class ZeroFill(TransformOperator):
     default_in = CONT
     default_out = CONT
 
-    @annotate("ZeroFill_op", color="darkgreen", domain="nvt_python")
+    @annotate("ReLu_Op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         cont_names = target_columns
         if not cont_names:

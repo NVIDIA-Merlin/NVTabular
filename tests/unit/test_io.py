@@ -119,7 +119,7 @@ def test_hugectr(
     processor = nvt.Workflow(
         client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_names
     )
-    processor.add_feature([ops.ZeroFill(columns=op_columns), ops.LogOp()])
+    processor.add_feature([ops.ReLu(columns=op_columns), ops.LogOp()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()

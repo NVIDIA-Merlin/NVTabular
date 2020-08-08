@@ -75,7 +75,7 @@ def test_dask_workflow_api_dlrm(
         client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
 
-    processor.add_feature([ops.ZeroFill(), ops.LogOp()])
+    processor.add_feature([ops.ReLu(), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
             freq_threshold=freq_threshold,
