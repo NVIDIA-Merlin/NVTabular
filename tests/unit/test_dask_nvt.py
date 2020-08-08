@@ -26,6 +26,7 @@ from dask.dataframe import assert_eq
 
 import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
+from nvtabular.io import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -47,7 +48,7 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("freq_threshold", [0, 150])
 @pytest.mark.parametrize("cat_cache", ["device", None])
 @pytest.mark.parametrize("on_host", [True, False])
-@pytest.mark.parametrize("shuffle", ["full", None])
+@pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
 def test_dask_workflow_api_dlrm(
     client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
 ):

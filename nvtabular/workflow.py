@@ -558,10 +558,13 @@ class Workflow(BaseWorkflow):
         super().__init__(**kwargs)
         self.ddf = None
         self.client = client
+        self._shuffle_parts = False
 
-    def set_ddf(self, ddf):
+    def set_ddf(self, ddf, shuffle=None):
         if isinstance(ddf, (dask_cudf.DataFrame, nvt_io.Dataset)):
             self.ddf = ddf
+            if shuffle is not None:
+                self._shuffle_parts = shuffle
         else:
             raise TypeError("ddf type not supported.")
 
@@ -570,7 +573,7 @@ class Workflow(BaseWorkflow):
             raise ValueError("No dask_cudf frame available.")
         elif isinstance(self.ddf, nvt_io.Dataset):
             columns = self.columns_ctx["all"]["base"]
-            return self.ddf.to_ddf(columns=columns)
+            return self.ddf.to_ddf(columns=columns, shuffle=self._shuffle_parts)
         return self.ddf
 
     @staticmethod
@@ -669,37 +672,46 @@ class Workflow(BaseWorkflow):
     ):
         """
         Runs all the preprocessing and feature engineering operators.
-        Also, shuffles the data if shuffle is set to True.
+        Also, shuffles the data if a `shuffle` option is specified.
 
         Parameters
         -----------
         dataset : object
         apply_offline : boolean
-            runs operators in offline mode or not
+            Runs operators in offline mode or not
         record_stats : boolean
-            record the stats in file or not. Only available
+            Record the stats in file or not. Only available
             for apply_offline=True
-        shuffle : {"full", "partial", None}
-            Whether to shuffle output dataset. "partial" means
-            each worker will randomly shuffle data into a number
-            (`out_files_per_proc`) of different output files as the data
-            is processed. The output files are distinctly mapped to
-            each worker process. "full" means the workers will perform the
-            "partial" shuffle into BytesIO files, and then perform
-            a full shuffle of each in-memory file before writing to
-            disk. A "true" full shuffle is not yet implemented.
+        shuffle : nvt.io.Shuffle enum
+            How to shuffle the output dataset. Shuffling is only
+            performed if the data is written to disk. For all options,
+            other than `None` (which means no shuffling), the partitions
+            of the underlying dataset/ddf will be randomly ordered. If
+            `PER_PARTITION` is specified, each worker/process will also
+            shuffle the rows within each partition before splitting and
+            appending the data to a number (`out_files_per_proc`) of output
+            files. Output files are distinctly mapped to each worker process.
+            If `PER_WORKER` is specified, each worker will follow the same
+            procedure as `PER_PARTITION`, but will re-shuffle each file after
+            all data is persisted.  This results in a full shuffle of the
+            data processed by each worker.  To improve performace, this option
+            currently uses host-memory `BytesIO` objects for the intermediate
+            persist stage. The `FULL` option is not yet implemented.
         output_path : string
-            path to output data
+            Path to write processed/shuffled output data
         output_format : {"parquet", "hugectr", None}
-            Output format for processed/shuffled dataset. If None,
-            no output dataset will be written.
+            Output format to write processed/shuffled data. If None,
+            no output dataset will be written (and shuffling skipped).
         out_files_per_proc : integer
-            number of files to create (per process) after
+            Number of files to create (per process) after
             shuffling the data
         num_io_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
         """
+
+        # Check shuffle argument
+        shuffle = nvt_io._check_shuffle_arg(shuffle)
 
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
@@ -740,6 +752,9 @@ class Workflow(BaseWorkflow):
     ):
         """ Iterate through dataset and (optionally) apply/shuffle/write.
         """
+        # Check shuffle argument
+        shuffle = nvt_io._check_shuffle_arg(shuffle)
+
         # Check if we have a (supported) writer
         output_path = output_path or "./"
         output_path = str(output_path)
@@ -748,13 +763,13 @@ class Workflow(BaseWorkflow):
             output_path,
             out_files_per_proc,
             shuffle,
-            bytes_io=(shuffle == "full"),
+            bytes_io=(shuffle == nvt_io.shuffle.per_worker),
             num_threads=num_io_threads,
         )
 
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
-            for gdf in dataset.to_iter():
+            for gdf in dataset.to_iter(shuffle=(shuffle is not None)):
                 self.apply_ops(gdf, output_path=output_path, writer=writer)
 
         # Close writer and write general/specialized metadata
@@ -791,6 +806,9 @@ class Workflow(BaseWorkflow):
 
             Full graph is only executed if `output_format` is specified.
         """
+        # Check shuffle argument
+        shuffle = nvt_io._check_shuffle_arg(shuffle)
+
         end = end_phase if end_phase else len(self.phases)
 
         if output_format not in ("parquet", "hugectr", None):
@@ -806,7 +824,7 @@ class Workflow(BaseWorkflow):
         else:
             clean_worker_cache()
 
-        self.set_ddf(dataset)
+        self.set_ddf(dataset, shuffle=(shuffle is not None))
         if apply_ops:
             for idx, _ in enumerate(self.phases[:end]):
                 self.exec_phase(idx, record_stats=record_stats)
@@ -837,6 +855,9 @@ class Workflow(BaseWorkflow):
 
             Assumes statistics are already gathered.
         """
+        # Check shuffle argument
+        shuffle = nvt_io._check_shuffle_arg(shuffle)
+
         if nfiles:
             warnings.warn("nfiles is deprecated. Use out_files_per_proc")
             if out_files_per_proc is None:
@@ -905,7 +926,8 @@ class Workflow(BaseWorkflow):
             )
             return
 
-        # Default (shuffle=False): Just use dask_cudf.to_parquet
+        # Default (shuffle=None and out_files_per_proc=None)
+        # Just use `dask_cudf.to_parquet`
         fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
         if self.client is None:
             fut.compute(scheduler="synchronous")
