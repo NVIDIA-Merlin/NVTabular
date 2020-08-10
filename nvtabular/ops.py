@@ -387,39 +387,6 @@ class Dropna(TransformOperator):
         return new_gdf
 
 
-class IsNull(TransformOperator):
-    """
-    This operation detects missing values on a given target column, and returns
-    a cudf DataFrame with Null entries.
-
-    Although you can directly call methods of this class to
-    transform your categorical and/or continuous features, it's typically used within a
-    Workflow class.
-
-    Parameters
-    -----------
-    target_cols : a single column
-    """
-
-    default_in = ALL
-    default_out = ALL
-
-    @annotate("IsNull_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
-        self,
-        gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
-    ):
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
-        new_gdf = gdf[gdf.isnull()[target_columns]]
-        new_gdf.reset_index(drop=True, inplace=True)
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
-        return new_gdf
-
-
 class LogOp(TransformOperator):
 
     """
@@ -1139,18 +1106,14 @@ class LambdaOp(TransformOperator):
 
 class Filter(TransformOperator):
     """
-    Enables to call Methods to cudf.Series
+    Enables to call Methods to cudf.Series. Returns a subset of the original gdf.
 
     Parameters
     -----------
-    op_name : str
-        name of the operator column. It is used as a post_fix for the
-        modified column names (if replace=False)
     f : lambda function
         defines the function executed on dataframe level, expectation is lambda col, gdf: ...
         col is the cudf.Series defined by the context
         gdf is the full cudf.DataFrame
-    columns :
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
