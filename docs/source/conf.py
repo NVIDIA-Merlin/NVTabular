@@ -35,6 +35,7 @@ release = "2020"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "sphinx_multiversion",
     "sphinx_rtd_theme",
     "recommonmark",
     "sphinx_markdown_tables",
@@ -72,6 +73,13 @@ source_suffix = [".rst", ".md"]
 
 nbsphinx_allow_errors = True
 html_show_sourcelink = False
+
+# Whitelist pattern for tags (set to None to ignore all tags)
+smv_tag_whitelist = r"^v.*$"
+# Only include master branch for now
+smv_branch_whitelist = "^master$"
+
+html_sidebars = {"**": ["versions.html"]}
 
 # certain references in the README couldn't be autoresolved here,
 # hack by forcing to the either the correct documentation page (examples)
