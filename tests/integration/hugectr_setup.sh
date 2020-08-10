@@ -14,7 +14,7 @@ pip install torch torchvision
 pip install -e /nvtabular/
 
 # Install HugeCTR
-git clone -b cgarg/parquet-v2.2-integ https://gitlab-master.nvidia.com/zehuanw/hugectr.git &&\
+git clone -b v2.2.1-integration https://gitlab-master.nvidia.com/zehuanw/hugectr.git &&\
     cd hugectr && \
     git submodule update --init --recursive && \
     mkdir build && cd build && \
