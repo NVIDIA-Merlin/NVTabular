@@ -13,8 +13,8 @@
 import os
 import sys
 
-from sphinx.domains import Domain
 from recommonmark.parser import CommonMarkParser
+from sphinx.domains import Domain
 
 sys.path.insert(0, os.path.abspath("../../."))
 
