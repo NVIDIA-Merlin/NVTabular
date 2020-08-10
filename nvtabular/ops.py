@@ -1111,7 +1111,7 @@ class Filter(TransformOperator):
     Parameters
     -----------
     f : lambda function
-        defines the function executed on dataframe level, expectation is lambda col, gdf: ...
+        defines the function executed on dataframe level, expectation is lambda gdf: gdf[gdf.col...]
         col is the cudf.Series defined by the context
         gdf is the full cudf.DataFrame
     preprocessing : bool, default True
