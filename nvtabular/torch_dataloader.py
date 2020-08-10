@@ -251,9 +251,6 @@ class TensorBatchDatasetItr:
     def to_dlpack(self, gdf):
         return gdf.to_dlpack()
 
-    def to_tensor(self, dl_pack, dtype):
-        raise NotImplementedError()
-
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         raise NotImplementedError()
 
