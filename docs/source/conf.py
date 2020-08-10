@@ -14,6 +14,7 @@ import os
 import sys
 
 import sphinx
+from sphinx.domains import Domain
 from recommonmark.parser import CommonMarkParser
 
 sys.path.insert(0, os.path.abspath("../../."))
@@ -94,7 +95,7 @@ _URL_MAP = {
 }
 
 
-class GitHubDomain(sphinx.domains.Domain):
+class GitHubDomain(Domain):
     def resolve_any_xref(self, env, docname, builder, target, node, contnode):
         resolved = _URL_MAP.get(target)
         if resolved:
@@ -105,3 +106,4 @@ class GitHubDomain(sphinx.domains.Domain):
 
 def setup(app):
     app.add_domain(GitHubDomain)
+
