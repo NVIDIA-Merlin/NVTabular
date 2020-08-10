@@ -70,9 +70,26 @@ class TensorItr:
 
 
 class ChunkQueue:
+    """
+        This class takes partitions (parts) from an NVTabular dataset
+        and concatenates them into a cudf dataframe "chunk". This chunk
+        is subsequently transformed into its tensor representation using
+        the iterator's transform.
+
+        Parameters:
+        num_parts: int, number of partitions from the iterator, an NVTabular Dataset,
+                   to concatenate into a "chunk"
+        batch_size: int, the number of records in each batch
+        iterator: TensorBatchDatasetItr, the iterator to pull the partitions (parts) from
+        shuffle: bool, enable/disable shuffling
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+    """
+
     def __init__(
         self,
-        num_chunks=2,
+        num_parts=2,
         batch_size=None,
         iterator=None,
         shuffle=False,
@@ -80,7 +97,7 @@ class ChunkQueue:
         cont_cols=None,
         label_cols=None,
     ):
-        self.num_chunks = num_chunks
+        self.num_parts = num_parts
         self.itr = iterator
         self.batch_size = batch_size
         self.q_out = queue.Queue(1)
@@ -97,7 +114,7 @@ class ChunkQueue:
         current = []
         for value in self.itr:
             current.append(value)
-            if len(current) == self.num_chunks:
+            if len(current) == self.num_parts:
                 yield current
                 current = []
         if len(current) > 0:
@@ -155,9 +172,19 @@ class ChunkQueue:
 
 class AsyncIterator:
     """
-    This class serves as the iterator class for the AsyncTensorBatchDatasetItr. This will control
-    iteration and allow for clean up after iteration is complete. Without requiring the destruction
-    of the Parent class.
+        This class serves as the iterator class for the AsyncTensorBatchDatasetItr.
+        This will control iteration and allow for clean up after iteration is complete.
+        Without requiring the destruction of the Parent class.
+
+        Parameters:
+        dataset: NVTabular dataset
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+        batch_size: int, the size of each batch to supply to the model
+        shuffle: bool, enable/disable shuffling of dataset
+        target: the target library that will use the tensor transformed data
+                currently supported: torch
     """
 
     def __init__(
@@ -196,6 +223,23 @@ class AsyncIterator:
 
 
 class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
+    """
+        This class, creates batches of a user defined size of the tensor
+        represenation of the data supplied. The data input requires an
+        NVTabular dataset. Handles spillover to ensure all batches are
+        the specified size until the final batch.
+
+        Parameters:
+        dataset: NVTabular dataset
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+        batch_size: int, the size of each batch to supply to the model
+        shuffle: bool, enable/disable shuffling of dataset
+        target: the target library that will use the tensor transformed data
+                currently supported: torch
+    """
+
     def __init__(
         self,
         dataset,
@@ -232,6 +276,18 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
 
 
 class TensorBatchDatasetItr:
+    """
+        Base class for all dataset to tensor iterators.
+        Takes input of an NVTabular dataset
+        and supplies user defined size chunks.
+
+        Parameters
+        dataset: NVTabular dataset
+        shuffle: bool, specifying whether to shuffle the partitions
+                 and shuffle chunks before creating tensor batches
+
+    """
+
     def __init__(self, dataset, shuffle=None, **kwargs):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
@@ -256,6 +312,16 @@ class TensorBatchDatasetItr:
 
 
 class TensorBatchDatasetItrFactory:
+    """
+        This is the Factory that creates the correct iterator,
+        given a target library.
+
+        Parameters:
+        dataset: NVTabular dataset
+        target: str, target library you want the iterator supported - torch
+        shuffle: bool, shuffle dataset
+    """
+
     def create(self, dataset, target, shuffle=False, **kwargs):
         if target in "torch":
             return TorchTensorBatchDatasetItr(dataset, shuffle=shuffle, **kwargs)
@@ -266,13 +332,10 @@ class TensorBatchDatasetItrFactory:
 class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
     """
         For PyTorch Only:
-        Batch Tensor dataset, takes in list of files
-        and creates TorchTensorBatchFileItr for each
-        path supplied, supplying user defined size chunks.
+        Takes input of an NVTabular dataset
+        and creates TorchTensorBatchDatasetItr
+        supplying user defined size chunks.
 
-        Parameters
-        -----------
-        paths : list of input files that represent complete dataset
     """
 
     def gather_indices(self):
@@ -308,5 +371,10 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
+    """
+        This class is an extension of the torch dataloader.
+        It is required, to support the FastAI framework.
+    """
+
     def __len__(self):
         return len(self.dataset)
