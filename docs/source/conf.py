@@ -106,4 +106,3 @@ class GitHubDomain(Domain):
 
 def setup(app):
     app.add_domain(GitHubDomain)
-
