@@ -13,7 +13,6 @@
 import os
 import sys
 
-import sphinx
 from sphinx.domains import Domain
 from recommonmark.parser import CommonMarkParser
 
