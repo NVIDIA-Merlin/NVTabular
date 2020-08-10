@@ -161,7 +161,14 @@ class AsyncIterator:
     """
 
     def __init__(
-        self, dataset=None, cats=None, conts=None, labels=None, batch_size=1, shuffle=False, library=None,
+        self,
+        dataset=None,
+        cats=None,
+        conts=None,
+        labels=None,
+        batch_size=1,
+        shuffle=False,
+        library=None,
     ):
         itr = TensorBatchDatasetItrFactory().create(dataset, library, shuffle=shuffle)
         self.buff = ChunkQueue(
@@ -189,7 +196,16 @@ class AsyncIterator:
 
 
 class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
-    def __init__(self, dataset, cats=None, conts=None, labels=None, batch_size=1, shuffle=False, target="torch"):
+    def __init__(
+        self,
+        dataset,
+        cats=None,
+        conts=None,
+        labels=None,
+        batch_size=1,
+        shuffle=False,
+        target="torch",
+    ):
         self.batch_size = batch_size
         self.cats = cats
         self.conts = conts
@@ -241,15 +257,15 @@ class TensorBatchDatasetItr:
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         raise NotImplementedError()
 
-        
+
 class TensorBatchDatasetItrFactory:
     def create(self, dataset, target, shuffle=False, **kwargs):
         if target in "torch":
             return TorchTensorBatchDatasetItr(dataset, shuffle=shuffle, **kwargs)
         else:
             raise ValueError(target)
-        
-        
+
+
 class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
     """
         For PyTorch Only:
