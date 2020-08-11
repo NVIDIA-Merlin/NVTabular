@@ -23,7 +23,7 @@ print(args)
 GPU_id = args.gpu_id
 os.environ["CUDA_VISIBLE_DEVICES"] = str(GPU_id)
 
-from nvtabular.torch_dataloader import AsyncTensorBatchDatasetItr
+from nvtabular.torch_dataloader import TorchAsyncItr
 import nvtabular as nvt
 
 logging.basicConfig()

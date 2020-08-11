@@ -58,12 +58,14 @@ class TensorItr:
         else:
             return self.num_samples // self.batch_size + 1
 
+        
     def __iter__(self):
         for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
             yield tens[0], tens[1], tens[2]
             del tens
 
+            
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
         self.tensors = [tensor[idx] for tensor in self.tensors]
@@ -222,7 +224,50 @@ class AsyncIterator:
         self.buff.stop()
 
 
-class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
+class TorchAsyncItr(torch.utils.data.IterableDataset):
+    """
+        PyTorch specific tensor iterator class controller, it encapsulates
+        nvtabular dataloader logic. This is the dataloader controller class
+        that wraps to around nvtabular dataloader to make it library specific,
+        in this case, for pytorch.
+    
+        Parameters:
+        dataset: NVTabular dataset
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+        batch_size: int, the size of each batch to supply to the model
+        shuffle: bool, enable/disable shuffling of dataset
+        target: the target library that will use the tensor transformed data
+                currently supported: torch
+    """
+
+    def __init__(
+        self,
+        dataset,
+        cats=None,
+        conts=None,
+        labels=None,
+        batch_size=1,
+        shuffle=False,
+    ):
+        self.itr = AsyncTensorBatchDatasetItr(
+            dataset, 
+            cats=cats, 
+            conts=conts, 
+            labels=labels,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            target="torch"
+        )
+        
+    def __iter__(self):
+        yield from self.itr
+        
+    def __len__(self):
+        return len(self.itr)
+
+class AsyncTensorBatchDatasetItr:
     """
         This class, creates batches of a user defined size of the tensor
         represenation of the data supplied. The data input requires an
@@ -248,7 +293,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         labels=None,
         batch_size=1,
         shuffle=False,
-        target="torch",
+        target=None,
     ):
         self.batch_size = batch_size
         self.cats = cats
