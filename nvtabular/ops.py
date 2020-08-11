@@ -1110,10 +1110,9 @@ class Filter(TransformOperator):
 
     Parameters
     -----------
-    f : lambda function
-        defines the function executed on dataframe level, expectation is lambda gdf: gdf[gdf.col...]
-        col is the cudf.Series defined by the context
-        gdf is the full cudf.DataFrame
+    f : callable
+        Defines a function that filter rows from a dataframe. As an example  ```lambda gdf: gdf[gdf.a >= 0]``` would 
+        filter out all rows that had a negative value in the ```a``` column.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
