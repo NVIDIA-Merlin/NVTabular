@@ -1106,7 +1106,8 @@ class LambdaOp(TransformOperator):
 
 class Filter(TransformOperator):
     """
-    Enables to call Methods to cudf.Series. Returns a subset of the original gdf.
+    Filters rows from the dataset. This works by taking a callable that takes a dataframe, and returns 
+    a dataframe with unwanted rows filtered out.
 
     Parameters
     -----------
