@@ -41,6 +41,23 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_empty_cols(tmpdir, df, dataset, engine):
+    # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
+    # empty cats/conts
+    # first with no continuous columns
+    no_conts = torch_dataloader.AsyncTensorBatchDatasetItr(
+        dataset, cats=["id"], conts=[], labels=["label"], batch_size=1
+    )
+    assert all(conts is None for _, conts, _ in no_conts)
+
+    # and with no categorical columns
+    no_cats = torch_dataloader.AsyncTensorBatchDatasetItr(
+        dataset, cats=[], conts=["x"], labels=["label"]
+    )
+    assert all(cats is None for cats, _, _ in no_cats)
+
+
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])

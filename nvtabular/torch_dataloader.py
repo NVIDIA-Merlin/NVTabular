@@ -29,7 +29,6 @@ from nvtabular.ops import _get_embedding_order
 class TensorItr:
     """
         Tensor dataset, for data already in tensor format.
-        (see preproc::ds_to_tensor)
 
         Parameters
         -----------
@@ -44,7 +43,7 @@ class TensorItr:
         self.tensors = tensors
         self.batch_size = batch_size
 
-        self.num_samples = self.tensors[0].size(0)
+        self.num_samples = self.tensors[2].size(0)
         if shuffle:
             self.shuffle()
 
@@ -60,9 +59,10 @@ class TensorItr:
 
     def __iter__(self):
         for idx in range(0, self.num_samples, self.batch_size):
-            tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
-            yield tens[0], tens[1], tens[2]
-            del tens
+            yield [
+                tensor[idx : idx + self.batch_size] if tensor is not None else None
+                for tensor in self.tensors
+            ]
 
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
@@ -349,9 +349,11 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
             return self.indices[start : start + per_worker]
 
     def _to_tensor(self, gdf, dtype=None):
+        if gdf.empty:
+            return
         dl_pack = self.to_dlpack(gdf)
         tens = from_dlpack(dl_pack).type(dtype)
-        return tens, gdf.columns, dtype
+        return tens
 
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         gdf_cats, gdf_conts, gdf_label = (
@@ -360,14 +362,11 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
             gdf[label_names],
         )
         del gdf
-        if len(gdf_cats) > 0:
-            cats = self._to_tensor(gdf_cats, torch.long)
-        if len(gdf_conts) > 0:
-            conts = self._to_tensor(gdf_conts, torch.float32)
-        if len(gdf_label) > 0:
-            label = self._to_tensor(gdf_label, torch.float32)
+        cats = self._to_tensor(gdf_cats, torch.long)
+        conts = self._to_tensor(gdf_conts, torch.float32)
+        label = self._to_tensor(gdf_label, torch.float32)
         del gdf_cats, gdf_conts, gdf_label
-        return [cats[0], conts[0], label[0]]
+        return [cats, conts, label]
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
