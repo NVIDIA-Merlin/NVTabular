@@ -62,7 +62,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
         dataset,
         apply_offline=True,
         record_stats=True,
-        shuffle="partial",
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
         output_path=output_train,
         out_files_per_proc=2,
     )
@@ -72,7 +72,6 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     ]
 
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
-
     data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
         nvt_data, batch_size=batch_size, cats=cat_names, conts=cont_names, labels=["label"]
     )
@@ -83,6 +82,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
+
     for idx, chunk in enumerate(data_itr):
         assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
@@ -124,7 +124,11 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     os.mkdir(output_train)
 
     processor.apply(
-        dataset, apply_offline=True, record_stats=True, shuffle="partial", output_path=output_train
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
+        output_path=output_train,
     )
 
     tar_paths = [
