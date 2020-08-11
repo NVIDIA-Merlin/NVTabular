@@ -90,7 +90,7 @@ def test_gpu_workflow_api(
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -166,7 +166,7 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -249,7 +249,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     # Write to new "shuffled" and "processed" dataset
     processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle="partial", apply_ops=True
+        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -264,7 +264,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     assert num_rows == len(df_pp)
 
 
-@pytest.mark.parametrize("shuffle", ["full", "partial", None])
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("use_client", [True, False])
 def test_parquet_output(client, use_client, tmpdir, shuffle):
     out_files_per_proc = 2
@@ -300,3 +300,59 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     _metadata = cudf.io.read_parquet_metadata(meta_path)
     assert _metadata[0] == size
     assert _metadata[2] == columns
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("preproc", ["cat", "cont", "feat", "all"])
+def test_join_external_workflow(tmpdir, df, dataset, engine, preproc):
+
+    # Define "external" table
+    how = "left"
+    drop_duplicates = True
+    cache = "device"
+    shift = 100
+    df_ext = df[["id"]].copy().sort_values("id")
+    df_ext["new_col"] = df_ext["id"] + shift
+    df_ext["new_col_2"] = "keep"
+    df_ext["new_col_3"] = "ignore"
+    df_ext_check = df_ext.copy()
+
+    # Define Op
+    on = "id"
+    columns_ext = ["id", "new_col", "new_col_2"]
+    df_ext_check = df_ext_check[columns_ext]
+    if drop_duplicates:
+        df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
+    merge_op = ops.JoinExternal(
+        df_ext,
+        on,
+        how=how,
+        columns_ext=columns_ext,
+        cache=cache,
+        drop_duplicates_ext=drop_duplicates,
+    )
+
+    # Define Workflow
+    processor = nvt.Workflow(
+        cat_names=["name-cat", "name-string"], cont_names=["x", "y", "id"], label_name=["label"]
+    )
+    if preproc == "cat":
+        processor.add_cat_preprocess(merge_op)
+    elif preproc == "cont":
+        processor.add_cont_preprocess(merge_op)
+    elif preproc == "feat":
+        processor.add_feature(merge_op)
+    else:
+        processor.add_preprocess(merge_op)
+    processor.finalize()
+
+    processor.apply(dataset, output_format=None)
+
+    # Validate
+    for gdf, part in zip(dataset.to_iter(), processor.get_ddf().partitions):
+        new_gdf = part.compute(scheduler="synchronous")
+        assert len(gdf) == len(new_gdf)
+        assert (gdf["id"] + shift).all() == new_gdf["new_col"].all()
+        assert gdf["id"].all() == new_gdf["id"].all()
+        assert "new_col_2" in new_gdf.columns
+        assert "new_col_3" not in new_gdf.columns
