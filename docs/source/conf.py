@@ -77,15 +77,15 @@ html_show_sourcelink = False
 
 # Whitelist pattern for tags (set to None to ignore all tags)
 smv_tag_whitelist = r"^v.*$"
-# Only include master branch for now
-smv_branch_whitelist = "^master$"
+# Only include main branch for now
+smv_branch_whitelist = "^main$"
 
 html_sidebars = {"**": ["versions.html"]}
 
 # certain references in the README couldn't be autoresolved here,
 # hack by forcing to the either the correct documentation page (examples)
 # or to a blob on the repo
-_REPO = "https://github.com/NVIDIA/NVTabular/blob/master/"
+_REPO = "https://github.com/NVIDIA/NVTabular/blob/main/"
 _URL_MAP = {
     "./examples": "examples/index",
     "examples/rossmann-store-sales-example.ipynb": "examples/rossmann",
