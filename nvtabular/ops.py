@@ -1127,7 +1127,7 @@ class Filter(TransformOperator):
     def __init__(self, f, preprocessing=True, replace=True):
         super().__init__(preprocessing=preprocessing, replace=replace)
         if f is None:
-            raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
+            raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
