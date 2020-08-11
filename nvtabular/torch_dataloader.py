@@ -69,46 +69,27 @@ class TensorItr:
         self.tensors = [tensor[idx] for tensor in self.tensors]
 
 
-def _to_tensor(gdf: cudf.DataFrame, dtype, to_cpu=False):
-    if gdf.empty:
-        return
-    g = gdf.to_dlpack()
-    cols = gdf.columns
-    t = from_dlpack(g).type(dtype)
-    del g, gdf
-    return t, cols
-
-
-def create_tensors(gdf, cat_names=None, cont_names=None, label_names=None):
-    gdf_cats, gdf_conts, gdf_label = (
-        gdf[_get_embedding_order(cat_names)],
-        gdf[cont_names],
-        gdf[label_names],
-    )
-    del gdf
-    if len(gdf_cats) > 0:
-        cats = _to_tensor(gdf_cats, torch.long, to_cpu=False)
-    if len(gdf_conts) > 0:
-        conts = _to_tensor(gdf_conts, torch.float32, to_cpu=False)
-    if len(gdf_label) > 0:
-        label = _to_tensor(gdf_label, torch.float32, to_cpu=False)
-    del gdf_cats, gdf_conts, gdf_label
-    return [cats[0], conts[0], label[0]]
-
-
-def _get_final_cols(preproc):
-    if "cols" not in preproc.columns_ctx["final"]:
-        preproc.create_final_cols()
-    cat_names = _get_embedding_order(preproc.columns_ctx["final"]["cols"]["categorical"])
-    cont_names = sorted(preproc.columns_ctx["final"]["cols"]["continuous"])
-    label_name = sorted(preproc.columns_ctx["final"]["cols"]["label"])
-    return cat_names, cont_names, label_name
-
-
 class ChunkQueue:
+    """
+        This class takes partitions (parts) from an NVTabular dataset
+        and concatenates them into a cudf dataframe "chunk". This chunk
+        is subsequently transformed into its tensor representation using
+        the iterator's transform.
+
+        Parameters:
+        num_parts: int, number of partitions from the iterator, an NVTabular Dataset,
+                   to concatenate into a "chunk"
+        batch_size: int, the number of records in each batch
+        iterator: TensorBatchDatasetItr, the iterator to pull the partitions (parts) from
+        shuffle: bool, enable/disable shuffling
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+    """
+
     def __init__(
         self,
-        num_chunks=2,
+        num_parts=2,
         batch_size=None,
         iterator=None,
         shuffle=False,
@@ -116,7 +97,7 @@ class ChunkQueue:
         cont_cols=None,
         label_cols=None,
     ):
-        self.num_chunks = num_chunks
+        self.num_parts = num_parts
         self.itr = iterator
         self.batch_size = batch_size
         self.q_out = queue.Queue(1)
@@ -133,7 +114,7 @@ class ChunkQueue:
         current = []
         for value in self.itr:
             current.append(value)
-            if len(current) == self.num_chunks:
+            if len(current) == self.num_parts:
                 yield current
                 current = []
         if len(current) > 0:
@@ -152,7 +133,7 @@ class ChunkQueue:
             if self.shuffle:
                 _shuffle_gdf(chunks)
             if len(chunks) > 0:
-                chunks = create_tensors(
+                chunks = self.itr.create_tensors(
                     chunks,
                     cat_names=self.cat_cols,
                     cont_names=self.cont_cols,
@@ -163,7 +144,7 @@ class ChunkQueue:
                 chunks = None
         # takes care final batch, which is less than batch size
         if spill:
-            spill = create_tensors(
+            spill = self.itr.create_tensors(
                 spill,
                 cat_names=self.cat_cols,
                 cont_names=self.cont_cols,
@@ -191,16 +172,34 @@ class ChunkQueue:
 
 class AsyncIterator:
     """
-    This class serves as the iterator class for the AsyncTensorBatchDatasetItr. This will control
-    iteration and allow for clean up after iteration is complete. Without requiring the destruction
-    of the Parent class.
+        This class serves as the iterator class for the AsyncTensorBatchDatasetItr.
+        This will control iteration and allow for clean up after iteration is complete.
+        Without requiring the destruction of the Parent class.
+
+        Parameters:
+        dataset: NVTabular dataset
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+        batch_size: int, the size of each batch to supply to the model
+        shuffle: bool, enable/disable shuffling of dataset
+        target: the target library that will use the tensor transformed data
+                currently supported: torch
     """
 
     def __init__(
-        self, dataset=None, cats=None, conts=None, labels=None, batch_size=1, shuffle=False
+        self,
+        dataset=None,
+        cats=None,
+        conts=None,
+        labels=None,
+        batch_size=1,
+        shuffle=False,
+        library=None,
     ):
+        itr = TensorBatchDatasetItrFactory().create(dataset, library, shuffle=shuffle)
         self.buff = ChunkQueue(
-            iterator=TorchTensorBatchDatasetItr(dataset, shuffle=shuffle),
+            iterator=itr,
             batch_size=batch_size,
             cat_cols=cats,
             cont_cols=conts,
@@ -224,13 +223,40 @@ class AsyncIterator:
 
 
 class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
-    def __init__(self, dataset, cats=None, conts=None, labels=None, batch_size=1, shuffle=False):
+    """
+        This class, creates batches of a user defined size of the tensor
+        represenation of the data supplied. The data input requires an
+        NVTabular dataset. Handles spillover to ensure all batches are
+        the specified size until the final batch.
+
+        Parameters:
+        dataset: NVTabular dataset
+        cats: [str], the list of categorical columns in the dataset
+        conts: [str], the list of continuous columns in the dataset
+        labels: [str], the list of label columns in the dataset
+        batch_size: int, the size of each batch to supply to the model
+        shuffle: bool, enable/disable shuffling of dataset
+        target: the target library that will use the tensor transformed data
+                currently supported: torch
+    """
+
+    def __init__(
+        self,
+        dataset,
+        cats=None,
+        conts=None,
+        labels=None,
+        batch_size=1,
+        shuffle=False,
+        target="torch",
+    ):
         self.batch_size = batch_size
         self.cats = cats
         self.conts = conts
         self.labels = labels
         self.shuffle = shuffle
         self.data = dataset
+        self.target = target
 
     def __iter__(self):
         return iter(
@@ -241,6 +267,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
                 conts=self.conts,
                 labels=self.labels,
                 shuffle=self.shuffle,
+                library=self.target,
             )
         )
 
@@ -248,16 +275,17 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         return math.ceil(self.data.num_rows / self.batch_size)
 
 
-class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
+class TensorBatchDatasetItr:
     """
-        For Torch Only:
-        Batch Tensor dataset, takes in list of files
-        and creates TorchTensorBatchFileItr for each
-        path supplied, supplying user defined size chunks.
+        Base class for all dataset to tensor iterators.
+        Takes input of an NVTabular dataset
+        and supplies user defined size chunks.
 
         Parameters
-        -----------
-        paths : list of input files that represent complete dataset
+        dataset: NVTabular dataset
+        shuffle: bool, specifying whether to shuffle the partitions
+                 and shuffle chunks before creating tensor batches
+
     """
 
     def __init__(self, dataset, shuffle=None, **kwargs):
@@ -270,20 +298,83 @@ class TorchTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         indices = self.gather_indices()
         yield from self.data.to_iter(indices=indices)
 
+    def __len__(self):
+        return self.data.num_rows
+
+    def gather_indices(self):
+        return self.indices
+
+    def to_dlpack(self, gdf):
+        return gdf.to_dlpack()
+
+    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
+        raise NotImplementedError()
+
+
+class TensorBatchDatasetItrFactory:
+    """
+        This is the Factory that creates the correct iterator,
+        given a target library.
+
+        Parameters:
+        dataset: NVTabular dataset
+        target: str, target library you want the iterator supported - torch
+        shuffle: bool, shuffle dataset
+    """
+
+    def create(self, dataset, target, shuffle=False, **kwargs):
+        if target in "torch":
+            return TorchTensorBatchDatasetItr(dataset, shuffle=shuffle, **kwargs)
+        else:
+            raise ValueError(target)
+
+
+class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
+    """
+        For PyTorch Only:
+        Takes input of an NVTabular dataset
+        and creates TorchTensorBatchDatasetItr
+        supplying user defined size chunks.
+
+    """
+
     def gather_indices(self):
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
             return self.indices
         else:
-            per_worker = int(len(self.indices) // float(worker_info.num_workers)) + 1
+            per_worker = int(len(self.indices) // worker_info.num_workers) + 1
             worker_id = worker_info.id
             start = worker_id * per_worker
             return self.indices[start : start + per_worker]
 
-    def __len__(self):
-        return self.data.num_rows
+    def _to_tensor(self, gdf, dtype=None):
+        dl_pack = self.to_dlpack(gdf)
+        tens = from_dlpack(dl_pack).type(dtype)
+        return tens, gdf.columns, dtype
+
+    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
+        gdf_cats, gdf_conts, gdf_label = (
+            gdf[_get_embedding_order(cat_names)],
+            gdf[cont_names],
+            gdf[label_names],
+        )
+        del gdf
+        if len(gdf_cats) > 0:
+            cats = self._to_tensor(gdf_cats, torch.long)
+        if len(gdf_conts) > 0:
+            conts = self._to_tensor(gdf_conts, torch.float32)
+        if len(gdf_label) > 0:
+            label = self._to_tensor(gdf_label, torch.float32)
+        del gdf_cats, gdf_conts, gdf_label
+        return [cats[0], conts[0], label[0]]
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
+    """
+        This class is an extension of the torch dataloader.
+        It is required, to support the FastAI framework.
+    """
+
     def __len__(self):
         return len(self.dataset)
