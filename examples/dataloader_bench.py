@@ -43,7 +43,7 @@ for batch_size in [2 ** i for i in range(9, 25, 1)]:
     print("Checking batch size: ", batch_size)
     num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
     # import pdb; pdb.set_trace()
-    t_batch_sets = AsyncTensorBatchDatasetItr(
+    t_batch_sets = TorchAsyncItr(
         train_set, cats=cat_names, conts=cont_names, labels=["label"], batch_size=batch_size,
     )
 

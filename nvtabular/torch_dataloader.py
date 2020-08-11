@@ -58,14 +58,12 @@ class TensorItr:
         else:
             return self.num_samples // self.batch_size + 1
 
-        
     def __iter__(self):
         for idx in range(0, self.num_samples, self.batch_size):
             tens = [tensor[idx : idx + self.batch_size] for tensor in self.tensors]
             yield tens[0], tens[1], tens[2]
             del tens
 
-            
     def shuffle(self):
         idx = torch.randperm(self.num_samples, dtype=torch.int64)
         self.tensors = [tensor[idx] for tensor in self.tensors]
@@ -230,7 +228,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
         nvtabular dataloader logic. This is the dataloader controller class
         that wraps to around nvtabular dataloader to make it library specific,
         in this case, for pytorch.
-    
+
         Parameters:
         dataset: NVTabular dataset
         cats: [str], the list of categorical columns in the dataset
@@ -243,29 +241,24 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
     """
 
     def __init__(
-        self,
-        dataset,
-        cats=None,
-        conts=None,
-        labels=None,
-        batch_size=1,
-        shuffle=False,
+        self, dataset, cats=None, conts=None, labels=None, batch_size=1, shuffle=False,
     ):
         self.itr = AsyncTensorBatchDatasetItr(
-            dataset, 
-            cats=cats, 
-            conts=conts, 
+            dataset,
+            cats=cats,
+            conts=conts,
             labels=labels,
             batch_size=batch_size,
             shuffle=shuffle,
-            target="torch"
+            target="torch",
         )
-        
+
     def __iter__(self):
         yield from self.itr
-        
+
     def __len__(self):
         return len(self.itr)
+
 
 class AsyncTensorBatchDatasetItr:
     """
@@ -286,14 +279,7 @@ class AsyncTensorBatchDatasetItr:
     """
 
     def __init__(
-        self,
-        dataset,
-        cats=None,
-        conts=None,
-        labels=None,
-        batch_size=1,
-        shuffle=False,
-        target=None,
+        self, dataset, cats=None, conts=None, labels=None, batch_size=1, shuffle=False, target=None,
     ):
         self.batch_size = batch_size
         self.cats = cats
