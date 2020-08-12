@@ -99,9 +99,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
+    first_column = df_test[0].values
 
     for idx, chunk in enumerate(data_itr):
-        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        assert float(first_column[rows]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
     # accounts for incomplete batches at the end of chunks
@@ -117,7 +118,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     )
     rows = 0
     for idx, chunk in enumerate(t_dl):
-        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        assert float(first_column[rows]) == float(chunk[0][0][0])
         rows += len(chunk[0])
 
     if os.path.exists(output_train):
