@@ -150,7 +150,7 @@ class BaseWorkflow:
         Parameters
         -----------
         operators : object
-            continuous objects such as FillMissing, ReLu and LogOp
+            continuous objects such as FillMissing, Clip and LogOp
         """
 
         operators = self.op_default_check(operators, "continuous")

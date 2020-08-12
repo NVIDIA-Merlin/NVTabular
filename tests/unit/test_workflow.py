@@ -50,7 +50,9 @@ def test_gpu_workflow_api(
         client=client if use_client else None,
     )
 
-    processor.add_feature([ops.ReLu(columns=op_columns), ops.LogOp()])
+    processor.add_feature(
+        [ops.FillMissing(), ops.Clip(min_value=0, columns=op_columns), ops.LogOp()]
+    )
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify(cat_cache="host"))
     processor.finalize()
@@ -69,7 +71,7 @@ def test_gpu_workflow_api(
         gdf = np.log(gdf + 1)
         return gdf
 
-    # Check mean and std - No good right now we have to add all other changes; ReLu, Log
+    # Check mean and std - No good right now we have to add all other changes; Clip, Log
 
     if not op_columns:
         assert math.isclose(get_norms(df.y).mean(), processor.stats["means"]["y"], rel_tol=1e-1)
@@ -120,8 +122,8 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
     label_name = ["label"]
 
     config = nvt.workflow.get_new_config()
-    config["FE"]["continuous"] = [ops.ReLu()]
-    config["PP"]["continuous"] = [[ops.ReLu(), ops.Normalize()]]
+    config["FE"]["continuous"] = [ops.FillMissing(), ops.Clip(min_value=0)]
+    config["PP"]["continuous"] = [[ops.FillMissing(), ops.Clip(min_value=0), ops.Normalize()]]
     config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
@@ -146,12 +148,8 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     assert math.isclose(get_norms(df.x).mean(), processor.stats["means"]["x"], rel_tol=1e-4)
     assert math.isclose(get_norms(df.y).mean(), processor.stats["means"]["y"], rel_tol=1e-4)
-    #     assert math.isclose(get_norms(df.id).mean(),
-    #                         processor.stats["means"]["id_ReLu"], rel_tol=1e-4)
     assert math.isclose(get_norms(df.x).std(), processor.stats["stds"]["x"], rel_tol=1e-3)
     assert math.isclose(get_norms(df.y).std(), processor.stats["stds"]["y"], rel_tol=1e-3)
-    #     assert math.isclose(get_norms(df.id).std(),
-    #                         processor.stats["stds"]["id_ReLu"], rel_tol=1e-3)
 
     # Check that categories match
     if engine == "parquet":
@@ -218,7 +216,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
         gdf = np.log(gdf + 1)
         return gdf
 
-    # Check mean and std - No good right now we have to add all other changes; ReLu, Log
+    # Check mean and std - No good right now we have to add all other changes; Clip, Log
 
     concat_ops = "_FillMissing_LogOp"
     if replace:

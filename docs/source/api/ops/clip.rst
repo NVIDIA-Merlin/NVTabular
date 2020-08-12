@@ -1,6 +1,6 @@
-ReLu
+Clip
 ========
 
-.. autoclass:: nvtabular.ops.ReLu
+.. autoclass:: nvtabular.ops.Clip
    :members:
    :show-inheritance:

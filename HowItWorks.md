@@ -66,7 +66,7 @@ Operators may also be chained to allow for more complex feature engineering or p
 
 ```python
 # Replace negative and missing values with 0 and then take log(1+x)
-workflow.add_cont_feature([ReLu(), LogOp()])
+workflow.add_cont_feature([FillMissing(), Clip(min_value=0), LogOp()])
 
 # then normalize
 workflow.add_cont_preprocess(Normalize())

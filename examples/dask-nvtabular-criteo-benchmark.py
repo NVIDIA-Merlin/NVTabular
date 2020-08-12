@@ -114,7 +114,7 @@ def main(args):
     processor = Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
     )
-    processor.add_feature([ops.ReLu(), ops.LogOp()])
+    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
             out_path=out_path,
