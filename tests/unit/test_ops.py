@@ -573,3 +573,32 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
         assert gdf["id"].all() == new_gdf["id"].all()
         assert "new_col_2" in new_gdf.columns
         assert "new_col_3" not in new_gdf.columns
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.1])
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, client):
+
+    cont_names = ["x", "y"]
+
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    filter_op = ops.Filter(f=lambda df: df[df["y"] > 0.5])
+    new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
+    assert new_gdf.columns.all() == df.columns.all()
+
+    # return isnull() rows
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = cont_names
+
+    for col in cont_names:
+        idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
+        df[col].iloc[idx] = None
+
+    filter_op = ops.Filter(f=lambda df: df[df.x.isnull()])
+    new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
+    assert new_gdf.columns.all() == df.columns.all()
+    assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
