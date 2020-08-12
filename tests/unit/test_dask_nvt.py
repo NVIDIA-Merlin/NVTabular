@@ -20,11 +20,13 @@ import os
 
 import cudf
 import dask_cudf
+import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
 import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
+from nvtabular.io import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -46,7 +48,7 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("freq_threshold", [0, 150])
 @pytest.mark.parametrize("cat_cache", ["device", None])
 @pytest.mark.parametrize("on_host", [True, False])
-@pytest.mark.parametrize("shuffle", ["full", None])
+@pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
 def test_dask_workflow_api_dlrm(
     client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
 ):
@@ -78,7 +80,6 @@ def test_dask_workflow_api_dlrm(
         ops.Categorify(
             freq_threshold=freq_threshold,
             out_path=str(tmpdir),
-            split_out=2,
             cat_cache=cat_cache,
             on_host=on_host,
         )
@@ -146,13 +147,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     )
 
     processor.add_preprocess(
-        ops.GroupBy(
-            cat_names=cat_names,
-            cont_names=cont_names,
-            stats=["count", "sum", "std"],
-            out_path=str(tmpdir),
-            split_out=2,
-        )
+        ops.GroupBy(cont_names=cont_names, stats=["count", "sum", "std"], out_path=str(tmpdir))
     )
     processor.finalize()
 
@@ -172,7 +167,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         result[["name-cat", "name-cat_count"]]
         .drop_duplicates()
         .sort_values("name-cat")["name-cat_count"],
-        df0.groupby("name-cat").agg({"x": "count"})["x"],
+        df0.groupby("name-cat").agg({"x": "count"})["x"].astype(np.int64),
         check_index=False,
         check_dtype=False,  # May get int64 vs int32
         check_names=False,
@@ -207,18 +202,10 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
         label_name=label_name,
     )
 
-    processor.add_preprocess(
-        ops.Categorify(out_path=str(tmpdir), split_out=2, freq_threshold=10, on_host=True)
-    )
+    processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True))
 
     processor.add_cat_feature(
-        ops.GroupBy(
-            cat_names=cat_names,
-            cont_names=cont_names,
-            stats=["count", "sum"],
-            out_path=str(tmpdir),
-            split_out=2,
-        )
+        ops.GroupBy(cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir))
     )
 
     processor.finalize()

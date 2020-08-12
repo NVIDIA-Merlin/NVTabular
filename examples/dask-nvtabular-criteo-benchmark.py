@@ -8,9 +8,9 @@ import cudf
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
 
-import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
-from nvtabular.io import device_mem_size
+from nvtabular import io as nvt_io
+from nvtabular import ops as ops
 
 
 def setup_rmm_pool(client, pool_size):
@@ -38,20 +38,20 @@ def main(args):
     label_name = ["label"]
 
     if args.cat_splits:
-        split_out = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
+        tree_width = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
     else:
-        split_out = {col: 1 for col in cat_names}
+        tree_width = {col: 1 for col in cat_names}
         if args.cat_names is None:
             # Using Criteo... Use more hash partitions for
             # known high-cardinality columns
-            split_out["C20"] = 8
-            split_out["C1"] = 8
-            split_out["C22"] = 4
-            split_out["C10"] = 4
-            split_out["C21"] = 2
-            split_out["C11"] = 2
-            split_out["C23"] = 2
-            split_out["C12"] = 2
+            tree_width["C20"] = 8
+            tree_width["C1"] = 8
+            tree_width["C22"] = 4
+            tree_width["C10"] = 4
+            tree_width["C21"] = 2
+            tree_width["C11"] = 2
+            tree_width["C23"] = 2
+            tree_width["C12"] = 2
 
     # Specify categorical caching location
     cat_cache = None
@@ -79,7 +79,7 @@ def main(args):
                 cat_cache["C10"] = "host"
 
     # Use total device size to calculate args.device_limit_frac
-    device_size = device_mem_size(kind="total")
+    device_size = nvt_io.device_mem_size(kind="total")
     device_limit = int(args.device_limit_frac * device_size)
     device_pool_size = int(args.device_pool_frac * device_size)
     part_size = int(args.part_mem_frac * device_size)
@@ -118,7 +118,7 @@ def main(args):
     processor.add_preprocess(
         ops.Categorify(
             out_path=out_path,
-            split_out=split_out,
+            tree_width=tree_width,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
             on_host=args.cat_on_host,
@@ -134,14 +134,18 @@ def main(args):
         with performance_report(filename=args.profile):
             processor.apply(
                 dataset,
-                shuffle="full" if args.worker_shuffle else "partial",
+                shuffle=nvt_io.Shuffle.PER_WORKER
+                if args.worker_shuffle
+                else nvt_io.Shuffle.PER_PARTITION,
                 out_files_per_proc=out_files_per_proc,
                 output_path=out_path,
             )
     else:
         processor.apply(
             dataset,
-            shuffle="full" if args.worker_shuffle else "partial",
+            shuffle=nvt_io.Shuffle.PER_WORKER
+            if args.worker_shuffle
+            else nvt_io.Shuffle.PER_PARTITION,
             out_files_per_proc=out_files_per_proc,
             output_path=out_path,
         )

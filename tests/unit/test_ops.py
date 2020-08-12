@@ -99,7 +99,7 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    encoder = ops.Encoder(columns=op_columns)
+    encoder = ops.CategoryStatistics(columns=op_columns)
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
 
@@ -109,13 +109,13 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor.update_stats(dataset)
 
     if engine == "parquet" and not op_columns:
-        cats_expected0 = df["name-cat"].unique().values_to_string()
+        cats_expected0 = df["name-cat"].unique().values_host
         cats0 = get_cats(processor, "name-cat")
-        assert cats0 == ["None"] + cats_expected0
+        assert cats0.tolist() == [None] + cats_expected0.tolist()
 
-    cats_expected1 = df["name-string"].unique().values_to_string()
+    cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
-    assert cats1 == ["None"] + cats_expected1
+    assert cats1.tolist() == [None] + cats_expected1.tolist()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -397,17 +397,15 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    outdir = tmpdir.mkdir("out1")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat"].dtype)
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
@@ -422,17 +420,15 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    outdir = tmpdir.mkdir("out2")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert np.sum(df_pp["name-cat"] < 100) == 0
 
@@ -454,17 +450,15 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    outdir = tmpdir.mkdir("out3")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
 
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
     assert df_pp["name-cat"].dtype == "O"
     print(df_pp)
     assert is_integer_dtype(df_pp["name-cat_slice"].dtype)
@@ -482,17 +476,15 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    outdir = tmpdir.mkdir("out4")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert is_integer_dtype(df_pp["name-cat_add100"].dtype)
     assert np.sum(df_pp["name-cat_add100"] < 100) == 0
 
@@ -514,15 +506,70 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     )
     processor.finalize()
     processor.update_stats(dataset)
-    processor.write_to_dataset(tmpdir, dataset, nfiles=10, shuffle=True, apply_ops=True)
-
-    data_itr_2 = nvtabular.io.GPUDatasetIterator(
-        glob.glob(str(tmpdir) + "/ds_part.*.parquet"),
-        use_row_groups=True,
-        gpu_memory_frac=gpu_memory_frac,
+    outdir = tmpdir.mkdir("out5")
+    processor.write_to_dataset(
+        outdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
     )
 
-    df_pp = None
-    for chunk in data_itr_2:
-        df_pp = cudf.concat([df_pp, chunk], axis=0) if df_pp else chunk
+    dataset_2 = nvtabular.io.Dataset(
+        glob.glob(str(outdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac
+    )
+    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
+@pytest.mark.parametrize("cache", ["host", "device"])
+@pytest.mark.parametrize("how", ["left", "inner"])
+@pytest.mark.parametrize("drop_duplicates", [True, False])
+def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
+
+    # Define "external" table
+    shift = 100
+    df_ext = df[["id"]].copy().sort_values("id")
+    df_ext["new_col"] = df_ext["id"] + shift
+    df_ext["new_col_2"] = "keep"
+    df_ext["new_col_3"] = "ignore"
+    df_ext_check = df_ext.copy()
+    if kind_ext == "pandas":
+        df_ext = df_ext.to_pandas()
+    elif kind_ext == "arrow":
+        df_ext = df_ext.to_arrow()
+    elif kind_ext == "parquet":
+        path = tmpdir.join("external.parquet")
+        df_ext.to_parquet(path)
+        df_ext = path
+    elif kind_ext == "csv":
+        path = tmpdir.join("external.csv")
+        df_ext.to_csv(path)
+        df_ext = path
+
+    # Define Op
+    on = "id"
+    columns_ext = ["id", "new_col", "new_col_2"]
+    df_ext_check = df_ext_check[columns_ext]
+    if drop_duplicates:
+        df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
+    merge_op = ops.JoinExternal(
+        df_ext,
+        on,
+        how=how,
+        columns_ext=columns_ext,
+        cache=cache,
+        drop_duplicates_ext=drop_duplicates,
+    )
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    # Iterate, apply op, and check result
+    for gdf in dataset.to_iter():
+        new_gdf = merge_op.apply_op(gdf, columns_ctx, "all")
+        check_gdf = gdf.merge(df_ext_check, how=how, on=on)
+        assert len(check_gdf) == len(new_gdf)
+        assert (new_gdf["id"] + shift).all() == new_gdf["new_col"].all()
+        assert gdf["id"].all() == new_gdf["id"].all()
+        assert "new_col_2" in new_gdf.columns
+        assert "new_col_3" not in new_gdf.columns
