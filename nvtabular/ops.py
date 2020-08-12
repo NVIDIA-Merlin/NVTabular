@@ -1106,19 +1106,16 @@ class LambdaOp(TransformOperator):
 
 class Filter(TransformOperator):
     """
-    Filters rows from the dataset. This works by taking a callable that takes a dataframe, and returns 
-    a dataframe with unwanted rows filtered out.
+    Filters rows from the dataset. This works by taking a callable that takes a dataframe,
+    and returns a dataframe with unwanted rows filtered out.
 
     Parameters
     -----------
     f : callable
-        Defines a function that filter rows from a dataframe. As an example  ```lambda gdf: gdf[gdf.a >= 0]``` would 
-        filter out all rows that had a negative value in the ```a``` column.
+        Defines a function that filter rows from a dataframe. Exp: ```lambda gdf: gdf[gdf.a >= 0]```
+        would filter out the rows with a negative value in the ```a``` column.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
-    replace : bool, default True
-        Replaces the transformed column with the original input
-        if set Yes
     """
 
     default_in = ALL
