@@ -1106,14 +1106,14 @@ class LambdaOp(TransformOperator):
 
 class Filter(TransformOperator):
     """
-    Enables to call Methods to cudf.Series. Returns a subset of the original gdf.
+    Filters rows from the dataset. This works by taking a callable that takes a dataframe, and returns 
+    a dataframe with unwanted rows filtered out.
 
     Parameters
     -----------
-    f : lambda function
-        defines the function executed on dataframe level, expectation is lambda gdf: gdf[gdf.col...]
-        col is the cudf.Series defined by the context
-        gdf is the full cudf.DataFrame
+    f : callable
+        Defines a function that filter rows from a dataframe. As an example  ```lambda gdf: gdf[gdf.a >= 0]``` would 
+        filter out all rows that had a negative value in the ```a``` column.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
@@ -1127,7 +1127,7 @@ class Filter(TransformOperator):
     def __init__(self, f, preprocessing=True, replace=True):
         super().__init__(preprocessing=preprocessing, replace=replace)
         if f is None:
-            raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
+            raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
