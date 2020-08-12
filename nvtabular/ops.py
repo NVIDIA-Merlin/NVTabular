@@ -1114,3 +1114,40 @@ class LambdaOp(TransformOperator):
             new_gdf[col] = self.f(gdf[col], gdf)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
         return new_gdf
+
+
+class Filter(TransformOperator):
+    """
+    Filters rows from the dataset. This works by taking a callable that takes a dataframe,
+    and returns a dataframe with unwanted rows filtered out.
+
+    Parameters
+    -----------
+    f : callable
+        Defines a function that filter rows from a dataframe. Exp: ```lambda gdf: gdf[gdf.a >= 0]```
+        would filter out the rows with a negative value in the ```a``` column.
+    preprocessing : bool, default True
+        Sets if this is a pre-processing operation or not
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    def __init__(self, f, preprocessing=True, replace=True):
+        super().__init__(preprocessing=preprocessing, replace=replace)
+        if f is None:
+            raise ValueError("f cannot be None. Filter op applies f to dataframe")
+        self.f = f
+
+    @annotate("Filter_op", color="darkgreen", domain="nvt_python")
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context=None,
+    ):
+        new_gdf = self.f(gdf)
+        new_gdf.reset_index(drop=True, inplace=True)
+        return new_gdf

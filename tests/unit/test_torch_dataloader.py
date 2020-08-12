@@ -41,6 +41,23 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_empty_cols(tmpdir, df, dataset, engine):
+    # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
+    # empty cats/conts
+    # first with no continuous columns
+    no_conts = torch_dataloader.AsyncTensorBatchDatasetItr(
+        dataset, cats=["id"], conts=[], labels=["label"], batch_size=1
+    )
+    assert all(conts is None for _, conts, _ in no_conts)
+
+    # and with no categorical columns
+    no_cats = torch_dataloader.AsyncTensorBatchDatasetItr(
+        dataset, cats=[], conts=["x"], labels=["label"]
+    )
+    assert all(cats is None for cats, _, _ in no_cats)
+
+
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -72,7 +89,6 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     ]
 
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
-
     data_itr = nvt.torch_dataloader.AsyncTensorBatchDatasetItr(
         nvt_data, batch_size=batch_size, cats=cat_names, conts=cont_names, labels=["label"]
     )
@@ -83,8 +99,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
+    first_column = df_test[0].values
+
     for idx, chunk in enumerate(data_itr):
-        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        assert float(first_column[rows]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
     # accounts for incomplete batches at the end of chunks
@@ -100,7 +118,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine):
     )
     rows = 0
     for idx, chunk in enumerate(t_dl):
-        assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
+        assert float(first_column[rows]) == float(chunk[0][0][0])
         rows += len(chunk[0])
 
     if os.path.exists(output_train):

@@ -14,6 +14,7 @@ import os
 import sys
 
 import sphinx
+import sphinx.domains
 from recommonmark.parser import CommonMarkParser
 
 sys.path.insert(0, os.path.abspath("../../."))
@@ -35,6 +36,7 @@ release = "2020"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "sphinx_multiversion",
     "sphinx_rtd_theme",
     "recommonmark",
     "sphinx_markdown_tables",
@@ -73,10 +75,17 @@ source_suffix = [".rst", ".md"]
 nbsphinx_allow_errors = True
 html_show_sourcelink = False
 
+# Whitelist pattern for tags (set to None to ignore all tags)
+smv_tag_whitelist = r"^v.*$"
+# Only include main branch for now
+smv_branch_whitelist = "^main$"
+
+html_sidebars = {"**": ["versions.html"]}
+
 # certain references in the README couldn't be autoresolved here,
 # hack by forcing to the either the correct documentation page (examples)
 # or to a blob on the repo
-_REPO = "https://github.com/NVIDIA/NVTabular/blob/master/"
+_REPO = "https://github.com/NVIDIA/NVTabular/blob/main/"
 _URL_MAP = {
     "./examples": "examples/index",
     "examples/rossmann-store-sales-example.ipynb": "examples/rossmann",
