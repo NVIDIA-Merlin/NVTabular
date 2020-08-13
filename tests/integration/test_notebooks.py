@@ -24,7 +24,7 @@ def test_criteo_notebook(tmpdir):
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
         gpu_id=3,
-        batch_size=200000,
+        batch_size=100000,
     )
 
 
