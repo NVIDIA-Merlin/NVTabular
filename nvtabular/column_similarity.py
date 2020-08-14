@@ -63,7 +63,7 @@ class ColumnSimilarity(TransformOperator):
         super(ColumnSimilarity, self).__init__(columns=[a_col, b_col], replace=False)
         self.name = name
         self.a_col = a_col
-        self.a_features = a_features
+        self.b_col = b_col
 
         self.a_features = _convert_features(a_features, metric, on_device)
         self.b_features = (
@@ -82,8 +82,11 @@ class ColumnSimilarity(TransformOperator):
         target_cols=["base"],
         stats_context=None,
     ):
+        a = gdf[self.a_col].values if self.on_device else gdf[self.a_col].values_host
+        b = gdf[self.b_col].values if self.on_device else gdf[self.b_col].values_host
+
         similarities = row_wise_inner_product(
-            gdf[self.a_col], self.a_features, gdf[self.b_col], self.b_features, self.on_device
+            a, self.a_features, b, self.b_features, self.on_device
         )
         gdf[self.name] = similarities
         return gdf
@@ -221,7 +224,7 @@ def _convert_features(features, metric, on_device):
 
 def _tfidf_weight(X, np):
     N = float(X.shape[0])
-    idf = np.log(N) - np.log1p(np.bincount(X.col))
+    idf = np.log(N / np.bincount(X.col))
     X.data *= np.sqrt(X.data) * idf[X.col]
     return X
 
