@@ -1057,9 +1057,7 @@ class DataFrameDatasetEngine(DatasetEngine):
 
 class DataFrameIter:
     def __init__(self, ddf, columns=None, indices=None):
-        self.indices = (
-            indices if isinstance(indices, list) and len(indices) > 0 else range(ddf.npartitions)
-        )
+        self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
 
