@@ -103,7 +103,6 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
-    first_column = df_test[0].values
 
     for idx, chunk in enumerate(data_itr):
         if devices is None:
