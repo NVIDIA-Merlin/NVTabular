@@ -480,15 +480,28 @@ class HugeCTRWriter(ThreadedWriter):
     def __init__(self, out_dir, **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)]
-        self.data_writers = [open(f, "ab") for f in self.data_paths]
+        self.data_writers = [open(f, "wb") for f in self.data_paths]
+        # Reserve 64 bytes for header
+        header = np.array([0, 0, 0, 0, 0, 0, 0, 0], dtype=np.longlong)
+        for i, writer in enumerate(self.data_writers):
+            writer.write(header.tobytes())
 
     def _write_table(self, idx, data):
-        ones = np.array(([1] * data.shape[0]), dtype=np.intc)
-        df = data[self.column_names].to_pandas().astype(np.single)
-        for i in range(len(self.cats)):
-            df["___" + str(i) + "___" + self.cats[i]] = ones
-            df[self.cats[i]] = data[self.cats[i]].to_pandas().astype(np.longlong)
-            self.data_writers[idx].write(df.to_numpy().tobytes())
+        # Prepare data format
+        np_label = data[self.labels].to_pandas().astype(np.single).to_numpy()
+        np_conts = data[self.conts].to_pandas().astype(np.single).to_numpy()
+        nnz = np.intc(1)
+        np_cats = data[self.cats].to_pandas().astype(np.longlong).to_numpy()
+        # Write all the data samples
+        for i, _ in enumerate(np_label):
+            # Write Label
+            self.data_writers[idx].write(np_label[i].tobytes())
+            # Write conts (HugeCTR: dense)
+            self.data_writers[idx].write(np_conts[i].tobytes())
+            # Write cats (HugeCTR: Slots)
+            for j, _ in enumerate(np_cats[i]):
+                self.data_writers[idx].write(nnz.tobytes())
+                self.data_writers[idx].write(np_cats[i][j].tobytes())
 
     def _write_thread(self):
         while True:
