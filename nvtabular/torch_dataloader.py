@@ -313,8 +313,8 @@ class TensorBatchDatasetItr:
     def __init__(self, dataset, shuffle=None, device=0, total_devs=1, **kwargs):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
-#         if shuffle:
-#             cp.random.shuffle(self.indices)
+        #         if shuffle:
+        #             cp.random.shuffle(self.indices)
         self.device = device
         self.total_devs = total_devs
 
