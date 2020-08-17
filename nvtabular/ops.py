@@ -629,11 +629,11 @@ class GroupbyStatistics(StatOperator):
         Categorical columns (or "column groups") to collect statistics for.
         If None, the operation will target all known categorical columns.
     concat_groups : bool, default False
-        Applies only if there are list elements in the ``column`` input. If True,
+        Applies only if there are list elements in the ``columns`` input. If True,
         the values within these column groups will be concatenated, and the
         new (temporary) columns will be used to perform the groupby.  The purpose of
-        this option is to enable multiple columns to be lable-encoded jointly.
-        (see Cateigorify). Note that this option is only allowed for the "count"
+        this option is to enable multiple columns to be label-encoded jointly.
+        (see Categorify). Note that this option is only allowed for the "count"
         statistics (with cont_names == None).
     tree_width : dict or int, optional
         Tree width of the hash-based groupby reduction for each categorical
