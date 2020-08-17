@@ -89,16 +89,14 @@ class ChunkQueue:
 
     def __init__(
         self,
-        num_parts=2,
+        num_parts=3,
         batch_size=None,
-        iterator=None,
         shuffle=False,
         cat_cols=None,
         cont_cols=None,
         label_cols=None,
     ):
         self.num_parts = num_parts
-        self.itr = iterator
         self.batch_size = batch_size
         self.q_out = queue.Queue(1)
         self.cat_cols = cat_cols
@@ -110,9 +108,9 @@ class ChunkQueue:
     def get(self):
         return self.q_out.get()
 
-    def batch(self):
+    def batch(self, itr):
         current = []
-        for value in self.itr:
+        for value in itr:
             current.append(value)
             if len(current) == self.num_parts:
                 yield current
@@ -120,39 +118,40 @@ class ChunkQueue:
         if len(current) > 0:
             yield current
 
-    def load_chunks(self):
-        spill = None
-        for chunks in self.batch():
-            if self.stopped:
-                return
-            if spill and not spill.empty:
-                chunks.insert(0, spill)
-            chunks = cudf.core.reshape.concat(chunks)
-            chunks.reset_index(drop=True, inplace=True)
-            chunks, spill = self.get_batch_div_chunk(chunks)
-            if self.shuffle:
-                _shuffle_gdf(chunks)
-            if len(chunks) > 0:
-                chunks = self.itr.create_tensors(
-                    chunks,
+    def load_chunks(self, dev, itr):
+        with itr.device_ctx(dev):
+            spill = None
+            for chunks in self.batch(itr):
+                if self.stopped:
+                    return
+                if spill and not spill.empty:
+                    chunks.insert(0, spill)
+                chunks = cudf.core.reshape.concat(chunks)
+                chunks.reset_index(drop=True, inplace=True)
+                chunks, spill = self.get_batch_div_chunk(chunks)
+                if self.shuffle:
+                    _shuffle_gdf(chunks)
+                if len(chunks) > 0:
+                    chunks = itr.create_tensors(
+                        chunks,
+                        cat_names=self.cat_cols,
+                        cont_names=self.cont_cols,
+                        label_names=self.label_cols,
+                    )
+                    # chunks tensorized
+                    self.q_out.put(chunks)
+                    chunks = None
+            # takes care final batch, which is less than batch size
+            if spill:
+                spill = itr.create_tensors(
+                    spill,
                     cat_names=self.cat_cols,
                     cont_names=self.cont_cols,
                     label_names=self.label_cols,
                 )
-                # chunks tensorized
-                self.q_out.put(chunks)
-                chunks = None
-        # takes care final batch, which is less than batch size
-        if spill:
-            spill = self.itr.create_tensors(
-                spill,
-                cat_names=self.cat_cols,
-                cont_names=self.cont_cols,
-                label_names=self.label_cols,
-            )
-            self.q_out.put(spill)
-            spill = None
-        self.q_out.put("end")
+                self.q_out.put(spill)
+                spill = None
+            self.q_out.put("end")
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -185,6 +184,7 @@ class AsyncIterator:
         shuffle: bool, enable/disable shuffling of dataset
         target: the target library that will use the tensor transformed data
                 currently supported: torch
+        devices: [int], list represents all avialable GPU IDs
     """
 
     def __init__(
@@ -196,10 +196,14 @@ class AsyncIterator:
         batch_size=1,
         shuffle=False,
         library=None,
+        devices=None,
     ):
-        itr = TensorBatchDatasetItrFactory().create(dataset, library, shuffle=shuffle)
+        self.dataset = dataset
+        self.library = library
+        self.shuffle = shuffle
+        self.devices = devices if devices else [0]
+
         self.buff = ChunkQueue(
-            iterator=itr,
             batch_size=batch_size,
             cat_cols=cats,
             cont_cols=conts,
@@ -208,23 +212,38 @@ class AsyncIterator:
         )
 
     def __iter__(self):
-        t1 = threading.Thread(target=self.buff.load_chunks)
-        t1.daemon = True
-        t1.start()
+        indices = cp.arange(self.dataset.to_ddf().npartitions)
+        if self.shuffle:
+            cp.random.shuffle(indices)
+        for dev in self.devices:
+            itr = TensorBatchDatasetItrFactory().create(
+                self.dataset,
+                self.library,
+                indices=indices.tolist(),
+                device=dev,
+                total_devs=self.devices,
+            )
+            t1 = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
+            t1.daemon = True
+            t1.start()
+        ends = []
         while True:
             chunk = self.buff.get()
             if isinstance(chunk, str):
-                break
-            yield from TensorItr(chunk, batch_size=self.buff.batch_size)
+                ends.append(chunk)
+                if len(ends) == len(self.devices):
+                    return
+            else:
+                yield from TensorItr(chunk, batch_size=self.buff.batch_size)
             chunk = None
 
     def __del__(self):
         self.buff.stop()
 
 
-class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
+class TorchAsyncItr(torch.utils.data.IterableDataset):
     """
-        This class, creates batches of a user defined size of the tensor
+        This class, creates batches of, a user defined size, tensor
         represenation of the data supplied. The data input requires an
         NVTabular dataset. Handles spillover to ensure all batches are
         the specified size until the final batch.
@@ -238,6 +257,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         shuffle: bool, enable/disable shuffling of dataset
         target: the target library that will use the tensor transformed data
                 currently supported: torch
+        devices: [int], list represents all avialable GPU IDs
     """
 
     def __init__(
@@ -249,6 +269,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         batch_size=1,
         shuffle=False,
         target="torch",
+        devices=None,
     ):
         self.batch_size = batch_size
         self.cats = cats
@@ -257,6 +278,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
         self.shuffle = shuffle
         self.data = dataset
         self.target = target
+        self.devices = devices
 
     def __iter__(self):
         return iter(
@@ -268,6 +290,7 @@ class AsyncTensorBatchDatasetItr(torch.utils.data.IterableDataset):
                 labels=self.labels,
                 shuffle=self.shuffle,
                 library=self.target,
+                devices=self.devices,
             )
         )
 
@@ -285,27 +308,42 @@ class TensorBatchDatasetItr:
         dataset: NVTabular dataset
         shuffle: bool, specifying whether to shuffle the partitions
                  and shuffle chunks before creating tensor batches
+        device: int, represents targeted GPU id
+        total_devs: [int], list represents all avialable GPU IDs
 
     """
 
-    def __init__(self, dataset, shuffle=None, **kwargs):
+    def __init__(self, dataset, shuffle=None, device=0, total_devs=1, indices=None, **kwargs):
         self.data = dataset
-        self.indices = cp.arange(dataset.to_ddf().npartitions)
-        if shuffle:
-            self.indices = cp.random.shuffle(self.indices)
+        self.indices = indices if indices else cp.arange(dataset.to_ddf().npartitions)
+
+        self.device = device
+        self.total_devs = total_devs
 
     def __iter__(self):
         indices = self.gather_indices()
         yield from self.data.to_iter(indices=indices)
 
     def __len__(self):
-        return self.data.num_rows
+        return int(self.data.num_rows / len(self.total_devs))
 
     def gather_indices(self):
         return self.indices
 
     def to_dlpack(self, gdf):
         return gdf.to_dlpack()
+
+    def device_ctx(self, dev):
+        """
+        This function is designed to return a context for a target device. This
+        should be an integer signifying the target GPU's identifier. Currently
+        this is dependent on the targeted framework. Need method exposed via
+        rapids or cudf to factor this api call out.
+
+        Parameters
+        device: int, the target GPU's id
+        """
+        raise NotImplementedError()
 
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         raise NotImplementedError()
@@ -320,11 +358,15 @@ class TensorBatchDatasetItrFactory:
         dataset: NVTabular dataset
         target: str, target library you want the iterator supported - torch
         shuffle: bool, shuffle dataset
+        device: int, represents targeted GPU id
+        total_devs: [int], list represents all avialable GPU IDs
     """
 
-    def create(self, dataset, target, shuffle=False, **kwargs):
+    def create(self, dataset, target, shuffle=False, device=None, total_devs=None, **kwargs):
         if target in "torch":
-            return TorchTensorBatchDatasetItr(dataset, shuffle=shuffle, **kwargs)
+            return TorchTensorBatchDatasetItr(
+                dataset, shuffle=shuffle, device=device, total_devs=total_devs, **kwargs
+            )
         else:
             raise ValueError(target)
 
@@ -338,15 +380,14 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
 
     """
 
+    def device_ctx(self, dev):
+        return torch.cuda.device(dev)
+
     def gather_indices(self):
-        worker_info = torch.utils.data.get_worker_info()
-        if worker_info is None:
-            return self.indices
-        else:
-            per_worker = int(len(self.indices) // worker_info.num_workers) + 1
-            worker_id = worker_info.id
-            start = worker_id * per_worker
-            return self.indices[start : start + per_worker]
+        per_worker = int(len(self.indices) // len(self.total_devs)) + 1
+        worker_id = self.total_devs.index(self.device)
+        start = worker_id * per_worker
+        return self.indices[start : start + per_worker]
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
