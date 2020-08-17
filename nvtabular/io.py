@@ -1078,7 +1078,7 @@ class DataFrameIter:
         return len(self.indices)
 
     def __iter__(self):
-        for idx, i in enumerate(self.indices):
+        for i in self.indices:
             part = self._ddf.get_partition(i)
             if self.columns:
                 yield part[self.columns].compute(scheduler="synchronous")
