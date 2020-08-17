@@ -29,9 +29,7 @@ class DotProductInteraction(tf.keras.layers.Layer):
         _INTERACTION_TYPES
     )
 
-    def __init__(
-        self, interaction_type=None, self_interaction=False, name=None, **kwargs
-    ):
+    def __init__(self, interaction_type=None, self_interaction=False, name=None, **kwargs):
         if interaction_type not in _INTERACTION_TYPES:
             raise ValueError("Unknown interaction type {}".format(interaction_type))
         self.interaction_type = interaction_type
@@ -111,16 +109,12 @@ def _validate_numeric_column(feature_column):
     if len(feature_column.shape) > 1:
         raise ValueError(
             "Matrix numeric features are not allowed, "
-            "found feature {} with shape {}".format(
-                feature_column.key, feature_column.shape
-            )
+            "found feature {} with shape {}".format(feature_column.key, feature_column.shape)
         )
     elif feature_column.shape[0] != 1:
         raise ValueError(
             "Vector numeric features are not allowed, "
-            "found feature {} with shape {}".format(
-                feature_column.key, feature_column.shape
-            )
+            "found feature {} with shape {}".format(feature_column.key, feature_column.shape)
         )
 
 

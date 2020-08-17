@@ -38,6 +38,7 @@ if version.parse(tf.__version__) < version.parse("2.3.0"):
         import sys
 
         from six import reraise
+
         message = "If using TensorFlow < 2.3.0, you must install tfdlpack-gpu extension library"
         reraise(type(e), type(e)(message), sys.exc_info()[2])
 
