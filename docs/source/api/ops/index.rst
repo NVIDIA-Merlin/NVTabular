@@ -8,7 +8,7 @@ Operators
    Clip <Clip>
    Dropna <dropna>
    FillMissing <fillmissing>
-   GroupBy <groupby>
+   JoinGroupby <groupby>
    LogOp <log>
    Moments <moments>
    Median <median>
