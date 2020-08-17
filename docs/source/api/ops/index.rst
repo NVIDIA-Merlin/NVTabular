@@ -11,6 +11,7 @@ Operators
    Filter <filter>
    GroupBy <groupby>
    HashBucket <hashbucket>
+   JoinGroupby <groupby>
    LambdaOp <lambdaop>
    LogOp <log>
    Moments <moments>
