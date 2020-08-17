@@ -336,26 +336,38 @@ class Median(StatOperator):
         return
 
 
-class ZeroFill(TransformOperator):
+class Clip(TransformOperator):
     """
-    This operation sets negative values to zero.
-
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    This operation clips values continous values so that they are with a min/max bound.
+    For instance by setting the min value to 0, you can replace all negative values with 0.
+    This is helpful in cases where you want to log normalize values.
     """
 
     default_in = CONT
     default_out = CONT
 
-    @annotate("ZeroFill_op", color="darkgreen", domain="nvt_python")
+    def __init__(
+        self, min_value=None, max_value=None, columns=None, preprocessing=True, replace=True
+    ):
+        if min_value is None and max_value is None:
+            raise ValueError("Must specify a min or max value to clip to")
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        self.min_value = min_value
+        self.max_value = max_value
+
+    @annotate("Clip_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         cont_names = target_columns
         if not cont_names:
             return gdf
-        z_gdf = gdf[cont_names].fillna(0)
+
+        z_gdf = gdf[cont_names]
         z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
-        z_gdf[z_gdf < 0] = 0
+        if self.min_value is not None:
+            z_gdf[z_gdf < self.min_value] = self.min_value
+        if self.max_value is not None:
+            z_gdf[z_gdf > self.max_value] = self.max_value
+
         return z_gdf
 
 
