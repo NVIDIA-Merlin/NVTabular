@@ -212,11 +212,14 @@ class AsyncIterator:
         )
 
     def __iter__(self):
+        indices = cp.arange(self.dataset.to_ddf().npartitions)
+        if self.shuffle:
+            cp.random.shuffle(indices)
         for dev in self.devices:
             itr = TensorBatchDatasetItrFactory().create(
                 self.dataset,
                 self.library,
-                shuffle=self.shuffle,
+                indices=indices.tolist(),
                 device=dev,
                 total_devs=self.devices,
             )
@@ -310,11 +313,10 @@ class TensorBatchDatasetItr:
 
     """
 
-    def __init__(self, dataset, shuffle=None, device=0, total_devs=1, **kwargs):
+    def __init__(self, dataset, shuffle=None, device=0, total_devs=1, indices=None, **kwargs):
         self.data = dataset
-        self.indices = cp.arange(dataset.to_ddf().npartitions)
-        #         if shuffle:
-        #             cp.random.shuffle(self.indices)
+        self.indices = indices if indices else cp.arange(dataset.to_ddf().npartitions)
+
         self.device = device
         self.total_devs = total_devs
 
@@ -385,7 +387,7 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
         per_worker = int(len(self.indices) // len(self.total_devs)) + 1
         worker_id = self.total_devs.index(self.device)
         start = worker_id * per_worker
-        return self.indices[start : start + per_worker].tolist()
+        return self.indices[start : start + per_worker]
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:

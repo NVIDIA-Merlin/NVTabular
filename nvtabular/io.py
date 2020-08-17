@@ -1081,7 +1081,7 @@ class DataFrameIter:
         for idx, i in enumerate(self.indices):
             part = self._ddf.get_partition(i)
             if self.columns:
-                yield part[self.columns].compute(scheduler="single-threaded")
+                yield part[self.columns].compute(scheduler="synchronous")
             else:
-                yield part.compute(scheduler="single-threaded")
+                yield part.compute(scheduler="synchronous")
             part = None
