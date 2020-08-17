@@ -101,4 +101,4 @@ To be clear, this is an early alpha release, and we have a long way to go. We ha
 
 If you are interested in learning more about how NVTabular works under the hood we have provided this [more detailed description of the core functionality](HowItWorks.md).
 
-We also have [API documentation](https://nvidia.github.io/NVTabular) that outlines in detail the specifics of the calls available within the library.
+We also have [API documentation](https://nvidia.github.io/NVTabular/main/index.html) that outlines in detail the specifics of the calls available within the library.
