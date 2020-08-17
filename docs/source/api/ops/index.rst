@@ -5,11 +5,11 @@ Operators
    :maxdepth: 2
 
    Categorify <categorify>
+   Clip <Clip>
    Dropna <dropna>
    FillMissing <fillmissing>
-   GroupBy <groupby>
+   JoinGroupby <groupby>
    LogOp <log>
    Moments <moments>
    Median <median>
    Normalize <normalize>
-   ZeroFill <zerofill>
