@@ -5,6 +5,7 @@ Operators
    :maxdepth: 2
 
    Categorify <categorify>
+   Clip <Clip>
    Dropna <dropna>
    FillMissing <fillmissing>
    FillMedian <fillmedian>
@@ -19,4 +20,3 @@ Operators
    MinMax <minmax>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
-   ZeroFill <zerofill>
