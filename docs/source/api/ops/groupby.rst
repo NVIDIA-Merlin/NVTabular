@@ -1,6 +1,6 @@
-GroupBy
-=======
+JoinGroupby
+===========
 
-.. autoclass:: nvtabular.ops.GroupBy
+.. autoclass:: nvtabular.ops.JoinGroupby
    :members:
    :show-inheritance:

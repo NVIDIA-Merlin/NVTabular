@@ -75,7 +75,7 @@ def test_dask_workflow_api_dlrm(
         client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
 
-    processor.add_feature([ops.ZeroFill(), ops.LogOp()])
+    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
             freq_threshold=freq_threshold,
@@ -147,7 +147,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     )
 
     processor.add_preprocess(
-        ops.GroupBy(cont_names=cont_names, stats=["count", "sum", "std"], out_path=str(tmpdir))
+        ops.JoinGroupby(cont_names=cont_names, stats=["count", "sum", "std"], out_path=str(tmpdir))
     )
     processor.finalize()
 
@@ -205,7 +205,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True))
 
     processor.add_cat_feature(
-        ops.GroupBy(cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir))
+        ops.JoinGroupby(cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir))
     )
 
     processor.finalize()
