@@ -20,7 +20,7 @@ from torch.utils.dlpack import from_dlpack
 
 from nvtabular.ops import _get_embedding_order
 
-from .backend import AsyncIterator, TensorBatchDatasetItr
+from .backend import AsyncIterator, TensorBatchDatasetItr, DataLoader
 
 
 class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
@@ -56,7 +56,7 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
         return [cats, conts, label]
 
 
-class TorchAsyncItr(torch.utils.data.IterableDataset):
+class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     """
         This class, creates batches of, a user defined size, tensor
         represenation of the data supplied. The data input requires an
@@ -85,32 +85,19 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
         labels=None,
         batch_size=1,
         shuffle=False,
-        target="torch",
         devices=None,
     ):
-        self.batch_size = batch_size
-        self.cats = cats
-        self.conts = conts
-        self.labels = labels
-        self.shuffle = shuffle
-        self.data = dataset
-        self.devices = devices
-
-    def __iter__(self):
-        return iter(
-            AsyncIterator(
-                self._itr_cls,
-                batch_size=self.batch_size,
-                cats=self.cats,
-                conts=self.conts,
-                labels=self.labels,
-                shuffle=self.shuffle,
-                devices=self.devices,
-            )
+        DataLoader.__init__(
+            self,
+            dataset,
+            cats,
+            conts,
+            labels,
+            batch_size,
+            shuffle,
+            workflows,
+            devices=devices
         )
-
-    def __len__(self):
-        return math.ceil(self.data.num_rows / self.batch_size)
 
 
 class DLDataLoader(torch.utils.data.DataLoader):

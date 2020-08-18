@@ -17,10 +17,11 @@ import math
 import os
 
 import tensorflow as tf
+import cupy as cp
 
 from ..io import Dataset
 from ..workflow import BaseWorkflow
-from .backend import AsyncIterator, TensorBatchDatasetItr
+from .backend import AsyncIterator, TensorBatchDatasetItr, DataLoader
 from .tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 
 from_dlpack = configure_tensorflow()
@@ -83,19 +84,6 @@ def _validate_schema(feature_columns, cont_names, cat_names):
         )
 
 
-def _validate_workflows(workflows, cat_names, cont_names, label_name):
-    assert all([isinstance(w, BaseWorkflow) for w in workflows])
-    for workflow in workflows:
-        assert set(workflow.columns_ctx["categorical"]["base"]) == set(cat_names)
-        assert set(workflow.columns_ctx["continuous"]["base"]) == set(cont_names)
-        assert set(workflow.columns_ctx["label"]["base"]) == set([label_name])
-
-        cat_names = workflow.columns_ctx["final"]["ctx"]["categorical"]
-        cont_names = workflow.columns_ctx["final"]["ctx"]["continuous"]
-        label_name = workflow.columns_ctx["final"]["ctx"]["label"][0]
-    return workflows
-
-
 class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
     def device_ctx(self, dev):
         return tf.device("/device:GPU:{}".format(dev))
@@ -115,20 +103,24 @@ class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
         #     gdf[cat_names], gdf[cont_names], gdf[label_names]
         # )
         X = {}
-        for name in cat_names + cont_names + label_names:
+        for name in cat_names + cont_names:
             X[name] = self._to_tensor(gdf.pop(name))
+        y = {}
+        for name in label_names:
+            y[name] = self._to_tensor(gdf.pop(name))
+
         del gdf
-        return X
+        return X, y
 
 
-class KerasSequenceLoader(tf.keras.utils.Sequence):
+class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     _itr_cls = TensorFlowBatchDatasetItr
 
     def __init__(
         self,
         paths_or_dataset,
         batch_size,
-        label_name,
+        label_names,
         feature_columns=None,
         cat_names=None,
         cont_names=None,
@@ -138,54 +130,24 @@ class KerasSequenceLoader(tf.keras.utils.Sequence):
         workflows=None,
         reader_kwargs={},
     ):
-        self.data = _validate_dataset(
+        dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
         )
-        self.cat_names, self.cont_names = _validate_schema(feature_columns, cat_names, cont_names)
-        self.label_name = label_name
+        cat_names, cont_names = _validate_schema(feature_columns, cat_names, cont_names)
 
-        # TODO: do we even need to save most of the attributes or
-        # can we do a functools.partial on AsyncIterator?
-        self.batch_size = batch_size
-        self.shuffle = shuffle
+        DataLoader.__init__(
+            self,
+            dataset,
+            cat_names,
+            cont_names,
+            label_names,
+            batch_size,
+            shuffle,
+            workflows,
+            devices=None # TODO: figure out multi-gpu support
+        )
+
         self._itr = None
-
-        workflows = workflows or []
-        self.workflows = _validate_workflows(
-            workflows, self.cat_names, self.cont_names, self.label_name
-        )
-
-    def __len__(self):
-        """
-        should be "global" to all data loaders
-        """
-        return math.ceil(self.data.num_rows // self.batch_size)
-
-    def __iter__(self):
-        """
-        should be "global" to all data loaders
-        """
-        return iter(
-            AsyncIterator(
-                self._itr_cls,
-                cats=self.cat_names,
-                conts=self.cont_names,
-                labels=[self.label_name],
-                batch_size=self.batch_size,
-                shuffle=self.shuffle,
-                devices=None,  # TODO: support multi-gpu
-            )
-        )
-
-    def map(self, workflow):
-        """
-        should be "global" to all data loaders
-        """
-        workflows = self.workflows + [workflow]
-        self.workflows = _validate_workflows(
-            workflows, self.cat_names, self.cont_names, self.label_name
-        )
-        # TODO: return copy for consistency?
 
     def __getitem__(self, idx):
         """

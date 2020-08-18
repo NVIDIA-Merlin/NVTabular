@@ -50,10 +50,13 @@ class TensorItr:
         for idx in range(len(self)):
             # TODO: do some sort of type checking up front?
             # TODO: what will this slicing look like for multi-hots?
-            if isinstance(self.tensors, dict):
+            if len(self.tensors) == 2:
                 # TODO: this might be a bit inefficient on the TF side,
                 # consider doing slicing up front on grouped matrices
-                yield {name: x[idx : idx + self.batch_size] for name, x in self.tensors.items()}
+                X, y = self.tensors
+                X = {name: x[idx : idx + self.batch_size] for name, x in X.items()}
+                y = {name: _y[idx : idx + self.batch_size] for name, _y in y.items()}
+                yield X, y
             else:
                 yield [
                     tensor[idx : idx + self.batch_size] if tensor is not None else None
@@ -186,8 +189,7 @@ class AsyncIterator:
 
     def __init__(
         self,
-        dataset,
-        itr_cls=None,
+        itrs,
         cats=None,
         conts=None,
         labels=None,
@@ -196,18 +198,8 @@ class AsyncIterator:
         devices=None,
         workflows=None,
     ):
-        assert issubclass(itr_cls, TensorBatchDatasetItr)
-        self.itr_ls = itr_cls
-        self.dataset = dataset
+        self.itrs = itrs
         self.shuffle = shuffle
-        self.devices = devices if devices else [0]
-
-        if workflows is not None:
-            # TODO: need to replace cats, conts, and labels
-            # with output from last workflow
-            pass
-        self.workflows = workflows
-
         self.buff = ChunkQueue(
             batch_size=batch_size,
             cat_cols=cats,
@@ -217,20 +209,13 @@ class AsyncIterator:
         )
 
     def __iter__(self):
-        indices = cp.arange(self.dataset.to_ddf().npartitions)
         if self.shuffle:
-            cp.random.shuffle(indices)
-        for dev in self.devices:
-            itr = self.itr_cls(
-                self.dataset,
-                indices=indices.tolist(),
-                device=dev,
-                total_devs=self.devices,
-                workflows=self.workflows,
-            )
+            cp.random.shuffle(self.itrs[0].indices)
+        for dev, itr in enumerate(self.itrs):
             t1 = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
             t1.daemon = True
             t1.start()
+
         ends = []
         while True:
             chunk = self.buff.get()
@@ -308,3 +293,80 @@ class TensorBatchDatasetItr:
 
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         raise NotImplementedError()
+
+
+def _validate_workflows(workflows, cat_names, cont_names, label_names):
+    assert all([isinstance(w, BaseWorkflow) for w in workflows])
+    # TODO: commenting out until it's clearer what the
+    # columns in workflow.columns_cts["final"]["ctx"] mean
+    # for workflow in workflows:
+    #     assert set(workflow.columns_ctx["categorical"]["base"]) == set(cat_names)
+    #     assert set(workflow.columns_ctx["continuous"]["base"]) == set(cont_names)
+    #     assert set(workflow.columns_ctx["label"]["base"]) == set(label_names)
+
+    #     cat_names = workflow.columns_ctx["final"]["ctx"]["categorical"]
+    #     cont_names = workflow.columns_ctx["final"]["ctx"]["continuous"]
+    #     label_name = workflow.columns_ctx["final"]["ctx"]["label"][0]
+    return workflows
+
+
+class DataLoader:
+    def __init__(
+            dataset,
+            cat_names,
+            cont_names,
+            label_names,
+            batch_size,
+            shuffle,
+            workflows=None,
+            devices=None
+    ):
+        indices = cp.arange(dataset.to_ddf().npartitions)
+        devices = devices or [0]
+        workflows = workflows  or []
+        _validate_workflows(workflows)
+
+        itrs = []
+        for dev in devices:
+            itrs.append(self.itr_cls(
+                dataset,
+                indices=indices,
+                device=dev,
+                total_devs=devices,
+                workflows=workflows
+            )
+        )
+        self.itr = AsyncIterator(
+            itrs,
+            cats=cat_names,
+            conts=cont_names,
+            labels=label_names,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            devices=devices
+        )
+
+        self.cat_names = cat_names
+        self.cont_names = cont_names
+        self.label_names = label_names
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+    def __len__(self):
+        return math.ceil(self.itrs[0].data.num_rows / self.batch_size)
+
+    def __iter__(self):
+        return iter(self.itr)
+
+    def map(self, workflow):
+        # TODO: this is a bit ugly, how can we clean it up?
+        # maybe think about doing some class consolidation
+        workflows = self.itr.its[0].workflows + [workflow]
+        workflows = _validate_workflows(
+            workflows, self.cat_names, self.cont_names, self.label_names
+        )
+        for itr in self.itr.itrs:
+            itr.workflows = workflows
+        # TODO: also need to update self.cat_names, cont_names, label_names
+        # and their values in self.itr (and its buffer)
+        # see point above about class consolidation
