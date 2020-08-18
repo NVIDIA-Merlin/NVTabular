@@ -227,7 +227,7 @@ def _convert_features(features, metric, on_device):
 def _tfidf_weight(X, np):
     N = float(X.shape[0])
     idf = np.log(N / np.bincount(X.col))
-    X.data = np.sqrt(X.data) * idf[X.col]
+    X.data *= idf[X.col]
     return X
 
 
