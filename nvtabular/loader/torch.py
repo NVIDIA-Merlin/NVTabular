@@ -22,6 +22,39 @@ from nvtabular.ops import _get_embedding_order
 from .backend import AsyncIterator, TensorBatchDatasetItr
 
 
+class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
+    """
+        For PyTorch Only:
+        Takes input of an NVTabular dataset
+        and creates TorchTensorBatchDatasetItr
+        supplying user defined size chunks.
+
+    """
+
+    def device_ctx(self, dev):
+        return torch.cuda.device(dev)
+
+    def _to_tensor(self, gdf, dtype=None):
+        if gdf.empty:
+            return
+        dl_pack = self.to_dlpack(gdf)
+        tens = from_dlpack(dl_pack).type(dtype)
+        return tens
+
+    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
+        gdf_cats, gdf_conts, gdf_label = (
+            gdf[_get_embedding_order(cat_names)],
+            gdf[cont_names],
+            gdf[label_names],
+        )
+        del gdf
+        cats = self._to_tensor(gdf_cats, torch.long)
+        conts = self._to_tensor(gdf_conts, torch.float32)
+        label = self._to_tensor(gdf_label, torch.float32)
+        del gdf_cats, gdf_conts, gdf_label
+        return [cats, conts, label]
+
+
 class TorchAsyncItr(torch.utils.data.IterableDataset):
     """
         This class, creates batches of, a user defined size, tensor
@@ -77,39 +110,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
 
     def __len__(self):
         return math.ceil(self.data.num_rows / self.batch_size)
-
-
-class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
-    """
-        For PyTorch Only:
-        Takes input of an NVTabular dataset
-        and creates TorchTensorBatchDatasetItr
-        supplying user defined size chunks.
-
-    """
-
-    def device_ctx(self, dev):
-        return torch.cuda.device(dev)
-
-    def _to_tensor(self, gdf, dtype=None):
-        if gdf.empty:
-            return
-        dl_pack = self.to_dlpack(gdf)
-        tens = from_dlpack(dl_pack).type(dtype)
-        return tens
-
-    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(cat_names)],
-            gdf[cont_names],
-            gdf[label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats, torch.long)
-        conts = self._to_tensor(gdf_conts, torch.float32)
-        label = self._to_tensor(gdf_label, torch.float32)
-        del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
