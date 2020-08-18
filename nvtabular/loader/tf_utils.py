@@ -1,8 +1,8 @@
 import os
-from packaging import version
 import warnings
 
 import tensorflow as tf
+from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 from ..io import device_mem_size
