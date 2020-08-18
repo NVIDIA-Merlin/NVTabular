@@ -37,7 +37,6 @@ RUN source activate nvtabular && \
 
 # add cupti to ld library path for profiling
 ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/cuda-10.1/extras/CUPTI/lib64/"
-RUN echo $LD_LIBRARY_PATH
 
 # different images for dev and production
 FROM base AS true

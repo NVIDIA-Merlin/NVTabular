@@ -186,6 +186,7 @@ class AsyncIterator:
 
     def __init__(
         self,
+        dataset,
         itr_cls=None,
         cats=None,
         conts=None,
@@ -197,6 +198,7 @@ class AsyncIterator:
     ):
         assert issubclass(itr_cls, TensorBatchDatasetItr)
         self.itr_ls = itr_cls
+        self.dataset = dataset
         self.shuffle = shuffle
         self.devices = devices if devices else [0]
 
@@ -221,7 +223,6 @@ class AsyncIterator:
         for dev in self.devices:
             itr = self.itr_cls(
                 self.dataset,
-                self.library,
                 indices=indices.tolist(),
                 device=dev,
                 total_devs=self.devices,

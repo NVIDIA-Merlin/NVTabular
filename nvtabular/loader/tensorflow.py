@@ -87,13 +87,13 @@ def _validate_schema(feature_columns, cont_names, cat_names):
 def _validate_workflows(workflows, cat_names, cont_names, label_name):
     assert all([isinstance(w, BaseWorkflow) for w in workflows])
     for workflow in workflows:
-        assert workflow.columns_ctx["categorical"]["base"] == cat_names
-        assert workflow.columns_ctx["continuous"]["base"] == cont_names
-        assert workflow.columns_ctx["label"]["base"] == [label_name]
+        assert set(workflow.columns_ctx["categorical"]["base"]) == set(cat_names)
+        assert set(workflow.columns_ctx["continuous"]["base"]) == set(cont_names)
+        assert set(workflow.columns_ctx["label"]["base"]) == set([label_name])
 
-        cat_names = workflow.columns_ctx["final"]["categorical"]
-        cont_names = workflow.columns_ctx["final"]["continuous"]
-        label_name = workflow.columns_ctx["final"]["label"][0]
+        cat_names = workflow.columns_ctx["final"]["ctx"]["categorical"]
+        cont_names = workflow.columns_ctx["final"]["ctx"]["continuous"]
+        label_name = workflow.columns_ctx["final"]["ctx"]["label"][0]
     return workflows
 
 
