@@ -1,5 +1,14 @@
 .git
 .dockerignore
+
+# ignore hidden directories created
+# by RAPIDS libs
+**/.cupy
+**/.nv
+**/.python_history
+
+# ignore any local files created
+# by examples notebooks
 examples/tensorflow/logs
 examples/tensorflow/docker/Dockerfile*
 examples/tensorflow/.*

@@ -15,12 +15,12 @@
 #
 
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="nvtabular",
     version="0.1.1",
-    packages=["nvtabular"],
+    packages=find_packages(),
     url="https://github.com/NVIDIA/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
