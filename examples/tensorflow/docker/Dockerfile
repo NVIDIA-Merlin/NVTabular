@@ -16,7 +16,7 @@ SHELL ["/bin/bash", "-c"]
 
 # set up nvtabular and example-specific libs
 ADD . nvtabular/
-ADD examples/tensorflow/docker/requirements.tf.txt requirements.txt
+ADD examples/tensorflow/docker/requirements.txt requirements.txt
 RUN source activate nvtabular && \
       echo "nvtabular/." >>  requirements.txt && \
       pip install -U --no-cache-dir -r requirements.txt && \
