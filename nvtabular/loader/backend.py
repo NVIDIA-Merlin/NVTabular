@@ -182,14 +182,7 @@ class AsyncIterator:
     """
 
     def __init__(
-        self,
-        itr,
-        cats=None,
-        conts=None,
-        labels=None,
-        batch_size=1,
-        shuffle=False,
-        library=None,
+        self, itr, cats=None, conts=None, labels=None, batch_size=1, shuffle=False, library=None,
     ):
         assert isinstance(itr, TensorBatchDatasetItr)
         self.buff = ChunkQueue(
@@ -228,6 +221,7 @@ class TensorBatchDatasetItr:
                  and shuffle chunks before creating tensor batches
 
     """
+
     def __init__(self, dataset, shuffle=None, **kwargs):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
