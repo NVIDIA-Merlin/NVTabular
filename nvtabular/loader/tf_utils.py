@@ -3,7 +3,7 @@ from packaging import version
 import warnings
 
 import tensorflow as tf
-from tensorflow.python.feature_column import feature_column_v2 as fc 
+from tensorflow.python.feature_column import feature_column_v2 as fc
 
 from ..io import device_mem_size
 
@@ -82,4 +82,3 @@ def get_dataset_schema_from_feature_columns(feature_columns):
     cat_names = sorted(cat_names)
     cont_names = sorted(cont_names)
     return cat_names, cont_names
-
