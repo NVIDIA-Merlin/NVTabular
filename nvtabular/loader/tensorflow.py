@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
 import math
+import os
 
 import tensorflow as tf
 
@@ -22,7 +22,6 @@ from ..io import Dataset
 from ..workflow import BaseWorkflow
 from .backend import AsyncIterator, TensorBatchDatasetItr
 from .tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
-
 
 from_dlpack = configure_tensorflow()
 
