@@ -11,6 +11,7 @@ from tensorflow.python.feature_column import feature_column_v2 as fc
 from .io import Dataset, _shuffle_gdf, device_mem_size
 from .workflow import BaseWorkflow
 
+# Do some TensorFlow configuration
 free_gpu_mem_mb = device_mem_size(kind="free") / (1024 ** 2)
 tf_mem_size = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
 if float(tf_mem_size) < 1:
@@ -18,6 +19,8 @@ if float(tf_mem_size) < 1:
 tf_mem_size = int(tf_mem_size)
 assert tf_mem_size < free_gpu_mem_mb
 
+# TODO: what will this look like in any sort
+# of distributed set up?
 tf_device = os.environ.get("TF_VISIBLE_DEVICE", 0)
 try:
     tf.config.set_logical_device_configuration(
@@ -28,12 +31,19 @@ except RuntimeError:
     warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
 
 
-if version.parse(tf.__version__) < version.parse("2.2.0"):
-    from tfdlpack import from_dlpack as tf_from_dlpack
+if version.parse(tf.__version__) < version.parse("2.3.0"):
+    try:
+        from tfdlpack import from_dlpack as tf_from_dlpack
+    except ModuleNotFoundError as e:
+        import sys
+
+        from six import reraise
+
+        message = "If using TensorFlow < 2.3.0, you must install tfdlpack-gpu extension library"
+        reraise(type(e), type(e)(message), sys.exc_info()[2])
+
 else:
     from tensorflow.experimental.dlpack import from_dlpack as tf_from_dlpack
-
-    warnings.warn("Tensorflow 2.2.0 dlpack integration has known memory leak issues")
 
 
 def _to_tensor(x):
