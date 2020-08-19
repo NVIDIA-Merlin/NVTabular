@@ -31,7 +31,7 @@ class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
     """
 
     def device_ctx(self, dev):
-        return torch.cuda.device(dev)
+        return torch.cuda.device("cuda:{}".format(dev))
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
@@ -93,9 +93,12 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             labels,
             batch_size,
             shuffle,
-            workflows,
+            workflows=None,
             devices=devices
         )
+
+    def __iter__(self):
+        return DataLoader.__iter__(self)
 
 
 class DLDataLoader(torch.utils.data.DataLoader):

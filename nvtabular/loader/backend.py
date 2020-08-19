@@ -46,7 +46,7 @@ class ChunkQueue:
 
     def __init__(
         self,
-        num_parts=3,
+        num_parts=1,
         batch_size=None,
         shuffle=False,
         # TODO: these should be moved to attributes
@@ -68,6 +68,10 @@ class ChunkQueue:
     @property
     def stopped(self):
         return self._stop_event.is_set()
+
+    @property
+    def empty(self):
+        return self.q_out.empty()
 
     def get(self):
         return self.q_out.get()
@@ -191,13 +195,13 @@ class AsyncIterator:
             t.start()
             threads.append(t)
 
-        while (any([t.is_alive() for t in threads]) or not q.empty()):
+        while (any([t.is_alive() for t in threads]) or not self.buff.empty):
             chunk, num_samples = self.buff.get()
             # TODO: may need to do dlpack passing here if
             # TensorFlow starts complaining
             for idx in range(_num_steps(num_samples, self.buff.batch_size)):
                 # TODO: how will this slicing look once we have multi-hots?
-                slc = slice(idx*batch_size, (idx+1)*batch_size)
+                slc = slice(idx*self.buff.batch_size, (idx+1)*self.buff.batch_size)
                 outputs = []
                 for t in chunk:
                     if isinstance(t, dict):
