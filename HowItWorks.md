@@ -99,7 +99,7 @@ workflow = nvt.Workflow(..., client=client)
 ...
 ```
 
-There are currenly many ways to deploy the required Dask `cluster`.  [This article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a nice summary of all practical options.  For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
+There are currenly many ways to deploy a "cluster" for Dask.  [This article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a nice summary of all practical options.  For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
 
 Since NVTabular already uses [dask_cudf](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the arguments used for global-statistics operations.  See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.     
 
