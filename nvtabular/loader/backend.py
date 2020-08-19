@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
 import queue
 import threading
 
 import cudf
 import cupy as cp
 
+from nvtabular.workflow import BaseWorkflow
 from nvtabular.io import _shuffle_gdf
 
 
@@ -212,10 +214,10 @@ class AsyncIterator:
         if self.shuffle:
             cp.random.shuffle(self.itrs[0].indices)
         for dev, itr in enumerate(self.itrs):
-            t1 = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
-            t1.daemon = True
-            t1.start()
-
+            t = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
+            t.daemon = True
+            t.start()
+        
         ends = []
         while True:
             chunk = self.buff.get()
@@ -231,6 +233,19 @@ class AsyncIterator:
 
     def __del__(self):
         self.buff.stop()
+
+
+class ThreadSafeAsyncIter:
+    def __init__(self, itr):
+        self.itr = itr
+        self.lock = threading.Lock()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        with self.lock:
+            return self.itr.next()
 
 
 class TensorBatchDatasetItr:
@@ -252,7 +267,9 @@ class TensorBatchDatasetItr:
         self, dataset, shuffle=None, workflows=None, device=0, total_devs=1, indices=None, **kwargs
     ):
         self.data = dataset
-        self.indices = indices if indices else cp.arange(dataset.to_ddf().npartitions)
+        if indices is None:
+            indices = cp.arange(dataset.to_ddf().npartitions)
+        self.indices = indices
         self.workflows = workflows or []
 
         self.device = device
@@ -312,6 +329,7 @@ def _validate_workflows(workflows, cat_names, cont_names, label_names):
 
 class DataLoader:
     def __init__(
+            self,
             dataset,
             cat_names,
             cont_names,
@@ -324,11 +342,12 @@ class DataLoader:
         indices = cp.arange(dataset.to_ddf().npartitions)
         devices = devices or [0]
         workflows = workflows  or []
-        _validate_workflows(workflows)
+        _validate_workflows(
+            workflows, cat_names, cont_names, label_names)
 
         itrs = []
         for dev in devices:
-            itrs.append(self.itr_cls(
+            itrs.append(self._itr_cls(
                 dataset,
                 indices=indices,
                 device=dev,
@@ -353,15 +372,15 @@ class DataLoader:
         self.shuffle = shuffle
 
     def __len__(self):
-        return math.ceil(self.itrs[0].data.num_rows / self.batch_size)
+        return math.ceil(self.itr.itrs[0].data.num_rows / self.batch_size)
 
     def __iter__(self):
-        return iter(self.itr)
+        return ThreadSafeAsyncIter(iter(self.itr))
 
     def map(self, workflow):
         # TODO: this is a bit ugly, how can we clean it up?
         # maybe think about doing some class consolidation
-        workflows = self.itr.its[0].workflows + [workflow]
+        workflows = self.itr.itrs[0].workflows + [workflow]
         workflows = _validate_workflows(
             workflows, self.cat_names, self.cont_names, self.label_names
         )
