@@ -25,16 +25,18 @@ from nvtabular.column_similarity import ColumnSimilarity
 def test_column_similarity(on_device, metric):
     categories = cupy.sparse.coo_matrix(
         (
-            cupy.ones(10),
+            cupy.ones(14),
             (
-                cupy.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3]),
-                cupy.array([0, 1, 2, 1, 2, 3, 3, 4, 5, 1]),
+                cupy.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 4, 4, 5, 5]),
+                cupy.array([0, 1, 2, 1, 2, 3, 3, 4, 5, 1, 1, 2, 0, 1]),
             ),
         )
     )
 
     op = ColumnSimilarity("output", "left", categories, "right", metric=metric, on_device=on_device)
-    df = op.apply_op(cudf.DataFrame({"left": [0, 0, 0, 0], "right": [0, 1, 2, 3]}), None, None)
+    df = op.apply_op(
+        cudf.DataFrame({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]}), None, None
+    )
 
     output = df.output.values
     if metric in ("tfidf", "cosine"):
@@ -43,3 +45,6 @@ def test_column_similarity(on_device, metric):
 
     # distance from document 0 to document 2 should be 0 since they have no features in common
     assert output[2] == 0
+
+    # distance from document 4 to 5 should be non-zero (have category 1 in common)
+    assert output[4] != 0
