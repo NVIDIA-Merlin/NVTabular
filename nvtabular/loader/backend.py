@@ -203,8 +203,6 @@ class AsyncIterator:
                 self.buff.cont_cols,
                 self.buff.label_cols
             )
-            # TODO: may need to do dlpack passing here if
-            # TensorFlow starts complaining
             for idx in range(_num_steps(num_samples, self.buff.batch_size)):
                 # TODO: how will this slicing look once we have multi-hots?
                 slc = slice(idx*self.buff.batch_size, (idx+1)*self.buff.batch_size)
@@ -217,7 +215,6 @@ class AsyncIterator:
                     elif t is not None:
                         outputs.append(t[slc])
                     else:
-                        # TODO: this means it has to be None right?
                         outputs.append(t)
                 yield outputs
 

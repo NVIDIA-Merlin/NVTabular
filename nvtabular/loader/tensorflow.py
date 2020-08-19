@@ -96,7 +96,7 @@ class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
         dlpack = self.to_dlpack(gdf)
         x = from_dlpack(dlpack)
         # TODO: type checking?
-        return tf.expand_dims(x, -1)
+        return x # tf.expand_dims(x, -1)
 
     def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
         # TODO: can we use these somehow to go faster?
@@ -113,7 +113,7 @@ class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
         for name in label_names:
             y.append(self._to_tensor(gdf.pop(name)))
         del gdf
-        return X, y[0]
+        return X, y
 
 
 class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
