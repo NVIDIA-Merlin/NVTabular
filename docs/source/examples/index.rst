@@ -6,3 +6,4 @@ Examples
 
    Criteo Example <criteo>
    Rossmann Example <rossmann>
+   Multi-GPU Example <multigpu>
