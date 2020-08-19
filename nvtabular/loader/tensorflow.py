@@ -25,7 +25,7 @@ from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_f
 from_dlpack = configure_tensorflow()
 
 
-def _validate_dataset(paths_or_dataset, buffer_size, batch_size, engine, reader_kwargs):
+def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
     # if a dataset was passed, just return it
     if isinstance(paths_or_dataset, Dataset):
         return paths_or_dataset
@@ -58,7 +58,6 @@ def _validate_dataset(paths_or_dataset, buffer_size, batch_size, engine, reader_
             reader_kwargs["batch_size"] = buffer_size
     else:
         reader_kwargs["part_mem_fraction"] = buffer_size
-
     return Dataset(files, engine=engine, **reader_kwargs)
 
 
@@ -84,7 +83,12 @@ def _validate_schema(feature_columns, cont_names, cat_names):
 
 class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
     def device_ctx(self, dev):
-        return tf.device("/device:GPU:{}".format(dev))
+        class dummy:
+            def __enter__(self):
+                pass
+            def __exit__(self, a, b, c):
+                pass
+        return dummy() # tf.device("/device:GPU:{}".format(dev))
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
@@ -103,12 +107,13 @@ class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
         X = {}
         for name in cat_names + cont_names:
             X[name] = self._to_tensor(gdf.pop(name))
-        y = {}
-        for name in label_names:
-            y[name] = self._to_tensor(gdf.pop(name))
 
+        # TODO: do dictionaries instead for multi-output?
+        y = []
+        for name in label_names:
+            y.append(self._to_tensor(gdf.pop(name)))
         del gdf
-        return X, y
+        return X, y[0]
 
 
 class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
@@ -126,6 +131,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         shuffle=True,
         buffer_size=0.1,
         workflows=None,
+        devices=None,
         reader_kwargs={},
     ):
         dataset = _validate_dataset(
