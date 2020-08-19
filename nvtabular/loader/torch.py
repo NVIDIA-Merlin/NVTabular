@@ -21,39 +21,6 @@ from nvtabular.ops import _get_embedding_order
 from .backend import AsyncIterator, TensorBatchDatasetItr, DataLoader
 
 
-class TorchTensorBatchDatasetItr(TensorBatchDatasetItr):
-    """
-        For PyTorch Only:
-        Takes input of an NVTabular dataset
-        and creates TorchTensorBatchDatasetItr
-        supplying user defined size chunks.
-
-    """
-
-    def device_ctx(self, dev):
-        return torch.cuda.device("cuda:{}".format(dev))
-
-    def _to_tensor(self, gdf, dtype=None):
-        if gdf.empty:
-            return
-        dl_pack = self.to_dlpack(gdf)
-        tens = from_dlpack(dl_pack).type(dtype)
-        return tens
-
-    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(cat_names)],
-            gdf[cont_names],
-            gdf[label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats, torch.long)
-        conts = self._to_tensor(gdf_conts, torch.float32)
-        label = self._to_tensor(gdf_label, torch.float32)
-        del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
-
-
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     """
         This class, creates batches of, a user defined size, tensor
@@ -72,9 +39,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
                 currently supported: torch
         devices: [int], list represents all avialable GPU IDs
     """
-
-    _itr_cls = TorchTensorBatchDatasetItr
-
     def __init__(
         self,
         dataset,
@@ -83,6 +47,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         labels=None,
         batch_size=1,
         shuffle=False,
+        parts_per_chunk=1,
         devices=None,
     ):
         DataLoader.__init__(
@@ -93,12 +58,36 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             labels,
             batch_size,
             shuffle,
+            parts_per_chunk=parts_per_chunk,
             workflows=None,
             devices=devices
         )
 
     def __iter__(self):
         return DataLoader.__iter__(self)
+
+    def _get_device_ctx(self, dev):
+        return torch.cuda.device("cuda:{}".format(dev))
+
+    def _to_tensor(self, gdf, dtype=None):
+        if gdf.empty:
+            return
+        dl_pack = gdf.to_dlpack()
+        tens = from_dlpack(dl_pack).type(dtype)
+        return tens
+
+    def _create_tensors(self, gdf):
+        gdf_cats, gdf_conts, gdf_label = (
+            gdf[_get_embedding_order(self.cat_names)],
+            gdf[self.cont_names],
+            gdf[self.label_names],
+        )
+        del gdf
+        cats = self._to_tensor(gdf_cats, torch.long)
+        conts = self._to_tensor(gdf_conts, torch.float32)
+        label = self._to_tensor(gdf_label, torch.float32)
+        del gdf_cats, gdf_conts, gdf_label
+        return [cats, conts, label]
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
