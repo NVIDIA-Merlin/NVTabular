@@ -13,16 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import math
 import os
 
 import tensorflow as tf
 import cupy as cp
 
-from ..io import Dataset
-from ..workflow import BaseWorkflow
-from .backend import AsyncIterator, TensorBatchDatasetItr, DataLoader
-from .tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
+from nvtabular.io import Dataset
+from nvtabular.loader.backend import AsyncIterator, TensorBatchDatasetItr, DataLoader
+from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 
 from_dlpack = configure_tensorflow()
 
@@ -148,6 +146,12 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         )
 
         self._itr = None
+
+    def __len__(self):
+        '''
+        recreating since otherwise Keras yells at you
+        '''
+        return DataLoader.__len__(self)
 
     def __getitem__(self, idx):
         """
