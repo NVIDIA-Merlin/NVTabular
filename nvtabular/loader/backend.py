@@ -204,6 +204,7 @@ class AsyncIterator:
                     return
             else:
                 for idx in range(_num_steps(num_samples, self.buff.batch_size)):
+                    # TODO: how will this slicing look once we have multi-hots?
                     slc = slice(idx*batch_size, (idx+1)*batch_size)
                     outputs = []
                     for t in chunk:
@@ -229,9 +230,10 @@ class ThreadSafeAsyncIter:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
+        print("We're here!")
         with self.lock:
-            return self.itr.next()
+            return next(self.itr)
 
 
 class TensorBatchDatasetItr:
