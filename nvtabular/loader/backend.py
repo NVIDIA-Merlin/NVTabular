@@ -204,7 +204,7 @@ class AsyncIterator:
                     return
             else:
                 for idx in range(_num_steps(num_samples, self.buff.batch_size)):
-                    slc = slice(idx*batch_size:(idx+1)*batch_size)
+                    slc = slice(idx*batch_size, (idx+1)*batch_size)
                     outputs = []
                     for t in chunk:
                         if isinstance(t, dict):
