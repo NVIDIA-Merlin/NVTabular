@@ -222,20 +222,6 @@ class AsyncIterator:
         self.buff.stop()
 
 
-class ThreadSafeAsyncIter:
-    def __init__(self, itr):
-        self.itr = itr
-        self.lock = threading.Lock()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        print("We're here!")
-        with self.lock:
-            return next(self.itr)
-
-
 class TensorBatchDatasetItr:
     """
         Base class for all dataset to tensor iterators.
@@ -363,7 +349,7 @@ class DataLoader:
         return _num_steps(self.itr.itrs[0].data.num_rows, self.batch_size)
 
     def __iter__(self):
-        return ThreadSafeAsyncIter(iter(self.itr))
+        return iter(self.itr)
 
     def map(self, workflow):
         # TODO: this is a bit ugly, how can we clean it up?

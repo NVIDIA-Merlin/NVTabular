@@ -165,7 +165,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         return self.__next__()
 
     def __next__(self):
-        self._itr = self._itr or iter(self)
+        self._itr = self._itr or DataLoader.__iter__(self)
         return next(self._itr)
 
     def on_epoch_end(self):
@@ -173,3 +173,4 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # TODO: does this get done before
         # or after validation?
         self._itr = None
+
