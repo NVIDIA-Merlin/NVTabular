@@ -47,22 +47,11 @@ class ChunkQueue:
     def __init__(
         self,
         num_parts=1,
-        batch_size=None,
         shuffle=False,
-        # TODO: these should be moved to attributes
-        # of the `itr` (which ideally could even just
-        # be replaced by methods from the DataLoader)
-        cat_cols=None,
-        cont_cols=None,
-        label_cols=None,
     ):
         self.num_parts = num_parts
-        self.batch_size = batch_size
-        self.q_out = queue.Queue(1)
-        self.cat_cols = cat_cols
-        self.cont_cols = cont_cols
-        self.label_cols = label_cols
         self.shuffle = shuffle
+        self.q_out = queue.Queue(1)
         self._stop_event = threading.Event()
 
     @property
@@ -86,8 +75,8 @@ class ChunkQueue:
         if len(current) > 0:
             yield current
 
-    def load_chunks(self, dev, itr):
-        with itr.device_ctx(dev):
+    def load_chunks(self, dev, itr, workflows, device_ctx):
+        with device_ctx:
             spill = None
             for chunks in self.batch(itr):
                 if self.stopped:
@@ -103,29 +92,34 @@ class ChunkQueue:
 
                 num_samples = len(chunks)
                 if num_samples > 0:
-                    chunks = itr.preprocess(chunks)
-                    chunks = itr.create_tensors(
-                        chunks,
-                        cat_names=self.cat_cols,
-                        cont_names=self.cont_cols,
-                        label_names=self.label_cols,
-                    )
+                    for workflow in workflows:
+                        chunks = workflow.apply_ops(chunks)
+                    # chunks = itr.create_tensors(
+                    #     chunks,
+                    #     cat_names=self.cat_cols,
+                    #     cont_names=self.cont_cols,
+                    #     label_names=self.label_cols,
+                    # )
                     # chunks tensorized
+                    # TODO: if we keep doing things this way
+                    # i.e. doing dlpack on main thread,
+                    # we won't need num_samples
                     self.q_out.put((chunks, num_samples))
                     chunks = None
 
             # takes care final batch, which is less than batch size
             if spill:
                 num_samples = len(spill)
-                spill = itr.preprocess(spill)
-                spill = itr.create_tensors(
-                    spill,
-                    cat_names=self.cat_cols,
-                    cont_names=self.cont_cols,
-                    label_names=self.label_cols,
-                )
-                self.q_out.put((spill, num_samples))
+                for workflow in workflows:
+                    spill = workflow.apply_ops(spill)
 
+                # spill = itr.create_tensors(
+                #     spill,
+                #     cat_names=self.cat_cols,
+                #     cont_names=self.cont_cols,
+                #     label_names=self.label_cols,
+                # )
+                self.q_out.put((spill, num_samples))
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -134,6 +128,9 @@ class ChunkQueue:
         # you want the thread to stop but still want to grab
         # data out of the buffer
         self.q_out.queue.clear()
+
+    def start(self):
+        self._stop_event.clear()
 
     def get_batch_div_chunk(self, chunks):
         spill_idx = int(chunks.shape[0] / self.batch_size) * self.batch_size
@@ -144,148 +141,6 @@ class ChunkQueue:
         if not spill.empty:
             spill.reset_index(drop=True, inplace=True)
         return chunks, spill
-
-
-class AsyncIterator:
-    """
-        This class serves as the iterator class for the AsyncTensorBatchDatasetItr.
-        This will control iteration and allow for clean up after iteration is complete.
-        Without requiring the destruction of the Parent class.
-        Parameters:
-        dataset: NVTabular dataset
-        cats: [str], the list of categorical columns in the dataset
-        conts: [str], the list of continuous columns in the dataset
-        labels: [str], the list of label columns in the dataset
-        batch_size: int, the size of each batch to supply to the model
-        shuffle: bool, enable/disable shuffling of dataset
-        target: the target library that will use the tensor transformed data
-                currently supported: torch
-        devices: [int], list represents all avialable GPU IDs
-    """
-
-    def __init__(
-        self,
-        itrs,
-        cats=None,
-        conts=None,
-        labels=None,
-        batch_size=1,
-        shuffle=False,
-        devices=None,
-        workflows=None,
-    ):
-        self.itrs = itrs
-        self.shuffle = shuffle
-        self.buff = ChunkQueue(
-            batch_size=batch_size,
-            cat_cols=cats,
-            cont_cols=conts,
-            label_cols=labels,
-            shuffle=shuffle,
-        )
-
-    def __iter__(self):
-        if self.shuffle:
-            cp.random.shuffle(self.itrs[0].indices)
-
-        threads = []
-        for dev, itr in enumerate(self.itrs):
-            t = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
-            t.daemon = True
-            t.start()
-            threads.append(t)
-
-        while (any([t.is_alive() for t in threads]) or not self.buff.empty):
-            chunk, num_samples = self.buff.get()
-            # chunk = self.itrs[0].create_tensors(
-            #     chunk,
-            #     self.buff.cat_cols,
-            #     self.buff.cont_cols,
-            #     self.buff.label_cols
-            # )
-            for idx in range(_num_steps(num_samples, self.buff.batch_size)):
-                # TODO: how will this slicing look once we have multi-hots?
-                slc = slice(idx*self.buff.batch_size, (idx+1)*self.buff.batch_size)
-                outputs = []
-                for t in chunk:
-                    if isinstance(t, dict):
-                        outputs.append({name: x[slc] for name, x in t.items()})
-                    elif isinstance(t, list):
-                        outputs.append([x[slc] for x in t])
-                    elif t is not None:
-                        outputs.append(t[slc])
-                    else:
-                        outputs.append(t)
-                yield outputs
-
-            chunk = None
-
-    def __del__(self):
-        self.buff.stop()
-
-
-class TensorBatchDatasetItr:
-    """
-        Base class for all dataset to tensor iterators.
-        Takes input of an NVTabular dataset
-        and supplies user defined size chunks.
-
-        Parameters
-        dataset: NVTabular dataset
-        shuffle: bool, specifying whether to shuffle the partitions
-                 and shuffle chunks before creating tensor batches
-        device: int, represents targeted GPU id
-        total_devs: [int], list represents all avialable GPU IDs
-
-    """
-
-    def __init__(
-        self, dataset, shuffle=None, workflows=None, device=0, total_devs=1, indices=None, **kwargs
-    ):
-        self.data = dataset
-        if indices is None:
-            indices = cp.arange(dataset.to_ddf().npartitions)
-        self.indices = indices
-        self.workflows = workflows or []
-
-        self.device = device
-        self.total_devs = total_devs
-
-    def __iter__(self):
-        indices = self.gather_indices()
-        yield from self.data.to_iter(indices=indices)
-
-    def __len__(self):
-        return int(self.data.num_rows / len(self.total_devs))
-
-    def preprocess(self, x):
-        for workflow in self.workflows:
-            x = workflow.apply_ops(x)
-        return x
-
-    def gather_indices(self):
-        per_worker = int(len(self.indices) // len(self.total_devs)) + 1
-        worker_id = self.total_devs.index(self.device)
-        start = worker_id * per_worker
-        return self.indices[start : start + per_worker]
-
-    def to_dlpack(self, gdf):
-        return gdf.to_dlpack()
-
-    def device_ctx(self, dev):
-        """
-        This function is designed to return a context for a target device. This
-        should be an integer signifying the target GPU's identifier. Currently
-        this is dependent on the targeted framework. Need method exposed via
-        rapids or cudf to factor this api call out.
-
-        Parameters
-        device: int, the target GPU's id
-        """
-        raise NotImplementedError()
-
-    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
-        raise NotImplementedError()
 
 
 def _validate_workflows(workflows, cat_names, cont_names, label_names):
@@ -312,56 +167,123 @@ class DataLoader:
             label_names,
             batch_size,
             shuffle,
+            parts_per_chunk=1,
             workflows=None,
             devices=None
     ):
-        indices = cp.arange(dataset.to_ddf().npartitions)
+        self.data = dataset
+        self.indices = cp.arange(dataset.to_ddf().npartitions)
+
         devices = devices or [0]
         workflows = workflows  or []
         _validate_workflows(
             workflows, cat_names, cont_names, label_names)
-
-        itrs = []
-        for dev in devices:
-            itrs.append(self._itr_cls(
-                dataset,
-                indices=indices,
-                device=dev,
-                total_devs=devices,
-                workflows=workflows
-            )
-        )
-        self.itr = AsyncIterator(
-            itrs,
-            cats=cat_names,
-            conts=cont_names,
-            labels=label_names,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            devices=devices
-        )
 
         self.cat_names = cat_names
         self.cont_names = cont_names
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.devices = devices
+
+        self._buff = ChunkQueue(num_parts=parts_per_chunk, shuffle=shuffle)
+        self._workers = None
+        self._batch_idx = None
+        self._num_steps = None
 
     def __len__(self):
-        return _num_steps(self.itr.itrs[0].data.num_rows, self.batch_size)
+        return _num_steps(self.data.num_rows, self.batch_size)
+
+    @property
+    def _working(self):
+        if self._workers is not None:
+            return any([t.is_alive() for t in self._workers])
+        return False
 
     def __iter__(self):
-        return iter(self.itr)
+        if self._workers is not None and self._working:
+            if not buff.stopped:
+                self.buff.stop()
+
+            for t in self._workers:
+                t.join()
+            self.buff.q_out.clear()
+
+        if self.buff.stopped:
+            self.buff.start()
+
+        if self.shuffle:
+            cp.random.shuffle(self.indices)
+
+        self._workers = []
+        for dev in self.devices:
+            indices = self._gather_indices_for_dev(dev)
+            itr = self.data.to_iter(indices=indices)
+
+            t = threading.Thread(
+                target=self.buff.load_chunks,
+                args=(dev, itr, self.workflows, self._get_device_ctx(dev))
+            )
+            t.daemon = True
+            t.start()
+            self._workers.append(t)
+        return self
+
+    def _get_device_ctx(self, dev):
+        raise NotImplementedError
+
+    def _create_tensors(self, gdf):
+        raise NotImplementedError
+
+    def _gather_indices_for_dev(self, dev):
+        per_worker = int(len(self.indices) // len(self.devices)) + 1
+        worker_id = self.devices.index(dev)
+        start = worker_id * per_worker
+        return self.indices[start : start + per_worker]
+
+    def _get_next_batch(self):
+        chunk, num_samples = self.buff.get()
+        self.chunk = self.create_tensors(chunk)
+        self._num_steps = _num_steps(num_samples, self.batch_size)
+        self._batch_idx = 0
+
+    def __next__(self):
+        if self._workers is None:
+            self.__iter__()
+
+        if not self._working and self.buff.empty:
+            self._workers = None
+            raise StopIteration
+
+        if self._num_steps is None or self._batch_idx == self._num_steps:
+            self._get_next_batch()
+
+        slc = slice(
+            self._batch_idx*self.batch_size, (self._batch_idx+1)*self.batch_size
+        )
+
+        outputs = []
+        for t in self.chunk:
+            if isinstance(t, dict):
+                outputs.append({name: x[slc] for name, x in t.items()})
+            elif isinstance(t, list):
+                outputs.append([x[slc] for x in t])
+            elif t is not None:
+                outputs.append(t[slc])
+            else:
+                outputs.append(t)
+
+        self._batch_idx += 1
+
+        if self._batch_idx == self._num_steps:
+            self.chunk = None
+        return outputs
 
     def map(self, workflow):
         # TODO: this is a bit ugly, how can we clean it up?
         # maybe think about doing some class consolidation
-        workflows = self.itr.itrs[0].workflows + [workflow]
-        workflows = _validate_workflows(
+        workflows = self.workflows + [workflow]
+        self.workflows = _validate_workflows(
             workflows, self.cat_names, self.cont_names, self.label_names
         )
-        for itr in self.itr.itrs:
-            itr.workflows = workflows
-        # TODO: also need to update self.cat_names, cont_names, label_names
-        # and their values in self.itr (and its buffer)
-        # see point above about class consolidation
+        # TODO: update cat/cont/label names after

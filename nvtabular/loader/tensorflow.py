@@ -81,44 +81,7 @@ def _validate_schema(feature_columns, cont_names, cat_names):
         )
 
 
-class TensorFlowBatchDatasetItr(TensorBatchDatasetItr):
-    def device_ctx(self, dev):
-        class dummy:
-            def __enter__(self):
-                pass
-            def __exit__(self, a, b, c):
-                pass
-        return dummy() # tf.device("/device:GPU:{}".format(dev))
-
-    def _to_tensor(self, gdf, dtype=None):
-        if gdf.empty:
-            return
-        dlpack = self.to_dlpack(gdf)
-        x = from_dlpack(dlpack)
-        # TODO: type checking?
-        return x # tf.expand_dims(x, -1)
-
-    def create_tensors(self, gdf, cat_names=None, cont_names=None, label_names=None):
-        # TODO: can we use these somehow to go faster?
-        # what's the cost of doing axis 1 slicing in TF?
-        # gdf_cats, gdf_conts, gdf_label = (
-        #     gdf[cat_names], gdf[cont_names], gdf[label_names]
-        # )
-        X = {}
-        for name in cat_names + cont_names:
-            X[name] = self._to_tensor(gdf.pop(name))
-
-        # TODO: do dictionaries instead for multi-output?
-        y = []
-        for name in label_names:
-            y.append(self._to_tensor(gdf.pop(name)))
-        del gdf
-        return X, y
-
-
 class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
-    _itr_cls = TensorFlowBatchDatasetItr
-
     def __init__(
         self,
         paths_or_dataset,
@@ -132,6 +95,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         buffer_size=0.1,
         workflows=None,
         devices=None,
+        parts_per_chunk=1,
         reader_kwargs={},
     ):
         dataset = _validate_dataset(
@@ -147,11 +111,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             label_names,
             batch_size,
             shuffle,
-            workflows,
+            parts_per_chunk=parts_per_chunk,
+            workflows=workflows,
             devices=None # TODO: figure out multi-gpu support
         )
-
-        self._itr = None
 
     def __len__(self):
         '''
@@ -165,18 +128,37 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         with Keras model.fit. Does not leverage
         passed idx in any way
         """
-        # TODO: add in checks on idx increments to ensure
-        # that the user isn't expecting any functionality
-        # that isn't there?
         return self.__next__()
 
-    def __next__(self):
-        self._itr = self._itr or DataLoader.__iter__(self)
-        return next(self._itr)
+    def _get_device_ctx(self, dev):
+        class dummy:
+            def __enter__(self):
+                pass
+            def __exit__(self, a, b, c):
+                pass
+        return dummy() # tf.device("/device:GPU:{}".format(dev))
 
-    def on_epoch_end(self):
-        # this way we know to reinitialize
-        # TODO: does this get done before
-        # or after validation?
-        self._itr = None
+    def _to_tensor(self, gdf, dtype=None):
+        if gdf.empty:
+            return
+        dlpack = gdf.to_dlpack()
+        x = from_dlpack(dlpack)
+        # TODO: type checking?
+        return tf.expand_dims(x, -1)
 
+    def _create_tensors(self, gdf):
+        # TODO: can we use these somehow to go faster?
+        # what's the cost of doing axis 1 slicing in TF?
+        # gdf_cats, gdf_conts, gdf_label = (
+        #     gdf[cat_names], gdf[cont_names], gdf[label_names]
+        # )
+        X = {}
+        for name in self.cat_names + self.cont_names:
+            X[name] = self._to_tensor(gdf.pop(name))
+
+        # TODO: do dictionaries instead for multi-output?
+        y = []
+        for name in self.label_names:
+            y.append(self._to_tensor(gdf.pop(name)))
+        del gdf
+        return X, y
