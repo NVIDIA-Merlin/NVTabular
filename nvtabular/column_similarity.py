@@ -42,12 +42,14 @@ class ColumnSimilarity(TransformOperator):
 
     Parameters
     -----------
+    name: str
+        Name of the output column
     a : str
-        Name of the first column
+        Name of the first column to calculate similarity for
     a_features : csr_matrix
         Sparse feature matrix for the 'a' column
     b : str
-        Name of the second column
+        Name of the second column to calculate similarity for
     b_features : csr_matrix, optional
         Sparse feature matrix for the 'b' column. If not given will use the
         same feature matrix as for 'a' (for example when calculating document-document distances)
@@ -182,7 +184,7 @@ def _inner_product(a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_dat
             similarity += a_data[a_pos] * b_data[b_pos]
             a_pos += 1
             b_pos += 1
-        elif a_pos < b_pos:
+        elif a_j < b_j:
             a_pos += 1
         else:
             b_pos += 1
@@ -225,7 +227,7 @@ def _convert_features(features, metric, on_device):
 def _tfidf_weight(X, np):
     N = float(X.shape[0])
     idf = np.log(N / np.bincount(X.col))
-    X.data = np.sqrt(X.data) * idf[X.col]
+    X.data *= idf[X.col]
     return X
 
 
