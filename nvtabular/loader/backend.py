@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import math
 import queue
 import threading
 
@@ -50,6 +49,9 @@ class ChunkQueue:
         num_parts=3,
         batch_size=None,
         shuffle=False,
+        # TODO: these should be moved to attributes
+        # of the `itr` (which ideally could even just
+        # be replaced by methods from the DataLoader)
         cat_cols=None,
         cont_cols=None,
         label_cols=None,
@@ -86,6 +88,7 @@ class ChunkQueue:
             for chunks in self.batch(itr):
                 if self.stopped:
                     return
+
                 if spill and not spill.empty:
                     chunks.insert(0, spill)
                 chunks = cudf.core.reshape.concat(chunks)
@@ -118,9 +121,7 @@ class ChunkQueue:
                     label_names=self.label_cols,
                 )
                 self.q_out.put((spill, num_samples))
-                spill = None
 
-            self.q_out.put(("end", None))
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -182,40 +183,32 @@ class AsyncIterator:
     def __iter__(self):
         if self.shuffle:
             cp.random.shuffle(self.itrs[0].indices)
+
         threads = []
         for dev, itr in enumerate(self.itrs):
             t = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
             t.daemon = True
             t.start()
             threads.append(t)
-        
-        ends = []
-        # TODO: can we create some sort of condition here like
-        # `while (any([t.is_alive() for t in threads]) or
-        # not q.empty()):`
-        # and avoid having to do the "poison pill" method?
-        while True:
+
+        while (any([t.is_alive() for t in threads]) or not q.empty()):
             chunk, num_samples = self.buff.get()
             # TODO: may need to do dlpack passing here if
             # TensorFlow starts complaining
-            if isinstance(chunk, str):
-                ends.append(chunk)
-                if len(ends) == len(self.devices):
-                    return
-            else:
-                for idx in range(_num_steps(num_samples, self.buff.batch_size)):
-                    # TODO: how will this slicing look once we have multi-hots?
-                    slc = slice(idx*batch_size, (idx+1)*batch_size)
-                    outputs = []
-                    for t in chunk:
-                        if isinstance(t, dict):
-                            outputs.append({name: x[slc] for name, x in t.items()})
-                        elif t is not None:
-                            outputs.append(t[slc])
-                        else:
-                            # TODO: this means it has to be None right?
-                            outputs.append(t)
-                    yield outputs
+            for idx in range(_num_steps(num_samples, self.buff.batch_size)):
+                # TODO: how will this slicing look once we have multi-hots?
+                slc = slice(idx*batch_size, (idx+1)*batch_size)
+                outputs = []
+                for t in chunk:
+                    if isinstance(t, dict):
+                        outputs.append({name: x[slc] for name, x in t.items()})
+                    elif t is not None:
+                        outputs.append(t[slc])
+                    else:
+                        # TODO: this means it has to be None right?
+                        outputs.append(t)
+                yield outputs
+
             chunk = None
 
     def __del__(self):
