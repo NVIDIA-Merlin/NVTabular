@@ -312,6 +312,7 @@ def _validate_workflows(workflows, cat_names, cont_names, label_names):
 
 class DataLoader:
     def __init__(
+            self,
             dataset,
             cat_names,
             cont_names,
