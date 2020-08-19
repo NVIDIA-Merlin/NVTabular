@@ -46,9 +46,11 @@ class ChunkQueue:
 
     def __init__(
         self,
+        batch_size,
         num_parts=1,
         shuffle=False,
     ):
+        self.batch_size = batch_size
         self.num_parts = num_parts
         self.shuffle = shuffle
         self.q_out = queue.Queue(1)
@@ -176,7 +178,7 @@ class DataLoader:
 
         devices = devices or [0]
         workflows = workflows  or []
-        _validate_workflows(
+        self.workflows = _validate_workflows(
             workflows, cat_names, cont_names, label_names)
 
         self.cat_names = cat_names
@@ -186,7 +188,8 @@ class DataLoader:
         self.shuffle = shuffle
         self.devices = devices
 
-        self._buff = ChunkQueue(num_parts=parts_per_chunk, shuffle=shuffle)
+        self._buff = ChunkQueue(
+            batch_size=batch_size,num_parts=parts_per_chunk, shuffle=shuffle)
         self._workers = None
         self._batch_idx = None
         self._num_steps = None
@@ -202,15 +205,15 @@ class DataLoader:
 
     def __iter__(self):
         if self._workers is not None and self._working:
-            if not buff.stopped:
-                self.buff.stop()
+            if not self._buff.stopped:
+                self._buff.stop()
 
             for t in self._workers:
                 t.join()
-            self.buff.q_out.clear()
+            self._buff.q_out.clear()
 
-        if self.buff.stopped:
-            self.buff.start()
+        if self._buff.stopped:
+            self._buff.start()
 
         if self.shuffle:
             cp.random.shuffle(self.indices)
@@ -221,7 +224,7 @@ class DataLoader:
             itr = self.data.to_iter(indices=indices)
 
             t = threading.Thread(
-                target=self.buff.load_chunks,
+                target=self._buff.load_chunks,
                 args=(dev, itr, self.workflows, self._get_device_ctx(dev))
             )
             t.daemon = True
@@ -242,8 +245,8 @@ class DataLoader:
         return self.indices[start : start + per_worker]
 
     def _get_next_batch(self):
-        chunk, num_samples = self.buff.get()
-        self.chunk = self.create_tensors(chunk)
+        chunk, num_samples = self._buff.get()
+        self.chunk = self._create_tensors(chunk)
         self._num_steps = _num_steps(num_samples, self.batch_size)
         self._batch_idx = 0
 
@@ -251,7 +254,7 @@ class DataLoader:
         if self._workers is None:
             self.__iter__()
 
-        if not self._working and self.buff.empty:
+        if not self._working and self._buff.empty:
             self._workers = None
             raise StopIteration
 
@@ -287,3 +290,4 @@ class DataLoader:
             workflows, self.cat_names, self.cont_names, self.label_names
         )
         # TODO: update cat/cont/label names after
+
