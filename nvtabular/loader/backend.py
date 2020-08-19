@@ -104,12 +104,12 @@ class ChunkQueue:
                 num_samples = len(chunks)
                 if num_samples > 0:
                     chunks = itr.preprocess(chunks)
-                    # chunks = itr.create_tensors(
-                    #     chunks,
-                    #     cat_names=self.cat_cols,
-                    #     cont_names=self.cont_cols,
-                    #     label_names=self.label_cols,
-                    # )
+                    chunks = itr.create_tensors(
+                        chunks,
+                        cat_names=self.cat_cols,
+                        cont_names=self.cont_cols,
+                        label_names=self.label_cols,
+                    )
                     # chunks tensorized
                     self.q_out.put((chunks, num_samples))
                     chunks = None
@@ -118,12 +118,12 @@ class ChunkQueue:
             if spill:
                 num_samples = len(spill)
                 spill = itr.preprocess(spill)
-                # spill = itr.create_tensors(
-                #     spill,
-                #     cat_names=self.cat_cols,
-                #     cont_names=self.cont_cols,
-                #     label_names=self.label_cols,
-                # )
+                spill = itr.create_tensors(
+                    spill,
+                    cat_names=self.cat_cols,
+                    cont_names=self.cont_cols,
+                    label_names=self.label_cols,
+                )
                 self.q_out.put((spill, num_samples))
 
 
@@ -197,12 +197,12 @@ class AsyncIterator:
 
         while (any([t.is_alive() for t in threads]) or not self.buff.empty):
             chunk, num_samples = self.buff.get()
-            chunk = self.itrs[0].create_tensors(
-                chunk,
-                self.buff.cat_cols,
-                self.buff.cont_cols,
-                self.buff.label_cols
-            )
+            # chunk = self.itrs[0].create_tensors(
+            #     chunk,
+            #     self.buff.cat_cols,
+            #     self.buff.cont_cols,
+            #     self.buff.label_cols
+            # )
             for idx in range(_num_steps(num_samples, self.buff.batch_size)):
                 # TODO: how will this slicing look once we have multi-hots?
                 slc = slice(idx*self.buff.batch_size, (idx+1)*self.buff.batch_size)
