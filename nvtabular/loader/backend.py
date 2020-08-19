@@ -24,46 +24,8 @@ from nvtabular.workflow import BaseWorkflow
 from nvtabular.io import _shuffle_gdf
 
 
-class TensorItr:
-    """
-        Iterator for returning batched chunks of the elemetns
-        in a list of dictionary of tensors along their zeroth
-        axis
-        Parameters
-        -----------
-        tensors : list of tensors
-        batch_size: the size of each batch to return.
-        pin_memory: allows pinning of cpu memory, if used.
-    """
-
-    def __init__(self, tensors, batch_size=1, pin_memory=False):
-        self.tensors = tensors
-        self.batch_size = batch_size
-        self.num_samples = self.tensors[2].size(0)
-
-        if pin_memory:
-            for tensor in self.tensors:
-                tensor.pin_memory()
-
-    def __len__(self):
-        return (self.num_samples - 1) // self.batch_size + 1
-
-    def __iter__(self):
-        for idx in range(len(self)):
-            # TODO: do some sort of type checking up front?
-            # TODO: what will this slicing look like for multi-hots?
-            if len(self.tensors) == 2:
-                # TODO: this might be a bit inefficient on the TF side,
-                # consider doing slicing up front on grouped matrices
-                X, y = self.tensors
-                X = {name: x[idx : idx + self.batch_size] for name, x in X.items()}
-                y = {name: _y[idx : idx + self.batch_size] for name, _y in y.items()}
-                yield X, y
-            else:
-                yield [
-                    tensor[idx : idx + self.batch_size] if tensor is not None else None
-                    for tensor in self.tensors
-                ]
+def _num_steps(num_samples, step_size):
+    return (num_samples - 1) // step_size + 1
 
 
 class ChunkQueue:
@@ -132,7 +94,8 @@ class ChunkQueue:
                 if self.shuffle:
                     _shuffle_gdf(chunks)
 
-                if len(chunks) > 0:
+                num_samples = len(chunks)
+                if num_samples > 0:
                     itr.preprocess(chunks)
                     chunks = itr.create_tensors(
                         chunks,
@@ -141,24 +104,30 @@ class ChunkQueue:
                         label_names=self.label_cols,
                     )
                     # chunks tensorized
-                    self.q_out.put(chunks)
+                    self.q_out.put((chunks, num_samples))
                     chunks = None
+
             # takes care final batch, which is less than batch size
             if spill:
-                itr.preprocess(chunks)
+                num_samples = len(spill)
+                itr.preprocess(spill)
                 spill = itr.create_tensors(
                     spill,
                     cat_names=self.cat_cols,
                     cont_names=self.cont_cols,
                     label_names=self.label_cols,
                 )
-                self.q_out.put(spill)
+                self.q_out.put((spill, num_samples))
                 spill = None
-            self.q_out.put("end")
+
+            self.q_out.put(("end", None))
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
         self._stop_event.set()
+        # TODO: should we be clearing? I can imagine a world where
+        # you want the thread to stop but still want to grab
+        # data out of the buffer
         self.q_out.queue.clear()
 
     def get_batch_div_chunk(self, chunks):
@@ -213,14 +182,20 @@ class AsyncIterator:
     def __iter__(self):
         if self.shuffle:
             cp.random.shuffle(self.itrs[0].indices)
+        threads = []
         for dev, itr in enumerate(self.itrs):
             t = threading.Thread(target=self.buff.load_chunks, args=(dev, itr))
             t.daemon = True
             t.start()
+            threads.append(t)
         
         ends = []
+        # TODO: can we create some sort of condition here like
+        # `while (any([t.is_alive() for t in threads]) or
+        # not q.empty()):`
+        # and avoid having to do the "poison pill" method?
         while True:
-            chunk = self.buff.get()
+            chunk, num_samples = self.buff.get()
             # TODO: may need to do dlpack passing here if
             # TensorFlow starts complaining
             if isinstance(chunk, str):
@@ -228,7 +203,18 @@ class AsyncIterator:
                 if len(ends) == len(self.devices):
                     return
             else:
-                yield from TensorItr(chunk, batch_size=self.buff.batch_size)
+                for idx in range(_num_steps(num_samples, self.buff.batch_size)):
+                    slc = slice(idx*batch_size:(idx+1)*batch_size)
+                    outputs = []
+                    for t in chunk:
+                        if isinstance(t, dict):
+                            outputs.append({name: x[slc] for name, x in t.items()})
+                        elif t is not None:
+                            outputs.append(t[slc])
+                        else:
+                            # TODO: this means it has to be None right?
+                            outputs.append(t)
+                    yield outputs
             chunk = None
 
     def __del__(self):
@@ -372,7 +358,7 @@ class DataLoader:
         self.shuffle = shuffle
 
     def __len__(self):
-        return math.ceil(self.itr.itrs[0].data.num_rows / self.batch_size)
+        return _num_steps(self.itr.itrs[0].data.num_rows, self.batch_size)
 
     def __iter__(self):
         return ThreadSafeAsyncIter(iter(self.itr))
