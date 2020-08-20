@@ -5,7 +5,8 @@ Operators
    :maxdepth: 2
 
    Categorify <categorify>
-   Clip <Clip>
+   Clip <clip>
+   ColumnSimilarity <columnsimilarity>
    Dropna <dropna>
    FillMissing <fillmissing>
    FillMedian <fillmedian>

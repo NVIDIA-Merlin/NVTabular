@@ -199,8 +199,10 @@ _inner_product_gpu = numba.cuda.jit(device=True, inline=True)(_inner_product)
 
 def _convert_features(features, metric, on_device):
     if on_device:
-        if not isinstance(features, cupy.sparse.coo_matrix):
-            features = cupy.sparse.coo_matrix(features)
+        # take a shallow copy to avoid mutating the input, but keep gpu
+        # memory as low as possible. (also convert to coo_matrix if passed
+        # a CSR etc)
+        features = cupy.sparse.coo_matrix(features)
     else:
         if not isinstance(features, scipy.sparse.coo_matrix):
             # convert to host first if the sparse matrix is on the device
@@ -227,7 +229,7 @@ def _convert_features(features, metric, on_device):
 def _tfidf_weight(X, np):
     N = float(X.shape[0])
     idf = np.log(N / np.bincount(X.col))
-    X.data *= idf[X.col]
+    X.data = X.data * idf[X.col]
     return X
 
 
