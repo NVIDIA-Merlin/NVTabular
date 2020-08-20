@@ -86,6 +86,7 @@ class ChunkQueue:
 
                 if spill and not spill.empty:
                     chunks.insert(0, spill)
+
                 chunks = cudf.core.reshape.concat(chunks)
                 chunks.reset_index(drop=True, inplace=True)
                 chunks, spill = self.get_batch_div_chunk(chunks)
@@ -96,31 +97,14 @@ class ChunkQueue:
                 if num_samples > 0:
                     for workflow in workflows:
                         chunks = workflow.apply_ops(chunks)
-                    # chunks = itr.create_tensors(
-                    #     chunks,
-                    #     cat_names=self.cat_cols,
-                    #     cont_names=self.cont_cols,
-                    #     label_names=self.label_cols,
-                    # )
-                    # chunks tensorized
-                    # TODO: if we keep doing things this way
-                    # i.e. doing dlpack on main thread,
-                    # we won't need num_samples
                     self.q_out.put((chunks, num_samples))
-                    chunks = None
+                chunks = None
 
             # takes care final batch, which is less than batch size
             if spill:
                 num_samples = len(spill)
                 for workflow in workflows:
                     spill = workflow.apply_ops(spill)
-
-                # spill = itr.create_tensors(
-                #     spill,
-                #     cat_names=self.cat_cols,
-                #     cont_names=self.cont_cols,
-                #     label_names=self.label_cols,
-                # )
                 self.q_out.put((spill, num_samples))
 
     # For when an iterator is stopped before iteration is complete.
@@ -189,7 +173,8 @@ class DataLoader:
         self.devices = devices
 
         self._buff = ChunkQueue(
-            batch_size=batch_size,num_parts=parts_per_chunk, shuffle=shuffle)
+            batch_size=batch_size, num_parts=parts_per_chunk, shuffle=shuffle)
+        self.chunk = None
         self._workers = None
         self._batch_idx = None
         self._num_steps = None
@@ -204,20 +189,29 @@ class DataLoader:
         return False
 
     def __iter__(self):
+        # we have some remaining workers from last iteration
         if self._workers is not None and self._working:
+            # stop the buffer and wait for the workers to exit
             if not self._buff.stopped:
                 self._buff.stop()
-
             for t in self._workers:
                 t.join()
+
+            # clear the remaining buffer
             self._buff.q_out.clear()
 
+        # something happened that stopped our buffer,
+        # reopen it
         if self._buff.stopped:
             self._buff.start()
 
+        # shuffle partition indices to bring disparate
+        # parts of the dataset "close" to one another
         if self.shuffle:
             cp.random.shuffle(self.indices)
 
+        # build and start new threads for loading and
+        # concatenating data
         self._workers = []
         for dev in self.devices:
             indices = self._gather_indices_for_dev(dev)
@@ -244,40 +238,46 @@ class DataLoader:
         start = worker_id * per_worker
         return self.indices[start : start + per_worker]
 
-    def _get_next_batch(self):
+    def _get_next_chunk(self):
         chunk, num_samples = self._buff.get()
         self.chunk = self._create_tensors(chunk)
         self._num_steps = _num_steps(num_samples, self.batch_size)
         self._batch_idx = 0
 
     def __next__(self):
+        # we've never initialized, do that now
         if self._workers is None:
-            self.__iter__()
+            DataLoader.__iter__(self)
 
+        # the buffer is empty and there are no running
+        # threads to refill it: we must be empty
         if not self._working and self._buff.empty:
             self._workers = None
+            self.chunk = None
             raise StopIteration
 
-        if self._num_steps is None or self._batch_idx == self._num_steps:
-            self._get_next_batch()
+        # get a new chunk from the buffer
+        if self.chunk is None:
+            chunk = self._get_next_chunk()
 
+        # slice the appropriate rows from each tensor
         slc = slice(
             self._batch_idx*self.batch_size, (self._batch_idx+1)*self.batch_size
         )
-
         outputs = []
-        for t in self.chunk:
-            if isinstance(t, dict):
-                outputs.append({name: x[slc] for name, x in t.items()})
-            elif isinstance(t, list):
-                outputs.append([x[slc] for x in t])
-            elif t is not None:
-                outputs.append(t[slc])
+        for tensor in self.chunk:
+            if isinstance(tensor, dict):
+                outputs.append({name: x[slc] for name, x in tensor.items()})
+            elif isinstance(tensor, list):
+                outputs.append([x[slc] for x in tensor])
+            elif tensor is not None:
+                outputs.append(tensor[slc])
             else:
-                outputs.append(t)
+                outputs.append(tensor)
 
+        # increment the batch index and get rid of our
+        # self.chunk for memory purposes
         self._batch_idx += 1
-
         if self._batch_idx == self._num_steps:
             self.chunk = None
         return outputs
