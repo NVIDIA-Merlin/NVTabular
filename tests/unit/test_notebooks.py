@@ -59,8 +59,8 @@ def test_multigpu_dask_example(tmpdir, cuda_cluster):
         # to deploy a LocalCUDACluster within the subprocess
         line = line.replace("cluster = None", f"cluster = '{scheduler_port}'")
         # Use a much smaller "toy" dataset
-        line = line.replace("write_count = 25", "write_count = 1")
-        line = line.replace('freq = "1s"', 'freq = "10s"')
+        line = line.replace("write_count = 25", "write_count = 4")
+        line = line.replace('freq = "1s"', 'freq = "1h"')
         # Use smaller partitions for smaller dataset
         line = line.replace("part_mem_fraction=0.1", "part_size=1_000_000")
         line = line.replace("out_files_per_proc=8", "out_files_per_proc=1")
