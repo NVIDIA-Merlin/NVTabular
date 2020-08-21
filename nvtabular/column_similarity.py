@@ -21,7 +21,7 @@ import numpy
 import scipy.sparse
 from cudf._lib.nvtx import annotate
 
-from nvtabular.ops import TransformOperator
+from nvtabular.ops import CAT, CONT, TransformOperator
 
 
 class ColumnSimilarity(TransformOperator):
@@ -59,6 +59,9 @@ class ColumnSimilarity(TransformOperator):
         fit into GPU memory.
     """
 
+    default_in = CAT
+    default_out = CONT
+
     def __init__(
         self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True,
     ):
@@ -91,7 +94,12 @@ class ColumnSimilarity(TransformOperator):
             a, self.a_features, b, self.b_features, self.on_device
         )
         gdf[self.name] = similarities
+        columns_ctx[input_cols][self._id] = [self.name]
         return gdf
+
+    @property
+    def _id(self):
+        return f"{self.__class__.__name__}_{self.name}"
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
