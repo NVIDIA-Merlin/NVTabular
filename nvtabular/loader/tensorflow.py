@@ -160,5 +160,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         y = []
         for name in self.label_names:
             y.append(self._to_tensor(gdf.pop(name)))
+
         del gdf
-        return X, y[0]
+        return X, y
