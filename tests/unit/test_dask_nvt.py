@@ -147,7 +147,9 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     )
 
     processor.add_preprocess(
-        ops.JoinGroupby(cont_names=cont_names, stats=["count", "sum", "std"], out_path=str(tmpdir))
+        ops.JoinGroupby(
+            cont_names=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
+        )
     )
     processor.finalize()
 
@@ -170,6 +172,16 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         df0.groupby("name-cat").agg({"x": "count"})["x"].astype(np.int64),
         check_index=False,
         check_dtype=False,  # May get int64 vs int32
+        check_names=False,
+    )
+
+    # Check "min"
+    assert_eq(
+        result[["name-string", "name-string_x_min"]]
+        .drop_duplicates()
+        .sort_values("name-string")["name-string_x_min"],
+        df0.groupby("name-string").agg({"x": "min"})["x"],
+        check_index=False,
         check_names=False,
     )
 
