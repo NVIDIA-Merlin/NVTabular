@@ -35,8 +35,12 @@ def _make_name(*args, sep="_"):
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
 def _top_level_groupby(
-    gdf, cat_col_groups, tree_width, cont_cols, sum_sq, on_host, concat_groups, name_sep
+    gdf, cat_col_groups, tree_width, cont_cols, agg_list, on_host, concat_groups, name_sep
 ):
+    sum_sq = "std" in agg_list or "var" in agg_list
+    calculate_min = "min" in agg_list
+    calculate_max = "max" in agg_list
+
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
@@ -66,6 +70,11 @@ def _top_level_groupby(
                 name = _make_name(col, "pow2", sep=name_sep)
                 df_gb[name] = df_gb[col].pow(2)
                 agg_dict[name] = ["sum"]
+
+            if calculate_min:
+                agg_dict[col].append("min")
+            if calculate_max:
+                agg_dict[col].append("max")
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
@@ -103,11 +112,11 @@ def _mid_level_groupby(
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
 
-    ignore_index = True
+    df = _concat(dfs, ignore_index=True)
     if on_host:
-        gb = cudf.from_pandas(_concat(dfs, ignore_index)).groupby(col_group, dropna=False).sum()
-    else:
-        gb = _concat(dfs, ignore_index).groupby(col_group, dropna=False).sum()
+        df = cudf.from_pandas(df)
+    groups = df.groupby(col_group, dropna=False)
+    gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
     gb.reset_index(drop=False, inplace=True)
 
     name_count = _make_name(*(col_group + ["count"]), sep=name_sep)
@@ -128,6 +137,14 @@ def _mid_level_groupby(
             name_mean = _make_name(*(col_group + [cont_col, "mean"]), sep=name_sep)
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
+
+        if "min" in agg_list:
+            name_min = _make_name(*(col_group + [cont_col, "min"]), sep=name_sep)
+            required.append(name_min)
+
+        if "max" in agg_list:
+            name_max = _make_name(*(col_group + [cont_col, "max"]), sep=name_sep)
+            required.append(name_max)
 
         if "var" in agg_list or "std" in agg_list:
             n = gb[name_count]
@@ -153,6 +170,15 @@ def _mid_level_groupby(
         del gb
         return gb_pd
     return gb[required]
+
+
+def _get_aggregation_type(col):
+    if col.endswith("_min"):
+        return "min"
+    elif col.endswith("_max"):
+        return "max"
+    else:
+        return "sum"
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
@@ -275,7 +301,7 @@ def _groupby_to_disk(
             col_groups,
             tree_width,
             agg_cols,
-            ("std" in agg_list or "var" in agg_list),
+            agg_list,
             on_host,
             concat_groups,
             name_sep,
