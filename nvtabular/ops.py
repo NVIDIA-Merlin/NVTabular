@@ -636,7 +636,7 @@ class GroupbyStatistics(StatOperator):
         List of statistics to calculate for each unique group. Note
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
-        Supported statistics include ["count", "sum", "mean", "std", "var"].
+        Supported statistics include ["count", "sum", "mean", "std", "var", "min", "max"].
     columns : list of str or list(str), default None
         Categorical columns (or "column groups") to collect statistics for.
         If None, the operation will target all known categorical columns.
@@ -709,7 +709,7 @@ class GroupbyStatistics(StatOperator):
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         col_groups = self.column_groups or self.get_columns(columns_ctx, input_cols, target_cols)
-        supported_ops = ["count", "sum", "mean", "std", "var"]
+        supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
