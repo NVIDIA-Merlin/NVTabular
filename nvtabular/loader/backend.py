@@ -144,6 +144,8 @@ def _validate_workflows(workflows, cat_names, cont_names, label_names):
     return workflows
 
 
+# TODO: implement as metaclass and assign methods to children
+# to avoid having to do Dataset.<method> calls?
 class DataLoader:
     def __init__(
             self,
