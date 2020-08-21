@@ -49,6 +49,27 @@ def test_rossman_example(tmpdir):
     _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
 
 
+def test_multigpu_dask_example(tmpdir, cuda_cluster):
+    pytest.importorskip("dask_cuda")
+    os.environ["BASE_DIR"] = str(tmpdir)
+    scheduler_port = cuda_cluster.scheduler_address
+
+    def _nb_modify(line):
+        # Use cuda_cluster "fixture" port rather than allowing notebook
+        # to deploy a LocalCUDACluster within the subprocess
+        line = line.replace("cluster = None", f"cluster = '{scheduler_port}'")
+        # Use a much smaller "toy" dataset
+        line = line.replace("write_count = 25", "write_count = 1")
+        line = line.replace('freq = "1s"', 'freq = "10s"')
+        # Use smaller partitions for smaller dataset
+        line = line.replace("part_mem_fraction=0.1", "part_size=1_000_000")
+        line = line.replace("out_files_per_proc=8", "out_files_per_proc=1")
+        return line
+
+    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "multi-gpu_dask.ipynb")
+    _run_notebook(tmpdir, notebook_path, _nb_modify)
+
+
 def _run_notebook(tmpdir, notebook_path, transform=None):
     # read in the notebook as JSON, and extract a python script from it
     notebook = json.load(open(notebook_path))

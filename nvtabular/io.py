@@ -131,10 +131,16 @@ def _merge_general_metadata(meta_list):
     meta = None
     for md in meta_list:
         if meta:
-            meta["data_paths"] += md["data_paths"]
-            meta["file_stats"] += md["file_stats"]
+            if "data_paths" in md:
+                meta["data_paths"] += md["data_paths"]
+            if "file_stats" in md:
+                meta["file_stats"] += md["file_stats"]
         else:
             meta = md.copy()
+            if "data_paths" not in meta:
+                meta["data_paths"] = []
+            if "file_stats" not in meta:
+                meta["file_stats"] = []
     return meta
 
 
