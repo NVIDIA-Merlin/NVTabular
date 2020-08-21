@@ -116,7 +116,7 @@ def _mid_level_groupby(
     if on_host:
         df = cudf.from_pandas(df)
     groups = df.groupby(col_group, dropna=False)
-    gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns})
+    gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
     gb.reset_index(drop=False, inplace=True)
 
     name_count = _make_name(*(col_group + ["count"]), sep=name_sep)
