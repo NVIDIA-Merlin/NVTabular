@@ -22,10 +22,13 @@ assert tf_mem_size < free_gpu_mem_mb
 # TODO: what will this look like in any sort
 # of distributed set up?
 tf_device = os.environ.get("TF_VISIBLE_DEVICE", 0)
+tf_devices = tf.config.list_physical_devices("GPU")
+if not tf_devices:
+    raise ImportError("TensorFlow is not configured for GPU")
+
 try:
     tf.config.set_logical_device_configuration(
-        tf.config.list_physical_devices("GPU")[tf_device],
-        [tf.config.LogicalDeviceConfiguration(memory_limit=tf_mem_size)],
+        tf_devices[tf_device], [tf.config.LogicalDeviceConfiguration(memory_limit=tf_mem_size)],
     )
 except RuntimeError:
     warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
