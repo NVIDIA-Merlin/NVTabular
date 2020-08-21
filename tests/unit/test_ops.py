@@ -151,6 +151,30 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
         cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("groups", ["name-cat", "name-string"])
+def test_groupby_folds(tmpdir, df, dataset, engine, groups):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    encoder = ops.GroupbyStatistics(columns=groups, out_path=str(tmpdir), folds=5)
+    config = nvt.workflow.get_new_config()
+    config["PP"]["categorical"] = [encoder]
+
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+    processor.update_stats(dataset)
+
+    # groups = [groups] if isinstance(groups, str) else groups
+    # for group in groups:
+    #     group = [group] if isinstance(group, str) else group
+    #     prefix = "unique." if concat_groups else "cat_stats."
+    #     fn = prefix + "_".join(group) + ".parquet"
+    #     cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])

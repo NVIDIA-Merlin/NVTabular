@@ -681,6 +681,7 @@ class GroupbyStatistics(StatOperator):
         stat_name=None,
         concat_groups=False,
         name_sep="_",
+        folds=1,
     ):
         # Set column_groups if the user has passed in a list of columns
         self.column_groups = None
@@ -702,6 +703,7 @@ class GroupbyStatistics(StatOperator):
         self.op_name = "GroupbyStatistics-" + self.stat_name
         self.concat_groups = concat_groups
         self.name_sep = name_sep
+        self.folds = folds
 
     @property
     def _id(self):
@@ -713,6 +715,16 @@ class GroupbyStatistics(StatOperator):
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
+
+        # # def _add_fold(s, nfolds):
+        # #     return cupy.random.choice(cupy.arange(nfolds), len(s))
+
+        # if self.folds > 1:
+        #     #_meta = _add_fold(ddf._meta.index, self.folds)
+        #     #ser = ddf[index].map_partitions(_add_fold, self.folds, meta=_meta)
+        #     import pdb; pdb.set_trace()
+        #     pass
+        #     #ddf["__fold__"] =
 
         agg_cols = self.cont_names
         agg_list = self.stats
@@ -804,6 +816,7 @@ class JoinGroupby(DFOperator):
         out_path=None,
         on_host=True,
         name_sep="_",
+        stat_name=None,
     ):
         self.column_groups = None
         self.storage_name = {}
@@ -826,7 +839,7 @@ class JoinGroupby(DFOperator):
         self.out_path = out_path
         self.on_host = on_host
         self.cat_cache = cat_cache
-        self.stat_name = "gb_categories"
+        self.stat_name = stat_name or "gb_categories"
 
     @property
     def req_stats(self):
