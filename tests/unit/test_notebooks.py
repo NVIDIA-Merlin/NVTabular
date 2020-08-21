@@ -38,7 +38,7 @@ def test_optimize_criteo(tmpdir):
 
 
 def test_rossman_example(tmpdir):
-    pytest.importorskip("tensorflow")
+    pytest.importorskip("nvtabular.tf_dataloader")
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
