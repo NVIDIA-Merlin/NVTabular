@@ -282,7 +282,7 @@ class DataLoader:
         self._batch_idx += 1
         if self._batch_idx == self._num_steps:
             self.chunk = None
-        return outputs
+        return tuple(outputs)
 
     def map(self, workflow):
         # TODO: this is a bit ugly, how can we clean it up?
