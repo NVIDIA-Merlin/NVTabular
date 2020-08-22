@@ -98,10 +98,6 @@ class ColumnSimilarity(TransformOperator):
             similarities = []
         gdf[self.name] = similarities
 
-        similarities = row_wise_inner_product(
-            a, self.a_features, b, self.b_features, self.on_device
-        )
-        gdf[self.name] = similarities
         columns_ctx[input_cols][self._id] = [self.name]
         return gdf
 
