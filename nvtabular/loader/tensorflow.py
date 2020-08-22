@@ -113,13 +113,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             shuffle,
             parts_per_chunk=parts_per_chunk,
             workflows=workflows,
-            devices=None # TODO: figure out multi-gpu support
+            devices=None,  # TODO: figure out multi-gpu support
         )
 
     def __len__(self):
-        '''
+        """
         recreating since otherwise Keras yells at you
-        '''
+        """
         return DataLoader.__len__(self)
 
     def __getitem__(self, idx):

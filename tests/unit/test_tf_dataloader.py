@@ -26,6 +26,8 @@ pytest.importorskip("tensorflow")
 import nvtabular.loader.tensorflow as tf_dataloader  # noqa isort:skip
 
 
+# TODO: include use_columns option
+# TODO: include parts_per_chunk test
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
@@ -48,7 +50,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     data_itr = tf_dataloader.KerasSequenceLoaer(
         paths if use_paths else dataset,
         cat_names=cat_names,
-        cont_names=cont_names
+        cont_names=cont_names,
         batch_size=batch_size,
         buffer_size=gpu_memory_frac,
         label_names=label_name,

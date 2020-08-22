@@ -39,6 +39,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
                 currently supported: torch
         devices: [int], list represents all avialable GPU IDs
     """
+
     def __init__(
         self,
         dataset,
@@ -60,7 +61,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             shuffle,
             parts_per_chunk=parts_per_chunk,
             workflows=None,
-            devices=devices
+            devices=devices,
         )
 
     def __iter__(self):

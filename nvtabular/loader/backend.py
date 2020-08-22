@@ -45,10 +45,7 @@ class ChunkQueue:
     """
 
     def __init__(
-        self,
-        batch_size,
-        num_parts=1,
-        shuffle=False,
+        self, batch_size, num_parts=1, shuffle=False,
     ):
         self.batch_size = batch_size
         self.num_parts = num_parts
@@ -148,24 +145,23 @@ def _validate_workflows(workflows, cat_names, cont_names, label_names):
 # to avoid having to do Dataset.<method> calls?
 class DataLoader:
     def __init__(
-            self,
-            dataset,
-            cat_names,
-            cont_names,
-            label_names,
-            batch_size,
-            shuffle,
-            parts_per_chunk=1,
-            workflows=None,
-            devices=None
+        self,
+        dataset,
+        cat_names,
+        cont_names,
+        label_names,
+        batch_size,
+        shuffle,
+        parts_per_chunk=1,
+        workflows=None,
+        devices=None,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
 
         devices = devices or [0]
-        workflows = workflows  or []
-        self.workflows = _validate_workflows(
-            workflows, cat_names, cont_names, label_names)
+        workflows = workflows or []
+        self.workflows = _validate_workflows(workflows, cat_names, cont_names, label_names)
 
         self.cat_names = cat_names
         self.cont_names = cont_names
@@ -174,8 +170,7 @@ class DataLoader:
         self.shuffle = shuffle
         self.devices = devices
 
-        self._buff = ChunkQueue(
-            batch_size=batch_size, num_parts=parts_per_chunk, shuffle=shuffle)
+        self._buff = ChunkQueue(batch_size=batch_size, num_parts=parts_per_chunk, shuffle=shuffle)
         self.chunk = None
         self._workers = None
         self._batch_idx = None
@@ -221,7 +216,7 @@ class DataLoader:
 
             t = threading.Thread(
                 target=self._buff.load_chunks,
-                args=(dev, itr, self.workflows, self._get_device_ctx(dev))
+                args=(dev, itr, self.workflows, self._get_device_ctx(dev)),
             )
             t.daemon = True
             t.start()
@@ -263,9 +258,7 @@ class DataLoader:
             chunk = self._get_next_chunk()
 
         # slice the appropriate rows from each tensor
-        slc = slice(
-            self._batch_idx*self.batch_size, (self._batch_idx+1)*self.batch_size
-        )
+        slc = slice(self._batch_idx * self.batch_size, (self._batch_idx + 1) * self.batch_size)
         outputs = []
         for tensor in self.chunk:
             if isinstance(tensor, dict):
@@ -292,4 +285,3 @@ class DataLoader:
             workflows, self.cat_names, self.cont_names, self.label_names
         )
         # TODO: update cat/cont/label names after
-
