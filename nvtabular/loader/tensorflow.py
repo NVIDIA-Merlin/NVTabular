@@ -131,19 +131,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         return self.__next__()
 
     def _get_device_ctx(self, dev):
-        class dummy:
-            def __enter__(self):
-                pass
-            def __exit__(self, a, b, c):
-                pass
-        return dummy() # tf.device("/device:GPU:{}".format(dev))
+        return tf.device("/device:GPU:{}".format(dev))
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
         dlpack = gdf.to_dlpack()
         x = from_dlpack(dlpack)
-        # TODO: type checking?
         return tf.expand_dims(x, -1)
 
     def _create_tensors(self, gdf):
