@@ -90,6 +90,14 @@ class ColumnSimilarity(TransformOperator):
         a = gdf[self.a_col].values if self.on_device else gdf[self.a_col].values_host
         b = gdf[self.b_col].values if self.on_device else gdf[self.b_col].values_host
 
+        if len(a) and len(b):
+            similarities = row_wise_inner_product(
+                a, self.a_features, b, self.b_features, self.on_device
+            )
+        else:
+            similarities = []
+        gdf[self.name] = similarities
+
         similarities = row_wise_inner_product(
             a, self.a_features, b, self.b_features, self.on_device
         )
