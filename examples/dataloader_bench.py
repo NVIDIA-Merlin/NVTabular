@@ -70,7 +70,7 @@ def main(args):
             if args.backend == "torch":
                 num_samples = X[0].size()[0]
             else:
-                num_samples = X[1][label_name].shape[0]
+                num_samples = X[1][0].shape[0]
 
             samples_seen += num_samples
             throughput = samples_seen / (time.time() - start_time)
