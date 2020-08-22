@@ -45,12 +45,12 @@ class ChunkQueue:
     """
 
     def __init__(
-        self, batch_size, num_parts=1, shuffle=False,
+        self, qsize, batch_size, num_parts=1, shuffle=False,
     ):
         self.batch_size = batch_size
         self.num_parts = num_parts
         self.shuffle = shuffle
-        self.q_out = queue.Queue(1)
+        self.q_out = queue.Queue(q_size)
         self._stop_event = threading.Event()
 
     @property
@@ -170,7 +170,9 @@ class DataLoader:
         self.shuffle = shuffle
         self.devices = devices
 
-        self._buff = ChunkQueue(batch_size=batch_size, num_parts=parts_per_chunk, shuffle=shuffle)
+        self._buff = ChunkQueue(
+            len(devices), batch_size=batch_size, num_parts=parts_per_chunk, shuffle=shuffle
+        )
         self.chunk = None
         self._workers = None
         self._batch_idx = None
