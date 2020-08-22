@@ -255,7 +255,7 @@ class DataLoader:
 
         # get a new chunk from the buffer
         if self.chunk is None:
-            chunk = self._get_next_chunk()
+            self._get_next_chunk()
 
         # slice the appropriate rows from each tensor
         slc = slice(self._batch_idx * self.batch_size, (self._batch_idx + 1) * self.batch_size)

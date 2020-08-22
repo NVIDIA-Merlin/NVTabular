@@ -16,7 +16,6 @@
 import os
 
 import tensorflow as tf
-import cupy as cp
 
 from nvtabular.io import Dataset
 from nvtabular.loader.backend import DataLoader

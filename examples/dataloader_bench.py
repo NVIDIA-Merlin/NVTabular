@@ -50,7 +50,6 @@ def main(args):
     cat_names = ["C" + str(x) for x in range(1, 27)]
     label_name = "label"
 
-    results = {}
     for batch_size in args.batch_range:
         if args.backend == "torch":
             kwargs = {
