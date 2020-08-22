@@ -23,7 +23,7 @@ import nvtabular.ops as ops
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
 pytest.importorskip("tensorflow")
-import nvtabular.tf_dataloader as tf_dataloader  # noqa isort:skip
+import nvtabular.loader.tensorflow as tf_dataloader  # noqa isort:skip
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -45,12 +45,13 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    data_itr = tf_dataloader.KerasSequenceDataset(
+    data_itr = tf_dataloader.KerasSequenceLoaer(
         paths if use_paths else dataset,
-        columns=columns,
+        cat_names=cat_names,
+        cont_names=cont_names
         batch_size=batch_size,
         buffer_size=gpu_memory_frac,
-        label_name=label_name[0],
+        label_names=label_name,
         engine=engine,
         shuffle=False,
     )
@@ -67,7 +68,13 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
         # check that we have at most batch_size elements
         num_samples = y.shape[0]
-        assert num_samples <= batch_size
+        if num_samples != batch_size:
+            try:
+                next(data_itr)
+            except StopIteration:
+                continue
+            else:
+                raise ValueError("Batch size too small at idx {}".format(idx))
 
         # check that all the features in X have the
         # appropriate length and that the set of

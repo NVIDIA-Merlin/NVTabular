@@ -28,7 +28,7 @@ from tests.conftest import mycols_csv, mycols_pq
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
-import nvtabular.torch_dataloader as torch_dataloader  # noqa isort:skip
+import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
