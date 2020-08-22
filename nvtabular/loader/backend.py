@@ -19,8 +19,8 @@ import threading
 import cudf
 import cupy as cp
 
-from nvtabular.workflow import BaseWorkflow
 from nvtabular.io import _shuffle_gdf
+from nvtabular.workflow import BaseWorkflow
 
 
 def _num_steps(num_samples, step_size):
