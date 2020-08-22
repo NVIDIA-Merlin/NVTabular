@@ -9,7 +9,7 @@ import time
 class BatchRangeAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         values = map(int, values.split(","))
-        setattr(namespace, self.dest, [2**i for i in range(*values)])
+        setattr(namespace, self.dest, [2 ** i for i in range(*values)])
 
 
 def parse_args():
@@ -28,10 +28,11 @@ def parse_args():
         "--batch_range",
         help=(
             "comma separate range of powers of two to sweep batches on, "
-            "e.g. '9,24' for the default"),
+            "e.g. '9,24' for the default"
+        ),
         type=str,
-        default=[2**i for i in range(9,24)],
-        action=BatchRangeAction
+        default=[2 ** i for i in range(9, 24)],
+        action=BatchRangeAction,
     )
     return parser.parse_args()
 
@@ -39,7 +40,9 @@ def parse_args():
 def main(args):
     data_path = args.in_dir
     train_paths = glob(os.path.join(data_path, "*.parquet"))
-    train_set = nvt.Dataset(train_paths, engine="parquet", part_mem_fraction=float(args.gpu_mem_frac))
+    train_set = nvt.Dataset(
+        train_paths, engine="parquet", part_mem_fraction=float(args.gpu_mem_frac)
+    )
     # cont_names = ["I" + str(x).zfill(2) for x in range(1, 14)]
     # cat_names = ["C" + str(x).zfill(2) for x in range(1, 24)]
 
@@ -54,20 +57,11 @@ def main(args):
                 "cats": cat_names,
                 "conts": cont_names,
                 "labels": [label_name],
-                "devices": [i for i in range(args.num_devices)]
+                "devices": [i for i in range(args.num_devices)],
             }
         else:
-            kwargs = {
-                "cat_names": cat_names,
-                "cont_names": cont_names,
-                "label_names": [label_name]
-            }
-        dataset = DataLoader(
-            train_set,
-            batch_size=batch_size,
-            shuffle=args.shuffle,
-            **kwargs
-        )
+            kwargs = {"cat_names": cat_names, "cont_names": cont_names, "label_names": [label_name]}
+        dataset = DataLoader(train_set, batch_size=batch_size, shuffle=args.shuffle, **kwargs)
 
         samples_seen = 0
         start_time = time.time()
@@ -80,13 +74,10 @@ def main(args):
 
             samples_seen += num_samples
             throughput = samples_seen / (time.time() - start_time)
-            pbar.set_postfix(**{
-                "samples seen": samples_seen,
-                "throughput": throughput
-            })
+            pbar.set_postfix(**{"samples seen": samples_seen, "throughput": throughput})
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_args()
 
     if args.backend == "torch":
