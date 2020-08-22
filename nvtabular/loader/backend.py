@@ -50,7 +50,7 @@ class ChunkQueue:
         self.batch_size = batch_size
         self.num_parts = num_parts
         self.shuffle = shuffle
-        self.q_out = queue.Queue(q_size)
+        self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
 
     @property
