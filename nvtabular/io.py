@@ -131,10 +131,16 @@ def _merge_general_metadata(meta_list):
     meta = None
     for md in meta_list:
         if meta:
-            meta["data_paths"] += md["data_paths"]
-            meta["file_stats"] += md["file_stats"]
+            if "data_paths" in md:
+                meta["data_paths"] += md["data_paths"]
+            if "file_stats" in md:
+                meta["file_stats"] += md["file_stats"]
         else:
             meta = md.copy()
+            if "data_paths" not in meta:
+                meta["data_paths"] = []
+            if "file_stats" not in meta:
+                meta["file_stats"] = []
     return meta
 
 
@@ -491,7 +497,7 @@ class HugeCTRWriter(ThreadedWriter):
         np_label = data[self.labels].to_pandas().astype(np.single).to_numpy()
         np_conts = data[self.conts].to_pandas().astype(np.single).to_numpy()
         nnz = np.intc(1)
-        np_cats = data[self.cats].to_pandas().astype(np.longlong).to_numpy()
+        np_cats = data[self.cats].to_pandas().astype(np.uintc).to_numpy()
         # Write all the data samples
         for i, _ in enumerate(np_label):
             # Write Label
