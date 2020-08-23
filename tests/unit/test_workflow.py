@@ -354,3 +354,75 @@ def test_join_external_workflow(tmpdir, df, dataset, engine, preproc):
         assert gdf["id"].all() == new_gdf["id"].all()
         assert "new_col_2" in new_gdf.columns
         assert "new_col_3" not in new_gdf.columns
+
+        
+        
+
+def test_chaining_1():
+    df = cudf.DataFrame({'cont01': np.random.randint(1, 100, 100), 'cont02': np.random.random(100) * 100, 'cat01': np.random.randint(0, 10, 100), 'label': np.random.randint(0, 3, 100)})
+    df['cont01'][:10] = None
+
+    workflow = nvt.Workflow(cat_names=['cat01'], cont_names=['cont01', 'cont02'],label_name=['label'])
+    workflow.add_cont_feature(nvt.ops.FillMissing(columns=['cont01'], replace=True))
+    workflow.add_cont_preprocess(nvt.ops.NormalizeMinMax(columns=['cont01', 'cont02']))
+    workflow.finalize()
+
+    print(df)
+
+    workflow.apply(nvt.Dataset(df), output_path=None)
+    result = workflow.get_ddf().compute()
+    assert(result['cont01'].max() <= 1.0)
+    assert(result['cont02'].max() <= 1.0)
+
+def test_chaining_2():
+    gdf = cudf.DataFrame({'A': [1, 2, 2, 9, 6, np.nan, 3], 'B': [2, np.nan, 4, 7, 7, 2, 5],  'C':['a','b', 'c', np.nan, np.nan, 'g', 'k']})
+    proc = nvt.Workflow(
+        cat_names=['C'],
+        cont_names=['A', 'B'],
+        label_name=[])
+
+    proc.add_feature(nvt.ops.LambdaOp(
+                        op_name='isnull',
+                        f=lambda col, gdf: col.isnull(),
+                        replace=False,
+                        preprocessing=False))
+
+
+    proc.add_cat_preprocess(nvt.ops.Categorify())
+    train_dataset = nvt.Dataset(gdf, engine='parquet')
+
+    proc.apply(train_dataset, apply_offline=True, record_stats=True, output_path=None)
+    result = proc.get_ddf().compute()
+    assert(all(x in list(result.columns) for x in ["A_isnull", "B_isnull", "C_isnull"]))
+    assert(x in result["C"].unique() for x in set(gdf['C'].dropna().to_arrow()))
+
+    
+def test_chaining_3():
+    gdf_test = cudf.DataFrame({'ad_id': [1, 2, 2, 6, 6, 8, 3, 3], 'source_id': [2, 4, 4, 7, 5, 2, 5, 2], 'platform':[1, 2, np.nan, 2, 1, 3, 3, 1],'clicked': [1 , 0, 1, 0, 0, 1, 1, 0]})
+
+    proc = nvt.Workflow(
+        cat_names=['ad_id', 'source_id', 'platform'],
+        cont_names= [],
+        label_name=['clicked'])
+    #apply dropna
+    proc.add_feature(
+        [
+        nvt.ops.Dropna(['platform']),
+        nvt.ops.JoinGroupby(columns=['ad_id'], 
+                    cont_names=['clicked'], 
+                    stats=['sum','count']),
+        nvt.ops.LambdaOp(
+            op_name='ctr',
+            f=lambda col, gdf: col/gdf['ad_id_count'],
+            columns=['ad_id_clicked_sum'],
+            replace=False)
+        ])
+
+    proc.finalize()
+    GPU_MEMORY_FRAC = 0.2
+    train_dataset = nvt.Dataset(gdf_test, engine='parquet',  part_mem_fraction=GPU_MEMORY_FRAC)
+    proc.apply(train_dataset, apply_offline=True, record_stats=True, output_path=None, shuffle=False)
+    result = proc.get_ddf().compute()
+    assert(all(x in result.columns for x in ["ad_id_count", "ad_id_clicked_sum_ctr", "ad_id_clicked_sum"]))
+    
+    

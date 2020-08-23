@@ -53,6 +53,8 @@ class Operator:
         for tar in target_cols:
             if tar in cols_ctx[cols_grp].keys():
                 tar_cols = tar_cols + cols_ctx[cols_grp][tar]
+        if len(tar_cols) < 1:
+            tar_cols = cols_ctx[cols_grp]['base']
         return tar_cols
 
 
@@ -104,6 +106,8 @@ class TransformOperator(Operator):
             return
         columns_ctx[input_cols][new_key] = list(new_cols)
         if not self.preprocessing and self._id not in columns_ctx["final"]["ctx"][input_cols]:
+            if "base" in columns_ctx["final"]["ctx"][input_cols]:
+                columns_ctx["final"]["ctx"][input_cols].remove("base")
             columns_ctx["final"]["ctx"][input_cols].append(self._id)
 
     def apply_op(
@@ -524,7 +528,7 @@ class NormalizeMinMax(DFOperator):
 
     @property
     def req_stats(self):
-        return [MinMax()]
+        return [MinMax(columns=self.columns)]
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
@@ -604,7 +608,7 @@ class FillMedian(DFOperator):
 
     @property
     def req_stats(self):
-        return [Median()]
+        return [Median(columns=self.columns)]
 
     @annotate("FillMedian_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):

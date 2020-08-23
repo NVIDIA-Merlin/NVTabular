@@ -248,7 +248,8 @@ class BaseWorkflow:
             master_task_list = master_task_list + task_sets[task_set]
 
         baseline, leftovers = self._sort_task_types(master_task_list)
-        self.phases.append(baseline)
+        if baseline:
+            self.phases.append(baseline)
         self._phase_creator(leftovers)
         self._create_final_col_refs(task_sets)
 
@@ -274,11 +275,11 @@ class BaseWorkflow:
                         break
                     if p_task[0]._id in cols_needed:
                         cols_needed.remove(p_task[0]._id)
-                if not cols_needed and self._find_parents(task[3], idx):
+                if not cols_needed and self._find_parents(task[3], idx) and len(task)>0:
                     added = True
                     phase.append(task)
 
-            if not added:
+            if not added and len(task)>0:
                 self.phases.append([task])
 
     def _find_parents(self, ops_list, phase_idx):
@@ -337,7 +338,9 @@ class BaseWorkflow:
                     if not isinstance(obj, collections.abc.Sequence):
                         obj = [obj]
                     for idx, op in enumerate(obj):
-                        tasks.append((op, [obj[idx - 1]._id] if idx > 0 else []))
+                        cols_ref = [obj[idx - 1]._id] if idx > 0 else []
+                        tasks.append((op, cols_ref ))
+                            
                 ret[phase][k] = tasks
         return ret
 
@@ -368,15 +371,17 @@ class BaseWorkflow:
         final["label"] = []
         for col_ctx in self.columns_ctx["label"].values():
             if not final["label"]:
-                final["label"] = col_ctx
+                final["label"] = ["base"]
             else:
                 final["label"] = final["label"] + col_ctx
         # if no operators run in preprocessing we grab base columns
         if "continuous" not in final:
             # set base columns
-            final["continuous"] = self.columns_ctx["continuous"]["base"]
+            final["continuous"] = ["base"]
         if "categorical" not in final:
-            final["categorical"] = self.columns_ctx["categorical"]["base"]
+            final["categorical"] = ["base"]
+        if "all" not in final:
+            final["all"] = ["base"]
         self.columns_ctx["final"] = {}
         self.columns_ctx["final"]["ctx"] = final
 
