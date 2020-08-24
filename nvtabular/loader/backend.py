@@ -45,11 +45,11 @@ class ChunkQueue:
     """
 
     def __init__(
-        self, qsize, batch_size, num_parts=1, shuffle=False,
+        self, qsize, num_parts=1, shuffle=False, put_wait=0.0001,
     ):
-        self.batch_size = batch_size
         self.num_parts = num_parts
         self.shuffle = shuffle
+        self.put_wait = put_wait
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
 
@@ -64,6 +64,17 @@ class ChunkQueue:
     def get(self):
         return self.q_out.get()
 
+    def put(self, packet):
+        while True:
+            if self.stopped:
+                return True
+
+            try:
+                self.q_out.put(packet, timeout=put_wait)
+                return False
+            except queue.Full:
+                continue
+
     def batch(self, itr):
         current = []
         for value in itr:
@@ -74,8 +85,10 @@ class ChunkQueue:
         if len(current) > 0:
             yield current
 
-    def load_chunks(self, dev, itr, workflows, device_ctx):
-        with device_ctx:
+    def load_chunks(self, dev, dataloader):
+        indices = dataloader._gather_indices_for_dev(dev)
+        itr = dataloader.data.to_itr(indices=indices)
+        with dataloader._get_device_ctx(dev):
             spill = None
             for chunks in self.batch(itr):
                 if self.stopped:
@@ -86,15 +99,24 @@ class ChunkQueue:
 
                 chunks = cudf.core.reshape.concat(chunks)
                 chunks.reset_index(drop=True, inplace=True)
-                chunks, spill = self.get_batch_div_chunk(chunks)
+                chunks, spill = self.get_batch_div_chunk(
+                    chunks, dataloader.batch_size)
                 if self.shuffle:
                     _shuffle_gdf(chunks)
 
                 num_samples = len(chunks)
                 if num_samples > 0:
-                    for workflow in workflows:
+                    # TODO: can we do this earlier so that we
+                    # can use primarily cupy?
+                    for workflow in dataloader.workflows:
                         chunks = workflow.apply_ops(chunks)
-                    self.q_out.put((chunks, num_samples))
+                    chunks = dataloader._create_tensors(chunks)
+
+                    # put returns True if buffer is stopped before
+                    # packet can be put in queue. Keeps us from
+                    # freezing on a put on a full queue
+                    if self.put((chunks, num_samples)):
+                        return
                 chunks = None
 
             # takes care final batch, which is less than batch size
@@ -102,7 +124,12 @@ class ChunkQueue:
                 num_samples = len(spill)
                 for workflow in workflows:
                     spill = workflow.apply_ops(spill)
-                self.q_out.put((spill, num_samples))
+
+                # TODO: technically we don't need this, since a return
+                # self.put will just end the function anyway, but
+                # good for posterity?
+                if self.put((spill, num_samples)):
+                    return
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -115,8 +142,9 @@ class ChunkQueue:
     def start(self):
         self._stop_event.clear()
 
-    def get_batch_div_chunk(self, chunks):
-        spill_idx = int(chunks.shape[0] / self.batch_size) * self.batch_size
+    def get_batch_div_chunk(self, chunks, batch_size):
+        # TODO: is there a way to do this using cupy?
+        spill_idx = int(chunks.shape[0] / batch_size) * batch_size
         spill = cudf.DataFrame(chunks.iloc[spill_idx:])
         chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
         if not chunks.empty:
@@ -171,7 +199,7 @@ class DataLoader:
         self.devices = devices
 
         self._buff = ChunkQueue(
-            len(devices), batch_size=batch_size, num_parts=parts_per_chunk, shuffle=shuffle
+            len(devices), num_parts=parts_per_chunk, shuffle=shuffle
         )
         self.chunk = None
         self._workers = None
@@ -213,12 +241,9 @@ class DataLoader:
         # concatenating data
         self._workers = []
         for dev in self.devices:
-            indices = self._gather_indices_for_dev(dev)
-            itr = self.data.to_iter(indices=indices)
-
             t = threading.Thread(
                 target=self._buff.load_chunks,
-                args=(dev, itr, self.workflows, self._get_device_ctx(dev)),
+                args=(dev, self)
             )
             t.daemon = True
             t.start()
@@ -238,18 +263,20 @@ class DataLoader:
         return self.indices[start : start + per_worker]
 
     def _get_next_chunk(self):
-        chunk, num_samples = self._buff.get()
-        self.chunk = self._create_tensors(chunk)
+        self.chunk, num_samples = self._buff.get()
+        # self.chunk = self._create_tensors(chunk)
         self._num_steps = _num_steps(num_samples, self.batch_size)
         self._batch_idx = 0
 
     def __next__(self):
         # we've never initialized, do that now
+        # need this because tf.keras.Model.fit will
+        # call next() cold
         if self._workers is None:
             DataLoader.__iter__(self)
 
         # the buffer is empty and there are no running
-        # threads to refill it: we must be empty
+        # threads to refill it: we must be done iterating
         if not self._working and self._buff.empty:
             self._workers = None
             self.chunk = None
