@@ -5,11 +5,19 @@ Operators
    :maxdepth: 2
 
    Categorify <categorify>
+   Clip <clip>
+   ColumnSimilarity <columnsimilarity>
    Dropna <dropna>
    FillMissing <fillmissing>
+   FillMedian <fillmedian>
+   Filter <filter>
    GroupBy <groupby>
+   HashBucket <hashbucket>
+   JoinGroupby <groupby>
+   LambdaOp <lambdaop>
    LogOp <log>
    Moments <moments>
    Median <median>
+   MinMax <minmax>
    Normalize <normalize>
-   ZeroFill <zerofill>
+   NormalizeMinMax <normalizeminmax>

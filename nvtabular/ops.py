@@ -17,6 +17,7 @@ import cudf
 import cupy
 import numpy as np
 from cudf._lib.nvtx import annotate
+from dask.core import flatten
 from dask.delayed import Delayed
 
 from nvtabular import categorify as nvt_cat
@@ -335,26 +336,38 @@ class Median(StatOperator):
         return
 
 
-class ZeroFill(TransformOperator):
+class Clip(TransformOperator):
     """
-    This operation sets negative values to zero.
-
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    This operation clips values continous values so that they are with a min/max bound.
+    For instance by setting the min value to 0, you can replace all negative values with 0.
+    This is helpful in cases where you want to log normalize values.
     """
 
     default_in = CONT
     default_out = CONT
 
-    @annotate("ZeroFill_op", color="darkgreen", domain="nvt_python")
+    def __init__(
+        self, min_value=None, max_value=None, columns=None, preprocessing=True, replace=True
+    ):
+        if min_value is None and max_value is None:
+            raise ValueError("Must specify a min or max value to clip to")
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        self.min_value = min_value
+        self.max_value = max_value
+
+    @annotate("Clip_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         cont_names = target_columns
         if not cont_names:
             return gdf
-        z_gdf = gdf[cont_names].fillna(0)
+
+        z_gdf = gdf[cont_names]
         z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
-        z_gdf[z_gdf < 0] = 0
+        if self.min_value is not None:
+            z_gdf[z_gdf < self.min_value] = self.min_value
+        if self.max_value is not None:
+            z_gdf[z_gdf > self.max_value] = self.max_value
+
         return z_gdf
 
 
@@ -470,7 +483,7 @@ class Normalize(DFOperator):
 
     @property
     def req_stats(self):
-        return [Moments()]
+        return [Moments(columns=self.columns)]
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
@@ -606,7 +619,7 @@ class FillMedian(DFOperator):
         return new_gdf
 
 
-class CategoryStatistics(StatOperator):
+class GroupbyStatistics(StatOperator):
     """
     Uses groupby aggregation to determine the unique groups of a categorical
     feature and calculates the desired statistics of requested continuous
@@ -623,10 +636,17 @@ class CategoryStatistics(StatOperator):
         List of statistics to calculate for each unique group. Note
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
-        Supported statistics include ["count", "sum", "mean", "std", "var"].
-    columns : list of str, default None
-        Categorical columns to collect statistics for.  If None,
-        the operation will target all known categorical columns.
+        Supported statistics include ["count", "sum", "mean", "std", "var", "min", "max"].
+    columns : list of str or list(str), default None
+        Categorical columns (or "column groups") to collect statistics for.
+        If None, the operation will target all known categorical columns.
+    concat_groups : bool, default False
+        Applies only if there are list elements in the ``columns`` input. If True,
+        the values within these column groups will be concatenated, and the
+        new (temporary) columns will be used to perform the groupby.  The purpose of
+        this option is to enable multiple columns to be label-encoded jointly.
+        (see Categorify). Note that this option is only allowed for the "count"
+        statistics (with cont_names == None).
     tree_width : dict or int, optional
         Tree width of the hash-based groupby reduction for each categorical
         column. High-cardinality columns may require a large `tree_width`,
@@ -638,12 +658,15 @@ class CategoryStatistics(StatOperator):
         parquet format.
     freq_threshold : int, default 0
         Categories with a `count` statistic less than this number will
-        be omitted from the `CategoryStatistics` output.
+        be omitted from the `GroupbyStatistics` output.
     on_host : bool, default True
         Whether to convert cudf data to pandas between tasks in the hash-based
         groupby reduction. The extra host <-> device data movement can reduce
         performance.  However, using `on_host=True` typically improves stability
         (by avoiding device-level memory pressure).
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
     """
 
     def __init__(
@@ -656,8 +679,18 @@ class CategoryStatistics(StatOperator):
         on_host=True,
         freq_threshold=None,
         stat_name=None,
+        concat_groups=False,
+        name_sep="_",
     ):
-        super(CategoryStatistics, self).__init__(columns)
+        # Set column_groups if the user has passed in a list of columns
+        self.column_groups = None
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            self.column_groups = columns
+            columns = list(set(flatten(columns, container=list)))
+
+        super(GroupbyStatistics, self).__init__(columns)
         self.cont_names = cont_names or []
         self.stats = stats or []
         self.categories = {}
@@ -666,16 +699,17 @@ class CategoryStatistics(StatOperator):
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.stat_name = stat_name or "categories"
-        self.op_name = "CategoryStatistics-" + self.stat_name
+        self.op_name = "GroupbyStatistics-" + self.stat_name
+        self.concat_groups = concat_groups
+        self.name_sep = name_sep
 
     @property
     def _id(self):
         return str(self.op_name)
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-
-        supported_ops = ["count", "sum", "mean", "std", "var"]
+        col_groups = self.column_groups or self.get_columns(columns_ctx, input_cols, target_cols)
+        supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
@@ -684,7 +718,7 @@ class CategoryStatistics(StatOperator):
         agg_list = self.stats
         dsk, key = nvt_cat._category_stats(
             ddf,
-            cols,
+            col_groups,
             agg_cols,
             agg_list,
             self.out_path,
@@ -692,6 +726,8 @@ class CategoryStatistics(StatOperator):
             self.tree_width,
             self.on_host,
             stat_name=self.stat_name,
+            concat_groups=self.concat_groups,
+            name_sep=self.name_sep,
         )
         return Delayed(key, dsk)
 
@@ -711,11 +747,11 @@ class CategoryStatistics(StatOperator):
         return
 
 
-class GroupBy(DFOperator):
+class JoinGroupby(DFOperator):
     """
     One of the ways to create new features is to calculate
-    the basic statistics of the data that is grouped by a categorical
-    feature. This operator groups the data by the given categorical
+    the basic statistics of the data that is grouped by categorical
+    features. This operator groups the data by the given categorical
     feature(s) and calculates the desired statistics of requested continuous
     features (along with the count of rows in each group). The aggregated
     statistics are merged with the data (by joining on the desired
@@ -735,19 +771,22 @@ class GroupBy(DFOperator):
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
         Supported statistics include ["count", "sum", "mean", "std", "var"].
-    columns : list of str, default None
-        Categorical columns to target for this operation.  If None,
-        the operation will target all known categorical columns.
+    columns : list of str or list(str), default None
+        Categorical columns (or multi-column "groups") to target for this op.
+        If None, the operation will target all known categorical columns.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default False
         This parameter is ignored
     tree_width : dict or int, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     out_path : str, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     on_host : bool, default True
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
     """
 
     default_in = CAT
@@ -764,7 +803,22 @@ class GroupBy(DFOperator):
         cat_cache="host",
         out_path=None,
         on_host=True,
+        name_sep="_",
     ):
+        self.column_groups = None
+        self.storage_name = {}
+        self.name_sep = name_sep
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            self.column_groups = columns
+            columns = list(set(flatten(columns, container=list)))
+            for group in self.column_groups:
+                if isinstance(group, list) and len(group) > 1:
+                    name = nvt_cat._make_name(*group, sep=self.name_sep)
+                    for col in group:
+                        self.storage_name[col] = name
+
         super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
         self.cont_names = cont_names
         self.stats = stats
@@ -777,26 +831,45 @@ class GroupBy(DFOperator):
     @property
     def req_stats(self):
         return [
-            CategoryStatistics(
-                columns=self.columns,
+            GroupbyStatistics(
+                columns=self.column_groups or self.columns,
+                concat_groups=False,
                 cont_names=self.cont_names,
                 stats=self.stats,
                 tree_width=self.tree_width,
                 out_path=self.out_path,
                 on_host=self.on_host,
                 stat_name=self.stat_name,
+                name_sep=self.name_sep,
             )
         ]
 
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-        for col, path in stats_context[self.stat_name].items():
-            stat_gdf = nvt_cat._read_groupby_stat_df(path, col, self.cat_cache)
-            tran_gdf = gdf[[col, tmp]].merge(stat_gdf, on=col, how="left")
+        if self.column_groups:
+            cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
+                self.column_groups, gdf.columns, self.name_sep
+            )
+        else:
+            multi_col_group = {}
+            cat_names = [name for name in target_columns if name in gdf.columns]
+
+        for name in cat_names:
+            storage_name = self.storage_name.get(name, name)
+            name = multi_col_group.get(name, name)
+            path = stats_context[self.stat_name][storage_name]
+            selection_l = name.copy() if isinstance(name, list) else [name]
+            selection_r = name if isinstance(name, list) else [storage_name]
+
+            stat_gdf = nvt_cat._read_groupby_stat_df(path, storage_name, self.cat_cache)
+            tran_gdf = gdf[selection_l + [tmp]].merge(
+                stat_gdf, left_on=selection_l, right_on=selection_r, how="left"
+            )
             tran_gdf = tran_gdf.sort_values(tmp)
-            tran_gdf.drop(columns=[col, tmp], inplace=True)
+            tran_gdf.drop(columns=selection_l + [tmp], inplace=True)
             new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
             new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
         gdf.drop(columns=[tmp], inplace=True)
@@ -937,20 +1010,29 @@ class Categorify(DFOperator):
         Categories with a count/frequency below this threshold will be
         ommited from the encoding and corresponding data will be mapped
         to the "null" category.
-    columns : list of str, default None
-        Categorical columns to target for this operation.  If None,
-        the operation will target all known categorical columns.
+    columns : list of str or list(str), default None
+        Categorical columns (or multi-column "groups") to target for this op.
+        If None, the operation will target all known categorical columns.
+        If columns contains 1+ list(str) elements, the columns within each
+        list/group will be encoded according to the `encode_type` setting.
+    encode_type : {"joint", "combo"}, default "joint"
+        If "joint", the columns within any multi-column group will be
+        jointly encoded. If "combo", the combination of values will be
+        encoded as a new column. Note that replacement is not allowed for
+        "combo", because the same column name can be included in
+        multiple groups.
     preprocessing : bool, default True
         Sets if this is a pre-processing operation or not
     replace : bool, default True
-        Replaces the transformed column with the original input
-        if set Yes
+        Replaces the transformed column with the original input.
+        Note that this does not apply to multi-column groups with
+        `encoded_type="combo"`.
     tree_width : dict or int, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     out_path : str, optional
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     on_host : bool, default True
-        Passed to `CategoryStatistics` dependency.
+        Passed to `GroupbyStatistics` dependency.
     na_sentinel : default 0
         Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
@@ -961,6 +1043,9 @@ class Categorify(DFOperator):
     dtype :
         If specified, categorical labels will be cast to this dtype
         after encoding is performed.
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
     """
 
     default_in = CAT
@@ -978,7 +1063,71 @@ class Categorify(DFOperator):
         cat_cache="host",
         dtype=None,
         on_host=True,
+        encode_type="joint",
+        name_sep="_",
     ):
+
+        # We need to handle three types of encoding here:
+        #
+        #   (1) Conventional encoding. There are no multi-column groups. So,
+        #       each categorical column is separately transformed into a new
+        #       "encoded" column (1-to-1).  The unique values are calculated
+        #       separately for each column.
+        #
+        #   (2) Multi-column "Joint" encoding (there are multi-column groups
+        #       in `columns` and `encode_type="joint"`).  Still a
+        #       1-to-1 transofrmation of categorical columns.  However,
+        #       we concatenate column groups to determine uniques (rather
+        #       than getting uniques of each categorical column separately).
+        #
+        #   (3) Multi-column "Group" encoding (there are multi-column groups
+        #       in `columns` and `encode_type="combo"`). No longer
+        #       a 1-to-1 transformation of categorical columns. Each column
+        #       group will be transformed to a single "encoded" column.  This
+        #       means the unique "values" correspond to unique combinations.
+        #       Since the same column may be included in multiple groups,
+        #       replacement is not allowed for this transform.
+
+        # Set column_groups if the user has passed in a list of columns.
+        # The purpose is to capture multi-column groups. If the user doesn't
+        # specify `columns`, there are no multi-column groups to worry about.
+        self.column_groups = None
+        self.name_sep = name_sep
+
+        # For case (2), we need to keep track of the multi-column group name
+        # that will be used for the joint encoding of each column in that group.
+        # For case (3), we also use this "storage name" to signify the name of
+        # the file with the required "combination" groupby statistics.
+        self.storage_name = {}
+
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            # User passed in a list of column groups. We need to figure out
+            # if this list contains any multi-column groups, and if there
+            # are any (obvious) problems with these groups
+            self.column_groups = columns
+            columns = list(set(flatten(columns, container=list)))
+            columns_all = list(flatten(columns, container=list))
+            if sorted(columns_all) != sorted(columns) and encode_type == "joint":
+                # If we are doing "joint" encoding, there must be unique mapping
+                # between input column names and column groups.  Otherwise, more
+                # than one unique-value table could be used to encode the same
+                # column.
+                raise ValueError("Same column name included in multiple groups.")
+            for group in self.column_groups:
+                if isinstance(group, list) and len(group) > 1:
+                    # For multi-column groups, we concatenate column names
+                    # to get the "group" name.
+                    name = nvt_cat._make_name(*group, sep=self.name_sep)
+                    for col in group:
+                        self.storage_name[col] = name
+
+        # Only support two kinds of multi-column encoding
+        if encode_type not in ("joint", "combo"):
+            raise ValueError(f"encode_type={encode_type} not supported.")
+
+        # Other self-explanatory intialization
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
         self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
@@ -988,12 +1137,14 @@ class Categorify(DFOperator):
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.stat_name = "categories"
+        self.encode_type = encode_type
 
     @property
     def req_stats(self):
         return [
-            CategoryStatistics(
-                columns=self.columns,
+            GroupbyStatistics(
+                columns=self.column_groups or self.columns,
+                concat_groups=self.encode_type == "joint",
                 cont_names=[],
                 stats=[],
                 freq_threshold=self.freq_threshold,
@@ -1001,23 +1152,57 @@ class Categorify(DFOperator):
                 out_path=self.out_path,
                 on_host=self.on_host,
                 stat_name=self.stat_name,
+                name_sep=self.name_sep,
             )
         ]
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context={}):
-        cat_names = target_columns
-        new_gdf = cudf.DataFrame()
-        if not cat_names:
-            return gdf
-        cat_names = [name for name in cat_names if name in gdf.columns]
-        new_cols = []
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context={},
+    ):
+        new_gdf = gdf.copy(deep=False)
+        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
+        if not target_columns:
+            return new_gdf
+
+        if self.column_groups and not self.encode_type == "joint":
+            # Case (3) - We want to track multi- and single-column groups separately
+            #            when we are NOT performing a joint encoding. This is because
+            #            there is not a 1-to-1 mapping for columns in multi-col groups.
+            #            We use `multi_col_group` to preserve the list format of
+            #            multi-column groups only, and use `cat_names` to store the
+            #            string representation of both single- and multi-column groups.
+            #
+            cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
+                self.column_groups, gdf.columns, self.name_sep
+            )
+        else:
+            # Case (1) & (2) - Simple 1-to-1 mapping
+            multi_col_group = {}
+            cat_names = [name for name in target_columns if name in gdf.columns]
+
+        # Encode each column-group separately
         for name in cat_names:
             new_col = f"{name}_{self._id}"
-            new_cols.append(new_col)
-            path = stats_context[self.stat_name][name]
+
+            # Use the column-group `list` directly (not the string name)
+            use_name = multi_col_group.get(name, name)
+            # Storage name may be different than group for case (2)
+            # Only use the "aliased" `storage_name` if we are dealing with
+            # a multi-column group, or if we are doing joint encoding
+            if use_name != name or self.encode_type == "joint":
+                storage_name = self.storage_name.get(name, name)
+            else:
+                storage_name = name
+            path = stats_context[self.stat_name][storage_name]
             new_gdf[new_col] = nvt_cat._encode(
-                name,
+                use_name,
+                storage_name,
                 path,
                 gdf,
                 self.cat_cache,
@@ -1026,6 +1211,15 @@ class Categorify(DFOperator):
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
+
+        # Deal with replacement
+        if self.replace:
+            for name in cat_names:
+                new_col = f"{name}_{self._id}"
+                new_gdf[name] = new_gdf[new_col]
+                new_gdf.drop(columns=[new_col], inplace=True)
+
+        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
 
 
@@ -1101,4 +1295,41 @@ class LambdaOp(TransformOperator):
         for col in target_columns:
             new_gdf[col] = self.f(gdf[col], gdf)
         new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
+        return new_gdf
+
+
+class Filter(TransformOperator):
+    """
+    Filters rows from the dataset. This works by taking a callable that takes a dataframe,
+    and returns a dataframe with unwanted rows filtered out.
+
+    Parameters
+    -----------
+    f : callable
+        Defines a function that filter rows from a dataframe. Exp: ```lambda gdf: gdf[gdf.a >= 0]```
+        would filter out the rows with a negative value in the ```a``` column.
+    preprocessing : bool, default True
+        Sets if this is a pre-processing operation or not
+    """
+
+    default_in = ALL
+    default_out = ALL
+
+    def __init__(self, f, preprocessing=True, replace=True):
+        super().__init__(preprocessing=preprocessing, replace=replace)
+        if f is None:
+            raise ValueError("f cannot be None. Filter op applies f to dataframe")
+        self.f = f
+
+    @annotate("Filter_op", color="darkgreen", domain="nvt_python")
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context=None,
+    ):
+        new_gdf = self.f(gdf)
+        new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf

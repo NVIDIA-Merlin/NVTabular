@@ -14,9 +14,11 @@
 # limitations under the License.
 #
 import math
+import os
 
 import cudf
 import numpy as np
+import pandas as pd
 import pytest
 from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
@@ -99,7 +101,7 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    encoder = ops.CategoryStatistics(columns=op_columns)
+    encoder = ops.GroupbyStatistics(columns=op_columns)
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [encoder]
 
@@ -116,6 +118,37 @@ def test_encoder(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cats_expected1 = df["name-string"].unique().values_host
     cats1 = get_cats(processor, "name-string")
     assert cats1.tolist() == [None] + cats_expected1.tolist()
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("groups", [[["name-cat", "name-string"], "name-cat"], "name-string"])
+@pytest.mark.parametrize("concat_groups", [True, False])
+def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    encoder = ops.GroupbyStatistics(
+        columns=groups,
+        cont_names=None if concat_groups else ["x"],
+        stats=None if concat_groups else ["count", "mean"],
+        out_path=str(tmpdir),
+        concat_groups=concat_groups,
+    )
+    config = nvt.workflow.get_new_config()
+    config["PP"]["categorical"] = [encoder]
+
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+    processor.update_stats(dataset)
+
+    groups = [groups] if isinstance(groups, str) else groups
+    for group in groups:
+        group = [group] if isinstance(group, str) else group
+        prefix = "unique." if concat_groups else "cat_stats."
+        fn = prefix + "_".join(group) + ".parquet"
+        cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -230,7 +263,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     label_name = ["label"]
 
     config = nvt.workflow.get_new_config()
-    config["PP"]["continuous"] = [ops.Moments()]
+    config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
 
     processor = nvtabular.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
@@ -242,7 +275,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
     columns_ctx = {}
     columns_ctx["continuous"] = {}
-    columns_ctx["continuous"]["base"] = cont_names
+    columns_ctx["continuous"]["base"] = op_columns or cont_names
 
     new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
     df["x"] = (df["x"] - processor.stats["means"]["x"]) / processor.stats["stds"]["x"]
@@ -518,6 +551,110 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
 
 
+@pytest.mark.parametrize("groups", [[["Author", "Engaging User"]], None])
+@pytest.mark.parametrize("kind", ["joint", "combo"])
+def test_categorify_multi(tmpdir, groups, kind):
+
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    cat_names = ["Author", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir), encode_type=kind))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    if groups:
+        if kind == "joint":
+            # Columns are encoded jointly
+            assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
+            assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 4]
+        else:
+            # Column combinations are encoded
+            assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+    else:
+        # Columns are encoded independently
+        assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
+        assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
+
+
+def test_categorify_multi_combo(tmpdir):
+
+    groups = [["Author", "Engaging User"], ["Author"], "Engaging User"]
+    kind = "combo"
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_E", "User_B", "User_C"],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    cat_names = ["Author", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir), encode_type=kind))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Column combinations are encoded
+    assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
+    assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
+    assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+
+
+@pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
+def test_joingroupby_multi(tmpdir, groups):
+
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_A", "User_A", "User_B"],
+            "Engaging-User": ["User_B", "User_B", "User_C", "User_C"],
+            "Cost": [100.0, 200.0, 300.0, 400.0],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    cat_names = ["Author", "Engaging-User"]
+    cont_names = ["Cost"]
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        ops.JoinGroupby(columns=groups, out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"])
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    if isinstance(groups, list):
+        # Join on ["Author", "Engaging-User"]
+        assert df_out["Author_Engaging-User_Cost_sum"].to_arrow().to_pylist() == [
+            300.0,
+            300.0,
+            300.0,
+            400.0,
+        ]
+    else:
+        # Join on ["Author"]
+        assert df_out["Author_Cost_sum"].to_arrow().to_pylist() == [600.0, 600.0, 600.0, 400.0]
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
 @pytest.mark.parametrize("cache", ["host", "device"])
@@ -573,3 +710,32 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
         assert gdf["id"].all() == new_gdf["id"].all()
         assert "new_col_2" in new_gdf.columns
         assert "new_col_3" not in new_gdf.columns
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.1])
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, client):
+
+    cont_names = ["x", "y"]
+
+    columns = mycols_pq if engine == "parquet" else mycols_csv
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    filter_op = ops.Filter(f=lambda df: df[df["y"] > 0.5])
+    new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
+    assert new_gdf.columns.all() == df.columns.all()
+
+    # return isnull() rows
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = cont_names
+
+    for col in cont_names:
+        idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
+        df[col].iloc[idx] = None
+
+    filter_op = ops.Filter(f=lambda df: df[df.x.isnull()])
+    new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
+    assert new_gdf.columns.all() == df.columns.all()
+    assert new_gdf.shape[0] < df.shape[0], "null values do not exist"

@@ -65,8 +65,8 @@ proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_
 Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
 
 ```python
-# zero fill and then take log(1+x)
-workflow.add_cont_feature([ZeroFill(), LogOp()])
+# Replace negative and missing values with 0 and then take log(1+x)
+workflow.add_cont_feature([FillMissing(), Clip(min_value=0), LogOp()])
 
 # then normalize
 workflow.add_cont_preprocess(Normalize())
@@ -84,7 +84,24 @@ When compared to an item by item dataloader of PyTorch we have benchmarked our t
 Multi-GPU Support
 -----------------------
 
-The next release will have multi-GPU support using Dask-cudf and Dask, and will allow for easy parallelization of operations across multiple GPUs.
+NVTabular supports multi-GPU scaling with [dask-cuda](https://github.com/rapidsai/dask-cuda) and [dask.distributed](https://distributed.dask.org/en/latest/).  To enable distributed parallelism, the NVTabular `Workflow` must be initialized with a `dask.distributed.Client` object:
+
+```python
+import nvtabular as nvt
+from dask.distributed import Client
+
+# Deploy a new cluster
+# (or specify the port of an existing scheduler)
+cluster = "tcp://MachineA:8786"
+
+client = Client(cluster)
+workflow = nvt.Workflow(..., client=client)
+...
+```
+
+There are currenly many ways to deploy a "cluster" for Dask.  [This article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a nice summary of all practical options.  For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
+
+Since NVTabular already uses [dask_cudf](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the arguments used for global-statistics operations.  See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.     
 
 CPU Support
 ------------
