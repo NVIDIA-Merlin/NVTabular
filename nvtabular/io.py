@@ -33,11 +33,9 @@ import cudf
 import cupy as cp
 import dask
 import dask_cudf
-import numba.cuda as cuda
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
@@ -48,6 +46,8 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
+from numba import cuda as cuda
+from pyarrow import parquet as pq
 
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
