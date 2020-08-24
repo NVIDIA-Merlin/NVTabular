@@ -46,7 +46,7 @@ class ChunkQueue:
     """
 
     def __init__(
-        self, qsize, num_parts=1, shuffle=False, put_wait=0.0001,
+        self, qsize, num_parts=1, shuffle=False, put_wait=1e-6,
     ):
         self.num_parts = num_parts
         self.shuffle = shuffle
