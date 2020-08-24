@@ -6,7 +6,7 @@ import pytest
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 from tests.conftest import mycols_csv, mycols_pq
 
 boto3 = pytest.importorskip("boto3")
