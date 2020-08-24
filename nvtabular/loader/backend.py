@@ -70,7 +70,7 @@ class ChunkQueue:
                 return True
 
             try:
-                self.q_out.put(packet, timeout=put_wait)
+                self.q_out.put(packet, timeout=self.put_wait)
                 return False
             except queue.Full:
                 continue
@@ -87,7 +87,8 @@ class ChunkQueue:
 
     def load_chunks(self, dev, dataloader):
         indices = dataloader._gather_indices_for_dev(dev)
-        itr = dataloader.data.to_itr(indices=indices)
+        itr = dataloader.data.to_iter(indices=indices)
+
         with dataloader._get_device_ctx(dev):
             spill = None
             for chunks in self.batch(itr):
@@ -298,8 +299,8 @@ class DataLoader:
         # TODO: update cat/cont/label names after
 
     def _get_segment_lengths(self, num_samples):
-        idx = [i*self.batch_size for i in range(_num_steps(num_samples, self.batch_size)-1)]
-        idx.append(num_samples - idx[-1])
+        idx = [self.batch_size for _ in range(num_samples // self.batch_size)]
+        idx.append(num_samples % self.batch_size)
         return idx
 
     def _get_device_ctx(self, dev):
