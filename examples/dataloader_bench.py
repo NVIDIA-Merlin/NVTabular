@@ -1,9 +1,10 @@
 import argparse
 import logging
 import os
-from glob import glob
-from tqdm import tqdm
 import time
+from glob import glob
+
+from tqdm import tqdm
 
 
 class BatchRangeAction(argparse.Action):
