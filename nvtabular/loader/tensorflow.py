@@ -157,7 +157,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     def _handle_tensors(self, cats, conts, labels):
         X = {}
-        for tensor, names in zip([cats, conts],[self.cat_names, self.cont_names]):
+        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
             if len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
             else:
