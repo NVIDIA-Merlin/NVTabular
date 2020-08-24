@@ -89,7 +89,7 @@ class ChunkQueue:
 
     def __init__(
         self,
-        num_parts=3,
+        num_parts=2,
         batch_size=None,
         shuffle=False,
         cat_cols=None,
@@ -185,6 +185,8 @@ class AsyncIterator:
         target: the target library that will use the tensor transformed data
                 currently supported: torch
         devices: [int], list represents all avialable GPU IDs
+        num_parts: int, number of partitions from the iterator, an NVTabular Dataset,
+                   to concatenate into a "chunk"
     """
 
     def __init__(
@@ -197,6 +199,7 @@ class AsyncIterator:
         shuffle=False,
         library=None,
         devices=None,
+        num_parts=2,
     ):
         self.dataset = dataset
         self.library = library
@@ -209,6 +212,7 @@ class AsyncIterator:
             cont_cols=conts,
             label_cols=labels,
             shuffle=shuffle,
+            num_parts=num_parts
         )
 
     def __iter__(self):
@@ -258,6 +262,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
         target: the target library that will use the tensor transformed data
                 currently supported: torch
         devices: [int], list represents all avialable GPU IDs
+        num_parts: int, number of partitions from the iterator, an NVTabular Dataset,
+                   to concatenate into a "chunk"
     """
 
     def __init__(
@@ -270,6 +276,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
         shuffle=False,
         target="torch",
         devices=None,
+        num_parts=2,
     ):
         self.batch_size = batch_size
         self.cats = cats
@@ -279,6 +286,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
         self.data = dataset
         self.target = target
         self.devices = devices
+        self.num_parts = num_parts
+        
 
     def __iter__(self):
         return iter(
@@ -291,6 +300,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
                 shuffle=self.shuffle,
                 library=self.target,
                 devices=self.devices,
+                num_parts=self.num_parts,
             )
         )
 

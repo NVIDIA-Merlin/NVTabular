@@ -48,7 +48,7 @@ for batch_size in [2 ** i for i in range(9, 24, 1)]:
         conts=cont_names,
         labels=["label"],
         batch_size=batch_size,
-        devices=[0, 1, 2, 3, 4, 5, 6, 7],
+        devices=[1, 2, 3, 5, 6, 7],
         shuffle=shuffle,
     )
 
