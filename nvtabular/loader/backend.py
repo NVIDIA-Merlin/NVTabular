@@ -76,6 +76,10 @@ class ChunkQueue:
                 continue
 
     def batch(self, itr):
+        '''
+        iterates through gpu_mem_frac size chunks of dataset
+        and concatenates every `num_parts` of them.
+        '''
         current = []
         for value in itr:
             current.append(value)
@@ -107,11 +111,13 @@ class ChunkQueue:
 
                 num_samples = len(chunks)
                 if num_samples > 0:
-                    # TODO: can we do this earlier so that we
-                    # can use primarily cupy?
                     for workflow in dataloader.workflows:
                         chunks = workflow.apply_ops(chunks)
+
+                    # map from big chunk to fraemwork specific tensors
                     chunks = dataloader._create_tensors(chunks)
+
+                    # split them into batches
                     chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
                     chunks = zip(*chunks)
 
@@ -127,12 +133,7 @@ class ChunkQueue:
                 for workflow in workflows:
                     spill = workflow.apply_ops(spill)
                 spill = dataloader._create_tensors(chunks)
-
-                # TODO: technically we don't need this, since a return
-                # self.put will just end the function anyway, but
-                # good for posterity?
-                if self.put([spill]):
-                    return
+                self.put(spill)
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -234,9 +235,6 @@ class DataLoader:
 
     def __iter__(self):
         self.stop()
-
-        # something happened that stopped our buffer,
-        # reopen it
         if self._buff.stopped:
             self._buff.start()
 
@@ -290,8 +288,10 @@ class DataLoader:
         return self._handle_tensors(cats, conts, labels)
 
     def map(self, workflow):
-        # TODO: this is a bit ugly, how can we clean it up?
-        # maybe think about doing some class consolidation
+        '''
+        Map an NVTabular Workflow on to a data loader to do
+        online preprocessing
+        '''
         workflows = self.workflows + [workflow]
         self.workflows = _validate_workflows(
             workflows, self.cat_names, self.cont_names, self.label_names
@@ -299,15 +299,62 @@ class DataLoader:
         # TODO: update cat/cont/label names after
 
     def _get_segment_lengths(self, num_samples):
+        '''
+        Helper function to build indices to pass
+        to <torch|tf>.split functions for breaking
+        up into batches
+        '''
         idx = [self.batch_size for _ in range(num_samples // self.batch_size)]
         idx.append(num_samples % self.batch_size)
         return idx
 
+    def _to_tensor(self, gdf, dtype=None):
+        '''
+        One of the mandatory functions a child class needs
+        to implement. Maps from a cudf DataFrame to a
+        tensor in the appropriate library, with an optional
+        dtype kwarg to do explicit casting if need be
+        '''
+        raise NotImplementedError
+
     def _get_device_ctx(self, dev):
+        '''
+        One of the mandatory functions a child class needs
+        to implement. Maps from a GPU index to a framework
+        context object for placing tensors on specific GPUs
+        '''
+        raise NotImplementedError
+
+    def _create_batch(self, tensor, num_samples):
+        '''
+        One of the mandatory functions a child class needs
+        to implement. Splits a `tensor` with `num_samples`
+        rows into a list of tensors with `batch_size` rows
+        '''
+        # TODO: can we just do this with some sort of
+        # self._split_fn attribute?
         raise NotImplementedError
 
     def _create_tensors(self, gdf):
-        raise NotImplementedError
+        '''
+        Breaks a dataframe down into the relevant
+        categorical, continuous, and label tensors.
+        Can be overrideen
+        '''
+        # TODO: how will this work once we have multi-hots
+        # also seems brittle to labels with mixed type
+        gdf_cats, gdf_conts, gdf_label = (
+            gdf[_get_embedding_order(self.cat_names)],
+            gdf[self.cont_names],
+            gdf[self.label_names],
+        )
+        del gdf
+        cats = self._to_tensor(gdf_cats)
+        conts = self._to_tensor(gdf_conts)
+        label = self._to_tensor(gdf_label)
+
+        del gdf_cats, gdf_conts, gdf_label
+        return [cats, conts, label]
 
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels

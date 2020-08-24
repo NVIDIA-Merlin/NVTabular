@@ -139,6 +139,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
+
+        # TODO: file TF bug about column major stride
+        # arrays
         if gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
         else:
@@ -146,39 +149,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         x = from_dlpack(dlpack)
         if gdf.shape[1] > 1:
             x = tf.transpose(x)
-        return x # tf.expand_dims(x, -1)
-
-    # def _create_tensors(self, gdf):
-    #     # TODO: can we use these somehow to go faster?
-    #     # what's the cost of doing axis 1 slicing in TF?
-    #     # gdf_cats, gdf_conts, gdf_label = (
-    #     #     gdf[cat_names], gdf[cont_names], gdf[label_names]
-    #     # )
-    #     X = {}
-    #     for name in self.cat_names + self.cont_names:
-    #         X[name] = self._to_tensor(gdf.pop(name))
-
-    #     # TODO: do dictionaries instead for multi-output?
-    #     y = []
-    #     for name in self.label_names:
-    #         y.append(self._to_tensor(gdf.pop(name)))
-
-    #     del gdf
-    #     return X, y
-
-    def _create_tensors(self, gdf):
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(self.cat_names)],
-            gdf[self.cont_names],
-            gdf[self.label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats)
-        conts = self._to_tensor(gdf_conts)
-        label = self._to_tensor(gdf_label)
-
-        del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
+        return x
 
     def _create_batch(self, tensor, num_samples):
         idx = self._get_segment_lengths(num_samples)

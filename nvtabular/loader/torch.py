@@ -77,6 +77,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         tens = from_dlpack(dl_pack).type(dtype)
         return tens
 
+    # TODO: do we need casting or can we replace this with
+    # parent class version?
     def _create_tensors(self, gdf):
         gdf_cats, gdf_conts, gdf_label = (
             gdf[_get_embedding_order(self.cat_names)],
