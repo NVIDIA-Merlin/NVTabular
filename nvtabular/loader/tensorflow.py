@@ -18,8 +18,10 @@ import os
 import tensorflow as tf
 
 from nvtabular.io import Dataset
-from nvtabular.loader.backend import DataLoader
+from nvtabular.loader.backend import DataLoader, _num_steps
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
+from nvtabular.ops import _get_embedding_order
+
 
 from_dlpack = configure_tensorflow()
 
@@ -119,6 +121,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         recreating since otherwise Keras yells at you
         """
+        # TODO: what's a better way to do this inheritance
+        # of the appropriate methods? A Metaclass?
         return DataLoader.__len__(self)
 
     def __getitem__(self, idx):
@@ -127,7 +131,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         with Keras model.fit. Does not leverage
         passed idx in any way
         """
-        return self.__next__()
+        return DataLoader.__next__(self)
 
     def _get_device_ctx(self, dev):
         return tf.device("/device:GPU:{}".format(dev))
@@ -137,22 +141,49 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             return
         dlpack = gdf.to_dlpack()
         x = from_dlpack(dlpack)
-        return tf.expand_dims(x, -1)
+        return x # tf.expand_dims(x, -1)
+
+    # def _create_tensors(self, gdf):
+    #     # TODO: can we use these somehow to go faster?
+    #     # what's the cost of doing axis 1 slicing in TF?
+    #     # gdf_cats, gdf_conts, gdf_label = (
+    #     #     gdf[cat_names], gdf[cont_names], gdf[label_names]
+    #     # )
+    #     X = {}
+    #     for name in self.cat_names + self.cont_names:
+    #         X[name] = self._to_tensor(gdf.pop(name))
+
+    #     # TODO: do dictionaries instead for multi-output?
+    #     y = []
+    #     for name in self.label_names:
+    #         y.append(self._to_tensor(gdf.pop(name)))
+
+    #     del gdf
+    #     return X, y
 
     def _create_tensors(self, gdf):
-        # TODO: can we use these somehow to go faster?
-        # what's the cost of doing axis 1 slicing in TF?
-        # gdf_cats, gdf_conts, gdf_label = (
-        #     gdf[cat_names], gdf[cont_names], gdf[label_names]
-        # )
-        X = {}
-        for name in self.cat_names + self.cont_names:
-            X[name] = self._to_tensor(gdf.pop(name))
-
-        # TODO: do dictionaries instead for multi-output?
-        y = []
-        for name in self.label_names:
-            y.append(self._to_tensor(gdf.pop(name)))
-
+        gdf_cats, gdf_conts, gdf_label = (
+            gdf[_get_embedding_order(self.cat_names)],
+            gdf[self.cont_names],
+            gdf[self.label_names],
+        )
         del gdf
-        return X, y
+        cats = self._to_tensor(gdf_cats, torch.long)
+        conts = self._to_tensor(gdf_conts, torch.float32)
+        label = self._to_tensor(gdf_label, torch.float32)
+        del gdf_cats, gdf_conts, gdf_label
+        return [cats, conts, label]
+
+    def _create_batch(self, tensor, num_samples):
+        self._get_segment_lengths(num_samples)
+        return tf.split(tensor, idx)
+
+    def _handle_tensors(self, cats, conts, labels):
+        cats = tf.split(cats, len(self.cat_names), axis=1)
+        conts = tf.split(conts, len(self.cont_names), axis=1)
+        labels = tf.split(labels, len(self.label_names), axis=1)
+
+        cat_names = _get_embedding_order(self.cat_names)
+        X = {cat_name: x for cat_name, x in zip(cat_names, cats)}
+        X.update({cont_name: x for cont_name, x in zip(self.cont_names, conts)})
+        return X, labels

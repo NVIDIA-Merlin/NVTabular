@@ -90,6 +90,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         del gdf_cats, gdf_conts, gdf_label
         return [cats, conts, label]
 
+    def _create_batch(self, tensor, num_samples):
+        self._get_segment_lengths(num_samples)
+        return torch.split(tensor, idx)
+
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """

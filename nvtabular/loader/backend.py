@@ -111,24 +111,26 @@ class ChunkQueue:
                     for workflow in dataloader.workflows:
                         chunks = workflow.apply_ops(chunks)
                     chunks = dataloader._create_tensors(chunks)
+                    chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
+                    chunks = zip(*chunks)
 
                     # put returns True if buffer is stopped before
                     # packet can be put in queue. Keeps us from
                     # freezing on a put on a full queue
-                    if self.put((chunks, num_samples)):
+                    if self.put(chunks):
                         return
                 chunks = None
 
             # takes care final batch, which is less than batch size
             if spill:
-                num_samples = len(spill)
                 for workflow in workflows:
                     spill = workflow.apply_ops(spill)
+                spill = dataloader._create_tensors(chunks)
 
                 # TODO: technically we don't need this, since a return
                 # self.put will just end the function anyway, but
                 # good for posterity?
-                if self.put((spill, num_samples)):
+                if self.put([spill]):
                     return
 
     # For when an iterator is stopped before iteration is complete.
@@ -201,10 +203,8 @@ class DataLoader:
         self._buff = ChunkQueue(
             len(devices), num_parts=parts_per_chunk, shuffle=shuffle
         )
-        self.chunk = None
+        self._batch_itr = None
         self._workers = None
-        self._batch_idx = None
-        self._num_steps = None
 
     def __len__(self):
         return _num_steps(self.data.num_rows, self.batch_size)
@@ -215,17 +215,24 @@ class DataLoader:
             return any([t.is_alive() for t in self._workers])
         return False
 
-    def __iter__(self):
-        # we have some remaining workers from last iteration
+    def stop(self):
+        # TODO: raise warning or even error if condition
+        # isn't met?
         if self._workers is not None and self._working:
-            # stop the buffer and wait for the workers to exit
             if not self._buff.stopped:
                 self._buff.stop()
             for t in self._workers:
                 t.join()
-
-            # clear the remaining buffer
             self._buff.q_out.clear()
+
+    def _gather_indices_for_dev(self, dev):
+        per_worker = int(len(self.indices) // len(self.devices)) + 1
+        worker_id = self.devices.index(dev)
+        start = worker_id * per_worker
+        return self.indices[start : start + per_worker]
+
+    def __iter__(self):
+        self.stop()
 
         # something happened that stopped our buffer,
         # reopen it
@@ -250,24 +257,6 @@ class DataLoader:
             self._workers.append(t)
         return self
 
-    def _get_device_ctx(self, dev):
-        raise NotImplementedError
-
-    def _create_tensors(self, gdf):
-        raise NotImplementedError
-
-    def _gather_indices_for_dev(self, dev):
-        per_worker = int(len(self.indices) // len(self.devices)) + 1
-        worker_id = self.devices.index(dev)
-        start = worker_id * per_worker
-        return self.indices[start : start + per_worker]
-
-    def _get_next_chunk(self):
-        self.chunk, num_samples = self._buff.get()
-        # self.chunk = self._create_tensors(chunk)
-        self._num_steps = _num_steps(num_samples, self.batch_size)
-        self._batch_idx = 0
-
     def __next__(self):
         # we've never initialized, do that now
         # need this because tf.keras.Model.fit will
@@ -275,36 +264,29 @@ class DataLoader:
         if self._workers is None:
             DataLoader.__iter__(self)
 
-        # the buffer is empty and there are no running
-        # threads to refill it: we must be done iterating
-        if not self._working and self._buff.empty:
-            self._workers = None
-            self.chunk = None
-            raise StopIteration
+        # get the first chunks
+        if self._batch_itr is None:
+            chunks = self._buff.get()
+            self._batch_itr = iter(chunks)
 
-        # get a new chunk from the buffer
-        if self.chunk is None:
-            self._get_next_chunk()
+        # try to iterate through existing batches
+        try:
+            cats, conts, labels = next(self._batch_itr)
+        except StopIteration:
+            # if current chunk is exhausted, check if we
+            # anticipate any more chunks getting created
+            # if not, raise the StopIteration
+            if not self._working and self._buff.empty:
+                self._workers = None
+                self._batch_itr = None
+                raise StopIteration
 
-        # slice the appropriate rows from each tensor
-        slc = slice(self._batch_idx * self.batch_size, (self._batch_idx + 1) * self.batch_size)
-        outputs = []
-        for tensor in self.chunk:
-            if isinstance(tensor, dict):
-                outputs.append({name: x[slc] for name, x in tensor.items()})
-            elif isinstance(tensor, list):
-                outputs.append([x[slc] for x in tensor])
-            elif tensor is not None:
-                outputs.append(tensor[slc])
-            else:
-                outputs.append(tensor)
-
-        # increment the batch index and get rid of our
-        # self.chunk for memory purposes
-        self._batch_idx += 1
-        if self._batch_idx == self._num_steps:
-            self.chunk = None
-        return tuple(outputs)
+            # otherwise get the next chunks and return
+            # the first batch
+            chunks = self._buff.get()
+            self._batch_itr = iter(chunks)
+            cats, conts, labels = next(self._batch_itr)
+        return self._handle_tensors(cats, conts, labels)
 
     def map(self, workflow):
         # TODO: this is a bit ugly, how can we clean it up?
@@ -314,3 +296,17 @@ class DataLoader:
             workflows, self.cat_names, self.cont_names, self.label_names
         )
         # TODO: update cat/cont/label names after
+
+    def _get_segment_lengths(self, num_samples):
+        idx = [i*self.batch_size for i in range(_num_steps(num_samples, self.batch_size)-1)]
+        idx.append(num_samples - idx[-1])
+        return idx
+
+    def _get_device_ctx(self, dev):
+        raise NotImplementedError
+
+    def _create_tensors(self, gdf):
+        raise NotImplementedError
+
+    def _handle_tensors(self, cats, conts, labels):
+        return cats, conts, labels
