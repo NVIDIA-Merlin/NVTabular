@@ -139,8 +139,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
-        dlpack = gdf.to_dlpack()
+        if gdf.shape[1] == 1:
+            dlpack = gdf.to_dlpack()
+        else:
+            dlpack = gdf.values.T.toDlpack()
         x = from_dlpack(dlpack)
+        if gdf.shape[1] > 1:
+            x = tf.transpose(x)
         return x # tf.expand_dims(x, -1)
 
     # def _create_tensors(self, gdf):
@@ -168,22 +173,28 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             gdf[self.label_names],
         )
         del gdf
-        cats = self._to_tensor(gdf_cats, torch.long)
-        conts = self._to_tensor(gdf_conts, torch.float32)
-        label = self._to_tensor(gdf_label, torch.float32)
+        cats = self._to_tensor(gdf_cats)
+        conts = self._to_tensor(gdf_conts)
+        label = self._to_tensor(gdf_label)
+
         del gdf_cats, gdf_conts, gdf_label
         return [cats, conts, label]
 
     def _create_batch(self, tensor, num_samples):
-        self._get_segment_lengths(num_samples)
+        idx = self._get_segment_lengths(num_samples)
         return tf.split(tensor, idx)
 
     def _handle_tensors(self, cats, conts, labels):
-        cats = tf.split(cats, len(self.cat_names), axis=1)
-        conts = tf.split(conts, len(self.cont_names), axis=1)
-        labels = tf.split(labels, len(self.label_names), axis=1)
+        X = {}
+        for tensor, names in zip([cats, conts],[self.cat_names, self.cont_names]):
+            if len(names) > 1:
+                tensors = tf.split(tensor, len(names), axis=1)
+            else:
+                tensors = [tensor]
+            X.update({name: x for name, x in zip(names, tensors)})
 
-        cat_names = _get_embedding_order(self.cat_names)
-        X = {cat_name: x for cat_name, x in zip(cat_names, cats)}
-        X.update({cont_name: x for cont_name, x in zip(self.cont_names, conts)})
+        if len(self.label_names) > 1:
+            labels = tf.split(labels, len(self.label_names), axis=1)
+        else:
+            labels = [labels]
         return X, labels
