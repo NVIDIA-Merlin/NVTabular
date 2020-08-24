@@ -6,6 +6,7 @@
 **/.cupy
 **/.nv
 **/.python_history
+**/.cache
 
 # ignore any local files created
 # by examples notebooks

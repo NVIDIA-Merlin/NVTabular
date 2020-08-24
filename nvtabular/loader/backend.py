@@ -45,7 +45,7 @@ class ChunkQueue:
     """
 
     def __init__(
-        self, qsize, num_parts=1, shuffle=False, put_wait=0.0001,
+        self, qsize, num_parts=1, shuffle=False, put_wait=1e-7,
     ):
         self.num_parts = num_parts
         self.shuffle = shuffle
@@ -70,7 +70,7 @@ class ChunkQueue:
                 return True
 
             try:
-                self.q_out.put(packet, timeout=put_wait)
+                self.q_out.put(packet, timeout=self.put_wait)
                 return False
             except queue.Full:
                 continue
@@ -87,7 +87,7 @@ class ChunkQueue:
 
     def load_chunks(self, dev, dataloader):
         indices = dataloader._gather_indices_for_dev(dev)
-        itr = dataloader.data.to_itr(indices=indices)
+        itr = dataloader.data.to_iter(indices=indices)
         with dataloader._get_device_ctx(dev):
             spill = None
             for chunks in self.batch(itr):
