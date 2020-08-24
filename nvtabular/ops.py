@@ -54,7 +54,7 @@ class Operator:
             if tar in cols_ctx[cols_grp].keys():
                 tar_cols = tar_cols + cols_ctx[cols_grp][tar]
         if len(tar_cols) < 1:
-            tar_cols = cols_ctx[cols_grp]['base']
+            tar_cols = cols_ctx[cols_grp]["base"]
         return tar_cols
 
 

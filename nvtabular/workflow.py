@@ -23,7 +23,7 @@ import dask_cudf
 import yaml
 from fsspec.core import get_fs_token_paths
 
-import nvtabular.io as nvt_io
+from nvtabular import io as nvt_io
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
@@ -275,11 +275,11 @@ class BaseWorkflow:
                         break
                     if p_task[0]._id in cols_needed:
                         cols_needed.remove(p_task[0]._id)
-                if not cols_needed and self._find_parents(task[3], idx) and len(task)>0:
+                if not cols_needed and self._find_parents(task[3], idx):
                     added = True
                     phase.append(task)
 
-            if not added and len(task)>0:
+            if not added:
                 self.phases.append([task])
 
     def _find_parents(self, ops_list, phase_idx):
@@ -338,9 +338,8 @@ class BaseWorkflow:
                     if not isinstance(obj, collections.abc.Sequence):
                         obj = [obj]
                     for idx, op in enumerate(obj):
-                        cols_ref = [obj[idx - 1]._id] if idx > 0 else []
-                        tasks.append((op, cols_ref ))
-                            
+                        tasks.append((op, [obj[idx - 1]._id] if idx > 0 else []))
+
                 ret[phase][k] = tasks
         return ret
 
