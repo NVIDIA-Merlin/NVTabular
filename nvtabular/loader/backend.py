@@ -132,8 +132,8 @@ class ChunkQueue:
             if spill:
                 for workflow in dataloader.workflows:
                     spill = workflow.apply_ops(spill)
-                spill = dataloader._create_tensors(chunks)
-                self.put(spill)
+                spill = dataloader._create_tensors(spill)
+                self.put([spill])
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -349,7 +349,7 @@ class DataLoader:
         label = self._to_tensor(gdf_label)
 
         del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
+        return cats, conts, label
 
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels
