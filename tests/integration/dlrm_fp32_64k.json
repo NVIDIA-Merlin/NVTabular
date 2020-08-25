@@ -5,7 +5,7 @@
       "max_iter":64013,
       "gpu": [0,1,2,3],
       "batchsize": 65536,
-      "batchsize_eval": 131072,
+      "batchsize_eval": 65536,
       "snapshot": 10000000,
       "snapshot_prefix": "./",
       "eval_interval": 3200,
@@ -33,9 +33,9 @@
        "name": "data",
         "type": "Data",
         "format": "Parquet",
-        "slot_size": [381808, 22456, 14763, 7118, 19308, 4, 6443, 1259, 54, 341642, 112151, 94957, 11, 2188, 8399, 61, 4, 949, 15, 382633, 246818, 370704, 92823, 9773, 78, 34],
-        "source": "/dataset/output/train/_file_list.txt",
-        "eval_source": "/dataset/output/valid/_file_list.txt",
+        "slot_size": [381808, 341642, 112151, 94957, 11, 2188, 8399, 61, 4, 949, 15, 22456, 382633, 246818, 370704, 92823, 9773, 78, 34, 14763, 7118, 19308, 4, 6443, 1259, 54],
+        "source": "/dataset/crit_int_pq/output/train/_file_list.txt",
+        "eval_source": "/dataset/crit_int_pq/output/valid/_file_list.txt",
         "check": "None",
         "label": {
                 "top": "label",
@@ -49,7 +49,7 @@
                 {
             "top": "data1",
             "type": "LocalizedSlot",
-            "max_feature_num_per_sample": 26,
+            "max_feature_num_per_sample": 30,
             "max_nnz": 1,
             "slot_num": 26
                 }
@@ -58,12 +58,12 @@
   
       {
         "name": "sparse_embedding1",
-        "type": "LocalizedSlotSparseEmbeddingOneHot",
+        "type": "LocalizedSlotSparseEmbeddingHash",
         "bottom": "data1",
         "top": "sparse_embedding1",
         "sparse_embedding_hparam": {
-          "slot_size_array": [381808, 22456, 14763, 7118, 19308, 4, 6443, 1259, 54, 341642, 112151, 94957, 11, 2188, 8399, 61, 4, 949, 15, 382633, 246818, 370704, 92823, 9773, 78, 34],
           "embedding_vec_size": 128,
+	  "max_vocabulary_size_per_gpu": 15500000,
           "combiner": 0
         }
       },
@@ -213,4 +213,3 @@
       } 
     ]
   }
-
