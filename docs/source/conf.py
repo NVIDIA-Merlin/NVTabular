@@ -17,7 +17,8 @@ import sphinx
 import sphinx.domains
 from recommonmark.parser import CommonMarkParser
 
-sys.path.insert(0, os.path.abspath("../../."))
+rootdir = os.path.join(os.getenv("SPHINX_MULTIVERSION_SOURCEDIR", default="."), "..")
+sys.path.insert(0, rootdir)
 
 
 # -- Project information -----------------------------------------------------
@@ -28,7 +29,6 @@ author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags
 release = "2020"
-
 
 # -- General configuration ---------------------------------------------------
 

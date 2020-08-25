@@ -30,19 +30,21 @@ class ColumnSimilarity(TransformOperator):
     between the two columns by looking up features for those columns in a sparse matrix,
     and then computing the distance between the rows of the feature matrices.
 
-    > # Read in the 'document_categories' file from the kaggle outbrains dataset and convert
-    > # to a sparse matrix
-    > df = cudf.read_csv("document_categories.csv.zip")
-    > categories = cupy.sparse.coo_matrix((cupy.ones(len(df)),
-                                          (df.document_id.values, df.category_id.values))
-    > # compute a new column 'similarity' between the document_id and promo_document_id columns
-    > # on tfidf distance on the categories matrix we just loaded up
-    > workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
-    >                                       "promo_document_id"))
+    Example usage::
+
+        # Read in the 'document_categories' file from the kaggle outbrains dataset and convert
+        # to a sparse matrix
+        df = cudf.read_csv("document_categories.csv.zip")
+        categories = cupy.sparse.coo_matrix((cupy.ones(len(df)),
+                                            (df.document_id.values, df.category_id.values))
+        # compute a new column 'similarity' between the document_id and promo_document_id columns
+        # on tfidf distance on the categories matrix we just loaded up
+        workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
+                                              "promo_document_id"))
 
     Parameters
     -----------
-    name: str
+    name : str
         Name of the output column
     a : str
         Name of the first column to calculate similarity for
