@@ -212,7 +212,7 @@ class AsyncIterator:
             cont_cols=conts,
             label_cols=labels,
             shuffle=shuffle,
-            num_parts=num_parts
+            num_parts=num_parts,
         )
 
     def __iter__(self):
@@ -287,7 +287,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset):
         self.target = target
         self.devices = devices
         self.num_parts = num_parts
-        
 
     def __iter__(self):
         return iter(
