@@ -29,9 +29,9 @@
       "name": "data",
       "type": "Data",
       "format": "Parquet",
-      "slot_size": [381808, 22456, 14763, 7118, 19308, 4, 6443, 1259, 54, 341642, 112151, 94957, 11, 2188, 8399, 61, 4, 949, 15, 382633, 246818, 370704, 92823, 9773, 78, 34],
-      "source": "/dataset/output/train/_file_list.txt",
-      "eval_source": "/dataset/output/valid/_file_list.txt",
+      "slot_size": [381808, 341642, 112151, 94957, 11, 2188, 8399, 61, 4, 949, 15, 22456, 382633, 246818, 370704, 92823, 9773, 78, 34, 14763, 7118, 19308, 4, 6443, 1259, 54],
+      "source": "/dataset/crit_int_pq/output/train/_file_list.txt",
+      "eval_source": "/dataset/crit_int_pq/output/valid/_file_list.txt",
       "check": "None",
       "label": {
         "top": "label",
