@@ -131,12 +131,14 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         try:
             return DataLoader.__next__(self)
-        except StopIteration as e:
-            # reinitialize iterator if it we've exhausted it
-            # TODO: this is probably pretty irresponsible
-            # behavior, but it's truly just meant for
-            # compatibility with how tf.keras.Model.fit
-            # calls things
+        except StopIteration:
+            # TODO: I would like to do a check for idx == 0
+            # here, but that requires that tf.keras.Model.fit
+            # be called with shuffle=False, and that seems
+            # small enough that it would be too easy to miss
+            # for many users. That said, blind reinitialization
+            # is probably irresponsible, so worth thinking
+            # of something better here
             DataLoader.__iter__(self)
             return DataLoader.__next__(self)
 
