@@ -166,3 +166,34 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         else:
             labels = [labels]
         return X, labels
+
+
+class _StreamingMetric:
+    def __init__(self, name):
+        self.name = name
+        self.value = 0
+        self.samples = 0
+
+    def update(self, update, n):
+        self.value *= self.samples/(self.samples+n)
+        self.value += (n*update)/(n+self.samples)
+        self.samples += n
+
+
+class KerasSequenceValidater(tf.keras.callbacks.Callback):
+    def __init__(self, model, dataloader):
+        self.model = model
+        self.dataloader = dataloader
+
+    def on_epoch_end(self, epoch, logs={}):
+        streaming_metrics = [_StreamingMetric(name) for name in model.metric_names]
+        for X, y in self.dataloader:
+            n = y.shape[0]
+            scores = model.evaluate(X, y, batch_size=n)
+            for metric, score in zip(streaming_metrics, scores):
+                metric.update(score, n)
+
+        logs.update(
+            {'val_' + metric.name: metric.value for metric in streaming_metrics}
+        )
+        return logs
