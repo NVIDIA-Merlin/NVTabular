@@ -25,7 +25,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 from tests.conftest import get_cats, mycols_csv, mycols_pq
 
 

@@ -24,8 +24,8 @@ import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
-import nvtabular.ops as ops
 from nvtabular import Dataset, Workflow
+from nvtabular import ops as ops
 from nvtabular.io import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
