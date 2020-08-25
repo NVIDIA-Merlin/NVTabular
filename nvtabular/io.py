@@ -810,10 +810,23 @@ class Dataset:
 
         # Shuffle the partitions of ddf (optional)
         if shuffle and ddf.npartitions > 1:
-            parts = ddf.to_delayed()
+            # Start with ordered partitions
+            inds = list(range(ddf.npartitions))
+
+            # Use random std library to reorder partitions
             random.seed(seed)
-            random.shuffle(parts)
-            ddf = dask_cudf.from_delayed(parts)
+            random.shuffle(inds)
+
+            # Construct new high-level graph (HLG)
+            name = ddf._name
+            new_name = "shuffle-partitions-" + tokenize(ddf)
+            dsk = {(new_name, i): (lambda x: x, (name, ind)) for i, ind in enumerate(inds)}
+
+            new_graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
+
+            # Convert the HLG to a Dask collection
+            divisions = [None] * (ddf.npartitions + 1)
+            ddf = new_dd_object(new_graph, new_name, ddf._meta, divisions)
 
         # Special dtype conversion (optional)
         if self.dtypes:
