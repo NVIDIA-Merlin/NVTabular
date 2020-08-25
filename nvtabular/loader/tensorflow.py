@@ -138,8 +138,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         if gdf.empty:
             return
 
-        # TODO: file TF bug about column major stride
-        # arrays
+        # TODO: file TF bug about column major stride arrays
         if gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
         else:
