@@ -23,7 +23,7 @@ import dask_cudf
 import yaml
 from fsspec.core import get_fs_token_paths
 
-import nvtabular.io as nvt_io
+from nvtabular import io as nvt_io
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
@@ -248,7 +248,8 @@ class BaseWorkflow:
             master_task_list = master_task_list + task_sets[task_set]
 
         baseline, leftovers = self._sort_task_types(master_task_list)
-        self.phases.append(baseline)
+        if baseline:
+            self.phases.append(baseline)
         self._phase_creator(leftovers)
         self._create_final_col_refs(task_sets)
 
@@ -338,6 +339,7 @@ class BaseWorkflow:
                         obj = [obj]
                     for idx, op in enumerate(obj):
                         tasks.append((op, [obj[idx - 1]._id] if idx > 0 else []))
+
                 ret[phase][k] = tasks
         return ret
 
@@ -368,15 +370,17 @@ class BaseWorkflow:
         final["label"] = []
         for col_ctx in self.columns_ctx["label"].values():
             if not final["label"]:
-                final["label"] = col_ctx
+                final["label"] = ["base"]
             else:
                 final["label"] = final["label"] + col_ctx
         # if no operators run in preprocessing we grab base columns
         if "continuous" not in final:
             # set base columns
-            final["continuous"] = self.columns_ctx["continuous"]["base"]
+            final["continuous"] = ["base"]
         if "categorical" not in final:
-            final["categorical"] = self.columns_ctx["categorical"]["base"]
+            final["categorical"] = ["base"]
+        if "all" not in final:
+            final["all"] = ["base"]
         self.columns_ctx["final"] = {}
         self.columns_ctx["final"]["ctx"] = final
 

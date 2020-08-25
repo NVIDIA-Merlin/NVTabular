@@ -33,11 +33,9 @@ import cudf
 import cupy as cp
 import dask
 import dask_cudf
-import numba.cuda as cuda
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
@@ -48,6 +46,8 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
+from numba import cuda as cuda
+from pyarrow import parquet as pq
 
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
@@ -131,10 +131,16 @@ def _merge_general_metadata(meta_list):
     meta = None
     for md in meta_list:
         if meta:
-            meta["data_paths"] += md["data_paths"]
-            meta["file_stats"] += md["file_stats"]
+            if "data_paths" in md:
+                meta["data_paths"] += md["data_paths"]
+            if "file_stats" in md:
+                meta["file_stats"] += md["file_stats"]
         else:
             meta = md.copy()
+            if "data_paths" not in meta:
+                meta["data_paths"] = []
+            if "file_stats" not in meta:
+                meta["file_stats"] = []
     return meta
 
 
@@ -491,7 +497,7 @@ class HugeCTRWriter(ThreadedWriter):
         np_label = data[self.labels].to_pandas().astype(np.single).to_numpy()
         np_conts = data[self.conts].to_pandas().astype(np.single).to_numpy()
         nnz = np.intc(1)
-        np_cats = data[self.cats].to_pandas().astype(np.longlong).to_numpy()
+        np_cats = data[self.cats].to_pandas().astype(np.uintc).to_numpy()
         # Write all the data samples
         for i, _ in enumerate(np_label):
             # Write Label

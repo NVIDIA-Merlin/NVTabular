@@ -21,7 +21,7 @@ import numpy
 import scipy.sparse
 from cudf._lib.nvtx import annotate
 
-from nvtabular.ops import TransformOperator
+from nvtabular.ops import CAT, CONT, TransformOperator
 
 
 class ColumnSimilarity(TransformOperator):
@@ -42,12 +42,14 @@ class ColumnSimilarity(TransformOperator):
 
     Parameters
     -----------
+    name: str
+        Name of the output column
     a : str
-        Name of the first column
+        Name of the first column to calculate similarity for
     a_features : csr_matrix
         Sparse feature matrix for the 'a' column
     b : str
-        Name of the second column
+        Name of the second column to calculate similarity for
     b_features : csr_matrix, optional
         Sparse feature matrix for the 'b' column. If not given will use the
         same feature matrix as for 'a' (for example when calculating document-document distances)
@@ -56,6 +58,9 @@ class ColumnSimilarity(TransformOperator):
         faster, but requires that the a_features/b_features sparse matrices
         fit into GPU memory.
     """
+
+    default_in = CAT
+    default_out = CONT
 
     def __init__(
         self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True,
@@ -85,11 +90,20 @@ class ColumnSimilarity(TransformOperator):
         a = gdf[self.a_col].values if self.on_device else gdf[self.a_col].values_host
         b = gdf[self.b_col].values if self.on_device else gdf[self.b_col].values_host
 
-        similarities = row_wise_inner_product(
-            a, self.a_features, b, self.b_features, self.on_device
-        )
+        if len(a) and len(b):
+            similarities = row_wise_inner_product(
+                a, self.a_features, b, self.b_features, self.on_device
+            )
+        else:
+            similarities = []
         gdf[self.name] = similarities
+
+        columns_ctx[input_cols][self._id] = [self.name]
         return gdf
+
+    @property
+    def _id(self):
+        return f"{self.__class__.__name__}_{self.name}"
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
@@ -182,7 +196,7 @@ def _inner_product(a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_dat
             similarity += a_data[a_pos] * b_data[b_pos]
             a_pos += 1
             b_pos += 1
-        elif a_pos < b_pos:
+        elif a_j < b_j:
             a_pos += 1
         else:
             b_pos += 1
@@ -197,8 +211,10 @@ _inner_product_gpu = numba.cuda.jit(device=True, inline=True)(_inner_product)
 
 def _convert_features(features, metric, on_device):
     if on_device:
-        if not isinstance(features, cupy.sparse.coo_matrix):
-            features = cupy.sparse.coo_matrix(features)
+        # take a shallow copy to avoid mutating the input, but keep gpu
+        # memory as low as possible. (also convert to coo_matrix if passed
+        # a CSR etc)
+        features = cupy.sparse.coo_matrix(features)
     else:
         if not isinstance(features, scipy.sparse.coo_matrix):
             # convert to host first if the sparse matrix is on the device
@@ -225,7 +241,7 @@ def _convert_features(features, metric, on_device):
 def _tfidf_weight(X, np):
     N = float(X.shape[0])
     idf = np.log(N / np.bincount(X.col))
-    X.data = np.sqrt(X.data) * idf[X.col]
+    X.data = X.data * idf[X.col]
     return X
 
 
