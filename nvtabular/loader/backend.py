@@ -223,7 +223,7 @@ class DataLoader:
                 self._buff.stop()
             for t in self._workers:
                 t.join()
-            self._buff.q_out.clear()
+            self._buff.q_out.queue.clear()
 
     def _gather_indices_for_dev(self, dev):
         per_worker = int(len(self.indices) // len(self.devices)) + 1

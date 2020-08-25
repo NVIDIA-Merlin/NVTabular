@@ -47,7 +47,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    data_itr = tf_dataloader.KerasSequenceLoaer(
+    data_itr = tf_dataloader.KerasSequenceLoader(
         paths if use_paths else dataset,
         cat_names=cat_names,
         cont_names=cont_names,
