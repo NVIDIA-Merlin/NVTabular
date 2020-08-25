@@ -184,8 +184,8 @@ class _StreamingMetric:
         self.samples = 0
 
     def update(self, update, n):
-        self.value *= self.samples/(self.samples+n)
-        self.value += (n*update)/(n+self.samples)
+        self.value *= self.samples / (self.samples + n)
+        self.value += (n * update) / (n + self.samples)
         self.samples += n
 
 
