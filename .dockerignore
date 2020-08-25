@@ -7,6 +7,8 @@
 **/.nv
 **/.python_history
 **/.cache
+**/.config
+**/.local
 
 # ignore any local files created
 # by examples notebooks
