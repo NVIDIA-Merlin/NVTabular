@@ -33,11 +33,9 @@ import cudf
 import cupy as cp
 import dask
 import dask_cudf
-import numba.cuda as cuda
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
@@ -48,6 +46,8 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
+from numba import cuda as cuda
+from pyarrow import parquet as pq
 
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
@@ -810,10 +810,23 @@ class Dataset:
 
         # Shuffle the partitions of ddf (optional)
         if shuffle and ddf.npartitions > 1:
-            parts = ddf.to_delayed()
+            # Start with ordered partitions
+            inds = list(range(ddf.npartitions))
+
+            # Use random std library to reorder partitions
             random.seed(seed)
-            random.shuffle(parts)
-            ddf = dask_cudf.from_delayed(parts)
+            random.shuffle(inds)
+
+            # Construct new high-level graph (HLG)
+            name = ddf._name
+            new_name = "shuffle-partitions-" + tokenize(ddf)
+            dsk = {(new_name, i): (lambda x: x, (name, ind)) for i, ind in enumerate(inds)}
+
+            new_graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
+
+            # Convert the HLG to a Dask collection
+            divisions = [None] * (ddf.npartitions + 1)
+            ddf = new_dd_object(new_graph, new_name, ddf._meta, divisions)
 
         # Special dtype conversion (optional)
         if self.dtypes:

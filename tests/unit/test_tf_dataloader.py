@@ -18,7 +18,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.io
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
