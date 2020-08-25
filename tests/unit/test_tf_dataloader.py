@@ -18,12 +18,11 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.io
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
-pytest.importorskip("tensorflow")
-import nvtabular.loader.tensorflow as tf_dataloader  # noqa isort:skip
+tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 
 
 # TODO: include use_columns option
