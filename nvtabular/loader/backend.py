@@ -252,6 +252,9 @@ class DataLoader:
         return self
 
     def __next__(self):
+        return self._get_next()
+
+    def _get_next(self):
         # we've never initialized, do that now
         # need this because tf.keras.Model.fit will
         # call next() cold
@@ -266,8 +269,14 @@ class DataLoader:
         # try to iterate through existing batches
         try:
             cats, conts, labels = next(self._batch_itr)
+            if labels.shape[0] == 0:
+                # I think something is getting screwed up on
+                # the split fn that is causing the last
+                # element of a chunk to be empty. Need to
+                # investigate but will just do this lazy
+                # solution for now
+                raise StopIteration
         except StopIteration:
-            # if current chunk is exhausted, check if we
             # anticipate any more chunks getting created
             # if not, raise the StopIteration
             if not self._working and self._buff.empty:

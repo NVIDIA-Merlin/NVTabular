@@ -129,7 +129,16 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         with Keras model.fit. Does not leverage
         passed idx in any way
         """
-        return DataLoader.__next__(self)
+        try:
+            return DataLoader.__next__(self)
+        except StopIteration as e:
+            # reinitialize iterator if it we've exhausted it
+            # TODO: this is probably pretty irresponsible
+            # behavior, but it's truly just meant for
+            # compatibility with how tf.keras.Model.fit
+            # calls things
+            DataLoader.__iter__(self)
+            return DataLoader.__next__(self)
 
     def _get_device_ctx(self, dev):
         return tf.device("/device:GPU:{}".format(dev))
@@ -181,19 +190,18 @@ class _StreamingMetric:
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
-    def __init__(self, model, dataloader):
-        self.model = model
+    _supports_tf_logs = True
+
+    def __init__(self, dataloader):
         self.dataloader = dataloader
 
     def on_epoch_end(self, epoch, logs={}):
-        streaming_metrics = [_StreamingMetric(name) for name in model.metric_names]
+        streaming_metrics = [_StreamingMetric(name) for name in self.model.metrics_names]
         for X, y in self.dataloader:
-            n = y.shape[0]
-            scores = model.evaluate(X, y, batch_size=n)
+            n = y[0].shape[0]
+            scores = self.model.evaluate(X, y, batch_size=n, verbose=0)
             for metric, score in zip(streaming_metrics, scores):
                 metric.update(score, n)
-
-        logs.update(
-            {'val_' + metric.name: metric.value for metric in streaming_metrics}
-        )
+        for metric in streaming_metrics:
+            logs["val_" + metric.name] = metric.value
         return logs
