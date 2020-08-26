@@ -686,6 +686,7 @@ class GroupbyStatistics(StatOperator):
         concat_groups=False,
         name_sep="_",
         folds=1,
+        fold_name="__fold__",
     ):
         # Set column_groups if the user has passed in a list of columns
         self.column_groups = None
@@ -708,6 +709,7 @@ class GroupbyStatistics(StatOperator):
         self.concat_groups = concat_groups
         self.name_sep = name_sep
         self.folds = folds
+        self.fold_name = fold_name
 
     @property
     def _id(self):
@@ -720,15 +722,27 @@ class GroupbyStatistics(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-        # # def _add_fold(s, nfolds):
-        # #     return cupy.random.choice(cupy.arange(nfolds), len(s))
+        if self.folds > 1:
+            # Add new fold column if necessary
+            if self.fold_name not in ddf.columns:
 
-        # if self.folds > 1:
-        #     #_meta = _add_fold(ddf._meta.index, self.folds)
-        #     #ser = ddf[index].map_partitions(_add_fold, self.folds, meta=_meta)
-        #     import pdb; pdb.set_trace()
-        #     pass
-        #     #ddf["__fold__"] =
+                def _add_fold(s, nfolds):
+                    return cupy.random.choice(cupy.arange(nfolds), len(s))
+
+                ddf[self.fold_name] = ddf.map_partitions(
+                    _add_fold, self.folds, meta=_add_fold(ddf._meta.index, self.folds)
+                )
+
+            # Add new col_groups with fold
+            for group in col_groups.copy():
+                if isinstance(group, list):
+                    col_groups.append([self.fold_name] + group)
+                else:
+                    col_groups.append([self.fold_name, group])
+
+            # Make sure concat
+            if self.concat_groups:
+                raise ValueError("cannot use concat_groups=True with folds.")
 
         agg_cols = self.cont_names
         agg_list = self.stats
@@ -890,6 +904,118 @@ class JoinGroupby(DFOperator):
             new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
             new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
         gdf.drop(columns=[tmp], inplace=True)
+        return new_gdf
+
+
+class TargetEncoding(DFOperator):
+    """
+    TargetEncoding
+    """
+
+    default_in = CAT
+    default_out = ALL
+
+    def __init__(
+        self,
+        x_col,
+        y_col,
+        folds=5,
+        smooth=20,
+        out_col=None,
+        out_dtype=None,
+        preprocessing=True,
+        replace=False,
+        tree_width=None,
+        cat_cache="host",
+        out_path=None,
+        on_host=True,
+        name_sep="_",
+        stat_name=None,
+    ):
+        super().__init__(preprocessing=preprocessing, replace=False)
+        self.x_col = x_col if isinstance(x_col, list) else [x_col]
+        self.y_col = y_col
+        self.folds = folds
+        self.smooth = smooth
+        self.out_col = out_col
+        self.out_dtype = out_dtype
+        self.tree_width = tree_width
+        self.out_path = out_path
+        self.on_host = on_host
+        self.cat_cache = cat_cache
+        self.name_sep = name_sep
+        self.stat_name = stat_name or "te_stats"
+
+    @property
+    def req_stats(self):
+        return [
+            Moments(columns=[self.y_col]),
+            GroupbyStatistics(
+                columns=[self.x_col],
+                concat_groups=False,
+                cont_names=[self.y_col],
+                stats=["count", "sum"],
+                tree_width=self.tree_width,
+                out_path=self.out_path,
+                on_host=self.on_host,
+                stat_name=self.stat_name,
+                name_sep=self.name_sep,
+                folds=self.folds,
+            ),
+        ]
+
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+
+        new_gdf = cudf.DataFrame()
+        tmp = "__tmp__"  # Temporary column for sorting
+        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+
+        if self.out_col is None:
+            tag = nvt_cat._make_name(*self.x_col, sep=self.name_sep)
+            self.out_col = f"TE_{tag}_{self.y_col}"
+
+        y_mean = stats_context["means"][self.y_col]
+
+        # Groupby Aggregation for each fold
+        cols = ["__fold__"] + self.x_col
+        storage_name_folds = nvt_cat._make_name(*cols, sep=self.name_sep)
+        path_folds = stats_context[self.stat_name][storage_name_folds]
+        agg_each_fold = nvt_cat._read_groupby_stat_df(
+            path_folds, storage_name_folds, self.cat_cache
+        )
+        agg_each_fold.columns = cols + ["count_y", "sum_y"]
+
+        # Groupby Aggregation for all data
+        storage_name_all = nvt_cat._make_name(*self.x_col, sep=self.name_sep)
+        path_all = stats_context[self.stat_name][storage_name_all]
+        agg_all = nvt_cat._read_groupby_stat_df(path_all, storage_name_all, self.cat_cache)
+        agg_all.columns = self.x_col + ["count_y_all", "sum_y_all"]
+
+        agg_each_fold = agg_each_fold.merge(agg_all, on=self.x_col, how="left")
+        agg_each_fold["count_y_all"] = agg_each_fold["count_y_all"] - agg_each_fold["count_y"]
+        agg_each_fold["sum_y_all"] = agg_each_fold["sum_y_all"] - agg_each_fold["sum_y"]
+        agg_each_fold[self.out_col] = (agg_each_fold["sum_y_all"] + self.smooth * y_mean) / (
+            agg_each_fold["count_y_all"] + self.smooth
+        )
+        agg_each_fold = agg_each_fold.drop(["count_y_all", "count_y", "sum_y_all", "sum_y"], axis=1)
+
+        agg_all[self.out_col] = (agg_all["sum_y_all"] + self.smooth * y_mean) / (
+            agg_all["count_y_all"] + self.smooth
+        )
+        agg_all = agg_all.drop(["count_y_all", "sum_y_all"], axis=1)
+
+        tran_gdf = gdf[cols + [tmp]].merge(agg_each_fold, on=cols, how="left")
+        del agg_each_fold
+        tran_gdf[self.out_col] = tran_gdf[self.out_col].fillna(y_mean)
+        if self.out_dtype is not None:
+            tran_gdf[self.out_col] = tran_gdf[self.out_col].astype(self.out_dtype)
+
+        tran_gdf = tran_gdf.sort_values(tmp)
+        tran_gdf.drop(columns=cols + [tmp], inplace=True)
+        new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
+        new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+
+        gdf.drop(columns=[tmp, "__fold__"], inplace=True)
         return new_gdf
 
 

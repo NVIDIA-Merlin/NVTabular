@@ -158,14 +158,20 @@ def test_groupby_folds(tmpdir, df, dataset, engine, groups):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    encoder = ops.GroupbyStatistics(columns=groups, out_path=str(tmpdir), folds=5)
+    gb_stats = ops.GroupbyStatistics(
+        columns=groups, out_path=str(tmpdir), folds=5, stats=["count", "sum"], cont_names=["y"]
+    )
     config = nvt.workflow.get_new_config()
-    config["PP"]["categorical"] = [encoder]
+    config["PP"]["categorical"] = [gb_stats]
 
     processor = nvt.Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
+
+    import pdb
+
+    pdb.set_trace()
 
     # groups = [groups] if isinstance(groups, str) else groups
     # for group in groups:
@@ -173,6 +179,35 @@ def test_groupby_folds(tmpdir, df, dataset, engine, groups):
     #     prefix = "unique." if concat_groups else "cat_stats."
     #     fn = prefix + "_".join(group) + ".parquet"
     #     cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
+
+
+@pytest.mark.parametrize("group", ["Author", ["Author", "Engaging-User"]])
+def test_target_encode(tmpdir, group):
+
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_A", "User_A", "User_B", "User_D", "User_D"],
+            "Engaging-User": ["User_B", "User_B", "User_C", "User_C", "User_C", "User_C"],
+            "Cost": [100.0, 200.0, 300.0, 400.0, 500.0, 600.0],
+            "Post": [1, 2, 3, 4, 5, 6],
+        }
+    )
+
+    cat_names = ["Author", "Engaging-User"]
+    cont_names = ["Cost"]
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(ops.TargetEncoding(group, "Cost", out_path=str(tmpdir)))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    processor.get_ddf().compute(scheduler="synchronous")
+
+    import pdb
+
+    pdb.set_trace()
+    pass
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
