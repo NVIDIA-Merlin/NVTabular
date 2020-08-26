@@ -137,7 +137,7 @@ class ChunkQueue:
                     for workflow in dataloader.workflows:
                         spill = workflow.apply_ops(spill)
                     spill = dataloader._create_tensors(spill)
-                    spill = dataloader._handle_tensors(spill)
+                    spill = dataloader._handle_tensors(*spill)
                     self.put([spill])
         except Exception as e:
             self.put(e)
