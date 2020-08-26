@@ -122,7 +122,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
   Iterator output is of the form `(dict(features), list(labels))`,
   where each element of the features dict is a
-  `feature_name: feature_tensor`  and each elemtn of the labels 
+  `feature_name: feature_tensor`  and each elemtn of the labels
   list is a tensor, and all tensors are of shape `(batch_size, 1)`.
   Note that this means vectorized continuous and multi-hot categorical
   features are not currently supported.
