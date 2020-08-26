@@ -24,10 +24,24 @@ def test_criteo_notebook(tmpdir):
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-        gpu_id=3,
+        gpu_id=0,
         batch_size=100000,
     )
 
+def test_criteohugectr_notebook(tmpdir):
+    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
+    output_path = os.path.join(DATA_START, "criteo/crit_test")
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(dirname(TEST_PATH), "examples", "criteo-hugectr.ipynb"),
+        input_path,
+        output_path,
+        # disable rmm.reinitialize, seems to be causing issues
+        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
+        gpu_id="0,1,2,3",
+        batch_size=100000,
+    )
 
 def test_optimize_criteo(tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_orig")
