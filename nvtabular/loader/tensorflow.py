@@ -255,6 +255,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         if gdf.empty:
             return
 
+        # checks necessary because of this bug
+        # https://github.com/tensorflow/tensorflow/issues/42660
         if gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
         else:
@@ -271,7 +273,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            if len(names) > 1:
+            if len(names) == 0:
+                continue
+            elif len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
             else:
                 tensors = [tensor]

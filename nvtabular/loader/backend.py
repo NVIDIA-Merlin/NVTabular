@@ -202,8 +202,8 @@ class DataLoader:
         workflows = workflows or []
         self.workflows = _validate_workflows(workflows, cat_names, cont_names, label_names)
 
-        self.cat_names = cat_names
-        self.cont_names = cont_names
+        self.cat_names = cat_names or []
+        self.cont_names = cont_names or []
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
