@@ -15,6 +15,7 @@ DATA_START = os.environ.get("DATASET_DIR", "/raid/data")
 def test_criteo_notebook(tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
     output_path = os.path.join(DATA_START, "criteo/crit_test")
+    os.environ["PARTS_PER_CHUNK"] = "1"
 
     _run_notebook(
         tmpdir,

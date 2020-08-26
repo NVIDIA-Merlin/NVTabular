@@ -16,9 +16,6 @@
 import queue
 import threading
 
-import time
-from collections import defaultdict
-
 import cudf
 import cupy as cp
 
@@ -32,20 +29,21 @@ def _num_steps(num_samples, step_size):
 
 
 class ChunkQueue:
-    """
-        This class takes partitions (parts) from an NVTabular dataset
-        and concatenates them into a cudf dataframe "chunk". This chunk
-        is subsequently transformed into its tensor representation using
-        the iterator's transform.
-        Parameters:
-        num_parts: int, number of partitions from the iterator, an NVTabular Dataset,
-                   to concatenate into a "chunk"
-        batch_size: int, the number of records in each batch
-        iterator: TensorBatchDatasetItr, the iterator to pull the partitions (parts) from
-        shuffle: bool, enable/disable shuffling
-        cats: [str], the list of categorical columns in the dataset
-        conts: [str], the list of continuous columns in the dataset
-        labels: [str], the list of label columns in the dataset
+    """ This class takes partitions (parts) from an NVTabular dataset
+       and concatenates them into a cudf dataframe "chunk". This chunk
+      is subsequently transformed into its tensor representation using
+      the iterator's transform.
+      Parameters
+      -----------
+      qsize: int
+          Max number of elements to hold in the buffer at once
+      num_parts : int
+          number of partitions from the iterator, an NVTabular Dataset to concatenate into a "chunk"
+      shuffle : bool
+          enable/disable chunk-level shuffling
+      put_wait: float
+          amount of timeout to wait for a full queue to open up
+          before checking for errors and trying again
     """
 
     def __init__(
@@ -204,8 +202,8 @@ class DataLoader:
         workflows = workflows or []
         self.workflows = _validate_workflows(workflows, cat_names, cont_names, label_names)
 
-        self.cat_names = cat_names
-        self.cont_names = cont_names
+        self.cat_names = cat_names or []
+        self.cont_names = cont_names or []
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -271,17 +269,15 @@ class DataLoader:
         self._batch_itr = iter(chunks)
 
     def _get_next_batch(self):
-        '''
-        adding this cheap shim so that we can
-        call this step without it getting
-        overridden by the framework-specific
-        parent class's `__next__` method.
-        TODO: can this be better solved with
-        a metaclass implementation? My gut
-        is that we don't actually necessarily
-        *want*, in general, to be overriding
+        """
+        adding this cheap shim so that we can call this
+        step without it getting overridden by the
+        framework-specific parent class's `__next__` method.
+        TODO: can this be better solved with a metaclass
+        implementation? My gut is that we don't actually
+        necessarily *want*, in general, to be overriding
         __next__ and __iter__ methods
-        '''
+        """
         # we've never initialized, do that now
         # need this because tf.keras.Model.fit will
         # call next() cold
@@ -328,7 +324,7 @@ class DataLoader:
         """
         num_full_batches = _num_steps(num_samples, self.batch_size) - 1
         idx = [self.batch_size for _ in range(num_full_batches)]
-        idx.append(num_samples - num_full_batches*self.batch_size)
+        idx.append(num_samples - num_full_batches * self.batch_size)
         return idx
 
     def _to_tensor(self, gdf, dtype=None):

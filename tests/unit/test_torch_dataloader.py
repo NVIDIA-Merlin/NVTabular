@@ -56,7 +56,7 @@ def test_empty_cols(tmpdir, df, dataset, engine):
     assert all(cats is None for cats, _, _ in no_cats)
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
+@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.06])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("devices", [None, [0, 1]])

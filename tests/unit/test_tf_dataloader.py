@@ -27,7 +27,7 @@ tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 
 # TODO: include use_columns option
 # TODO: include parts_per_chunk test
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.06])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("use_paths", [True, False])
