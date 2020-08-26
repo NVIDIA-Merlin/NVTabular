@@ -126,39 +126,42 @@ class ChunkQueue:
             yield current
 
     def load_chunks(self, dev, itr):
-        with itr.device_ctx(dev):
-            spill = None
-            for chunks in self.batch(itr):
-                if self.stopped:
-                    return
-                if spill and not spill.empty:
-                    chunks.insert(0, spill)
-                chunks = cudf.core.reshape.concat(chunks)
-                chunks.reset_index(drop=True, inplace=True)
-                chunks, spill = self.get_batch_div_chunk(chunks)
-                if self.shuffle:
-                    _shuffle_gdf(chunks)
-                if len(chunks) > 0:
-                    chunks = itr.create_tensors(
-                        chunks,
+        try:
+            with itr.device_ctx(dev):
+                spill = None
+                for chunks in self.batch(itr):
+                    if self.stopped:
+                        return
+                    if spill and not spill.empty:
+                        chunks.insert(0, spill)
+                    chunks = cudf.core.reshape.concat(chunks)
+                    chunks.reset_index(drop=True, inplace=True)
+                    chunks, spill = self.get_batch_div_chunk(chunks)
+                    if self.shuffle:
+                        _shuffle_gdf(chunks)
+                    if len(chunks) > 0:
+                        chunks = itr.create_tensors(
+                            chunks,
+                            cat_names=self.cat_cols,
+                            cont_names=self.cont_cols,
+                            label_names=self.label_cols,
+                        )
+                        # chunks tensorized
+                        self.q_out.put(chunks)
+                        chunks = None
+                # takes care final batch, which is less than batch size
+                if spill:
+                    spill = itr.create_tensors(
+                        spill,
                         cat_names=self.cat_cols,
                         cont_names=self.cont_cols,
                         label_names=self.label_cols,
                     )
-                    # chunks tensorized
-                    self.q_out.put(chunks)
-                    chunks = None
-            # takes care final batch, which is less than batch size
-            if spill:
-                spill = itr.create_tensors(
-                    spill,
-                    cat_names=self.cat_cols,
-                    cont_names=self.cont_cols,
-                    label_names=self.label_cols,
-                )
-                self.q_out.put(spill)
-                spill = None
-            self.q_out.put("end")
+                    self.q_out.put(spill)
+                    spill = None
+                self.q_out.put("end")
+        except Exception as err:
+            self.q_out.put(err)
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -248,7 +251,9 @@ class AsyncIterator:
         ends = []
         while True:
             chunk = self.buff.get()
-            if isinstance(chunk, str):
+            if isinstance(chunk, Exception):
+                raise chunk
+            elif isinstance(chunk, str):
                 ends.append(chunk)
                 if len(ends) == len(self.devices):
                     return
