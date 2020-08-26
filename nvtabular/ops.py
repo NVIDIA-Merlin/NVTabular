@@ -947,7 +947,7 @@ class TargetEncoding(DFOperator):
         1. Training Cross Validation: To prevent overfitting in the training
         dataset, a cross validation strategy is applied to the training set.
         The training set is splitted in k folds and the means for the i-th
-        fold is calculated with all reamining folds. The fold assignmed is
+        fold is calculated with all remaining folds. The fold assigned is
         random. The validation/test set uses the full training dataset for
         calculating the mean (rows are not assigned folds).
 
