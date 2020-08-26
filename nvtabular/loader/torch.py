@@ -22,22 +22,30 @@ from .backend import DataLoader
 
 
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
-    """
-        This class, creates batches of, a user defined size, tensor
-        represenation of the data supplied. The data input requires an
-        NVTabular dataset. Handles spillover to ensure all batches are
-        the specified size until the final batch.
-
-        Parameters:
-        dataset: NVTabular dataset
-        cats: [str], the list of categorical columns in the dataset
-        conts: [str], the list of continuous columns in the dataset
-        labels: [str], the list of label columns in the dataset
-        batch_size: int, the size of each batch to supply to the model
-        shuffle: bool, enable/disable shuffling of dataset
-        target: the target library that will use the tensor transformed data
-                currently supported: torch
-        devices: [int], list represents all avialable GPU IDs
+    """ This class, creates batches of, a user defined size, tensor
+    represenation of the data supplied. The data input requires an
+    NVTabular dataset. Handles spillover to ensure all batches are
+    the specified size until the final batch.
+    Parameters
+    -----------
+    dataset : NVTabular dataset
+    cats : [str]
+        the list of categorical columns in the dataset
+    conts : [str]
+        the list of continuous columns in the dataset
+    labels : [str]
+        the list of label columns in the dataset
+    batch_size : int
+        the size of each batch to supply to the model
+    shuffle : bool
+        enable/disable shuffling of dataset
+    target :
+        the target library that will use the tensor transformed data currently supported: torch
+    devices : [int]
+        list representing all available GPU IDs
+    num_parts: int
+        number of partitions from the iterator, an NVTabular Dataset,
+        to concatenate into a "chunk"
     """
 
     def __init__(
