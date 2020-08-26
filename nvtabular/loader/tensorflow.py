@@ -208,6 +208,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         )
         cat_names, cont_names = _validate_schema(feature_columns, cat_names, cont_names)
 
+        assert (devices is None or len(devices) == 1) # TODO: figure out multi-gpu support
+        devices = devices or [0]
         DataLoader.__init__(
             self,
             dataset,
@@ -218,7 +220,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             shuffle,
             parts_per_chunk=parts_per_chunk,
             workflows=workflows,
-            devices=None,  # TODO: figure out multi-gpu support
+            devices=devices
         )
 
     def __len__(self):

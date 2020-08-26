@@ -68,7 +68,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
             X0, y0 = X, y
 
         # check that we have at most batch_size elements
-        num_samples = y.shape[0]
+        num_samples = y[0].shape[0]
         if num_samples != batch_size:
             try:
                 next(data_itr)
@@ -94,7 +94,9 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
     # check start of next epoch to ensure consistency
     X, y = next(data_itr)
-    assert (y.numpy() == y0.numpy()).all()
+    for _y, _y0 in zip(y, y0):
+        assert (_y.numpy() == _y0.numpy()).all()
+
     for column, x in X.items():
         x0 = X0.pop(column)
         assert (x.numpy() == x0.numpy()).all()
@@ -104,3 +106,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     # that dont necesssarily have the full batch_size
     assert (idx + 1) * batch_size >= rows
     assert rows == (60 * 24 * 3 + 1)
+
+    data_itr.stop()
+    assert not data_itr._working
+    assert data_itr._batch_itr is None
