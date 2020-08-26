@@ -1,7 +1,7 @@
 How it Works
 ============
 
-![NVTabular Workflow](./_images/nvt_workflow.png)
+![NVTabular Workflow](./images/nvt_workflow.png)
 
 NVTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive dataset like [Criteo](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or [RecSys 2020](https://recsys-twitter.com/) that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as NVTabular in order to make tabular data workflows simpler.
 
@@ -84,7 +84,24 @@ When compared to an item by item dataloader of PyTorch we have benchmarked our t
 Multi-GPU Support
 -----------------------
 
-The next release will have multi-GPU support using Dask-cudf and Dask, and will allow for easy parallelization of operations across multiple GPUs.
+NVTabular supports multi-GPU scaling with [dask-cuda](https://github.com/rapidsai/dask-cuda) and [dask.distributed](https://distributed.dask.org/en/latest/).  To enable distributed parallelism, the NVTabular `Workflow` must be initialized with a `dask.distributed.Client` object:
+
+```python
+import nvtabular as nvt
+from dask.distributed import Client
+
+# Deploy a new cluster
+# (or specify the port of an existing scheduler)
+cluster = "tcp://MachineA:8786"
+
+client = Client(cluster)
+workflow = nvt.Workflow(..., client=client)
+...
+```
+
+There are currenly many ways to deploy a "cluster" for Dask.  [This article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a nice summary of all practical options.  For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
+
+Since NVTabular already uses [dask_cudf](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the arguments used for global-statistics operations.  See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.     
 
 CPU Support
 ------------

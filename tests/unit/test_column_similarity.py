@@ -17,6 +17,7 @@ import cudf
 import cupy
 import pytest
 
+import nvtabular
 from nvtabular.column_similarity import ColumnSimilarity
 
 
@@ -33,10 +34,12 @@ def test_column_similarity(on_device, metric):
         )
     )
 
+    input_df = cudf.DataFrame({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]})
     op = ColumnSimilarity("output", "left", categories, "right", metric=metric, on_device=on_device)
-    df = op.apply_op(
-        cudf.DataFrame({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]}), None, None
-    )
+    workflow = nvtabular.Workflow(cat_names=["left", "right"], cont_names=[], label_name=[])
+    workflow.add_feature(op)
+    workflow.apply(nvtabular.Dataset(input_df), output_path=None)
+    df = workflow.get_ddf().compute()
 
     output = df.output.values
     if metric in ("tfidf", "cosine"):
@@ -48,3 +51,14 @@ def test_column_similarity(on_device, metric):
 
     # distance from document 4 to 5 should be non-zero (have category 1 in common)
     assert output[4] != 0
+
+    # make sure that we can operate multiple times on the same matrix correctly
+    op = ColumnSimilarity(
+        "output", "left", categories, "right", metric="inner", on_device=on_device
+    )
+
+    workflow = nvtabular.Workflow(cat_names=["left", "right"], cont_names=[], label_name=[])
+    workflow.add_feature(op)
+    workflow.apply(nvtabular.Dataset(df), output_path=None)
+    df = workflow.get_ddf().compute()
+    assert float(df.output.values[0]) == pytest.approx(3)

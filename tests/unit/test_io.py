@@ -27,7 +27,7 @@ from dask.dataframe import assert_eq
 
 import nvtabular as nvt
 import nvtabular.io
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 from nvtabular.io import ParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 

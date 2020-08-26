@@ -22,7 +22,7 @@ import pytest
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the

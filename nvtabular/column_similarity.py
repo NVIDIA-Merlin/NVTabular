@@ -21,7 +21,7 @@ import numpy
 import scipy.sparse
 from cudf._lib.nvtx import annotate
 
-from nvtabular.ops import TransformOperator
+from nvtabular.ops import CAT, CONT, TransformOperator
 
 
 class ColumnSimilarity(TransformOperator):
@@ -30,19 +30,21 @@ class ColumnSimilarity(TransformOperator):
     between the two columns by looking up features for those columns in a sparse matrix,
     and then computing the distance between the rows of the feature matrices.
 
-    > # Read in the 'document_categories' file from the kaggle outbrains dataset and convert
-    > # to a sparse matrix
-    > df = cudf.read_csv("document_categories.csv.zip")
-    > categories = cupy.sparse.coo_matrix((cupy.ones(len(df)),
-                                          (df.document_id.values, df.category_id.values))
-    > # compute a new column 'similarity' between the document_id and promo_document_id columns
-    > # on tfidf distance on the categories matrix we just loaded up
-    > workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
-    >                                       "promo_document_id"))
+    Example usage::
+
+        # Read in the 'document_categories' file from the kaggle outbrains dataset and convert
+        # to a sparse matrix
+        df = cudf.read_csv("document_categories.csv.zip")
+        categories = cupy.sparse.coo_matrix((cupy.ones(len(df)),
+                                            (df.document_id.values, df.category_id.values))
+        # compute a new column 'similarity' between the document_id and promo_document_id columns
+        # on tfidf distance on the categories matrix we just loaded up
+        workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
+                                              "promo_document_id"))
 
     Parameters
     -----------
-    name: str
+    name : str
         Name of the output column
     a : str
         Name of the first column to calculate similarity for
@@ -58,6 +60,9 @@ class ColumnSimilarity(TransformOperator):
         faster, but requires that the a_features/b_features sparse matrices
         fit into GPU memory.
     """
+
+    default_in = CAT
+    default_out = CONT
 
     def __init__(
         self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True,
@@ -87,11 +92,20 @@ class ColumnSimilarity(TransformOperator):
         a = gdf[self.a_col].values if self.on_device else gdf[self.a_col].values_host
         b = gdf[self.b_col].values if self.on_device else gdf[self.b_col].values_host
 
-        similarities = row_wise_inner_product(
-            a, self.a_features, b, self.b_features, self.on_device
-        )
+        if len(a) and len(b):
+            similarities = row_wise_inner_product(
+                a, self.a_features, b, self.b_features, self.on_device
+            )
+        else:
+            similarities = []
         gdf[self.name] = similarities
+
+        columns_ctx[input_cols][self._id] = [self.name]
         return gdf
+
+    @property
+    def _id(self):
+        return f"{self.__class__.__name__}_{self.name}"
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
@@ -199,8 +213,10 @@ _inner_product_gpu = numba.cuda.jit(device=True, inline=True)(_inner_product)
 
 def _convert_features(features, metric, on_device):
     if on_device:
-        if not isinstance(features, cupy.sparse.coo_matrix):
-            features = cupy.sparse.coo_matrix(features)
+        # take a shallow copy to avoid mutating the input, but keep gpu
+        # memory as low as possible. (also convert to coo_matrix if passed
+        # a CSR etc)
+        features = cupy.sparse.coo_matrix(features)
     else:
         if not isinstance(features, scipy.sparse.coo_matrix):
             # convert to host first if the sparse matrix is on the device
@@ -227,7 +243,7 @@ def _convert_features(features, metric, on_device):
 def _tfidf_weight(X, np):
     N = float(X.shape[0])
     idf = np.log(N / np.bincount(X.col))
-    X.data *= idf[X.col]
+    X.data = X.data * idf[X.col]
     return X
 
 

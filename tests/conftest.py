@@ -1,4 +1,6 @@
+import contextlib
 import glob
+import os
 import random
 
 import cudf
@@ -41,6 +43,7 @@ mynames = [
 ]
 
 _CLIENT = None
+_CUDA_CLUSTER = None
 
 
 @pytest.fixture(scope="session")
@@ -49,6 +52,17 @@ def client():
     if _CLIENT is None:
         _CLIENT = Client(LocalCluster(n_workers=2))
     return _CLIENT
+
+
+@contextlib.contextmanager
+def get_cuda_cluster():
+    from dask_cuda import LocalCUDACluster
+
+    CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+    n_workers = min(2, len(CUDA_VISIBLE_DEVICES.split(",")))
+    cluster = LocalCUDACluster(n_workers=n_workers)
+    yield cluster
+    cluster.close()
 
 
 @pytest.fixture(scope="session")
