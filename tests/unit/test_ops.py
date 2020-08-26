@@ -152,14 +152,20 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("groups", ["name-cat", "name-string"])
-def test_groupby_folds(tmpdir, df, dataset, engine, groups):
+@pytest.mark.parametrize("groups", [[["name-cat", "name-string"]], "name-string"])
+@pytest.mark.parametrize("kfold", [3])
+def test_groupby_folds(tmpdir, df, dataset, engine, groups, kfold):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
     gb_stats = ops.GroupbyStatistics(
-        columns=groups, out_path=str(tmpdir), folds=5, stats=["count", "sum"], cont_names=["y"]
+        columns=None,
+        out_path=str(tmpdir),
+        kfold=kfold,
+        fold_groups=groups,
+        stats=["count", "sum"],
+        cont_names=["y"],
     )
     config = nvt.workflow.get_new_config()
     config["PP"]["categorical"] = [gb_stats]
@@ -168,21 +174,13 @@ def test_groupby_folds(tmpdir, df, dataset, engine, groups):
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
     )
     processor.update_stats(dataset)
-
-    import pdb
-
-    pdb.set_trace()
-
-    # groups = [groups] if isinstance(groups, str) else groups
-    # for group in groups:
-    #     group = [group] if isinstance(group, str) else group
-    #     prefix = "unique." if concat_groups else "cat_stats."
-    #     fn = prefix + "_".join(group) + ".parquet"
-    #     cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
+    for group, path in processor.stats["categories"].items():
+        df = cudf.read_parquet(path)
+        assert "__fold__" in df.columns
 
 
-@pytest.mark.parametrize("group", ["Author", ["Author", "Engaging-User"]])
-def test_target_encode(tmpdir, group):
+@pytest.mark.parametrize("cat_group", ["Author", ["Author", "Engaging-User"]])
+def test_target_encode(tmpdir, cat_group):
 
     df = pd.DataFrame(
         {
@@ -199,15 +197,22 @@ def test_target_encode(tmpdir, group):
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    processor.add_preprocess(ops.TargetEncoding(group, "Cost", out_path=str(tmpdir)))
+    processor.add_preprocess(
+        ops.TargetEncoding(
+            cat_group,
+            "Cost",  # cont_target
+            out_path=str(tmpdir),
+            kfold=3,
+            out_col="test_name",
+            out_dtype="float32",
+        )
+    )
     processor.finalize()
     processor.apply(nvt.Dataset(df), output_format=None)
-    processor.get_ddf().compute(scheduler="synchronous")
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
 
-    import pdb
-
-    pdb.set_trace()
-    pass
+    assert "test_name" in df_out.columns
+    assert df_out["test_name"].dtype == "float32"
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
