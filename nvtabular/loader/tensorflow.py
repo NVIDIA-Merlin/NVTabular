@@ -25,6 +25,9 @@ from_dlpack = configure_tensorflow()
 
 
 def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
+    # TODO: put this in parent class and allow
+    # torch dataset to leverage as well?
+
     # if a dataset was passed, just return it
     if isinstance(paths_or_dataset, Dataset):
         return paths_or_dataset
@@ -149,7 +152,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         if gdf.empty:
             return
 
-        # TODO: file TF bug about column major stride arrays
         if gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
         else:
@@ -172,6 +174,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
                 tensors = [tensor]
             X.update({name: x for name, x in zip(names, tensors)})
 
+        # TODO: use dict for labels as well?
+        # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
         else:
@@ -192,6 +196,7 @@ class _StreamingMetric:
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
+    # TODO: document
     _supports_tf_logs = True
 
     def __init__(self, dataloader):

@@ -16,6 +16,9 @@
 import queue
 import threading
 
+import time
+from collections import defaultdict
+
 import cudf
 import cupy as cp
 
@@ -91,49 +94,55 @@ class ChunkQueue:
             yield current
 
     def load_chunks(self, dev, dataloader):
-        indices = dataloader._gather_indices_for_dev(dev)
-        itr = dataloader.data.to_iter(indices=indices)
+        try:
+            indices = dataloader._gather_indices_for_dev(dev)
+            itr = dataloader.data.to_iter(indices=indices)
 
-        with dataloader._get_device_ctx(dev):
-            spill = None
-            for chunks in self.batch(itr):
-                if self.stopped:
-                    return
-
-                if spill and not spill.empty:
-                    chunks.insert(0, spill)
-
-                chunks = cudf.core.reshape.concat(chunks)
-                chunks.reset_index(drop=True, inplace=True)
-                chunks, spill = self.get_batch_div_chunk(chunks, dataloader.batch_size)
-                if self.shuffle:
-                    _shuffle_gdf(chunks)
-
-                num_samples = len(chunks)
-                if num_samples > 0:
-                    for workflow in dataloader.workflows:
-                        chunks = workflow.apply_ops(chunks)
-
-                    # map from big chunk to fraemwork specific tensors
-                    chunks = dataloader._create_tensors(chunks)
-
-                    # split them into batches
-                    chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
-                    chunks = zip(*chunks)
-
-                    # put returns True if buffer is stopped before
-                    # packet can be put in queue. Keeps us from
-                    # freezing on a put on a full queue
-                    if self.put(chunks):
+            with dataloader._get_device_ctx(dev):
+                spill = None
+                for chunks in self.batch(itr):
+                    if self.stopped:
                         return
-                chunks = None
 
-            # takes care final batch, which is less than batch size
-            if spill:
-                for workflow in dataloader.workflows:
-                    spill = workflow.apply_ops(spill)
-                spill = dataloader._create_tensors(spill)
-                self.put([spill])
+                    if spill and not spill.empty:
+                        chunks.insert(0, spill)
+
+                    chunks = cudf.core.reshape.concat(chunks)
+                    chunks.reset_index(drop=True, inplace=True)
+                    chunks, spill = self.get_batch_div_chunk(chunks, dataloader.batch_size)
+                    if self.shuffle:
+                        _shuffle_gdf(chunks)
+
+                    num_samples = len(chunks)
+                    if num_samples > 0:
+                        for workflow in dataloader.workflows:
+                            chunks = workflow.apply_ops(chunks)
+
+                        # map from big chunk to fraemwork specific tensors
+                        chunks = dataloader._create_tensors(chunks)
+
+                        # split them into batches and map to
+                        # the framework-specific output format
+                        chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
+                        chunks = zip(*chunks)
+                        chunks = [dataloader._handle_tensors(*tensors) for tensors in chunks]
+
+                        # put returns True if buffer is stopped before
+                        # packet can be put in queue. Keeps us from
+                        # freezing on a put on a full queue
+                        if self.put(chunks):
+                            return
+                    chunks = None
+
+                # takes care final batch, which is less than batch size
+                if spill:
+                    for workflow in dataloader.workflows:
+                        spill = workflow.apply_ops(spill)
+                    spill = dataloader._create_tensors(spill)
+                    spill = dataloader._handle_tensors(spill)
+                    self.put([spill])
+        except Exception as e:
+            self.put(e)
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -252,9 +261,27 @@ class DataLoader:
         return self
 
     def __next__(self):
-        return self._get_next()
+        return self._get_next_batch()
 
-    def _get_next(self):
+    def _fetch_chunk(self):
+        chunks = self._buff.get()
+        if isinstance(chunks, Exception):
+            self.stop()
+            raise chunks
+        self._batch_itr = iter(chunks)
+
+    def _get_next_batch(self):
+        '''
+        adding this cheap shim so that we can
+        call this step without it getting
+        overridden by the framework-specific
+        parent class's `__next__` method.
+        TODO: can this be better solved with
+        a metaclass implementation? My gut
+        is that we don't actually necessarily
+        *want*, in general, to be overriding
+        __next__ and __iter__ methods
+        '''
         # we've never initialized, do that now
         # need this because tf.keras.Model.fit will
         # call next() cold
@@ -263,19 +290,11 @@ class DataLoader:
 
         # get the first chunks
         if self._batch_itr is None:
-            chunks = self._buff.get()
-            self._batch_itr = iter(chunks)
+            self._fetch_chunk()
 
         # try to iterate through existing batches
         try:
-            cats, conts, labels = next(self._batch_itr)
-            if labels.shape[0] == 0:
-                # I think something is getting screwed up on
-                # the split fn that is causing the last
-                # element of a chunk to be empty. Need to
-                # investigate but will just do this lazy
-                # solution for now
-                raise StopIteration
+            batch = next(self._batch_itr)
         except StopIteration:
             # anticipate any more chunks getting created
             # if not, raise the StopIteration
@@ -286,10 +305,9 @@ class DataLoader:
 
             # otherwise get the next chunks and return
             # the first batch
-            chunks = self._buff.get()
-            self._batch_itr = iter(chunks)
-            cats, conts, labels = next(self._batch_itr)
-        return self._handle_tensors(cats, conts, labels)
+            self._fetch_chunk()
+            batch = next(self._batch_itr)
+        return batch
 
     def map(self, workflow):
         """
@@ -308,8 +326,9 @@ class DataLoader:
         to <torch|tf>.split functions for breaking
         up into batches
         """
-        idx = [self.batch_size for _ in range(num_samples // self.batch_size)]
-        idx.append(num_samples % self.batch_size)
+        num_full_batches = _num_steps(num_samples, self.batch_size) - 1
+        idx = [self.batch_size for _ in range(num_full_batches)]
+        idx.append(num_samples - num_full_batches*self.batch_size)
         return idx
 
     def _to_tensor(self, gdf, dtype=None):
