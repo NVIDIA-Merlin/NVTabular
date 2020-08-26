@@ -1073,6 +1073,8 @@ class TargetEncoding(DFOperator):
                 path_folds, storage_name_folds, self.cat_cache
             )
             agg_each_fold.columns = cols + ["count_y", "sum_y"]
+        else:
+            cols = self.cat_group
 
         # Groupby Aggregation for all data
         storage_name_all = nvt_cat._make_name(*self.cat_group, sep=self.name_sep)
@@ -1112,7 +1114,7 @@ class TargetEncoding(DFOperator):
         new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
         new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
 
-        gdf.drop(columns=[tmp, "__fold__"], inplace=True)
+        gdf.drop(columns=[tmp, "__fold__"] if fit_folds else [tmp], inplace=True)
         return new_gdf
 
 

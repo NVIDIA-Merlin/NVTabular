@@ -180,7 +180,8 @@ def test_groupby_folds(tmpdir, df, dataset, engine, groups, kfold):
 
 
 @pytest.mark.parametrize("cat_group", ["Author", ["Author", "Engaging-User"]])
-def test_target_encode(tmpdir, cat_group):
+@pytest.mark.parametrize("kfold", [1, 3])
+def test_target_encode(tmpdir, cat_group, kfold):
 
     df = pd.DataFrame(
         {
@@ -202,7 +203,7 @@ def test_target_encode(tmpdir, cat_group):
             cat_group,
             "Cost",  # cont_target
             out_path=str(tmpdir),
-            kfold=3,
+            kfold=kfold,
             out_col="test_name",
             out_dtype="float32",
         )
