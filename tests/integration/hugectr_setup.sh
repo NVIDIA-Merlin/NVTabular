@@ -14,8 +14,9 @@ pip install torch torchvision
 pip install -e /nvtabular/
 
 # Install HugeCTR
-git clone -b v2.2.1-integration https://gitlab-master.nvidia.com/zehuanw/hugectr.git &&\
+git clone -b v2.2.1-integration https://gitlab-master.nvidia.com/zehuanw/hugectr.git && \
     cd hugectr && \
+    git checkout 5bc9c9111a3d388ea9f5c70bb418d4fcc739492a && \
     git submodule update --init --recursive && \
     mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DSM=$SM .. && \
