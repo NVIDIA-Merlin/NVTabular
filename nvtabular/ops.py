@@ -696,7 +696,7 @@ class GroupbyStatistics(StatOperator):
         concat_groups=False,
         name_sep="_",
         fold_name="__fold__",
-        fold_seed=None,
+        fold_seed=42,
         kfold=3,
     ):
         # Set column_groups if the user has passed in a list of columns
@@ -751,8 +751,15 @@ class GroupbyStatistics(StatOperator):
             if self.fold_name not in ddf.columns:
 
                 def _add_fold(s, kfolds, fold_seed):
-                    cupy.random.seed(fold_seed)
-                    return cupy.random.choice(cupy.arange(kfolds), len(s))
+                    len_df = len(s)
+                    fsize = len_df // kfolds
+                    arr = cupy.ones(len_df, dtype="int32")
+                    cupy.cumsum(arr, out=arr)
+                    cupy.floor_divide(arr, fsize, out=arr)
+                    cupy.mod(arr, kfolds, out=arr)
+                    return arr
+
+                ddf[self.fold_name] = ddf.assign(partition_count=1).partition_count.cumsum()
 
                 ddf[self.fold_name] = ddf.map_partitions(
                     _add_fold,
@@ -1012,6 +1019,7 @@ class TargetEncoding(DFOperator):
         on_host=True,
         name_sep="_",
         stat_name=None,
+        drop_folds=True,
     ):
         super().__init__(preprocessing=preprocessing, replace=False)
         self.cat_group = cat_group if isinstance(cat_group, list) else [cat_group]
@@ -1026,6 +1034,7 @@ class TargetEncoding(DFOperator):
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.name_sep = name_sep
+        self.drop_folds = drop_folds
         self.stat_name = stat_name or "te_stats"
 
     @property
@@ -1114,7 +1123,9 @@ class TargetEncoding(DFOperator):
         new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
         new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
 
-        gdf.drop(columns=[tmp, "__fold__"] if fit_folds else [tmp], inplace=True)
+        gdf.drop(
+            columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True
+        )
         return new_gdf
 
 

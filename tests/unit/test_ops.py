@@ -185,7 +185,7 @@ def test_target_encode(tmpdir, cat_group, kfold):
 
     df = pd.DataFrame(
         {
-            "Author": ["User_A", "User_A", "User_A", "User_B", "User_D", "User_D"],
+            "Author": ["User_A", "User_B", "User_C", "User_D", "User_E", "User_F"],
             "Engaging-User": ["User_B", "User_B", "User_C", "User_C", "User_C", "User_C"],
             "Cost": [100.0, 200.0, 300.0, 400.0, 500.0, 600.0],
             "Post": [1, 2, 3, 4, 5, 6],
@@ -206,6 +206,7 @@ def test_target_encode(tmpdir, cat_group, kfold):
             kfold=kfold,
             out_col="test_name",
             out_dtype="float32",
+            drop_folds=False,  # Keep folds to validate
         )
     )
     processor.finalize()
@@ -214,6 +215,13 @@ def test_target_encode(tmpdir, cat_group, kfold):
 
     assert "test_name" in df_out.columns
     assert df_out["test_name"].dtype == "float32"
+
+    if kfold > 1 and cat_group == "Author":
+        check = cudf.io.read_parquet(processor.stats["te_stats"]["__fold___Author"])
+        cols = ["Author", "__fold__"]
+        check = check[cols].sort_values(cols).reset_index(drop=True)
+        df_out = df_out[cols].sort_values(cols).reset_index(drop=True)
+        assert_eq(check, df_out)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
