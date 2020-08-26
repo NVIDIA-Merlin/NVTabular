@@ -23,12 +23,12 @@ def configure_tensorflow(memory_allocation=None, device=None):
     if device is None:
         device = os.environ.get("TF_VISIBLE_DEVICE", 0)
     tf_devices = tf.config.list_physical_devices("GPU")
-    if not tf_devices:
+    if len(tf_devices) == 0:
         raise ImportError("TensorFlow is not configured for GPU")
 
     try:
         tf.config.set_logical_device_configuration(
-            tf_devices[tf_device], [tf.config.LogicalDeviceConfiguration(memory_limit=tf_mem_size)]
+            tf_devices[device], [tf.config.LogicalDeviceConfiguration(memory_limit=tf_mem_size)]
         )
     except RuntimeError:
         warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
