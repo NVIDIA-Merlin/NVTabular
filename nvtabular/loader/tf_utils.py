@@ -29,7 +29,7 @@ def configure_tensorflow(memory_allocation=None, device=None):
     try:
         tf.config.set_logical_device_configuration(
             tf_devices[device],
-            [tf.config.LogicalDeviceConfiguration(memory_limit=memory_allcation)],
+            [tf.config.LogicalDeviceConfiguration(memory_limit=memory_allocation)],
         )
     except RuntimeError:
         warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
