@@ -979,6 +979,9 @@ class TargetEncoding(DFOperator):
         statistics (during `GroupbyStatistics`).
     fold_seed : int, default None
         Random seed to use for cupy-based fold assignment.
+    drop_folds : bool, default True
+        Whether to drop the "__fold__" column created by the
+        `GroupbyStatistics` dependency (after the transformation).
     p_smooth : int, default 20
         Smoothing factor.
     out_col : str, default is problem-specific
