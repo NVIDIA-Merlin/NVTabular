@@ -43,7 +43,7 @@ def test_rossman_example(tmpdir):
     pytest.importorskip("nvtabular.loader.tensorflow")
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
-    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
     notebook_path = os.path.join(
         dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
