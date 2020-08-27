@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import contextlib
 import os
 
+import cupy
 import tensorflow as tf
 
 from nvtabular.io import Dataset
@@ -250,8 +252,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             DataLoader.__iter__(self)
             return DataLoader.__next__(self)
 
+    @contextlib.contextmanager
     def _get_device_ctx(self, dev):
-        return tf.device("/device:GPU:{}".format(dev))
+        with tf.device("/device:GPU:{}".format(dev)) as tf_device:
+            # tf.device changes the cupy cuda device, which breaks us on multigpu
+            # force cupy to still use the device we expect
+            cupy.cuda.Device(dev).use()
+            yield tf_device
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
