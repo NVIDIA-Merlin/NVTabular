@@ -16,7 +16,7 @@ SHELL ["/bin/bash", "-c"]
 
 # set up nvtabular and example-specific libs
 ADD . nvtabular/
-ADD examples/tensorflow/docker/requirements.tf.txt requirements.txt
+ADD examples/tensorflow/docker/requirements.txt requirements.txt
 RUN source activate nvtabular && \
       echo "nvtabular/." >>  requirements.txt && \
       pip install -U --no-cache-dir -r requirements.txt && \
@@ -37,7 +37,6 @@ RUN source activate nvtabular && \
 
 # add cupti to ld library path for profiling
 ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/cuda-10.1/extras/CUPTI/lib64/"
-RUN echo $LD_LIBRARY_PATH
 
 # different images for dev and production
 FROM base AS true
