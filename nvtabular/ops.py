@@ -676,7 +676,7 @@ class GroupbyStatistics(StatOperator):
         for multi-column groups.
     fold_name : str, default "__fold__"
         Name of the fold column to use for all groups in `fold_groups`.
-    fold_seed : int, defualt None
+    fold_seed : int, default 42
         Random seed to use for cupy-based fold assignment.
     kfold : str, default 3
         Number of cross-validation folds to use for all groups in `fold_groups`.
@@ -976,10 +976,10 @@ class TargetEncoding(DFOperator):
         Column, or group of columns, to target encode.
     cont_target : str
         Continuous target column to use for the encoding of cat_group.
-    kfold : int, default 5
+    kfold : int, default 3
         Numbner of cross-validation folds to use while gathering
         statistics (during `GroupbyStatistics`).
-    fold_seed : int, default None
+    fold_seed : int, default 42
         Random seed to use for cupy-based fold assignment.
     drop_folds : bool, default True
         Whether to drop the "__fold__" column created by the
