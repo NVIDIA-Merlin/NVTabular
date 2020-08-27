@@ -750,15 +750,17 @@ class GroupbyStatistics(StatOperator):
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
 
-                def _add_fold(s, kfolds, fold_seed):
+                def _add_fold(s, kfold, fold_seed):
                     cupy.random.seed(fold_seed)
-                    return cupy.random.choice(cupy.arange(kfolds), len(s))
+                    return cupy.random.choice(cupy.arange(kfold), len(s))
 
                 if self.fold_seed is None:
                     # If we don't have a specific seed,
                     # just use a simple modulo-based mapping
                     ddf[self.fold_name] = ddf.assign(partition_count=1).partition_count.cumsum()
-                    ddf[self.fold_name] = ddf[self.fold_name] % self.kfold
+                    ddf[self.fold_name] = ddf[self.fold_name].map_partitions(
+                        lambda x, k: x % k, self.kfold, meta=ddf[self.fold_name]._meta
+                    )
                 else:
                     ddf[self.fold_name] = ddf.map_partitions(
                         _add_fold,
