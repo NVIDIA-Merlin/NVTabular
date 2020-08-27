@@ -256,19 +256,26 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
-
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
         if gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
+        elif gdf.shape[0] == 1:
+            dlpack = gdf.values[0].toDlpack()
         else:
             dlpack = gdf.values.T.toDlpack()
+
         x = from_dlpack(dlpack)
-        if gdf.shape[1] > 1:
+
+        if gdf.shape[0] == 1:
+            x = tf.expand_dims(x, 0)
+        elif gdf.shape[1] > 1:
             x = tf.transpose(x)
         return x
 
     def _create_batch(self, tensor, num_samples):
+        if tensor is None:
+            return []
         idx = self._get_segment_lengths(num_samples)
         return tf.split(tensor, idx)
 

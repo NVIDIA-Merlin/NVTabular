@@ -99,6 +99,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return [cats, conts, label]
 
     def _create_batch(self, tensor, num_samples):
+        if tensor is None:
+            return []
         idx = self._get_segment_lengths(num_samples)
         return torch.split(tensor, idx)
 

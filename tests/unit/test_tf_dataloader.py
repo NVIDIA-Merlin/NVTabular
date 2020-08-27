@@ -60,6 +60,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     data_itr.map(processor)
 
     rows = 0
+    dont_iter = False
     for idx in range(len(data_itr)):
         X, y = next(data_itr)
 
@@ -73,6 +74,8 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
             try:
                 next(data_itr)
             except StopIteration:
+                rows += num_samples
+                dont_iter = True
                 continue
             else:
                 raise ValueError("Batch size too small at idx {}".format(idx))
@@ -89,8 +92,19 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
                 raise AssertionError
             assert x.shape[0] == num_samples
         assert len(these_cols) == 0
-
         rows += num_samples
+
+    assert (idx + 1)*batch_size >= rows
+    assert rows == (60*24*3 + 1)
+    if not dont_iter:
+        try:
+            next(data_itr)
+        except StopIteration:
+            pass
+        else:
+            raise ValueError
+    assert not data_itr._working
+    assert data_itr._batch_itr is None
 
     # check start of next epoch to ensure consistency
     X, y = next(data_itr)
@@ -101,11 +115,6 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         x0 = X0.pop(column)
         assert (x.numpy() == x0.numpy()).all()
     assert len(X0) == 0
-
-    # accounts for incomplete batches at the end of chunks
-    # that dont necesssarily have the full batch_size
-    assert (idx + 1) * batch_size >= rows
-    assert rows == (60 * 24 * 3 + 1)
 
     data_itr.stop()
     assert not data_itr._working

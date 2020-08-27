@@ -88,7 +88,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     ]
 
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
-    data_itr = nvt.torch_dataloader.TorchAsyncItr(
+    data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data,
         batch_size=batch_size,
         cats=cat_names,
@@ -117,7 +117,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         batch = batch[0]
         return batch[0], batch[1], batch[2]
 
-    t_dl = nvt.torch_dataloader.DLDataLoader(
+    t_dl = torch_dataloader.DLDataLoader(
         data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
     )
     rows = 0
@@ -160,7 +160,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
 
-    data_itr = nvt.torch_dataloader.TorchAsyncItr(
+    data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data, cats=cat_names, conts=cont_names, labels=["label"]
     )
 

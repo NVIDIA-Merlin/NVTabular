@@ -83,19 +83,23 @@ class ChunkQueue:
         and concatenates every `num_parts` of them.
         """
         current = []
-        for value in itr:
+        while True:
+            try:
+                value = next(itr)
+            except StopIteration:
+                if len(current) > 0:
+                    yield current
+                break
+
             current.append(value)
             if len(current) == self.num_parts:
                 yield current
                 current = []
-        if len(current) > 0:
-            yield current
 
     def load_chunks(self, dev, dataloader):
         try:
             indices = dataloader._gather_indices_for_dev(dev)
-            itr = dataloader.data.to_iter(indices=indices)
-
+            itr = iter(dataloader.data.to_iter(indices=indices))
             with dataloader._get_device_ctx(dev):
                 spill = None
                 for chunks in self.batch(itr):
@@ -133,7 +137,7 @@ class ChunkQueue:
                     chunks = None
 
                 # takes care final batch, which is less than batch size
-                if spill:
+                if spill is not None and not spill.empty:
                     for workflow in dataloader.workflows:
                         spill = workflow.apply_ops(spill)
                     spill = dataloader._create_tensors(spill)
@@ -231,12 +235,13 @@ class DataLoader:
             for t in self._workers:
                 t.join()
             self._buff.q_out.queue.clear()
+        self._batch_itr = None
 
     def _gather_indices_for_dev(self, dev):
-        per_worker = int(len(self.indices) // len(self.devices)) + 1
+        per_worker = _num_steps(len(self.indices), len(self.devices))
         worker_id = self.devices.index(dev)
         start = worker_id * per_worker
-        return self.indices[start : start + per_worker]
+        return self.indices[start : start + per_worker].tolist()
 
     def __iter__(self):
         self.stop()
