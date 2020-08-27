@@ -943,19 +943,19 @@ class JoinGroupby(DFOperator):
 
 class TargetEncoding(DFOperator):
     """
-    TargetEncoding is a common feature engineering for categorical variables
-    in tabular datasets. We just consider the case of a numerical target or
-    binary classification problem. For each categorical value, the mean of
-    the target is calculated, and a new feature (column) is created with the
-    means of the categorical value. To prevent overfitting, to additional
-    logics are applied:
+    Target encoding is a common feature-engineering technique for
+    categorical columns in tabular datasets. For each categorical group,
+    the mean of a continuous target column is calculated, and the
+    group-specific mean of each row is used to create a new feature (column).
+    To prevent overfitting, the following additional logic is applied:
 
-        1. Training Cross Validation: To prevent overfitting in the training
-        dataset, a cross validation strategy is applied to the training set.
-        The training set is splitted in k folds and the means for the i-th
-        fold is calculated with all remaining folds. The fold assigned is
-        random. The validation/test set uses the full training dataset for
-        calculating the mean (rows are not assigned folds).
+        1. Cross Validation: To prevent overfitting in training data,
+        a cross-validation strategy is used - The data is split into
+        k random "folds", and the mean values within the i-th fold are
+        calculated with data from all other folds. The cross-validation
+        strategy is only employed when the dataset is used to update
+        recorded statistics. For transformation-only workflow execution,
+        global-mean statistics are used instead.
 
         2. Smoothing: To prevent overfitting for low cardinality categories,
         the means are smoothed with the overall mean of the target variable.
