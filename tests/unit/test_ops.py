@@ -15,8 +15,10 @@
 #
 import math
 import os
+import string
 
 import cudf
+import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -181,16 +183,17 @@ def test_groupby_folds(tmpdir, df, dataset, engine, groups, kfold):
 
 @pytest.mark.parametrize("cat_group", ["Author", ["Author", "Engaging-User"]])
 @pytest.mark.parametrize("kfold", [1, 3])
-def test_target_encode(tmpdir, cat_group, kfold):
-
-    df = pd.DataFrame(
+@pytest.mark.parametrize("fold_seed", [None, 42])
+def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
+    df = cudf.DataFrame(
         {
-            "Author": ["User_A", "User_B", "User_C", "User_D", "User_E", "User_F"],
-            "Engaging-User": ["User_B", "User_B", "User_C", "User_C", "User_C", "User_C"],
-            "Cost": [100.0, 200.0, 300.0, 400.0, 500.0, 600.0],
-            "Post": [1, 2, 3, 4, 5, 6],
+            "Author": list(string.ascii_uppercase),
+            "Engaging-User": list(string.ascii_lowercase),
+            "Cost": range(26),
+            "Post": [0, 1] * 13,
         }
     )
+    df = dask_cudf.from_cudf(df, npartitions=3)
 
     cat_names = ["Author", "Engaging-User"]
     cont_names = ["Cost"]
@@ -206,6 +209,7 @@ def test_target_encode(tmpdir, cat_group, kfold):
             kfold=kfold,
             out_col="test_name",
             out_dtype="float32",
+            fold_seed=fold_seed,
             drop_folds=False,  # Keep folds to validate
         )
     )
@@ -218,7 +222,7 @@ def test_target_encode(tmpdir, cat_group, kfold):
 
     if kfold > 1 and cat_group == "Author":
         check = cudf.io.read_parquet(processor.stats["te_stats"]["__fold___Author"])
-        cols = ["Author", "__fold__"]
+        cols = ["__fold__", "Author"]
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out = df_out[cols].sort_values(cols).reset_index(drop=True)
         assert_eq(check, df_out)

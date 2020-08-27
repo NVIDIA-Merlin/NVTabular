@@ -697,7 +697,7 @@ class GroupbyStatistics(StatOperator):
         name_sep="_",
         fold_name="__fold__",
         fold_seed=42,
-        kfold=3,
+        kfold=None,
     ):
         # Set column_groups if the user has passed in a list of columns
         self.column_groups = None
@@ -728,7 +728,7 @@ class GroupbyStatistics(StatOperator):
         self.op_name = "GroupbyStatistics-" + self.stat_name
         self.concat_groups = concat_groups
         self.name_sep = name_sep
-        self.kfold = kfold
+        self.kfold = kfold or 3
         self.fold_name = fold_name
         self.fold_seed = fold_seed
         self.fold_groups = fold_groups
@@ -751,22 +751,21 @@ class GroupbyStatistics(StatOperator):
             if self.fold_name not in ddf.columns:
 
                 def _add_fold(s, kfolds, fold_seed):
-                    len_df = len(s)
-                    fsize = len_df // kfolds
-                    arr = cupy.ones(len_df, dtype="int32")
-                    cupy.cumsum(arr, out=arr)
-                    cupy.floor_divide(arr, fsize, out=arr)
-                    cupy.mod(arr, kfolds, out=arr)
-                    return arr
+                    cupy.random.seed(fold_seed)
+                    return cupy.random.choice(cupy.arange(kfolds), len(s))
 
-                ddf[self.fold_name] = ddf.assign(partition_count=1).partition_count.cumsum()
-
-                ddf[self.fold_name] = ddf.map_partitions(
-                    _add_fold,
-                    self.kfold,
-                    self.fold_seed,
-                    meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
-                )
+                if self.fold_seed is None:
+                    # If we don't have a specific seed,
+                    # just use a simple modulo-based mapping
+                    ddf[self.fold_name] = ddf.assign(partition_count=1).partition_count.cumsum()
+                    ddf[self.fold_name] = ddf[self.fold_name] % self.kfold
+                else:
+                    ddf[self.fold_name] = ddf.map_partitions(
+                        _add_fold,
+                        self.kfold,
+                        self.fold_seed,
+                        meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
+                    )
 
             # Add new col_groups with fold
             for group in self.fold_groups:
@@ -1006,8 +1005,8 @@ class TargetEncoding(DFOperator):
         self,
         cat_group,
         cont_target,
-        kfold=3,
-        fold_seed=None,
+        kfold=None,
+        fold_seed=42,
         p_smooth=20,
         out_col=None,
         out_dtype=None,
@@ -1024,7 +1023,7 @@ class TargetEncoding(DFOperator):
         super().__init__(preprocessing=preprocessing, replace=False)
         self.cat_group = cat_group if isinstance(cat_group, list) else [cat_group]
         self.cont_target = cont_target
-        self.kfold = kfold
+        self.kfold = kfold or 3
         self.fold_seed = fold_seed
         self.p_smooth = p_smooth
         self.out_col = out_col
@@ -1118,10 +1117,13 @@ class TargetEncoding(DFOperator):
         if self.out_dtype is not None:
             tran_gdf[self.out_col] = tran_gdf[self.out_col].astype(self.out_dtype)
 
-        tran_gdf = tran_gdf.sort_values(tmp)
+        tran_gdf = tran_gdf.sort_values(tmp, ignore_index=True)
         tran_gdf.drop(columns=cols + [tmp], inplace=True)
         new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-        new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+        new_gdf[new_cols] = tran_gdf[new_cols]
+
+        # Make sure we are preserving the index of gdf
+        new_gdf.index = gdf.index
 
         gdf.drop(
             columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True
