@@ -94,8 +94,8 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         assert len(these_cols) == 0
         rows += num_samples
 
-    assert (idx + 1)*batch_size >= rows
-    assert rows == (60*24*3 + 1)
+    assert (idx + 1) * batch_size >= rows
+    assert rows == (60 * 24 * 3 + 1)
     if not dont_iter:
         try:
             next(data_itr)
