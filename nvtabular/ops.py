@@ -759,7 +759,7 @@ class GroupbyStatistics(StatOperator):
                     # just use a simple modulo-based mapping
                     ddf[self.fold_name] = ddf.assign(partition_count=1).partition_count.cumsum()
                     ddf[self.fold_name] = ddf[self.fold_name].map_partitions(
-                        lambda x, k: x % k, self.kfold, meta=ddf[self.fold_name]._meta
+                        lambda x, k: x.mod(k), self.kfold, meta=ddf[self.fold_name]._meta
                     )
                 else:
                     ddf[self.fold_name] = ddf.map_partitions(
