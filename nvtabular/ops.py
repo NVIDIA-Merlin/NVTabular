@@ -998,7 +998,7 @@ class TargetEncoding(DFOperator):
         for multi-column groups.
     """
 
-    default_in = CAT
+    default_in = ALL
     default_out = ALL
 
     def __init__(
