@@ -220,12 +220,19 @@ def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
     assert "test_name" in df_out.columns
     assert df_out["test_name"].dtype == "float32"
 
-    if kfold > 1 and cat_group == "Author":
-        check = cudf.io.read_parquet(processor.stats["te_stats"]["__fold___Author"])
-        cols = ["__fold__", "Author"]
+    if kfold > 1:
+        # Cat columns are unique.
+        # Make sure __fold__ mapping is correct
+        if cat_group == "Author":
+            name = "__fold___Author"
+            cols = ["__fold__", "Author"]
+        else:
+            name = "__fold___Author_Engaging-User"
+            cols = ["__fold__", "Author", "Engaging-User"]
+        check = cudf.io.read_parquet(processor.stats["te_stats"][name])
         check = check[cols].sort_values(cols).reset_index(drop=True)
-        df_out = df_out[cols].sort_values(cols).reset_index(drop=True)
-        assert_eq(check, df_out)
+        df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
+        assert_eq(check, df_out_check)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
