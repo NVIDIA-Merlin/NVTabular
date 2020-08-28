@@ -751,23 +751,23 @@ class GroupbyStatistics(StatOperator):
             if self.fold_name not in ddf.columns:
 
                 def _add_fold(s, kfold, fold_seed):
-                    cupy.random.seed(fold_seed)
-                    return cupy.random.choice(cupy.arange(kfold), len(s))
+                    typ = np.min_scalar_type(kfold * 2)
+                    if fold_seed is None:
+                        # If we don't have a specific seed,
+                        # just use a simple modulo-based mapping
+                        fold = cupy.arange(len(s), dtype=typ)
+                        cupy.mod(fold, kfold, out=fold)
+                        return fold
+                    else:
+                        cupy.random.seed(fold_seed)
+                        return cupy.random.choice(cupy.arange(kfold, dtype=typ), len(s))
 
-                if self.fold_seed is None:
-                    # If we don't have a specific seed,
-                    # just use a simple modulo-based mapping
-                    ddf[self.fold_name] = ddf.assign(partition_count=1).partition_count.cumsum()
-                    ddf[self.fold_name] = ddf[self.fold_name].map_partitions(
-                        lambda x, k: x.mod(k), self.kfold, meta=ddf[self.fold_name]._meta
-                    )
-                else:
-                    ddf[self.fold_name] = ddf.map_partitions(
-                        _add_fold,
-                        self.kfold,
-                        self.fold_seed,
-                        meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
-                    )
+                ddf[self.fold_name] = ddf.map_partitions(
+                    _add_fold,
+                    self.kfold,
+                    self.fold_seed,
+                    meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
+                )
 
             # Add new col_groups with fold
             for group in self.fold_groups:
