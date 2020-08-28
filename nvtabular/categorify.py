@@ -114,6 +114,7 @@ def _mid_level_groupby(
 
     df = _concat(dfs, ignore_index=True)
     if on_host:
+        df.reset_index(drop=True, inplace=True)
         df = cudf.from_pandas(df)
     groups = df.groupby(col_group, dropna=False)
     gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
@@ -188,6 +189,7 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
     ignore_index = True
     df = _concat(dfs, ignore_index)
     if on_host:
+        df.reset_index(drop=True, inplace=True)
         df = cudf.from_pandas(df)
     if isinstance(col_group, str):
         col_group = [col_group]
@@ -214,6 +216,7 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
         col_group = [col_group]
     df = _concat(dfs, ignore_index)
     if on_host:
+        df.reset_index(drop=True, inplace=True)
         df = cudf.from_pandas(df)
     rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = "/".join([base_path, rel_path])
