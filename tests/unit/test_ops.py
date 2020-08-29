@@ -15,8 +15,10 @@
 #
 import math
 import os
+import string
 
 import cudf
+import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -149,6 +151,88 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
         prefix = "unique." if concat_groups else "cat_stats."
         fn = prefix + "_".join(group) + ".parquet"
         cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("groups", [[["name-cat", "name-string"]], "name-string"])
+@pytest.mark.parametrize("kfold", [3])
+def test_groupby_folds(tmpdir, df, dataset, engine, groups, kfold):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    gb_stats = ops.GroupbyStatistics(
+        columns=None,
+        out_path=str(tmpdir),
+        kfold=kfold,
+        fold_groups=groups,
+        stats=["count", "sum"],
+        cont_names=["y"],
+    )
+    config = nvt.workflow.get_new_config()
+    config["PP"]["categorical"] = [gb_stats]
+
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+    processor.update_stats(dataset)
+    for group, path in processor.stats["categories"].items():
+        df = cudf.read_parquet(path)
+        assert "__fold__" in df.columns
+
+
+@pytest.mark.parametrize("cat_group", ["Author", ["Author", "Engaging-User"]])
+@pytest.mark.parametrize("kfold", [1, 3])
+@pytest.mark.parametrize("fold_seed", [None, 42])
+def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
+    df = cudf.DataFrame(
+        {
+            "Author": list(string.ascii_uppercase),
+            "Engaging-User": list(string.ascii_lowercase),
+            "Cost": range(26),
+            "Post": [0, 1] * 13,
+        }
+    )
+    df = dask_cudf.from_cudf(df, npartitions=3)
+
+    cat_names = ["Author", "Engaging-User"]
+    cont_names = ["Cost"]
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        ops.TargetEncoding(
+            cat_group,
+            "Cost",  # cont_target
+            out_path=str(tmpdir),
+            kfold=kfold,
+            out_col="test_name",
+            out_dtype="float32",
+            fold_seed=fold_seed,
+            drop_folds=False,  # Keep folds to validate
+        )
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    assert "test_name" in df_out.columns
+    assert df_out["test_name"].dtype == "float32"
+
+    if kfold > 1:
+        # Cat columns are unique.
+        # Make sure __fold__ mapping is correct
+        if cat_group == "Author":
+            name = "__fold___Author"
+            cols = ["__fold__", "Author"]
+        else:
+            name = "__fold___Author_Engaging-User"
+            cols = ["__fold__", "Author", "Engaging-User"]
+        check = cudf.io.read_parquet(processor.stats["te_stats"][name])
+        check = check[cols].sort_values(cols).reset_index(drop=True)
+        df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
+        assert_eq(check, df_out_check)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
