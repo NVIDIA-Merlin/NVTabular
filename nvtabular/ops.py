@@ -706,8 +706,7 @@ class GroupbyStatistics(StatOperator):
         self.op_name = "GroupbyStatistics-" + self.stat_name
         self.concat_groups = concat_groups
         self.name_sep = name_sep
-        
-        
+
     @property
     def _id(self):
         return str(self.op_name)
@@ -1014,9 +1013,9 @@ class Categorify(DFOperator):
         Categories with a count/frequency below this threshold will be
         ommited from the encoding and corresponding data will be mapped
         to the "null" category. Can be represented as both an integer or
-        a dictionary with column names as keys and frequency limit as 
+        a dictionary with column names as keys and frequency limit as
         value. If dictionary is used, all columns targeted must be included
-        in the dictionary. 
+        in the dictionary.
     columns : list of str or list(str), default None
         Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
@@ -1175,7 +1174,7 @@ class Categorify(DFOperator):
         new_gdf = gdf.copy(deep=False)
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         if isinstance(self.freq_threshold, dict):
-            assert(all(x in self.freq_threshold for x in target_columns))
+            assert all(x in self.freq_threshold for x in target_columns)
         if not target_columns:
             return new_gdf
 
@@ -1216,7 +1215,9 @@ class Categorify(DFOperator):
                 gdf,
                 self.cat_cache,
                 na_sentinel=self.na_sentinel,
-                freq_threshold=self.freq_threshold[name] if isinstance(self.freq_threshold, dict) else self.freq_threshold,
+                freq_threshold=self.freq_threshold[name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)

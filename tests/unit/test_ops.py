@@ -617,14 +617,34 @@ def test_categorify_multi_combo(tmpdir):
     assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
 
 
-@pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User":4}])   
+@pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
 def test_categorify_freq_limit(tmpdir, freq_limit):
-
-    kind = "combo"
     df = pd.DataFrame(
         {
-            "Author": ["User_A", "User_E", "User_B", "User_C","User_A", "User_E", "User_B", "User_C","User_B", "User_C"],
-            "Engaging User": ["User_B", "User_B", "User_A", "User_D","User_B", "User_c", "User_A", "User_D", "User_D", "User_D"]
+            "Author": [
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_B",
+                "User_C",
+            ],
+            "Engaging User": [
+                "User_B",
+                "User_B",
+                "User_A",
+                "User_D",
+                "User_B",
+                "User_c",
+                "User_A",
+                "User_D",
+                "User_D",
+                "User_D",
+            ],
         }
     )
 
@@ -634,7 +654,9 @@ def test_categorify_freq_limit(tmpdir, freq_limit):
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    processor.add_preprocess(ops.Categorify(columns=cat_names, freq_threshold=freq_limit, out_path=str(tmpdir)))
+    processor.add_preprocess(
+        ops.Categorify(columns=cat_names, freq_threshold=freq_limit, out_path=str(tmpdir))
+    )
     processor.finalize()
     processor.apply(nvt.Dataset(df), output_format=None)
     df_out = processor.get_ddf().compute(scheduler="synchronous")
@@ -646,6 +668,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit):
     else:
         assert len(df["Author"].unique()) == df_out["Author"].max()
         assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
+
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups):
