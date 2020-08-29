@@ -1133,7 +1133,7 @@ class Categorify(DFOperator):
 
         # Other self-explanatory intialization
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.freq_threshold = freq_threshold if freq_threshold else 0
+        self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
         self.na_sentinel = na_sentinel or 0
