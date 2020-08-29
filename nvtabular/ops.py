@@ -1652,7 +1652,7 @@ class DifferenceLag(TransformOperator):
         mask = gdf[self.partition_cols] == gdf[self.partition_cols].shift(self.shift)
         if isinstance(mask, cudf.DataFrame):
             mask = mask.all(axis=1)
-        mask[not mask] = None
+        mask[mask == False] = None  # noqa
 
         output = {}
         for col in target_columns:
