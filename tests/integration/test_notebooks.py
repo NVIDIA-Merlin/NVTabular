@@ -36,7 +36,7 @@ def test_criteohugectr_notebook(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-hugectr.ipynb"),
+        os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
