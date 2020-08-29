@@ -319,6 +319,9 @@ def _groupby_to_disk(
         col = [col] if isinstance(col, str) else col
         col_str = _make_name(*col, sep=name_sep)
         col_groups_str.append(col_str)
+        freq_limit_val = None
+        if freq_limit:
+            freq_limit_val = freq_limit[col_str] if isinstance(freq_limit,dict) else freq_limit
         for s in range(tree_width[col_str]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
@@ -326,7 +329,7 @@ def _groupby_to_disk(
                 col,
                 agg_cols,
                 agg_list,
-                freq_limit,
+                freq_limit_val,
                 on_host,
                 concat_groups,
                 name_sep,

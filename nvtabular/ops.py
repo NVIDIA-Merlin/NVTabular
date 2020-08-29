@@ -700,13 +700,14 @@ class GroupbyStatistics(StatOperator):
         self.categories = {}
         self.tree_width = tree_width or 8
         self.on_host = on_host
-        self.freq_threshold = freq_threshold or 0
+        self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
         self.stat_name = stat_name or "categories"
         self.op_name = "GroupbyStatistics-" + self.stat_name
         self.concat_groups = concat_groups
         self.name_sep = name_sep
-
+        
+        
     @property
     def _id(self):
         return str(self.op_name)
@@ -717,7 +718,6 @@ class GroupbyStatistics(StatOperator):
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
-
         agg_cols = self.cont_names
         agg_list = self.stats
         dsk, key = nvt_cat._category_stats(
@@ -1133,7 +1133,7 @@ class Categorify(DFOperator):
 
         # Other self-explanatory intialization
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.freq_threshold = freq_threshold
+        self.freq_threshold = freq_threshold if freq_threshold else 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
         self.na_sentinel = na_sentinel or 0
@@ -1171,6 +1171,8 @@ class Categorify(DFOperator):
     ):
         new_gdf = gdf.copy(deep=False)
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
+        if isinstance(self.freq_threshold, dict):
+            assert(all(x in self.freq_threshold for x in target_columns))
         if not target_columns:
             return new_gdf
 
@@ -1211,7 +1213,7 @@ class Categorify(DFOperator):
                 gdf,
                 self.cat_cache,
                 na_sentinel=self.na_sentinel,
-                freq_threshold=self.freq_threshold,
+                freq_threshold=self.freq_threshold[name] if isinstance(self.freq_threshold, dict) else self.freq_threshold,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
