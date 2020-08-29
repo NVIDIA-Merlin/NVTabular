@@ -1010,10 +1010,13 @@ class Categorify(DFOperator):
 
     Parameters
     -----------
-    freq_threshold : int, default 0
+    freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
         Categories with a count/frequency below this threshold will be
         ommited from the encoding and corresponding data will be mapped
-        to the "null" category.
+        to the "null" category. Can be represented as both an integer or
+        a dictionary with column names as keys and frequency limit as 
+        value. If dictionary is used, all columns targeted must be included
+        in the dictionary. 
     columns : list of str or list(str), default None
         Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
