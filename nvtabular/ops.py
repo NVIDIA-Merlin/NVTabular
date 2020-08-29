@@ -722,7 +722,7 @@ class GroupbyStatistics(StatOperator):
         self.categories = {}
         self.tree_width = tree_width or 8
         self.on_host = on_host
-        self.freq_threshold = freq_threshold or 0
+        self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
         self.stat_name = stat_name or "categories"
         self.op_name = "GroupbyStatistics-" + self.stat_name
@@ -1266,10 +1266,13 @@ class Categorify(DFOperator):
 
     Parameters
     -----------
-    freq_threshold : int, default 0
+    freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
         Categories with a count/frequency below this threshold will be
         ommited from the encoding and corresponding data will be mapped
-        to the "null" category.
+        to the "null" category. Can be represented as both an integer or
+        a dictionary with column names as keys and frequency limit as
+        value. If dictionary is used, all columns targeted must be included
+        in the dictionary.
     columns : list of str or list(str), default None
         Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
@@ -1389,7 +1392,7 @@ class Categorify(DFOperator):
 
         # Other self-explanatory intialization
         super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
-        self.freq_threshold = freq_threshold
+        self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
         self.na_sentinel = na_sentinel or 0
@@ -1427,6 +1430,8 @@ class Categorify(DFOperator):
     ):
         new_gdf = gdf.copy(deep=False)
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
+        if isinstance(self.freq_threshold, dict):
+            assert all(x in self.freq_threshold for x in target_columns)
         if not target_columns:
             return new_gdf
 
@@ -1467,7 +1472,9 @@ class Categorify(DFOperator):
                 gdf,
                 self.cat_cache,
                 na_sentinel=self.na_sentinel,
-                freq_threshold=self.freq_threshold,
+                freq_threshold=self.freq_threshold[name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
