@@ -876,3 +876,22 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
     assert new_gdf.columns.all() == df.columns.all()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
+
+
+def test_difference_lag():
+    df = cudf.DataFrame(
+        {"userid": [0, 0, 0, 1, 1, 2], "timestamp": [1000, 1005, 1100, 2000, 2001, 3000]}
+    )
+
+    columns = ["userid", "timestamp"]
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    op = ops.DifferenceLag("userid", columns=["timestamp"])
+    new_gdf = op.apply_op(df, columns_ctx, "all", target_cols=["timestamp"])
+
+    assert new_gdf["timestamp_DifferenceLag"][0] is None
+    assert new_gdf["timestamp_DifferenceLag"][1] == 5
+    assert new_gdf["timestamp_DifferenceLag"][2] == 95
+    assert new_gdf["timestamp_DifferenceLag"][3] is None
