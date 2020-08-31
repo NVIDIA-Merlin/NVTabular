@@ -23,7 +23,10 @@ import dask_cudf
 import yaml
 from fsspec.core import get_fs_token_paths
 
-from nvtabular import io as nvt_io
+from nvtabular.io.dask import _ddf_to_dataset
+from nvtabular.io.dataset import Dataset
+from nvtabular.io.shuffle import Shuffle, _check_shuffle_arg
+from nvtabular.io.writer_factory import writer_factory
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
@@ -560,7 +563,7 @@ class Workflow(BaseWorkflow):
         self._shuffle_parts = False
 
     def set_ddf(self, ddf, shuffle=None):
-        if isinstance(ddf, (dask_cudf.DataFrame, nvt_io.Dataset)):
+        if isinstance(ddf, (dask_cudf.DataFrame, Dataset)):
             self.ddf = ddf
             if shuffle is not None:
                 self._shuffle_parts = shuffle
@@ -570,7 +573,7 @@ class Workflow(BaseWorkflow):
     def get_ddf(self):
         if self.ddf is None:
             raise ValueError("No dask_cudf frame available.")
-        elif isinstance(self.ddf, nvt_io.Dataset):
+        elif isinstance(self.ddf, Dataset):
             columns = self.columns_ctx["all"]["base"]
             return self.ddf.to_ddf(columns=columns, shuffle=self._shuffle_parts)
         return self.ddf
@@ -710,7 +713,7 @@ class Workflow(BaseWorkflow):
         """
 
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
@@ -752,17 +755,17 @@ class Workflow(BaseWorkflow):
         """ Iterate through dataset and (optionally) apply/shuffle/write.
         """
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         # Check if we have a (supported) writer
         output_path = output_path or "./"
         output_path = str(output_path)
-        writer = nvt_io.writer_factory(
+        writer = writer_factory(
             output_format,
             output_path,
             out_files_per_proc,
             shuffle,
-            bytes_io=(shuffle == nvt_io.shuffle.per_worker),
+            bytes_io=(shuffle == Shuffle.PER_WORKER),
             num_threads=num_io_threads,
         )
 
@@ -806,7 +809,7 @@ class Workflow(BaseWorkflow):
             Full graph is only executed if `output_format` is specified.
         """
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         end = end_phase if end_phase else len(self.phases)
 
@@ -855,7 +858,7 @@ class Workflow(BaseWorkflow):
             Assumes statistics are already gathered.
         """
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         if nfiles:
             warnings.warn("nfiles is deprecated. Use out_files_per_proc")
@@ -910,7 +913,7 @@ class Workflow(BaseWorkflow):
             label_names = self.get_final_cols_names("label")
 
             # Output dask_cudf DataFrame to dataset
-            nvt_io._ddf_to_dataset(
+            _ddf_to_dataset(
                 ddf,
                 fs,
                 output_path,

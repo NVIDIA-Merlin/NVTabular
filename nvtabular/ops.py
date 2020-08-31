@@ -16,12 +16,13 @@
 import cudf
 import cupy
 import numpy as np
+import pandas as pd
+import pyarrow as pa
 from cudf._lib.nvtx import annotate
 from dask.core import flatten
 from dask.delayed import Delayed
 
 from nvtabular import categorify as nvt_cat
-from nvtabular.io import _detect_format
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 CONT = "continuous"
@@ -1250,6 +1251,24 @@ class JoinExternal(TransformOperator):
         new_gdf.reset_index(drop=True, inplace=True)
         self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
+
+
+# TODO: move with JoinExternal
+def _detect_format(data):
+    """ Utility to detect the format of `data`
+    """
+
+    if isinstance(data, cudf.DataFrame):
+        return "cudf"
+    elif isinstance(data, pd.DataFrame):
+        return "pandas"
+    elif isinstance(data, pa.Table):
+        return "arrow"
+    else:
+        file_type = str(data).split(".")[-1]
+        if file_type not in ("parquet", "csv"):
+            raise ValueError("Data format not recognized.")
+        return file_type
 
 
 class Categorify(DFOperator):

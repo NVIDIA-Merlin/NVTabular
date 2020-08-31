@@ -19,7 +19,7 @@ import threading
 import cudf
 import cupy as cp
 
-from nvtabular.io import _shuffle_gdf
+from nvtabular.io.shuffle import _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
 from nvtabular.workflow import BaseWorkflow
 
