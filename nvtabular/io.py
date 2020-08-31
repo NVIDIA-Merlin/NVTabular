@@ -492,7 +492,7 @@ class HugeCTRWriter(ThreadedWriter):
             writer.write(header.tobytes())
 
     def _write_table(self, idx, data):
-        df = data[self.labels].to_pandas().astype(np.intc)
+        df = data[self.labels].to_pandas().astype(np.single)
         df[self.cats] = data[self.cats].to_pandas().astype(np.intc)
         df[self.conts] = data[self.conts].to_pandas().astype(np.single)
         self.data_writers[idx].write(df.to_records(index=False).tobytes())
