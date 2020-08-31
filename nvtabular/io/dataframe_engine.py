@@ -13,16 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import warnings
 
-from . import workflow
-from .io import dataset
-
-Workflow = workflow.Workflow
-Dataset = dataset.Dataset
+from .dataset_engine import DatasetEngine
 
 
-__all__ = ["Workflow", "Dataset"]
+class DataFrameDatasetEngine(DatasetEngine):
+    """ DataFrameDatasetEngine allows NVT to interact with a dask_cudf.DataFrame object
+    in the same way as a dataset on disk.
+    """
 
-# cudf warns about column ordering with dlpack methods, ignore it
-warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+    def __init__(self, ddf):
+        self._ddf = ddf
+
+    def to_ddf(self, columns=None):
+        if isinstance(columns, list):
+            return self._ddf[columns]
+        elif isinstance(columns, str):
+            return self._ddf[[columns]]
+        return self._ddf
+
+    @property
+    def num_rows(self):
+        return len(self._ddf)
