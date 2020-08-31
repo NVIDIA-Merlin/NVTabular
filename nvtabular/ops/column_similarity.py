@@ -21,7 +21,8 @@ import numpy
 import scipy.sparse
 from cudf._lib.nvtx import annotate
 
-from nvtabular.ops import CAT, CONT, TransformOperator
+from .operator import CAT, CONT
+from .transform_operator import TransformOperator
 
 
 class ColumnSimilarity(TransformOperator):
