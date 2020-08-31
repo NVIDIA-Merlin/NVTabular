@@ -28,7 +28,7 @@ from tests.conftest import mycols_csv, mycols_pq
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
-import nvtabular.torch_dataloader as torch_dataloader  # noqa isort:skip
+import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -56,7 +56,7 @@ def test_empty_cols(tmpdir, df, dataset, engine):
     assert all(cats is None for cats, _, _ in no_cats)
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
+@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.06])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("devices", [None, [0, 1]])
@@ -88,7 +88,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     ]
 
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
-    data_itr = nvt.torch_dataloader.TorchAsyncItr(
+    data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data,
         batch_size=batch_size,
         cats=cat_names,
@@ -117,7 +117,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         batch = batch[0]
         return batch[0], batch[1], batch[2]
 
-    t_dl = nvt.torch_dataloader.DLDataLoader(
+    t_dl = torch_dataloader.DLDataLoader(
         data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
     )
     rows = 0
@@ -160,7 +160,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
     nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
 
-    data_itr = nvt.torch_dataloader.TorchAsyncItr(
+    data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data, cats=cat_names, conts=cont_names, labels=["label"]
     )
 
