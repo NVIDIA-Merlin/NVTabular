@@ -31,21 +31,10 @@ class HugeCTRWriter(ThreadedWriter):
             writer.write(header.tobytes())
 
     def _write_table(self, idx, data):
-        # Prepare data format
-        np_label = data[self.labels].to_pandas().astype(np.single).to_numpy()
-        np_conts = data[self.conts].to_pandas().astype(np.single).to_numpy()
-        nnz = np.intc(1)
-        np_cats = data[self.cats].to_pandas().astype(np.uintc).to_numpy()
-        # Write all the data samples
-        for i, _ in enumerate(np_label):
-            # Write Label
-            self.data_writers[idx].write(np_label[i].tobytes())
-            # Write conts (HugeCTR: dense)
-            self.data_writers[idx].write(np_conts[i].tobytes())
-            # Write cats (HugeCTR: Slots)
-            for j, _ in enumerate(np_cats[i]):
-                self.data_writers[idx].write(nnz.tobytes())
-                self.data_writers[idx].write(np_cats[i][j].tobytes())
+        df = data[self.labels].to_pandas().astype(np.single)
+        df[self.cats] = data[self.cats].to_pandas().astype(np.intc)
+        df[self.conts] = data[self.conts].to_pandas().astype(np.single)
+        self.data_writers[idx].write(df.to_records(index=False).tobytes())
 
     def _write_thread(self):
         while True:
