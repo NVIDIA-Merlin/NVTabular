@@ -1619,3 +1619,61 @@ class Filter(TransformOperator):
         new_gdf = self.f(gdf)
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
+
+
+class DifferenceLag(TransformOperator):
+    """ Calculates the difference between two consecutive rows of the dataset. For instance, this
+    operator can calculate the time since a user last had another interaction.
+
+    This requires a dataset partitioned by one set of columns (userid) and sorted further by another
+    set (userid, timestamp). The dataset must already be partitioned and sorted before being passed
+    to the workflow. This can be easily done using dask-cudf::
+
+        # get a nvt dataset and convert to a dask dataframe
+        ddf = nvtabular.Dataset(PATHS).to_ddf()
+
+        # partition the dask dataframe by userid, then sort by userid/timestamp
+        ddf = ddf.shuffle("userid").sort_values(["userid", "timestamp"])
+
+        # create a new nvtabular dataset on the partitioned/sorted values
+        dataset = nvtabular.Dataset(ddf)
+
+    Once passed an appropiate dataset, this operator can be added to a nvtabular workflow to
+    compute the lagged difference within a partition::
+
+        # compute the delta in timestamp for each users session
+        workflow.add_feature(DifferenceLag("userid', columns=["timestamp"]))
+
+    Parameters
+    -----------
+    partition_cols : str or list of str
+        Column or Columns that are used to partition the data.
+    shift : int, default 1
+        The number of rows to look backwards when computing the difference lag. Negative values
+        indicate the number of rows to look forwards, making this compute the lead instead of lag.
+    columns :
+    replace: bool, default False
+        Whether to replace existing columns or create new ones
+    """
+
+    default_in = CONT
+    default_out = CONT
+
+    def __init__(self, partition_cols, shift=1, columns=None, replace=False):
+        super(DifferenceLag, self).__init__(columns=columns, replace=replace)
+        self.partition_cols = partition_cols
+        self.shift = shift
+
+    @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        # compute a mask indicating partition boundaries, handling multiple partition_cols
+        # represent partition boundaries by None values
+        mask = gdf[self.partition_cols] == gdf[self.partition_cols].shift(self.shift)
+        if isinstance(mask, cudf.DataFrame):
+            mask = mask.all(axis=1)
+        mask[mask == False] = None  # noqa
+
+        output = {}
+        for col in target_columns:
+            output[f"{col}_{self._id}"] = (gdf[col] - gdf[col].shift(self.shift)) * mask
+        return cudf.DataFrame(output)
