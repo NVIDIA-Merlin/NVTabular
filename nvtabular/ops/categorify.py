@@ -22,11 +22,282 @@ import cupy as cp
 import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
+from dask.core import flatten
 from dask.dataframe.core import _concat
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
+
+from .groupby_statistics import GroupbyStatistics
+from .operator import CAT
+from .transform_operator import DFOperator
+
+
+class Categorify(DFOperator):
+    """
+    Most of the data set will contain categorical features,
+    and these variables are typically stored as text values.
+    Machine Learning algorithms don't support these text values.
+    Categorify operation can be added to the workflow to
+    transform categorical features into unique integer values.
+
+    Although you can directly call methods of this class to
+    transform your categorical features, it's typically used within a
+    Workflow class.
+
+    Parameters
+    -----------
+    freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
+        Categories with a count/frequency below this threshold will be
+        ommited from the encoding and corresponding data will be mapped
+        to the "null" category. Can be represented as both an integer or
+        a dictionary with column names as keys and frequency limit as
+        value. If dictionary is used, all columns targeted must be included
+        in the dictionary.
+    columns : list of str or list(str), default None
+        Categorical columns (or multi-column "groups") to target for this op.
+        If None, the operation will target all known categorical columns.
+        If columns contains 1+ list(str) elements, the columns within each
+        list/group will be encoded according to the `encode_type` setting.
+    encode_type : {"joint", "combo"}, default "joint"
+        If "joint", the columns within any multi-column group will be
+        jointly encoded. If "combo", the combination of values will be
+        encoded as a new column. Note that replacement is not allowed for
+        "combo", because the same column name can be included in
+        multiple groups.
+    preprocessing : bool, default True
+        Sets if this is a pre-processing operation or not
+    replace : bool, default True
+        Replaces the transformed column with the original input.
+        Note that this does not apply to multi-column groups with
+        `encoded_type="combo"`.
+    tree_width : dict or int, optional
+        Passed to `GroupbyStatistics` dependency.
+    out_path : str, optional
+        Passed to `GroupbyStatistics` dependency.
+    on_host : bool, default True
+        Passed to `GroupbyStatistics` dependency.
+    na_sentinel : default 0
+        Label to use for null-category mapping
+    cat_cache : {"device", "host", "disk"} or dict
+        Location to cache the list of unique categories for
+        each categorical column. If passing a dict, each key and value
+        should correspond to the column name and location, respectively.
+        Default is "host" for all columns.
+    dtype :
+        If specified, categorical labels will be cast to this dtype
+        after encoding is performed.
+    name_sep : str, default "_"
+        String separator to use between concatenated column names
+        for multi-column groups.
+    """
+
+    default_in = CAT
+    default_out = CAT
+
+    def __init__(
+        self,
+        freq_threshold=0,
+        columns=None,
+        preprocessing=True,
+        replace=True,
+        out_path=None,
+        tree_width=None,
+        na_sentinel=None,
+        cat_cache="host",
+        dtype=None,
+        on_host=True,
+        encode_type="joint",
+        name_sep="_",
+    ):
+
+        # We need to handle three types of encoding here:
+        #
+        #   (1) Conventional encoding. There are no multi-column groups. So,
+        #       each categorical column is separately transformed into a new
+        #       "encoded" column (1-to-1).  The unique values are calculated
+        #       separately for each column.
+        #
+        #   (2) Multi-column "Joint" encoding (there are multi-column groups
+        #       in `columns` and `encode_type="joint"`).  Still a
+        #       1-to-1 transofrmation of categorical columns.  However,
+        #       we concatenate column groups to determine uniques (rather
+        #       than getting uniques of each categorical column separately).
+        #
+        #   (3) Multi-column "Group" encoding (there are multi-column groups
+        #       in `columns` and `encode_type="combo"`). No longer
+        #       a 1-to-1 transformation of categorical columns. Each column
+        #       group will be transformed to a single "encoded" column.  This
+        #       means the unique "values" correspond to unique combinations.
+        #       Since the same column may be included in multiple groups,
+        #       replacement is not allowed for this transform.
+
+        # Set column_groups if the user has passed in a list of columns.
+        # The purpose is to capture multi-column groups. If the user doesn't
+        # specify `columns`, there are no multi-column groups to worry about.
+        self.column_groups = None
+        self.name_sep = name_sep
+
+        # For case (2), we need to keep track of the multi-column group name
+        # that will be used for the joint encoding of each column in that group.
+        # For case (3), we also use this "storage name" to signify the name of
+        # the file with the required "combination" groupby statistics.
+        self.storage_name = {}
+        if isinstance(columns, str):
+            columns = [columns]
+        if isinstance(columns, list):
+            # User passed in a list of column groups. We need to figure out
+            # if this list contains any multi-column groups, and if there
+            # are any (obvious) problems with these groups
+            self.column_groups = columns
+            columns = list(set(flatten(columns, container=list)))
+            columns_all = list(flatten(columns, container=list))
+            if sorted(columns_all) != sorted(columns) and encode_type == "joint":
+                # If we are doing "joint" encoding, there must be unique mapping
+                # between input column names and column groups.  Otherwise, more
+                # than one unique-value table could be used to encode the same
+                # column.
+                raise ValueError("Same column name included in multiple groups.")
+            for group in self.column_groups:
+                if isinstance(group, list) and len(group) > 1:
+                    # For multi-column groups, we concatenate column names
+                    # to get the "group" name.
+                    name = _make_name(*group, sep=self.name_sep)
+                    for col in group:
+                        self.storage_name[col] = name
+
+        # Only support two kinds of multi-column encoding
+        if encode_type not in ("joint", "combo"):
+            raise ValueError(f"encode_type={encode_type} not supported.")
+
+        # Other self-explanatory intialization
+        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        self.freq_threshold = freq_threshold or 0
+        self.out_path = out_path or "./"
+        self.tree_width = tree_width
+        self.na_sentinel = na_sentinel or 0
+        self.dtype = dtype
+        self.on_host = on_host
+        self.cat_cache = cat_cache
+        self.stat_name = "categories"
+        self.encode_type = encode_type
+
+    @property
+    def req_stats(self):
+        return [
+            GroupbyStatistics(
+                columns=self.column_groups or self.columns,
+                concat_groups=self.encode_type == "joint",
+                cont_names=[],
+                stats=[],
+                freq_threshold=self.freq_threshold,
+                tree_width=self.tree_width,
+                out_path=self.out_path,
+                on_host=self.on_host,
+                stat_name=self.stat_name,
+                name_sep=self.name_sep,
+            )
+        ]
+
+    @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
+    def apply_op(
+        self,
+        gdf: cudf.DataFrame,
+        columns_ctx: dict,
+        input_cols,
+        target_cols=["base"],
+        stats_context={},
+    ):
+        new_gdf = gdf.copy(deep=False)
+        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
+        if isinstance(self.freq_threshold, dict):
+            assert all(x in self.freq_threshold for x in target_columns)
+        if not target_columns:
+            return new_gdf
+
+        if self.column_groups and not self.encode_type == "joint":
+            # Case (3) - We want to track multi- and single-column groups separately
+            #            when we are NOT performing a joint encoding. This is because
+            #            there is not a 1-to-1 mapping for columns in multi-col groups.
+            #            We use `multi_col_group` to preserve the list format of
+            #            multi-column groups only, and use `cat_names` to store the
+            #            string representation of both single- and multi-column groups.
+            #
+            cat_names, multi_col_group = _get_multicolumn_names(
+                self.column_groups, gdf.columns, self.name_sep
+            )
+        else:
+            # Case (1) & (2) - Simple 1-to-1 mapping
+            multi_col_group = {}
+            cat_names = [name for name in target_columns if name in gdf.columns]
+
+        # Encode each column-group separately
+        for name in cat_names:
+            new_col = f"{name}_{self._id}"
+
+            # Use the column-group `list` directly (not the string name)
+            use_name = multi_col_group.get(name, name)
+            # Storage name may be different than group for case (2)
+            # Only use the "aliased" `storage_name` if we are dealing with
+            # a multi-column group, or if we are doing joint encoding
+            if use_name != name or self.encode_type == "joint":
+                storage_name = self.storage_name.get(name, name)
+            else:
+                storage_name = name
+            path = stats_context[self.stat_name][storage_name]
+            new_gdf[new_col] = _encode(
+                use_name,
+                storage_name,
+                path,
+                gdf,
+                self.cat_cache,
+                na_sentinel=self.na_sentinel,
+                freq_threshold=self.freq_threshold[name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+            )
+            if self.dtype:
+                new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
+
+        # Deal with replacement
+        if self.replace:
+            for name in cat_names:
+                new_col = f"{name}_{self._id}"
+                new_gdf[name] = new_gdf[new_col]
+                new_gdf.drop(columns=[new_col], inplace=True)
+
+        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
+        return new_gdf
+
+
+def _get_embedding_order(cat_names):
+    """ Returns a consistent sorder order for categorical variables
+
+    Parameters
+    -----------
+    cat_names : list of str
+        names of the categorical columns
+    """
+    return sorted(cat_names)
+
+
+def get_embedding_sizes(workflow):
+    cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
+    return _get_embeddings_dask(workflow.stats["categories"], cols)
+
+
+def _get_embeddings_dask(paths, cat_names):
+    embeddings = {}
+    for col in cat_names:
+        path = paths[col]
+        num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+        embeddings[col] = _emb_sz_rule(num_rows)
+    return embeddings
+
+
+def _emb_sz_rule(n_cat: int) -> int:
+    return n_cat, int(min(16, round(1.6 * n_cat ** 0.56)))
 
 
 def _make_name(*args, sep="_"):

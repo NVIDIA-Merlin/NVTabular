@@ -13,16 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import warnings
 
-from . import workflow
-from .io import dataset
+from . import dataset, shuffle
 
-Workflow = workflow.Workflow
 Dataset = dataset.Dataset
-
-
-__all__ = ["Workflow", "Dataset"]
-
-# cudf warns about column ordering with dlpack methods, ignore it
-warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+Shuffle = shuffle.Shuffle
+_shuffle_gdf = shuffle._shuffle_gdf
