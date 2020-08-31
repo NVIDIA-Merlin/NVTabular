@@ -19,7 +19,7 @@ import os
 import cupy
 import tensorflow as tf
 
-from nvtabular.io import Dataset
+from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 

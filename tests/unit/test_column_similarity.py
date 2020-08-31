@@ -18,7 +18,7 @@ import cupy
 import pytest
 
 import nvtabular
-from nvtabular.column_similarity import ColumnSimilarity
+from nvtabular.ops.column_similarity import ColumnSimilarity
 
 
 @pytest.mark.parametrize("on_device", [True, False])
