@@ -616,9 +616,9 @@ class Workflow(BaseWorkflow):
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    stats.append(
-                        (op.stat_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
-                    )
+                    _ddf = self.get_ddf()
+                    stats.append((op.stat_logic(_ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    self.set_ddf(_ddf)
 
         # Compute statistics if necessary
         if stats:
