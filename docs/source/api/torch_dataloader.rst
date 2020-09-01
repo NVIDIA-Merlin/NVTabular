@@ -1,6 +1,6 @@
 Torch Dataloader
 ================
 
-.. automodule:: nvtabular.torch_dataloader
+.. automodule:: nvtabular.loader.torch
    :members:
    :show-inheritance:
