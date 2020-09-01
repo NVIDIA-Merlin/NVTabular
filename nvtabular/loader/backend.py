@@ -28,6 +28,25 @@ def _num_steps(num_samples, step_size):
     return (num_samples - 1) // step_size + 1
 
 
+class _DummyThread:
+    def __init__(self, target, args):
+        dev, dataset = args
+        self._buff = dataset._buff
+        self._buff._itr = iter(target(dev, dataset))
+        self.daemon = False
+
+    def start(self):
+        pass
+
+    def join(self):
+        self._buff._itr = None
+        self._buff._iterating = False
+
+    def is_alive(self):
+        return self._buf
+
+
+
 class ChunkQueue:
     """ This class takes partitions (parts) from an NVTabular dataset
        and concatenates them into a cudf dataframe "chunk". This chunk
@@ -55,16 +74,28 @@ class ChunkQueue:
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
 
+        # adding for sync behavior
+        self._itr = None
+        self._iterating = False
+
     @property
     def stopped(self):
         return self._stop_event.is_set()
 
     @property
     def empty(self):
-        return self.q_out.empty()
+        # ADDING FOR SYNC BEHAVIOR
+        # return self.q_out.empty()
+        return self._iterating
 
     def get(self):
-        return self.q_out.get()
+        # ADDING FOR SYNC BEHAVIOR
+        # return self.q_out.get()
+        try:
+            return next(self._itr)
+        except StopIteration as e:
+            self._iterating = False
+            raise e
 
     def put(self, packet):
         while True:
@@ -97,6 +128,8 @@ class ChunkQueue:
                 current = []
 
     def load_chunks(self, dev, dataloader):
+        # ADDING FOR SYNC BEHAVIOR
+        self._iterating = True
         try:
             indices = dataloader._gather_indices_for_dev(dev)
             itr = iter(dataloader.data.to_iter(indices=indices))
@@ -132,8 +165,10 @@ class ChunkQueue:
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from
                         # freezing on a put on a full queue
-                        if self.put(chunks):
-                            return
+                        # ADDING FOR SYNC BEHAVIOR
+                        # if self.put(chunks):
+                        #     return
+                        yield chunks
                     chunks = None
 
                 # takes care final batch, which is less than batch size
@@ -142,9 +177,13 @@ class ChunkQueue:
                         spill = workflow.apply_ops(spill)
                     spill = dataloader._create_tensors(spill)
                     spill = dataloader._handle_tensors(*spill)
-                    self.put([spill])
+                    # ADDING FOR SYNC BEHAVIOR
+                    # self.put([spill])
+                    yield spill
         except Exception as e:
-            self.put(e)
+            # ADDING FOR SYNC BEHAVIOR
+            # self.put(e)
+            raise e
 
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
@@ -257,7 +296,8 @@ class DataLoader:
         # concatenating data
         self._workers = []
         for dev in self.devices:
-            t = threading.Thread(target=self._buff.load_chunks, args=(dev, self))
+            Thread = _DummyThread
+            t = Thread(target=self._buff.load_chunks, args=(dev, self))
             t.daemon = True
             t.start()
             self._workers.append(t)
