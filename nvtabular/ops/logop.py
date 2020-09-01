@@ -22,16 +22,10 @@ from .transform_operator import TransformOperator
 
 
 class LogOp(TransformOperator):
-
     """
-    Standardizing the features around 0 with a standard deviation
-    of 1 is a common technique to compare measurements that have
-    different units. This operation can be added to the workflow
-    to standardize the features.
-
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    This operator calculates the log of continous columns. Note that
+    to handle the common case of zerofilling null values, this is
+    calculates ``log(1+x)`` instead of just ``log(x)``.
     """
 
     default_in = CONT
