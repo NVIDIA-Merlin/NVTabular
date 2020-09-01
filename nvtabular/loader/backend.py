@@ -43,7 +43,7 @@ class _DummyThread:
         self._buff._iterating = False
 
     def is_alive(self):
-        return self._buf
+        return self._buff._iterating
 
 
 
