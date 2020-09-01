@@ -17,7 +17,6 @@
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
 from nvtabular import ops as ops
 
 # If tensorflow isn't installed skip these tests. Note that the
