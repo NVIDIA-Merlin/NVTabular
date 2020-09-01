@@ -1,6 +1,6 @@
 TensorFlow Dataloader
 =====================
 
-.. automodule:: nvtabular.tf_dataloader
+.. automodule:: nvtabular.loader.tensorflow
    :members:
    :show-inheritance:
