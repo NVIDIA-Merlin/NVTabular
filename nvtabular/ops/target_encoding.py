@@ -161,15 +161,12 @@ class TargetEncoding(DFOperator):
     def _op_group_logic(self, cat_group, gdf, stats_context, y_mean, fit_folds, group_ind):
 
         # Define name of new TE column
-        if self.out_col is None:
-            out_col = self._make_te_name(cat_group)
-        elif isinstance(self.out_col, list):
+        if isinstance(self.out_col, list):
             if group_ind >= len(self.out_col):
-                out_col = self._make_te_name(cat_group)
-            elif isinstance(self.out_col[group_ind], str):
-                out_col = self.out_col[group_ind]
-            else:
-                out_col = self._make_te_name(cat_group)
+                raise ValueError("out_col and cat_groups are different sizes.")
+            out_col = self.out_col[group_ind]
+        else:
+            out_col = self._make_te_name(cat_group)
 
         # Initialize new data
         new_gdf = cudf.DataFrame()
