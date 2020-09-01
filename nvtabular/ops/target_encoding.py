@@ -52,12 +52,19 @@ class TargetEncoding(DFOperator):
 
     Parameters
     -----------
-    cat_group : list of str
-        Column, or group of columns, to target encode.
+    cat_groups : list of column-groups
+        Columns, or column groups, to target encode. A single encoding
+        will include multiple categorical columns if the column names are
+        enclosed within two layers of square brackets.  For example,
+        `["a", "b"]` means "a" and "b" will be separately encoded, while
+        `[["a", "b"]]` means they will be encoded as a single group.
+        Note that the same column can be used for multiple encodings.
+        For example, `["a", ["a", "b"]]` is valid.
     cont_target : str
-        Continuous target column to use for the encoding of cat_group.
+        Continuous target column to use for the encoding of cat_groups.
+        The same continuous target will be used for all `cat_groups`.
     kfold : int, default 3
-        Numbner of cross-validation folds to use while gathering
+        Number of cross-validation folds to use while gathering
         statistics (during `GroupbyStatistics`).
     fold_seed : int, default 42
         Random seed to use for cupy-based fold assignment.
@@ -66,10 +73,12 @@ class TargetEncoding(DFOperator):
         `GroupbyStatistics` dependency (after the transformation).
     p_smooth : int, default 20
         Smoothing factor.
-    out_col : str, default is problem-specific
-        Name of output target-encoding column.
+    out_col : str or list of str, default is problem-specific
+        Name of output target-encoding column. If `cat_groups` includes
+        multiple elements, this should be a list of the same length (and
+        elements must be unique).
     out_dtype : str, default is problem-specific
-        dtype of output target-encoding column.
+        dtype of output target-encoding columns.
     replace : bool, default False
         This parameter is ignored
     tree_width : dict or int, optional
@@ -88,7 +97,7 @@ class TargetEncoding(DFOperator):
 
     def __init__(
         self,
-        cat_group,
+        cat_groups,
         cont_target,
         kfold=None,
         fold_seed=42,
@@ -106,12 +115,16 @@ class TargetEncoding(DFOperator):
         drop_folds=True,
     ):
         super().__init__(preprocessing=preprocessing, replace=False)
-        self.cat_group = cat_group if isinstance(cat_group, list) else [cat_group]
+        # Make sure cat_groups is a list of lists
+        self.cat_groups = cat_groups if isinstance(cat_groups, list) else [cat_groups]
+        for i in range(len(self.cat_groups)):
+            if not isinstance(self.cat_groups[i], list):
+                self.cat_groups[i] = [self.cat_groups[i]]
         self.cont_target = cont_target
         self.kfold = kfold or 3
         self.fold_seed = fold_seed
         self.p_smooth = p_smooth
-        self.out_col = out_col
+        self.out_col = [out_col] if isinstance(out_col, str) else out_col
         self.out_dtype = out_dtype
         self.tree_width = tree_width
         self.out_path = out_path
@@ -126,7 +139,7 @@ class TargetEncoding(DFOperator):
         return [
             Moments(columns=[self.cont_target]),
             GroupbyStatistics(
-                columns=[self.cat_group],
+                columns=self.cat_groups,
                 concat_groups=False,
                 cont_names=[self.cont_target],
                 stats=["count", "sum"],
@@ -137,29 +150,34 @@ class TargetEncoding(DFOperator):
                 name_sep=self.name_sep,
                 kfold=self.kfold,
                 fold_seed=self.fold_seed,
-                fold_groups=[self.cat_group],
+                fold_groups=self.cat_groups,
             ),
         ]
 
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def _make_te_name(self, cat_group):
+        tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
+        return f"TE_{tag}_{self.cont_target}"
 
-        new_gdf = cudf.DataFrame()
-        tmp = "__tmp__"  # Temporary column for sorting
-        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+    def _op_group_logic(self, cat_group, gdf, stats_context, y_mean, fit_folds, group_ind):
 
+        # Define name of new TE column
         if self.out_col is None:
-            tag = nvt_cat._make_name(*self.cat_group, sep=self.name_sep)
-            self.out_col = f"TE_{tag}_{self.cont_target}"
+            out_col = self._make_te_name(cat_group)
+        elif isinstance(self.out_col, list):
+            if group_ind >= len(self.out_col):
+                out_col = self._make_te_name(cat_group)
+            elif isinstance(self.out_col[group_ind], str):
+                out_col = self.out_col[group_ind]
+            else:
+                out_col = self._make_te_name(cat_group)
 
-        # Need mean of contiuous target column
-        y_mean = stats_context["means"][self.cont_target]
-
-        # Only perform "fit" if fold column is present
-        fit_folds = "__fold__" in gdf.columns
+        # Initialize new data
+        new_gdf = cudf.DataFrame()
+        tmp = "__tmp__"
 
         if fit_folds:
             # Groupby Aggregation for each fold
-            cols = ["__fold__"] + self.cat_group
+            cols = ["__fold__"] + cat_group
             storage_name_folds = nvt_cat._make_name(*cols, sep=self.name_sep)
             path_folds = stats_context[self.stat_name][storage_name_folds]
             agg_each_fold = nvt_cat._read_groupby_stat_df(
@@ -167,19 +185,19 @@ class TargetEncoding(DFOperator):
             )
             agg_each_fold.columns = cols + ["count_y", "sum_y"]
         else:
-            cols = self.cat_group
+            cols = cat_group
 
         # Groupby Aggregation for all data
-        storage_name_all = nvt_cat._make_name(*self.cat_group, sep=self.name_sep)
+        storage_name_all = nvt_cat._make_name(*cat_group, sep=self.name_sep)
         path_all = stats_context[self.stat_name][storage_name_all]
         agg_all = nvt_cat._read_groupby_stat_df(path_all, storage_name_all, self.cat_cache)
-        agg_all.columns = self.cat_group + ["count_y_all", "sum_y_all"]
+        agg_all.columns = cat_group + ["count_y_all", "sum_y_all"]
 
         if fit_folds:
-            agg_each_fold = agg_each_fold.merge(agg_all, on=self.cat_group, how="left")
+            agg_each_fold = agg_each_fold.merge(agg_all, on=cat_group, how="left")
             agg_each_fold["count_y_all"] = agg_each_fold["count_y_all"] - agg_each_fold["count_y"]
             agg_each_fold["sum_y_all"] = agg_each_fold["sum_y_all"] - agg_each_fold["sum_y"]
-            agg_each_fold[self.out_col] = (agg_each_fold["sum_y_all"] + self.p_smooth * y_mean) / (
+            agg_each_fold[out_col] = (agg_each_fold["sum_y_all"] + self.p_smooth * y_mean) / (
                 agg_each_fold["count_y_all"] + self.p_smooth
             )
             agg_each_fold = agg_each_fold.drop(
@@ -188,7 +206,7 @@ class TargetEncoding(DFOperator):
             tran_gdf = gdf[cols + [tmp]].merge(agg_each_fold, on=cols, how="left")
             del agg_each_fold
         else:
-            agg_all[self.out_col] = (agg_all["sum_y_all"] + self.p_smooth * y_mean) / (
+            agg_all[out_col] = (agg_all["sum_y_all"] + self.p_smooth * y_mean) / (
                 agg_all["count_y_all"] + self.p_smooth
             )
             agg_all = agg_all.drop(["count_y_all", "sum_y_all"], axis=1)
@@ -198,9 +216,9 @@ class TargetEncoding(DFOperator):
         # TODO: There is no need to perform the `agg_each_fold.merge(agg_all, ...)` merge
         #     for every partition.  We can/should cache the result for better performance.
 
-        tran_gdf[self.out_col] = tran_gdf[self.out_col].fillna(y_mean)
+        tran_gdf[out_col] = tran_gdf[out_col].fillna(y_mean)
         if self.out_dtype is not None:
-            tran_gdf[self.out_col] = tran_gdf[self.out_col].astype(self.out_dtype)
+            tran_gdf[out_col] = tran_gdf[out_col].astype(self.out_dtype)
 
         tran_gdf = tran_gdf.sort_values(tmp, ignore_index=True)
         tran_gdf.drop(columns=cols + [tmp], inplace=True)
@@ -209,7 +227,32 @@ class TargetEncoding(DFOperator):
 
         # Make sure we are preserving the index of gdf
         new_gdf.index = gdf.index
+        return new_gdf
 
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+
+        # Add temporary column for sorting
+        tmp = "__tmp__"
+        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+
+        # Only perform "fit" if fold column is present
+        fit_folds = "__fold__" in gdf.columns
+
+        # Need mean of contiuous target column
+        y_mean = stats_context["means"][self.cont_target]
+
+        # Loop over categorical-column groups and apply logic
+        new_gdf = None
+        for ind, cat_group in enumerate(self.cat_groups):
+            if new_gdf is None:
+                new_gdf = self._op_group_logic(
+                    cat_group, gdf, stats_context, y_mean, fit_folds, ind
+                )
+            else:
+                _df = self._op_group_logic(cat_group, gdf, stats_context, y_mean, fit_folds, ind)
+                new_gdf = cudf.concat([new_gdf, _df], axis=1)
+
+        # Drop temporary columns
         gdf.drop(
             columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True
         )

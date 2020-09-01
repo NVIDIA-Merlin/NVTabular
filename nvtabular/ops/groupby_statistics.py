@@ -137,9 +137,10 @@ class GroupbyStatistics(StatOperator):
         return str(self.op_name)
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        col_groups = self.column_groups
         if self.column_groups is None:
             col_groups = self.get_columns(columns_ctx, input_cols, target_cols)
+        else:
+            col_groups = self.column_groups.copy()
         supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
