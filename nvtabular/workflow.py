@@ -23,7 +23,10 @@ import dask_cudf
 import yaml
 from fsspec.core import get_fs_token_paths
 
-import nvtabular.io as nvt_io
+from nvtabular.io.dask import _ddf_to_dataset
+from nvtabular.io.dataset import Dataset
+from nvtabular.io.shuffle import Shuffle, _check_shuffle_arg
+from nvtabular.io.writer_factory import writer_factory
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
@@ -248,7 +251,8 @@ class BaseWorkflow:
             master_task_list = master_task_list + task_sets[task_set]
 
         baseline, leftovers = self._sort_task_types(master_task_list)
-        self.phases.append(baseline)
+        if baseline:
+            self.phases.append(baseline)
         self._phase_creator(leftovers)
         self._create_final_col_refs(task_sets)
 
@@ -338,6 +342,7 @@ class BaseWorkflow:
                         obj = [obj]
                     for idx, op in enumerate(obj):
                         tasks.append((op, [obj[idx - 1]._id] if idx > 0 else []))
+
                 ret[phase][k] = tasks
         return ret
 
@@ -368,15 +373,17 @@ class BaseWorkflow:
         final["label"] = []
         for col_ctx in self.columns_ctx["label"].values():
             if not final["label"]:
-                final["label"] = col_ctx
+                final["label"] = ["base"]
             else:
                 final["label"] = final["label"] + col_ctx
         # if no operators run in preprocessing we grab base columns
         if "continuous" not in final:
             # set base columns
-            final["continuous"] = self.columns_ctx["continuous"]["base"]
+            final["continuous"] = ["base"]
         if "categorical" not in final:
-            final["categorical"] = self.columns_ctx["categorical"]["base"]
+            final["categorical"] = ["base"]
+        if "all" not in final:
+            final["all"] = ["base"]
         self.columns_ctx["final"] = {}
         self.columns_ctx["final"]["ctx"] = final
 
@@ -556,7 +563,7 @@ class Workflow(BaseWorkflow):
         self._shuffle_parts = False
 
     def set_ddf(self, ddf, shuffle=None):
-        if isinstance(ddf, (dask_cudf.DataFrame, nvt_io.Dataset)):
+        if isinstance(ddf, (dask_cudf.DataFrame, Dataset)):
             self.ddf = ddf
             if shuffle is not None:
                 self._shuffle_parts = shuffle
@@ -566,7 +573,7 @@ class Workflow(BaseWorkflow):
     def get_ddf(self):
         if self.ddf is None:
             raise ValueError("No dask_cudf frame available.")
-        elif isinstance(self.ddf, nvt_io.Dataset):
+        elif isinstance(self.ddf, Dataset):
             columns = self.columns_ctx["all"]["base"]
             return self.ddf.to_ddf(columns=columns, shuffle=self._shuffle_parts)
         return self.ddf
@@ -612,9 +619,9 @@ class Workflow(BaseWorkflow):
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    stats.append(
-                        (op.stat_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
-                    )
+                    _ddf = self.get_ddf()
+                    stats.append((op.stat_logic(_ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    self.set_ddf(_ddf)
 
         # Compute statistics if necessary
         if stats:
@@ -706,7 +713,7 @@ class Workflow(BaseWorkflow):
         """
 
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
@@ -748,17 +755,17 @@ class Workflow(BaseWorkflow):
         """ Iterate through dataset and (optionally) apply/shuffle/write.
         """
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         # Check if we have a (supported) writer
         output_path = output_path or "./"
         output_path = str(output_path)
-        writer = nvt_io.writer_factory(
+        writer = writer_factory(
             output_format,
             output_path,
             out_files_per_proc,
             shuffle,
-            bytes_io=(shuffle == nvt_io.shuffle.per_worker),
+            bytes_io=(shuffle == Shuffle.PER_WORKER),
             num_threads=num_io_threads,
         )
 
@@ -802,7 +809,7 @@ class Workflow(BaseWorkflow):
             Full graph is only executed if `output_format` is specified.
         """
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         end = end_phase if end_phase else len(self.phases)
 
@@ -851,7 +858,7 @@ class Workflow(BaseWorkflow):
             Assumes statistics are already gathered.
         """
         # Check shuffle argument
-        shuffle = nvt_io._check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
 
         if nfiles:
             warnings.warn("nfiles is deprecated. Use out_files_per_proc")
@@ -906,7 +913,7 @@ class Workflow(BaseWorkflow):
             label_names = self.get_final_cols_names("label")
 
             # Output dask_cudf DataFrame to dataset
-            nvt_io._ddf_to_dataset(
+            _ddf_to_dataset(
                 ddf,
                 fs,
                 output_path,

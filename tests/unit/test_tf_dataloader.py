@@ -17,15 +17,16 @@
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
-import nvtabular.ops as ops
+from nvtabular import ops as ops
 
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
-tf_dataloader = pytest.importorskip("nvtabular.tf_dataloader")
+tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+# TODO: include use_columns option
+# TODO: include parts_per_chunk test
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.06])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("use_paths", [True, False])
@@ -44,12 +45,13 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
-    data_itr = tf_dataloader.KerasSequenceDataset(
+    data_itr = tf_dataloader.KerasSequenceLoader(
         paths if use_paths else dataset,
-        columns=columns,
+        cat_names=cat_names,
+        cont_names=cont_names,
         batch_size=batch_size,
         buffer_size=gpu_memory_frac,
-        label_name=label_name[0],
+        label_names=label_name,
         engine=engine,
         shuffle=False,
     )
@@ -57,6 +59,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     data_itr.map(processor)
 
     rows = 0
+    dont_iter = False
     for idx in range(len(data_itr)):
         X, y = next(data_itr)
 
@@ -65,8 +68,16 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
             X0, y0 = X, y
 
         # check that we have at most batch_size elements
-        num_samples = y.shape[0]
-        assert num_samples <= batch_size
+        num_samples = y[0].shape[0]
+        if num_samples != batch_size:
+            try:
+                next(data_itr)
+            except StopIteration:
+                rows += num_samples
+                dont_iter = True
+                continue
+            else:
+                raise ValueError("Batch size too small at idx {}".format(idx))
 
         # check that all the features in X have the
         # appropriate length and that the set of
@@ -80,18 +91,30 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
                 raise AssertionError
             assert x.shape[0] == num_samples
         assert len(these_cols) == 0
-
         rows += num_samples
+
+    assert (idx + 1) * batch_size >= rows
+    assert rows == (60 * 24 * 3 + 1)
+    if not dont_iter:
+        try:
+            next(data_itr)
+        except StopIteration:
+            pass
+        else:
+            raise ValueError
+    assert not data_itr._working
+    assert data_itr._batch_itr is None
 
     # check start of next epoch to ensure consistency
     X, y = next(data_itr)
-    assert (y.numpy() == y0.numpy()).all()
+    for _y, _y0 in zip(y, y0):
+        assert (_y.numpy() == _y0.numpy()).all()
+
     for column, x in X.items():
         x0 = X0.pop(column)
         assert (x.numpy() == x0.numpy()).all()
     assert len(X0) == 0
 
-    # accounts for incomplete batches at the end of chunks
-    # that dont necesssarily have the full batch_size
-    assert (idx + 1) * batch_size >= rows
-    assert rows == (60 * 24 * 3 + 1)
+    data_itr.stop()
+    assert not data_itr._working
+    assert data_itr._batch_itr is None

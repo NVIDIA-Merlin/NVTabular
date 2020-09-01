@@ -1,7 +1,7 @@
 How it Works
 ============
 
-![NVTabular Workflow](./_images/nvt_workflow.png)
+![NVTabular Workflow](./images/nvt_workflow.png)
 
 NVTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive dataset like [Criteo](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or [RecSys 2020](https://recsys-twitter.com/) that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as NVTabular in order to make tabular data workflows simpler.
 
