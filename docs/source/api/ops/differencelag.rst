@@ -1,5 +1,5 @@
 DifferenceLag
-========
+=============
 
 .. autoclass:: nvtabular.ops.DifferenceLag
    :members:
