@@ -336,14 +336,22 @@ class DataLoader:
         except StopIteration:
             # anticipate any more chunks getting created
             # if not, raise the StopIteration
-            if not self._working and self._buff.empty:
+            # ADDING FOR SYNC BEHAVIOR
+            # if not self._working and self._buff.empty:
+            #     self._workers = None
+            #     self._batch_itr = None
+            #     raise StopIteration
+            try:
+                self._fetch_chunk()
+            except StopIteration as e:
                 self._workers = None
                 self._batch_itr = None
-                raise StopIteration
+                raise e
 
             # otherwise get the next chunks and return
             # the first batch
-            self._fetch_chunk()
+            # ADDING FOR SYNC BEHAVIOR
+            # self._fetch_chunk()
             batch = next(self._batch_itr)
         return batch
 
