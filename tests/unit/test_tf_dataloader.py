@@ -104,9 +104,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
             pass
         else:
             raise ValueError
-    if data_itr._working:
-        print(data_itr._workers, data_itr._buff._itr)
-        raise RuntimeError
+    assert not data_itr._working
     assert data_itr._batch_itr is None
 
     # check start of next epoch to ensure consistency

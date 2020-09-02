@@ -42,7 +42,7 @@ class _DummyThread:
         self._buff._itr = None
 
     def is_alive(self):
-        return self._buff._itr is None
+        return self._buff._itr is not None
 
 
 class ChunkQueue:
