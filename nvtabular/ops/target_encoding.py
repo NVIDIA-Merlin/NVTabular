@@ -99,6 +99,7 @@ class TargetEncoding(DFOperator):
         self,
         cat_groups,
         cont_target,
+        target_mean=None,
         kfold=None,
         fold_seed=42,
         p_smooth=20,
@@ -121,6 +122,7 @@ class TargetEncoding(DFOperator):
             if not isinstance(self.cat_groups[i], list):
                 self.cat_groups[i] = [self.cat_groups[i]]
         self.cont_target = cont_target
+        self.target_mean = target_mean
         self.kfold = kfold or 3
         self.fold_seed = fold_seed
         self.p_smooth = p_smooth
@@ -136,8 +138,10 @@ class TargetEncoding(DFOperator):
 
     @property
     def req_stats(self):
-        return [
-            Moments(columns=[self.cont_target]),
+        stats = []
+        if self.target_mean is None:
+            stats.append(Moments(columns=[self.cont_target]))
+        stats.append(
             GroupbyStatistics(
                 columns=self.cat_groups,
                 concat_groups=False,
@@ -148,11 +152,13 @@ class TargetEncoding(DFOperator):
                 on_host=self.on_host,
                 stat_name=self.stat_name,
                 name_sep=self.name_sep,
+                fold_name="__fold__",
                 kfold=self.kfold,
                 fold_seed=self.fold_seed,
                 fold_groups=self.cat_groups,
-            ),
-        ]
+            )
+        )
+        return stats
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
@@ -236,7 +242,7 @@ class TargetEncoding(DFOperator):
         fit_folds = "__fold__" in gdf.columns
 
         # Need mean of contiuous target column
-        y_mean = stats_context["means"][self.cont_target]
+        y_mean = self.target_mean or stats_context["means"][self.cont_target]
 
         # Loop over categorical-column groups and apply logic
         new_gdf = None

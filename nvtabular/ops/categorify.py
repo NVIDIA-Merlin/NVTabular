@@ -23,7 +23,7 @@ import numpy as np
 from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.core import flatten
-from dask.dataframe.core import _concat
+from dask.dataframe.core import _concat, new_dd_object
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
@@ -302,6 +302,36 @@ def _emb_sz_rule(n_cat: int) -> int:
 
 def _make_name(*args, sep="_"):
     return sep.join(args)
+
+
+def _add_fold(gdf, kfold, fold_seed, fold_name, part_index):
+    if fold_name not in gdf.columns:
+        len_gdf = len(gdf)
+        typ = np.min_scalar_type(kfold * 2)
+        if len_gdf == 0:
+            gdf[fold_name] = np.ones(len_gdf, dtype=typ)
+            return gdf
+        if fold_seed is None:
+            fold = cp.arange(len_gdf, dtype=typ)
+            cp.mod(fold, kfold, out=fold)
+            gdf[fold_name] = fold
+        else:
+            cp.random.seed(fold_seed + part_index if part_index else fold_seed)
+            gdf[fold_name] = cp.random.choice(cp.arange(kfold, dtype=typ), len_gdf)
+    return gdf
+
+
+def _add_fold_to_collection(ddf, kfold, fold_seed, fold_name):
+    old_name = ddf._name
+    new_name = "add_fold-" + tokenize(ddf, kfold, fold_seed, fold_name)
+    npartitions = ddf.npartitions
+    dsk = {}
+    for p in range(npartitions):
+        dsk[(new_name, p)] = (_add_fold, (old_name, p), kfold, fold_seed, fold_name, p)
+    divisions = [None] * (npartitions + 1)
+    meta = _add_fold(ddf._meta, kfold, fold_seed, fold_name, 0)
+    graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
+    return new_dd_object(graph, new_name, meta, divisions)
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
