@@ -45,7 +45,6 @@ class _DummyThread:
         return self._buff._itr is None
 
 
-
 class ChunkQueue:
     """ This class takes partitions (parts) from an NVTabular dataset
        and concatenates them into a cudf dataframe "chunk". This chunk
