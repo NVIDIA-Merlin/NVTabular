@@ -23,10 +23,7 @@ def test_criteo_notebook(tmpdir):
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
     _run_notebook(
-        tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
-        # disable rmm.reinitialize, seems to be causing issues
-        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
+        tmpdir, os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
     )
 
 
