@@ -25,6 +25,20 @@ class Clip(TransformOperator):
     This operation clips values continous values so that they are with a min/max bound.
     For instance by setting the min value to 0, you can replace all negative values with 0.
     This is helpful in cases where you want to log normalize values.
+
+    Parameters
+    ----------
+    min_value : float, default None
+        The mininum value to clip values to: values less than this will be replaced with
+        this value. Specifying ``None`` means don't apply a minimum threshold.
+    max_value : float, default None
+        The maximum value to clip values to: values greater than this will be replaced with
+        this value. Specifying ``None`` means don't apply a maximum threshold.
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
+    preprocessing : bool, default True
+    replace : bool, default False
     """
 
     default_in = CONT

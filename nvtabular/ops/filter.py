@@ -28,10 +28,11 @@ class Filter(TransformOperator):
     Parameters
     -----------
     f : callable
-        Defines a function that filter rows from a dataframe. Exp: ```lambda gdf: gdf[gdf.a >= 0]```
-        would filter out the rows with a negative value in the ```a``` column.
+        Defines a function that filter rows from a dataframe. For example,
+        ``lambda gdf: gdf[gdf.a >= 0]`` would filter out the rows with a negative value
+        in the ``a`` column.
     preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
+    replace : bool, default True
     """
 
     default_in = ALL
