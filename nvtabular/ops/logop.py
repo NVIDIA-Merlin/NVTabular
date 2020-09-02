@@ -32,7 +32,9 @@ class LogOp(TransformOperator):
     default_out = CONT
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def op_logic(
+        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
+    ):
         cont_names = target_columns
         if not cont_names:
             return gdf

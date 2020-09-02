@@ -77,9 +77,12 @@ class TransformOperator(Operator):
         input_cols,
         target_cols=["base"],
         stats_context=None,
+        partition_index=None,
     ):
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
-        new_gdf = self.op_logic(gdf, target_columns, stats_context=stats_context)
+        new_gdf = self.op_logic(
+            gdf, target_columns, stats_context=stats_context, partition_index=partition_index
+        )
         self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return self.assemble_new_df(gdf, new_gdf, target_columns)
 
@@ -92,7 +95,7 @@ class TransformOperator(Operator):
                 return origin_gdf
         return cudf.concat([origin_gdf, new_gdf], axis=1)
 
-    def op_logic(self, gdf, target_columns, stats_context=None):
+    def op_logic(self, gdf, target_columns, stats_context=None, partition_index=None):
         raise NotImplementedError(
             """Must implement transform in the op_logic method,
                                      The return value must be a dataframe with all required

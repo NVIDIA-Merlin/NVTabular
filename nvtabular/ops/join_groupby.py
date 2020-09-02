@@ -121,7 +121,9 @@ class JoinGroupby(DFOperator):
             )
         ]
 
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def op_logic(
+        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
+    ):
 
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting

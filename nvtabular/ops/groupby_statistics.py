@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cupy
-import numpy as np
 from dask.core import flatten
 from dask.delayed import Delayed
 
@@ -146,28 +144,11 @@ class GroupbyStatistics(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
+        fold_info = None
         if self.fold_groups and self.kfold > 1:
-            # Add new fold column if necessary
+            # Specify how to add new fold column if necessary
             if self.fold_name not in ddf.columns:
-
-                def _add_fold(s, kfold, fold_seed):
-                    typ = np.min_scalar_type(kfold * 2)
-                    if fold_seed is None:
-                        # If we don't have a specific seed,
-                        # just use a simple modulo-based mapping
-                        fold = cupy.arange(len(s), dtype=typ)
-                        cupy.mod(fold, kfold, out=fold)
-                        return fold
-                    else:
-                        cupy.random.seed(fold_seed)
-                        return cupy.random.choice(cupy.arange(kfold, dtype=typ), len(s))
-
-                ddf[self.fold_name] = ddf.map_partitions(
-                    _add_fold,
-                    self.kfold,
-                    self.fold_seed,
-                    meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
-                )
+                fold_info = {"kfold": self.kfold, "seed": self.fold_seed, "name": self.fold_name}
 
             # Add new col_groups with fold
             for group in self.fold_groups:
@@ -194,6 +175,7 @@ class GroupbyStatistics(StatOperator):
             stat_name=self.stat_name,
             concat_groups=self.concat_groups,
             name_sep=self.name_sep,
+            fold_info=fold_info,
         )
         return Delayed(key, dsk)
 

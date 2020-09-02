@@ -66,7 +66,7 @@ class ColumnSimilarity(TransformOperator):
     default_out = CONT
 
     def __init__(
-        self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True,
+        self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True
     ):
         super(ColumnSimilarity, self).__init__(columns=[a_col, b_col], replace=False)
         self.name = name
@@ -89,6 +89,7 @@ class ColumnSimilarity(TransformOperator):
         input_cols,
         target_cols=["base"],
         stats_context=None,
+        partition_index=None,
     ):
         a = gdf[self.a_col].values if self.on_device else gdf[self.a_col].values_host
         b = gdf[self.b_col].values if self.on_device else gdf[self.b_col].values_host

@@ -127,6 +127,7 @@ class JoinExternal(TransformOperator):
         input_cols,
         target_cols=["base"],
         stats_context=None,
+        partition_index=None,
     ):
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         tmp = "__tmp__"  # Temporary column for sorting

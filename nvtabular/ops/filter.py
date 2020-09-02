@@ -52,6 +52,7 @@ class Filter(TransformOperator):
         input_cols,
         target_cols=["base"],
         stats_context=None,
+        partition_index=None,
     ):
         new_gdf = self.f(gdf)
         new_gdf.reset_index(drop=True, inplace=True)

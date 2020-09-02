@@ -50,7 +50,9 @@ class FillMissing(DFOperator):
         return []
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def op_logic(
+        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
+    ):
         cont_names = target_columns
         if not cont_names:
             return gdf
@@ -81,7 +83,9 @@ class FillMedian(DFOperator):
         return [Median(columns=self.columns)]
 
     @annotate("FillMedian_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def op_logic(
+        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
+    ):
         if not target_columns:
             return gdf
 
