@@ -26,6 +26,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     represenation of the data supplied. The data input requires an
     NVTabular dataset. Handles spillover to ensure all batches are
     the specified size until the final batch.
+
     Parameters
     -----------
     dataset : NVTabular dataset
@@ -39,9 +40,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         the size of each batch to supply to the model
     shuffle : bool
         enable/disable shuffling of dataset
-    parts_per_chunk: int
-        number of partitions from the iterator, an NVTabular Dataset,
-        to concatenate into a "chunk"
+    parts_per_chunk : int
+        number of partitions from the iterator, an NVTabular Dataset, to concatenate into a "chunk"
     devices : [int]
         list representing all available GPU IDs
     """

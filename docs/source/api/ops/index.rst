@@ -14,6 +14,7 @@ Operators
    Filter <filter>
    GroupBy <groupby>
    HashBucket <hashbucket>
+   JoinExternal <joinexternal>
    JoinGroupby <groupby>
    LambdaOp <lambdaop>
    LogOp <log>
