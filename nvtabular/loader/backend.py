@@ -40,10 +40,9 @@ class _DummyThread:
 
     def join(self):
         self._buff._itr = None
-        self._buff._iterating = False
 
     def is_alive(self):
-        return self._buff._iterating
+        return self._buff._itr is None
 
 
 
@@ -76,7 +75,6 @@ class ChunkQueue:
 
         # adding for sync behavior
         self._itr = None
-        self._iterating = False
 
     @property
     def stopped(self):
@@ -86,7 +84,7 @@ class ChunkQueue:
     def empty(self):
         # ADDING FOR SYNC BEHAVIOR
         # return self.q_out.empty()
-        return self._iterating
+        return self._itr is None
 
     def get(self):
         # ADDING FOR SYNC BEHAVIOR
@@ -94,7 +92,7 @@ class ChunkQueue:
         try:
             return next(self._itr)
         except StopIteration as e:
-            self._iterating = False
+            self._itr = None
             raise e
 
     def put(self, packet):
@@ -128,8 +126,6 @@ class ChunkQueue:
                 current = []
 
     def load_chunks(self, dev, dataloader):
-        # ADDING FOR SYNC BEHAVIOR
-        self._iterating = True
         try:
             indices = dataloader._gather_indices_for_dev(dev)
             itr = iter(dataloader.data.to_iter(indices=indices))
@@ -179,7 +175,7 @@ class ChunkQueue:
                     spill = dataloader._handle_tensors(*spill)
                     # ADDING FOR SYNC BEHAVIOR
                     # self.put([spill])
-                    yield spill
+                    yield [spill]
         except Exception as e:
             # ADDING FOR SYNC BEHAVIOR
             # self.put(e)
