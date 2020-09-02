@@ -180,6 +180,8 @@ class ChunkQueue:
             # self.put(e)
             raise e
 
+        self._itr = None
+
     # For when an iterator is stopped before iteration is complete.
     def stop(self):
         self._stop_event.set()
