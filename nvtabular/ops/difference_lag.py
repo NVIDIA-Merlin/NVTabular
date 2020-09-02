@@ -64,9 +64,7 @@ class DifferenceLag(TransformOperator):
         self.shift = shift
 
     @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
-    def op_logic(
-        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
-    ):
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         # compute a mask indicating partition boundaries, handling multiple partition_cols
         # represent partition boundaries by None values
         mask = gdf[self.partition_cols] == gdf[self.partition_cols].shift(self.shift)

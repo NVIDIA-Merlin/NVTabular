@@ -58,9 +58,7 @@ class LambdaOp(TransformOperator):
         return str(self.op_name)
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
-    def op_logic(
-        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
-    ):
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         new_gdf = cudf.DataFrame()
         for col in target_columns:
             new_gdf[col] = self.f(gdf[col], gdf)

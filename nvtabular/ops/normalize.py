@@ -44,9 +44,7 @@ class Normalize(DFOperator):
         return [Moments(columns=self.columns)]
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def op_logic(
-        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
-    ):
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         cont_names = target_columns
         if not cont_names or not stats_context["stds"]:
             return
@@ -87,9 +85,7 @@ class NormalizeMinMax(DFOperator):
         return [MinMax(columns=self.columns)]
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def op_logic(
-        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
-    ):
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         cont_names = target_columns
         if not cont_names or not stats_context["mins"]:
             return

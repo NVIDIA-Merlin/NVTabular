@@ -43,9 +43,7 @@ class HashBucket(TransformOperator):
         super(HashBucket, self).__init__(columns=columns, **kwargs)
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def op_logic(
-        self, gdf: cudf.DataFrame, target_columns: list, stats_context=None, partition_index=None
-    ):
+    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         cat_names = target_columns
         if isinstance(self.num_buckets, int):
             num_buckets = {name: self.num_buckets for name in cat_names}

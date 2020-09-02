@@ -41,7 +41,6 @@ class Dropna(TransformOperator):
         input_cols,
         target_cols=["base"],
         stats_context=None,
-        partition_index=None,
     ):
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         new_gdf = gdf.dropna(subset=target_columns or None)

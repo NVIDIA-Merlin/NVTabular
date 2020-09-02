@@ -21,9 +21,6 @@ import warnings
 import dask
 import dask_cudf
 import yaml
-from dask.base import tokenize
-from dask.dataframe.core import new_dd_object
-from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
 from nvtabular.io.dask import _ddf_to_dataset
@@ -582,36 +579,21 @@ class Workflow(BaseWorkflow):
         return self.ddf
 
     @staticmethod
-    def _aggregated_op(gdf, ops, partition_index):
+    def _aggregated_op(gdf, ops):
         for op in ops:
             columns_ctx, cols_grp, target_cols, logic, stats_context = op
-            gdf = logic(gdf, columns_ctx, cols_grp, target_cols, stats_context, partition_index)
+            gdf = logic(gdf, columns_ctx, cols_grp, target_cols, stats_context)
         return gdf
 
-    def _aggregated_dask_transform(self, transforms, use_part_index=False):
+    def _aggregated_dask_transform(self, transforms):
         # Assuming order of transforms corresponds to dependency ordering
         ddf = self.get_ddf()
         meta = ddf._meta
         for transform in transforms:
             columns_ctx, cols_grp, target_cols, logic, stats_context = transform
             meta = logic(meta, columns_ctx, cols_grp, target_cols, stats_context)
-
-        # new_ddf = ddf.map_partitions(self._aggregated_op, transforms, meta=meta)
-        # Use an approach similar to `map_partitions`.  However, we also pass
-        # the partition index to each transform operation.  This enables
-        # partition-dependent transform logic.
-        old_name = ddf._name
-        new_name = old_name + "_" + tokenize(transforms, meta)
-        npartitions = ddf.npartitions
-        dsk = {}
-        for p in range(npartitions):
-            # Only pass the partition index when the transform is being applied to
-            # the same data used to gather statistics.
-            part_index = p if use_part_index else None
-            dsk[(new_name, p)] = (self._aggregated_op, (old_name, p), transforms, part_index)
-        divisions = [None] * (npartitions + 1)
-        graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
-        self.set_ddf(new_dd_object(graph, new_name, meta, divisions))
+        new_ddf = ddf.map_partitions(self.__class__._aggregated_op, transforms, meta=meta)
+        self.set_ddf(new_ddf)
 
     def exec_phase(self, phase_index, record_stats=True):
         """
@@ -630,16 +612,16 @@ class Workflow(BaseWorkflow):
 
         # Preform transforms as single dask task (per ddf partition)
         if transforms:
-            self._aggregated_dask_transform(transforms, use_part_index=True)
+            self._aggregated_dask_transform(transforms)
 
         stats = []
         if record_stats:
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    stats.append(
-                        (op.stat_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
-                    )
+                    _ddf = self.get_ddf()
+                    stats.append((op.stat_logic(_ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    self.set_ddf(_ddf)
 
         # Compute statistics if necessary
         if stats:
@@ -649,7 +631,6 @@ class Workflow(BaseWorkflow):
                     op.finalize(computed_stats)
                     self._update_statistics(op)
                     op.clear()
-                self.client.cancel(stats)
             else:
                 for r in dask.compute(stats, scheduler="synchronous")[0]:
                     computed_stats, op = r

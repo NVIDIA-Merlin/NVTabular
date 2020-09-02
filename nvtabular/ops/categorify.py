@@ -208,7 +208,6 @@ class Categorify(DFOperator):
         input_cols,
         target_cols=["base"],
         stats_context={},
-        partition_index=None,
     ):
         new_gdf = gdf.copy(deep=False)
         target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
@@ -305,45 +304,13 @@ def _make_name(*args, sep="_"):
     return sep.join(args)
 
 
-def _add_fold_column(gdf, kfold, fold_seed, fold_name, part_index):
-    if fold_name not in gdf.columns:
-        typ = np.min_scalar_type(kfold * 2)
-        if fold_seed is None:
-            fold = cp.arange(len(gdf), dtype=typ)
-            cp.mod(fold, kfold, out=fold)
-            gdf[fold_name] = fold
-        else:
-            cp.random.seed(fold_seed + part_index if part_index else fold_seed)
-            gdf[fold_name] = cp.random.choice(cp.arange(kfold, dtype=typ), len(gdf))
-
-
 @annotate("top_level_groupby", color="green", domain="nvt_python")
 def _top_level_groupby(
-    gdf,
-    cat_col_groups,
-    tree_width,
-    cont_cols,
-    agg_list,
-    on_host,
-    concat_groups,
-    name_sep,
-    fold_info,
-    partition_index,
+    gdf, cat_col_groups, tree_width, cont_cols, agg_list, on_host, concat_groups, name_sep
 ):
     sum_sq = "std" in agg_list or "var" in agg_list
     calculate_min = "min" in agg_list
     calculate_max = "max" in agg_list
-
-    # Add new fold column if necessary.
-    # Note that the mechanism must be deterministic
-    # (given the index of the current partition, so
-    # that the same mapping can be used in a transform
-    # op like TragetEncoding)
-    if fold_info:
-        kfold = fold_info["kfold"]
-        fold_seed = fold_info["seed"]
-        fold_name = fold_info["name"]
-        _add_fold_column(gdf, kfold, fold_seed, fold_name, partition_index)
 
     # Top-level operation for category-based groupby aggregations
     output = {}
@@ -566,7 +533,6 @@ def _groupby_to_disk(
     stat_name="categories",
     concat_groups=False,
     name_sep="_",
-    fold_info=None,
 ):
     if not col_groups:
         return {}
@@ -613,8 +579,6 @@ def _groupby_to_disk(
             on_host,
             concat_groups,
             name_sep,
-            fold_info,
-            p,
         )
         k = 0
         for c, col in enumerate(col_groups):
@@ -676,7 +640,6 @@ def _category_stats(
     stat_name="categories",
     concat_groups=False,
     name_sep="_",
-    fold_info=None,
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -694,7 +657,6 @@ def _category_stats(
             stat_name=stat_name,
             concat_groups=concat_groups,
             name_sep=name_sep,
-            fold_info=fold_info,
         )
 
     # Otherwise, getting category-statistics
@@ -715,7 +677,6 @@ def _category_stats(
         stat_name=stat_name,
         concat_groups=concat_groups,
         name_sep=name_sep,
-        fold_info=fold_info,
     )
 
 
