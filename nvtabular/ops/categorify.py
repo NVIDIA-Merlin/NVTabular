@@ -21,6 +21,7 @@ import cudf
 import cupy as cp
 import numpy as np
 from cudf._lib.nvtx import annotate
+from cudf.io.parquet import ParquetWriter
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat, new_dd_object
@@ -487,24 +488,30 @@ def _get_aggregation_type(col):
 def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep):
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
-    ignore_index = True
-    df = _concat(dfs, ignore_index)
-    if on_host:
-        df.reset_index(drop=True, inplace=True)
-        df = cudf.from_pandas(df)
     if isinstance(col_group, str):
         col_group = [col_group]
+
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = os.path.join(base_path, rel_path)
-    if len(df):
-        df = df.sort_values(col_group, na_position="first")
-        df.to_parquet(path, write_index=False, compression=None)
-    else:
+    pwriter = ParquetWriter(path, compression=None)
+
+    # Loop over dfs and append to same stats file
+    n_writes = 0
+    for df in dfs:
+        df.reset_index(drop=True, inplace=True)
+        if len(df):
+            pwriter.write_table(cudf.from_pandas(df) if on_host else df)
+            n_writes += 1
+
+    # Write null values if there was no data to write
+    if n_writes == 0:
         df_null = cudf.DataFrame({c: [None] for c in col_group})
         for c in col_group:
-            df_null[c] = df_null[c].astype(df[c].dtype)
-        df_null.to_parquet(path, write_index=False, compression=None)
-    del df
+            df_null[c] = df_null[c].astype(dfs[0][c].dtype)
+        pwriter.write_table(df_null)
+
+    # Close writer and return path
+    pwriter.close()
     return path
 
 
