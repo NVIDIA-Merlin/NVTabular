@@ -63,6 +63,9 @@ class TargetEncoding(DFOperator):
     cont_target : str
         Continuous target column to use for the encoding of cat_groups.
         The same continuous target will be used for all `cat_groups`.
+    target_mean : float
+        Global mean of the cont_target column to use for encoding.
+        Supplying this value up-front will improve performance.
     kfold : int, default 3
         Number of cross-validation folds to use while gathering
         statistics (during `GroupbyStatistics`).
