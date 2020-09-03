@@ -16,10 +16,10 @@
 import contextlib
 import os
 
-import cupy
+# import cupy
 import tensorflow as tf
 
-from nvtabular.io import Dataset
+from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 
@@ -130,12 +130,12 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
   features are not currently supported.
   The underlying NVTabular `Dataset` object is stored in the `data`
   attribute, and should be used for updating NVTabular `Workflow`
-  statistics:
-  ```python
-  workflow = nvt.Workflow(...)
-  dataset = KerasSequenceLoader(...)
-  workflow.update_stats(dataset.data.to_iter(), record_stats=True)
-  ```
+  statistics::
+
+      workflow = nvt.Workflow(...)
+      dataset = KerasSequenceLoader(...)
+      workflow.update_stats(dataset.data.to_iter(), record_stats=True)
+
   Parameters
   -------------
   - paths_or_dataset: str or list(str)
@@ -254,11 +254,15 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
-        with tf.device("/device:GPU:{}".format(dev)) as tf_device:
-            # tf.device changes the cupy cuda device, which breaks us on multigpu
-            # force cupy to still use the device we expect
-            cupy.cuda.Device(dev).use()
-            yield tf_device
+        # with tf.device("/device:GPU:{}".format(dev)) as tf_device:
+        #     # tf.device changes the cupy cuda device, which breaks us on multigpu
+        #     # force cupy to still use the device we expect
+        #     cupy.cuda.Device(dev).use()
+        #     yield tf_device
+        # commenting out since device statements cause
+        # RuntimeErrors when exiting if two dataloaders
+        # are running at once (e.g. train and validation)
+        yield dev
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:

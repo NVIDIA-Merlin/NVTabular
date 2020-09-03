@@ -17,7 +17,6 @@
 import pytest
 
 import nvtabular as nvt
-import nvtabular.io
 from nvtabular import ops as ops
 
 # If tensorflow isn't installed skip these tests. Note that the
@@ -60,7 +59,6 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     data_itr.map(processor)
 
     rows = 0
-    dont_iter = False
     for idx in range(len(data_itr)):
         X, y = next(data_itr)
 
@@ -75,7 +73,6 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
                 next(data_itr)
             except StopIteration:
                 rows += num_samples
-                dont_iter = True
                 continue
             else:
                 raise ValueError("Batch size too small at idx {}".format(idx))
@@ -96,7 +93,11 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
     assert (idx + 1) * batch_size >= rows
     assert rows == (60 * 24 * 3 + 1)
-    if not dont_iter:
+
+    # if num_samples is equal to batch size,
+    # we didn't exhaust the iterator and do
+    # cleanup. Try that now
+    if num_samples == batch_size:
         try:
             next(data_itr)
         except StopIteration:

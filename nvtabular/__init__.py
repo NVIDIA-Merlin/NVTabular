@@ -15,10 +15,11 @@
 #
 import warnings
 
-from . import io, workflow
+from . import workflow
+from .io import dataset
 
 Workflow = workflow.Workflow
-Dataset = io.Dataset
+Dataset = dataset.Dataset
 
 
 __all__ = ["Workflow", "Dataset"]
