@@ -1,5 +1,6 @@
 .git
 .dockerignore
+**/Dockerfile.
 
 # ignore hidden directories created
 # by RAPIDS libs
