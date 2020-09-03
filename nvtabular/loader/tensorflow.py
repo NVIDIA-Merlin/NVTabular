@@ -16,7 +16,7 @@
 import contextlib
 import os
 
-import cupy
+# import cupy
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
@@ -254,11 +254,15 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
-        with tf.device("/device:GPU:{}".format(dev)) as tf_device:
-            # tf.device changes the cupy cuda device, which breaks us on multigpu
-            # force cupy to still use the device we expect
-            cupy.cuda.Device(dev).use()
-            yield tf_device
+        # with tf.device("/device:GPU:{}".format(dev)) as tf_device:
+        #     # tf.device changes the cupy cuda device, which breaks us on multigpu
+        #     # force cupy to still use the device we expect
+        #     cupy.cuda.Device(dev).use()
+        #     yield tf_device
+        # commenting out since device statements cause
+        # RuntimeErrors when exiting if two dataloaders
+        # are running at once (e.g. train and validation)
+        yield dev
 
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
