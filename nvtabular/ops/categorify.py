@@ -20,11 +20,13 @@ from operator import getitem
 import cudf
 import cupy as cp
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter
 from dask.base import tokenize
 from dask.core import flatten
-from dask.dataframe.core import _concat, new_dd_object
+from dask.dataframe.core import _concat
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 
@@ -305,36 +307,6 @@ def _make_name(*args, sep="_"):
     return sep.join(args)
 
 
-def _add_fold(gdf, kfold, fold_seed, fold_name, part_index):
-    if fold_name not in gdf.columns:
-        len_gdf = len(gdf)
-        typ = np.min_scalar_type(kfold * 2)
-        if len_gdf == 0:
-            gdf[fold_name] = np.ones(len_gdf, dtype=typ)
-            return gdf
-        if fold_seed is None:
-            fold = cp.arange(len_gdf, dtype=typ)
-            cp.mod(fold, kfold, out=fold)
-            gdf[fold_name] = fold
-        else:
-            cp.random.seed(fold_seed + part_index if part_index else fold_seed)
-            gdf[fold_name] = cp.random.choice(cp.arange(kfold, dtype=typ), len_gdf)
-    return gdf
-
-
-def _add_fold_to_collection(ddf, kfold, fold_seed, fold_name):
-    old_name = ddf._name
-    new_name = "add_fold-" + tokenize(ddf, kfold, fold_seed, fold_name)
-    npartitions = ddf.npartitions
-    dsk = {}
-    for p in range(npartitions):
-        dsk[(new_name, p)] = (_add_fold, (old_name, p), kfold, fold_seed, fold_name, p)
-    divisions = [None] * (npartitions + 1)
-    meta = _add_fold(ddf._meta, kfold, fold_seed, fold_name, 0)
-    graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
-    return new_dd_object(graph, new_name, meta, divisions)
-
-
 @annotate("top_level_groupby", color="green", domain="nvt_python")
 def _top_level_groupby(
     gdf, cat_col_groups, tree_width, cont_cols, agg_list, on_host, concat_groups, name_sep
@@ -493,22 +465,34 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
 
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = os.path.join(base_path, rel_path)
-    pwriter = ParquetWriter(path, compression=None)
+    pwriter = None
+    pa_schema = None
+    if not on_host:
+        pwriter = ParquetWriter(path, compression=None)
 
-    # Loop over dfs and append to same stats file
+    # Loop over dfs and append to file
+    # TODO: For high-cardinality columns, should support
+    #       Dask-based to_parquet call here (but would need to
+    #       support directory reading within dependent ops)
     n_writes = 0
     for df in dfs:
         df.reset_index(drop=True, inplace=True)
         if len(df):
-            pwriter.write_table(cudf.from_pandas(df) if on_host else df)
+            if on_host:
+                # Use pyarrow
+                pa_table = pa.Table.from_pandas(df, schema=pa_schema, preserve_index=False)
+                if pwriter is None:
+                    pa_schema = pa_table.schema
+                    pwriter = pq.ParquetWriter(path, pa_schema, compression=None)
+                pwriter.write_table(pa_table)
+            else:
+                # Use CuDF
+                pwriter.write_table(df)
             n_writes += 1
 
-    # Write null values if there was no data to write
+    # No data to write
     if n_writes == 0:
-        df_null = cudf.DataFrame({c: [None] for c in col_group})
-        for c in col_group:
-            df_null[c] = df_null[c].astype(dfs[0][c].dtype)
-        pwriter.write_table(df_null)
+        raise RuntimeError("GroupbyStatistics result is empty.")
 
     # Close writer and return path
     pwriter.close()

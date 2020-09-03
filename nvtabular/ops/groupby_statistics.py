@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import cupy
+import numpy as np
 from dask.core import flatten
 from dask.delayed import Delayed
 
@@ -147,9 +149,26 @@ class GroupbyStatistics(StatOperator):
         if self.fold_groups and self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
-                ddf = nvt_cat._add_fold_to_collection(
-                    ddf, self.kfold, self.fold_seed, self.fold_name
+
+                def _add_fold(s, kfold, fold_seed):
+                    typ = np.min_scalar_type(kfold * 2)
+                    if fold_seed is None:
+                        # If we don't have a specific seed,
+                        # just use a simple modulo-based mapping
+                        fold = cupy.arange(len(s), dtype=typ)
+                        cupy.mod(fold, kfold, out=fold)
+                        return fold
+                    else:
+                        cupy.random.seed(fold_seed)
+                        return cupy.random.choice(cupy.arange(kfold, dtype=typ), len(s))
+
+                ddf[self.fold_name] = ddf.index.map_partitions(
+                    _add_fold,
+                    self.kfold,
+                    self.fold_seed,
+                    meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
                 )
+
                 # Specify to workflow that the ddf has been updated
                 self._ddf_out = ddf
 
