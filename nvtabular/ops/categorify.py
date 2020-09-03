@@ -497,6 +497,8 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
     if n_writes == 0:
         raise RuntimeError("GroupbyStatistics result is empty.")
 
+    return path
+
 
 @annotate("write_uniques", color="green", domain="nvt_python")
 def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
