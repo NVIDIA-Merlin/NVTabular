@@ -23,6 +23,7 @@ class StatOperator(Operator):
 
     def __init__(self, columns=None):
         super(StatOperator, self).__init__(columns)
+        self._ddf_out = None
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         raise NotImplementedError(
