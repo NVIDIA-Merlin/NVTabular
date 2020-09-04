@@ -137,9 +137,10 @@ class GroupbyStatistics(StatOperator):
         return str(self.op_name)
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        col_groups = self.column_groups
         if self.column_groups is None:
             col_groups = self.get_columns(columns_ctx, input_cols, target_cols)
+        else:
+            col_groups = self.column_groups.copy()
         supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
@@ -161,12 +162,15 @@ class GroupbyStatistics(StatOperator):
                         cupy.random.seed(fold_seed)
                         return cupy.random.choice(cupy.arange(kfold, dtype=typ), len(s))
 
-                ddf[self.fold_name] = ddf.map_partitions(
+                ddf[self.fold_name] = ddf.index.map_partitions(
                     _add_fold,
                     self.kfold,
                     self.fold_seed,
                     meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
                 )
+
+                # Specify to workflow that the ddf has been updated
+                self._ddf_out = ddf
 
             # Add new col_groups with fold
             for group in self.fold_groups:
