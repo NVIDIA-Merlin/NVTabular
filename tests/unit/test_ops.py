@@ -181,10 +181,10 @@ def test_groupby_folds(tmpdir, df, dataset, engine, groups, kfold):
         assert "__fold__" in df.columns
 
 
-@pytest.mark.parametrize("cat_group", ["Author", ["Author", "Engaging-User"]])
+@pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
-def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
+def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
     df = cudf.DataFrame(
         {
             "Author": list(string.ascii_uppercase),
@@ -203,7 +203,7 @@ def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
 
     processor.add_preprocess(
         ops.TargetEncoding(
-            cat_group,
+            cat_groups,
             "Cost",  # cont_target
             out_path=str(tmpdir),
             kfold=kfold,
@@ -223,7 +223,7 @@ def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
     if kfold > 1:
         # Cat columns are unique.
         # Make sure __fold__ mapping is correct
-        if cat_group == "Author":
+        if cat_groups == "Author":
             name = "__fold___Author"
             cols = ["__fold__", "Author"]
         else:
@@ -233,6 +233,45 @@ def test_target_encode(tmpdir, cat_group, kfold, fold_seed):
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
         assert_eq(check, df_out_check)
+
+
+@pytest.mark.parametrize("npartitions", [1, 2])
+def test_target_encode_multi(tmpdir, npartitions):
+
+    cat_1 = np.asarray(["baaaa"] * 12)
+    cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
+    num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
+    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1})
+    df = dask_cudf.from_cudf(df, npartitions=npartitions)
+
+    cat_names = ["cat", "cat2"]
+    cont_names = ["num"]
+    label_name = []
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    cat_groups = ["cat", "cat2", ["cat", "cat2"]]
+
+    processor.add_preprocess(
+        ops.TargetEncoding(
+            cat_groups,
+            "num",  # cont_target
+            out_path=str(tmpdir),
+            kfold=1,
+            p_smooth=5,
+            out_dtype="float32",
+        )
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    assert "TE_cat_cat2_num" in df_out.columns
+    assert "TE_cat_num" in df_out.columns
+    assert "TE_cat2_num" in df_out.columns
+
+    assert_eq(df_out["TE_cat2_num"].values, df_out["TE_cat_cat2_num"].values)
+    assert df_out["TE_cat_num"].iloc[0] != df_out["TE_cat2_num"].iloc[0]
+    assert math.isclose(df_out["TE_cat_num"].iloc[0], num_1.mean(), abs_tol=1e-4)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
