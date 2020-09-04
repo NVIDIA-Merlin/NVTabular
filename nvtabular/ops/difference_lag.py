@@ -54,7 +54,7 @@ class DifferenceLag(TransformOperator):
         Continous columns to target for this op. If None, the operation will target all known
         continous columns.
     replace: bool, default False
-        Whether to replace existing columns or create new ones
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT

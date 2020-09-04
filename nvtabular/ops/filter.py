@@ -25,20 +25,22 @@ class Filter(TransformOperator):
     Filters rows from the dataset. This works by taking a callable that takes a dataframe,
     and returns a dataframe with unwanted rows filtered out.
 
+    For example to filter out all rows that have a negative value in the ``a`` column::
+
+        op = Filter(lambda df: df["a"] >=0)
+
     Parameters
     -----------
     f : callable
-        Defines a function that filter rows from a dataframe. For example,
-        ``lambda gdf: gdf[gdf.a >= 0]`` would filter out the rows with a negative value
-        in the ``a`` column.
-    replace : bool, default True
+        Defines a function that takes a dataframe as an argument, and returns a new
+        dataframe with unwanted rows filtered out.
     """
 
     default_in = ALL
     default_out = ALL
 
-    def __init__(self, f, replace=True):
-        super().__init__(replace=replace)
+    def __init__(self, f):
+        super().__init__(replace=True)
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f

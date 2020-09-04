@@ -28,9 +28,12 @@ class FillMissing(DFOperator):
     Parameters
     -----------
     fill_val : float, default 0
-        The constant value to replace missing values with
-    columns :
+        The constant value to replace missing values with.
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
     replace : bool, default True
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT
@@ -60,8 +63,11 @@ class FillMedian(DFOperator):
 
     Parameters
     -----------
-    columns :
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
     replace : bool, default True
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT

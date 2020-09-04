@@ -428,7 +428,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="slice",
         f=lambda col, gdf: col.str.slice(1, 3),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=True,
     )
 
@@ -442,7 +441,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="slice",
         f=lambda col, gdf: col.str.slice(1, 3),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=False,
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
@@ -458,7 +456,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="replace",
         f=lambda col, gdf: col.str.replace("e", "XX"),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=True,
     )
 
@@ -472,7 +469,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="replace",
         f=lambda col, gdf: col.str.replace("e", "XX"),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=False,
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
@@ -485,11 +481,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     # Replacement
     df = df_copy.copy()
     op = ops.LambdaOp(
-        op_name="astype",
-        f=lambda col, gdf: col.astype(float),
-        columns=["id"],
-        preprocessing=True,
-        replace=True,
+        op_name="astype", f=lambda col, gdf: col.astype(float), columns=["id"], replace=True,
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
     assert new_gdf["id"].dtype == "float64"
@@ -506,7 +498,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
                 op_name="slice",
                 f=lambda col, gdf: col.astype(str).str.slice(0, 1),
                 columns=["name-cat"],
-                preprocessing=True,
                 replace=True,
             ),
             ops.Categorify(),
@@ -530,9 +521,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.add_preprocess(
         [
             ops.Categorify(),
-            ops.LambdaOp(
-                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=True
-            ),
+            ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=True),
         ]
     )
     processor.finalize()
@@ -559,7 +548,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
                 op_name="slice",
                 f=lambda col, gdf: col.astype(str).str.slice(0, 1),
                 columns=["name-cat"],
-                preprocessing=True,
                 replace=False,
             ),
             ops.Categorify(),
@@ -586,9 +574,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.add_preprocess(
         [
             ops.Categorify(),
-            ops.LambdaOp(
-                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
-            ),
+            ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=False),
         ]
     )
     processor.finalize()
@@ -609,16 +595,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 
     processor.add_preprocess(
         [
-            ops.LambdaOp(
-                op_name="mul0",
-                f=lambda col, gdf: col * 0,
-                columns=["x"],
-                preprocessing=True,
-                replace=False,
-            ),
-            ops.LambdaOp(
-                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
-            ),
+            ops.LambdaOp(op_name="mul0", f=lambda col, gdf: col * 0, columns=["x"], replace=False,),
+            ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=False),
         ]
     )
     processor.finalize()

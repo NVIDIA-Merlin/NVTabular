@@ -22,21 +22,20 @@ from .transform_operator import TransformOperator
 
 class LambdaOp(TransformOperator):
     """
-    Enables to call Methods to cudf.Series
+    LambdaOp allows you to apply row level functions to a NVTabular workflow.
 
     Parameters
     -----------
-    op_name : str
-        name of the operator column. It is used as a post_fix for the
-        modified column names (if replace=False)
-    f : lambda function
-        defines the function executed on dataframe level, expectation is lambda col, gdf: ...
-        col is the cudf.Series defined by the context
-        gdf is the full cudf.DataFrame
+    op_name : str:
+        name of the operator column. It is used as a post_fix for the modified column names
+        (if replace=False).
+    f : callable
+        Defines a function that takes a cudf.Series and cudf.DataFrame as input, and returns a new
+        Series as the output.
     columns :
+        Columns to target for this op. If None, this operator will target all columns.
     replace : bool, default True
-        Replaces the transformed column with the original input
-        if set Yes
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = ALL

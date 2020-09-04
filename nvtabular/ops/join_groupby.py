@@ -37,7 +37,7 @@ class JoinGroupby(DFOperator):
     -----------
     cont_names : list of str
         The continuous column names to calculate statistics for
-        (for each unique group in each column in `columns`)
+        (for each unique group in each column in `columns`).
     stats : list of str, default []
         List of statistics to calculate for each unique group. Note
         that "count" corresponds to the group itself, while all
@@ -46,8 +46,6 @@ class JoinGroupby(DFOperator):
     columns : list of str or list(str), default None
         Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
-    replace : bool, default False
-        This parameter is ignored
     tree_width : dict or int, optional
         Passed to `GroupbyStatistics` dependency.
     out_path : str, optional
@@ -67,7 +65,6 @@ class JoinGroupby(DFOperator):
         cont_names=None,
         stats=["count"],
         columns=None,
-        replace=False,
         tree_width=None,
         cat_cache="host",
         out_path=None,
@@ -89,7 +86,7 @@ class JoinGroupby(DFOperator):
                     for col in group:
                         self.storage_name[col] = name
 
-        super().__init__(columns=columns, replace=replace)
+        super().__init__(columns=columns, replace=False)
         self.cont_names = cont_names
         self.stats = stats
         self.tree_width = tree_width
