@@ -95,7 +95,6 @@ class TargetEncoding(DFOperator):
         p_smooth=20,
         out_col=None,
         out_dtype=None,
-        preprocessing=True,
         replace=False,
         tree_width=None,
         cat_cache="host",
@@ -105,7 +104,7 @@ class TargetEncoding(DFOperator):
         stat_name=None,
         drop_folds=True,
     ):
-        super().__init__(preprocessing=preprocessing, replace=False)
+        super().__init__(replace=replace)
         self.cat_group = cat_group if isinstance(cat_group, list) else [cat_group]
         self.cont_target = cont_target
         self.kfold = kfold or 3

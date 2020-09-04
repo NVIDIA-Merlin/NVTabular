@@ -50,7 +50,9 @@ class DifferenceLag(TransformOperator):
     shift : int, default 1
         The number of rows to look backwards when computing the difference lag. Negative values
         indicate the number of rows to look forwards, making this compute the lead instead of lag.
-    columns :
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
     replace: bool, default False
         Whether to replace existing columns or create new ones
     """

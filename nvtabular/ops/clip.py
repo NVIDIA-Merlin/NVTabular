@@ -37,19 +37,16 @@ class Clip(TransformOperator):
     columns : list of str, default None
         Continous columns to target for this op. If None, the operation will target all known
         continous columns.
-    preprocessing : bool, default True
     replace : bool, default False
     """
 
     default_in = CONT
     default_out = CONT
 
-    def __init__(
-        self, min_value=None, max_value=None, columns=None, preprocessing=True, replace=True
-    ):
+    def __init__(self, min_value=None, max_value=None, columns=None, replace=True):
         if min_value is None and max_value is None:
             raise ValueError("Must specify a min or max value to clip to")
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        super().__init__(columns=columns, replace=replace)
         self.min_value = min_value
         self.max_value = max_value
 

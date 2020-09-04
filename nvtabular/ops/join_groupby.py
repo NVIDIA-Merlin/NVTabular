@@ -33,10 +33,6 @@ class JoinGroupby(DFOperator):
     statistics are merged with the data (by joining on the desired
     categorical columns).
 
-    Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
-    Workflow class.
-
     Parameters
     -----------
     cont_names : list of str
@@ -50,8 +46,6 @@ class JoinGroupby(DFOperator):
     columns : list of str or list(str), default None
         Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
-    preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
     replace : bool, default False
         This parameter is ignored
     tree_width : dict or int, optional
@@ -73,7 +67,6 @@ class JoinGroupby(DFOperator):
         cont_names=None,
         stats=["count"],
         columns=None,
-        preprocessing=True,
         replace=False,
         tree_width=None,
         cat_cache="host",
@@ -96,7 +89,7 @@ class JoinGroupby(DFOperator):
                     for col in group:
                         self.storage_name[col] = name
 
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=False)
+        super().__init__(columns=columns, replace=replace)
         self.cont_names = cont_names
         self.stats = stats
         self.tree_width = tree_width

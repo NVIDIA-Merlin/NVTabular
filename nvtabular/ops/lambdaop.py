@@ -34,8 +34,6 @@ class LambdaOp(TransformOperator):
         col is the cudf.Series defined by the context
         gdf is the full cudf.DataFrame
     columns :
-    preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
     replace : bool, default True
         Replaces the transformed column with the original input
         if set Yes
@@ -44,8 +42,8 @@ class LambdaOp(TransformOperator):
     default_in = ALL
     default_out = ALL
 
-    def __init__(self, op_name, f, columns=None, preprocessing=True, replace=True):
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+    def __init__(self, op_name, f, columns=None, replace=True):
+        super().__init__(columns=columns, replace=replace)
         if op_name is None:
             raise ValueError("op_name cannot be None. It is required for naming the column.")
         if f is None:

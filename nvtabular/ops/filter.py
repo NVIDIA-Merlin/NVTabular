@@ -31,15 +31,14 @@ class Filter(TransformOperator):
         Defines a function that filter rows from a dataframe. For example,
         ``lambda gdf: gdf[gdf.a >= 0]`` would filter out the rows with a negative value
         in the ``a`` column.
-    preprocessing : bool, default True
     replace : bool, default True
     """
 
     default_in = ALL
     default_out = ALL
 
-    def __init__(self, f, preprocessing=True, replace=True):
-        super().__init__(preprocessing=preprocessing, replace=replace)
+    def __init__(self, f, replace=True):
+        super().__init__(replace=replace)
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f

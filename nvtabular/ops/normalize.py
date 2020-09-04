@@ -30,10 +30,6 @@ class Normalize(DFOperator):
     to standardize the features.
 
     It performs Normalization using the mean std method.
-
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
     """
 
     default_in = CONT
@@ -71,10 +67,6 @@ class NormalizeMinMax(DFOperator):
     to standardize the features.
 
     It performs Normalization using the min max method.
-
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
     """
 
     default_in = CONT
