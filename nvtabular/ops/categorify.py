@@ -490,12 +490,12 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
                 pwriter.write_table(df)
             n_writes += 1
 
-    # Close writer and return path
-    pwriter.close()
-
     # No data to write
     if n_writes == 0:
         raise RuntimeError("GroupbyStatistics result is empty.")
+
+    # Close writer and return path
+    pwriter.close()
 
     return path
 
