@@ -12,18 +12,18 @@ NVTabular is designed to support Data Scientists and ML Engineers trying to trai
 
 It is also meant to help ML/Ops Engineers deploying models into production by providing:
 
-* Faster dataset transformation, allowing for production models to be trained more frequently and kept up to date helping improve responsiveness and model performance.
-* Integration with model serving frameworks like NVIDIA’s Triton Inference Server to make model deployment easy.
+* Faster dataset transformation, allowing for production models to be trained more frequently and kept up to date, helping improve responsiveness and model performance.
+* Integration with model serving frameworks like [NVIDIA’s Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server) to make model deployment easy.
 * Statistical monitoring of the dataset for distributional shift and outlier detection during production training or inference.
 
-The library is designed to be interoperable with both PyTorch and Tensorflow using batch data-loaders that we have developed as extensions of native framework code. NVTabular provides the option to shuffle data during preprocessing, allowing the data-loader to load large contiguous chunks from files rather than individual elements. This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset. We have benchmarked our data-loader at 100x the baseline item by item PyTorch dataloader and 3x the Tensorflow batch data-loader, with several optimizations yet to come in that stack.
+The library is designed to be interoperable with both PyTorch and TensorFlow using batch data-loaders that we have developed as extensions of native framework code. NVTabular provides the option to shuffle data during preprocessing, allowing the data-loader to load large contiguous chunks from files rather than individual elements. This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset. We have benchmarked our data-loader at 100x the baseline item by item PyTorch dataloader and 3x the TensorFlow batch data-loader, with several optimizations yet to come in that stack.
 
-Extending beyond model training, we plan to provide integration with model serving frameworks like [NVIDIA’s Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server), creating a clear path to production inference for these models and allowing the feature engineering and preprocessing steps performed on the data during training to be easily and automatically applied to incoming data during inference.
+Extending beyond model training, we plan to provide integration with model serving frameworks like NVIDIA’s Triton Inference Server, creating a clear path to production inference for these models and allowing the feature engineering and preprocessing steps performed on the data during training to be automatically applied to incoming data during inference.
 
 Our goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness. 
 
 ### Getting Started
-NVTabular is available in the NVIDIA container repository at the following location, http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
+NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
 Currently we have the alpha release (0.1) container, you can pull the container using the following command:
 
@@ -95,7 +95,8 @@ We also have a [simple tutorial](examples/rossmann-store-sales-example.ipynb) th
 
 If you wish to contribute to the library directly please see [Contributing.md](./CONTRIBUTING.md). We are in particular interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
-To be clear, this is an early alpha release, and we have a long way to go. We have a working framework, but our [operator set](./Operators.md) is limited for the initial launch and every day we are developing new optimizations that will help improve the performance of the library. If you are interested in working with us to help develop this library we are looking for early collaborators and contributors. In the coming months we will be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems. Please reach out by submitting an issue or see our guide on contributions. We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
+To be clear, this is an early alpha release, and we have a long way to go. We have a working
+framework, but our [operator set](https://nvidia.github.io/NVTabular/main/api/ops/index.html) is limited for the initial launch and every day we are developing new optimizations that will help improve the performance of the library. If you are interested in working with us to help develop this library we are looking for early collaborators and contributors. In the coming months we will be optimizing existing operations, adding a full set of common feature engineering and preprocessing operations, and extending our backend to support multi-node and multi-gpu systems. Please reach out by submitting an issue or see our guide on contributions. We are particularly interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 ### Learn More
 
