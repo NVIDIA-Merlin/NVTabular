@@ -1,12 +1,27 @@
-# Note: Be sure to clean up output and dask work-space before running test
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 import argparse
 import os
+import shutil
 import time
 
-import cudf
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
+import rmm
 
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
@@ -15,7 +30,7 @@ from nvtabular.utils import device_mem_size
 
 
 def setup_rmm_pool(client, pool_size):
-    client.run(cudf.set_allocator, pool=True, initial_pool_size=pool_size, allocator="default")
+    client.run(rmm.reinitialize, pool_allocator=True, initial_pool_size=pool_size)
     return None
 
 
@@ -23,11 +38,25 @@ def main(args):
 
     # Input
     data_path = args.data_path
-    out_path = args.out_path
     freq_limit = args.freq_limit
-    out_files_per_proc = args.splits
+    out_files_per_proc = args.files_per_proc
+    high_card_columns = args.high_card.split(",")
+    dashboard_port = args.dashboard_port
     if args.protocol == "ucx":
-        os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
+        UCX_TLS = os.environ.get("UCX_TLS", "tcp,cuda_copy,cuda_ipc,sockcm")
+        os.environ["UCX_TLS"] = UCX_TLS
+
+    # Cleanup output directory
+    BASE_DIR = args.out_path
+    dask_workdir = os.path.join(BASE_DIR, "workdir")
+    output_path = os.path.join(BASE_DIR, "output")
+    stats_path = os.path.join(BASE_DIR, "stats")
+    if not os.path.isdir(BASE_DIR):
+        os.mkdir(BASE_DIR)
+    for dir_path in (dask_workdir, output_path, stats_path):
+        if os.path.isdir(dir_path):
+            shutil.rmtree(dir_path)
+        os.mkdir(dir_path)
 
     # Use Criteo dataset by default (for now)
     cont_names = (
@@ -38,46 +67,16 @@ def main(args):
     )
     label_name = ["label"]
 
-    if args.cat_splits:
-        tree_width = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
-    else:
-        tree_width = {col: 1 for col in cat_names}
-        if args.cat_names is None:
-            # Using Criteo... Use more hash partitions for
-            # known high-cardinality columns
-            tree_width["C20"] = 8
-            tree_width["C1"] = 8
-            tree_width["C22"] = 4
-            tree_width["C10"] = 4
-            tree_width["C21"] = 2
-            tree_width["C11"] = 2
-            tree_width["C23"] = 2
-            tree_width["C12"] = 2
-
-    # Specify categorical caching location
-    cat_cache = None
-    if args.cat_cache:
-        cat_cache = args.cat_cache.split(",")
-        if len(cat_cache) == 1:
-            cat_cache = cat_cache[0]
+    # Specify Categorify/GroupbyStatistics options
+    tree_width = {}
+    cat_cache = {}
+    for col in cat_names:
+        if col in high_card_columns:
+            tree_width[col] = args.tree_width
+            cat_cache[col] = args.cat_cache_high
         else:
-            # If user is specifying a list of options,
-            # they must specify an option for every cat column
-            assert len(cat_names) == len(cat_cache)
-    if isinstance(cat_cache, str):
-        cat_cache = {col: cat_cache for col in cat_names}
-    elif isinstance(cat_cache, list):
-        cat_cache = {name: c for name, c in zip(cat_names, cat_cache)}
-    else:
-        # Criteo/DLRM Defaults
-        cat_cache = {col: "device" for col in cat_names}
-        if args.cat_names is None:
-            cat_cache["C20"] = "host"
-            cat_cache["C1"] = "host"
-            # Only need to cache the largest two on a dgx-2
-            if args.n_workers < 16:
-                cat_cache["C22"] = "host"
-                cat_cache["C10"] = "host"
+            tree_width[col] = 1
+            cat_cache[col] = args.cat_cache_low
 
     # Use total device size to calculate args.device_limit_frac
     device_size = device_mem_size(kind="total")
@@ -92,8 +91,8 @@ def main(args):
             n_workers=args.n_workers,
             CUDA_VISIBLE_DEVICES=args.devs,
             device_memory_limit=device_limit,
-            local_directory=args.dask_workspace,
-            dashboard_address=":3787",
+            local_directory=dask_workdir,
+            dashboard_address=":" + dashboard_port,
         )
     else:
         cluster = LocalCUDACluster(
@@ -102,8 +101,8 @@ def main(args):
             CUDA_VISIBLE_DEVICES=args.devs,
             enable_nvlink=True,
             device_memory_limit=device_limit,
-            local_directory=args.dask_workspace,
-            dashboard_address=":3787",
+            local_directory=dask_workdir,
+            dashboard_address=":" + dashboard_port,
         )
     client = Client(cluster)
 
@@ -118,7 +117,7 @@ def main(args):
     processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
-            out_path=out_path,
+            out_path=stats_path,
             tree_width=tree_width,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
@@ -139,7 +138,7 @@ def main(args):
                 if args.worker_shuffle
                 else nvt_io.Shuffle.PER_PARTITION,
                 out_files_per_proc=out_files_per_proc,
-                output_path=out_path,
+                output_path=output_path,
             )
     else:
         processor.apply(
@@ -148,7 +147,7 @@ def main(args):
             if args.worker_shuffle
             else nvt_io.Shuffle.PER_PARTITION,
             out_files_per_proc=out_files_per_proc,
-            output_path=out_path,
+            output_path=output_path,
         )
     runtime = time.time() - runtime
 
@@ -158,7 +157,7 @@ def main(args):
     print(f"protocol           | {args.protocol}")
     print(f"device(s)          | {args.devs}")
     print(f"rmm-pool           | {(not args.no_rmm_pool)}")
-    print(f"out_files_per_proc | {args.splits}")
+    print(f"out_files_per_proc | {args.files_per_proc}")
     print(f"worker-shuffle     | {args.worker_shuffle}")
     print("======================================")
     print(f"Runtime[s]         | {runtime}")
@@ -170,11 +169,7 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description="Merge (dask/cudf) on LocalCUDACluster benchmark")
     parser.add_argument(
-        "-d",
-        "--devs",
-        default="0,1,2,3",
-        type=str,
-        help='GPU devices to use (default "0, 1, 2, 3").',
+        "-d", "--devs", default="0,1", type=str, help='GPU devices to use (default "0, 1").'
     )
     parser.add_argument(
         "-p",
@@ -192,15 +187,24 @@ def parse_args():
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
     )
+    parser.add_argument(
+        "--dashboard-port",
+        default="8787",
+        type=str,
+        help="Specify diagnostics-dashboard address (Default 8787).",
+    )
     parser.add_argument("--data-path", type=str, help="Raw dataset path.")
     parser.add_argument("--out-path", type=str, help="Root output path.")
-    parser.add_argument("--dask-workspace", default=None, type=str, help="Dask workspace path.")
     parser.add_argument(
-        "-s", "--splits", default=24, type=int, help="Number of splits to shuffle each partition"
+        "-s",
+        "--files-per-proc",
+        default=8,
+        type=int,
+        help="Number of files each worker process will write.",
     )
     parser.add_argument(
         "--part-mem-frac",
-        default=0.162,
+        default=0.125,
         type=float,
         help="Fraction of device memory for each partition",
     )
@@ -214,7 +218,7 @@ def parse_args():
         help="Fractional device-memory limit (per worker).",
     )
     parser.add_argument(
-        "--device-pool-frac", default=0.8, type=float, help="Fractional rmm pool size (per worker)."
+        "--device-pool-frac", default=0.9, type=float, help="Fractional rmm pool size (per worker)."
     )
     parser.add_argument(
         "--worker-shuffle", action="store_true", help="Perform followup shuffle on each worker."
@@ -223,10 +227,21 @@ def parse_args():
         "--cat-names", default=None, type=str, help="List of categorical column names."
     )
     parser.add_argument(
-        "--cat-cache",
-        default=None,
+        "--cont-names", default=None, type=str, help="List of continuous column names."
+    )
+    parser.add_argument(
+        "--cat-cache-high",
+        choices=["device", "host", "disk"],
+        default="host",
         type=str,
-        help='Where to cache each category (Ex "device, host, disk").',
+        help='Where to cache high-cardinality category (Ex "host").',
+    )
+    parser.add_argument(
+        "--cat-cache-low",
+        choices=["device", "host", "disk"],
+        default="device",
+        type=str,
+        help='Where to cache low-cardinality category (Ex "device, host, disk").',
     )
     parser.add_argument(
         "--cat-on-host",
@@ -234,13 +249,19 @@ def parse_args():
         help="Whether to move categorical data to host between tasks.",
     )
     parser.add_argument(
-        "--cat-splits",
-        default=None,
+        "--high-card",
+        default="C20,C1,C22,C10",
         type=str,
-        help='How many splits to use for each category (Ex "8, 4, 2, 1").',
+        help="Specify a list of high-cardinality columns.  The tree-width "
+        "and cat-cache options will apply to these columns only."
+        '(Ex "C20,C1,C22,C10").',
     )
     parser.add_argument(
-        "--cont-names", default=None, type=str, help="List of continuous column names."
+        "--tree-width",
+        default=8,
+        type=int,
+        help="Tree width for GroupbyStatistics operations on high-cardinality "
+        "columns (Default 4).",
     )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
