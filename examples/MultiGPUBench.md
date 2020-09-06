@@ -1,7 +1,8 @@
 # Multi-GPU Criteo/DLRM Benchmark Overview
 
+The benchmark script described in this document is located at `NVTabular/examples/dask-nvtabular-criteo-benchmark.py`.
 
-The `dask-nvtabular-criteo-benchmark.py` benchmark is designed to measure the time required to preprocess the Criteo (1TB) dataset for Facebook’s DLRM model.  The user must specify the path of the raw dataset (using the `--data-path` flag), as well as the output directory for all temporary/final data (using the `--out-path` flag).
+The [multi-GPU Criteo/DLRM benchmark](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py) is designed to measure the time required to preprocess the [Criteo (1TB) dataset](https://www.kaggle.com/c/criteo-display-ad-challenge/data) for Facebook’s [DLRM model](https://github.com/facebookresearch/dlrm).  The user must specify the path of the raw dataset (using the `--data-path` flag), as well as the output directory for all temporary/final data (using the `--out-path` flag).
 
 ### Example Usage
 
@@ -13,11 +14,11 @@ python dask-nvtabular-criteo-benchmark.py --data-path /path/to/criteo_parquet --
 ### Dataset Requirements (Parquet)
 
 
-This benchmark is designed with a parquet-formatted dataset in mind. While a CSV-formatted dataset can be processed by NVTabular, converting to parquet will yield significantly better performance.  To convert your dataset, try using the `optimize_criteo.ipynb` notebook (also located in `NVTabular/examples/`).
+The script is designed with a parquet-formatted dataset in mind. Although csv files can also be handled by NVTabular, converting to parquet yields significantly better performance.  To convert your dataset, try using the [conversion notebook](https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb) (located at `NVTabular/examples/optimize_criteo.ipynb`).
 
 ### General Notes on Parameter Tuning
 
-This benchmark was originally developed and tested on an NVIDIA DGX-1 machine (8x 32GB V100s, 1TB RAM).  Users with limited device and/or host memory may experience memory errors with the default options. Depending on the system, these users may need to modify one or more of the “Algorithm Options” described below. For example, it may be necessary to expand the list of “high-cardinality” columns, increase the tree-width and/or use “disk” for the cat-cache options.
+The script was originally developed and tested on an NVIDIA DGX-1 machine (8x 32GB V100s, 1TB RAM).  Users with limited device and/or host memory may experience memory errors with the default options. Depending on the system, these users may need to modify one or more of the “Algorithm Options” described below. For example, it may be necessary to expand the list of “high-cardinality” columns, increase the tree-width and/or use “disk” for the cat-cache options.
 
 In addition to adjusting the algorithm details, users with limited device memory may also find it useful to adjust the `--device-pool-frac` and/or `--device-limit-frac` options (reduce both fractions).
 
@@ -66,12 +67,14 @@ e.g. `--device-limit-frac 0.66`
 To process out-of-core data, NVTabular uses Dask-CuDF to partition the data into a lazily-evaluated collection of CuDF DataFrame objects.  By default the maximum size of these so-called partitions will be approximately 12.5% of a single-GPUs memory capacity.  The user can modify the desired size of partitions by passing a fractional value with the `--part-mem-frac` flag.
 
 e.g. `--part-mem-frac 0.16`
+
 ##### Output-File Count
 NVTabular uses the file structure of the output dataset to shuffle data as it is written to disk.  That is, after a Dask-CUDA worker transforms a dataset partition, it will append (random) splits of that partition to some number of output files.  Each worker will manage its own set of output files.  The `--out-files-per-proc` can be used to modify the number of output files managed by each worker (defaults to 8).  Since output files are uniquely mapped to processes, the total number of output files is multiplied by the number of workers.
 
 e.g. `--out-files-per-proc 24`
 
 Note that a large number of output files may be required to perform the “PER_WORKER” shuffle option (see description of the `—shuffle` flag below).  This is because each file will be fully shuffled in device memory.
+
 ##### Shuffling
 NVTabular currently offers two options for shuffling output data to disk. The `“PER_PARTITION”` option means that each partition will be independently shuffled after transformation, and then appended to some number of distinct output files.  The number of output files is specified by the `--out-files-per-proc` flag (described above), and the files  are uniquely mapped to each worker.  The `“PER_WORKER”` option follows the same process, but the “files” are initially written to in-host-memory, and then reshuffled and persisted to disk after the full dataset is processed.  The user can specify the specific shuffling algorithm to use with the `—shuffle` flag.
 
@@ -93,6 +96,7 @@ The user may specify different column names, or a subset of these names, by pass
 e.g. `—cat-names C01,C02  --cont_names I01,I02 —high_cards C01`
 
 Note that, if your dataset includes non-default column names, you should also use the `—high-cards` flag (described below), to specify the names of high-cardinality columns.
+
 ##### Categorical Encoding
 By default, all categorical-column groups will be used for the final encoding transformation.  The user can also specify a frequency threshold for groups to be included in the encoding with the `—freq-limit` (or `-f`) flag.
 
