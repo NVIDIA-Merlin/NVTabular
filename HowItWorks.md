@@ -103,7 +103,7 @@ There are currenly many ways to deploy a "cluster" for Dask.  [This article](htt
 
 Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.
 
-Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example]](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](./examples/multigpu_bench.md) section of this documentation.
+Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](./examples/multigpu_bench.md) section of this documentation.
 
 CPU Support
 ------------
