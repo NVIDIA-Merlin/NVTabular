@@ -36,6 +36,31 @@ def setup_rmm_pool(client, pool_size):
 
 
 def main(args):
+    """ Multi-GPU Criteo/DLRM Preprocessing Benchmark
+
+    This benchmark is designed to measure the time required to preprocess
+    the Criteo (1TB) dataset for Facebook’s DLRM model.  The user must specify
+    the path of the raw dataset (using the `--data-path` flag), as well as the
+    output directory for all temporary/final data (using the `--out-path` flag)
+
+    Example Usage
+    -------------
+
+    python dask-nvtabular-criteo-benchmark.py
+                        --data-path /path/to/criteo_parquet --out-path /out/dir/`
+
+
+    Dataset Requirements (Parquet)
+    ------------------------------
+
+    This benchmark is designed with a parquet-formatted dataset in mind.
+    While a CSV-formatted dataset can be processed by NVTabular, converting
+    to parquet will yield significantly better performance.  To convert your
+    dataset, try using the `optimize_criteo.ipynb` notebook (also located
+    in `NVTabular/examples/`)
+
+    For a detailed parameter overview see `NVTabular/examples/MultiGPUBench.md`
+    """
 
     # Input
     data_path = args.data_path
