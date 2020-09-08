@@ -27,6 +27,18 @@ class LogOp(TransformOperator):
     to handle the common case of zerofilling null values, this is
     calculates ``log(1+x)`` instead of just ``log(x)``.
 
+    Example usage:
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add LogOp to the workflow for continous columns
+        proc.add_cont_feature(nvt.ops.LogOp())
+
     Parameters
     ----------
     columns : list of str, default None

@@ -33,6 +33,23 @@ class JoinGroupby(DFOperator):
     statistics are merged with the data (by joining on the desired
     categorical columns).
 
+    Example usage:
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add JoinGroupby to the workflow
+        proc.add_feature(
+            JoinGroupby(
+                columns=['cat1', 'cat2', 'cat3'], # columns which are groupby
+                cont_names=['num1'], # continous column, which the statistics are applied to
+                stats=['sum','count']), # statistcs, which are applied
+        )
+
     Parameters
     -----------
     cont_names : list of str

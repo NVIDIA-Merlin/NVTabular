@@ -45,6 +45,18 @@ class Categorify(DFOperator):
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
 
+    Example usage:
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add Categorify for categorical columns to the workflow
+        proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
+
     Parameters
     -----------
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
