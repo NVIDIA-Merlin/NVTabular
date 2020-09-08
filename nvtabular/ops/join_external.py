@@ -140,8 +140,7 @@ class JoinExternal(TransformOperator):
 
 
 def _detect_format(data):
-    """ Utility to detect the format of `data`
-    """
+    """Utility to detect the format of `data`"""
 
     if isinstance(data, cudf.DataFrame):
         return "cudf"

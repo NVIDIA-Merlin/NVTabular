@@ -46,26 +46,24 @@ class _DummyThread:
 
 
 class ChunkQueue:
-    """ This class takes partitions (parts) from an NVTabular dataset
-       and concatenates them into a cudf dataframe "chunk". This chunk
-      is subsequently transformed into its tensor representation using
-      the iterator's transform.
-      Parameters
-      -----------
-      qsize: int
-          Max number of elements to hold in the buffer at once
-      num_parts : int
-          number of partitions from the iterator, an NVTabular Dataset to concatenate into a "chunk"
-      shuffle : bool
-          enable/disable chunk-level shuffling
-      put_wait: float
-          amount of timeout to wait for a full queue to open up
-          before checking for errors and trying again
+    """This class takes partitions (parts) from an NVTabular dataset
+     and concatenates them into a cudf dataframe "chunk". This chunk
+    is subsequently transformed into its tensor representation using
+    the iterator's transform.
+    Parameters
+    -----------
+    qsize: int
+        Max number of elements to hold in the buffer at once
+    num_parts : int
+        number of partitions from the iterator, an NVTabular Dataset to concatenate into a "chunk"
+    shuffle : bool
+        enable/disable chunk-level shuffling
+    put_wait: float
+        amount of timeout to wait for a full queue to open up
+        before checking for errors and trying again
     """
 
-    def __init__(
-        self, qsize, num_parts=1, shuffle=False, put_wait=1e-6,
-    ):
+    def __init__(self, qsize, num_parts=1, shuffle=False, put_wait=1e-6):
         self.num_parts = num_parts
         self.shuffle = shuffle
         self.put_wait = put_wait

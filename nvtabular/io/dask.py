@@ -158,8 +158,8 @@ def _worker_finish(processed_path):
 
 
 def _merge_general_metadata(meta_list):
-    """ Combine list of "general" metadata dicts into
-        a single dict
+    """Combine list of "general" metadata dicts into
+    a single dict
     """
     if not meta_list:
         return {}
