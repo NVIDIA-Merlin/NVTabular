@@ -25,6 +25,19 @@ class FillMissing(DFOperator):
     """
     This operation replaces missing values with a constant pre-defined value
 
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add FillMissing to the workflow for continuous columns and specify the fill value
+        # Default is 0
+        proc.add_cont_feature(nvt.ops.FillMissing(fill_val=100))
+
     Parameters
     -----------
     fill_val : float, default 0
@@ -60,6 +73,18 @@ class FillMissing(DFOperator):
 class FillMedian(DFOperator):
     """
     This operation replaces missing values with the median value for the column.
+
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add FillMedian to the workflow for continuous columns
+        proc.add_cont_feature(nvt.ops.FillMedian())
 
     Parameters
     -----------
