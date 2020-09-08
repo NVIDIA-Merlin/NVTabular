@@ -268,7 +268,7 @@ class Categorify(DFOperator):
 
 
 def _get_embedding_order(cat_names):
-    """ Returns a consistent sorder order for categorical variables
+    """Returns a consistent sorder order for categorical variables
 
     Parameters
     -----------
