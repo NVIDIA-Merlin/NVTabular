@@ -36,10 +36,10 @@ def get_worker_cache(name):
 
 
 def _get_worker_cache(name):
-    """ Utility to get the `name` element of the cache
-        dictionary for the current worker.  If executed
-        by anything other than a distributed Dask worker,
-        we will use the global `_WORKER_CACHE` variable.
+    """Utility to get the `name` element of the cache
+    dictionary for the current worker.  If executed
+    by anything other than a distributed Dask worker,
+    we will use the global `_WORKER_CACHE` variable.
     """
     try:
         worker = get_worker()
@@ -60,9 +60,9 @@ def _get_worker_cache(name):
 def fetch_table_data(
     table_cache, path, cache="disk", cats_only=False, reader=None, columns=None, **kwargs
 ):
-    """ Utility to retrieve a cudf DataFrame from a cache (and add the
-        DataFrame to a cache if the element is missing).  Note that `cats_only=True`
-        results in optimized logic for the `Categorify` transformation.
+    """Utility to retrieve a cudf DataFrame from a cache (and add the
+    DataFrame to a cache if the element is missing).  Note that `cats_only=True`
+    results in optimized logic for the `Categorify` transformation.
     """
     table = table_cache.get(path, None)
     if table and not isinstance(table, cudf.DataFrame):
@@ -98,9 +98,9 @@ def fetch_table_data(
 
 
 def clean_worker_cache(name=None):
-    """ Utility to clean the cache dictionary for the
-        current worker.  If a `name` argument is passed,
-        only that element of the dictionary will be removed.
+    """Utility to clean the cache dictionary for the
+    current worker.  If a `name` argument is passed,
+    only that element of the dictionary will be removed.
     """
     with _WORKER_CACHE_LOCK:
         try:

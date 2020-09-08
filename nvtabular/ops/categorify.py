@@ -20,7 +20,10 @@ from operator import getitem
 import cudf
 import cupy as cp
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
+from cudf.io.parquet import ParquetWriter
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -42,10 +45,6 @@ class Categorify(DFOperator):
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
 
-    Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
-    Workflow class.
-
     Parameters
     -----------
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
@@ -66,8 +65,6 @@ class Categorify(DFOperator):
         encoded as a new column. Note that replacement is not allowed for
         "combo", because the same column name can be included in
         multiple groups.
-    preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
     replace : bool, default True
         Replaces the transformed column with the original input.
         Note that this does not apply to multi-column groups with
@@ -100,7 +97,6 @@ class Categorify(DFOperator):
         self,
         freq_threshold=0,
         columns=None,
-        preprocessing=True,
         replace=True,
         out_path=None,
         tree_width=None,
@@ -172,7 +168,7 @@ class Categorify(DFOperator):
             raise ValueError(f"encode_type={encode_type} not supported.")
 
         # Other self-explanatory intialization
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        super().__init__(columns=columns, replace=replace)
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
@@ -272,7 +268,7 @@ class Categorify(DFOperator):
 
 
 def _get_embedding_order(cat_names):
-    """ Returns a consistent sorder order for categorical variables
+    """Returns a consistent sorder order for categorical variables
 
     Parameters
     -----------
@@ -457,24 +453,43 @@ def _get_aggregation_type(col):
 def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep):
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
-    ignore_index = True
-    df = _concat(dfs, ignore_index)
-    if on_host:
-        df.reset_index(drop=True, inplace=True)
-        df = cudf.from_pandas(df)
     if isinstance(col_group, str):
         col_group = [col_group]
+
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = os.path.join(base_path, rel_path)
-    if len(df):
-        df = df.sort_values(col_group, na_position="first")
-        df.to_parquet(path, write_index=False, compression=None)
-    else:
-        df_null = cudf.DataFrame({c: [None] for c in col_group})
-        for c in col_group:
-            df_null[c] = df_null[c].astype(df[c].dtype)
-        df_null.to_parquet(path, write_index=False, compression=None)
-    del df
+    pwriter = None
+    pa_schema = None
+    if not on_host:
+        pwriter = ParquetWriter(path, compression=None)
+
+    # Loop over dfs and append to file
+    # TODO: For high-cardinality columns, should support
+    #       Dask-based to_parquet call here (but would need to
+    #       support directory reading within dependent ops)
+    n_writes = 0
+    for df in dfs:
+        if len(df):
+            if on_host:
+                # Use pyarrow
+                pa_table = pa.Table.from_pandas(df, schema=pa_schema, preserve_index=False)
+                if pwriter is None:
+                    pa_schema = pa_table.schema
+                    pwriter = pq.ParquetWriter(path, pa_schema, compression=None)
+                pwriter.write_table(pa_table)
+            else:
+                # Use CuDF
+                df.reset_index(drop=True, inplace=True)
+                pwriter.write_table(df)
+            n_writes += 1
+
+    # No data to write
+    if n_writes == 0:
+        raise RuntimeError("GroupbyStatistics result is empty.")
+
+    # Close writer and return path
+    pwriter.close()
+
     return path
 
 

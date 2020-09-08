@@ -18,7 +18,7 @@ from .dataset_engine import DatasetEngine
 
 
 class DataFrameDatasetEngine(DatasetEngine):
-    """ DataFrameDatasetEngine allows NVT to interact with a dask_cudf.DataFrame object
+    """DataFrameDatasetEngine allows NVT to interact with a dask_cudf.DataFrame object
     in the same way as a dataset on disk.
     """
 

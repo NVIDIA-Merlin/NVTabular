@@ -25,24 +25,22 @@ class FillMissing(DFOperator):
     """
     This operation replaces missing values with a constant pre-defined value
 
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
-
     Parameters
     -----------
     fill_val : float, default 0
-        The constant value to replace missing values with
-    columns :
-    preprocessing : bool, default True
+        The constant value to replace missing values with.
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
     replace : bool, default True
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT
     default_out = CONT
 
-    def __init__(self, fill_val=0, columns=None, preprocessing=True, replace=True):
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+    def __init__(self, fill_val=0, columns=None, replace=True):
+        super().__init__(columns=columns, replace=replace)
         self.fill_val = fill_val
 
     @property
@@ -62,15 +60,14 @@ class FillMissing(DFOperator):
 class FillMedian(DFOperator):
     """
     This operation replaces missing values with the median value for the column.
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
 
     Parameters
     -----------
-    columns :
-    preprocessing : bool, default True
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
     replace : bool, default True
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT

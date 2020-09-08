@@ -26,7 +26,7 @@ from .transform_operator import TransformOperator
 
 
 class ColumnSimilarity(TransformOperator):
-    """ Calculates the similarity between two columns using tf-idf, cosine or
+    """Calculates the similarity between two columns using tf-idf, cosine or
     inner product as the distance metric. For each row, this calculates the distance
     between the two columns by looking up features for those columns in a sparse matrix,
     and then computing the distance between the rows of the feature matrices.
@@ -66,7 +66,7 @@ class ColumnSimilarity(TransformOperator):
     default_out = CONT
 
     def __init__(
-        self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True,
+        self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True
     ):
         super(ColumnSimilarity, self).__init__(columns=[a_col, b_col], replace=False)
         self.name = name
@@ -110,7 +110,7 @@ class ColumnSimilarity(TransformOperator):
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
-    """ Computes the similarity between two columns, by computing the inner product
+    """Computes the similarity between two columns, by computing the inner product
     along two sparse feature matrices . Both a_features and b_features are
     required to be in canonical CSR format.
 
