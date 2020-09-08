@@ -65,10 +65,9 @@ class JoinExternal(TransformOperator):
         drop_duplicates_ext=None,
         kind_ext=None,
         cache="host",
-        preprocessing=True,
         **kwargs,
     ):
-        super().__init__(preprocessing=preprocessing, replace=False)
+        super().__init__(replace=False)
         self.on = on
         self.df_ext = df_ext
         self.on_ext = on_ext or self.on

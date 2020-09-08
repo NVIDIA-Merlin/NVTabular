@@ -22,12 +22,13 @@ from .transform_operator import TransformOperator
 
 class Dropna(TransformOperator):
     """
-    This operation detects missing values, and returns
-    a cudf DataFrame with Null entries dropped from it.
+    This operation detects missing values, and filters out rows with null values.
 
-    Although you can directly call methods of this class to
-    transform your categorical and/or continuous features, it's typically used within a
-    Workflow class.
+    Parameters
+    ----------
+    columns : list of str, default None
+        Columns to target for this op. If None, this operator will check all columns
+        for null values.
     """
 
     default_in = ALL

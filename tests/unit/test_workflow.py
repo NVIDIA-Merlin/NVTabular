@@ -393,9 +393,7 @@ def test_chaining_2():
     proc = nvt.Workflow(cat_names=["C"], cont_names=["A", "B"], label_name=[])
 
     proc.add_feature(
-        nvt.ops.LambdaOp(
-            op_name="isnull", f=lambda col, gdf: col.isnull(), replace=False, preprocessing=False
-        )
+        nvt.ops.LambdaOp(op_name="isnull", f=lambda col, gdf: col.isnull(), replace=False)
     )
 
     proc.add_cat_preprocess(nvt.ops.Categorify())
