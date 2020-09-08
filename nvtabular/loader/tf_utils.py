@@ -52,11 +52,11 @@ def configure_tensorflow(memory_allocation=None, device=None):
 
 def _get_parents(column):
     """
-  recursive function for finding the feature columns
-  that supply inputs for a given `column`. If there are
-  none, returns the column. Uses sets so is not
-  deterministic.
-  """
+    recursive function for finding the feature columns
+    that supply inputs for a given `column`. If there are
+    none, returns the column. Uses sets so is not
+    deterministic.
+    """
     if isinstance(column.parents[0], str):
         return set([column])
     parents = set()

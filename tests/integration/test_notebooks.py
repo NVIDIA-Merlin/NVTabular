@@ -51,9 +51,7 @@ def test_optimize_criteo(tmpdir):
     output_path = os.path.join(DATA_START, "criteo/crit_test_opt")
 
     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
-    _run_notebook(
-        tmpdir, notebook_path, input_path, output_path, gpu_id=2,
-    )
+    _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=2)
 
 
 def test_rossman_example(tmpdir):
@@ -66,16 +64,12 @@ def test_rossman_example(tmpdir):
         dirname(TEST_PATH), "examples", "rossmann-store-sales-preproc.ipynb"
     )
 
-    _run_notebook(
-        tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False,
-    )
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
 
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
     )
-    _run_notebook(
-        tmpdir, notebookex_path, input_path, output_path, gpu_id=1,
-    )
+    _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
 
 
 def test_gpu_benchmark(tmpdir):

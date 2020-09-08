@@ -22,7 +22,7 @@ from .backend import DataLoader
 
 
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
-    """ This class, creates batches of, a user defined size, tensor
+    """This class, creates batches of, a user defined size, tensor
     represenation of the data supplied. The data input requires an
     NVTabular dataset. Handles spillover to ensure all batches are
     the specified size until the final batch.
@@ -107,8 +107,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """
-        This class is an extension of the torch dataloader.
-        It is required, to support the FastAI framework.
+    This class is an extension of the torch dataloader.
+    It is required, to support the FastAI framework.
     """
 
     def __len__(self):
