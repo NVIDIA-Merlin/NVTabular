@@ -21,6 +21,34 @@ from .transform_operator import TransformOperator
 
 
 class HashBucket(TransformOperator):
+    """
+    This op maps categorical columns to a contiguous integer range
+    by first hashing the column then modulating by the number of
+    buckets as indicated by `num_buckets`.
+
+    Parameters
+    ----------
+    num_buckets : int, list of int, or dictionary:{column: num_hash_buckets}
+        Column-wise modulo to apply after hash function. Note that this
+        means that the corresponding value will be the categorical cardinality
+        of the transformed categorical feature. If given as an int, that value
+        will be used as the number of "hash buckets" for every feature. If
+        a list is provided, it must be of the same length as `columns` (which
+        should not be `None`), and the values will correspond to the number
+        of buckets to use for the feature specified at the same index in
+        `columns`. If a dictionary is passed, it will be used to specify
+        explicit mappings from a column name to a number of buckets. In
+        this case, only the columns specified in the keys of `num_buckets`
+        will be transformed.
+    columns: list of str or None
+        Column names to apply hash bucket transformation to. Ignored if
+        `num_buckets` is a `dict`. If `num_buckets` is given as a list,
+        `columns` must not be None and have the same length. If left
+        as None, transformation will be applied to all categorical
+        columns. Note that this case is only used if `num_buckets` is
+        an `int`.
+    """
+
     default_in = CAT
     default_out = CAT
 
