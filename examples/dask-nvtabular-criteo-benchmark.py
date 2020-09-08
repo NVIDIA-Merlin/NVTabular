@@ -36,7 +36,7 @@ def setup_rmm_pool(client, pool_size):
 
 
 def main(args):
-    """ Multi-GPU Criteo/DLRM Preprocessing Benchmark
+    """Multi-GPU Criteo/DLRM Preprocessing Benchmark
 
     This benchmark is designed to measure the time required to preprocess
     the Criteo (1TB) dataset for Facebook’s DLRM model.  The user must specify
