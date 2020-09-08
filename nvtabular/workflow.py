@@ -754,8 +754,7 @@ class Workflow(BaseWorkflow):
         apply_ops=True,
         num_io_threads=0,
     ):
-        """ Iterate through dataset and (optionally) apply/shuffle/write.
-        """
+        """Iterate through dataset and (optionally) apply/shuffle/write."""
         # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
 
@@ -790,8 +789,7 @@ class Workflow(BaseWorkflow):
             writer.write_general_metadata(general_md, writer.fs, output_path)
 
     def update_stats(self, dataset, end_phase=None):
-        """ Colllect statistics only.
-        """
+        """Colllect statistics only."""
         self.build_and_process_graph(dataset, end_phase=end_phase, record_stats=True)
 
     def build_and_process_graph(
@@ -806,9 +804,9 @@ class Workflow(BaseWorkflow):
         apply_ops=True,
         num_io_threads=0,
     ):
-        """ Build Dask-task graph for workflow.
+        """Build Dask-task graph for workflow.
 
-            Full graph is only executed if `output_format` is specified.
+        Full graph is only executed if `output_format` is specified.
         """
         # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
@@ -855,9 +853,9 @@ class Workflow(BaseWorkflow):
         nfiles=None,
         num_io_threads=0,
     ):
-        """ Write data to shuffled parquet dataset.
+        """Write data to shuffled parquet dataset.
 
-            Assumes statistics are already gathered.
+        Assumes statistics are already gathered.
         """
         # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
@@ -899,9 +897,9 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         num_threads=0,
     ):
-        """ Dask-based dataset output.
+        """Dask-based dataset output.
 
-            Currently supports parquet only.
+        Currently supports parquet only.
         """
         if output_format not in ("parquet", "hugectr"):
             raise ValueError("Only parquet/hugectr output supported with Dask.")

@@ -38,8 +38,7 @@ LOG = logging.getLogger("nvtabular")
 
 
 class ParquetDatasetEngine(DatasetEngine):
-    """ ParquetDatasetEngine is a Dask-based version of cudf.read_parquet.
-    """
+    """ParquetDatasetEngine is a Dask-based version of cudf.read_parquet."""
 
     def __init__(
         self,
@@ -250,6 +249,5 @@ def _write_pq_metadata_file(md_list, fs, path):
 
 
 def guid():
-    """ Simple utility function to get random hex string
-    """
+    """Simple utility function to get random hex string"""
     return uuid4().hex

@@ -21,7 +21,7 @@ from .transform_operator import TransformOperator
 
 
 class DifferenceLag(TransformOperator):
-    """ Calculates the difference between two consecutive rows of the dataset. For instance, this
+    """Calculates the difference between two consecutive rows of the dataset. For instance, this
     operator can calculate the time since a user last had another interaction.
 
     This requires a dataset partitioned by one set of columns (userid) and sorted further by another
@@ -50,9 +50,11 @@ class DifferenceLag(TransformOperator):
     shift : int, default 1
         The number of rows to look backwards when computing the difference lag. Negative values
         indicate the number of rows to look forwards, making this compute the lead instead of lag.
-    columns :
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
     replace: bool, default False
-        Whether to replace existing columns or create new ones
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT

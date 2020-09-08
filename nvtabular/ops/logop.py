@@ -26,6 +26,14 @@ class LogOp(TransformOperator):
     This operator calculates the log of continous columns. Note that
     to handle the common case of zerofilling null values, this is
     calculates ``log(1+x)`` instead of just ``log(x)``.
+
+    Parameters
+    ----------
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
+    replace : bool, default False
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT

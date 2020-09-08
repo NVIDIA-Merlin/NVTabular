@@ -19,9 +19,9 @@ from .dataset_engine import DatasetEngine
 
 
 class CSVDatasetEngine(DatasetEngine):
-    """ CSVDatasetEngine
+    """CSVDatasetEngine
 
-        Thin wrapper around dask_cudf.read_csv.
+    Thin wrapper around dask_cudf.read_csv.
     """
 
     def __init__(self, paths, part_size, storage_options=None, **kwargs):

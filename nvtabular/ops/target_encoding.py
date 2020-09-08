@@ -108,7 +108,6 @@ class TargetEncoding(DFOperator):
         p_smooth=20,
         out_col=None,
         out_dtype=None,
-        preprocessing=True,
         replace=False,
         tree_width=None,
         cat_cache="host",
@@ -118,7 +117,7 @@ class TargetEncoding(DFOperator):
         stat_name=None,
         drop_folds=True,
     ):
-        super().__init__(preprocessing=preprocessing, replace=False)
+        super().__init__(replace=replace)
         # Make sure cat_groups is a list of lists
         self.cat_groups = cat_groups if isinstance(cat_groups, list) else [cat_groups]
         for i in range(len(self.cat_groups)):
