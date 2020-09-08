@@ -1,2 +1,2 @@
-from embedding import ScalarDenseFeatures, ScalarWideFeatures
+from embedding import ScalarDenseFeatures, ScalarLinearFeatures
 from interaction import DotProductInteraction
