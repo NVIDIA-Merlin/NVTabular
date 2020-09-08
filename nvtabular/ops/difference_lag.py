@@ -21,7 +21,7 @@ from .transform_operator import TransformOperator
 
 
 class DifferenceLag(TransformOperator):
-    """ Calculates the difference between two consecutive rows of the dataset. For instance, this
+    """Calculates the difference between two consecutive rows of the dataset. For instance, this
     operator can calculate the time since a user last had another interaction.
 
     This requires a dataset partitioned by one set of columns (userid) and sorted further by another

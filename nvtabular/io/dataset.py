@@ -38,7 +38,7 @@ LOG = logging.getLogger("nvtabular")
 
 
 class Dataset:
-    """ Dask-based Dataset Class
+    """Dask-based Dataset Class
         Converts a dataset into a dask_cudf DataFrame on demand
 
     Parameters
@@ -137,7 +137,7 @@ class Dataset:
                 self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
-        """ Convert `Dataset` object to `dask_cudf.DataFrame`
+        """Convert `Dataset` object to `dask_cudf.DataFrame`
 
         Parameters
         -----------
@@ -184,7 +184,7 @@ class Dataset:
         return ddf
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
-        """ Convert `Dataset` object to a `cudf.DataFrame` iterator.
+        """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
         `dask_cudf.DataFrame`, and materialize a single partition for
