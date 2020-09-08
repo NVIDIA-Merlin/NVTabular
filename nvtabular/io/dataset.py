@@ -64,7 +64,7 @@ class Dataset:
 
     Since NVTabular leverages `fsspec` as a file-system interface,
     the underlying data can be stored either locally, or in a remote/cloud
-    Data store.  To read from remote storage, like gds or s3, the
+    data store.  To read from remote storage, like gds or s3, the
     appropriate protocol should be prepended to the `Dataset` path
     argument(s), and any special backend parameters should be passed
     in a `storage_options` dictionary::
