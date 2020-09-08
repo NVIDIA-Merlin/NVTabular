@@ -56,7 +56,7 @@ class LambdaOp(TransformOperator):
 
         # Add LamdaOp to the workflow and
         # specify an op_name
-        # define a custom function e.g. calculate conditional probability
+        # define a custom function e.g. calculate probability
         # for different events
         proc.add_feature(
             LambdaOp(

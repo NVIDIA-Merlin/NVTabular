@@ -41,7 +41,7 @@ class JoinExternal(TransformOperator):
         # Load dataset which should be joined to the main dataset
         df_external = cudf.read_parquet('external.parquet')
 
-        # Add Normalize to the workflow for continous columns
+        # Add JoinExternal to the workflow
         proc.add_preprocess(
             nvt.ops.JoinExternal(
                 df_external,

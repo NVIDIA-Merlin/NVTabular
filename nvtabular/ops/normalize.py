@@ -97,7 +97,7 @@ class NormalizeMinMax(DFOperator):
             label_name=LABEL_COLUMNS
         )
 
-        # Add Normalize to the workflow for continous columns
+        # Add NormalizeMinMax to the workflow for continous columns
         proc.add_cont_feature(nvt.ops.NormalizeMinMax())
 
     Parameters
