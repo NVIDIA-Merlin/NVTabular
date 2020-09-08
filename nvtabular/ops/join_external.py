@@ -29,6 +29,31 @@ class JoinExternal(TransformOperator):
     Join each dataset partition to an external table. For performance
     reasons, only "left" and "inner" join transformations are supported.
 
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Load dataset which should be joined to the main dataset
+        df_external = cudf.read_parquet('external.parquet')
+
+        # Add JoinExternal to the workflow
+        proc.add_preprocess(
+            nvt.ops.JoinExternal(
+                df_external,
+                on=['key1', 'key2'],
+                on_ext=['key1_ext', 'key2_ext'],
+                how='left',
+                columns_ext=['key1_ext', 'key2_ext', 'cat1', 'cat2', 'num1'],
+                kind_ext='cudf',
+                cache='device'
+            )
+        )
+
     Parameters
     -----------
     df_ext : DataFrame, pyarrow.Table, or file path
