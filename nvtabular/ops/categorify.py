@@ -45,10 +45,6 @@ class Categorify(DFOperator):
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
 
-    Although you can directly call methods of this class to
-    transform your categorical features, it's typically used within a
-    Workflow class.
-
     Parameters
     -----------
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
@@ -69,8 +65,6 @@ class Categorify(DFOperator):
         encoded as a new column. Note that replacement is not allowed for
         "combo", because the same column name can be included in
         multiple groups.
-    preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
     replace : bool, default True
         Replaces the transformed column with the original input.
         Note that this does not apply to multi-column groups with
@@ -103,7 +97,6 @@ class Categorify(DFOperator):
         self,
         freq_threshold=0,
         columns=None,
-        preprocessing=True,
         replace=True,
         out_path=None,
         tree_width=None,
@@ -175,7 +168,7 @@ class Categorify(DFOperator):
             raise ValueError(f"encode_type={encode_type} not supported.")
 
         # Other self-explanatory intialization
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        super().__init__(columns=columns, replace=replace)
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
