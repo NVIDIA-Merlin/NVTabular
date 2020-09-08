@@ -20,14 +20,14 @@ import shutil
 import time
 import warnings
 
+import rmm
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
-import rmm
 
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
 from nvtabular import ops as ops
-from nvtabular.utils import device_mem_size, _pynvml_mem_size
+from nvtabular.utils import _pynvml_mem_size, device_mem_size
 
 
 def setup_rmm_pool(client, pool_size):
