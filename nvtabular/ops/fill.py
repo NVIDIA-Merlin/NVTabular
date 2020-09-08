@@ -74,7 +74,7 @@ class FillMedian(DFOperator):
     """
     This operation replaces missing values with the median value for the column.
 
-    Example usage:
+    Example usage::
 
         # Initialize the workflow
         proc = nvt.Workflow(
