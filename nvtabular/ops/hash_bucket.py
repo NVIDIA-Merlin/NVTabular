@@ -26,6 +26,41 @@ class HashBucket(TransformOperator):
     by first hashing the column then modulating by the number of
     buckets as indicated by `num_buckets`.
 
+    Example usage::
+        cat_names = ["feature_a", "feature_b"]
+        cont_names = ...
+        label_name = ...
+        workflow = nvt.Workflow(
+            cat_names=cat_names, cont_names=cont_names, label_name=label_names
+        )
+
+        # this will hash both features a and b to 100 buckets
+        op = nvt.ops.HashBucket(100)
+
+        # for different numbers of buckets per feature, initialize with a dict
+        op = nvt.ops.HashBucket({"feature_a": 100, "feature_b": 50})
+
+        # or, equivalently
+        op = nvt.ops.HashBucket(
+            num_buckets=[100, 50], columns=["feature_a", "feature_b"]
+        )
+
+        workflow.add_cat_preprocess(op)
+
+    The output of this op would be::
+        workflow.finalize()
+        gdf = cudf.DataFrame({
+            "feature_a": [101588, 2214177, 92855],
+            "feature_b": ["foo", "bar", "baz"]
+        })
+        workflow.apply_ops(gdf)
+
+           feature_a  feature_b
+        0         90         11
+        1         70         40
+        2         52          9
+
+
     Parameters
     ----------
     num_buckets : int, list of int, or dictionary:{column: num_hash_buckets}
