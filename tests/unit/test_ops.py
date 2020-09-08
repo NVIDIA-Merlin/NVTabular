@@ -520,7 +520,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     # Replacement
     df = df_copy.copy()
     op = ops.LambdaOp(
-        op_name="astype", f=lambda col, gdf: col.astype(float), columns=["id"], replace=True,
+        op_name="astype", f=lambda col, gdf: col.astype(float), columns=["id"], replace=True
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
     assert new_gdf["id"].dtype == "float64"
@@ -634,7 +634,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 
     processor.add_preprocess(
         [
-            ops.LambdaOp(op_name="mul0", f=lambda col, gdf: col * 0, columns=["x"], replace=False,),
+            ops.LambdaOp(op_name="mul0", f=lambda col, gdf: col * 0, columns=["x"], replace=False),
             ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=False),
         ]
     )
