@@ -31,9 +31,13 @@ class Normalize(DFOperator):
 
     It performs Normalization using the mean std method.
 
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    Parameters
+    ----------
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
+    replace : bool, default False
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT
@@ -72,9 +76,13 @@ class NormalizeMinMax(DFOperator):
 
     It performs Normalization using the min max method.
 
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    Parameters
+    ----------
+    columns : list of str, default None
+        Continous columns to target for this op. If None, the operation will target all known
+        continous columns.
+    replace : bool, default False
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT
