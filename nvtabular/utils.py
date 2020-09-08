@@ -34,7 +34,7 @@ def _pynvml_mem_size(kind="total", index=0):
 
 
 def device_mem_size(kind="total"):
-    if kind not in ["free", "total", "free-nvml"]:
+    if kind not in ["free", "total"]:
         raise ValueError("{0} not a supported option for device_mem_size.".format(kind))
     try:
         if kind == "free":
