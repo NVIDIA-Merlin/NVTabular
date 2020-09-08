@@ -45,7 +45,7 @@ class Categorify(DFOperator):
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
 
-    Example usage:
+    Example usage::
 
         # Initialize the workflow
         proc = nvt.Workflow(

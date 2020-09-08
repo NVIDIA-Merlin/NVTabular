@@ -34,7 +34,7 @@ class FillMissing(DFOperator):
             label_name=LABEL_COLUMNS
         )
 
-        # Add FillMissing to the workflow for continous columns and specify fill value
+        # Add FillMissing to the workflow for continuous columns and specify the fill value
         # Default is 0
         proc.add_cont_feature(nvt.ops.FillMissing(fill_val=100))
 
@@ -83,7 +83,7 @@ class FillMedian(DFOperator):
             label_name=LABEL_COLUMNS
         )
 
-        # Add FillMedian to the workflow for continous columns
+        # Add FillMedian to the workflow for continuous columns
         proc.add_cont_feature(nvt.ops.FillMedian())
 
     Parameters

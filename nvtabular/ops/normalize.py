@@ -31,7 +31,7 @@ class Normalize(DFOperator):
 
     It performs Normalization using the mean std method.
 
-    Example usage:
+    Example usage::
 
         # Initialize the workflow
         proc = nvt.Workflow(
@@ -40,7 +40,7 @@ class Normalize(DFOperator):
             label_name=LABEL_COLUMNS
         )
 
-        # Add Normalize to the workflow for continous columns
+        # Add Normalize to the workflow for continuous columns
         proc.add_cont_feature(nvt.ops.Normalize())
 
     Parameters
@@ -88,7 +88,7 @@ class NormalizeMinMax(DFOperator):
 
     It performs Normalization using the min max method.
 
-    Example usage:
+    Example usage::
 
         # Initialize the workflow
         proc = nvt.Workflow(
@@ -97,7 +97,7 @@ class NormalizeMinMax(DFOperator):
             label_name=LABEL_COLUMNS
         )
 
-        # Add NormalizeMinMax to the workflow for continous columns
+        # Add NormalizeMinMax to the workflow for continuous columns
         proc.add_cont_feature(nvt.ops.NormalizeMinMax())
 
     Parameters

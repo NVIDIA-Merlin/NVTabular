@@ -29,7 +29,7 @@ class JoinExternal(TransformOperator):
     Join each dataset partition to an external table. For performance
     reasons, only "left" and "inner" join transformations are supported.
 
-    Example usage:
+    Example usage::
 
         # Initialize the workflow
         proc = nvt.Workflow(

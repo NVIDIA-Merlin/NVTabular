@@ -24,7 +24,7 @@ class LambdaOp(TransformOperator):
     """
     LambdaOp allows you to apply row level functions to a NVTabular workflow.
 
-    Example usage 1:
+    Example usage 1::
 
         # Initialize the workflow
         proc = nvt.Workflow(
@@ -45,16 +45,9 @@ class LambdaOp(TransformOperator):
             )
         )
 
-    Example usage 2:
+    Example usage 2::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add LamdaOp to the workflow and
+        # Add LambdaOp to the workflow and
         # specify an op_name
         # define a custom function e.g. calculate probability
         # for different events

@@ -24,7 +24,7 @@ class Dropna(TransformOperator):
     """
     This operation detects missing values, and filters out rows with null values.
 
-    Example usage:
+    Example usage::
 
         # Initialize the workflow
         proc = nvt.Workflow(
