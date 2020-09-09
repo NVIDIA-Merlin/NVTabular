@@ -1,7 +1,7 @@
 ## NVTabular | [API documentation](https://nvidia.github.io/NVTabular/main/index.html)
 
 
-NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/dask-cuda) library.
+NVTabular is a feature engineering and preprocessing library for tabular data designed to quickly and easily manipulate terabyte scale datasets used to train deep learning based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
 
 Recommender systems require massive datasets to train, particularly for deep learning based solutions. The transformation of these datasets after ETL in order to prepare them for model training is particularly challenging. Often the time taken to do steps such as feature engineering, categorical encoding and normalization of continuous variables exceeds the time it takes to train a model.
 
@@ -62,7 +62,7 @@ Now you can use any browser to access the jupyter-lab server, via <MachineIP>:88
 Once in the server, navigate to the ```/nvtabular/``` directory and explore the code base or try out some of the examples. 
 
 
-Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS Dask-cuDF](https://github.com/rapidsai/dask-cuda), and a range of [examples](./examples). The easiest way to get started is to simply launch the container above and explore the examples within.
+Within the container is the codebase, along with all of our dependencies, particularly [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf), and a range of [examples](./examples). The easiest way to get started is to simply launch the container above and explore the examples within.
 
 The code base with examples, can be found at the following directory location within the container:
 ```
