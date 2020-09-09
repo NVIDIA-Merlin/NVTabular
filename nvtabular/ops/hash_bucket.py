@@ -27,6 +27,7 @@ class HashBucket(TransformOperator):
     buckets as indicated by `num_buckets`.
 
     Example usage::
+
         cat_names = ["feature_a", "feature_b"]
         cont_names = ...
         label_name = ...
@@ -48,6 +49,7 @@ class HashBucket(TransformOperator):
         workflow.add_cat_preprocess(op)
 
     The output of this op would be::
+
         workflow.finalize()
         gdf = cudf.DataFrame({
             "feature_a": [101588, 2214177, 92855],
