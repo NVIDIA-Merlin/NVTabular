@@ -152,7 +152,7 @@ def test_linear_embedding_layer():
     # do one iteration of training to make sure values
     # match up, since all initialized to zero
     y = np.array([-0.5, 1.2, 3.4])[:, None]
-    loss = model.fit(x, y, batch_size=3, epochs=1, verbose=0)
+    model.fit(x, y, batch_size=3, epochs=1, verbose=0)
     y_hat = model.predict(x)[:, 0]
 
     a_weight = embedding_layer.embedding_tables["numeric"].numpy()[0, 0]
