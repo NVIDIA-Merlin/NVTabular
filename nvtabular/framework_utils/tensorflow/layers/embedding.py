@@ -115,19 +115,20 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
     `tf.keras.layers.DenseFeatures`.
 
     Example usage::
+
         column_a = tf.feature_column.numeric_column("a", (1,))
         column_b = tf.feature_column.categorical_column_with_identity("b", 100)
-        column_b_embedding = tf.feature_column.embedding_column(column_b)
+        column_b_embedding = tf.feature_column.embedding_column(column_b, 4)
 
         inputs = {
             "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
             "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64)
         }
-        x = ScalarLinearFeatures([column_a, column_b_embedding])(inputs)
+        x = ScalarDenseFeatures([column_a, column_b_embedding])(inputs)
 
     Parameters
     ----------
-    feature_columns : list of tf.feature_column
+    feature_columns : list of `tf.feature_column`
         feature columns describing the inputs to the layer
     """
 
@@ -245,6 +246,7 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
     NOT be wrapped in embedding or indicator columns first.
 
     Example usage::
+
         column_a = tf.feature_column.numeric_column("a", (1,))
         column_b = tf.feature_column.categorical_column_with_identity("b", 100)
 
