@@ -14,9 +14,8 @@
 # limitations under the License.
 #
 
-import pytest
-
 import numpy as np
+import pytest
 
 tf = pytest.importorskip("tensorflow")
 layers = pytest.importorskip("nvtabular.framework_utils.tensorflow.layers")
