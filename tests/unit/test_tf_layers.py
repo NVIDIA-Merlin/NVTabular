@@ -36,7 +36,7 @@ def get_bad_feature_columns():
     )
 
 
-@pytest.mark.parameterize("aggregation", ["stack", "concat"])
+@pytest.mark.parametrize("aggregation", ["stack", "concat"])
 def test_dense_embedding_layer(aggregation):
     col_a, col_b, col_c = get_good_feature_columns()
     col_b_embedding = tf.feature_column.embedding_column(col_b, 8)
