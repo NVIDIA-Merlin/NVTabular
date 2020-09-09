@@ -16,6 +16,7 @@
 
 import torch
 
+
 def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torch.nn.MSELoss()):
     """
     The controlling function that loads data supplied via a dataloader to a model. Can be redefined
