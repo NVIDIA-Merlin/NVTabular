@@ -175,3 +175,49 @@ def test_linear_embedding_layer():
         embedding_layer = layers.ScalarLinearFeatures([bad_col_a, col_b, col_c])
     with pytest.raises(ValueError):
         embedding_layer = layers.ScalarLinearFeatures([col_a, bad_col_b, col_c])
+
+
+@pytest.mark.parametrize("embedding_dim", [1, 4, 16])
+@pytest.mark.parametrize("num_features", [1, 16, 64])
+@pytest.mark.parametrize("interaction_type", [None, "field_all", "field_each", "field_interaction"])
+@pytest.mark.parametrize("self_interaction", [True, False])
+def test_dot_product_interaction_layer(
+        embedding_dim, num_features, interaction_type, self_interaction
+    ):
+    input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
+    interaction_layer = layers.DotProductInteration(interaction_type, self_interaction)
+    output = interaction_layer(input)
+    model = tf.keras.Model(inputs=input, outputs=output)
+    model.compile("sgd", "mse")
+
+    x = np.random.randn(8, num_features, embedding_dim).astype(np.float32)
+    y_hat = model.predict(x)
+
+    if self_interaction:
+        expected_dim = num_features**2
+    else:
+        expected_dim = num_features*(num_features - 1) // 2
+    assert y_hat.shape[1] == expected_dim
+
+    W = interaction_layer.kernel.numpy()
+    expected_outputs = []
+    for i in range(num_features):
+        for j in range(num_features):
+            if i == j and not self_interaction:
+                continue
+            x_i = x[:, i]
+            x_j = x[:, j]
+            if interaction_type == "field_all":
+                W_ij = W
+            elif interaction_type == "field_each":
+                W_ij = W[i]
+            elif interaction_type == "field_interaction":
+                W_ij = W[i, j]
+            else:
+                W_ij = np.eye(num_features)
+            x_i = x_i @ W_ij
+            expected_outputs.append((x_i*x_j).sum(axis=1))
+    expected_output = np.stack(expected_outputs).T
+
+    rtol = 1e-6
+    assert np.isclose(expected_output, y_hat, rtol=rtol)
