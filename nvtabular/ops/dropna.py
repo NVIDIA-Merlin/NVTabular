@@ -24,6 +24,19 @@ class Dropna(TransformOperator):
     """
     This operation detects missing values, and filters out rows with null values.
 
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add Dropna to the workflow and specify which columns to apply to
+        # Default is None and will check all columns
+        proc.add_preprocess(nvt.ops.Dropna(columns=['cat1', 'num1']))
+
     Parameters
     ----------
     columns : list of str, default None
