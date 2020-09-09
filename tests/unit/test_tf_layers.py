@@ -115,8 +115,7 @@ def test_dense_embedding_layer(aggregation):
 
     # make sure unusable columns get flagged
     bad_col_a, bad_col_b = get_bad_feature_columns()
-    bad_col_b_embedding = tf.feature_column.embedding_column(
-        bad_col_b, col_b_embedding.dimension)
+    bad_col_b_embedding = tf.feature_column.embedding_column(bad_col_b, col_b_embedding.dimension)
     with pytest.raises(ValueError):
         # vector numeric should raise, even though dims match
         embedding_layer = layers.ScalarDenseFeatures(
