@@ -89,7 +89,7 @@ We also have a [simple tutorial](examples/rossmann-store-sales-example.ipynb) th
 
 ### Contributing
 
-If you wish to contribute to the library directly please see [Contributing.md](./CONTRIBUTING.md). We are in particulary interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
+If you wish to contribute to the library directly please see [Contributing.md](./CONTRIBUTING.md). We are particulary interested in contributions or feature requests for feature engineering or preprocessing operations that you have found helpful in your own workflows.
 
 ### Learn More
 
