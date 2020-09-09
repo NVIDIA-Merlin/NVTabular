@@ -25,7 +25,7 @@ def _validate_categorical_column(feature_column):
             "Only acceptable categorical columns for feeding "
             "embeddings are identity, found column {} of type {}. "
             "Consider using NVTabular online preprocessing to perform "
-            "categorical transformations".format(column.name, type(feature_column).__name__)
+            "categorical transformations".format(feature_column.name, type(feature_column).__name__)
         )
 
 
@@ -38,7 +38,7 @@ def _validate_dense_feature_columns(feature_columns):
                     "All feature columns must be dense, found categorical "
                     "column {} of type {}. Please wrap categorical columns "
                     "in embedding or indicator columns before passing".format(
-                        feature_column.name, type(column).__name__
+                        feature_column.name, type(feature_column).__name__
                     )
                 )
             else:
@@ -204,6 +204,12 @@ def _validate_linear_feature_columns(feature_columns):
         raise ValueError(_errors)
 
 
+# TODO: is there a clean way to combine these two layers
+# into one, maybe with a "sum" aggregation? Major differences
+# seem to be whether categorical columns are wrapped in
+# embeddings and the numeric matmul, both of which seem
+# reasonably easy to check. At the very least, we should
+# be able to subclass I think?
 class ScalarLinearFeatures(tf.keras.layers.Layer):
     """
     Layer which implements a linear combination of one-hot categorical
@@ -240,7 +246,7 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
         _validate_linear_feature_columns(feature_columns)
 
         self.feature_columns = feature_columns
-        super(LinearEmbedding, self).__init__(**kwargs)
+        super(ScalarLinearFeatures, self).__init__(**kwargs)
 
     def build(self, input_shapes):
         assert all([shape[1] == 1 for shape in input_shapes.values()])
@@ -286,7 +292,7 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
 
         if len(numeric_inputs) > 0:
             numerics = tf.concat(numeric_inputs, axis=1)
-            x = x + tf.matmul(numeric_inputs, self.embedding_tables["numeric"])
+            x = x + tf.matmul(numerics, self.embedding_tables["numeric"])
         return x
 
     def compute_output_shape(self, input_shapes):
