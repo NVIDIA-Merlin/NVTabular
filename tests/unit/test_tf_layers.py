@@ -182,8 +182,8 @@ def test_linear_embedding_layer():
 @pytest.mark.parametrize("interaction_type", [None, "field_all", "field_each", "field_interaction"])
 @pytest.mark.parametrize("self_interaction", [True, False])
 def test_dot_product_interaction_layer(
-        embedding_dim, num_features, interaction_type, self_interaction
-    ):
+    embedding_dim, num_features, interaction_type, self_interaction
+):
     input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
     interaction_layer = layers.DotProductInteration(interaction_type, self_interaction)
     output = interaction_layer(input)
@@ -194,9 +194,9 @@ def test_dot_product_interaction_layer(
     y_hat = model.predict(x)
 
     if self_interaction:
-        expected_dim = num_features**2
+        expected_dim = num_features ** 2
     else:
-        expected_dim = num_features*(num_features - 1) // 2
+        expected_dim = num_features * (num_features - 1) // 2
     assert y_hat.shape[1] == expected_dim
 
     W = interaction_layer.kernel.numpy()
@@ -216,7 +216,7 @@ def test_dot_product_interaction_layer(
             else:
                 W_ij = np.eye(num_features)
             x_i = x_i @ W_ij
-            expected_outputs.append((x_i*x_j).sum(axis=1))
+            expected_outputs.append((x_i * x_j).sum(axis=1))
     expected_output = np.stack(expected_outputs).T
 
     rtol = 1e-6
