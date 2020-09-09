@@ -1,5 +1,4 @@
 import numpy as np
-
 import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
