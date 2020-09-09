@@ -44,7 +44,9 @@ def test_dense_embedding_layer(aggregation):
 
     # should raise ValueError if passed categorical columns
     with pytest.raises(ValueError):
-        embedding_layer = layers.ScalarDenseFeatures([col_a, col_b, col_c], aggregation=aggregation)
+        embedding_layer = layers.ScalarDenseFeatures(
+            [col_a, col_b, col_c], aggregation=aggregation
+        )
 
     if aggregation == "stack":
         # can't pass numeric to stack aggregation unless dims are 1
@@ -115,7 +117,9 @@ def test_dense_embedding_layer(aggregation):
 
     # make sure unusable columns get flagged
     bad_col_a, bad_col_b = get_bad_feature_columns()
-    bad_col_b_embedding = tf.feature_column.embedding_column(bad_col_b, col_b_embedding.dimension)
+    bad_col_b_embedding = tf.feature_column.embedding_column(
+        bad_col_b, col_b_embedding.dimension
+    )
     with pytest.raises(ValueError):
         # vector numeric should raise, even though dims match
         embedding_layer = layers.ScalarDenseFeatures(
@@ -179,15 +183,19 @@ def test_linear_embedding_layer():
 
 @pytest.mark.parametrize("embedding_dim", [1, 4, 16])
 @pytest.mark.parametrize("num_features", [1, 16, 64])
-@pytest.mark.parametrize("interaction_type", [None, "field_all", "field_each", "field_interaction"])
+@pytest.mark.parametrize(
+    "interaction_type", [None, "field_all", "field_each", "field_interaction"]
+)
 @pytest.mark.parametrize("self_interaction", [True, False])
 def test_dot_product_interaction_layer(
-        embedding_dim, num_features, interaction_type, self_interaction
-    ):
+    embedding_dim, num_features, interaction_type, self_interaction
+):
     if num_features == 1 and not self_interaction:
         return
 
-    input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
+    input = tf.keras.Input(
+        name="x", shape=(num_features, embedding_dim), dtype=tf.float32
+    )
     interaction_layer = layers.DotProductInteraction(interaction_type, self_interaction)
     output = interaction_layer(input)
     model = tf.keras.Model(inputs=input, outputs=output)
@@ -197,16 +205,16 @@ def test_dot_product_interaction_layer(
     y_hat = model.predict(x)
 
     if self_interaction:
-        expected_dim = num_features*(num_features+1) // 2
+        expected_dim = num_features * (num_features + 1) // 2
     else:
-        expected_dim = num_features*(num_features - 1) // 2
+        expected_dim = num_features * (num_features - 1) // 2
     assert y_hat.shape[1] == expected_dim
 
     if interaction_type is not None:
         W = interaction_layer.kernel.numpy()
     expected_outputs = []
     for i in range(num_features):
-        j_start = i if self_interaction else i+1
+        j_start = i if self_interaction else i + 1
         for j in range(j_start, num_features):
             x_i = x[:, i]
             x_j = x[:, j]
@@ -219,7 +227,7 @@ def test_dot_product_interaction_layer(
 
             if interaction_type is not None:
                 x_i = x_i @ W_ij
-            expected_outputs.append((x_i*x_j).sum(axis=1))
+            expected_outputs.append((x_i * x_j).sum(axis=1))
     expected_output = np.stack(expected_outputs).T
 
     rtol = 1e-5
@@ -227,4 +235,3 @@ def test_dot_product_interaction_layer(
     frac_correct = 1.0
     match = np.isclose(expected_output, y_hat, rtol=rtol, atol=atol)
     assert match.mean() >= frac_correct
-
