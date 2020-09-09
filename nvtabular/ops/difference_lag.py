@@ -41,7 +41,7 @@ class DifferenceLag(TransformOperator):
     compute the lagged difference within a partition::
 
         # compute the delta in timestamp for each users session
-        workflow.add_feature(DifferenceLag("userid', columns=["timestamp"]))
+        workflow.add_feature(DifferenceLag('userid', columns=["timestamp"]))
 
     Parameters
     -----------
