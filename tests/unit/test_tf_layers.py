@@ -44,9 +44,7 @@ def test_dense_embedding_layer(aggregation):
 
     # should raise ValueError if passed categorical columns
     with pytest.raises(ValueError):
-        embedding_layer = layers.ScalarDenseFeatures(
-            [col_a, col_b, col_c], aggregation=aggregation
-        )
+        embedding_layer = layers.ScalarDenseFeatures([col_a, col_b, col_c], aggregation=aggregation)
 
     if aggregation == "stack":
         # can't pass numeric to stack aggregation unless dims are 1
@@ -117,9 +115,7 @@ def test_dense_embedding_layer(aggregation):
 
     # make sure unusable columns get flagged
     bad_col_a, bad_col_b = get_bad_feature_columns()
-    bad_col_b_embedding = tf.feature_column.embedding_column(
-        bad_col_b, col_b_embedding.dimension
-    )
+    bad_col_b_embedding = tf.feature_column.embedding_column(bad_col_b, col_b_embedding.dimension)
     with pytest.raises(ValueError):
         # vector numeric should raise, even though dims match
         embedding_layer = layers.ScalarDenseFeatures(
@@ -183,9 +179,7 @@ def test_linear_embedding_layer():
 
 @pytest.mark.parametrize("embedding_dim", [1, 4, 16])
 @pytest.mark.parametrize("num_features", [1, 16, 64])
-@pytest.mark.parametrize(
-    "interaction_type", [None, "field_all", "field_each", "field_interaction"]
-)
+@pytest.mark.parametrize("interaction_type", [None, "field_all", "field_each", "field_interaction"])
 @pytest.mark.parametrize("self_interaction", [True, False])
 def test_dot_product_interaction_layer(
     embedding_dim, num_features, interaction_type, self_interaction
@@ -193,9 +187,7 @@ def test_dot_product_interaction_layer(
     if num_features == 1 and not self_interaction:
         return
 
-    input = tf.keras.Input(
-        name="x", shape=(num_features, embedding_dim), dtype=tf.float32
-    )
+    input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
     interaction_layer = layers.DotProductInteraction(interaction_type, self_interaction)
     output = interaction_layer(input)
     model = tf.keras.Model(inputs=input, outputs=output)
