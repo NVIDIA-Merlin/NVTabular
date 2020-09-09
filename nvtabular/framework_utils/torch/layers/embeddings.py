@@ -16,31 +16,34 @@
 
 import torch
 
+
 class ConcatenatedEmbeddings(torch.nn.Module):
     """Map multiple categorical variables to concatenated embeddings.
-    
+
     Args:
         embedding_table_shapes: A dictionary mapping column names to
             (cardinality, embedding_size) tuples.
         dropout: A float.
-    
+
     Inputs:
         x: An int64 Tensor with shape [batch_size, num_variables].
-    
+
     Outputs:
         A Float Tensor with shape [batch_size, embedding_size_after_concat].
     """
-    
+
     def __init__(self, embedding_table_shapes, dropout=0.0):
         super().__init__()
-        self.embedding_layers = torch.nn.ModuleList([
-            torch.nn.Embedding(cat_size, emb_size)
-            for cat_size, emb_size in embedding_table_shapes.values()
-        ])
+        self.embedding_layers = torch.nn.ModuleList(
+            [
+                torch.nn.Embedding(cat_size, emb_size)
+                for cat_size, emb_size in embedding_table_shapes.values()
+            ]
+        )
         self.dropout = torch.nn.Dropout(p=dropout)
-    
+
     def forward(self, x):
-        x = [layer(x[:,i]) for i, layer in enumerate(self.embedding_layers)]
+        x = [layer(x[:, i]) for i, layer in enumerate(self.embedding_layers)]
         x = torch.cat(x, dim=1)
         x = self.dropout(x)
         return x

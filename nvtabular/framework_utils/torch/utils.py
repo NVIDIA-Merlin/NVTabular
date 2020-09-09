@@ -16,18 +16,19 @@
 
 import torch
 
+
 def rmspe_func(y_pred, y):
     "Return y_pred and y to non-log space and compute RMSPE"
     y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
     pct_var = (y_pred - y) / y
-    return (pct_var**2).mean().pow(0.5)
+    return (pct_var ** 2).mean().pow(0.5)
 
 
 def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torch.nn.MSELoss()):
     """
     The controlling function that loads data supplied via a dataloader to a model. Can be redefined
     based on parameters.
-    
+
     Parameters
     -----------
     dataloader : iterator
@@ -57,4 +58,4 @@ def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torc
     y_pred = torch.cat(y_pred_list)
     epoch_loss = loss_func(y_pred, y).item()
     epoch_rmspe = rmspe_func(y_pred, y).item()
-    return epoch_loss, epoch_rmspe  
+    return epoch_loss, epoch_rmspe

@@ -14,16 +14,18 @@
 # limitations under the License.
 #
 import torch
+
 from nvtabular.framework_utils.torch.layers import ConcatenatedEmbeddings
+
 
 class Model(torch.nn.Module):
     """
     Generic Base Pytorch Model, that contains support for Categorical and Continous values.
-    
+
     Parameters
     ----------
     embedding_tables_shapes: dict
-        A dictionary representing the <column>: <max cardinality of column> for all 
+        A dictionary representing the <column>: <max cardinality of column> for all
         categorical columns.
     num_continuous: int
         Number of continuous columns in data.
@@ -36,14 +38,21 @@ class Model(torch.nn.Module):
     max_output: float
         Signifies the max output.
     """
-    
-    def __init__(self, embedding_table_shapes, num_continuous,
-                 emb_dropout, layer_hidden_dims, layer_dropout_rates, max_output=None):
+
+    def __init__(
+        self,
+        embedding_table_shapes,
+        num_continuous,
+        emb_dropout,
+        layer_hidden_dims,
+        layer_dropout_rates,
+        max_output=None,
+    ):
         super().__init__()
         self.max_output = max_output
         self.initial_cat_layer = ConcatenatedEmbeddings(embedding_table_shapes, dropout=emb_dropout)
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
-        
+
         embedding_size = sum(emb_size for _, emb_size in embedding_table_shapes.values())
         layer_input_sizes = [embedding_size + num_continuous] + layer_hidden_dims[:-1]
         layer_output_sizes = layer_hidden_dims
@@ -52,14 +61,15 @@ class Model(torch.nn.Module):
                 torch.nn.Linear(input_size, output_size),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.BatchNorm1d(output_size),
-                torch.nn.Dropout(dropout_rate)
+                torch.nn.Dropout(dropout_rate),
             )
-            for input_size, output_size, dropout_rate
-            in zip(layer_input_sizes, layer_output_sizes, layer_dropout_rates)
+            for input_size, output_size, dropout_rate in zip(
+                layer_input_sizes, layer_output_sizes, layer_dropout_rates
+            )
         )
-        
+
         self.output_layer = torch.nn.Linear(layer_output_sizes[-1], 1)
-        
+
     def forward(self, x_cat, x_cont):
         x_cat = self.initial_cat_layer(x_cat)
         x_cont = self.initial_cont_layer(x_cont)
@@ -71,8 +81,3 @@ class Model(torch.nn.Module):
             x = self.max_output * torch.sigmoid(x)
         x = x.view(-1)
         return x
-
-
-    
-  
-

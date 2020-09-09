@@ -15,3 +15,5 @@
 #
 
 from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
+
+__all__ = [ConcatenatedEmbeddings]
