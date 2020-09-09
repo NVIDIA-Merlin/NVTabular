@@ -14,9 +14,28 @@
 # limitations under the License.
 #
 import torch
-from nvtabular.framework_utils.pytorch.layers import ConcatenatedEmbeddings
+from nvtabular.framework_utils.torch.layers import ConcatenatedEmbeddings
 
 class Model(torch.nn.Module):
+    """
+    Generic Base Pytorch Model, that contains support for Categorical and Continous values.
+    
+    Parameters
+    ----------
+    embedding_tables_shapes: dict
+        A dictionary representing the <column>: <max cardinality of column> for all 
+        categorical columns.
+    num_continuous: int
+        Number of continuous columns in data.
+    emb_dropout: float, 0 - 1
+        Sets the embedding dropout rate.
+    layer_hidden_dims: list
+        Hidden layer dimensions.
+    layer_dropout_rates: list
+        A list of the layer dropout rates expressed as floats, 0-1, for each layer
+    max_output: float
+        Signifies the max output.
+    """
     
     def __init__(self, embedding_table_shapes, num_continuous,
                  emb_dropout, layer_hidden_dims, layer_dropout_rates, max_output=None):
@@ -53,28 +72,7 @@ class Model(torch.nn.Module):
         x = x.view(-1)
         return x
 
-def rmspe_func(y_pred, y):
-    "Return y_pred and y to non-log space and compute RMSPE"
-    y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
-    pct_var = (y_pred - y) / y
-    return (pct_var**2).mean().pow(0.5)
+
     
-def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=None,):
-    model.train(mode=train)
-    with torch.set_grad_enabled(train):
-        y_list, y_pred_list = [], []
-        for x_cat, x_cont, y in iter(dataloader):
-            y_list.append(y.detach())
-            y_pred = model(x_cat, x_cont)
-            y_pred_list.append(y_pred.detach())
-            loss = loss_func(y_pred, y)
-            if train:
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-    y = torch.cat(y_list)
-    y_pred = torch.cat(y_pred_list)
-    epoch_loss = loss_func(y_pred, y).item()
-    epoch_rmspe = rmspe_func(y_pred, y).item()
-    return epoch_loss, epoch_rmspe    
+  
 

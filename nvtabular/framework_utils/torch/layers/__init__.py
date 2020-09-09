@@ -14,4 +14,4 @@
 # limitations under the License.
 #
 
-from nvtabular.framework_utils.pytorch.layers.embeddings import ConcatenatedEmbeddings
+from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
