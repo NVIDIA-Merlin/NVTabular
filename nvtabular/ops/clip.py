@@ -22,9 +22,13 @@ from .transform_operator import TransformOperator
 
 class Clip(TransformOperator):
     """
-    This operation clips values continous values so that they are with a min/max bound.
+    This operation clips continuous values so that they are within a min/max bound.
     For instance by setting the min value to 0, you can replace all negative values with 0.
-    This is helpful in cases where you want to log normalize values.
+    This is helpful in cases where you want to log normalize values:
+
+        # clip all continuous columns to be positive only, and then take the log of the clipped
+        # columns
+        workflow.add_cont_feature([Clip(min_value=0), LogOp()])
 
     Parameters
     ----------
@@ -35,21 +39,19 @@ class Clip(TransformOperator):
         The maximum value to clip values to: values greater than this will be replaced with
         this value. Specifying ``None`` means don't apply a maximum threshold.
     columns : list of str, default None
-        Continous columns to target for this op. If None, the operation will target all known
-        continous columns.
-    preprocessing : bool, default True
+        Continuous columns to target for this op. If None, the operation will target all known
+        continuous columns.
     replace : bool, default False
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT
     default_out = CONT
 
-    def __init__(
-        self, min_value=None, max_value=None, columns=None, preprocessing=True, replace=True
-    ):
+    def __init__(self, min_value=None, max_value=None, columns=None, replace=True):
         if min_value is None and max_value is None:
             raise ValueError("Must specify a min or max value to clip to")
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+        super().__init__(columns=columns, replace=replace)
         self.min_value = min_value
         self.max_value = max_value
 

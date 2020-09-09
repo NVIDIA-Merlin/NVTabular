@@ -19,8 +19,7 @@ from fsspec.core import get_fs_token_paths
 
 
 class DatasetEngine:
-    """  Base class for Dask-powered IO engines. Engines must provide a ``to_ddf`` method.
-    """
+    """Base class for Dask-powered IO engines. Engines must provide a ``to_ddf`` method."""
 
     def __init__(self, paths, part_size, storage_options=None):
         paths = sorted(paths, key=natural_sort_key)

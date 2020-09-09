@@ -23,9 +23,29 @@ from .transform_operator import TransformOperator
 
 class LogOp(TransformOperator):
     """
-    This operator calculates the log of continous columns. Note that
+    This operator calculates the log of continuous columns. Note that
     to handle the common case of zerofilling null values, this is
     calculates ``log(1+x)`` instead of just ``log(x)``.
+
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add LogOp to the workflow for continuous columns
+        proc.add_cont_feature(nvt.ops.LogOp())
+
+    Parameters
+    ----------
+    columns : list of str, default None
+        Continuous columns to target for this op. If None, the operation will target all known
+        continuous columns.
+    replace : bool, default False
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = CONT

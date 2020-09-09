@@ -3,11 +3,9 @@ How it Works
 
 ![NVTabular Workflow](./images/nvt_workflow.png)
 
-NVTabular wraps the RAPIDS cuDF library which provides the bulk of the functionality, accelerating dataframe operations on the GPU.  We found in our internal usage of cuDF on massive datasets like [Criteo](https://labs.criteo.com/2014/02/kaggle-display-advertising-challenge-dataset/) or [RecSys 2020](https://recsys-twitter.com/) that it wasn’t straightforward to use once the dataset had scaled past GPU memory.  The same design pattern kept emerging for us and we decided to package it up as NVTabular in order to make tabular data workflows simpler.
+With the transition to v0.2 the NVTabular engine uses the [RAPIDS](http://www.rapids.ai) [Dask-cuDF library](https://github.com/rapidsai/dask-cuda) which provides the bulk of the functionality, accelerating dataframe operations on the GPU, and scaling across multiple GPUs.  NVTabular provides functionality commonly found in deep learning recommendation workflows, allowing you to focus on what you want to do with your data, not how you need to do it.  We also provide a template for our core compute mechanism, Operations, or ‘ops’ allowing you to build your own custom ops from cuDF and other libraries.
 
-We provide mechanisms for iteration when the dataset exceeds GPU memory, allowing you to focus on what you want to do with your data, not how you need to do it.  We also provide a template for our core compute mechanism, Operations, or ‘ops’ allowing you to build your own custom ops from cuDF and other libraries.
-
-Follow our getting started guide to get NVTabular installed on your container or system.  Once installed you can setup a workflow in the following way:
+Follow our [getting started guide](https://nvidia.github.io/NVTabular/main/Introduction.html#getting-started) to get NVTabular installed on your container or system.  Once installed you can setup a workflow in the following way:
 
 ```python
 import nvtabular as nvt
@@ -22,9 +20,7 @@ With the workflow in place we can now explore the library in detail.
 
 Operations
 ----------
-Operations are a reflection of the way in which compute happens on the GPU across large datasets.  At a high level we’re concerned with two types of compute: the type that touches the entire dataset (or some large chunk of it) and the type that operates on a single row.  Operations split the compute such that the first phase, which we call statistics gathering, is the only place where operations that cross the row boundary can take place.  An example of this would be in the Normalize op which relies on two statistics, the mean and standard deviation.  In order to normalize a row, we must first have calculated these two values.
-
-Statistics are further split into a chunked compute and a combine stage allowing for chunked iteration across datasets that don’t fit in GPU (or CPU) memory.  Where possible (and efficient) we utilize the GPU to do highly parallel compute, but many operations also rely on host memory for buffering and CPU compute when necessary.  The chunked results are combined to provide the statistics necessary for the next phase.
+Operations are a reflection of the way in which compute happens on the GPU across large datasets.  At a high level we’re concerned with two types of compute: the type that touches the entire dataset (or some large chunk of it) and the type that operates on a single row.  Operations split the compute such that the first phase, which we call statistics gathering, is the only place where operations that cross the row boundary can take place.  An example of this would be in the Normalize op which relies on two statistics, the mean and standard deviation.  In order to normalize a row, we must first have calculated these two values, and we use a Dask-cudf graph to compute this part of the op.
 
 The second phase of operations is the apply phase, which uses the statistics created earlier to modify the dataset, transforming the data.  Notably we allow for the application of transforms not only during the modification of the dataset, but also during dataloading, with plans to support the same transforms during inference.
 
@@ -40,7 +36,7 @@ dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac
 proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
 ```
 
-In order to minimize iteration through the data we combine all of the computation required for statistics into a single computation graph that is applied chunkwise while the data is on GPU.  We similarly group the apply operation and transform the entire chunk at a time.  This lazy iteration style allows you to set up a desired workflow first, and then apply it to multiple datasets, including the option to apply statistics from one dataset to others.  Using this option the training set statistics can be applied to the validation and test sets, preventing undesirable data leakage.
+Dask-cuDF does the scheduling to help optimize the task graph providing an optimal solution to whatever configuration of GPUs you have, from a single GPU to a cluster of many.
 
 A higher level of abstraction
 ----------------------
@@ -79,12 +75,12 @@ In addition to providing mechanisms for transforming the data to prepare it for 
 
 In NVTabular we provide an option to shuffle during dataset creation, creating a uniformly shuffled dataset allowing the dataloader to read in contiguous chunks of data that are already randomized across the entire dataset.  NVTabular provides the option to control the number of chunks that are combined into a batch, allowing the end user flexibility when trading off between performance and true randomization.  This mechanism is critical when dealing with datasets that exceed CPU memory and per epoch shuffling is desired during training.  Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.
 
-When compared to an item by item dataloader of PyTorch we have benchmarked our throughput as 100x faster dependent upon batch and tensor size.  Relative to TensorFlow’s windowed shuffle NVTabular is ~2.5x faster with many optimizations still available.
+Stay tuned for benchmarks on our dataloader performance as compared to those native to the frameworks.
 
 Multi-GPU Support
 -----------------------
 
-NVTabular supports multi-GPU scaling with [dask-cuda](https://github.com/rapidsai/dask-cuda) and [dask.distributed](https://distributed.dask.org/en/latest/).  To enable distributed parallelism, the NVTabular `Workflow` must be initialized with a `dask.distributed.Client` object:
+NVTabular supports multi-GPU scaling with [Dask-CUDA](https://github.com/rapidsai/dask-cuda) and [dask.distributed](https://distributed.dask.org/en/latest/).  To enable distributed parallelism, the NVTabular `Workflow` must be initialized with a `dask.distributed.Client` object:
 
 ```python
 import nvtabular as nvt
@@ -101,7 +97,9 @@ workflow = nvt.Workflow(..., client=client)
 
 There are currenly many ways to deploy a "cluster" for Dask.  [This article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a nice summary of all practical options.  For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
 
-Since NVTabular already uses [dask_cudf](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the arguments used for global-statistics operations.  See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.     
+Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.
+
+Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](./examples/multigpu_bench.md) section of this documentation.
 
 CPU Support
 ------------

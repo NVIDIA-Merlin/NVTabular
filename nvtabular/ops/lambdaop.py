@@ -22,30 +22,63 @@ from .transform_operator import TransformOperator
 
 class LambdaOp(TransformOperator):
     """
-    Enables to call Methods to cudf.Series
+    LambdaOp allows you to apply row level functions to a NVTabular workflow.
+
+    Example usage 1::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add LamdaOp to the workflow and
+        # specify an op_name
+        # define a custom function e.g. extract first 5 character from string
+        proc.add_feature(
+            LambdaOp(
+                op_name='first5char', #op_name - merged with column name
+                f=lambda col, gdf: col.str.slice(0,5), # custom function
+                columns=['cat1', 'cat2', 'cat3'], # columns, f is applied to
+                replace=False # if columns will be replaced
+            )
+        )
+
+    Example usage 2::
+
+        # Add LambdaOp to the workflow and
+        # specify an op_name
+        # define a custom function e.g. calculate probability
+        # for different events
+        proc.add_feature(
+            LambdaOp(
+                op_name='cond_prob', #op_name - merged with column name
+                f=lambda col, gdf: col.astype(np.float32) / gdf['total_events'], # custom function
+                columns=['event1', 'event2', 'event3'], # columns, f is applied to
+                replace=False # if columns will be replaced
+            )
+        )
 
     Parameters
     -----------
-    op_name : str
-        name of the operator column. It is used as a post_fix for the
-        modified column names (if replace=False)
-    f : lambda function
-        defines the function executed on dataframe level, expectation is lambda col, gdf: ...
-        col is the cudf.Series defined by the context
-        gdf is the full cudf.DataFrame
+    op_name : str:
+        name of the operator column. It is used as a post_fix for the modified column names
+        (if replace=False).
+    f : callable
+        Defines a function that takes a cudf.Series and cudf.DataFrame as input, and returns a new
+        Series as the output.
     columns :
-    preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
+        Columns to target for this op. If None, this operator will target all columns.
     replace : bool, default True
-        Replaces the transformed column with the original input
-        if set Yes
+        Whether to replace existing columns or create new ones.
     """
 
     default_in = ALL
     default_out = ALL
 
-    def __init__(self, op_name, f, columns=None, preprocessing=True, replace=True):
-        super().__init__(columns=columns, preprocessing=preprocessing, replace=replace)
+    def __init__(self, op_name, f, columns=None, replace=True):
+        super().__init__(columns=columns, replace=replace)
         if op_name is None:
             raise ValueError("op_name cannot be None. It is required for naming the column.")
         if f is None:

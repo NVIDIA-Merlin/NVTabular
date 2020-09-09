@@ -38,8 +38,93 @@ LOG = logging.getLogger("nvtabular")
 
 
 class Dataset:
-    """ Dask-based Dataset Class
-        Converts a dataset into a dask_cudf DataFrame on demand
+    """Universal external-data wrapper for NVTabular
+
+    The NVTabular `Workflow` and `DataLoader`-related APIs require all
+    external data to be converted to the universal `Dataset` type.  The
+    main purpose of this class is to abstract away the raw format of the
+    data, and to allow other NVTabular classes to reliably materialize a
+    `dask_cudf.DataFrame` collection (and/or collection-based iterator)
+    on demand.
+
+    A new `Dataset` object can be initialized from a variety of different
+    raw-data formats. To initialize an object from a directory path or
+    file list, the `engine` argument should be used to specify either
+    "parquet" or "csv" format.  If the first argument contains a list
+    of files with a suffix of either "parquet" or "csv", the engine can
+    be inferred::
+
+        # Initialize Dataset with a parquet-dataset directory.
+        # must specify engine="parquet"
+        dataset = Dataset("/path/to/data_pq", engine="parquet")
+
+        # Initialize Dataset with list of csv files.
+        # engine="csv" argument is optional
+        dataset = Dataset(["file_0.csv", "file_1.csv"])
+
+    Since NVTabular leverages `fsspec` as a file-system interface,
+    the underlying data can be stored either locally, or in a remote/cloud
+    data store.  To read from remote storage, like gds or s3, the
+    appropriate protocol should be prepended to the `Dataset` path
+    argument(s), and any special backend parameters should be passed
+    in a `storage_options` dictionary::
+
+        # Initialize Dataset with s3 parquet data
+        dataset = Dataset(
+            "s3://bucket/path",
+            engine="parquet",
+            storage_options={'anon': True, 'use_ssl': False},
+        )
+
+    By default, both parquet and csv-based data will be converted to
+    a Dask-DataFrame collection with a maximum partition size of
+    roughly 12.5 percent of the total memory on a single device.  The
+    partition size can be changed to a different fraction of total
+    memory on a single device with the `part_mem_fraction` argument.
+    Alternatively, a specific byte size can be specified with the
+    `part_size` argument::
+
+        # Dataset partitions will be ~10% single-GPU memory (or smaller)
+        dataset = Dataset("bigfile.parquet", part_mem_fraction=0.1)
+
+        # Dataset partitions will be ~1GB (or smaller)
+        dataset = Dataset("bigfile.parquet", part_size="1GB")
+
+    Note that, if both the fractional and literal options are used
+    at the same time, `part_size` will take precedence.  Also, for
+    parquet-formatted data, the partitioning is done at the row-
+    group level, and the byte-size of the first row-group (after
+    CuDF conversion) is used to map all other partitions.
+    Therefore, if the distribution of row-group sizes is not
+    uniform, the partition sizes will not be balanced.
+
+    In addition to handling data stored on disk, a `Dataset` object
+    can also be initialized from an existing CuDF/Pandas DataFrame,
+    or from a Dask-DataFrame collection (e.g. `dask_cudf.DataFrame`).
+    For these in-memory formats, the size/number of partitions will
+    not be modified.  That is, a CuDF/Pandas DataFrame (or PyArrow
+    Table) will produce a single-partition collection, while the
+    number/size of a Dask-DataFrame collection will be preserved::
+
+        # Initialize from CuDF DataFrame (creates 1 partition)
+        gdf = cudf.DataFrame(...)
+        dataset = Dataset(gdf)
+
+        # Initialize from Dask-CuDF DataFrame (preserves partitions)
+        ddf = dask_cudf.read_parquet(...)
+        dataset = Dataset(ddf)
+
+    Since the `Dataset` API can both ingest and output a Dask
+    collection, it is straightforward to transform data either before
+    or after an NVTabular workflow is executed. This means that some
+    complex pre-processing operations, that are not yet supported
+    in NVTabular, can still be accomplished with the Dask-CuDF API::
+
+        # Sort input data before final Dataset initialization
+        # Warning: Global sorting requires significant device memory!
+        ddf = Dataset("/path/to/data_pq", engine="parquet").to_ddf()
+        ddf = ddf.sort_values("user_rank", ignore_index=True)
+        dataset = Dataset(ddf)
 
     Parameters
     -----------
@@ -137,7 +222,7 @@ class Dataset:
                 self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
-        """ Convert `Dataset` object to `dask_cudf.DataFrame`
+        """Convert `Dataset` object to `dask_cudf.DataFrame`
 
         Parameters
         -----------
@@ -184,7 +269,7 @@ class Dataset:
         return ddf
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
-        """ Convert `Dataset` object to a `cudf.DataFrame` iterator.
+        """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
         `dask_cudf.DataFrame`, and materialize a single partition for
