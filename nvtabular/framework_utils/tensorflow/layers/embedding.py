@@ -1,3 +1,19 @@
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
@@ -240,12 +256,12 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
         feature columns describing the inputs to the layer
     """
 
-    def __init__(self, feature_columns, **kwargs):
+    def __init__(self, feature_columns, name=None, **kwargs):
         feature_columns = _sort_columns(feature_columns)
         _validate_linear_feature_columns(feature_columns)
 
         self.feature_columns = feature_columns
-        super(ScalarLinearFeatures, self).__init__(**kwargs)
+        super(ScalarLinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
         assert all([shape[1] == 1 for shape in input_shapes.values()])
@@ -262,6 +278,7 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
             if isinstance(feature_column, fc.NumericColumn):
                 numeric_kernel_dim += feature_column.shape[0]
                 continue
+
             self.embedding_tables[feature_column.key] = self.add_weight(
                 name="{}/embedding_weights".format(feature_column.key),
                 initializer="zeros",
