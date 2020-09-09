@@ -32,7 +32,7 @@ def get_good_feature_columns():
 def get_bad_feature_columns():
     return (
         tf.feature_column.numeric_column("a", (5,)),
-        tf.feature_colum.categorical_column_with_hash_bucket("b", 100),
+        tf.feature_column.categorical_column_with_hash_bucket("b", 100),
     )
 
 
@@ -47,7 +47,7 @@ def test_dense_embedding_layer(aggregation):
         embedding_layer = layers.ScalarDenseFeatures([col_a, col_b, col_c], aggregation=aggregation)
 
     if aggregation == "stack":
-        # can't pass numeric to stack aggregation
+        # can't pass numeric to stack aggregation unless dims are 1
         with pytest.raises(ValueError):
             embedding_layer = layers.ScalarDenseFeatures(
                 [col_a, col_b_embedding, col_c_embedding], aggregation=aggregation
@@ -60,16 +60,19 @@ def test_dense_embedding_layer(aggregation):
 
         # reset b embedding to have matching dims
         col_b_embedding = tf.feature_column.embedding_column(col_b, 5)
+        cols = [col_b_embedding, col_c_embedding]
+    else:
+        cols = [col_a, col_b_embedding, col_c_embedding]
 
-    embedding_layer = layers.ScalarDenseFeatures(
-        [col_a, col_b_embedding, col_c_embedding], aggregation=aggregation
-    )
+    embedding_layer = layers.ScalarDenseFeatures(cols, aggregation=aggregation)
 
     inputs = {
         "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
         "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64),
         "c": tf.keras.Input(name="c", shape=(1,), dtype=tf.int64),
     }
+    if aggregation == "stack":
+        inputs.pop("a")
 
     output = embedding_layer(inputs)
     model = tf.keras.Model(inputs=inputs, outputs=output)
@@ -80,6 +83,8 @@ def test_dense_embedding_layer(aggregation):
     b = np.array([44, 21, 32])
     c = np.array([0, 4, 2])
     x = {"a": a[:, None], "b": b[:, None], "c": c[:, None]}
+    if aggregation == "stack":
+        x.pop("a")
 
     b_embedding_table = embedding_layer.embedding_tables["b"].numpy()
     b_embedding_rows = b_embedding_table[b]
@@ -89,7 +94,7 @@ def test_dense_embedding_layer(aggregation):
     assert y_hat.shape[0] == 3
     if aggregation == "stack":
         assert len(y_hat.shape) == 3
-        assert y_hat.shape[1] == 3
+        assert y_hat.shape[1] == len(x)
         assert y_hat.shape[2] == 5
 
         assert (y_hat[:, 0] == b_embedding_rows).all()
@@ -110,14 +115,16 @@ def test_dense_embedding_layer(aggregation):
 
     # make sure unusable columns get flagged
     bad_col_a, bad_col_b = get_bad_feature_columns()
-    bad_col_b_embedding = tf.feature_column.embedding_column(bad_col_b, 8)
+    bad_col_b_embedding = tf.feature_column.embedding_column(
+        bad_col_b, col_b_embedding.dimension)
     with pytest.raises(ValueError):
+        # vector numeric should raise, even though dims match
         embedding_layer = layers.ScalarDenseFeatures(
             [bad_col_a, col_b_embedding, col_c_embedding], aggregation=aggregation
         )
     with pytest.raises(ValueError):
         embedding_layer = layers.ScalarDenseFeatures(
-            [col_a, bad_col_b_embedding, col_c_embedding], aggregation=aggregation
+            [bad_col_b_embedding, col_c_embedding], aggregation=aggregation
         )
 
 
@@ -156,10 +163,12 @@ def test_linear_embedding_layer():
 
     a_weight = embedding_layer.embedding_tables["numeric"].numpy()[0, 0]
     b_weights = embedding_layer.embedding_tables["b"].numpy()[b][:, 0]
-    c_weights = embedding_layer.embedding_talbes["c"].numpy()[c][:, 0]
+    c_weights = embedding_layer.embedding_tables["c"].numpy()[c][:, 0]
     bias = embedding_layer.bias.numpy()[0]
 
-    assert y_hat == (a_weight * a + b_weights + c_weights + bias)
+    rtol = 1e-6
+    expected_y_hat = a_weight * a + b_weights + c_weights + bias
+    assert np.isclose(y_hat, expected_y_hat, rtol=rtol).all()
 
     # make sure unusable columns get flagged
     bad_col_a, bad_col_b = get_bad_feature_columns()

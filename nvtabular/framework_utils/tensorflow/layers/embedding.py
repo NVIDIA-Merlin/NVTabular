@@ -89,10 +89,11 @@ def _validate_stack_dimensions(feature_columns):
 
     dim0 = dims[0]
     if not all(dim == dim0 for dim in dims[1:]):
+        dims = ", ".join(map(str, dims))
         raise ValueError(
             "'stack' aggregation requires all categorical "
             "embeddings and continuous features to have same "
-            "size. Found dimensions {}".format(", ".join(dims))
+            "size. Found dimensions {}".format(dims)
         )
 
 
