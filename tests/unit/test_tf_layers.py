@@ -184,8 +184,11 @@ def test_linear_embedding_layer():
 def test_dot_product_interaction_layer(
         embedding_dim, num_features, interaction_type, self_interaction
     ):
+    if num_features == 1 and not self_interaction:
+        return
+
     input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
-    interaction_layer = layers.DotProductInteration(interaction_type, self_interaction)
+    interaction_layer = layers.DotProductInteraction(interaction_type, self_interaction)
     output = interaction_layer(input)
     model = tf.keras.Model(inputs=input, outputs=output)
     model.compile("sgd", "mse")
@@ -194,30 +197,34 @@ def test_dot_product_interaction_layer(
     y_hat = model.predict(x)
 
     if self_interaction:
-        expected_dim = num_features**2
+        expected_dim = num_features*(num_features+1) // 2
     else:
         expected_dim = num_features*(num_features - 1) // 2
     assert y_hat.shape[1] == expected_dim
 
-    W = interaction_layer.kernel.numpy()
+    if interaction_type is not None:
+        W = interaction_layer.kernel.numpy()
     expected_outputs = []
     for i in range(num_features):
-        for j in range(num_features):
-            if i == j and not self_interaction:
-                continue
+        j_start = i if self_interaction else i+1
+        for j in range(j_start, num_features):
             x_i = x[:, i]
             x_j = x[:, j]
             if interaction_type == "field_all":
                 W_ij = W
             elif interaction_type == "field_each":
-                W_ij = W[i]
+                W_ij = W[i].T
             elif interaction_type == "field_interaction":
                 W_ij = W[i, j]
-            else:
-                W_ij = np.eye(num_features)
-            x_i = x_i @ W_ij
+
+            if interaction_type is not None:
+                x_i = x_i @ W_ij
             expected_outputs.append((x_i*x_j).sum(axis=1))
     expected_output = np.stack(expected_outputs).T
 
-    rtol = 1e-6
-    assert np.isclose(expected_output, y_hat, rtol=rtol)
+    rtol = 1e-5
+    atol = 1e-6
+    frac_correct = 1.0
+    match = np.isclose(expected_output, y_hat, rtol=rtol, atol=atol)
+    assert match.mean() >= frac_correct
+
