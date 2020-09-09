@@ -85,7 +85,7 @@ def _validate_stack_dimensions(feature_columns):
         dims.append(dimension)
 
     dim0 = dims[0]
-    if not all([dim == dim0 for dim in dims[1:]]):
+    if not all(dim == dim0 for dim in dims[1:]):
         raise ValueError(
             "'stack' aggregation requires all categorical "
             "embeddings and continuous features to have same "
@@ -141,7 +141,7 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
         super(ScalarDenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
-        assert all([shape[1] == 1 for shape in input_shapes.values()])
+        assert all(shape[1] == 1 for shape in input_shapes.values())
 
         self.embedding_tables = {}
         for feature_column in self.feature_columns:
@@ -264,7 +264,7 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
         super(ScalarLinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
-        assert all([shape[1] == 1 for shape in input_shapes.values()])
+        assert all(shape[1] == 1 for shape in input_shapes.values())
 
         # TODO: I've tried combining all the categorical tables
         # into a single giant lookup op, but it ends up turning
