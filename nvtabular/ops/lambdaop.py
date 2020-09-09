@@ -24,6 +24,42 @@ class LambdaOp(TransformOperator):
     """
     LambdaOp allows you to apply row level functions to a NVTabular workflow.
 
+    Example usage 1::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add LamdaOp to the workflow and
+        # specify an op_name
+        # define a custom function e.g. extract first 5 character from string
+        proc.add_feature(
+            LambdaOp(
+                op_name='first5char', #op_name - merged with column name
+                f=lambda col, gdf: col.str.slice(0,5), # custom function
+                columns=['cat1', 'cat2', 'cat3'], # columns, f is applied to
+                replace=False # if columns will be replaced
+            )
+        )
+
+    Example usage 2::
+
+        # Add LambdaOp to the workflow and
+        # specify an op_name
+        # define a custom function e.g. calculate probability
+        # for different events
+        proc.add_feature(
+            LambdaOp(
+                op_name='cond_prob', #op_name - merged with column name
+                f=lambda col, gdf: col.astype(np.float32) / gdf['total_events'], # custom function
+                columns=['event1', 'event2', 'event3'], # columns, f is applied to
+                replace=False # if columns will be replaced
+            )
+        )
+
     Parameters
     -----------
     op_name : str:
