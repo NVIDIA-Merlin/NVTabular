@@ -78,10 +78,13 @@ def _validate_dense_feature_columns(feature_columns):
 def _validate_stack_dimensions(feature_columns):
     dims = []
     for feature_column in feature_columns:
-        try:
+        if isinstance(feature_column, fc.EmbeddingColumn):
             dimension = feature_column.dimension
-        except AttributeError:
+        elif isinstance(feature_column, fc.IndicatorColumn):
+            dimension = feature_column.categorical_column.num_buckets
+        else:
             dimension = feature_column.shape[0]
+
         dims.append(dimension)
 
     dim0 = dims[0]
@@ -89,7 +92,7 @@ def _validate_stack_dimensions(feature_columns):
         raise ValueError(
             "'stack' aggregation requires all categorical "
             "embeddings and continuous features to have same "
-            "size. Found dimensions {}".format(dims)
+            "size. Found dimensions {}".format(", ".join(dims))
         )
 
 
