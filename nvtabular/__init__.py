@@ -15,10 +15,16 @@
 #
 import warnings
 
-from . import io, workflow
+from . import io, workflow  # noqa
+
+# suppress some warnings with cudf warning about column ordering with dlpack
+# and numba warning about deprecated environment variables
+warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+warnings.filterwarnings("ignore", module="numba.cuda.envvars")
+
 
 Workflow = workflow.Workflow
-Dataset = io.Dataset
+Dataset = io.dataset.Dataset
 
 
 __all__ = ["Workflow", "Dataset"]

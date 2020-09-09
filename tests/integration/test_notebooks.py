@@ -1,3 +1,19 @@
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import itertools
 import json
 import os
@@ -24,7 +40,24 @@ def test_criteo_notebook(tmpdir):
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-        gpu_id=3,
+        gpu_id=0,
+        batch_size=100000,
+    )
+
+
+def test_criteohugectr_notebook(tmpdir):
+    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
+    output_path = os.path.join(DATA_START, "criteo/crit_test")
+    os.environ["PARTS_PER_CHUNK"] = "1"
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
+        input_path,
+        output_path,
+        # disable rmm.reinitialize, seems to be causing issues
+        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
+        gpu_id="0,1",
         batch_size=100000,
     )
 
@@ -34,9 +67,7 @@ def test_optimize_criteo(tmpdir):
     output_path = os.path.join(DATA_START, "criteo/crit_test_opt")
 
     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
-    _run_notebook(
-        tmpdir, notebook_path, input_path, output_path, gpu_id=2,
-    )
+    _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=2)
 
 
 def test_rossman_example(tmpdir):
@@ -49,16 +80,12 @@ def test_rossman_example(tmpdir):
         dirname(TEST_PATH), "examples", "rossmann-store-sales-preproc.ipynb"
     )
 
-    _run_notebook(
-        tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False,
-    )
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
 
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
     )
-    _run_notebook(
-        tmpdir, notebookex_path, input_path, output_path, gpu_id=1,
-    )
+    _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
 
 
 def test_gpu_benchmark(tmpdir):

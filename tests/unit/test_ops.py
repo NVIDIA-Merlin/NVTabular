@@ -15,8 +15,10 @@
 #
 import math
 import os
+import string
 
 import cudf
+import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -149,6 +151,127 @@ def test_multicolumn_cats(tmpdir, df, dataset, engine, groups, concat_groups):
         prefix = "unique." if concat_groups else "cat_stats."
         fn = prefix + "_".join(group) + ".parquet"
         cudf.read_parquet(os.path.join(tmpdir, "categories", fn))
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("groups", [[["name-cat", "name-string"]], "name-string"])
+@pytest.mark.parametrize("kfold", [3])
+def test_groupby_folds(tmpdir, df, dataset, engine, groups, kfold):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    gb_stats = ops.GroupbyStatistics(
+        columns=None,
+        out_path=str(tmpdir),
+        kfold=kfold,
+        fold_groups=groups,
+        stats=["count", "sum"],
+        cont_names=["y"],
+    )
+    config = nvt.workflow.get_new_config()
+    config["PP"]["categorical"] = [gb_stats]
+
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+    processor.update_stats(dataset)
+    for group, path in processor.stats["categories"].items():
+        df = cudf.read_parquet(path)
+        assert "__fold__" in df.columns
+
+
+@pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
+@pytest.mark.parametrize("kfold", [1, 3])
+@pytest.mark.parametrize("fold_seed", [None, 42])
+def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
+    df = cudf.DataFrame(
+        {
+            "Author": list(string.ascii_uppercase),
+            "Engaging-User": list(string.ascii_lowercase),
+            "Cost": range(26),
+            "Post": [0, 1] * 13,
+        }
+    )
+    df = dask_cudf.from_cudf(df, npartitions=3)
+
+    cat_names = ["Author", "Engaging-User"]
+    cont_names = ["Cost"]
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        ops.TargetEncoding(
+            cat_groups,
+            "Cost",  # cont_target
+            out_path=str(tmpdir),
+            kfold=kfold,
+            out_col="test_name",
+            out_dtype="float32",
+            fold_seed=fold_seed,
+            drop_folds=False,  # Keep folds to validate
+        )
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    assert "test_name" in df_out.columns
+    assert df_out["test_name"].dtype == "float32"
+
+    if kfold > 1:
+        # Cat columns are unique.
+        # Make sure __fold__ mapping is correct
+        if cat_groups == "Author":
+            name = "__fold___Author"
+            cols = ["__fold__", "Author"]
+        else:
+            name = "__fold___Author_Engaging-User"
+            cols = ["__fold__", "Author", "Engaging-User"]
+        check = cudf.io.read_parquet(processor.stats["te_stats"][name])
+        check = check[cols].sort_values(cols).reset_index(drop=True)
+        df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
+        assert_eq(check, df_out_check)
+
+
+@pytest.mark.parametrize("npartitions", [1, 2])
+def test_target_encode_multi(tmpdir, npartitions):
+
+    cat_1 = np.asarray(["baaaa"] * 12)
+    cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
+    num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
+    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1})
+    df = dask_cudf.from_cudf(df, npartitions=npartitions)
+
+    cat_names = ["cat", "cat2"]
+    cont_names = ["num"]
+    label_name = []
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    cat_groups = ["cat", "cat2", ["cat", "cat2"]]
+
+    processor.add_preprocess(
+        ops.TargetEncoding(
+            cat_groups,
+            "num",  # cont_target
+            out_path=str(tmpdir),
+            kfold=1,
+            p_smooth=5,
+            out_dtype="float32",
+        )
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    assert "TE_cat_cat2_num" in df_out.columns
+    assert "TE_cat_num" in df_out.columns
+    assert "TE_cat2_num" in df_out.columns
+
+    assert_eq(df_out["TE_cat2_num"].values, df_out["TE_cat_cat2_num"].values)
+    assert df_out["TE_cat_num"].iloc[0] != df_out["TE_cat2_num"].iloc[0]
+    assert math.isclose(df_out["TE_cat_num"].iloc[0], num_1.mean(), abs_tol=1e-4)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -344,7 +467,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="slice",
         f=lambda col, gdf: col.str.slice(1, 3),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=True,
     )
 
@@ -358,7 +480,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="slice",
         f=lambda col, gdf: col.str.slice(1, 3),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=False,
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
@@ -374,7 +495,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="replace",
         f=lambda col, gdf: col.str.replace("e", "XX"),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=True,
     )
 
@@ -388,7 +508,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
         op_name="replace",
         f=lambda col, gdf: col.str.replace("e", "XX"),
         columns=["name-cat", "name-string"],
-        preprocessing=True,
         replace=False,
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
@@ -401,11 +520,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     # Replacement
     df = df_copy.copy()
     op = ops.LambdaOp(
-        op_name="astype",
-        f=lambda col, gdf: col.astype(float),
-        columns=["id"],
-        preprocessing=True,
-        replace=True,
+        op_name="astype", f=lambda col, gdf: col.astype(float), columns=["id"], replace=True
     )
     new_gdf = op.apply_op(df, columns_ctx, "all", stats_context=None)
     assert new_gdf["id"].dtype == "float64"
@@ -422,7 +537,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
                 op_name="slice",
                 f=lambda col, gdf: col.astype(str).str.slice(0, 1),
                 columns=["name-cat"],
-                preprocessing=True,
                 replace=True,
             ),
             ops.Categorify(),
@@ -446,9 +560,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.add_preprocess(
         [
             ops.Categorify(),
-            ops.LambdaOp(
-                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=True
-            ),
+            ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=True),
         ]
     )
     processor.finalize()
@@ -475,7 +587,6 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
                 op_name="slice",
                 f=lambda col, gdf: col.astype(str).str.slice(0, 1),
                 columns=["name-cat"],
-                preprocessing=True,
                 replace=False,
             ),
             ops.Categorify(),
@@ -502,9 +613,7 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     processor.add_preprocess(
         [
             ops.Categorify(),
-            ops.LambdaOp(
-                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
-            ),
+            ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=False),
         ]
     )
     processor.finalize()
@@ -525,16 +634,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
 
     processor.add_preprocess(
         [
-            ops.LambdaOp(
-                op_name="mul0",
-                f=lambda col, gdf: col * 0,
-                columns=["x"],
-                preprocessing=True,
-                replace=False,
-            ),
-            ops.LambdaOp(
-                op_name="add100", f=lambda col, gdf: col + 100, preprocessing=True, replace=False
-            ),
+            ops.LambdaOp(op_name="mul0", f=lambda col, gdf: col * 0, columns=["x"], replace=False),
+            ops.LambdaOp(op_name="add100", f=lambda col, gdf: col + 100, replace=False),
         ]
     )
     processor.finalize()
@@ -615,6 +716,59 @@ def test_categorify_multi_combo(tmpdir):
     assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
     assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
     assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+
+
+@pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
+def test_categorify_freq_limit(tmpdir, freq_limit):
+    df = pd.DataFrame(
+        {
+            "Author": [
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_B",
+                "User_C",
+            ],
+            "Engaging User": [
+                "User_B",
+                "User_B",
+                "User_A",
+                "User_D",
+                "User_B",
+                "User_c",
+                "User_A",
+                "User_D",
+                "User_D",
+                "User_D",
+            ],
+        }
+    )
+
+    cat_names = ["Author", "Engaging User"]
+    cont_names = []
+    label_name = []
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+
+    processor.add_preprocess(
+        ops.Categorify(columns=cat_names, freq_threshold=freq_limit, out_path=str(tmpdir))
+    )
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Column combinations are encoded
+    if isinstance(freq_limit, dict):
+        assert df_out["Author"].max() == 2
+        assert df_out["Engaging User"].max() == 1
+    else:
+        assert len(df["Author"].unique()) == df_out["Author"].max()
+        assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
@@ -739,3 +893,22 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
     assert new_gdf.columns.all() == df.columns.all()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
+
+
+def test_difference_lag():
+    df = cudf.DataFrame(
+        {"userid": [0, 0, 0, 1, 1, 2], "timestamp": [1000, 1005, 1100, 2000, 2001, 3000]}
+    )
+
+    columns = ["userid", "timestamp"]
+    columns_ctx = {}
+    columns_ctx["all"] = {}
+    columns_ctx["all"]["base"] = columns
+
+    op = ops.DifferenceLag("userid", columns=["timestamp"])
+    new_gdf = op.apply_op(df, columns_ctx, "all", target_cols=["timestamp"])
+
+    assert new_gdf["timestamp_DifferenceLag"][0] is None
+    assert new_gdf["timestamp_DifferenceLag"][1] == 5
+    assert new_gdf["timestamp_DifferenceLag"][2] == 95
+    assert new_gdf["timestamp_DifferenceLag"][3] is None

@@ -1,3 +1,19 @@
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import os
 import warnings
 
@@ -5,7 +21,7 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from ..io import device_mem_size
+from ..utils import device_mem_size
 
 
 def configure_tensorflow(memory_allocation=None, device=None):
@@ -52,11 +68,11 @@ def configure_tensorflow(memory_allocation=None, device=None):
 
 def _get_parents(column):
     """
-  recursive function for finding the feature columns
-  that supply inputs for a given `column`. If there are
-  none, returns the column. Uses sets so is not
-  deterministic.
-  """
+    recursive function for finding the feature columns
+    that supply inputs for a given `column`. If there are
+    none, returns the column. Uses sets so is not
+    deterministic.
+    """
     if isinstance(column.parents[0], str):
         return set([column])
     parents = set()

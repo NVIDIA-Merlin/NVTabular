@@ -7,12 +7,13 @@ Operators
    Categorify <categorify>
    Clip <clip>
    ColumnSimilarity <columnsimilarity>
+   DifferenceLag <differencelag>
    Dropna <dropna>
    FillMissing <fillmissing>
    FillMedian <fillmedian>
    Filter <filter>
-   GroupBy <groupby>
    HashBucket <hashbucket>
+   JoinExternal <joinexternal>
    JoinGroupby <groupby>
    LambdaOp <lambdaop>
    LogOp <log>
