@@ -44,7 +44,7 @@ class BaseWorkflow:
     cat_names : list of str
         Names of the categorical columns.
     cont_names : list of str
-        Names of the continous columns.
+        Names of the continuous columns.
     label_name : list of str
         Names of the label column.
     config : object
