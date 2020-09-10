@@ -15,11 +15,11 @@
 #
 
 import pytest
-import tensorflow as tf
 
 import nvtabular as nvt
 from nvtabular import ops as ops
 
+tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
