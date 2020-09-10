@@ -126,6 +126,17 @@ class Dataset:
         ddf = ddf.sort_values("user_rank", ignore_index=True)
         dataset = Dataset(ddf)
 
+    Dataset Optimization Tips (DOTs)
+    The NVTabular dataset should be created from Parquet files in order
+    to get the best possible performance, preferably with a row group size
+    of around 128MB.  While NVTabular also supports reading from CSV files,
+    reading CSV can be over twice as slow as reading from Parquet. Take a
+    look at this notebook_ for an example of transforming the original Criteo
+    CSV dataset into a new Parquet dataset optimized for use with NVTabular.
+
+    .. _notebook: https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb
+
+
     Parameters
     -----------
     path_or_source : str, list of str, or <dask.dataframe|cudf|pd>.DataFrame
