@@ -129,7 +129,7 @@ class Dataset:
     Dataset Optimization Tips (DOTs)
     When creating a NVT Dataset, to get maximum performance from the library,
     the data must be crafted using parquet format files, with a optimized 
-    row group size of 138mb. If your current dataset is represented in a format 
+    row group size of 128mb. If your current dataset is represented in a format 
     other than parquet, NVTabular supports reading from CSV files. Take a look at
     this notebook_, it is used to turn the original unformatted Criteo CSV dataset
     and create a new parquet dataset optimized for use in an NVT Dataset.
