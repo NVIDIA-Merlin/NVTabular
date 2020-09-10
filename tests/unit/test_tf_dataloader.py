@@ -15,6 +15,7 @@
 #
 
 import pytest
+import tensorflow as tf
 
 import nvtabular as nvt
 from nvtabular import ops as ops
@@ -55,6 +56,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         engine=engine,
         shuffle=False,
     )
+    _ = tf.random.uniform((1,))
     processor.update_stats(dataset)
     data_itr.map(processor)
 
