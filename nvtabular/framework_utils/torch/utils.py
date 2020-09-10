@@ -16,8 +16,7 @@
 
 import torch
 
-
-def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torch.nn.MSELoss()):
+def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torch.nn.MSELoss(), transform=None):
     """
     The controlling function that loads data supplied via a dataloader to a model. Can be redefined
     based on parameters.
@@ -38,7 +37,11 @@ def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torc
     model.train(mode=train)
     with torch.set_grad_enabled(train):
         y_list, y_pred_list = [], []
-        for x_cat, x_cont, y in iter(dataloader):
+        for batch in iter(dataloader):
+            if transform:
+                x_cat, x_cont, y = transform(batch)
+            else:
+                x_cat, x_cont, y = batch
             y_list.append(y.detach())
             y_pred = model(x_cat, x_cont)
             y_pred_list.append(y_pred.detach())
