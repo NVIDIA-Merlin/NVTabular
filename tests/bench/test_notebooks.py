@@ -68,6 +68,35 @@ def test_criteo_petadl(tmpdir):
         # disable rmm.reinitialize, seems to be causing issues
         batch_size=100000,
     )
+    
+def test_criteo_preproc(tmpdir):
+    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
+    output_path = os.path.join(DATA_START, "criteo/crit_test")
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(dirname(TEST_PATH), "examples", "criteo-example-preproc.ipynb"),
+        input_path,
+        output_path,
+        # disable rmm.reinitialize, seems to be causing issues
+        batch_size=100000,
+    )
+
+
+def test_criteo_hugectr(tmpdir):
+    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
+    output_path = os.path.join(DATA_START, "criteo/crit_test")
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
+        input_path,
+        output_path,
+        # disable rmm.reinitialize, seems to be causing issues
+        batch_size=100000,
+    )
+
+    
 
 def _run_notebook(
     tmpdir,

@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import torch
 import pandas as pd
+import torch
 from torch.utils.dlpack import from_dlpack
 
 from nvtabular.ops import _get_embedding_order
@@ -23,18 +23,15 @@ from .backend import DataLoader
 
 
 class BasicDL(torch.utils.data.IterableDataset):
-    
     def __init__(self, file_paths, batch_size=1):
         self.file_paths = file_paths
         self.batch_size = batch_size
-        
+
     def __iter__(self):
         for file_path in self.file_paths:
             pdf = pd.read_parquet(file_path)
             for start in range(0, pdf.shape[0], self.batch_size):
-                yield pdf[start:start+self.batch_size]
-
-
+                yield pdf[start : start + self.batch_size]
 
 
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
