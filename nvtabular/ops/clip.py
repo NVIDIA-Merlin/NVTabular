@@ -24,7 +24,7 @@ class Clip(TransformOperator):
     """
     This operation clips continuous values so that they are within a min/max bound.
     For instance by setting the min value to 0, you can replace all negative values with 0.
-    This is helpful in cases where you want to log normalize values:
+    This is helpful in cases where you want to log normalize values::
 
         # clip all continuous columns to be positive only, and then take the log of the clipped
         # columns
