@@ -16,7 +16,7 @@
 
 import torch
 
-def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torch.nn.MSELoss(), transform=None):
+def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torch.nn.MSELoss(), transform=None, amp=True):
     """
     The controlling function that loads data supplied via a dataloader to a model. Can be redefined
     based on parameters.
@@ -37,19 +37,27 @@ def process_epoch(dataloader, model, train=False, optimizer=None, loss_func=torc
     model.train(mode=train)
     with torch.set_grad_enabled(train):
         y_list, y_pred_list = [], []
-        for batch in iter(dataloader):
+        for idx, batch in enumerate(iter(dataloader)):
             if transform:
                 x_cat, x_cont, y = transform(batch)
             else:
                 x_cat, x_cont, y = batch
             y_list.append(y.detach())
-            y_pred = model(x_cat, x_cont)
-            y_pred_list.append(y_pred.detach())
-            loss = loss_func(y_pred, y)
+            # maybe autocast goes here?
+            if amp:
+                with torch.cuda.amp.autocast():
+                    y_pred = model(x_cat, x_cont)
+                    y_pred_list.append(y_pred.detach())
+                    loss = loss_func(y_pred, y)
+            else:
+                y_pred = model(x_cat, x_cont)
+                y_pred_list.append(y_pred.detach())
+                loss = loss_func(y_pred, y)
             if train:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+    print(f"Total batches: {idx}")
     y = torch.cat(y_list)
     y_pred = torch.cat(y_pred_list)
     epoch_loss = loss_func(y_pred, y).item()
