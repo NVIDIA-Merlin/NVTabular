@@ -177,10 +177,15 @@ def main(args):
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
                 output_path=output_path,
+                num_io_threads=args.num_io_threads,
             )
     else:
         processor.apply(
-            dataset, shuffle=shuffle, out_files_per_proc=out_files_per_proc, output_path=output_path
+            dataset,
+            num_io_threads=args.num_io_threads,
+            shuffle=shuffle,
+            out_files_per_proc=out_files_per_proc,
+            output_path=output_path,
         )
     runtime = time.time() - runtime
 
@@ -191,6 +196,7 @@ def main(args):
     print(f"device(s)          | {args.devices}")
     print(f"rmm-pool-frac      | {(args.device_pool_frac)}")
     print(f"out-files-per-proc | {args.out_files_per_proc}")
+    print(f"num_io_threads     | {args.num_io_threads}")
     print(f"shuffle            | {args.shuffle}")
     print(f"cats-on-device     | {args.cats_on_device}")
     print("======================================")
@@ -239,6 +245,13 @@ def parse_args():
         type=float,
         help="RMM pool size for each worker  as a fraction of GPU capacity (Default 0.9). "
         "If 0 is specified, the RMM pool will be disabled",
+    )
+    parser.add_argument(
+        "--num-io-threads",
+        default=0,
+        type=int,
+        help="Number of threads to use when writing output data (Default 0). "
+        "If 0 is specified, multi-threading will not be used for IO.",
     )
 
     #
