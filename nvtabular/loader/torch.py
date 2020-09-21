@@ -22,7 +22,7 @@ from nvtabular.ops import _get_embedding_order
 from .backend import DataLoader
 
 
-class BasicDL(torch.utils.data.IterableDataset):
+class IterDL(torch.utils.data.IterableDataset):
     def __init__(self, file_paths, batch_size=1):
         self.file_paths = file_paths
         self.batch_size = batch_size

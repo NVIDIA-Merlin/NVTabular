@@ -25,6 +25,7 @@ def process_epoch(
     loss_func=torch.nn.MSELoss(),
     transform=None,
     amp=True,
+    device=None,
 ):
     """
     The controlling function that loads data supplied via a dataloader to a model. Can be redefined
@@ -51,6 +52,10 @@ def process_epoch(
                 x_cat, x_cont, y = transform(batch)
             else:
                 x_cat, x_cont, y = batch
+            if device:
+                x_cat = x_cat.to(device)
+                x_cont = x_cont.to(device)
+                y = y.to(device)
             y_list.append(y.detach())
             # maybe autocast goes here?
             if amp:

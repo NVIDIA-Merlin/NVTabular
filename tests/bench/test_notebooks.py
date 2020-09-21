@@ -22,7 +22,7 @@ import subprocess
 import sys
 from os.path import dirname, realpath
 
-import pytest
+
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/data")
@@ -41,7 +41,7 @@ def test_criteo_basedl(tmpdir):
         batch_size=100000,
     )
 
-    
+
 def test_criteo_nvtdl(tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
     output_path = os.path.join(DATA_START, "criteo/crit_test")
@@ -54,8 +54,8 @@ def test_criteo_nvtdl(tmpdir):
         # disable rmm.reinitialize, seems to be causing issues
         batch_size=100000,
     )
-    
-    
+
+
 def test_criteo_petadl(tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
     output_path = os.path.join(DATA_START, "criteo/crit_test")
@@ -68,7 +68,8 @@ def test_criteo_petadl(tmpdir):
         # disable rmm.reinitialize, seems to be causing issues
         batch_size=100000,
     )
-    
+
+
 def test_criteo_preproc(tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
     output_path = os.path.join(DATA_START, "criteo/crit_test")
@@ -96,7 +97,6 @@ def test_criteo_hugectr(tmpdir):
         batch_size=100000,
     )
 
-    
 
 def _run_notebook(
     tmpdir,
@@ -107,16 +107,15 @@ def _run_notebook(
     clean_up=False,
     transform=None,
 ):
-#     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-
+    #     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     if batch_size and not os.environ.get("BATCH_SIZE", None):
         os.environ["BATCH_SIZE"] = str(batch_size)
     if not os.environ.get("INPUT_DATA_DIR", None):
-        os.environ["INPUT_DATA_DIR"] = input_path 
+        os.environ["INPUT_DATA_DIR"] = input_path
     if not os.environ.get("OUTPUT_DATA_DIR", None):
         os.environ["OUTPUT_DATA_DIR"] = output_path
-    #make directories if not there
+    # make directories if not there
     if not os.path.exists(os.environ["OUTPUT_DATA_DIR"]):
         os.makedirs(os.environ["OUTPUT_DATA_DIR"])
     # read in the notebook as JSON, and extract a python script from it
