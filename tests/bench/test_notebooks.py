@@ -23,7 +23,6 @@ import sys
 from os.path import dirname, realpath
 
 
-
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/data")
 
