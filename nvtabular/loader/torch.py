@@ -23,7 +23,7 @@ from .backend import DataLoader
 
 
 class IterDL(torch.utils.data.IterableDataset):
-    def __init__(self, file_paths, batch_size=1):
+    def __init__(self, file_paths, batch_size=1, shuffle=False):
         self.file_paths = file_paths
         self.batch_size = batch_size
 
@@ -31,7 +31,10 @@ class IterDL(torch.utils.data.IterableDataset):
         for file_path in self.file_paths:
             pdf = pd.read_parquet(file_path)
             for start in range(0, pdf.shape[0], self.batch_size):
-                yield pdf[start : start + self.batch_size]
+                df = pdf[start : start + self.batch_size]
+                if shuffle:
+                    df = df.sample(frac=1).reset_index(drop=True)
+                yield df
 
 
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
