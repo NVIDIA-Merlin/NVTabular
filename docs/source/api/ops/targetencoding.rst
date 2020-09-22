@@ -1,5 +1,5 @@
 TargetEncoding
-=============
+==============
 
 .. autoclass:: nvtabular.ops.TargetEncoding
    :members:
