@@ -22,7 +22,6 @@ import subprocess
 import sys
 from os.path import dirname, realpath
 
-
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/data")
 
@@ -98,13 +97,7 @@ def test_criteo_hugectr(tmpdir):
 
 
 def _run_notebook(
-    tmpdir,
-    notebook_path,
-    input_path,
-    output_path,
-    batch_size=None,
-    clean_up=False,
-    transform=None,
+    tmpdir, notebook_path, input_path, output_path, batch_size=None, clean_up=False, transform=None,
 ):
     #     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
