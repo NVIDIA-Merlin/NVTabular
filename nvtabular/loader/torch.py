@@ -94,9 +94,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return torch.cuda.device("cuda:{}".format(dev))
 
     def _to_tensor(self, gdf, dtype=None):
-        import pdb
-
-        pdb.set_trace()
         if gdf.empty:
             return
         dl_pack = gdf.to_dlpack()
