@@ -1,10 +1,10 @@
 # Image configuration
-ARG CUDA_VERSION=10.2
-ARG CUDNN_VERSION=7
+ARG CUDA_VERSION=11.0
+ARG CUDNN_VERSION=8
 ARG LINUX_VERSION=ubuntu18.04
 ARG CUDF_VERSION=0.15
 ARG PYTHON_VERSION=3.7
-FROM rapidsai/rapidsai:$CUDF_VERSION-cuda$CUDA_VERSION-runtime-$LINUX_VERSION-py$PYTHON_VERSION AS base
+FROM rapidsai/rapidsai-dev:$CUDF_VERSION-cuda$CUDA_VERSION-devel-$LINUX_VERSION-py$PYTHON_VERSION AS base
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/lib
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -13,12 +13,11 @@ ENV NUMBAPRO_NVVM=/usr/local/cuda/nvvm/lib64/libnvvm.so
 ENV NUMBAPRO_LIBDEVICE=/usr/local/cuda/nvvm/libdevice/
 
 # Install linux packages
-ARG APTCC=7
-ARG APTCXX=7
 RUN apt update -y --fix-missing && \
     apt upgrade -y && \
     apt install -y \
         ca-certificates \
+        cmake \
         git \
         make \
         libboost-all-dev \
@@ -33,7 +32,7 @@ RUN apt update -y --fix-missing && \
         zlib1g-dev
 
 # Add HugeCTR installation script
-ADD ./tests/integration/hugectr_setup.sh /hugectr_setup.sh
+ADD ./examples/hugectr/docker/hugectr_setup.sh /hugectr_setup.sh
 
 # Install NVTabular
 COPY . nvtabular/
