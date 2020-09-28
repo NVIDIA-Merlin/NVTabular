@@ -1,5 +1,5 @@
 grpcio>=1.24.3
-tensorflow==2.3.0
+tensorflow==2.3.1
 tensorboard_plugin_profile
 pynvml
 jupyterlab
