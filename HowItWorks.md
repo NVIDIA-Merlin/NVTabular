@@ -29,11 +29,11 @@ The second phase of operations is the apply phase, which uses the statistics cre
 # columns of the associated variable type
 workflow.add_cont_preprocess(nvt.ops.Normalize())
 
-dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
+dataset = nvt.Dataset("/path/to/data.parquet")
 
 # record stats, transform the dataset, and export
 # the transformed data to a parquet file
-proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+proc.apply(dataset, shuffle=nvt.io.Shuffle.PER_WORKER, output_path="/path/to/export/dir")
 ```
 
 Dask-cuDF does the scheduling to help optimize the task graph providing an optimal solution to whatever configuration of GPUs you have, from a single GPU to a cluster of many.
@@ -54,8 +54,8 @@ Preprocessing operators take in a set of columns of the same type and perform th
 # new columns `age_normalize` and `item_num_views_normalize`
 workflow.add_cont_preprocess(nvt.ops.Normalize(columns=["age", "item_num_views"], replace=False))
 
-dataset = nvt.dataset("/path/to/data.parquet", engine="parquet", gpu_memory_frac=0.2)
-proc.apply(dataset, apply_offline=True, record_stats=True, shuffle=True, output_path="/path/to/export/dir")
+dataset = nvt.Dataset("/path/to/data.parquet")
+proc.apply(dataset, shuffle=nvt.io.Shuffle.PER_WORKER, output_path="/path/to/export/dir")
 ```
 
 Operators may also be chained to allow for more complex feature engineering or preprocessing.  Chaining of operators is done by creating a list of the operators.  By default only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
