@@ -54,6 +54,13 @@ class Filter(TransformOperator):
         target_cols=["base"],
         stats_context=None,
     ):
-        new_gdf = self.f(gdf)
+        filtered = self.f(gdf)
+        if isinstance(filtered, cudf.DataFrame):
+            new_gdf = filtered
+        elif isinstance(filtered, cudf.Series) and filtered.dtype == bool:
+            new_gdf = gdf[filtered]
+        else:
+            raise ValueError(f"Invalid output from filter op: f{filtered.__class__}")
+
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
