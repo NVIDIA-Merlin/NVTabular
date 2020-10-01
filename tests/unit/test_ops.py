@@ -278,7 +278,7 @@ def test_target_encode_multi(tmpdir, npartitions):
     assert df_out["TE_cat_num"].iloc[0] != df_out["TE_cat2_num"].iloc[0]
     assert df_out["TE_cat_num_2"].iloc[0] != df_out["TE_cat2_num_2"].iloc[0]
     assert math.isclose(df_out["TE_cat_num"].iloc[0], num_1.mean(), abs_tol=1e-4)
-    assert math.isclose(df_out["TE_cat_num_2"].iloc[0], num_2.mean(), abs_tol=1e-4)
+    assert math.isclose(df_out["TE_cat_num_2"].iloc[0], num_2.mean(), abs_tol=1e-3)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
