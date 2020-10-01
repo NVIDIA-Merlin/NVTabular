@@ -894,6 +894,18 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     assert new_gdf.columns.all() == df.columns.all()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
 
+    # again testing filtering by returning a series rather than a df
+    filter_op = ops.Filter(f=lambda df: df.x.isnull())
+    new_gdf = filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
+    assert new_gdf.columns.all() == df.columns.all()
+    assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
+
+    # if the filter returns an invalid type we should get an exception immediately
+    # (rather than causing problems downstream in the workflow)
+    filter_op = ops.Filter(f=lambda df: "some invalid value")
+    with pytest.raises(ValueError):
+        filter_op.apply_op(df, columns_ctx, "all", target_cols=columns)
+
 
 def test_difference_lag():
     df = cudf.DataFrame(
