@@ -22,3 +22,4 @@ Operators
    MinMax <minmax>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
+   TargetEncoding <targetencoding>

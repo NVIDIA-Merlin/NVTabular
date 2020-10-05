@@ -18,6 +18,7 @@ import shutil
 import time
 
 import cudf
+import numba.cuda
 import pytest
 from cudf.tests.utils import assert_eq
 
@@ -29,6 +30,9 @@ from tests.conftest import mycols_csv, mycols_pq
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
+
+
+GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -59,7 +63,7 @@ def test_empty_cols(tmpdir, df, dataset, engine):
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.06])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("devices", [None])  # , [0, 1]])
+@pytest.mark.parametrize("devices", [None, GPU_DEVICE_IDS[:2]])
 def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devices):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]

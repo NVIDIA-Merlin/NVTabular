@@ -13,3 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+from .embedding import ScalarDenseFeatures, ScalarLinearFeatures
+from .interaction import DotProductInteraction
+
+__all__ = [ScalarLinearFeatures, ScalarDenseFeatures, DotProductInteraction]

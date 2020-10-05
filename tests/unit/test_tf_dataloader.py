@@ -19,6 +19,7 @@ import pytest
 import nvtabular as nvt
 from nvtabular import ops as ops
 
+tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
@@ -55,6 +56,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         engine=engine,
         shuffle=False,
     )
+    _ = tf.random.uniform((1,))
     processor.update_stats(dataset)
     data_itr.map(processor)
 
