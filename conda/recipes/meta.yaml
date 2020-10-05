@@ -29,7 +29,7 @@ requirements:
     - python x.x
     - cudf 0.15.*
     - dask-cudf 0.15.*
-    - cupy>=7,<8.0.0a0
+    - cupy>=7.2.0,<9.0.0a
     - dask>=2.12.0
     - distributed>=2.12.0
     - PyYAML>=5.3
