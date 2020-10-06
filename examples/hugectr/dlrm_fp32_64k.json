@@ -2,15 +2,14 @@
     "solver": {
       "lr_policy": "fixed",
       "display": 1000,
-      "max_iter":100000,
-      "gpu": [0,1],
-      "batchsize": 16384,
-      "batchsize_eval": 16384,
+      "max_iter":64013,
+      "gpu": [0,1,2,3,4,5,6,7],
+      "batchsize": 65536,
       "snapshot": 10000000,
       "snapshot_prefix": "./",
       "eval_interval": 3200,
-      "eval_batches": 5440,
-      "eval_metrics": ["AUC:0.7725"],
+      "eval_batches": 2720,
+      "eval_metrics": ["AUC:0.7325"],
       "input_key_type": "I64"
     },
 
@@ -18,13 +17,11 @@
        "type": "SGD",
        "global_update": false,
        "sgd_hparam": {
-         "learning_rate": 8.0,
+         "learning_rate": 24.0,
          "atomic_update": true,
          "warmup_steps": 8000,
          "decay_start": 48000,
-         "decay_steps": 24000,
-         "decay_power": 2.0,
-         "end_lr": 0.0
+         "decay_steps": 24000
        }
      },
 
@@ -33,9 +30,9 @@
        "name": "data",
         "type": "Data",
         "format": "Parquet",
-        "slot_size_array": [7599500, 5345303, 561810, 242827, 11, 2209, 10616, 100, 4, 968, 15, 33521, 7838519, 2580502, 6878028, 298771, 11951, 97, 35, 17022, 7339, 20046, 4, 7068, 1377, 63],
-        "source": "/raid/criteo/tests/test_dask/train/_file_list.txt",
-        "eval_source": "/raid/criteo/tests/test_dask/valid/_file_list.txt",
+        "slot_size_array": [220817330, 126535808, 3014529, 400781, 11, 2209, 11869, 148, 4, 977, 15, 38713, 283898298, 39644599, 181767044, 584616, 12883, 109, 37, 17177, 7425, 20266, 4, 7085, 1535, 64],
+        "source": "/raid/criteo/tests/test_dask/output/train/_file_list.txt",
+        "eval_source": "/raid/criteo/tests/test_dask/output/train/_file_list.txt",
         "check": "None",
         "label": {
                 "top": "label",

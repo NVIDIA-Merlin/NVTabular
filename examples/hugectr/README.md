@@ -19,13 +19,3 @@ cd /nvt
 kill $(pgrep jupyter-lab)
 jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
 ```
-
-## Performance Results
-
-### Criteo - DLRM 
-
-| GPU          | NVTabular | HugeCTR | Total |
-|--------------|-----------|---------|-------|
-| 8xV100\-32GB |           |         |       |
-| 8xA100\-40GB |           |         |       |
-
