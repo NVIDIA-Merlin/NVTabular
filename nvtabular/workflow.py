@@ -616,7 +616,9 @@ class Workflow(BaseWorkflow):
                 if isinstance(op, TransformOperator):
                     stats_context = self.stats if isinstance(op, DFOperator) else None
                     logic = op.apply_op
-                    transforms.append((self.columns_ctx, cols_grp, target_cols, logic, stats_context))
+                    transforms.append(
+                        (self.columns_ctx, cols_grp, target_cols, logic, stats_context)
+                    )
                 elif not isinstance(op, StatOperator):
                     raise ValueError("Unknown Operator Type")
 
@@ -664,7 +666,6 @@ class Workflow(BaseWorkflow):
                 self.client.cancel(_ddf)
             del _ddf
 
-
     def reorder_tasks(self):
         # Reorder the phases so that dependency-free statistics
         # opsare performed in the first two phases. This helps
@@ -676,8 +677,8 @@ class Workflow(BaseWorkflow):
         for idx, phase in enumerate(self.phases):
             new_phase = []
             for task in phase:
-                targ = task[1] # E.g. "categorical"
-                deps = task[2] # E.g. ["base"]
+                targ = task[1]  # E.g. "categorical"
+                deps = task[2]  # E.g. ["base"]
                 if isinstance(task[0], StatOperator):
                     if deps == ["base"]:
                         if targ == "categorical":
@@ -866,11 +867,7 @@ class Workflow(BaseWorkflow):
         self.set_ddf(dataset, shuffle=(shuffle is not None))
         if apply_ops:
             for idx, _ in enumerate(self.phases[:end]):
-                self.exec_phase(
-                    idx,
-                    record_stats=record_stats,
-                    update_ddf=(idx == (end - 1)),
-                )
+                self.exec_phase(idx, record_stats=record_stats, update_ddf=(idx == (end - 1)))
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)
