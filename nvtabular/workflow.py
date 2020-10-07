@@ -585,23 +585,13 @@ class Workflow(BaseWorkflow):
             gdf = logic(gdf, columns_ctx, cols_grp, target_cols, stats_context)
         return gdf
 
-    def _get_columns(self, cols_grp, target_cols):
-        tar_cols = []
-        for tar in target_cols:
-            if tar in self.columns_ctx[cols_grp].keys():
-                tar_cols = tar_cols + self.columns_ctx[cols_grp][tar]
-        if len(tar_cols) < 1:
-            tar_cols = self.columns_ctx[cols_grp]["base"]
-        return tar_cols
-
     def _aggregated_dask_transform(self, ddf, transforms):
         # Assuming order of transforms corresponds to dependency ordering
         meta = ddf._meta
         for transform in transforms:
             columns_ctx, cols_grp, target_cols, logic, stats_context = transform
             meta = logic(meta, columns_ctx, cols_grp, target_cols, stats_context)
-        new_ddf = ddf.map_partitions(self.__class__._aggregated_op, transforms, meta=meta)
-        return new_ddf
+        return ddf.map_partitions(self.__class__._aggregated_op, transforms, meta=meta)
 
     def exec_phase(self, phase_index, record_stats=True, update_ddf=True):
         """
@@ -632,12 +622,9 @@ class Workflow(BaseWorkflow):
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    cols = self._get_columns(cols_grp, target_cols)
-                    stats.append(
-                        (op.stat_logic(_ddf[cols], self.columns_ctx, cols_grp, target_cols), op)
-                    )
-                    # TODO: Don't want to be updating the internal ddf here
-                    # if possible.  It may be better to just add the new column?
+                    stats.append((op.stat_logic(_ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    # TODO: Don't want to update the internal ddf here if we can
+                    # avoid it.  It may be better to just add the new column?
                     if op._ddf_out is not None:
                         self.set_ddf(op._ddf_out)
 
