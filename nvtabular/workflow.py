@@ -612,7 +612,7 @@ class Workflow(BaseWorkflow):
                 elif not isinstance(op, StatOperator):
                     raise ValueError("Unknown Operator Type")
 
-        # Preform transforms as single dask task (per ddf partition)
+        # Perform transforms as single dask task (per ddf partition)
         _ddf = self.get_ddf()
         if transforms:
             _ddf = self._aggregated_dask_transform(_ddf, transforms)
@@ -654,8 +654,8 @@ class Workflow(BaseWorkflow):
             del _ddf
 
     def reorder_tasks(self):
-        # Reorder the phases so that dependency-free statistics
-        # opsare performed in the first two phases. This helps
+        # Reorder the phases so that dependency-free stat ops
+        # are performed in the first two phases. This helps
         # avoid the need to persist transformed data between
         # phases (when unnecessary).
         cat_stat_tasks = []
@@ -673,7 +673,7 @@ class Workflow(BaseWorkflow):
                         else:
                             cont_stat_tasks.append(task)
                     else:
-                        # This statistics depends on a transform
+                        # This stat op depends on a transform
                         new_phase.append(task)
                 elif isinstance(task[0], TransformOperator):
                     new_phase.append(task)
