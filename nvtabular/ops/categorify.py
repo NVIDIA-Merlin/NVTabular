@@ -267,7 +267,6 @@ class Categorify(DFOperator):
                 if isinstance(self.freq_threshold, dict)
                 else self.freq_threshold,
             )
-
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
 
@@ -753,6 +752,7 @@ def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_thres
             value, left_on=selection_l, right_on=selection_r, how="left"
         ).sort_values("order")["labels"]
         labels.fillna(na_sentinel, inplace=True)
+        labels = labels.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
         if list_col:
