@@ -17,15 +17,12 @@ import functools
 import logging
 import os
 import warnings
-from collections import defaultdict
 from io import BytesIO
 from uuid import uuid4
 
 import cudf
-from cudf._lib.nvtx import annotate
+import dask_cudf
 from cudf.io.parquet import ParquetWriter as pwriter
-from dask.base import tokenize
-from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.utils import natural_sort_key
 from pyarrow import parquet as pq
@@ -82,12 +79,6 @@ class ParquetDatasetEngine(DatasetEngine):
         assert self.row_groups_per_part > 0
 
     @property
-    def pieces(self):
-        if self._pieces is None:
-            self._pieces = self._get_pieces(self._metadata, self._base)
-        return self._pieces
-
-    @property
     @functools.lru_cache(1)
     def metadata(self):
         paths = self.paths
@@ -129,51 +120,13 @@ class ParquetDatasetEngine(DatasetEngine):
         metadata, _ = self.metadata
         return metadata.num_rows
 
-    @annotate("get_pieces", color="green", domain="nvt_python")
-    def _get_pieces(self, metadata, data_path):
-
-        # get the number of row groups per file
-        file_row_groups = defaultdict(int)
-        for rg in range(metadata.num_row_groups):
-            fpath = metadata.row_group(rg).column(0).file_path
-            if fpath is None:
-                raise ValueError("metadata is missing file_path string.")
-            file_row_groups[fpath] += 1
-
-        # create pieces from each file, limiting the number of row_groups in each piece
-        pieces = []
-        for filename, row_group_count in file_row_groups.items():
-            row_groups = range(row_group_count)
-            for i in range(0, row_group_count, self.row_groups_per_part):
-                rg_list = list(row_groups[i : i + self.row_groups_per_part])
-                full_path = (
-                    self.fs.sep.join([data_path, filename])
-                    if filename != ""
-                    else data_path  # This is a single file
-                )
-                pieces.append((full_path, rg_list))
-        return pieces
-
-    @staticmethod
-    @annotate("read_piece", color="green", domain="nvt_python")
-    def read_piece(piece, columns):
-        path, row_groups = piece
-        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False)
-
-    def meta_empty(self, columns=None):
-        path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False).iloc[:0]
-
     def to_ddf(self, columns=None):
-        pieces = self.pieces
-        name = "parquet-to-ddf-" + tokenize(self.fs_token, pieces, columns)
-        dsk = {
-            (name, p): (ParquetDatasetEngine.read_piece, piece, columns)
-            for p, piece in enumerate(pieces)
-        }
-        meta = self.meta_empty(columns=columns)
-        divisions = [None] * (len(pieces) + 1)
-        return new_dd_object(dsk, name, meta, divisions)
+        return dask_cudf.read_parquet(
+            self.paths,
+            columns=columns,
+            gather_statistics=False,
+            split_row_groups=self.row_groups_per_part,
+        )
 
 
 class ParquetWriter(ThreadedWriter):
