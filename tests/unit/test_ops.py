@@ -652,6 +652,32 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
 
 
+@pytest.mark.parametrize("freq_threshold", [0, 1, 2])
+def test_categorify_lists(tmpdir, freq_threshold):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Columns are encoded independently
+    if freq_threshold < 2:
+        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+    else:
+        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 0], [0, 2], [2]]
+
+
 @pytest.mark.parametrize("groups", [[["Author", "Engaging User"]], None])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
 def test_categorify_multi(tmpdir, groups, kind):
