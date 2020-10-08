@@ -241,11 +241,12 @@ def test_target_encode_multi(tmpdir, npartitions):
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
-    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1})
+    num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
+    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
     cat_names = ["cat", "cat2"]
-    cont_names = ["num"]
+    cont_names = ["num", "num_2"]
     label_name = []
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
@@ -254,7 +255,7 @@ def test_target_encode_multi(tmpdir, npartitions):
     processor.add_preprocess(
         ops.TargetEncoding(
             cat_groups,
-            "num",  # cont_target
+            ["num", "num_2"],  # cont_target
             out_path=str(tmpdir),
             kfold=1,
             p_smooth=5,
@@ -268,10 +269,16 @@ def test_target_encode_multi(tmpdir, npartitions):
     assert "TE_cat_cat2_num" in df_out.columns
     assert "TE_cat_num" in df_out.columns
     assert "TE_cat2_num" in df_out.columns
+    assert "TE_cat_cat2_num_2" in df_out.columns
+    assert "TE_cat_num_2" in df_out.columns
+    assert "TE_cat2_num_2" in df_out.columns
 
     assert_eq(df_out["TE_cat2_num"].values, df_out["TE_cat_cat2_num"].values)
+    assert_eq(df_out["TE_cat2_num_2"].values, df_out["TE_cat_cat2_num_2"].values)
     assert df_out["TE_cat_num"].iloc[0] != df_out["TE_cat2_num"].iloc[0]
+    assert df_out["TE_cat_num_2"].iloc[0] != df_out["TE_cat2_num_2"].iloc[0]
     assert math.isclose(df_out["TE_cat_num"].iloc[0], num_1.mean(), abs_tol=1e-4)
+    assert math.isclose(df_out["TE_cat_num_2"].iloc[0], num_2.mean(), abs_tol=1e-3)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
