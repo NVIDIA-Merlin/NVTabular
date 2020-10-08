@@ -23,7 +23,6 @@ from uuid import uuid4
 import cudf
 import dask_cudf
 from cudf.io.parquet import ParquetWriter as pwriter
-from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.utils import natural_sort_key
 from pyarrow import parquet as pq
 
@@ -44,25 +43,12 @@ class ParquetDatasetEngine(DatasetEngine):
         storage_options,
         row_groups_per_part=None,
         legacy=False,
-        batch_size=None,
+        batch_size=None,  # Ignored
     ):
-        # TODO: Improve dask_cudf.read_parquet performance so that
-        # this class can be slimmed down.
         super().__init__(paths, part_size, storage_options)
-        self.batch_size = batch_size
-        self._metadata, self._base = self.metadata
-        self._pieces = None
-        if row_groups_per_part is None:
-            file_path = self._metadata.row_group(0).column(0).file_path
-            path0 = (
-                self.fs.sep.join([self._base, file_path])
-                if file_path != ""
-                else self._base  # This is a single file
-            )
-
         if row_groups_per_part is None:
             rg_byte_size_0 = (
-                cudf.io.read_parquet(path0, row_groups=0, row_group=0)
+                cudf.io.read_parquet(paths[0], row_groups=0, row_group=0)
                 .memory_usage(deep=True, index=True)
                 .sum()
             )
@@ -80,45 +66,29 @@ class ParquetDatasetEngine(DatasetEngine):
 
     @property
     @functools.lru_cache(1)
-    def metadata(self):
+    def num_rows(self):
+        # TODO: Avoid parsing metadata here if we can confirm upstream dask
+        # can get the length efficiently (in all practical cases)
         paths = self.paths
         fs = self.fs
         if len(paths) > 1:
             # This is a list of files
             dataset = pq.ParquetDataset(paths, filesystem=fs, validate_schema=False)
-            base, fns = _analyze_paths(paths, fs)
         elif fs.isdir(paths[0]):
             # This is a directory
             dataset = pq.ParquetDataset(paths[0], filesystem=fs, validate_schema=False)
-            allpaths = fs.glob(paths[0] + fs.sep + "*")
-            base, fns = _analyze_paths(allpaths, fs)
         else:
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
-            base = paths[0]
-            fns = [None]
-
-        metadata = None
         if dataset.metadata:
             # We have a metadata file
-            return dataset.metadata, base
+            return dataset.metadata.num_rows
         else:
-            # Collect proper metadata manually
-            metadata = None
-            for piece, fn in zip(dataset.pieces, fns):
-                md = piece.get_metadata()
-                if fn:
-                    md.set_file_path(fn)
-                if metadata:
-                    metadata.append_row_groups(md)
-                else:
-                    metadata = md
-            return metadata, base
-
-    @property
-    def num_rows(self):
-        metadata, _ = self.metadata
-        return metadata.num_rows
+            # Sum up row-group sizes manually
+            num_rows = 0
+            for piece in dataset.pieces:
+                num_rows += piece.get_metadata().num_rows
+            return num_rows
 
     def to_ddf(self, columns=None):
         return dask_cudf.read_parquet(
@@ -126,6 +96,7 @@ class ParquetDatasetEngine(DatasetEngine):
             columns=columns,
             gather_statistics=False,
             split_row_groups=self.row_groups_per_part,
+            storage_options=self.storage_options,
         )
 
 
