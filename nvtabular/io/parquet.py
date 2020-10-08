@@ -47,8 +47,9 @@ class ParquetDatasetEngine(DatasetEngine):
     ):
         super().__init__(paths, part_size, storage_options)
         if row_groups_per_part is None:
+            path0 = self._dataset.pieces[0].path
             rg_byte_size_0 = (
-                cudf.io.read_parquet(paths[0], row_groups=0, row_group=0)
+                cudf.io.read_parquet(path0, row_groups=0, row_group=0)
                 .memory_usage(deep=True, index=True)
                 .sum()
             )
@@ -66,9 +67,7 @@ class ParquetDatasetEngine(DatasetEngine):
 
     @property
     @functools.lru_cache(1)
-    def num_rows(self):
-        # TODO: Avoid parsing metadata here if we can confirm upstream dask
-        # can get the length efficiently (in all practical cases)
+    def _dataset(self):
         paths = self.paths
         fs = self.fs
         if len(paths) > 1:
@@ -80,6 +79,14 @@ class ParquetDatasetEngine(DatasetEngine):
         else:
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
+        return dataset
+
+    @property
+    @functools.lru_cache(1)
+    def num_rows(self):
+        # TODO: Avoid parsing metadata here if we can confirm upstream dask
+        # can get the length efficiently (in all practical cases)
+        dataset = self._dataset
         if dataset.metadata:
             # We have a metadata file
             return dataset.metadata.num_rows
