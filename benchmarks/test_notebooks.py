@@ -32,7 +32,7 @@ def test_criteo_basedl(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example-basedl.ipynb"),
+        os.path.join(dirname(TEST_PATH), "torch", "criteo-example-basedl.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
@@ -46,7 +46,7 @@ def test_criteo_nvtdl(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example-nvtdl.ipynb"),
+        os.path.join(dirname(TEST_PATH), "torch", "criteo-example-nvtdl.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
@@ -60,7 +60,7 @@ def test_criteo_petadl(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example-petastorm.ipynb"),
+        os.path.join(dirname(TEST_PATH), "torch", "criteo-example-petastorm.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
@@ -74,7 +74,7 @@ def test_criteo_preproc(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example-preproc.ipynb"),
+        os.path.join(dirname(TEST_PATH), "torch", "criteo-example-preproc.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
@@ -88,7 +88,7 @@ def test_criteo_hugectr(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
+        os.path.join(dirname(TEST_PATH), "torch", "hugectr", "criteo-hugectr.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
