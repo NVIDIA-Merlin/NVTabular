@@ -123,7 +123,7 @@ class TargetEncoding(DFOperator):
         for i in range(len(self.cat_groups)):
             if not isinstance(self.cat_groups[i], list):
                 self.cat_groups[i] = [self.cat_groups[i]]
-        self.cont_target = cont_target
+        self.cont_target = [cont_target] if isinstance(cont_target, str) else cont_target
         self.target_mean = target_mean
         self.kfold = kfold or 3
         self.fold_seed = fold_seed
@@ -142,12 +142,12 @@ class TargetEncoding(DFOperator):
     def req_stats(self):
         stats = []
         if self.target_mean is None:
-            stats.append(Moments(columns=[self.cont_target]))
+            stats.append(Moments(columns=self.cont_target))
         stats.append(
             GroupbyStatistics(
                 columns=self.cat_groups,
                 concat_groups=False,
-                cont_names=[self.cont_target],
+                cont_names=self.cont_target,
                 stats=["count", "sum"],
                 tree_width=self.tree_width,
                 out_path=self.out_path,
@@ -164,7 +164,7 @@ class TargetEncoding(DFOperator):
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        return f"TE_{tag}_{self.cont_target}"
+        return [f"TE_{tag}_{x}" for x in self.cont_target]
 
     def _op_group_logic(self, cat_group, gdf, stats_context, y_mean, fit_folds, group_ind):
 
@@ -173,6 +173,10 @@ class TargetEncoding(DFOperator):
             if group_ind >= len(self.out_col):
                 raise ValueError("out_col and cat_groups are different sizes.")
             out_col = self.out_col[group_ind]
+            out_col = [out_col] if isinstance(out_col, str) else out_col
+            # ToDo Test
+            if len(out_col) != len(self.cont_target):
+                raise ValueError("out_col and cont_target are different sizes.")
         else:
             out_col = self._make_te_name(cat_group)
 
@@ -188,7 +192,7 @@ class TargetEncoding(DFOperator):
             agg_each_fold = nvt_cat._read_groupby_stat_df(
                 path_folds, storage_name_folds, self.cat_cache
             )
-            agg_each_fold.columns = cols + ["count_y", "sum_y"]
+            agg_each_fold.columns = cols + ["count_y"] + [x + "_sum_y" for x in self.cont_target]
         else:
             cols = cat_group
 
@@ -196,32 +200,43 @@ class TargetEncoding(DFOperator):
         storage_name_all = nvt_cat._make_name(*cat_group, sep=self.name_sep)
         path_all = stats_context[self.stat_name][storage_name_all]
         agg_all = nvt_cat._read_groupby_stat_df(path_all, storage_name_all, self.cat_cache)
-        agg_all.columns = cat_group + ["count_y_all", "sum_y_all"]
+        agg_all.columns = cat_group + ["count_y_all"] + [x + "_sum_y_all" for x in self.cont_target]
 
         if fit_folds:
             agg_each_fold = agg_each_fold.merge(agg_all, on=cat_group, how="left")
             agg_each_fold["count_y_all"] = agg_each_fold["count_y_all"] - agg_each_fold["count_y"]
-            agg_each_fold["sum_y_all"] = agg_each_fold["sum_y_all"] - agg_each_fold["sum_y"]
-            agg_each_fold[out_col] = (agg_each_fold["sum_y_all"] + self.p_smooth * y_mean) / (
-                agg_each_fold["count_y_all"] + self.p_smooth
-            )
+            for i, x in enumerate(self.cont_target):
+                agg_each_fold[x + "_sum_y_all"] = (
+                    agg_each_fold[x + "_sum_y_all"] - agg_each_fold[x + "_sum_y"]
+                )
+                agg_each_fold[out_col[i]] = (
+                    agg_each_fold[x + "_sum_y_all"] + self.p_smooth * y_mean[x]
+                ) / (agg_each_fold["count_y_all"] + self.p_smooth)
+
             agg_each_fold = agg_each_fold.drop(
-                ["count_y_all", "count_y", "sum_y_all", "sum_y"], axis=1
+                ["count_y_all", "count_y"]
+                + [x + "_sum_y" for x in self.cont_target]
+                + [x + "_sum_y_all" for x in self.cont_target],
+                axis=1,
             )
             tran_gdf = gdf[cols + [tmp]].merge(agg_each_fold, on=cols, how="left")
             del agg_each_fold
         else:
-            agg_all[out_col] = (agg_all["sum_y_all"] + self.p_smooth * y_mean) / (
-                agg_all["count_y_all"] + self.p_smooth
+            for i, x in enumerate(self.cont_target):
+                agg_all[out_col[i]] = (agg_all[x + "_sum_y_all"] + self.p_smooth * y_mean[x]) / (
+                    agg_all["count_y_all"] + self.p_smooth
+                )
+            agg_all = agg_all.drop(
+                ["count_y_all"] + [x + "_sum_y_all" for x in self.cont_target], axis=1
             )
-            agg_all = agg_all.drop(["count_y_all", "sum_y_all"], axis=1)
             tran_gdf = gdf[cols + [tmp]].merge(agg_all, on=cols, how="left")
             del agg_all
 
         # TODO: There is no need to perform the `agg_each_fold.merge(agg_all, ...)` merge
         #     for every partition.  We can/should cache the result for better performance.
 
-        tran_gdf[out_col] = tran_gdf[out_col].fillna(y_mean)
+        for i, x in enumerate(self.cont_target):
+            tran_gdf[out_col[i]] = tran_gdf[out_col[i]].fillna(y_mean[x])
         if self.out_dtype is not None:
             tran_gdf[out_col] = tran_gdf[out_col].astype(self.out_dtype)
 
@@ -244,7 +259,7 @@ class TargetEncoding(DFOperator):
         fit_folds = "__fold__" in gdf.columns
 
         # Need mean of contiuous target column
-        y_mean = self.target_mean or stats_context["means"][self.cont_target]
+        y_mean = self.target_mean or stats_context["means"]
 
         # Loop over categorical-column groups and apply logic
         new_gdf = None
