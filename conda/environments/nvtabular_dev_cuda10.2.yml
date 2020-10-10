@@ -18,6 +18,7 @@ dependencies:
   - pyarrow=0.15.0
   - fastavro>=0.22.9
   - notebook>=0.5.0
+  - nvtx>=0.2.1
   - cython>=0.29,<0.30
   - fsspec>=0.6.0
   - pytest

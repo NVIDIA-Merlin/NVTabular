@@ -21,8 +21,6 @@ import cudf
 import cupy as cp
 import numpy as np
 import pyarrow as pa
-import pyarrow.parquet as pq
-from cudf._lib.nvtx import annotate
 from cudf.core.column import as_column, build_column
 from cudf.io.parquet import ParquetWriter
 from cudf.utils.dtypes import is_list_dtype
@@ -31,6 +29,8 @@ from dask.core import flatten
 from dask.dataframe.core import _concat
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
+from nvtx import annotate
+from pyarrow import parquet as pq
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
