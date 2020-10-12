@@ -102,7 +102,7 @@ class Categorify(DFOperator):
     name_sep : str, default "_"
         String separator to use between concatenated column names
         for multi-column groups.
-    search_sorted: bool, default False.
+    search_sorted : bool, default False.
         Set it True to apply searchsorted algorithm in encoding.
     """
 
