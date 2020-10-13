@@ -97,7 +97,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         if gdf.empty:
             return
         dl_pack = gdf.to_dlpack()
-        tens = from_dlpack(dl_pack).type(dtype)
+        # keep next two lines separated, hurts perf, casts incorrectly
+        tens = from_dlpack(dl_pack)
+        tens = tens.type(dtype)
         return tens
 
     # TODO: do we need casting or can we replace this with
