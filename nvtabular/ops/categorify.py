@@ -784,7 +784,7 @@ def _encode(
                 gdf[selection_l], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r])] = na_sentinel
-    if search_sorted is True and freq_threshold > 0:
+    if search_sorted and freq_threshold > 0:
         raise ValueError("cannot use search_sorted=True with freq_threshold > 0.")
     if list_col:
         labels = _encode_list_column(gdf[selection_l[0]], labels)
