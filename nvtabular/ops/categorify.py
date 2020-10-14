@@ -760,7 +760,7 @@ def _encode(
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
-    if search_sorted is False or freq_threshold > 0:
+    if not search_sorted or freq_threshold > 0:
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
