@@ -773,7 +773,7 @@ def _encode(
         ).sort_values("order")["labels"]
         labels.fillna(na_sentinel, inplace=True)
         labels = labels.values
-    if search_sorted is True:
+    if search_sorted:
         # Use `searchsorted`
         if list_col:
             labels = value[selection_r].searchsorted(
