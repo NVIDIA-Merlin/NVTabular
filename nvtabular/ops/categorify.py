@@ -35,6 +35,7 @@ from fsspec.core import get_fs_token_paths
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .groupby_statistics import GroupbyStatistics
+from .hash_bucket import HashBucket
 from .operator import CAT
 from .transform_operator import DFOperator
 
@@ -123,6 +124,7 @@ class Categorify(DFOperator):
         encode_type="joint",
         name_sep="_",
         search_sorted=False,
+        num_buckets=None,
     ):
 
         # We need to handle three types of encoding here:
@@ -196,6 +198,7 @@ class Categorify(DFOperator):
         self.stat_name = "categories"
         self.encode_type = encode_type
         self.search_sorted = search_sorted
+        self.num_buckets = num_buckets
 
     @property
     def req_stats(self):
@@ -282,7 +285,17 @@ class Categorify(DFOperator):
                 new_gdf[name] = new_gdf[new_col]
                 new_gdf.drop(columns=[new_col], inplace=True)
 
+        if self.num_buckets is not None and self.freq_threshold == 0:
+            hash_bucket_op = HashBucket(self.num_buckets)
+            new_gdf = hash_bucket_op.apply_op(new_gdf, columns_ctx, "categorical")
+
+        if self.num_buckets == 0:
+            raise ValueError(
+                "For hashing num_buckets should be an int > 1, otherwise set it to None."
+            )
+
         self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
+
         return new_gdf
 
 
@@ -747,7 +760,7 @@ def _encode(
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
-    if search_sorted is False:
+    if search_sorted is False or freq_threshold > 0:
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
@@ -771,7 +784,8 @@ def _encode(
                 gdf[selection_l], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r])] = na_sentinel
-
+    if search_sorted is True and freq_threshold > 0:
+        raise ValueError("cannot use search_sorted=True with freq_threshold > 0.")
     if list_col:
         labels = _encode_list_column(gdf[selection_l[0]], labels)
 
