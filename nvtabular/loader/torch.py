@@ -13,12 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
 
 from nvtabular.ops import _get_embedding_order
 
 from .backend import DataLoader
+
+
+class IterDL(torch.utils.data.IterableDataset):
+    def __init__(self, file_paths, batch_size=1, shuffle=False):
+        self.file_paths = file_paths
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+    def __iter__(self):
+        for file_path in self.file_paths:
+            pdf = pd.read_parquet(file_path)
+            for start in range(0, pdf.shape[0], self.batch_size):
+                df = pdf[start : start + self.batch_size]
+                if self.shuffle:
+                    df = df.sample(frac=1).reset_index(drop=True)
+                yield df
 
 
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
