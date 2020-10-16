@@ -1,33 +1,88 @@
-# Note: Be sure to clean up output and dask work-space before running test
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 import argparse
 import os
+import shutil
 import time
+import warnings
 
-import cudf
+import rmm
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
 
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
 from nvtabular import ops as ops
-from nvtabular.utils import device_mem_size
+from nvtabular.utils import _pynvml_mem_size, device_mem_size
 
 
 def setup_rmm_pool(client, pool_size):
-    client.run(cudf.set_allocator, pool=True, initial_pool_size=pool_size, allocator="default")
+    client.run(rmm.reinitialize, pool_allocator=True, initial_pool_size=pool_size)
     return None
 
 
 def main(args):
+    """Multi-GPU Criteo/DLRM Preprocessing Benchmark
+
+    This benchmark is designed to measure the time required to preprocess
+    the Criteo (1TB) dataset for Facebook’s DLRM model.  The user must specify
+    the path of the raw dataset (using the `--data-path` flag), as well as the
+    output directory for all temporary/final data (using the `--out-path` flag)
+
+    Example Usage
+    -------------
+
+    python dask-nvtabular-criteo-benchmark.py
+                        --data-path /path/to/criteo_parquet --out-path /out/dir/`
+
+
+    Dataset Requirements (Parquet)
+    ------------------------------
+
+    This benchmark is designed with a parquet-formatted dataset in mind.
+    While a CSV-formatted dataset can be processed by NVTabular, converting
+    to parquet will yield significantly better performance.  To convert your
+    dataset, try using the `optimize_criteo.ipynb` notebook (also located
+    in `NVTabular/examples/`)
+
+    For a detailed parameter overview see `NVTabular/examples/MultiGPUBench.md`
+    """
 
     # Input
     data_path = args.data_path
-    out_path = args.out_path
     freq_limit = args.freq_limit
-    out_files_per_proc = args.splits
+    out_files_per_proc = args.out_files_per_proc
+    high_card_columns = args.high_cards.split(",")
+    dashboard_port = args.dashboard_port
     if args.protocol == "ucx":
-        os.environ["UCX_TLS"] = "tcp,cuda_copy,cuda_ipc,sockcm"
+        UCX_TLS = os.environ.get("UCX_TLS", "tcp,cuda_copy,cuda_ipc,sockcm")
+        os.environ["UCX_TLS"] = UCX_TLS
+
+    # Cleanup output directory
+    BASE_DIR = args.out_path
+    dask_workdir = os.path.join(BASE_DIR, "workdir")
+    output_path = os.path.join(BASE_DIR, "output")
+    stats_path = os.path.join(BASE_DIR, "stats")
+    if not os.path.isdir(BASE_DIR):
+        os.mkdir(BASE_DIR)
+    for dir_path in (dask_workdir, output_path, stats_path):
+        if os.path.isdir(dir_path):
+            shutil.rmtree(dir_path)
+        os.mkdir(dir_path)
 
     # Use Criteo dataset by default (for now)
     cont_names = (
@@ -38,46 +93,16 @@ def main(args):
     )
     label_name = ["label"]
 
-    if args.cat_splits:
-        tree_width = {name: int(s) for name, s in zip(cat_names, args.cat_splits.split(","))}
-    else:
-        tree_width = {col: 1 for col in cat_names}
-        if args.cat_names is None:
-            # Using Criteo... Use more hash partitions for
-            # known high-cardinality columns
-            tree_width["C20"] = 8
-            tree_width["C1"] = 8
-            tree_width["C22"] = 4
-            tree_width["C10"] = 4
-            tree_width["C21"] = 2
-            tree_width["C11"] = 2
-            tree_width["C23"] = 2
-            tree_width["C12"] = 2
-
-    # Specify categorical caching location
-    cat_cache = None
-    if args.cat_cache:
-        cat_cache = args.cat_cache.split(",")
-        if len(cat_cache) == 1:
-            cat_cache = cat_cache[0]
+    # Specify Categorify/GroupbyStatistics options
+    tree_width = {}
+    cat_cache = {}
+    for col in cat_names:
+        if col in high_card_columns:
+            tree_width[col] = args.tree_width
+            cat_cache[col] = args.cat_cache_high
         else:
-            # If user is specifying a list of options,
-            # they must specify an option for every cat column
-            assert len(cat_names) == len(cat_cache)
-    if isinstance(cat_cache, str):
-        cat_cache = {col: cat_cache for col in cat_names}
-    elif isinstance(cat_cache, list):
-        cat_cache = {name: c for name, c in zip(cat_names, cat_cache)}
-    else:
-        # Criteo/DLRM Defaults
-        cat_cache = {col: "device" for col in cat_names}
-        if args.cat_names is None:
-            cat_cache["C20"] = "host"
-            cat_cache["C1"] = "host"
-            # Only need to cache the largest two on a dgx-2
-            if args.n_workers < 16:
-                cat_cache["C22"] = "host"
-                cat_cache["C10"] = "host"
+            tree_width[col] = 1
+            cat_cache[col] = args.cat_cache_low
 
     # Use total device size to calculate args.device_limit_frac
     device_size = device_mem_size(kind="total")
@@ -85,30 +110,44 @@ def main(args):
     device_pool_size = int(args.device_pool_frac * device_size)
     part_size = int(args.part_mem_frac * device_size)
 
+    # Parse shuffle option
+    shuffle = None
+    if args.shuffle == "PER_WORKER":
+        shuffle = nvt_io.Shuffle.PER_WORKER
+    elif args.shuffle == "PER_PARTITION":
+        shuffle = nvt_io.Shuffle.PER_PARTITION
+
+    # Check if any device memory is already occupied
+    for dev in args.devices.split(","):
+        fmem = _pynvml_mem_size(kind="free", index=int(dev))
+        used = (device_size - fmem) / 1e9
+        if used > 1.0:
+            warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
+
     # Setup LocalCUDACluster
     if args.protocol == "tcp":
         cluster = LocalCUDACluster(
             protocol=args.protocol,
             n_workers=args.n_workers,
-            CUDA_VISIBLE_DEVICES=args.devs,
+            CUDA_VISIBLE_DEVICES=args.devices,
             device_memory_limit=device_limit,
-            local_directory=args.dask_workspace,
-            dashboard_address=":3787",
+            local_directory=dask_workdir,
+            dashboard_address=":" + dashboard_port,
         )
     else:
         cluster = LocalCUDACluster(
             protocol=args.protocol,
             n_workers=args.n_workers,
-            CUDA_VISIBLE_DEVICES=args.devs,
+            CUDA_VISIBLE_DEVICES=args.devices,
             enable_nvlink=True,
             device_memory_limit=device_limit,
-            local_directory=args.dask_workspace,
-            dashboard_address=":3787",
+            local_directory=dask_workdir,
+            dashboard_address=":" + dashboard_port,
         )
     client = Client(cluster)
 
     # Setup RMM pool
-    if not args.no_rmm_pool:
+    if args.device_pool_frac > 0.01:
         setup_rmm_pool(client, device_pool_size)
 
     # Define Dask NVTabular "Workflow"
@@ -118,11 +157,11 @@ def main(args):
     processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
-            out_path=out_path,
+            out_path=stats_path,
             tree_width=tree_width,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
-            on_host=args.cat_on_host,
+            on_host=not args.cats_on_device,
         )
     )
     processor.finalize()
@@ -135,20 +174,18 @@ def main(args):
         with performance_report(filename=args.profile):
             processor.apply(
                 dataset,
-                shuffle=nvt_io.Shuffle.PER_WORKER
-                if args.worker_shuffle
-                else nvt_io.Shuffle.PER_PARTITION,
+                shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
-                output_path=out_path,
+                output_path=output_path,
+                num_io_threads=args.num_io_threads,
             )
     else:
         processor.apply(
             dataset,
-            shuffle=nvt_io.Shuffle.PER_WORKER
-            if args.worker_shuffle
-            else nvt_io.Shuffle.PER_PARTITION,
+            num_io_threads=args.num_io_threads,
+            shuffle=shuffle,
             out_files_per_proc=out_files_per_proc,
-            output_path=out_path,
+            output_path=output_path,
         )
     runtime = time.time() - runtime
 
@@ -156,10 +193,12 @@ def main(args):
     print("--------------------------------------")
     print(f"partition size     | {part_size}")
     print(f"protocol           | {args.protocol}")
-    print(f"device(s)          | {args.devs}")
-    print(f"rmm-pool           | {(not args.no_rmm_pool)}")
-    print(f"out_files_per_proc | {args.splits}")
-    print(f"worker-shuffle     | {args.worker_shuffle}")
+    print(f"device(s)          | {args.devices}")
+    print(f"rmm-pool-frac      | {(args.device_pool_frac)}")
+    print(f"out-files-per-proc | {args.out_files_per_proc}")
+    print(f"num_io_threads     | {args.num_io_threads}")
+    print(f"shuffle            | {args.shuffle}")
+    print(f"cats-on-device     | {args.cats_on_device}")
     print("======================================")
     print(f"Runtime[s]         | {runtime}")
     print("======================================\n")
@@ -168,13 +207,22 @@ def main(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Merge (dask/cudf) on LocalCUDACluster benchmark")
+    parser = argparse.ArgumentParser(description=("Multi-GPU Criteo/DLRM Preprocessing Benchmark"))
+
+    #
+    # System Options
+    #
+
+    parser.add_argument("--data-path", type=str, help="Input dataset path (Required)")
+    parser.add_argument("--out-path", type=str, help="Directory path to write output (Required)")
     parser.add_argument(
         "-d",
-        "--devs",
-        default="0,1,2,3",
+        "--devices",
+        default=os.environ.get("CUDA_VISIBLE_DEVICES", "0"),
         type=str,
-        help='GPU devices to use (default "0, 1, 2, 3").',
+        help='Comma-separated list of visible devices (e.g. "0,1,2,3"). '
+        "The number of visible devices dictates the number of Dask workers (GPU processes) "
+        "The CUDA_VISIBLE_DEVICES environment variable will be used by default",
     )
     parser.add_argument(
         "-p",
@@ -182,68 +230,134 @@ def parse_args():
         choices=["tcp", "ucx"],
         default="tcp",
         type=str,
-        help="The communication protocol to use.",
-    )
-    parser.add_argument("--no-rmm-pool", action="store_true", help="Disable the RMM memory pool")
-    parser.add_argument(
-        "--profile",
-        metavar="PATH",
-        default=None,
-        type=str,
-        help="Write dask profile report (E.g. dask-report.html)",
-    )
-    parser.add_argument("--data-path", type=str, help="Raw dataset path.")
-    parser.add_argument("--out-path", type=str, help="Root output path.")
-    parser.add_argument("--dask-workspace", default=None, type=str, help="Dask workspace path.")
-    parser.add_argument(
-        "-s", "--splits", default=24, type=int, help="Number of splits to shuffle each partition"
-    )
-    parser.add_argument(
-        "--part-mem-frac",
-        default=0.162,
-        type=float,
-        help="Fraction of device memory for each partition",
-    )
-    parser.add_argument(
-        "-f", "--freq-limit", default=0, type=int, help="Frequency limit on cat encodings."
+        help="Communication protocol to use (Default 'tcp')",
     )
     parser.add_argument(
         "--device-limit-frac",
         default=0.8,
         type=float,
-        help="Fractional device-memory limit (per worker).",
+        help="Worker device-memory limit as a fraction of GPU capacity (Default 0.8). "
+        "The worker will try to spill data to host memory beyond this limit",
     )
     parser.add_argument(
-        "--device-pool-frac", default=0.8, type=float, help="Fractional rmm pool size (per worker)."
+        "--device-pool-frac",
+        default=0.9,
+        type=float,
+        help="RMM pool size for each worker  as a fraction of GPU capacity (Default 0.9). "
+        "If 0 is specified, the RMM pool will be disabled",
     )
     parser.add_argument(
-        "--worker-shuffle", action="store_true", help="Perform followup shuffle on each worker."
+        "--num-io-threads",
+        default=0,
+        type=int,
+        help="Number of threads to use when writing output data (Default 0). "
+        "If 0 is specified, multi-threading will not be used for IO.",
+    )
+
+    #
+    # Data-Decomposition Parameters
+    #
+
+    parser.add_argument(
+        "--part-mem-frac",
+        default=0.125,
+        type=float,
+        help="Maximum size desired for dataset partitions as a fraction "
+        "of GPU capacity (Default 0.125)",
     )
     parser.add_argument(
-        "--cat-names", default=None, type=str, help="List of categorical column names."
+        "--out-files-per-proc",
+        default=8,
+        type=int,
+        help="Number of output files to write on each worker (Default 8)",
+    )
+
+    #
+    # Preprocessing Options
+    #
+
+    parser.add_argument(
+        "-f",
+        "--freq-limit",
+        default=0,
+        type=int,
+        help="Frequency limit for categorical encoding (Default 0)",
     )
     parser.add_argument(
-        "--cat-cache",
-        default=None,
-        type=str,
-        help='Where to cache each category (Ex "device, host, disk").',
+        "-s",
+        "--shuffle",
+        choices=["PER_WORKER", "PER_PARTITION", "NONE"],
+        default="PER_PARTITION",
+        help="Shuffle algorithm to use when writing output data to disk (Default PER_PARTITION)",
     )
     parser.add_argument(
-        "--cat-on-host",
+        "--cat-names", default=None, type=str, help="List of categorical column names (Optional)"
+    )
+    parser.add_argument(
+        "--cont-names", default=None, type=str, help="List of continuous column names (Optional)"
+    )
+
+    #
+    # Algorithm Options
+    #
+
+    parser.add_argument(
+        "--cats-on-device",
         action="store_true",
-        help="Whether to move categorical data to host between tasks.",
+        help="Keep intermediate GroupbyStatistics results in device memory between tasks."
+        "This is recommended when the total device memory is sufficiently large.",
     )
     parser.add_argument(
-        "--cat-splits",
+        "--high-cards",
+        default="C20,C1,C22,C10",
+        type=str,
+        help="Specify a list of high-cardinality columns.  The tree-width "
+        "and cat-cache options will apply to these columns only."
+        '(Default "C20,C1,C22,C10")',
+    )
+    parser.add_argument(
+        "--tree-width",
+        default=8,
+        type=int,
+        help="Tree width for GroupbyStatistics operations on high-cardinality "
+        "columns (Default 8)",
+    )
+    parser.add_argument(
+        "--cat-cache-high",
+        choices=["device", "host", "disk"],
+        default="host",
+        type=str,
+        help='Where to cache high-cardinality category (Default "host")',
+    )
+    parser.add_argument(
+        "--cat-cache-low",
+        choices=["device", "host", "disk"],
+        default="device",
+        type=str,
+        help='Where to cache low-cardinality category (Default "device")',
+    )
+
+    #
+    # Diagnostics Options
+    #
+
+    parser.add_argument(
+        "--profile",
+        metavar="PATH",
         default=None,
         type=str,
-        help='How many splits to use for each category (Ex "8, 4, 2, 1").',
+        help="Specify a file path to export a Dask profile report (E.g. dask-report.html)."
+        "If this option is excluded from the command, not profile will be exported",
     )
     parser.add_argument(
-        "--cont-names", default=None, type=str, help="List of continuous column names."
+        "--dashboard-port",
+        default="8787",
+        type=str,
+        help="Specify the desired port of Dask's diagnostics-dashboard (Default `3787`). "
+        "The dashboard will be hosted at http://<IP>:<PORT>/status",
     )
     args = parser.parse_args()
-    args.n_workers = len(args.devs.split(","))
+    args.n_workers = len(args.devices.split(","))
     return args
 
 

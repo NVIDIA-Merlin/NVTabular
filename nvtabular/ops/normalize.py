@@ -31,11 +31,23 @@ class Normalize(DFOperator):
 
     It performs Normalization using the mean std method.
 
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add Normalize to the workflow for continuous columns
+        proc.add_cont_feature(nvt.ops.Normalize())
+
     Parameters
     ----------
     columns : list of str, default None
-        Continous columns to target for this op. If None, the operation will target all known
-        continous columns.
+        Continuous columns to target for this op. If None, the operation will target all known
+        continuous columns.
     replace : bool, default False
         Whether to replace existing columns or create new ones.
     """
@@ -76,11 +88,23 @@ class NormalizeMinMax(DFOperator):
 
     It performs Normalization using the min max method.
 
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add NormalizeMinMax to the workflow for continuous columns
+        proc.add_cont_feature(nvt.ops.NormalizeMinMax())
+
     Parameters
     ----------
     columns : list of str, default None
-        Continous columns to target for this op. If None, the operation will target all known
-        continous columns.
+        Continuous columns to target for this op. If None, the operation will target all known
+        continuous columns.
     replace : bool, default False
         Whether to replace existing columns or create new ones.
     """

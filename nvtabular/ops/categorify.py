@@ -23,7 +23,9 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf._lib.nvtx import annotate
+from cudf.core.column import as_column, build_column
 from cudf.io.parquet import ParquetWriter
+from cudf.utils.dtypes import is_list_dtype
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -44,6 +46,18 @@ class Categorify(DFOperator):
     Machine Learning algorithms don't support these text values.
     Categorify operation can be added to the workflow to
     transform categorical features into unique integer values.
+
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add Categorify for categorical columns to the workflow
+        proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
 
     Parameters
     -----------
@@ -345,6 +359,10 @@ def _top_level_groupby(
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf support)
+        if _is_list_col(cat_col_group, df_gb):
+            # handle list columns by encoding the list values
+            df_gb = cudf.DataFrame({cat_col_group[0]: df_gb[cat_col_group[0]].list.leaves})
+
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
         gb.columns = [
             _make_name(*(tuple(cat_col_group) + name[1:]), sep=name_sep)
@@ -372,7 +390,6 @@ def _top_level_groupby(
 def _mid_level_groupby(
     dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep
 ):
-
     if isinstance(col_group, str):
         col_group = [col_group]
 
@@ -699,6 +716,7 @@ def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_thres
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
+    list_col = _is_list_col(selection_l, gdf)
     if path:
         if cat_cache is not None:
             cat_cache = (
@@ -723,19 +741,34 @@ def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_thres
         value.reset_index(drop=False, inplace=True)
 
     if freq_threshold > 0:
-        codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
-        for c in selection_l:
-            codes[c] = gdf[c].copy()
-        codes = codes.merge(
+        if list_col:
+            codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
+            codes["order"] = cp.arange(len(codes))
+        else:
+            codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
+            for c in selection_l:
+                codes[c] = gdf[c].copy()
+        labels = codes.merge(
             value, left_on=selection_l, right_on=selection_r, how="left"
         ).sort_values("order")["labels"]
-        codes.fillna(na_sentinel, inplace=True)
-        return codes.values
+        labels.fillna(na_sentinel, inplace=True)
+        labels = labels.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
-        labels = value[selection_r].searchsorted(gdf[selection_l], side="left", na_position="first")
+        if list_col:
+            labels = value[selection_r].searchsorted(
+                gdf[selection_l[0]].list.leaves, side="left", na_position="first"
+            )
+        else:
+            labels = value[selection_r].searchsorted(
+                gdf[selection_l], side="left", na_position="first"
+            )
         labels[labels >= len(value[selection_r])] = na_sentinel
-        return labels
+
+    if list_col:
+        labels = _encode_list_column(gdf[selection_l[0]], labels)
+
+    return labels
 
 
 def _read_groupby_stat_df(path, name, cat_cache):
@@ -761,3 +794,20 @@ def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
         elif col_group in gdf_columns:
             cat_names.append(col_group)
     return cat_names, multi_col_group
+
+
+def _is_list_col(column_group, df):
+    has_lists = any(is_list_dtype(df[col]) for col in column_group)
+    if has_lists and len(column_group) != 1:
+        raise ValueError("Can't categorical encode multiple list columns")
+    return has_lists
+
+
+def _encode_list_column(original, encoded):
+    encoded = as_column(encoded)
+    return build_column(
+        None,
+        dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
+        size=original.size,
+        children=(original._column.offsets, encoded),
+    )

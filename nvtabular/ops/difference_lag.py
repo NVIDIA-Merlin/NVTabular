@@ -41,7 +41,7 @@ class DifferenceLag(TransformOperator):
     compute the lagged difference within a partition::
 
         # compute the delta in timestamp for each users session
-        workflow.add_feature(DifferenceLag("userid', columns=["timestamp"]))
+        workflow.add_feature(DifferenceLag('userid', columns=["timestamp"]))
 
     Parameters
     -----------
@@ -51,8 +51,8 @@ class DifferenceLag(TransformOperator):
         The number of rows to look backwards when computing the difference lag. Negative values
         indicate the number of rows to look forwards, making this compute the lead instead of lag.
     columns : list of str, default None
-        Continous columns to target for this op. If None, the operation will target all known
-        continous columns.
+        Continuous columns to target for this op. If None, the operation will target all known
+        continuous columns.
     replace: bool, default False
         Whether to replace existing columns or create new ones.
     """
