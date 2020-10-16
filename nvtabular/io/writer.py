@@ -21,6 +21,7 @@ import threading
 import cupy as cp
 import numpy as np
 from cudf._lib.nvtx import annotate
+from cudf.utils.dtypes import is_list_dtype
 from fsspec.core import get_fs_token_paths
 
 
@@ -105,7 +106,7 @@ class ThreadedWriter(Writer):
         self.labels = labels
         self.column_names = labels + conts
 
-    def _write_table(self, idx, data):
+    def _write_table(self, idx, data, has_list_column=False):
         return
 
     def _write_thread(self):
@@ -113,11 +114,18 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, gdf):
-
         # Populate columns idxs
         if not self.col_idx:
             for i, x in enumerate(gdf.columns.values):
                 self.col_idx[str(x)] = i
+
+        # list columns in cudf don't currently support chunked writing in parquet.
+        # hack around this by just writing a single file with this partition
+        # this restriction can be removed once cudf supports chunked writing
+        # in parquet
+        if any(is_list_dtype(gdf[col].dtype) for col in gdf.columns):
+            self._write_table(gdf, 0, True)
+            return
 
         # Generate `ind` array to map each row to an output file.
         # This approach is certainly more optimized for shuffling
