@@ -14,8 +14,10 @@
 # limitations under the License.
 #
 import cudf
+from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
+from .categorify import _encode_list_column
 from .operator import CAT
 from .transform_operator import TransformOperator
 
@@ -118,5 +120,10 @@ class HashBucket(TransformOperator):
         new_gdf = cudf.DataFrame()
         for col, nb in num_buckets.items():
             new_col = f"{col}_{self._id}"
-            new_gdf[new_col] = gdf[col].hash_values() % nb
+            if is_list_dtype(gdf[col].dtype):
+                encoded = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
+            else:
+                encoded = gdf[col].hash_values() % nb
+
+            new_gdf[new_col] = encoded
         return new_gdf
