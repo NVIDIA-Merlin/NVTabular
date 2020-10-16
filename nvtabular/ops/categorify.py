@@ -776,7 +776,7 @@ def _encode(
         labels.fillna(na_sentinel, inplace=True)
         labels = labels.values
     if search_sorted:
-        # Use `searchsorted
+        # Use `searchsorted` if doing full encoding (optional).
         if list_col:
             labels = value[selection_r].searchsorted(
                 gdf[selection_l[0]].list.leaves, side="left", na_position="first"
