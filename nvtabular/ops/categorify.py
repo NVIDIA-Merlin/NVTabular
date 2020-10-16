@@ -197,11 +197,10 @@ class Categorify(DFOperator):
         self.encode_type = encode_type
         self.search_sorted = search_sorted
 
-        self.isfreqthreshold = (
-            isinstance(self.freq_threshold, int) and self.freq_threshold > 0
-        ) or (isinstance(self.freq_threshold, dict))
-        if self.search_sorted and self.isfreqthreshold:
-            raise ValueError("cannot use search_sorted=True with freq_threshold > 0.")
+        if self.search_sorted and self.freq_threshold:
+            raise ValueError(
+                "cannot use search_sorted=True with anything else than the default freq_threshold"
+            )
 
     @property
     def req_stats(self):
@@ -277,7 +276,6 @@ class Categorify(DFOperator):
                 if isinstance(self.freq_threshold, dict)
                 else self.freq_threshold,
                 search_sorted=self.search_sorted,
-                isfreqthreshold=self.isfreqthreshold,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
@@ -725,15 +723,7 @@ def _category_stats(
 
 
 def _encode(
-    name,
-    storage_name,
-    path,
-    gdf,
-    cat_cache,
-    na_sentinel=-1,
-    freq_threshold=0,
-    search_sorted=False,
-    isfreqthreshold=True,
+    name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0, search_sorted=False,
 ):
     value = None
     selection_l = name if isinstance(name, list) else [name]
@@ -762,7 +752,7 @@ def _encode(
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
-    if not search_sorted or isfreqthreshold:
+    if not search_sorted:
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
@@ -775,17 +765,13 @@ def _encode(
         ).sort_values("order")["labels"]
         labels.fillna(na_sentinel, inplace=True)
         labels = labels.values
-    if search_sorted:
-        # Use `searchsorted` if doing full encoding (optional).
+    else:
+        # Use `searchsorted` if we are using a "full" encoding
         if list_col:
             labels = value[selection_r].searchsorted(
                 gdf[selection_l[0]].list.leaves, side="left", na_position="first"
             )
         else:
-            for c in selection_l:
-                typ = gdf[c].dtype
-                if typ != value[c].dtype:
-                    value[c] = value[c].astype(typ)
             labels = value[selection_r].searchsorted(
                 gdf[selection_l], side="left", na_position="first"
             )
