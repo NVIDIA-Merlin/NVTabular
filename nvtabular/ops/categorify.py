@@ -723,7 +723,14 @@ def _category_stats(
 
 
 def _encode(
-    name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0, search_sorted=False,
+    name,
+    storage_name,
+    path,
+    gdf,
+    cat_cache,
+    na_sentinel=-1,
+    freq_threshold=0,
+    search_sorted=False,
 ):
     value = None
     selection_l = name if isinstance(name, list) else [name]
