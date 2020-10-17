@@ -102,6 +102,8 @@ class Categorify(DFOperator):
     name_sep : str, default "_"
         String separator to use between concatenated column names
         for multi-column groups.
+    search_sorted : bool, default False.
+        Set it True to apply searchsorted algorithm in encoding.
     """
 
     default_in = CAT
@@ -120,6 +122,7 @@ class Categorify(DFOperator):
         on_host=True,
         encode_type="joint",
         name_sep="_",
+        search_sorted=False,
     ):
 
         # We need to handle three types of encoding here:
@@ -192,6 +195,12 @@ class Categorify(DFOperator):
         self.cat_cache = cat_cache
         self.stat_name = "categories"
         self.encode_type = encode_type
+        self.search_sorted = search_sorted
+
+        if self.search_sorted and self.freq_threshold:
+            raise ValueError(
+                "cannot use search_sorted=True with anything else than the default freq_threshold"
+            )
 
     @property
     def req_stats(self):
@@ -266,6 +275,7 @@ class Categorify(DFOperator):
                 freq_threshold=self.freq_threshold[name]
                 if isinstance(self.freq_threshold, dict)
                 else self.freq_threshold,
+                search_sorted=self.search_sorted,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
@@ -712,7 +722,16 @@ def _category_stats(
     )
 
 
-def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0):
+def _encode(
+    name,
+    storage_name,
+    path,
+    gdf,
+    cat_cache,
+    na_sentinel=-1,
+    freq_threshold=0,
+    search_sorted=False,
+):
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
@@ -740,7 +759,7 @@ def _encode(name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_thres
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
-    if freq_threshold > 0:
+    if not search_sorted:
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
