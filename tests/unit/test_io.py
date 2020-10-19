@@ -261,3 +261,38 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
         df[columns].sort_values(["x", "y"]),
         check_index=False,
     )
+
+
+@pytest.mark.parametrize("freq_threshold", [0, 1, 2])
+def test_parquet_lists(tmpdir, freq_threshold):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    input_dir = str(tmpdir.mkdir("input"))
+    output_dir = str(tmpdir.mkdir("output"))
+    filename = os.path.join(input_dir, "test.parquet")
+    df.to_parquet(filename)
+
+    cat_names = ["Authors", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.Categorify(out_path=str(output_dir)))
+    processor.finalize()
+    processor.apply(
+        nvt.Dataset(filename, row_groups_per_part=1),
+        output_format="parquet",
+        output_path=output_dir,
+    )
+
+    out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
+    print(out_paths)
+    df_out = cudf.read_parquet(out_paths)
+
+    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
