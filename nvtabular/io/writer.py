@@ -20,8 +20,8 @@ import threading
 
 import cupy as cp
 import numpy as np
-from cudf._lib.nvtx import annotate
 from fsspec.core import get_fs_token_paths
+from nvtx import annotate
 
 
 class Writer:
