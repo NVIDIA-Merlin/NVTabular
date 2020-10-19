@@ -23,12 +23,12 @@ from io import BytesIO
 from uuid import uuid4
 
 import cudf
-from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.utils import natural_sort_key
+from nvtx import annotate
 from pyarrow import parquet as pq
 
 from .dataset_engine import DatasetEngine
