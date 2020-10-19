@@ -776,8 +776,9 @@ def test_categorify_multi_combo(tmpdir):
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
-def test_categorify_freq_limit(tmpdir, freq_limit):
-    df = pd.DataFrame(
+@pytest.mark.parametrize("search_sort", [True, False])
+def test_categorify_freq_limit(tmpdir, freq_limit, search_sort):
+    df = cudf.DataFrame(
         {
             "Author": [
                 "User_A",
@@ -806,26 +807,34 @@ def test_categorify_freq_limit(tmpdir, freq_limit):
         }
     )
 
-    cat_names = ["Author", "Engaging User"]
-    cont_names = []
-    label_name = []
+    isfreqthr = (isinstance(freq_limit, int) and freq_limit > 0) or (isinstance(freq_limit, dict))
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
+        cat_names = ["Author", "Engaging User"]
+        cont_names = []
+        label_name = []
 
-    processor.add_preprocess(
-        ops.Categorify(columns=cat_names, freq_threshold=freq_limit, out_path=str(tmpdir))
-    )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+        processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    # Column combinations are encoded
-    if isinstance(freq_limit, dict):
-        assert df_out["Author"].max() == 2
-        assert df_out["Engaging User"].max() == 1
-    else:
-        assert len(df["Author"].unique()) == df_out["Author"].max()
-        assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
+        processor.add_preprocess(
+            ops.Categorify(
+                columns=cat_names,
+                freq_threshold=freq_limit,
+                out_path=str(tmpdir),
+                search_sorted=search_sort,
+            )
+        )
+        processor.finalize()
+        processor.apply(nvt.Dataset(df), output_format=None)
+        df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+        # Column combinations are encoded
+        if isinstance(freq_limit, dict):
+            assert df_out["Author"].max() == 2
+            assert df_out["Engaging User"].max() == 1
+        else:
+            assert len(df["Author"].unique()) == df_out["Author"].max()
+            assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
