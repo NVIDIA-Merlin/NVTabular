@@ -164,7 +164,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
     def _split_lists(self, tensor_dict, idx):
         
-        new_dict = {}
+        new_dict_list = []
         for col in tensor_dict.keys():
             dl_leaves, dl_offsets = tensor_dict[col]
             # split offsets first then split leaves on offset splits
@@ -173,15 +173,17 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             prev_final_offset = 0
             new_offsets = []
             for x in dl_offsets_split:
+                new_dict = {}
                 # half to add previous last index as fix index in new "batch"
                 dl_leaves_split.append(dl_leaves[prev_final_offset:int(x[-1])])
-                init_offset = torch.tensor([0])
-                new_offsets.append(torch.cat([init_offset, x - prev_final_offset], 0))
+                new_offsets.append(torch.cat([torch.tensor([0]), x - prev_final_offset], 0))
                 prev_final_offset = int(x[-1])
-            new_dict[col] = dl_leaves_split, new_offsets
+                new_dict[col] = dl_leaves_split, new_offsets
+                new_dict_list.append(new_dict)
         return new_dict
     
-    def _handle_tensors(self, cats, conts, labels):
+    def _handle_tensors(self, tensors):
+        cats, conts, labels = tensors[0], tensors[1], tensors[2]
         import pdb; pdb.set_trace()
         return cats, conts, labels
     

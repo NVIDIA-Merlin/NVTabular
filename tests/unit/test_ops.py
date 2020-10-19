@@ -354,6 +354,7 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 
 
 def test_hash_bucket_lists(tmpdir):
+    import nvtabular.loader.torch as torch_dataloader
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -375,6 +376,14 @@ def test_hash_bucket_lists(tmpdir):
     authors = df_out["Authors"].to_arrow().to_pylist()
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
+    
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name
+    )
+    
+    for batch in data_itr:
+        import pdb; pdb.set_trace()
+        print(batch)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -747,7 +756,6 @@ def test_categorify_multi(tmpdir, groups, kind):
 
 
 def test_categorify_multi_combo(tmpdir):
-
     groups = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
     df = pd.DataFrame(
