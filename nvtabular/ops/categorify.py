@@ -388,7 +388,7 @@ def _top_level_groupby(
             gb.partition_by_hash(cat_col_group, tree_width[cat_col_group_str], keep_index=False)
         ):
             if on_host:
-                output[k] = split.to_pandas()
+                output[k] = split.to_arrow(preserve_index=False)
             else:
                 output[k] = split
             k += 1
@@ -406,10 +406,11 @@ def _mid_level_groupby(
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
 
-    df = _concat(dfs, ignore_index=True)
     if on_host:
-        df.reset_index(drop=True, inplace=True)
-        df = cudf.from_pandas(df)
+        df = pa.concat_tables(dfs, promote=True)
+        df = cudf.DataFrame.from_arrow(df)
+    else:
+        df = _concat(dfs, ignore_index=True)
     groups = df.groupby(col_group, dropna=False)
     gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
     gb.reset_index(drop=False, inplace=True)
@@ -461,7 +462,7 @@ def _mid_level_groupby(
                 gb[name_std] = np.sqrt(result)
 
     if on_host:
-        gb_pd = gb[required].to_pandas()
+        gb_pd = gb[required].to_arrow(preserve_index=False)
         del gb
         return gb_pd
     return gb[required]
@@ -486,7 +487,6 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
-    pa_schema = None
     if not on_host:
         pwriter = ParquetWriter(path, compression=None)
 
@@ -498,12 +498,10 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
     for df in dfs:
         if len(df):
             if on_host:
-                # Use pyarrow
-                pa_table = pa.Table.from_pandas(df, schema=pa_schema, preserve_index=False)
+                # Use pyarrow - df is already a pyarrow table
                 if pwriter is None:
-                    pa_schema = pa_table.schema
-                    pwriter = pq.ParquetWriter(path, pa_schema, compression=None)
-                pwriter.write_table(pa_table)
+                    pwriter = pq.ParquetWriter(path, df.schema, compression=None)
+                pwriter.write_table(df)
             else:
                 # Use CuDF
                 df.reset_index(drop=True, inplace=True)
@@ -524,13 +522,13 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
 def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
-    ignore_index = True
     if isinstance(col_group, str):
         col_group = [col_group]
-    df = _concat(dfs, ignore_index)
     if on_host:
-        df.reset_index(drop=True, inplace=True)
-        df = cudf.from_pandas(df)
+        df = pa.concat_tables(dfs, promote=True)
+        df = cudf.DataFrame.from_arrow(df)
+    else:
+        df = _concat(dfs, ignore_index=True)
     rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
@@ -542,7 +540,8 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
             if not df[col]._column.has_nulls:
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [cudf.Series([None], dtype=df[col].dtype), df[col]], ignore_index
+                    [cudf.Series([None], dtype=df[col].dtype), df[col]],
+                    ignore_index=True,
                 )
             else:
                 new_cols[col] = df[col].copy(deep=False)
