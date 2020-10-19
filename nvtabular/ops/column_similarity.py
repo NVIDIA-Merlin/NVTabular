@@ -19,7 +19,7 @@ import cupy.sparse
 import numba
 import numpy
 import scipy.sparse
-from cudf._lib.nvtx import annotate
+from nvtx import annotate
 
 from .operator import CAT, CONT
 from .transform_operator import TransformOperator
