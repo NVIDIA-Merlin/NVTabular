@@ -124,8 +124,10 @@ class ChunkQueue:
                         # split them into batches and map to
                         # the framework-specific output format
                         chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
-                        chunks = zip(*chunks)
-                        chunks = [dataloader._handle_tensors(*tensors) for tensors in chunks]
+                        import pdb; pdb.set_trace()
+#                         chunks = zip(*chunks)
+#                         pdb.set_trace()
+#                         chunks = [dataloader._handle_tensors(tensors) for tensors in chunks]
 
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from

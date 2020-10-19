@@ -16,6 +16,7 @@
 import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
+from cudf.utils.dtypes import is_list_dtype
 
 from nvtabular.ops import _get_embedding_order
 
@@ -93,15 +94,42 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _get_device_ctx(self, dev):
         return torch.cuda.device("cuda:{}".format(dev))
 
+    def pull_list_cols(self, gdf):
+        lists = []
+        reg = []
+        for col in gdf.columns:
+            if is_list_dtype(gdf[col]):
+                lists.append(col)
+            else:
+                reg.append(col)
+        return reg, lists
+    
     def _to_tensor(self, gdf, dtype=None):
+        tens = None
         if gdf.empty:
             return
-        dl_pack = gdf.to_dlpack()
-        # keep next two lines separated, hurts perf, casts incorrectly
-        tens = from_dlpack(dl_pack)
-        tens = tens.type(dtype)
+        reg, lists = self.pull_list_cols(gdf)
+        if reg:
+            dl_pack = gdf[reg].to_dlpack()
+            # keep next two lines separated, hurts perf, casts incorrectly
+            tens = from_dlpack(dl_pack)
+            tens = tens.type(dtype)
+        if lists:
+            list_tens = self._list_dtype_tensor(gdf, lists, dtype)
+            tens = tens, list_tens
         return tens
-
+    
+    def _list_dtype_tensor(self, gdf, cols, dtype):
+        #return a dictionary with col_name: (leaves, offsets)
+        res = {}
+        for col in cols:
+#             leaves = gdf[col].list.leaves
+            leaves = from_dlpack(gdf[col].list.leaves.to_dlpack())
+            leaves = leaves.type(dtype)
+            offsets = torch.Tensor(gdf[col]._column.offsets.values)
+            res[col] = leaves, offsets
+        return res
+        
     # TODO: do we need casting or can we replace this with
     # parent class version?
     def _create_tensors(self, gdf):
@@ -118,11 +146,45 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return [cats, conts, label]
 
     def _create_batch(self, tensor, num_samples):
+        tens, tensor_dict = None, None
         if tensor is None:
             return []
+        if type(tensor) is tuple:
+            #  cat type with mh dictionary
+            tensor_dict = tensor[1]
+            tensor = None if tensor[0] is None else tensor[0]
         idx = self._get_segment_lengths(num_samples)
-        return torch.split(tensor, idx)
+        if not tensor is None:
+            tens = torch.split(tensor, idx)
+        if tensor_dict:
+            if not tens:
+                tens = []
+            tens = tens, self._split_lists(tensor_dict, idx)
+        return tens
 
+    def _split_lists(self, tensor_dict, idx):
+        
+        new_dict = {}
+        for col in tensor_dict.keys():
+            dl_leaves, dl_offsets = tensor_dict[col]
+            # split offsets first then split leaves on offset splits
+            dl_offsets_split = torch.split(dl_offsets[1:], idx)
+            dl_leaves_split = []
+            prev_final_offset = 0
+            new_offsets = []
+            for x in dl_offsets_split:
+                # half to add previous last index as fix index in new "batch"
+                dl_leaves_split.append(dl_leaves[prev_final_offset:int(x[-1])])
+                init_offset = torch.tensor([0])
+                new_offsets.append(torch.cat([init_offset, x - prev_final_offset], 0))
+                prev_final_offset = int(x[-1])
+            new_dict[col] = dl_leaves_split, new_offsets
+        return new_dict
+    
+    def _handle_tensors(self, cats, conts, labels):
+        import pdb; pdb.set_trace()
+        return cats, conts, labels
+    
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """
