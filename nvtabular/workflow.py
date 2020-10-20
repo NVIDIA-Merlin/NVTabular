@@ -96,6 +96,10 @@ class BaseWorkflow:
             identifier for feature engineering FE or preprocessing PP
         """
         target_cols = self._get_target_cols(operators)
+        # must have columns to target to 
+        if not target_cols or (target_cols in self.columns_ctx and not self.columns_ctx[target_cols]["base"]):
+            warnings.warn(f"Did not add operators: {operators}, target columns is empty.")
+            return
         if phase in self.config and target_cols in self.config[phase]:
             self.config[phase][target_cols].append(operators)
             return
@@ -125,7 +129,7 @@ class BaseWorkflow:
             list of operators or single operator, Op/s to be
             added into the feature engineering phase
         """
-
+        
         self._config_add_ops(operators, "FE")
 
     def add_cat_feature(self, operators):
@@ -720,7 +724,7 @@ class Workflow(BaseWorkflow):
         # If no tasks have been loaded then we need to load internal config
         if not self.phases:
             self.finalize()
-
+        
         # Gather statstics (if apply_offline), and/or transform
         # and write out processed data
         if apply_offline:

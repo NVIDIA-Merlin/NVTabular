@@ -46,18 +46,43 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_empty_cols(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("cat_names", [["name-cat", "name-string"], []])
+@pytest.mark.parametrize("cont_names", [["x", "y", "id"], []])
+@pytest.mark.parametrize("label_name", [["label"], []])
+def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_name):
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
     # first with no continuous columns
-    no_conts = torch_dataloader.TorchAsyncItr(
-        dataset, cats=["id"], conts=[], labels=["label"], batch_size=1
-    )
-    assert all(conts is None for _, conts, _ in no_conts)
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    # and with no categorical columns
-    no_cats = torch_dataloader.TorchAsyncItr(dataset, cats=[], conts=["x"], labels=["label"])
-    assert all(cats is None for cats, _, _ in no_cats)
+    processor.add_feature([ops.FillMedian()])
+    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess(ops.Categorify())
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    processor.apply(
+        dataset,
+        apply_offline=True,
+        record_stats=True,
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
+        output_format=None,
+    )
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
+    )
+    
+    for nvt_batch in data_itr:
+        cats, conts, labels = nvt_batch
+        if cat_names:
+            assert cats.shape[-1] == len(cat_names)
+        if cont_names:
+            assert conts.shape[-1] == len(cont_names)
+        if label_name:
+            assert labels.shape[-1] == len(label_name)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.06])
