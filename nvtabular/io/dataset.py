@@ -227,6 +227,17 @@ class Dataset:
                     self.engine = CSVDatasetEngine(
                         paths, part_size, storage_options=storage_options, **kwargs
                     )
+                elif engine == "avro":
+                    try:
+                        from .avro import AvroDatasetEngine
+                    except ImportError:
+                        raise RuntimeError(
+                            "Failed to import AvroDatasetEngine. Make sure " "uavro is installed."
+                        )
+
+                    self.engine = AvroDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
                 else:
                     raise ValueError("Only parquet and csv supported (for now).")
             else:
