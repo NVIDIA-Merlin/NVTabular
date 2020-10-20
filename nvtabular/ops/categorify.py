@@ -123,6 +123,8 @@ class Categorify(DFOperator):
         encode_type="joint",
         name_sep="_",
         search_sorted=False,
+        num_buckets=None,
+        hash_type=None,
     ):
 
         # We need to handle three types of encoding here:
@@ -196,10 +198,33 @@ class Categorify(DFOperator):
         self.stat_name = "categories"
         self.encode_type = encode_type
         self.search_sorted = search_sorted
+        self.hash_type = hash_type
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
                 "cannot use search_sorted=True with anything else than the default freq_threshold"
+            )
+        if num_buckets:
+            if isinstance(num_buckets, dict):
+                columns = [i for i in num_buckets.keys()]
+                self.num_buckets = num_buckets
+            elif isinstance(num_buckets, (tuple, list)):
+                assert columns is not None
+                assert len(columns) == len(num_buckets)
+                self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
+            elif isinstance(num_buckets, int):
+                self.num_buckets = num_buckets
+            else:
+                raise TypeError(
+                    "`num_buckets` must be dict, iterable, or int, got type {}".format(
+                        type(num_buckets)
+                    )
+                )
+        if num_buckets is None:
+            self.num_buckets = num_buckets
+        elif num_buckets == 0:
+            raise ValueError(
+                "For hashing num_buckets should be an int > 1, otherwise set it to None."
             )
 
     @property
@@ -253,7 +278,7 @@ class Categorify(DFOperator):
 
         # Encode each column-group separately
         for name in cat_names:
-            new_col = f"{name}_{self._id}"
+            # new_col = f"{name}_{self._id}"
 
             # Use the column-group `list` directly (not the string name)
             use_name = multi_col_group.get(name, name)
@@ -265,18 +290,30 @@ class Categorify(DFOperator):
             else:
                 storage_name = name
             path = stats_context[self.stat_name][storage_name]
-            new_gdf[new_col] = _encode(
-                use_name,
-                storage_name,
-                path,
-                gdf,
-                self.cat_cache,
-                na_sentinel=self.na_sentinel,
-                freq_threshold=self.freq_threshold[name]
-                if isinstance(self.freq_threshold, dict)
-                else self.freq_threshold,
-                search_sorted=self.search_sorted,
-            )
+
+            if self.num_buckets:
+                if isinstance(self.num_buckets, int):
+                    num_buckets = {name: self.num_buckets for name in cat_names}
+                else:
+                    num_buckets = self.num_buckets
+                if storage_name in num_buckets:
+                    new_col = f"{storage_name}_{self._id}"
+                    new_gdf[new_col] = _hash_bucket(gdf, num_buckets, storage_name)
+
+            if not self.num_buckets or storage_name not in num_buckets:
+                new_col = f"{storage_name}_{self._id}"
+                new_gdf[new_col] = _encode(
+                    use_name,
+                    storage_name,
+                    path,
+                    gdf,
+                    self.cat_cache,
+                    na_sentinel=self.na_sentinel,
+                    freq_threshold=self.freq_threshold[name]
+                    if isinstance(self.freq_threshold, dict)
+                    else self.freq_threshold,
+                    search_sorted=self.search_sorted,
+                )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
 
@@ -829,3 +866,12 @@ def _encode_list_column(original, encoded):
         size=original.size,
         children=(original._column.offsets, encoded),
     )
+
+
+def _hash_bucket(gdf, num_buckets, col):
+    nb = num_buckets[col]
+    if is_list_dtype(gdf[col].dtype):
+        encoded = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
+    else:
+        encoded = gdf[col].hash_values() % nb
+    return encoded
