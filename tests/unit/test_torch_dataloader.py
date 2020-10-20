@@ -220,3 +220,39 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
             "time",
             stop - start,
         )
+
+        
+def test_mh_support(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors"]  # , "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.HashBucket(num_buckets=10))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # check to make sure that the same strings are hashed the same
+    authors = df_out["Authors"].to_arrow().to_pylist()
+    assert authors[0][0] == authors[1][0]  # 'User_A'
+    assert authors[2][1] == authors[3][0]  # 'User_C'
+    
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name
+    )
+    idx = 0
+    for batch in data_itr:
+        idx = idx + 1
+        cats, conts, labels = batch
+        cats, mh = cats
+        assert list(mh.keys()) == cat_names
+        assert not cats
+    assert idx > 0

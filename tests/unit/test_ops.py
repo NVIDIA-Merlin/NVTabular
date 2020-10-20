@@ -747,7 +747,6 @@ def test_categorify_multi(tmpdir, groups, kind):
 
 
 def test_categorify_multi_combo(tmpdir):
-
     groups = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
     df = pd.DataFrame(
