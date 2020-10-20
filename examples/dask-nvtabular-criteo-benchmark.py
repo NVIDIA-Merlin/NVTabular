@@ -31,6 +31,9 @@ from nvtabular.utils import _pynvml_mem_size, device_mem_size
 
 
 def setup_rmm_pool(client, pool_size):
+    # Initialize an RMM pool allocator.
+    # Note: RMM may require the pool size to be a multiple of 256.
+    pool_size = (pool_size // 256) * 256
     client.run(rmm.reinitialize, pool_allocator=True, initial_pool_size=pool_size)
     return None
 

@@ -16,18 +16,19 @@
 import functools
 import logging
 import os
+import threading
 import warnings
 from collections import defaultdict
 from io import BytesIO
 from uuid import uuid4
 
 import cudf
-from cudf._lib.nvtx import annotate
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.utils import natural_sort_key
+from nvtx import annotate
 from pyarrow import parquet as pq
 
 from .dataset_engine import DatasetEngine
@@ -182,23 +183,41 @@ class ParquetWriter(ThreadedWriter):
         self.data_paths = []
         self.data_writers = []
         self.data_bios = []
-        for i in range(self.num_out_files):
-            if self.use_guid:
-                fn = f"{i}.{guid()}.parquet"
-            else:
-                fn = f"{i}.parquet"
+        self._lock = threading.RLock()
 
-            path = os.path.join(out_dir, fn)
-            self.data_paths.append(path)
-            if self.bytes_io:
-                bio = BytesIO()
-                self.data_bios.append(bio)
-                self.data_writers.append(pwriter(bio, compression=None))
-            else:
-                self.data_writers.append(pwriter(path, compression=None))
+    def _get_filename(self, i):
+        if self.use_guid:
+            fn = f"{i}.{guid()}.parquet"
+        else:
+            fn = f"{i}.parquet"
 
-    def _write_table(self, idx, data):
-        self.data_writers[idx].write_table(data)
+        return os.path.join(self.out_dir, fn)
+
+    def _get_or_create_writer(self, idx):
+        # lazily initializes a writer for the given index
+        with self._lock:
+            while len(self.data_writers) <= idx:
+                path = self._get_filename(len(self.data_writers))
+                self.data_paths.append(path)
+                if self.bytes_io:
+                    bio = BytesIO()
+                    self.data_bios.append(bio)
+                    self.data_writers.append(pwriter(bio, compression=None))
+                else:
+                    self.data_writers.append(pwriter(path, compression=None))
+
+            return self.data_writers[idx]
+
+    def _write_table(self, idx, data, has_list_column=False):
+        if has_list_column:
+            # currently cudf doesn't support chunked parquet writers with list columns
+            # write out a new file, rather than stream multiple chunks to a single file
+            filename = self._get_filename(len(self.data_paths))
+            data.to_parquet(filename)
+            self.data_paths.append(filename)
+        else:
+            writer = self._get_or_create_writer(idx)
+            writer.write_table(data)
 
     def _write_thread(self):
         while True:
@@ -208,7 +227,7 @@ class ParquetWriter(ThreadedWriter):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-                    self._write_table(idx, data)
+                    self._write_table(idx, data, False)
             finally:
                 self.queue.task_done()
 
