@@ -65,11 +65,7 @@ class ParquetDatasetEngine(DatasetEngine):
             )
 
         if row_groups_per_part is None:
-            rg_byte_size_0 = (
-                cudf.io.read_parquet(path0, row_groups=0, row_group=0)
-                .memory_usage(deep=True, index=True)
-                .sum()
-            )
+            rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0, row_group=0))
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -270,3 +266,18 @@ def _write_pq_metadata_file(md_list, fs, path):
 def guid():
     """Simple utility function to get random hex string"""
     return uuid4().hex
+
+
+def _memory_usage(df):
+    """this function is a workaround of a problem with getting memory usage of lists
+    in cudf0.16.  This can be deleted and just use `df.memory_usage(deep= True, index=True).sum()`
+    once we are using cudf 0.17 (fixed in https://github.com/rapidsai/cudf/pull/6549)"""
+    size = 0
+    for col in df._data.columns:
+        if cudf.utils.dtypes.is_list_dtype(col.dtype):
+            for child in col.base_children:
+                size += child.__sizeof__()
+        else:
+            size += col._memory_usage(deep=True)
+    size += df.index.memory_usage(deep=True)
+    return size
