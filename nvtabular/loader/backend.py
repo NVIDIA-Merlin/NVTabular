@@ -126,6 +126,7 @@ class ChunkQueue:
                         chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
                         chunks = zip(*chunks)
                         chunks = [dataloader._handle_tensors(*tensors) for tensors in chunks]
+                        
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from
                         # freezing on a put on a full queue
@@ -138,8 +139,10 @@ class ChunkQueue:
                     for workflow in dataloader.workflows:
                         spill = workflow.apply_ops(spill)
                     spill = dataloader._create_tensors(spill)
-                    spill = dataloader._handle_tensors(*spill)
-                    self.put([spill])
+                    spill = [dataloader._create_batch(x, x.shape[0]) for x in spill]
+                    spill = zip(*spill)
+                    spill = [dataloader._handle_tensors(*tensor) for tensor in spill]
+                    self.put(spill)
         except Exception as e:
             self.put(e)
 
