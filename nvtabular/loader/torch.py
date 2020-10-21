@@ -15,8 +15,8 @@
 #
 import pandas as pd
 import torch
-from torch.utils.dlpack import from_dlpack
 from cudf.utils.dtypes import is_list_dtype
+from torch.utils.dlpack import from_dlpack
 
 from nvtabular.ops import _get_embedding_order
 
@@ -103,7 +103,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             else:
                 reg.append(col)
         return reg, lists
-    
+
     def _to_tensor(self, gdf, dtype=None):
         tens = None
         if gdf.empty:
@@ -118,18 +118,18 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             list_tens = self._list_dtype_tensor(gdf, lists, dtype)
             tens = tens, list_tens
         return tens
-    
+
     def _list_dtype_tensor(self, gdf, cols, dtype):
-        #return a dictionary with col_name: (leaves, offsets)
+        # return a dictionary with col_name: (leaves, offsets)
         res = {}
         for col in cols:
-#             leaves = gdf[col].list.leaves
+            #             leaves = gdf[col].list.leaves
             leaves = from_dlpack(gdf[col].list.leaves.to_dlpack())
             leaves = leaves.type(dtype)
             offsets = torch.Tensor(gdf[col]._column.offsets.values)
             res[col] = leaves, offsets
         return res
-        
+
     # TODO: do we need casting or can we replace this with
     # parent class version?
     def _create_tensors(self, gdf):
@@ -143,48 +143,49 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         conts = self._to_tensor(gdf_conts, torch.float32)
         label = self._to_tensor(gdf_label, torch.float32)
         del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
+        return cats, conts, label
 
     def _create_batch(self, tensor, num_samples):
-        tens, mh_tens, tensor_dict = None, None, None
-        if tensor is None:
-            return [[] * num_samples]
+        tens, tensor_dict = None, None
         if type(tensor) is tuple:
             #  cat type with mh dictionary
-            tensor_dict = tensor[1]
-            tensor = None if tensor[0] is None else tensor[0]
+            tensor, tensor_dict = tensor
         idx = self._get_segment_lengths(num_samples)
-        if not tensor is None:
+        if tensor is not None:
             tens = torch.split(tensor, idx)
         else:
-            tens = []
+            tens = [[]] * num_samples
         if tensor_dict:
-             tens = tens, self._split_lists(tensor_dict, idx)
-        return [tens]
+            tens = zip(tens, self._split_lists(tensor_dict, idx))
+            tens = [self._handle_dict_tens(*ten) for ten in tens]
+        return tens
 
     def _split_lists(self, tensor_dict, idx):
-        
         new_dict_list = []
         for col in tensor_dict.keys():
+            per_col_list = []
             dl_leaves, dl_offsets = tensor_dict[col]
             # split offsets first then split leaves on offset splits
             dl_offsets_split = torch.split(dl_offsets[1:], idx)
-            dl_leaves_split = []
             prev_final_offset = 0
-            new_offsets = []
             for x in dl_offsets_split:
                 new_dict = {}
-                # half to add previous last index as fix index in new "batch"
-                dl_leaves_split.append(dl_leaves[prev_final_offset:int(x[-1])])
-                new_offsets.append(torch.cat([torch.tensor([0]), x - prev_final_offset], 0))
+                # add previous last index as first index in new "batch"
+                dl_leaves_split = dl_leaves[prev_final_offset : int(x[-1])]
+                new_offsets = torch.cat([torch.tensor([0]), x - prev_final_offset], 0)
                 prev_final_offset = int(x[-1])
                 new_dict[col] = dl_leaves_split, new_offsets
-                new_dict_list.append(new_dict)
-        return new_dict
-    
+                per_col_list.append(new_dict)
+            new_dict_list.append(per_col_list)
+        zip_up = zip(*new_dict_list)
+        return [self._handle_dict_tens(*tens) for tens in zip_up]
+
+    def _handle_dict_tens(self, *tens):
+        return tens
+
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels
-    
+
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """

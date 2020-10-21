@@ -72,7 +72,7 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
     df_out = processor.get_ddf().compute(scheduler="synchronous")
 
     data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
+        nvt.Dataset(df_out[:10]), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
     )
 
     for nvt_batch in data_itr:
@@ -221,16 +221,17 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
             stop - start,
         )
 
-        
+
 def test_mh_support(tmpdir):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
             "Post": [1, 2, 3, 4],
         }
     )
-    cat_names = ["Authors"]  # , "Engaging User"]
+    cat_names = ["Authors", "Reviewers"]  # , "Engaging User"]
     cont_names = []
     label_name = ["Post"]
 
@@ -244,7 +245,7 @@ def test_mh_support(tmpdir):
     authors = df_out["Authors"].to_arrow().to_pylist()
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
-    
+
     data_itr = torch_dataloader.TorchAsyncItr(
         nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name
     )
@@ -253,6 +254,7 @@ def test_mh_support(tmpdir):
         idx = idx + 1
         cats, conts, labels = batch
         cats, mh = cats
-        assert list(mh.keys()) == cat_names
+        # mh is a tuple of dictionaries {Column name: (values, offsets)}
+        assert len(mh) == len(cat_names)
         assert not cats
     assert idx > 0
