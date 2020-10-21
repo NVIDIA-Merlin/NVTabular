@@ -103,7 +103,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             else:
                 reg.append(col)
         return reg, lists
-    
+
     def _to_tensor(self, gdf, dtype=None):
         tens = None
         if gdf.empty:
@@ -118,9 +118,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             list_tens = self._list_dtype_tensor(gdf, lists, dtype)
             tens = tens, list_tens
         return tens
-    
+
     def _list_dtype_tensor(self, gdf, cols, dtype):
-        #return a dictionary with col_name: (leaves, offsets)
+        # return a dictionary with col_name: (leaves, offsets)
         res = {}
         for col in cols:
             leaves = from_dlpack(gdf[col].list.leaves.to_dlpack())
@@ -128,7 +128,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = torch.Tensor(gdf[col]._column.offsets.values)
             res[col] = leaves, offsets
         return res
-        
+
     # TODO: do we need casting or can we replace this with
     # parent class version?
     def _create_tensors(self, gdf):
@@ -170,7 +170,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             for x in dl_offsets_split:
                 new_dict = {}
                 # add previous last index as first index in new "batch"
-                dl_leaves_split = dl_leaves[prev_final_offset:int(x[-1])]
+                dl_leaves_split = dl_leaves[prev_final_offset : int(x[-1])]
                 new_offsets = torch.cat([torch.tensor([0]), x - prev_final_offset], 0)
                 prev_final_offset = int(x[-1])
                 new_dict[col] = dl_leaves_split, new_offsets
@@ -178,10 +178,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             new_dict_list.append(per_col_list)
         zip_up = zip(*new_dict_list)
         return [self._handle_dict_tens(*tens) for tens in zip_up]
-    
+
     def _handle_dict_tens(self, *tens):
         return tens
-    
+
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """
