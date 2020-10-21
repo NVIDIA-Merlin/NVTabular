@@ -72,7 +72,7 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
     df_out = processor.get_ddf().compute(scheduler="synchronous")
 
     data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df_out[:10]), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
     )
 
     for nvt_batch in data_itr:
