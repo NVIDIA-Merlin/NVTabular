@@ -36,6 +36,7 @@ from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .groupby_statistics import GroupbyStatistics
 from .operator import CAT
+from .stat_operator import StatOperator
 from .transform_operator import DFOperator
 
 
@@ -229,20 +230,39 @@ class Categorify(DFOperator):
 
     @property
     def req_stats(self):
-        return [
-            GroupbyStatistics(
-                columns=self.column_groups or self.columns,
-                concat_groups=self.encode_type == "joint",
-                cont_names=[],
-                stats=[],
-                freq_threshold=self.freq_threshold,
-                tree_width=self.tree_width,
-                out_path=self.out_path,
-                on_host=self.on_host,
-                stat_name=self.stat_name,
-                name_sep=self.name_sep,
-            )
-        ]
+        if not self.num_buckets:
+            return [
+                GroupbyStatistics(
+                    columns=self.column_groups or self.columns,
+                    concat_groups=self.encode_type == "joint",
+                    cont_names=[],
+                    stats=[],
+                    freq_threshold=self.freq_threshold,
+                    tree_width=self.tree_width,
+                    out_path=self.out_path,
+                    on_host=self.on_host,
+                    stat_name=self.stat_name,
+                    name_sep=self.name_sep,
+                )
+            ]
+        else:
+            return [
+                GroupbyStatistics(
+                    columns=self.column_groups or self.columns,
+                    concat_groups=self.encode_type == "joint",
+                    cont_names=[],
+                    stats=[],
+                    freq_threshold=self.freq_threshold,
+                    tree_width=self.tree_width,
+                    out_path=self.out_path,
+                    on_host=self.on_host,
+                    stat_name=self.stat_name,
+                    name_sep=self.name_sep,
+                ),
+                SetBuckets(
+                    columns=self.column_groups or self.columns, num_buckets=self.num_buckets
+                ),
+            ]
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
     def apply_op(
@@ -341,15 +361,19 @@ def _get_embedding_order(cat_names):
 
 def get_embedding_sizes(workflow):
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    return _get_embeddings_dask(workflow.stats["categories"], cols)
+    return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
 
 
-def _get_embeddings_dask(paths, cat_names):
+def _get_embeddings_dask(paths, cat_names, buckets=None):
     embeddings = {}
     for col in cat_names:
-        path = paths[col]
-        num_rows, _, _ = cudf.io.read_parquet_metadata(path)
-        embeddings[col] = _emb_sz_rule(num_rows)
+        if not buckets or col not in buckets:
+            path = paths[col]
+            num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+            embeddings[col] = _emb_sz_rule(num_rows)
+        else:
+            num_rows = buckets[col]
+            embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
 
@@ -875,3 +899,31 @@ def _hash_bucket(gdf, num_buckets, col):
     else:
         encoded = gdf[col].hash_values() % nb
     return encoded
+
+
+class SetBuckets(StatOperator):
+    def __init__(self, columns=None, num_buckets=None):
+        super().__init__(columns=columns)
+        self.num_buckets = num_buckets
+
+    @annotate("SetBuckets_op", color="green", domain="nvt_python")
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+        if isinstance(self.num_buckets, int):
+            self.num_buckets = {name: self.num_buckets for name in cols}
+        return self.num_buckets
+
+    @annotate("SetBuckets_finalize", color="green", domain="nvt_python")
+    def finalize(self, dask_stats):
+        self.num_buckets = dask_stats
+
+    def registered_stats(self):
+        return ["buckets"]
+
+    def stats_collected(self):
+        result = [("buckets", self.num_buckets)]
+        return result
+
+    def clear(self):
+        self.num_buckets = {}
+        return
