@@ -16,7 +16,7 @@
 
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
-from .categorify import Categorify, _get_embedding_order, get_embedding_sizes
+from .categorify import Categorify, SetBuckets, _get_embedding_order, get_embedding_sizes
 from .clip import Clip
 from .difference_lag import DifferenceLag
 from .dropna import Dropna
