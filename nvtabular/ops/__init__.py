@@ -24,6 +24,7 @@ from .fill import FillMedian, FillMissing
 from .filter import Filter
 from .groupby_statistics import GroupbyStatistics
 from .hash_bucket import HashBucket
+from .hashed_cross import HashedCross
 from .join_external import JoinExternal
 from .join_groupby import JoinGroupby
 from .lambdaop import LambdaOp
