@@ -992,7 +992,7 @@ def test_difference_lag():
     assert new_gdf["timestamp_DifferenceLag"][3] is None
 
 
-@pytest.parametrize("use_dict", [True, False])
+@pytest.mark.parametrize("use_dict", [True, False])
 def test_hashed_cross(tmpdir, df, dataset, use_dict):
     # TODO: add tests for > 2 features, multiple crosses, etc.
     cat_names = ("name-string", "name-cat")
@@ -1021,7 +1021,7 @@ def test_hashed_cross(tmpdir, df, dataset, use_dict):
         assert new_gdf[new_column_name].sum() == checksum
 
 
-@pytest.parametrize("use_dict", [True, False])
+@pytest.mark.parametrize("use_dict", [True, False])
 def test_bucketized(tmpdir, df, dataset, use_dict):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
