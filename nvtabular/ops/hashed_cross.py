@@ -31,7 +31,7 @@ class HashedCross(TransformOperator):
 
     def __init__(self, crosses, num_buckets=None, **kwargs):
         if isinstance(crosses, dict):
-            cross_sets = list(crosses.values())
+            cross_sets = list(crosses.keys())
             num_buckets = [crosses[c] for c in cross_sets]
             crosses = cross_sets
         else:
@@ -54,7 +54,7 @@ class HashedCross(TransformOperator):
         for columns, bucket_size in zip(self.crosses, self.num_buckets):
             val = 0
             for column in columns:
-                val &= gdf[column].hash_values()  # or however we want to do this aggregation
+                val ^= gdf[column].hash_values()  # or however we want to do this aggregation
             val = cudf.Series(val).hash_values() % bucket_size
             new_gdf["_X_".join(columns)] = val
         return new_gdf
