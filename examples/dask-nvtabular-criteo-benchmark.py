@@ -167,6 +167,7 @@ def main(args):
             tree_width=tree_width,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
+            search_sorted=not freq_limit,
             on_host=not args.cats_on_device,
         )
     )
