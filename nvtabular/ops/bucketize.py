@@ -20,7 +20,7 @@ import cudf
 from nvtx import annotate
 
 # from .categorify import _encode_list_column
-from .operator import CAT
+from .operator import CAT, CONT
 from .transform_operator import TransformOperator
 
 
