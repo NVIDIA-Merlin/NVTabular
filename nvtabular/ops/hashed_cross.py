@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import cudf
-
 # from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
