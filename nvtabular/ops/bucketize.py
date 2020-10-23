@@ -24,8 +24,7 @@ from .transform_operator import TransformOperator
 
 
 class Bucketize(TransformOperator):
-    """
-    """
+    """"""
 
     default_in = CONT
     default_out = CAT

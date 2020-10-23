@@ -540,7 +540,8 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
             if not df[col]._column.has_nulls:
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [cudf.Series([None], dtype=df[col].dtype), df[col]], ignore_index=True,
+                    [cudf.Series([None], dtype=df[col].dtype), df[col]],
+                    ignore_index=True,
                 )
             else:
                 new_cols[col] = df[col].copy(deep=False)
@@ -721,7 +722,14 @@ def _category_stats(
 
 
 def _encode(
-    name, storage_name, path, gdf, cat_cache, na_sentinel=-1, freq_threshold=0, search_sorted=False,
+    name,
+    storage_name,
+    path,
+    gdf,
+    cat_cache,
+    na_sentinel=-1,
+    freq_threshold=0,
+    search_sorted=False,
 ):
     value = None
     selection_l = name if isinstance(name, list) else [name]

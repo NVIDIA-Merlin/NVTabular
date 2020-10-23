@@ -23,8 +23,7 @@ from .transform_operator import TransformOperator
 
 
 class HashedCross(TransformOperator):
-    """
-    """
+    """"""
 
     default_in = CAT
     default_out = CAT
