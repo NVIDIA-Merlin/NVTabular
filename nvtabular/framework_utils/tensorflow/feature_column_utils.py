@@ -2,9 +2,10 @@ import os
 import warnings
 
 import cudf
-import nvtabular as nvt
 import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
+
+import nvtabular as nvt
 
 
 def make_feature_column_workflow(feature_columns, label_name, category_dir=None):
