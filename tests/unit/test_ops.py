@@ -990,3 +990,54 @@ def test_difference_lag():
     assert new_gdf["timestamp_DifferenceLag"][1] == 5
     assert new_gdf["timestamp_DifferenceLag"][2] == 95
     assert new_gdf["timestamp_DifferenceLag"][3] is None
+
+
+@pytest.parametrize("use_dict", [True, False])
+def test_hashed_cross(tmpdir, df, dataset, use_dict):
+    # TODO: add tests for > 2 features, multiple crosses, etc.
+    cat_names = ("name-string", "name-cat")
+    num_buckets = 10
+
+    if use_dict:
+        hashed_cross_op = ops.HashedCross({cat_names: num_buckets})
+    else:
+        hashed_cross_op = ops.HashedCross([cat_names], [num_buckets])
+
+    columns_ctx = {}
+    columns_ctx["categorical"] = {}
+    columns_ctx["categorical"]["base"] = list(cat_names)
+
+    # check sums for determinancy
+    checksums = []
+    for gdf in dataset.to_iter():
+        new_gdf = hashed_cross_op.apply_op(gdf, columns_ctx, "categorical")
+        new_column_name = "_X_".join(cat_names)
+        assert np.all(new_gdf[new_column_name].values >= 0)
+        assert np.all(new_gdf[new_column_name].values <= 9)
+        checksums.append(new_gdf[new_column_name].sum())
+
+    for checksum, gdf in zip(checksums, dataset.to_iter()):
+        new_gdf = hashed_cross_op.apply_op(gdf, columns_ctx, "categorical")
+        assert new_gdf[new_column_name].sum() == checksum
+
+
+@pytest.parametrize("use_dict", [True, False])
+def test_bucketized(tmpdir, df, dataset, use_dict):
+    cont_names = ["x", "y"]
+    boundaries = [[-1, 0, 1], [-4, 100]]
+
+    if use_dict:
+        bucketize_op = op.Bucketize({name: boundary for name, boundary in zip(cont_names, boundaries)})
+    else:
+        bucketize_op = ops.Bucketize(boundaries, cont_names)
+
+    columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = list(cont_names)
+    for gdf in dataset.to_iter():
+        new_gdf = bucketize_op.apply_op(gdf, columns_ctx, "continuous")
+        for col, bs in zip(cont_names, boundaries):
+            assert np.all(new_gdf[col].values >= 0)
+            assert np.all(new_gdf[col].values <= len(bs))
+            # TODO: add checks for correctness here that don't just
+            # repeat the existing logic
