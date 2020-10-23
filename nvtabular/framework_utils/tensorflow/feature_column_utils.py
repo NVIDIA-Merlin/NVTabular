@@ -92,10 +92,12 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                     vocab = f.read().split("\n")
             else:
                 vocab = cat_column.vocabulary_list
-            categorifies[cat_column.key] = vocab
+            categorifies[cat_column.key] = list(vocab)
+            key = cat_column.key
 
         elif isinstance(cat_column, fc.HashedCategoricalColumn):
             hashes[cat_column.key] = cat_column.hash_bucket_size
+            key = cat_column.key
 
         elif isinstance(cat_column, fc.CrossedColumn):
             keys = []
@@ -107,9 +109,15 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                 else:
                     keys.append(key.key)
             crosses[tuple(keys)] = cat_column.hash_bucket_size
+            key = "_X_".join(keys)
+        elif isinstance(cat_column, fc.IdentityCategoricalColumn):
+            new_feature_columns.append(column)
+            continue
+        else:
+            raise ValueError("Unknown column {}".format(cat_column))
 
         new_cat_col = tf.feature_column.categorical_column_with_identity(
-            cat_column.key, cat_column.num_buckets
+            key, cat_column.num_buckets
         )
         if embedding_dim < 0:
             new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
@@ -118,14 +126,16 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                 tf.feature_column.embedding_column(new_cat_col, embedding_dim)
             )
 
-    workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=True))
-    workflow.add_cat_preprocess(
-        [
-            nvt.ops.Categorify(columns=[key for key in categorifies.keys()]),
-            nvt.ops.HashBucket(hashes),
-        ]
-    )
-    workflow.add_cat_feature(nvt.ops.HashedCross(crosses))
+    if len(buckets) > 0:
+        workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=True))
+    if len(categorifies) > 0:
+        workflow.add_cat_preprocess(
+            nvt.ops.Categorify(columns=[key for key in categorifies.keys()])
+        )
+    if len(hashes) > 0:
+        workflow.add_cat_preprocess(nvt.ops.HashBucket(hashes))
+    if len(crosses) > 0:
+        workflow.add_cat_feature(nvt.ops.HashedCross(crosses))
     workflow.finalize()
 
     if category_dir is None:
@@ -142,8 +152,6 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         df.to_parquet(save_path)
         stats["categories"][feature_name] = save_path
 
-    stats_path = os.path.join(category_dir, "stats.yaml")
-    with open(stats_path, "w") as f:
-        yaml.dump(f, stats)
-    workflow.load_stats(stats_path)
+    if len(categorifies) > 0:
+        workflow.stats = stats
     return workflow, new_feature_columns
