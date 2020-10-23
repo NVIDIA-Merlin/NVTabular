@@ -9,6 +9,36 @@ from tensorflow.python.feature_column import feature_column_v2 as fc
 
 
 def make_feature_column_workflow(feature_columns, label_name, category_dir=None):
+    """
+    Maps a list of TensorFlow `feature_column`s to an NVTabular `Workflow` which
+    imitates their preprocessing functionality. Returns both the finalized
+    `Workflow` as well as a list of `feature_column`s that can be used to
+    instantiate a `layers.ScalarDenseFeatures` layer to map from `Workflow`
+    outputs to dense network inputs. Useful for replacing feature column
+    online preprocessing with NVTabular GPU-accelerated online preprocessing
+    for faster training.
+
+    Parameters
+    ----------
+    feature_columns: list(tf.feature_column)
+        List of TensorFlow feature columns to emulate preprocessing functions
+        of. Doesn't support sequence columns.
+    label_name: str
+        Name of label column in dataset
+    category_dir: str or None
+        Directory in which to save categories from vocabulary list and
+        vocabulary file columns. If left as None, will create directory
+        `/tmp/categories` and save there
+
+    Returns
+    -------
+    workflow: nvtabular.Workflow
+        An NVTabular `Workflow` which performs the preprocessing steps
+        defined in `feature_columns`
+    new_feature_columns: list(feature_columns)
+        List of TensorFlow feature columns that correspond to the output
+        from `workflow`. Only contains numeric and identity categorical columns.
+    """
     # TODO: should we support a dict input for feature columns
     # for multi-tower support?
 
@@ -53,6 +83,8 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
     categorifies, hashes, crosses, buckets = {}, {}, {}, {}
     new_feature_columns = []
     for column in feature_columns:
+        # TODO: check for shared embedding or weighted embedding columns?
+        # Do they just inherit from EmbeddingColumn?
         if not isinstance(column, (fc.EmbeddingColumn, fc.IndicatorColumn)):
             # bucketized column being fed directly to model
             if isinstance(column, (fc.BucketizedColumn)):
@@ -138,20 +170,22 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         workflow.add_cat_feature(nvt.ops.HashedCross(crosses))
     workflow.finalize()
 
-    if category_dir is None:
-        category_dir = "/tmp/categories"
-    if not os.path.exists(category_dir):
-        os.makedirs(category_dir)
-
-    stats = {"categories": {}}
-    for feature_name, categories in categorifies.items():
-        categories.insert(0, None)
-        df = cudf.DataFrame({feature_name: categories})
-
-        save_path = os.path.join(category_dir, f"unique.{feature_name}.parquet")
-        df.to_parquet(save_path)
-        stats["categories"][feature_name] = save_path
-
+    # create stats for Categorify op if we need it
     if len(categorifies) > 0:
+        if category_dir is None:
+            category_dir = "/tmp/categories"
+        if not os.path.exists(category_dir):
+            os.makedirs(category_dir)
+
+        stats = {"categories": {}}
+        for feature_name, categories in categorifies.items():
+            categories.insert(0, None)
+            df = cudf.DataFrame({feature_name: categories})
+
+            save_path = os.path.join(category_dir, f"unique.{feature_name}.parquet")
+            df.to_parquet(save_path)
+            stats["categories"][feature_name] = save_path
+
         workflow.stats = stats
+
     return workflow, new_feature_columns
