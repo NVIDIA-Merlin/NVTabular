@@ -1027,7 +1027,9 @@ def test_bucketized(tmpdir, df, dataset, use_dict):
     boundaries = [[-1, 0, 1], [-4, 100]]
 
     if use_dict:
-        bucketize_op = op.Bucketize({name: boundary for name, boundary in zip(cont_names, boundaries)})
+        bucketize_op = op.Bucketize(
+            {name: boundary for name, boundary in zip(cont_names, boundaries)}
+        )
     else:
         bucketize_op = ops.Bucketize(boundaries, cont_names)
 

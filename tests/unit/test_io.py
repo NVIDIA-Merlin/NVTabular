@@ -286,9 +286,7 @@ def test_parquet_lists(tmpdir, freq_threshold):
     processor.add_preprocess(ops.Categorify(out_path=str(output_dir)))
     processor.finalize()
     processor.apply(
-        nvt.Dataset(filename),
-        output_format="parquet",
-        output_path=output_dir,
+        nvt.Dataset(filename), output_format="parquet", output_path=output_dir,
     )
 
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
