@@ -14,10 +14,8 @@
 # limitations under the License.
 
 import cudf
-# from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-# from .categorify import _encode_list_column
 from .operator import CAT
 from .transform_operator import TransformOperator
 

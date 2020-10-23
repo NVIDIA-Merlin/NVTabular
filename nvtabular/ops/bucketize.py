@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import cudf
-# from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 from six import callable
 
-# from .categorify import _encode_list_column
 from .operator import CAT, CONT
 from .transform_operator import TransformOperator
 
