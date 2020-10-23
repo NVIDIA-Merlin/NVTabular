@@ -18,7 +18,8 @@ source:
 
 build:
   number: {{ git_revision_count }}
-  string: cuda{{ cuda_version }}_py{{ py_version }}_{{ git_revision_count }}
+  string: {{ git_revision_count }}
+  noarch: python
 
 requirements:
   build:
@@ -33,7 +34,7 @@ requirements:
     - dask>=2.12.0
     - distributed>=2.12.0
     - PyYAML>=5.3
-    - {{ pin_compatible('cudatoolkit', max_pin='x.x') }}
+    - nvtx>=0.2.1
 
 about:
   home: https://github.com/NVIDIA/NVTabular

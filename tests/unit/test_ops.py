@@ -241,11 +241,12 @@ def test_target_encode_multi(tmpdir, npartitions):
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
-    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1})
+    num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
+    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
     cat_names = ["cat", "cat2"]
-    cont_names = ["num"]
+    cont_names = ["num", "num_2"]
     label_name = []
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
@@ -254,7 +255,7 @@ def test_target_encode_multi(tmpdir, npartitions):
     processor.add_preprocess(
         ops.TargetEncoding(
             cat_groups,
-            "num",  # cont_target
+            ["num", "num_2"],  # cont_target
             out_path=str(tmpdir),
             kfold=1,
             p_smooth=5,
@@ -268,10 +269,16 @@ def test_target_encode_multi(tmpdir, npartitions):
     assert "TE_cat_cat2_num" in df_out.columns
     assert "TE_cat_num" in df_out.columns
     assert "TE_cat2_num" in df_out.columns
+    assert "TE_cat_cat2_num_2" in df_out.columns
+    assert "TE_cat_num_2" in df_out.columns
+    assert "TE_cat2_num_2" in df_out.columns
 
     assert_eq(df_out["TE_cat2_num"].values, df_out["TE_cat_cat2_num"].values)
+    assert_eq(df_out["TE_cat2_num_2"].values, df_out["TE_cat_cat2_num_2"].values)
     assert df_out["TE_cat_num"].iloc[0] != df_out["TE_cat2_num"].iloc[0]
+    assert df_out["TE_cat_num_2"].iloc[0] != df_out["TE_cat2_num_2"].iloc[0]
     assert math.isclose(df_out["TE_cat_num"].iloc[0], num_1.mean(), abs_tol=1e-4)
+    assert math.isclose(df_out["TE_cat_num_2"].iloc[0], num_2.mean(), abs_tol=1e-3)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -344,6 +351,30 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     for checksum, gdf in zip(checksums, dataset.to_iter()):
         new_gdf = hash_bucket_op.apply_op(gdf, columns_ctx, "categorical")
         assert np.all(new_gdf[cat_names].sum().values == checksum)
+
+
+def test_hash_bucket_lists(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors"]  # , "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.HashBucket(num_buckets=10))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # check to make sure that the same strings are hashed the same
+    authors = df_out["Authors"].to_arrow().to_pylist()
+    assert authors[0][0] == authors[1][0]  # 'User_A'
+    assert authors[2][1] == authors[3][0]  # 'User_C'
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -652,6 +683,32 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
     assert np.sum(df_pp["x_mul0_add100"] < 100) == 0
 
 
+@pytest.mark.parametrize("freq_threshold", [0, 1, 2])
+def test_categorify_lists(tmpdir, freq_threshold):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # Columns are encoded independently
+    if freq_threshold < 2:
+        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+    else:
+        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 0], [0, 2], [2]]
+
+
 @pytest.mark.parametrize("groups", [[["Author", "Engaging User"]], None])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
 def test_categorify_multi(tmpdir, groups, kind):
@@ -719,8 +776,9 @@ def test_categorify_multi_combo(tmpdir):
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
-def test_categorify_freq_limit(tmpdir, freq_limit):
-    df = pd.DataFrame(
+@pytest.mark.parametrize("search_sort", [True, False])
+def test_categorify_freq_limit(tmpdir, freq_limit, search_sort):
+    df = cudf.DataFrame(
         {
             "Author": [
                 "User_A",
@@ -749,26 +807,34 @@ def test_categorify_freq_limit(tmpdir, freq_limit):
         }
     )
 
-    cat_names = ["Author", "Engaging User"]
-    cont_names = []
-    label_name = []
+    isfreqthr = (isinstance(freq_limit, int) and freq_limit > 0) or (isinstance(freq_limit, dict))
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
+        cat_names = ["Author", "Engaging User"]
+        cont_names = []
+        label_name = []
 
-    processor.add_preprocess(
-        ops.Categorify(columns=cat_names, freq_threshold=freq_limit, out_path=str(tmpdir))
-    )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+        processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    # Column combinations are encoded
-    if isinstance(freq_limit, dict):
-        assert df_out["Author"].max() == 2
-        assert df_out["Engaging User"].max() == 1
-    else:
-        assert len(df["Author"].unique()) == df_out["Author"].max()
-        assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
+        processor.add_preprocess(
+            ops.Categorify(
+                columns=cat_names,
+                freq_threshold=freq_limit,
+                out_path=str(tmpdir),
+                search_sorted=search_sort,
+            )
+        )
+        processor.finalize()
+        processor.apply(nvt.Dataset(df), output_format=None)
+        df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+        # Column combinations are encoded
+        if isinstance(freq_limit, dict):
+            assert df_out["Author"].max() == 2
+            assert df_out["Engaging User"].max() == 1
+        else:
+            assert len(df["Author"].unique()) == df_out["Author"].max()
+            assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])

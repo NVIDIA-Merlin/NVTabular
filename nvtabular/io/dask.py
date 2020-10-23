@@ -16,10 +16,10 @@
 import collections
 
 import dask
-from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
+from nvtx import annotate
 
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 

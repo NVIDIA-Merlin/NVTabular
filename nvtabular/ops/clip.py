@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 import cudf
-from cudf._lib.nvtx import annotate
+from nvtx import annotate
 
 from .operator import CONT
 from .transform_operator import TransformOperator
