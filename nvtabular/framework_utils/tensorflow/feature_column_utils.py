@@ -1,6 +1,5 @@
 import os
 import warnings
-import yaml
 
 import cudf
 import nvtabular as nvt
