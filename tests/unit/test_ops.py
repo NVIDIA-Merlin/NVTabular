@@ -997,7 +997,7 @@ def test_difference_lag():
 @pytest.mark.parametrize("use_dict", [True, False])
 def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, use_dict):
     # TODO: add tests for > 2 features, multiple crosses, etc.
-    cat_names = ("name-string", "name-cat")
+    cat_names = ("name-string", "id")
     num_buckets = 10
 
     if use_dict:
