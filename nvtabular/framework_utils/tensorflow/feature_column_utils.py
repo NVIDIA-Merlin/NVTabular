@@ -8,6 +8,14 @@ from tensorflow.python.feature_column import feature_column_v2 as fc
 import nvtabular as nvt
 
 
+def _make_categorical_embedding(name, vocab_size, embedding_dim):
+    column = tf.feature_column.categorical_column_with_identity(name, vocab_size)
+    if embedding_dim is None:
+        return tf.feature_column.indicator_column(column)
+    else:
+        return tf.feature_column.embedding_column(column, vocab_size)
+
+
 def make_feature_column_workflow(feature_columns, label_name, category_dir=None):
     """
     Maps a list of TensorFlow `feature_column`s to an NVTabular `Workflow` which
@@ -88,17 +96,29 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         # TODO: check for shared embedding or weighted embedding columns?
         # Do they just inherit from EmbeddingColumn?
         if not isinstance(column, (fc.EmbeddingColumn, fc.IndicatorColumn)):
-            # bucketized column being fed directly to model
             if isinstance(column, (fc.BucketizedColumn)):
+                # bucketized column being fed directly to model means it's
+                # implicitly wrapped into an indicator column
                 cat_column = column
+                embedding_dim = None
             else:
+                # can this be anything else? I don't think so
                 assert isinstance(column, fc.NumericColumn)
+
+                # check to see if we've seen a bucketized column
+                # that gets fed by this feature. If we have, note
+                # that it shouldn't be replaced
                 if column.key in replaced_buckets:
                     buckets[column.key] = replaced_buckets.pop(column.key)
+
                 numeric_columns.append(column)
                 continue
         else:
             cat_column = column.categorical_column
+
+            # use this to keep track of what should be embedding
+            # and what should be indicator, makes the bucketized
+            # checking easier
             if isinstance(column, fc.EmbeddingColumn):
                 embedding_dim = column.dimension
             else:
@@ -106,10 +126,15 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
 
         if isinstance(cat_column, fc.BucketizedColumn):
             key = cat_column.source_column.key
+
+            # check if the source numeric column is being fed
+            # directly to the model. Keep track of both the
+            # boundaries and embedding dim so that we can wrap
+            # with either indicator or embedding later
             if key in [col.key for col in numeric_columns]:
-                buckets[key] = column.boundaries
+                buckets[key] = (column.boundaries, embedding_dim)
             else:
-                replaced_buckets[key] = column.boundaries
+                replaced_buckets[key] = (column.boundaries, embedding_dim)
 
             # put off dealing with these until the end so that
             # we know whether we need to replace numeric
@@ -138,51 +163,69 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             keys = []
             for key in cat_column.keys:
                 if isinstance(key, fc.BucketizedColumn):
-                    keys.append(key.source_column.key)
+                    keys.append(key.source_column.key + "_Bucketize")
                 elif isinstance(key, str):
                     keys.append(key)
                 else:
                     keys.append(key.key)
-            crosses[tuple(keys)] = cat_column.hash_bucket_size
-            key = "_X_".join(keys)
+            crosses[tuple(keys)] = (cat_column.hash_bucket_size, embedding_dim)
+
+            # put off making the new columns here too so that we
+            # make sure we have the key right after we check
+            # for buckets later
+            continue
+
         elif isinstance(cat_column, fc.IdentityCategoricalColumn):
             new_feature_columns.append(column)
             continue
+
         else:
             raise ValueError("Unknown column {}".format(cat_column))
 
-        new_cat_col = tf.feature_column.categorical_column_with_identity(
-            key, cat_column.num_buckets
+        new_feature_columns.append(
+            _make_categorical_embedding(key, cat_column.num_buckets, embedding_dim)
         )
-        if embedding_dim is None:
-            new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
-        else:
-            new_feature_columns.append(
-                tf.feature_column.embedding_column(new_cat_col, embedding_dim)
-            )
 
     if len(buckets) > 0:
-        for key, boundaries in buckets.items():
-            new_cat_col = tf.feature_column.categorical_column_with_identity(
-                key + "_Bucketize", len(boundaries) + 1
+        for key, (boundaries, embedding_dim) in buckets.items():
+            new_feature_columns.append(
+                _make_categorical_embedding(key + "_Bucketize", len(boundaries) + 1, embedding_dim)
             )
-            new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
         workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=False))
+
     if len(replaced_buckets) > 0:
-        for key, boundaries in replaced_buckets.items():
-            new_cat_col = tf.feature_column.categorical_column_with_identity(
-                key, len(boundaries) + 1
+        for key, (boundaries, embedding_dim) in replaced_buckets.items():
+            new_feature_columns.append(
+                _make_categorical_embedding(key, len(boundaries) + 1, embedding_dim)
             )
-            new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
         workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=True))
+
     if len(categorifies) > 0:
         workflow.add_cat_preprocess(
             nvt.ops.Categorify(columns=[key for key in categorifies.keys()])
         )
+
     if len(hashes) > 0:
         workflow.add_cat_preprocess(nvt.ops.HashBucket(hashes))
+
     if len(crosses) > 0:
-        workflow.add_cat_feature(nvt.ops.HashedCross(crosses))
+        # need to check if any bucketized columns are coming from
+        # the bucketized version or the raw version
+        new_crosses = {}
+        for keys, (hash_bucket_size, embedding_dim) in crosses.items():
+            new_keys = []
+            for key in keys:
+                if key.endswith("_Bucketize") and key in replaced_buckets:
+                    key = key.replace("_Bucketize", "")
+                new_keys.append(key)
+            new_crosses[tuple(new_keys)] = hash_bucket_size
+
+            key = "_X_".join(new_keys)
+            new_feature_columns.append(
+                _make_categorical_embedding(key, hash_bucket_size, embedding_dim)
+            )
+
+        workflow.add_cat_feature(nvt.ops.HashedCross(new_crosses))
     workflow.finalize()
 
     # create stats for Categorify op if we need it
