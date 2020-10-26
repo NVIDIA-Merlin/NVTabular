@@ -992,8 +992,10 @@ def test_difference_lag():
     assert new_gdf["timestamp_DifferenceLag"][3] is None
 
 
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("use_dict", [True, False])
-def test_hashed_cross(tmpdir, df, dataset, use_dict):
+def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, use_dict):
     # TODO: add tests for > 2 features, multiple crosses, etc.
     cat_names = ("name-string", "name-cat")
     num_buckets = 10
@@ -1021,8 +1023,10 @@ def test_hashed_cross(tmpdir, df, dataset, use_dict):
         assert new_gdf[new_column_name].sum() == checksum
 
 
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("use_dict", [True, False])
-def test_bucketized(tmpdir, df, dataset, use_dict):
+def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, use_dict):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
 
