@@ -187,18 +187,22 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         )
 
     if len(buckets) > 0:
+        new_buckets = {}
         for key, (boundaries, embedding_dim) in buckets.items():
             new_feature_columns.append(
                 _make_categorical_embedding(key + "_Bucketize", len(boundaries) + 1, embedding_dim)
             )
-        workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=False))
+            new_buckets[key] = boundaries
+        workflow.add_cont_preprocess(nvt.ops.Bucketize(new_buckets, replace=False))
 
     if len(replaced_buckets) > 0:
+        new_replaced_buckets = {}
         for key, (boundaries, embedding_dim) in replaced_buckets.items():
             new_feature_columns.append(
                 _make_categorical_embedding(key, len(boundaries) + 1, embedding_dim)
             )
-        workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=True))
+            new_replaced_buckets[key] = boundaries
+        workflow.add_cont_preprocess(nvt.ops.Bucketize(new_replaced_buckets, replace=True))
 
     if len(categorifies) > 0:
         workflow.add_cat_preprocess(
