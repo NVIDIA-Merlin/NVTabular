@@ -80,7 +80,9 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
     workflow = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=[label_name])
 
     _CATEGORIFY_COLUMNS = (fc.VocabularyListCategoricalColumn, fc.VocabularyFileCategoricalColumn)
-    categorifies, hashes, crosses, buckets = {}, {}, {}, {}
+    categorifies, hashes, crosses, buckets, replaced_buckets = {}, {}, {}, {}, {}
+
+    numeric_columns = []
     new_feature_columns = []
     for column in feature_columns:
         # TODO: check for shared embedding or weighted embedding columns?
@@ -89,30 +91,31 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             # bucketized column being fed directly to model
             if isinstance(column, (fc.BucketizedColumn)):
                 cat_column = column
-                embedding_dim = None
             else:
-                new_feature_columns.append(column)
+                assert isinstance(column, fc.NumericColumn)
+                if column.key in replaced_buckets:
+                    buckets[column.key] = replaced_buckets.pop(column.key)
+                numeric_columns.append(column)
                 continue
         else:
             cat_column = column.categorical_column
             if isinstance(column, fc.EmbeddingColumn):
                 embedding_dim = column.dimension
             else:
-                embedding_dim = -1
+                embedding_dim = None
 
         if isinstance(cat_column, fc.BucketizedColumn):
-            # TODO: how do we handle case where both original
-            # and bucketized column get fed to model?
             key = cat_column.source_column.key
-            buckets[key] = column.boundaries
+            if key in [col.key for col in numeric_columns]:
+                buckets[key] = column.boundaries
+            else:
+                replaced_buckets[key] = column.boundaries
 
-            if embedding_dim is None:
-                # bucketized values being fed as numeric
-                # probably a rare case, but worth covering here
-                new_feature_columns.append(
-                    tf.feature_column.numeric_column(key, cat_column.source_column.shape)
-                )
-                continue
+            # put off dealing with these until the end so that
+            # we know whether we need to replace numeric
+            # columns or create a separate feature column
+            # for them
+            continue
 
         elif isinstance(cat_column, _CATEGORIFY_COLUMNS):
             if cat_column.num_oov_buckets > 1:
@@ -151,7 +154,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         new_cat_col = tf.feature_column.categorical_column_with_identity(
             key, cat_column.num_buckets
         )
-        if embedding_dim < 0:
+        if embedding_dim is None:
             new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
         else:
             new_feature_columns.append(
@@ -159,6 +162,18 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             )
 
     if len(buckets) > 0:
+        for key, boundaries in buckets.items():
+            new_cat_col = tf.feature_column.categorical_column_with_identity(
+                key + "_Bucketize", len(boundaries) + 1
+            )
+            new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
+        workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=False))
+    if len(replaced_buckets) > 0:
+        for key, boundaries in replaced_buckets.items():
+            new_cat_col = tf.feature_column.categorical_column_with_identity(
+                key, len(boundaries) + 1
+            )
+            new_feature_columns.append(tf.feature_column.indicator_column(new_cat_col))
         workflow.add_cont_preprocess(nvt.ops.Bucketize(buckets, replace=True))
     if len(categorifies) > 0:
         workflow.add_cat_preprocess(
@@ -188,4 +203,4 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
 
         workflow.stats = stats
 
-    return workflow, new_feature_columns
+    return workflow, numeric_columns + new_feature_columns
