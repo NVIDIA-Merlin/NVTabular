@@ -193,7 +193,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                 _make_categorical_embedding(key + "_Bucketize", len(boundaries) + 1, embedding_dim)
             )
             new_buckets[key] = boundaries
-        workflow.add_cont_preprocess(nvt.ops.Bucketize(new_buckets, replace=False))
+        workflow.add_cont_feature(nvt.ops.Bucketize(new_buckets, replace=False))
 
     if len(replaced_buckets) > 0:
         new_replaced_buckets = {}
@@ -205,12 +205,12 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         workflow.add_cont_preprocess(nvt.ops.Bucketize(new_replaced_buckets, replace=True))
 
     if len(categorifies) > 0:
-        workflow.add_cat_preprocess(
+        workflow.add_cat_feature(
             nvt.ops.Categorify(columns=[key for key in categorifies.keys()])
         )
 
     if len(hashes) > 0:
-        workflow.add_cat_preprocess(nvt.ops.HashBucket(hashes))
+        workflow.add_cat_feature(nvt.ops.HashBucket(hashes))
 
     if len(crosses) > 0:
         # need to check if any bucketized columns are coming from
@@ -229,7 +229,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                 _make_categorical_embedding(key, hash_bucket_size, embedding_dim)
             )
 
-        workflow.add_cat_feature(nvt.ops.HashedCross(new_crosses))
+        workflow.add_cat_preprocess(nvt.ops.HashedCross(new_crosses))
     workflow.finalize()
 
     # create stats for Categorify op if we need it
