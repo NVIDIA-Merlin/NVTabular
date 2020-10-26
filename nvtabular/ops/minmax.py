@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from cudf._lib.nvtx import annotate
+from nvtx import annotate
 
 from .stat_operator import StatOperator
 

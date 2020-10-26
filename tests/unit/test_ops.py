@@ -353,6 +353,30 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
         assert np.all(new_gdf[cat_names].sum().values == checksum)
 
 
+def test_hash_bucket_lists(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors"]  # , "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.HashBucket(num_buckets=10))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # check to make sure that the same strings are hashed the same
+    authors = df_out["Authors"].to_arrow().to_pylist()
+    assert authors[0][0] == authors[1][0]  # 'User_A'
+    assert authors[2][1] == authors[3][0]  # 'User_C'
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_fill_missing(tmpdir, df, dataset, engine):
     op = nvt.ops.FillMissing(42)
@@ -752,8 +776,9 @@ def test_categorify_multi_combo(tmpdir):
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
-def test_categorify_freq_limit(tmpdir, freq_limit):
-    df = pd.DataFrame(
+@pytest.mark.parametrize("search_sort", [True, False])
+def test_categorify_freq_limit(tmpdir, freq_limit, search_sort):
+    df = cudf.DataFrame(
         {
             "Author": [
                 "User_A",
@@ -782,26 +807,34 @@ def test_categorify_freq_limit(tmpdir, freq_limit):
         }
     )
 
-    cat_names = ["Author", "Engaging User"]
-    cont_names = []
-    label_name = []
+    isfreqthr = (isinstance(freq_limit, int) and freq_limit > 0) or (isinstance(freq_limit, dict))
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
+        cat_names = ["Author", "Engaging User"]
+        cont_names = []
+        label_name = []
 
-    processor.add_preprocess(
-        ops.Categorify(columns=cat_names, freq_threshold=freq_limit, out_path=str(tmpdir))
-    )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+        processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    # Column combinations are encoded
-    if isinstance(freq_limit, dict):
-        assert df_out["Author"].max() == 2
-        assert df_out["Engaging User"].max() == 1
-    else:
-        assert len(df["Author"].unique()) == df_out["Author"].max()
-        assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
+        processor.add_preprocess(
+            ops.Categorify(
+                columns=cat_names,
+                freq_threshold=freq_limit,
+                out_path=str(tmpdir),
+                search_sorted=search_sort,
+            )
+        )
+        processor.finalize()
+        processor.apply(nvt.Dataset(df), output_format=None)
+        df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+        # Column combinations are encoded
+        if isinstance(freq_limit, dict):
+            assert df_out["Author"].max() == 2
+            assert df_out["Engaging User"].max() == 1
+        else:
+            assert len(df["Author"].unique()) == df_out["Author"].max()
+            assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
