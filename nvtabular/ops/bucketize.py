@@ -61,7 +61,7 @@ class Bucketize(TransformOperator):
             # TODO: should just be using cupy.digitize but it's not in 7.8
             val = 0
             for boundary in b:
-                val += (gdf[col] > boundary).astype("int")
+                val += (gdf[col] >= boundary).astype("int")
             new_col = f"{col}_{self._id}"
             new_gdf[new_col] = val
         return new_gdf

@@ -13,7 +13,7 @@ def _make_categorical_embedding(name, vocab_size, embedding_dim):
     if embedding_dim is None:
         return tf.feature_column.indicator_column(column)
     else:
-        return tf.feature_column.embedding_column(column, vocab_size)
+        return tf.feature_column.embedding_column(column, embedding_dim)
 
 
 def make_feature_column_workflow(feature_columns, label_name, category_dir=None):
