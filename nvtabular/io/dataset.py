@@ -232,7 +232,7 @@ class Dataset:
                         from .avro import AvroDatasetEngine
                     except ImportError:
                         raise RuntimeError(
-                            "Failed to import AvroDatasetEngine. Make sure " "uavro is installed."
+                            "Failed to import AvroDatasetEngine. Make sure uavro is installed."
                         )
 
                     self.engine = AvroDatasetEngine(

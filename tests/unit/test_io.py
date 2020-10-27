@@ -349,7 +349,6 @@ def test_avro_basic(tmpdir, part_size, size, nfiles):
     df = nvt.Dataset(paths, part_size=part_size, engine="avro").to_ddf()
 
     # Check basic length and partition count
-    df.compute(scheduler="synchronous")
     if part_size == "1KB":
         assert df.npartitions == nblocks
     assert len(df) == nrecords
