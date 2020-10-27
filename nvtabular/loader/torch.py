@@ -18,8 +18,6 @@ import torch
 from cudf.utils.dtypes import is_list_dtype
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.ops import _get_embedding_order
-
 from .backend import DataLoader
 
 

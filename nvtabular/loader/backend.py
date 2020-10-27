@@ -15,8 +15,8 @@
 #
 import queue
 import threading
-
 from collections import OrderedDict
+
 import cudf
 import cupy as cp
 
