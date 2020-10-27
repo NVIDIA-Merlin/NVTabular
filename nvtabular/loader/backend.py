@@ -16,6 +16,7 @@
 import queue
 import threading
 
+from collections import OrderedDict
 import cudf
 import cupy as cp
 
@@ -114,19 +115,8 @@ class ChunkQueue:
                         _shuffle_gdf(chunks)
 
                     num_samples = len(chunks)
-                    if num_samples > 0:
-                        for workflow in dataloader.workflows:
-                            chunks = workflow.apply_ops(chunks)
-
-                        # map from big chunk to fraemwork specific tensors
-                        chunks = dataloader._create_tensors(chunks)
-
-                        # split them into batches and map to
-                        # the framework-specific output format
-                        chunks = [dataloader._create_batch(x, num_samples) for x in chunks]
-                        chunks = zip(*chunks)
-                        chunks = [dataloader._handle_tensors(*tensors) for tensors in chunks]
-
+                    if len(chunks) > 0:
+                        chunks = dataloader.make_tensors(chunks, dataloader._use_nnz)
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from
                         # freezing on a put on a full queue
@@ -187,6 +177,8 @@ def _validate_workflows(workflows, cat_names, cont_names, label_names):
 # TODO: implement as metaclass and assign methods to children
 # to avoid having to do Dataset.<method> calls?
 class DataLoader:
+    _use_nnz = False
+
     def __init__(
         self,
         dataset,
@@ -321,6 +313,76 @@ class DataLoader:
         )
         # TODO: update cat/cont/label names after
 
+    def make_tensors(self, gdf, use_nnz=False):
+       for workflow in self.workflows:
+            gdf = workflow.apply_ops(gdf)
+        split_idx = self._get_segment_lengths(len(gdf))
+
+        # map from big chunk to fraemwork specific tensors
+        chunks = self._create_tensors(gdf)
+
+        # if we have any offsets, calculate nnzs up front
+        if len(chunks) = 4:
+            offsets = chunks[-1]
+            if use_nnz:
+                nnzs = offsets[1:] - offsets[:-1]
+            chunks = chunks[:-1]
+
+        # split them into batches and map to the framework-specific output format
+        batches = [[] for _ in range(len(split_idx))]
+        offset_idx = 0
+        for chunk in chunks:
+            lists = None
+            if isinstance(chunk, tuple):
+                chunk, lists = chunk
+            chunk = self._split_fn(chunk, split_idx)
+
+            if lists is not None:
+                num_list_columns = len(lists)
+
+                # grab the set of offsets and nnzs corresponding to
+                # the list columns from this chunk
+                chunk_offsets = offsets[offset_idx:offset_idx+num_list_columns]
+                if use_nnz:
+                    chunk_nnzs = nnzs[offset_idx:offset_idx+num_list_columns]
+                offset_idx += num_list_columns
+
+                # split them into batches, including an extra 1 on the offsets
+                # so we know how long the very last element is
+                batch_offsets = self._split_fn(chunk_offsets, split_idx+[1])
+                if use_nnz:
+                    batch_nnzs = self._split_fn(chunk_nnzs, split_idx)
+                else:
+                    batch_nnzs = [None]*len(batch_offsets)
+
+                # group all these indices together and iterate through
+                # them in batches to grab the proper elements from each
+                # values tensor
+                chunk = zip(chunk, batch_offsets[:-1], batch_offsets[1:], batch_nnzs)
+
+            for n, c in enumerate(chunk):
+                if isinstance(c, tuple):
+                    c, off0s, off1s, _nnzs = c
+                    off0s = self._split_fn(off0s, num_list_columns, axis=1)
+                    off1s = self._split_fn(off1s, num_list_columns, axis=1)
+                    if use_nnzs:
+                        _nnzs = self._split_fn(_nnzs, num_list_columns, axis=1)
+
+                    batch_lists = {}
+                    for n, (column_name, values) in enumerate(lists.items()):
+                        off0, off1, nnz = off0s[n], off1[n]
+                        if use_nnz:
+                            nnz = _nnzs[n]
+
+                        # TODO: this slicing using tensor values might cause
+                        # a problem for TensorFlow, tbd...
+                        value = values[off0[0]: off1[0]]
+                        index = off0 - off0[0] if not use_nnz else nnz
+                        batch_lists[column_name] = (value, index)
+                    c = (c, batch_lists)
+                batches[n].append(c)
+        return [self._handle_tensors(*batch) for batch in batches]
+
     def _get_segment_lengths(self, num_samples):
         """
         Helper function to build indices to pass
@@ -349,15 +411,14 @@ class DataLoader:
         """
         raise NotImplementedError
 
-    def _create_batch(self, tensor, num_samples):
-        """
-        One of the mandatory functions a child class needs
-        to implement. Splits a `tensor` with `num_samples`
-        rows into a list of tensors with `batch_size` rows
-        """
-        # TODO: can we just do this with some sort of
-        # self._split_fn attribute?
-        raise NotImplementedError
+    def _separate_list_columns(self, gdf):
+        lists, scalars = [], []
+        for col in gdf.columns:
+            if is_list_dtype(gdf[col]):
+                lists.append(col)
+            else:
+                scalars.append(col)
+        return _get_embedding_order(scalars), _get_embedding_order(lists)
 
     def _create_tensors(self, gdf):
         """
@@ -365,20 +426,38 @@ class DataLoader:
         categorical, continuous, and label tensors.
         Can be overrideen
         """
-        # TODO: how will this work once we have multi-hots
-        # also seems brittle to labels with mixed type
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(self.cat_names)],
-            gdf[self.cont_names],
-            gdf[self.label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats)
-        conts = self._to_tensor(gdf_conts)
-        label = self._to_tensor(gdf_label)
+        column_groups = (self.cat_names, self.cont_names, self.label_names)
+        dtypes = (self._LONG_DTYPE, self._FLOAT32_DTYPE, self._FLOAT32_DTYPE)
+        tensors = []
+        offsets = cudf.DataFrame()
+        for column_names, dtype in zip(column_groups, dtypes):
+            if len(column_names) == 0:
+                tensors.append(None)
+                continue
 
-        del gdf_cats, gdf_conts, gdf_label
-        return cats, conts, label
+            gdf_i = gdf[column_names]
+            gdf.drop(columns=column_names, inplace=True)
+
+            scalars, lists = self._separate_list_columns(gdf_i)
+            x = None
+            if scalars:
+                x = self._to_tensor(gdf[scalars], dtype)
+            if lists:
+                list_tensors = OrderedDict()
+                for column_name in lists:
+                    column = gdf_i.pop(column_name)
+                    leaves = column.list.leaves
+                    list_tensors[column_name] = self._to_tensor(leaves, dtype)
+
+                    offsets[column_name] = column._column.offsets
+                x = x, list_tensors
+            tensors.append(x)
+
+        if not offsets.empty:
+            tensors.append(self._to_tensor(offsets, self._LONG_DTYPE))
+        del gdf, offsets
+
+        return tensors
 
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels

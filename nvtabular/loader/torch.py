@@ -64,6 +64,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         list representing all available GPU IDs
     """
 
+    _LONG_DTYPE = torch.long
+    _FLOAT32_DTYPE = torch.float32
+    _split_fn = torch.split
+
     def __init__(
         self,
         dataset,
@@ -94,95 +98,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _get_device_ctx(self, dev):
         return torch.cuda.device("cuda:{}".format(dev))
 
-    def pull_list_cols(self, gdf):
-        lists = []
-        reg = []
-        for col in gdf.columns:
-            if is_list_dtype(gdf[col]):
-                lists.append(col)
-            else:
-                reg.append(col)
-        return reg, lists
-
     def _to_tensor(self, gdf, dtype=None):
-        tens = None
-        if gdf.empty:
-            return
-        reg, lists = self.pull_list_cols(gdf)
-        reg = _get_embedding_order(reg)
-        lists = _get_embedding_order(lists)
-        if reg:
-            dl_pack = gdf[reg].to_dlpack()
-            # keep next two lines separated, hurts perf, casts incorrectly
-            tens = from_dlpack(dl_pack)
-            tens = tens.type(dtype)
-        if lists:
-            list_tens = self._list_dtype_tensor(gdf, lists, dtype)
-            tens = tens, list_tens
-        return tens
-
-    def _list_dtype_tensor(self, gdf, cols, dtype):
-        # return a dictionary with col_name: (leaves, offsets)
-        res = {}
-        for col in cols:
-            leaves = from_dlpack(gdf[col].list.leaves.to_dlpack())
-            leaves = leaves.type(dtype)
-            offsets = torch.Tensor(gdf[col]._column.offsets.values).type(torch.long).cuda()
-            res[col] = leaves, offsets
-        return res
-
-    # TODO: do we need casting or can we replace this with
-    # parent class version?
-    def _create_tensors(self, gdf):
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[self.cat_names],
-            gdf[self.cont_names],
-            gdf[self.label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats, torch.long)
-        conts = self._to_tensor(gdf_conts, torch.float32)
-        label = self._to_tensor(gdf_label, torch.float32)
-        del gdf_cats, gdf_conts, gdf_label
-        return cats, conts, label
-
-    def _create_batch(self, tensor, num_samples):
-        tens, tensor_dict = None, None
-        if type(tensor) is tuple:
-            #  cat type with mh dictionary
-            tensor, tensor_dict = tensor
-        idx = self._get_segment_lengths(num_samples)
-        if tensor is not None:
-            tens = torch.split(tensor, idx)
-        else:
-            tens = [[]] * num_samples
-        if tensor_dict:
-            tens = zip(tens, self._split_lists(tensor_dict, idx))
-            tens = [self._handle_dict_tens(*ten) for ten in tens]
-        return tens
-
-    def _split_lists(self, tensor_dict, idx):
-        new_dict_list = []
-        for col in tensor_dict.keys():
-            per_col_list = []
-            dl_leaves, dl_offsets = tensor_dict[col]
-            # split offsets first then split leaves on offset splits
-            dl_offsets_split = torch.split(dl_offsets[1:], idx)
-            prev_final_offset = 0
-            for x in dl_offsets_split:
-                new_dict = {}
-                # add previous last index as first index in new "batch"
-                dl_leaves_split = dl_leaves[prev_final_offset : int(x[-1])]
-                new_offsets = torch.cat([torch.tensor([0]).cuda(), x - prev_final_offset], 0)
-                prev_final_offset = x[-1]
-                new_dict[col] = dl_leaves_split, new_offsets[:-1]
-                per_col_list.append(new_dict)
-            new_dict_list.append(per_col_list)
-        zip_up = zip(*new_dict_list)
-        return [self._handle_dict_tens(*tens) for tens in zip_up]
-
-    def _handle_dict_tens(self, *tens):
-        return tens
+        dl_pack = gdf.to_dlpack()
+        tensor = from_dlpack(dl_pack)
+        return tensor.type(dtype)
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
