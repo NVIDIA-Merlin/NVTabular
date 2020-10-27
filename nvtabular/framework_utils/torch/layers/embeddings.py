@@ -50,8 +50,7 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         x = self.dropout(x)
         return x
 
-    
-    
+
 class MultiHotEmbeddings(torch.nn.Module):
     """Map multiple categorical variables to concatenated embeddings.
 
@@ -81,10 +80,10 @@ class MultiHotEmbeddings(torch.nn.Module):
         embs = []
         x = list(x)
         for idx, entry in enumerate(x):
-            for k,v in entry.items():
+            for k, v in entry.items():
                 values, offsets = v
                 embs.append(self.embedding_layers[idx](values, offsets))
-#         x = [self.embedding_layers(entry.values()[0], entry.values()[1]) for entry in x]
+        #         x = [self.embedding_layers(entry.values()[0], entry.values()[1]) for entry in x]
         x = torch.cat(embs, dim=1)
         x = self.dropout(x)
         return x

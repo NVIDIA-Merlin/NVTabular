@@ -266,7 +266,7 @@ class Categorify(DFOperator):
                 storage_name = name
             path = stats_context[self.stat_name][storage_name]
             if _is_list_col([name], gdf):
-                if "mh" not  in columns_ctx["categorical"]:
+                if "mh" not in columns_ctx["categorical"]:
                     columns_ctx["categorical"]["mh"] = []
                 if name not in columns_ctx["categorical"]["mh"]:
                     columns_ctx["categorical"]["mh"].append(name)
