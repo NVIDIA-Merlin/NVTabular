@@ -260,7 +260,9 @@ class Categorify(DFOperator):
                     name_sep=self.name_sep,
                 ),
                 SetBuckets(
-                    columns=self.column_groups or self.columns, num_buckets=self.num_buckets
+                    columns=self.column_groups or self.columns,
+                    num_buckets=self.num_buckets,
+                    freq_limit=self.freq_threshold,
                 ),
             ]
 
@@ -310,13 +312,6 @@ class Categorify(DFOperator):
             else:
                 storage_name = name
             path = stats_context[self.stat_name][storage_name]
-
-            if self.num_buckets:
-                if isinstance(self.num_buckets, int):
-                    num_buckets = {name: self.num_buckets for name in cat_names}
-            else:
-                num_buckets = self.num_buckets
-
             new_gdf[new_col] = _encode(
                 use_name,
                 storage_name,
@@ -328,7 +323,7 @@ class Categorify(DFOperator):
                 if isinstance(self.freq_threshold, dict)
                 else self.freq_threshold,
                 search_sorted=self.search_sorted,
-                buckets=num_buckets,
+                buckets=self.num_buckets,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
@@ -357,20 +352,32 @@ def _get_embedding_order(cat_names):
 
 def get_embedding_sizes(workflow):
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    if "buckets" in workflow.stats.keys():
+    if "buckets" in workflow.stats.keys() and "freq_limit" not in workflow.stats.keys():
         return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
+    elif "buckets" in workflow.stats.keys() and "freq_limit" in workflow.stats.keys():
+        return _get_embeddings_dask(
+            workflow.stats["categories"],
+            cols,
+            workflow.stats["buckets"],
+            workflow.stats["freq_limit"],
+        )
     else:
         return _get_embeddings_dask(workflow.stats["categories"], cols)
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=None):
+def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     embeddings = {}
     for col in cat_names:
         if not buckets or col not in buckets:
             path = paths[col]
             num_rows, _, _ = cudf.io.read_parquet_metadata(path)
             embeddings[col] = _emb_sz_rule(num_rows)
-        else:
+        if buckets and freq_limit:
+            path = paths[col]
+            num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+            num_rows = num_rows + buckets[col]
+            embeddings[col] = _emb_sz_rule(num_rows)
+        if buckets and not freq_limit:
             num_rows = buckets[col]
             embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
@@ -792,6 +799,12 @@ def _encode(
     search_sorted=False,
     buckets=None,
 ):
+
+    if buckets:
+        if isinstance(buckets, int):
+            buckets = {name: buckets for name in gdf.columns}
+        else:
+            buckets = buckets
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
@@ -823,24 +836,30 @@ def _encode(
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
-            if buckets:
-                hash_col = _hash_bucket(gdf, buckets, selection_l)
         else:
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
             for c in selection_l:
                 codes[c] = gdf[c].copy()
                 if buckets:
                     if c in buckets:
-                        hash_col = _hash_bucket(gdf, buckets, c)
+                        codes[c + "_hashed"] = _hash_bucket(gdf, buckets, c)
+        # apply frequency hashing
         if freq_threshold and buckets:
-            merged_df = codes.merge(value, left_on=selection_l, right_on=selection_r, how="left")
-            merged_df[c + "_hashed"] = hash_col
-            merged_df = merged_df.sort_values("order")
-            labels = merged_df["labels"]
-            labels.fillna(na_sentinel, inplace=True)
+            merged_df = codes.merge(
+                value, left_on=selection_l, right_on=selection_r, how="left"
+            ).sort_values("order")
+            max_id = merged_df["labels"].max()
+            merged_df["labels"].fillna(na_sentinel, inplace=True)
+            merged_df.loc[merged_df["labels"] == 0, ["labels"]] = (
+                merged_df.loc[merged_df["labels"] == 0, [name + "_hashed"]].values + max_id + 1
+            )
+            labels = merged_df["labels"].values
+        # only do hashing
         if not freq_threshold and buckets:
-            labels = hash_col
-        if not buckets:
+            if name in buckets:
+                labels = codes[name + "_hashed"].values
+        # no hashing
+        if not buckets or name not in buckets:
             labels = codes.merge(
                 value, left_on=selection_l, right_on=selection_r, how="left"
             ).sort_values("order")["labels"]
@@ -916,9 +935,10 @@ def _hash_bucket(gdf, num_buckets, col):
 
 
 class SetBuckets(StatOperator):
-    def __init__(self, columns=None, num_buckets=None):
+    def __init__(self, columns=None, num_buckets=None, freq_limit=0):
         super().__init__(columns=columns)
         self.num_buckets = num_buckets
+        self.freq_limit = freq_limit
 
     @annotate("SetBuckets_op", color="green", domain="nvt_python")
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
@@ -932,12 +952,13 @@ class SetBuckets(StatOperator):
         self.num_buckets = dask_stats
 
     def registered_stats(self):
-        return ["buckets"]
+        return ["buckets", "freq_limit"]
 
     def stats_collected(self):
-        result = [("buckets", self.num_buckets)]
+        result = [("buckets", self.num_buckets), ("freq_limit", self.freq_limit)]
         return result
 
     def clear(self):
         self.num_buckets = {}
+        self.freq_limit = {}
         return
