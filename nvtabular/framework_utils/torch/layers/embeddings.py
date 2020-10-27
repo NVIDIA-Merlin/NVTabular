@@ -60,7 +60,7 @@ class MultiHotEmbeddings(torch.nn.Module):
         dropout: A float.
 
     Inputs:
-        x: A dictionary with multi-hot column name as keys and a tuple 
+        x: A dictionary with multi-hot column name as keys and a tuple
            containing the column values and offsets as values.
 
     Outputs:
