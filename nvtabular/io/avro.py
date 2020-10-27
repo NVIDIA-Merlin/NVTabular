@@ -155,7 +155,17 @@ class AvroDatasetEngine(DatasetEngine):
                 header = ua.core.read_header(fo)
                 ua.core.scan_blocks(fo, header, file_size)
                 header["blocks"] = header["blocks"][block_offset : block_offset + part_blocks]
-                df = _filelike_to_dataframe(fo, header)
+
+                # Adjust the total row count
+                nrows = 0
+                for block in header["blocks"]:
+                    nrows += block["nrows"]
+                header["nrows"] = nrows
+
+                # Read in as pandas and convert to cudf (avoid block scan)
+                df = cudf.from_pandas(
+                    ua.core.filelike_to_dataframe(fo, file_size, header, scan=False)
+                )
         else:
             df = cudf.io.read_avro(path)
 
@@ -163,27 +173,3 @@ class AvroDatasetEngine(DatasetEngine):
         if columns is None:
             columns = list(df.columns)
         return df[columns]
-
-
-def _filelike_to_dataframe(f, head):
-    """Convert block(s) to cudf DataFrame
-
-    Mostly copied from uavro.
-    (see uavro.core.filelike_to_dataframe)"""
-
-    nrows = 0
-    for block in head["blocks"]:
-        nrows += block["nrows"]
-    head["nrows"] = nrows
-    df, arrs = ua.core.make_empty(head)
-    off = 0
-
-    for block in head["blocks"]:
-        f.seek(block["doffset"])
-        data = f.read(block["size"])
-        arrs = {k: v for (k, v) in arrs.items() if not k.endswith("-catdef")}
-        ua.core.read_block_bytes(data, block, head, arrs, off)
-        off += block["nrows"]
-
-    ua.core.convert_types(head, arrs, df)
-    return cudf.from_pandas(df)
