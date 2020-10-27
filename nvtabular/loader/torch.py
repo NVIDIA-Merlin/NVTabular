@@ -173,10 +173,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
                 new_dict = {}
                 # add previous last index as first index in new "batch"
                 dl_leaves_split = dl_leaves[prev_final_offset : int(x[-1])]
-                new_offsets = x
-                #                 new_offsets = torch.cat([torch.tensor([0]).cuda(), x - prev_final_offset], 0)
-                prev_final_offset = int(x[-1])
-                new_dict[col] = dl_leaves_split, new_offsets
+                new_offsets = torch.cat([torch.tensor([0]).cuda(), x - prev_final_offset], 0)
+                prev_final_offset = x[-1]
+                new_dict[col] = dl_leaves_split, new_offsets[:-1]
                 per_col_list.append(new_dict)
             new_dict_list.append(per_col_list)
         zip_up = zip(*new_dict_list)

@@ -306,7 +306,7 @@ def test_mh_model_support(tmpdir):
         emb_dropout=EMBEDDING_DROPOUT_RATE,
         layer_hidden_dims=HIDDEN_DIMS,
         layer_dropout_rates=DROPOUT_RATES,
-    ).to("cuda")
+    ).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     def rmspe_func(y_pred, y):
