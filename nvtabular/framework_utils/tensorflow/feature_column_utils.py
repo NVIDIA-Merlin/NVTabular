@@ -205,9 +205,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         workflow.add_cont_preprocess(nvt.ops.Bucketize(new_replaced_buckets, replace=True))
 
     if len(categorifies) > 0:
-        workflow.add_cat_feature(
-            nvt.ops.Categorify(columns=[key for key in categorifies.keys()])
-        )
+        workflow.add_cat_feature(nvt.ops.Categorify(columns=[key for key in categorifies.keys()]))
 
     if len(hashes) > 0:
         workflow.add_cat_feature(nvt.ops.HashBucket(hashes))
