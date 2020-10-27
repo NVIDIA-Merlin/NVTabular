@@ -314,7 +314,7 @@ class DataLoader:
         # TODO: update cat/cont/label names after
 
     def make_tensors(self, gdf, use_nnz=False):
-       for workflow in self.workflows:
+        for workflow in self.workflows:
             gdf = workflow.apply_ops(gdf)
         split_idx = self._get_segment_lengths(len(gdf))
 
@@ -322,7 +322,7 @@ class DataLoader:
         chunks = self._create_tensors(gdf)
 
         # if we have any offsets, calculate nnzs up front
-        if len(chunks) = 4:
+        if len(chunks) == 4:
             offsets = chunks[-1]
             if use_nnz:
                 nnzs = offsets[1:] - offsets[:-1]
@@ -342,18 +342,18 @@ class DataLoader:
 
                 # grab the set of offsets and nnzs corresponding to
                 # the list columns from this chunk
-                chunk_offsets = offsets[offset_idx:offset_idx+num_list_columns]
+                chunk_offsets = offsets[offset_idx : offset_idx + num_list_columns]
                 if use_nnz:
-                    chunk_nnzs = nnzs[offset_idx:offset_idx+num_list_columns]
+                    chunk_nnzs = nnzs[offset_idx : offset_idx + num_list_columns]
                 offset_idx += num_list_columns
 
                 # split them into batches, including an extra 1 on the offsets
                 # so we know how long the very last element is
-                batch_offsets = self._split_fn(chunk_offsets, split_idx+[1])
+                batch_offsets = self._split_fn(chunk_offsets, split_idx + [1])
                 if use_nnz:
                     batch_nnzs = self._split_fn(chunk_nnzs, split_idx)
                 else:
-                    batch_nnzs = [None]*len(batch_offsets)
+                    batch_nnzs = [None] * len(batch_offsets)
 
                 # group all these indices together and iterate through
                 # them in batches to grab the proper elements from each
@@ -376,7 +376,7 @@ class DataLoader:
 
                         # TODO: this slicing using tensor values might cause
                         # a problem for TensorFlow, tbd...
-                        value = values[off0[0]: off1[0]]
+                        value = values[off0[0] : off1[0]]
                         index = off0 - off0[0] if not use_nnz else nnz
                         batch_lists[column_name] = (value, index)
                     c = (c, batch_lists)
