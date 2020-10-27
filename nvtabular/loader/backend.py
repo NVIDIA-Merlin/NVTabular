@@ -126,12 +126,7 @@ class ChunkQueue:
 
                 # takes care final batch, which is less than batch size
                 if spill is not None and not spill.empty:
-                    for workflow in dataloader.workflows:
-                        spill = workflow.apply_ops(spill)
-                    spill = dataloader._create_tensors(spill)
-                    spill = [dataloader._create_batch(x, x.shape[0]) for x in spill]
-                    spill = zip(*spill)
-                    spill = [dataloader._handle_tensors(*tensor) for tensor in spill]
+                    spill = dataloader.make_tensors(spill)
                     self.put(spill)
         except Exception as e:
             self.put(e)
