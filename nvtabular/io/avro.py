@@ -16,7 +16,6 @@
 import warnings
 
 import cudf
-import numpy as np
 import uavro as ua
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
@@ -150,14 +149,13 @@ class AvroDatasetEngine(DatasetEngine):
             #       path, skiprows=skiprows, num_rows=num_rows
             #   )
 
-            byte_offset, part_bytes = piece["bytes"]
             block_offset, part_blocks = piece["blocks"]
             file_size = fs.du(piece["path"])
             with fs.open(piece["path"], "rb") as fo:
                 header = ua.core.read_header(fo)
                 ua.core.scan_blocks(fo, header, file_size)
                 header["blocks"] = header["blocks"][block_offset : block_offset + part_blocks]
-                df = _filelike_to_dataframe(fo, part_bytes, header)
+                df = _filelike_to_dataframe(fo, header)
         else:
             df = cudf.io.read_avro(path)
 
@@ -167,12 +165,17 @@ class AvroDatasetEngine(DatasetEngine):
         return df[columns]
 
 
-def _filelike_to_dataframe(f, size, head):
+def _filelike_to_dataframe(f, head):
     """Convert block(s) to cudf DataFrame
 
     Mostly copied from uavro.
     (see uavro.core.filelike_to_dataframe)"""
-    df, arrs = _make_empty(head)
+
+    nrows = 0
+    for block in head["blocks"]:
+        nrows += block["nrows"]
+    head["nrows"] = nrows
+    df, arrs = ua.core.make_empty(head)
     off = 0
 
     for block in head["blocks"]:
@@ -184,45 +187,3 @@ def _filelike_to_dataframe(f, size, head):
 
     ua.core.convert_types(head, arrs, df)
     return cudf.from_pandas(df)
-
-
-def _make_empty(head):
-    """Use head to generate empty pandas DataFrame.
-
-    Mostly copied from fastparquet.
-    (see fastparquet.dataframe.empty)"""
-    from fastparquet.dataframe import empty
-
-    cats = {e["name"]: e["symbols"] for e in head["schema"]["fields"] if e["type"] == "enum"}
-
-    nrows = 0
-    for block in head["blocks"]:
-        nrows += block["nrows"]
-
-    df, arrs = empty(
-        head["dtypes"].values(),
-        nrows,
-        cols=head["dtypes"],
-        cats=cats,
-    )
-
-    for entry in head["schema"]["fields"]:
-        # temporary array for decimal
-        if entry.get("logicalType", None) == "decimal":
-            if entry["type"] == "fixed":
-                arrs[entry["name"]] = np.empty(nrows, "S%s" % entry["size"])
-            else:
-                arrs[entry["name"]] = np.empty(nrows, "O")
-    return df, arrs
-
-    cats = {e["name"]: e["symbols"] for e in head["schema"]["fields"] if e["type"] == "enum"}
-    df, arrs = empty(head["dtypes"].values(), nrows, cols=head["dtypes"], cats=cats)
-
-    for entry in head["schema"]["fields"]:
-        # temporary array for decimal
-        if entry.get("logicalType", None) == "decimal":
-            if entry["type"] == "fixed":
-                arrs[entry["name"]] = np.empty(nrows, "S%s" % entry["size"])
-            else:
-                arrs[entry["name"]] = np.empty(nrows, "O")
-    return df, arrs
