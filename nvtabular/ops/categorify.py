@@ -308,6 +308,7 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(workflow):
+    mh_cols = None
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
     if "mh" in workflow.columns_ctx["categorical"]:
         mh_cols = _get_embedding_order(workflow.columns_ctx["categorical"]["mh"])
