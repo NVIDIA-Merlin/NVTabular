@@ -189,6 +189,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         `nvtabular.Dataset`
     """
 
+    _LONG_DTYPE = tf.int64
+    _FLOAT32_DTYPE = tf.float32
+    _split_fn = tf.split
+    _use_nnz = True
+
     def __init__(
         self,
         paths_or_dataset,
@@ -267,6 +272,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
+
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
         if gdf.shape[1] == 1:
@@ -284,29 +290,27 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             x = tf.transpose(x)
         return x
 
-    def _create_batch(self, tensor, num_samples):
-        if tensor is None:
-            return []
-        idx = self._get_segment_lengths(num_samples)
-        return tf.split(tensor, idx)
-
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            if len(names) == 0:
-                continue
-            elif len(names) > 1:
+            lists = {}
+            if isinstance(tensor, tuple):
+                tensor, lists = tensor
+            names = [i for i in names if i not in lists]
+
+            if len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
-            else:
-                tensors = [tensor]
-            X.update({name: x for name, x in zip(names, tensors)})
+                lists.update({names: x for name, x in zip(names, tensor)})
+            elif len(names) == 1:
+                lists[names[0]] = [tensor]
+            X.update(lists)
 
         # TODO: use dict for labels as well?
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
-        else:
-            labels = [labels]
+        # else:
+        #     labels = labels
         return X, labels
 
 
