@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import warnings
+
 import cudf
+import numpy as np
 import uavro as ua
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
@@ -44,6 +47,15 @@ class AvroDatasetEngine(DatasetEngine):
         # Get list of pieces for each output
         pieces, meta = self.process_metadata(columns=columns)
 
+        # TODO: Remove warning and avoid use of uavro in read_partition when
+        # cudf#6529 is fixed (https://github.com/rapidsai/cudf/issues/6529)
+        if len(pieces) > len(self.paths):
+            warnings.warn(
+                "Row-subset selection in cudf avro reader is currently broken. "
+                "Using uavro engine until cudf#6529 is addressed. "
+                "EXPECT POOR PERFORMANCE!! (compared to cuio-based reader)"
+            )
+
         # Construct collection
         token = tokenize(self.fs, self.paths, self.part_size, columns)
         read_avro_name = "read-avro-partition-" + token
@@ -73,14 +85,15 @@ class AvroDatasetEngine(DatasetEngine):
         for path in self.paths:
             file_size = self.fs.du(path)
             if file_size > self.blocksize:
+                part_count = 0
                 with open(path, "rb") as fo:
                     header = ua.core.read_header(fo)
                     ua.core.scan_blocks(fo, header, file_size)
                     blocks = header["blocks"]
 
-                    (file_row_offset, part_row_count) = (0, 0)
-                    (file_block_offset, part_block_count) = (0, 0)
-                    (file_byte_offset, part_byte_count) = (blocks[0]["offset"], 0)
+                    file_row_offset, part_row_count = 0, 0
+                    file_block_offset, part_block_count = 0, 0
+                    file_byte_offset, part_byte_count = blocks[0]["offset"], 0
 
                     for i, block in enumerate(blocks):
                         part_row_count += block["nrows"]
@@ -95,18 +108,11 @@ class AvroDatasetEngine(DatasetEngine):
                                     "bytes": (file_byte_offset, part_byte_count),
                                 }
                             )
-                            (file_row_offset, part_row_count) = (
-                                file_row_offset + part_row_count,
-                                0,
-                            )
-                            (file_block_offset, part_block_count) = (
-                                file_block_offset + part_block_count,
-                                0,
-                            )
-                            (file_byte_offset, part_byte_count) = (
-                                file_byte_offset + part_byte_count,
-                                0,
-                            )
+                            part_count += 1
+                            file_row_offset += part_row_count
+                            file_block_offset += part_block_count
+                            file_byte_offset += part_byte_count
+                            part_row_count = part_block_count = part_byte_count = 0
 
                     if part_block_count:
                         pieces.append(
@@ -117,6 +123,11 @@ class AvroDatasetEngine(DatasetEngine):
                                 "bytes": (file_byte_offset, part_byte_count),
                             }
                         )
+                        part_count += 1
+                if part_count == 1:
+                    # No need to specify a byte range since we
+                    # will need to read the entire file anyway.
+                    pieces[-1] = {"path": pieces[-1]["path"]}
             else:
                 pieces.append({"path": path})
 
@@ -127,8 +138,26 @@ class AvroDatasetEngine(DatasetEngine):
 
         path = piece["path"]
         if "rows" in piece:
-            skiprows, num_rows = piece["rows"]
-            df = cudf.io.read_avro(path, skiprows=skiprows, num_rows=num_rows)
+
+            # See: (https://github.com/rapidsai/cudf/issues/6529)
+            # Using `uavro` library for now. This means we must covert
+            # data to pandas, and then to cudf (which is much slower
+            # than `cudf.read_avro`). TODO: Once `num_rows` is fixed,
+            # this can be changed to:
+            #
+            #   skiprows, num_rows = piece["rows"]
+            #   df = cudf.io.read_avro(
+            #       path, skiprows=skiprows, num_rows=num_rows
+            #   )
+
+            byte_offset, part_bytes = piece["bytes"]
+            block_offset, part_blocks = piece["blocks"]
+            file_size = fs.du(piece["path"])
+            with fs.open(piece["path"], "rb") as fo:
+                header = ua.core.read_header(fo)
+                ua.core.scan_blocks(fo, header, file_size)
+                header["blocks"] = header["blocks"][block_offset : block_offset + part_blocks]
+                df = _filelike_to_dataframe(fo, part_bytes, header)
         else:
             df = cudf.io.read_avro(path)
 
@@ -136,3 +165,64 @@ class AvroDatasetEngine(DatasetEngine):
         if columns is None:
             columns = list(df.columns)
         return df[columns]
+
+
+def _filelike_to_dataframe(f, size, head):
+    """Convert block(s) to cudf DataFrame
+
+    Mostly copied from uavro.
+    (see uavro.core.filelike_to_dataframe)"""
+    df, arrs = _make_empty(head)
+    off = 0
+
+    for block in head["blocks"]:
+        f.seek(block["doffset"])
+        data = f.read(block["size"])
+        arrs = {k: v for (k, v) in arrs.items() if not k.endswith("-catdef")}
+        ua.core.read_block_bytes(data, block, head, arrs, off)
+        off += block["nrows"]
+
+    ua.core.convert_types(head, arrs, df)
+    return cudf.from_pandas(df)
+
+
+def _make_empty(head):
+    """Use head to generate empty pandas DataFrame.
+
+    Mostly copied from fastparquet.
+    (see fastparquet.dataframe.empty)"""
+    from fastparquet.dataframe import empty
+
+    cats = {e["name"]: e["symbols"] for e in head["schema"]["fields"] if e["type"] == "enum"}
+
+    nrows = 0
+    for block in head["blocks"]:
+        nrows += block["nrows"]
+
+    df, arrs = empty(
+        head["dtypes"].values(),
+        nrows,
+        cols=head["dtypes"],
+        cats=cats,
+    )
+
+    for entry in head["schema"]["fields"]:
+        # temporary array for decimal
+        if entry.get("logicalType", None) == "decimal":
+            if entry["type"] == "fixed":
+                arrs[entry["name"]] = np.empty(nrows, "S%s" % entry["size"])
+            else:
+                arrs[entry["name"]] = np.empty(nrows, "O")
+    return df, arrs
+
+    cats = {e["name"]: e["symbols"] for e in head["schema"]["fields"] if e["type"] == "enum"}
+    df, arrs = empty(head["dtypes"].values(), nrows, cols=head["dtypes"], cats=cats)
+
+    for entry in head["schema"]["fields"]:
+        # temporary array for decimal
+        if entry.get("logicalType", None) == "decimal":
+            if entry["type"] == "fixed":
+                arrs[entry["name"]] = np.empty(nrows, "S%s" % entry["size"])
+            else:
+                arrs[entry["name"]] = np.empty(nrows, "O")
+    return df, arrs

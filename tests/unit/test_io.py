@@ -301,7 +301,7 @@ def test_parquet_lists(tmpdir, freq_threshold):
 
 
 @pytest.mark.parametrize("part_size", [None, "1KB"])
-@pytest.mark.parametrize("size", [100, 1000])
+@pytest.mark.parametrize("size", [100, 5000])
 @pytest.mark.parametrize("nfiles", [1, 2])
 def test_avro_basic(tmpdir, part_size, size, nfiles):
 
@@ -349,6 +349,7 @@ def test_avro_basic(tmpdir, part_size, size, nfiles):
     df = nvt.Dataset(paths, part_size=part_size, engine="avro").to_ddf()
 
     # Check basic length and partition count
+    df.compute(scheduler="synchronous")
     if part_size == "1KB":
         assert df.npartitions == nblocks
     assert len(df) == nrecords

@@ -146,7 +146,7 @@ class Dataset:
         directories are not yet supported).
     engine : str or DatasetEngine
         DatasetEngine object or string identifier of engine. Current
-        string options include: ("parquet", "csv"). This argument
+        string options include: ("parquet", "csv", "avro"). This argument
         is ignored if path_or_source is a DataFrame type.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
