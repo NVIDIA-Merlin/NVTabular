@@ -298,7 +298,7 @@ class Categorify(DFOperator):
 
         # Encode each column-group separately
         for name in cat_names:
-            # new_col = f"{name}_{self._id}"
+            new_col = f"{name}_{self._id}"
 
             # Use the column-group `list` directly (not the string name)
             use_name = multi_col_group.get(name, name)
@@ -314,26 +314,22 @@ class Categorify(DFOperator):
             if self.num_buckets:
                 if isinstance(self.num_buckets, int):
                     num_buckets = {name: self.num_buckets for name in cat_names}
-                else:
-                    num_buckets = self.num_buckets
-                if storage_name in num_buckets:
-                    new_col = f"{storage_name}_{self._id}"
-                    new_gdf[new_col] = _hash_bucket(gdf, num_buckets, storage_name)
+            else:
+                num_buckets = self.num_buckets
 
-            if not self.num_buckets or storage_name not in num_buckets:
-                new_col = f"{storage_name}_{self._id}"
-                new_gdf[new_col] = _encode(
-                    use_name,
-                    storage_name,
-                    path,
-                    gdf,
-                    self.cat_cache,
-                    na_sentinel=self.na_sentinel,
-                    freq_threshold=self.freq_threshold[name]
-                    if isinstance(self.freq_threshold, dict)
-                    else self.freq_threshold,
-                    search_sorted=self.search_sorted,
-                )
+            new_gdf[new_col] = _encode(
+                use_name,
+                storage_name,
+                path,
+                gdf,
+                self.cat_cache,
+                na_sentinel=self.na_sentinel,
+                freq_threshold=self.freq_threshold[name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+                search_sorted=self.search_sorted,
+                buckets=num_buckets,
+            )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
 
@@ -361,7 +357,10 @@ def _get_embedding_order(cat_names):
 
 def get_embedding_sizes(workflow):
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
+    if "buckets" in workflow.stats.keys():
+        return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
+    else:
+        return _get_embeddings_dask(workflow.stats["categories"], cols)
 
 
 def _get_embeddings_dask(paths, cat_names, buckets=None):
@@ -791,6 +790,7 @@ def _encode(
     na_sentinel=-1,
     freq_threshold=0,
     search_sorted=False,
+    buckets=None,
 ):
     value = None
     selection_l = name if isinstance(name, list) else [name]
@@ -823,15 +823,29 @@ def _encode(
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
+            if buckets:
+                hash_col = _hash_bucket(gdf, buckets, selection_l)
         else:
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
             for c in selection_l:
                 codes[c] = gdf[c].copy()
-        labels = codes.merge(
-            value, left_on=selection_l, right_on=selection_r, how="left"
-        ).sort_values("order")["labels"]
-        labels.fillna(na_sentinel, inplace=True)
-        labels = labels.values
+                if buckets:
+                    if c in buckets:
+                        hash_col = _hash_bucket(gdf, buckets, c)
+        if freq_threshold and buckets:
+            merged_df = codes.merge(value, left_on=selection_l, right_on=selection_r, how="left")
+            merged_df[c + "_hashed"] = hash_col
+            merged_df = merged_df.sort_values("order")
+            labels = merged_df["labels"]
+            labels.fillna(na_sentinel, inplace=True)
+        if not freq_threshold and buckets:
+            labels = hash_col
+        if not buckets:
+            labels = codes.merge(
+                value, left_on=selection_l, right_on=selection_r, how="left"
+            ).sort_values("order")["labels"]
+            labels.fillna(na_sentinel, inplace=True)
+            labels = labels.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
         if list_col:
