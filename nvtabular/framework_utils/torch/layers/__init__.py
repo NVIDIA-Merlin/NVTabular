@@ -14,6 +14,6 @@
 # limitations under the License.
 #
 
-from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
+from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings, MultiHotEmbeddings
 
-__all__ = [ConcatenatedEmbeddings]
+__all__ = [ConcatenatedEmbeddings, MultiHotEmbeddings]

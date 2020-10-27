@@ -43,7 +43,48 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         self.dropout = torch.nn.Dropout(p=dropout)
 
     def forward(self, x):
+        if len(x.shape) == 1:
+            x = x.unsqueeze(0)
         x = [layer(x[:, i]) for i, layer in enumerate(self.embedding_layers)]
         x = torch.cat(x, dim=1)
+        x = self.dropout(x)
+        return x
+
+    
+    
+class MultiHotEmbeddings(torch.nn.Module):
+    """Map multiple categorical variables to concatenated embeddings.
+
+    Args:
+        embedding_dict_shapes: A dictionary mapping column names to
+            (cardinality, embedding_size) tuples.
+        dropout: A float.
+
+    Inputs:
+        x: A dictionary with multi-hot column name as keys and a tuple containing the column values and offsets as values.
+
+    Outputs:
+        A Float Tensor with shape [batch_size, embedding_size_after_concat].
+    """
+
+    def __init__(self, embedding_table_shapes, dropout=0.0, mode="sum"):
+        super().__init__()
+        self.embedding_layers = torch.nn.ModuleList(
+            [
+                torch.nn.EmbeddingBag(cat_size, emb_size, mode=mode)
+                for cat_size, emb_size in embedding_table_shapes.values()
+            ]
+        )
+        self.dropout = torch.nn.Dropout(p=dropout)
+
+    def forward(self, x):
+        embs = []
+        x = list(x)
+        for idx, entry in enumerate(x):
+            for k,v in entry.items():
+                values, offsets = v
+                embs.append(self.embedding_layers[idx](values, offsets))
+#         x = [self.embedding_layers(entry.values()[0], entry.values()[1]) for entry in x]
+        x = torch.cat(embs, dim=1)
         x = self.dropout(x)
         return x

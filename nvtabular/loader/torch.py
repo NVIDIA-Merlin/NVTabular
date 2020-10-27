@@ -109,6 +109,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         if gdf.empty:
             return
         reg, lists = self.pull_list_cols(gdf)
+        reg = _get_embedding_order(reg)
+        lists = _get_embedding_order(lists)
         if reg:
             dl_pack = gdf[reg].to_dlpack()
             # keep next two lines separated, hurts perf, casts incorrectly
@@ -125,7 +127,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         for col in cols:
             leaves = from_dlpack(gdf[col].list.leaves.to_dlpack())
             leaves = leaves.type(dtype)
-            offsets = torch.Tensor(gdf[col]._column.offsets.values)
+            offsets = torch.Tensor(gdf[col]._column.offsets.values).type(torch.long).cuda()
             res[col] = leaves, offsets
         return res
 
@@ -133,7 +135,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     # parent class version?
     def _create_tensors(self, gdf):
         gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(self.cat_names)],
+            gdf[self.cat_names],
             gdf[self.cont_names],
             gdf[self.label_names],
         )
@@ -171,7 +173,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
                 new_dict = {}
                 # add previous last index as first index in new "batch"
                 dl_leaves_split = dl_leaves[prev_final_offset : int(x[-1])]
-                new_offsets = torch.cat([torch.tensor([0]), x - prev_final_offset], 0)
+                new_offsets = x
+#                 new_offsets = torch.cat([torch.tensor([0]).cuda(), x - prev_final_offset], 0)
                 prev_final_offset = int(x[-1])
                 new_dict[col] = dl_leaves_split, new_offsets
                 per_col_list.append(new_dict)
