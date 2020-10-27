@@ -60,7 +60,8 @@ class Model(torch.nn.Module):
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
 
         embedding_size = sum(emb_size for _, emb_size in embedding_table_shapes.values())
-        embedding_size = embedding_size + sum(emb_size for _, emb_size in mh_shapes.values())
+        if mh_shapes is not None:
+            embedding_size = embedding_size + sum(emb_size for _, emb_size in mh_shapes.values())
         layer_input_sizes = [embedding_size + num_continuous] + layer_hidden_dims[:-1]
         layer_output_sizes = layer_hidden_dims
         self.layers = torch.nn.ModuleList(
