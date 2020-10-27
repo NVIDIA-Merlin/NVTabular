@@ -33,7 +33,6 @@ import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 from nvtabular.framework_utils.torch.models import Model
 from nvtabular.framework_utils.torch.utils import process_epoch
 
-
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
 
@@ -261,8 +260,7 @@ def test_mh_support(tmpdir):
         assert not cats
     assert idx > 0
 
-    
-    
+
 def test_mh_model_support(tmpdir):
     df = cudf.DataFrame(
         {
@@ -285,13 +283,18 @@ def test_mh_model_support(tmpdir):
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
-    processor.apply(nvt.Dataset(df),
-                    record_stats=True,
-                   )
+    processor.apply(
+        nvt.Dataset(df),
+        record_stats=True,
+    )
     df_out = processor.get_ddf().compute(scheduler="synchronous")
     data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=2,
-    )    
+        nvt.Dataset(df_out),
+        cats=cat_names,
+        conts=cont_names,
+        labels=label_name,
+        batch_size=2,
+    )
     emb_sizes = nvt.ops.get_embedding_sizes(processor)
     EMBEDDING_DROPOUT_RATE = 0.04
     DROPOUT_RATES = [0.001, 0.01]
@@ -303,20 +306,23 @@ def test_mh_model_support(tmpdir):
         emb_dropout=EMBEDDING_DROPOUT_RATE,
         layer_hidden_dims=HIDDEN_DIMS,
         layer_dropout_rates=DROPOUT_RATES,
-    ).to('cuda')
+    ).to("cuda")
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
     def rmspe_func(y_pred, y):
         "Return y_pred and y to non-log space and compute RMSPE"
         y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
         pct_var = (y_pred - y) / y
-        return (pct_var**2).mean().pow(0.5)
-    train_loss, y_pred, y = process_epoch(data_itr, 
-                                          model, 
-                                          train=True, 
-                                          optimizer=optimizer,
-                                          #transform=batch_transform,
-                                          amp=False,
-                                         )
+        return (pct_var ** 2).mean().pow(0.5)
+
+    train_loss, y_pred, y = process_epoch(
+        data_itr,
+        model,
+        train=True,
+        optimizer=optimizer,
+        # transform=batch_transform,
+        amp=False,
+    )
     train_rmspe = None
     train_rmspe = rmspe_func(y_pred, y)
     assert train_rmspe is not None
