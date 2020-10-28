@@ -567,6 +567,7 @@ class Workflow(BaseWorkflow):
         self.ddf = None
         self.client = client
         self._shuffle_parts = False
+        self._base_phase = 0
 
     def set_ddf(self, ddf, shuffle=None):
         if isinstance(ddf, (dask_cudf.DataFrame, Dataset)):
@@ -602,10 +603,16 @@ class Workflow(BaseWorkflow):
     def exec_phase(self, phase_index, record_stats=True, update_ddf=True):
         """
         Gather necessary column statistics in single pass.
-        Execute one phase only, given by phase index
+        Execute statistics for one phase only (given by phase index),
+        but (laxily) perform all transforms for current and previous phases.
         """
         transforms = []
-        phases = range(phase_index + 1)
+
+        # Need to perform all transforms up to, and including,
+        # the current phase (not only the current phase).  We do this
+        # so that we can avoid persisitng intermediate transforms
+        # needed for statistics.
+        phases = range(self._base_phase, phase_index + 1)
         for ind in phases:
             for task in self.phases[ind]:
                 op, cols_grp, target_cols, _ = task
@@ -633,6 +640,9 @@ class Workflow(BaseWorkflow):
                     # avoid it.  It may be better to just add the new column?
                     if op._ddf_out is not None:
                         self.set_ddf(op._ddf_out)
+                        # We are updating the internal `ddf`, so we shouldn't
+                        # redo transforms up to this phase in later phases.
+                        self._base_phase = phase_index
 
         # Compute statistics if necessary
         if stats:
@@ -859,8 +869,10 @@ class Workflow(BaseWorkflow):
 
         self.set_ddf(dataset, shuffle=(shuffle is not None))
         if apply_ops:
+            self._base_phase = 0  # Set _base_phase
             for idx, _ in enumerate(self.phases[:end]):
                 self.exec_phase(idx, record_stats=record_stats, update_ddf=(idx == (end - 1)))
+            self._base_phase = 0  # Re-Set _base_phase
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)

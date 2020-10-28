@@ -200,7 +200,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
     label_name = ["Post"]
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
+    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.TargetEncoding(
             cat_groups,
