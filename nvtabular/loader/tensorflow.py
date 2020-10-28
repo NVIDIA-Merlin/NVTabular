@@ -326,11 +326,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
             # now add in any scalar tensors
             if len(names) > 1:
-                try:
-                    tensors = tf.split(tensor, len(names), axis=1)
-                except:
-                    print(tensor, names)
-                    raise
+                tensors = tf.split(tensor, len(names), axis=1)
                 lists.update({name: x for name, x in zip(names, tensors)})
             elif len(names) == 1:
                 lists[names[0]] = tensor
