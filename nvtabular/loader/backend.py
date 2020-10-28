@@ -18,6 +18,7 @@ import threading
 from collections import OrderedDict
 
 import cudf
+from cudf.utils.dtypes import is_list_dtype
 import cupy as cp
 
 from nvtabular.io.shuffle import _shuffle_gdf
@@ -337,9 +338,9 @@ class DataLoader:
 
                 # grab the set of offsets and nnzs corresponding to
                 # the list columns from this chunk
-                chunk_offsets = offsets[offset_idx : offset_idx + num_list_columns]
+                chunk_offsets = offsets[:, offset_idx : offset_idx + num_list_columns]
                 if use_nnz:
-                    chunk_nnzs = nnzs[offset_idx : offset_idx + num_list_columns]
+                    chunk_nnzs = nnzs[:, offset_idx : offset_idx + num_list_columns]
                 offset_idx += num_list_columns
 
                 # split them into batches, including an extra 1 on the offsets
@@ -360,21 +361,30 @@ class DataLoader:
                     c, off0s, off1s, _nnzs = c
                     off0s = self._split_fn(off0s, num_list_columns, axis=1)
                     off1s = self._split_fn(off1s, num_list_columns, axis=1)
-                    if use_nnzs:
+                    if use_nnz:
                         _nnzs = self._split_fn(_nnzs, num_list_columns, axis=1)
 
                     batch_lists = {}
-                    for n, (column_name, values) in enumerate(lists.items()):
-                        off0, off1, nnz = off0s[n], off1[n]
+                    for k, (column_name, values) in enumerate(lists.items()):
+                        off0, off1 = off0s[k], off1s[k]
                         if use_nnz:
-                            nnz = _nnzs[n]
+                            nnz = _nnzs[k]
 
                         # TODO: this slicing using tensor values might cause
                         # a problem for TensorFlow, tbd...
-                        value = values[off0[0] : off1[0]]
-                        index = off0 - off0[0] if not use_nnz else nnz
+                        if len(off0.shape) == 1:
+                            start, stop = off0[0], off1[0]
+                        elif len(off0.shape) == 2:
+                            start, stop = off0[0, 0], off1[0, 0]
+                        else:
+                            print(off0.shape)
+                            raise ValueError
+
+                        value = values[start : stop]
+                        index = off0 - start if not use_nnz else nnz
                         batch_lists[column_name] = (value, index)
                     c = (c, batch_lists)
+
                 batches[n].append(c)
         return [self._handle_tensors(*batch) for batch in batches]
 
@@ -404,6 +414,17 @@ class DataLoader:
         to implement. Maps from a GPU index to a framework
         context object for placing tensors on specific GPUs
         """
+        raise NotImplementedError
+
+    def _split_fn(self, tensor, idx):
+        raise NotImplementedError
+
+    @property
+    def _LONG_DTYPE(self):
+        raise NotImplementedError
+
+    @property
+    def _FLOAT32_DTYPE(self):
         raise NotImplementedError
 
     def _separate_list_columns(self, gdf):
@@ -436,7 +457,7 @@ class DataLoader:
             scalars, lists = self._separate_list_columns(gdf_i)
             x = None
             if scalars:
-                x = self._to_tensor(gdf[scalars], dtype)
+                x = self._to_tensor(gdf_i[scalars], dtype)
             if lists:
                 list_tensors = OrderedDict()
                 for column_name in lists:
@@ -449,7 +470,10 @@ class DataLoader:
             tensors.append(x)
 
         if not offsets.empty:
-            tensors.append(self._to_tensor(offsets, self._LONG_DTYPE))
+            offsets_tensor = self._to_tensor(offsets, self._LONG_DTYPE)
+            if len(offsets.columns) == 1:
+                offsets_tensor = offsets_tensor[:, None]
+            tensors.append(offsets_tensor)
         del gdf, offsets
 
         return tensors

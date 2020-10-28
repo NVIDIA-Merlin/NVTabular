@@ -188,10 +188,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         extra kwargs to pass when instantiating the underlying
         `nvtabular.Dataset`
     """
-
-    _LONG_DTYPE = tf.int64
-    _FLOAT32_DTYPE = tf.float32
-    _split_fn = tf.split
     _use_nnz = True
 
     def __init__(
@@ -269,25 +265,47 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # are running at once (e.g. train and validation)
         yield dev
 
+    def _split_fn(self, tensor, idx, axis=0):
+        return tf.split(tensor, idx, axis=axis)
+
+    @property
+    def _LONG_DTYPE(self):
+        return tf.int64
+
+    @property
+    def _FLOAT32_DTYPE(self):
+        return tf.float32
+
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
 
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
-        if gdf.shape[1] == 1:
+        if len(gdf.shape) == 1 or gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
         elif gdf.shape[0] == 1:
             dlpack = gdf.values[0].toDlpack()
         else:
             dlpack = gdf.values.T.toDlpack()
 
-        x = from_dlpack(dlpack)
+        # catch error caused by tf eager context
+        # not being initialized
+        try:
+            x = from_dlpack(dlpack)
+        except AssertionError:
+            tf.random.uniform((1,))
+            x = from_dlpack(dlpack)
 
-        if gdf.shape[0] == 1:
+        # make vectors (N, 1), and undo transpose
+        # we needed to do above for matrices
+        if len(gdf.shape) == 1:
+            x = tf.expand_dims(x, -1)
+        elif gdf.shape[0] == 1:
             x = tf.expand_dims(x, 0)
         elif gdf.shape[1] > 1:
             x = tf.transpose(x)
+
         return x
 
     def _handle_tensors(self, cats, conts, labels):
@@ -298,11 +316,20 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
                 tensor, lists = tensor
             names = [i for i in names if i not in lists]
 
+            # break list tuples into two keys, with postfixes
+            # TODO: better choices for naming?
+            list_columns = [i for i in lists.keys()]
+            for column in list_columns:
+                values, nnzs = lists.pop(column)
+                lists[column + "__values"] = values
+                lists[column + "__nnzs"] = nnzs
+
+            # now add in any scalar tensors
             if len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
-                lists.update({names: x for name, x in zip(names, tensor)})
+                lists.update({name: x for name, x in zip(names, tensors)})
             elif len(names) == 1:
-                lists[names[0]] = [tensor]
+                lists[names[0]] = tensor
             X.update(lists)
 
         # TODO: use dict for labels as well?
