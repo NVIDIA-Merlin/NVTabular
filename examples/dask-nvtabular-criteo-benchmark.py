@@ -157,13 +157,17 @@ def main(args):
     processor = Workflow(
         cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
     )
-    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
+    if args.normalize:
+        processor.add_feature([ops.FillMissing(), ops.Normalize()])
+    else:
+        processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.Categorify(
             out_path=stats_path,
             tree_width=tree_width,
             cat_cache=cat_cache,
             freq_threshold=freq_limit,
+            search_sorted=not freq_limit,
             on_host=not args.cats_on_device,
         )
     )
@@ -299,6 +303,7 @@ def parse_args():
     parser.add_argument(
         "--cont-names", default=None, type=str, help="List of continuous column names (Optional)"
     )
+    parser.add_argument("--normalize", action="store_true", help="Normalize continuous features.")
 
     #
     # Algorithm Options
