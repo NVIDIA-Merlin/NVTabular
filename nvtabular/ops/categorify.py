@@ -367,17 +367,19 @@ def get_embedding_sizes(workflow):
 
 def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     embeddings = {}
+    if isinstance(freq_limit, int):
+        freq_limit = {name: freq_limit for name in cat_names}
     for col in cat_names:
         if not buckets or col not in buckets:
             path = paths[col]
             num_rows, _, _ = cudf.io.read_parquet_metadata(path)
             embeddings[col] = _emb_sz_rule(num_rows)
-        if buckets and freq_limit:
+        if buckets and freq_limit[col] > 1:
             path = paths[col]
             num_rows, _, _ = cudf.io.read_parquet_metadata(path)
             num_rows = num_rows + buckets[col]
             embeddings[col] = _emb_sz_rule(num_rows)
-        if buckets and not freq_limit:
+        if buckets and not freq_limit[col]:
             num_rows = buckets[col]
             embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
