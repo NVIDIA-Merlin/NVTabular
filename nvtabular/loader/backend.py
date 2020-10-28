@@ -18,8 +18,8 @@ import threading
 from collections import OrderedDict
 
 import cudf
-from cudf.utils.dtypes import is_list_dtype
 import cupy as cp
+from cudf.utils.dtypes import is_list_dtype
 
 from nvtabular.io.shuffle import _shuffle_gdf
 from nvtabular.ops import _get_embedding_order
@@ -380,7 +380,7 @@ class DataLoader:
                             print(off0.shape)
                             raise ValueError
 
-                        value = values[start : stop]
+                        value = values[start:stop]
                         index = off0 - start if not use_nnz else nnz
                         batch_lists[column_name] = (value, index)
                     c = (c, batch_lists)

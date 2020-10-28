@@ -188,6 +188,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         extra kwargs to pass when instantiating the underlying
         `nvtabular.Dataset`
     """
+
     _use_nnz = True
 
     def __init__(
