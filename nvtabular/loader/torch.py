@@ -62,10 +62,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         list representing all available GPU IDs
     """
 
-    _LONG_DTYPE = torch.long
-    _FLOAT32_DTYPE = torch.float32
-    _split_fn = torch.split
-
     def __init__(
         self,
         dataset,
@@ -100,6 +96,17 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         dl_pack = gdf.to_dlpack()
         tensor = from_dlpack(dl_pack)
         return tensor.type(dtype)
+
+    def _split_fn(self, tensor, idx, axis=0):
+        return torch.split(tensor, idx, dim=axis)
+
+    @property
+    def _LONG_DTYPE(self):
+        return torch.long
+
+    @property
+    def _FLOAT32_DTYPE(self):
+        return torch.float32
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
