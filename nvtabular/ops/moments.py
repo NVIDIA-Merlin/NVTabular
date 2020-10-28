@@ -90,9 +90,6 @@ def _custom_moments(ddf, split_every=32):
     result_name = "global-moments-" + token
     for p in range(ddf.npartitions):
         # Gather necessary statstics on each partition.
-        #
-        # TODO: Use a blockwise operation for this so
-        # previous transforms can be fused.
         dsk[(tree_reduce_name, p, 0)] = (_chunkwise_moments, (ddf._name, p))
 
     # Build reduction tree
