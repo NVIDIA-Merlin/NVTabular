@@ -18,17 +18,13 @@ import logging
 import os
 import threading
 import warnings
-from collections import defaultdict
 from io import BytesIO
 from uuid import uuid4
 
 import cudf
+import dask_cudf
 from cudf.io.parquet import ParquetWriter as pwriter
-from dask.base import tokenize
-from dask.dataframe.core import new_dd_object
-from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.utils import natural_sort_key
-from nvtx import annotate
 from pyarrow import parquet as pq
 
 from .dataset_engine import DatasetEngine
@@ -48,23 +44,11 @@ class ParquetDatasetEngine(DatasetEngine):
         storage_options,
         row_groups_per_part=None,
         legacy=False,
-        batch_size=None,
+        batch_size=None,  # Ignored
     ):
-        # TODO: Improve dask_cudf.read_parquet performance so that
-        # this class can be slimmed down.
         super().__init__(paths, part_size, storage_options)
-        self.batch_size = batch_size
-        self._metadata, self._base = self.metadata
-        self._pieces = None
         if row_groups_per_part is None:
-            file_path = self._metadata.row_group(0).column(0).file_path
-            path0 = (
-                self.fs.sep.join([self._base, file_path])
-                if file_path != ""
-                else self._base  # This is a single file
-            )
-
-        if row_groups_per_part is None:
+            path0 = self._dataset.pieces[0].path
             rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0, row_group=0))
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
@@ -79,98 +63,46 @@ class ParquetDatasetEngine(DatasetEngine):
         assert self.row_groups_per_part > 0
 
     @property
-    def pieces(self):
-        if self._pieces is None:
-            self._pieces = self._get_pieces(self._metadata, self._base)
-        return self._pieces
-
-    @property
     @functools.lru_cache(1)
-    def metadata(self):
+    def _dataset(self):
         paths = self.paths
         fs = self.fs
         if len(paths) > 1:
             # This is a list of files
             dataset = pq.ParquetDataset(paths, filesystem=fs, validate_schema=False)
-            base, fns = _analyze_paths(paths, fs)
         elif fs.isdir(paths[0]):
             # This is a directory
             dataset = pq.ParquetDataset(paths[0], filesystem=fs, validate_schema=False)
-            allpaths = fs.glob(paths[0] + fs.sep + "*")
-            base, fns = _analyze_paths(allpaths, fs)
         else:
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
-            base = paths[0]
-            fns = [None]
-
-        metadata = None
-        if dataset.metadata:
-            # We have a metadata file
-            return dataset.metadata, base
-        else:
-            # Collect proper metadata manually
-            metadata = None
-            for piece, fn in zip(dataset.pieces, fns):
-                md = piece.get_metadata()
-                if fn:
-                    md.set_file_path(fn)
-                if metadata:
-                    metadata.append_row_groups(md)
-                else:
-                    metadata = md
-            return metadata, base
+        return dataset
 
     @property
+    @functools.lru_cache(1)
     def num_rows(self):
-        metadata, _ = self.metadata
-        return metadata.num_rows
-
-    @annotate("get_pieces", color="green", domain="nvt_python")
-    def _get_pieces(self, metadata, data_path):
-
-        # get the number of row groups per file
-        file_row_groups = defaultdict(int)
-        for rg in range(metadata.num_row_groups):
-            fpath = metadata.row_group(rg).column(0).file_path
-            if fpath is None:
-                raise ValueError("metadata is missing file_path string.")
-            file_row_groups[fpath] += 1
-
-        # create pieces from each file, limiting the number of row_groups in each piece
-        pieces = []
-        for filename, row_group_count in file_row_groups.items():
-            row_groups = range(row_group_count)
-            for i in range(0, row_group_count, self.row_groups_per_part):
-                rg_list = list(row_groups[i : i + self.row_groups_per_part])
-                full_path = (
-                    self.fs.sep.join([data_path, filename])
-                    if filename != ""
-                    else data_path  # This is a single file
-                )
-                pieces.append((full_path, rg_list))
-        return pieces
-
-    @staticmethod
-    @annotate("read_piece", color="green", domain="nvt_python")
-    def read_piece(piece, columns):
-        path, row_groups = piece
-        return cudf.io.read_parquet(path, row_groups=row_groups, columns=columns, index=False)
-
-    def meta_empty(self, columns=None):
-        path, _ = self.pieces[0]
-        return cudf.io.read_parquet(path, row_groups=0, columns=columns, index=False).iloc[:0]
+        # TODO: Avoid parsing metadata here if we can confirm upstream dask
+        # can get the length efficiently (in all practical cases)
+        dataset = self._dataset
+        if dataset.metadata:
+            # We have a metadata file
+            return dataset.metadata.num_rows
+        else:
+            # Sum up row-group sizes manually
+            num_rows = 0
+            for piece in dataset.pieces:
+                num_rows += piece.get_metadata().num_rows
+            return num_rows
 
     def to_ddf(self, columns=None):
-        pieces = self.pieces
-        name = "parquet-to-ddf-" + tokenize(self.fs_token, pieces, columns)
-        dsk = {
-            (name, p): (ParquetDatasetEngine.read_piece, piece, columns)
-            for p, piece in enumerate(pieces)
-        }
-        meta = self.meta_empty(columns=columns)
-        divisions = [None] * (len(pieces) + 1)
-        return new_dd_object(dsk, name, meta, divisions)
+        return dask_cudf.read_parquet(
+            self.paths,
+            columns=columns,
+            index=False,
+            gather_statistics=False,
+            split_row_groups=self.row_groups_per_part,
+            storage_options=self.storage_options,
+        )
 
 
 class ParquetWriter(ThreadedWriter):
