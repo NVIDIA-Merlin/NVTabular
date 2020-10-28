@@ -97,7 +97,38 @@ def _validate_stack_dimensions(feature_columns):
         )
 
 
-class ScalarDenseFeatures(tf.keras.layers.Layer):
+def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
+    # check for sparse embeddings by name
+    if feature_name + "__values" in inputs:
+        if feature_name in inputs:
+            raise ValueError(
+                "Feature {} has both a dense entry and a sparse entry "
+                "with __values postfix in input dict. If {}__values "
+                "is another dense feature, please rename your features"
+                "as this syntax is reserved for identifying multi-valent"
+                "categorical variables".format(feature_name, feature_name)
+            )
+        if feature_name + "__nnzs" not in inputs:
+            raise ValueError(
+                "Feature {} had __values entry in input dictionary, "
+                "but no __nnzs entry. Make sure all the relevant data "
+                "is being passed".format(feature_name)
+            )
+
+        # build values and nnz tensors into ragged array, convert to sparse
+        values = inputs[feature_name + "__values"][:, 0]
+        row_lengths = inputs[feautre_name + "__nnzs"][:, 0]
+        x = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
+
+        # use ragged array for sparse embedding lookup
+        embeddings = tf.nn.embedding_lookup_sparse(table, x, None, combiner=combiner)
+    else:
+        embeddings = tf.gather(table, inputs[feature_name][:, 0])
+
+    return embeddings
+
+
+class DenseFeatures(tf.keras.layers.Layer):
     """
     Layer which maps one-hot categorical and scalar numeric features to
     a dense embedding. Meant to reproduce the API exposed by
@@ -130,9 +161,17 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
     ----------
     feature_columns : list of `tf.feature_column`
         feature columns describing the inputs to the layer
+    aggregation : str in ("concat", "stack")
+        how to combine the embeddings from multiple features
+    sparse_aggregation : str in ("mean", "sqrtn", "sum")
+        how to aggregate embeddings from multi-valent categorical features.
+        See `tf.nn.embedding_lookup_sparse` documentation for details on
+        how this is used.
     """
 
-    def __init__(self, feature_columns, aggregation="concat", name=None, **kwargs):
+    def __init__(
+        self, feature_columns, aggregation="concat", sparse_aggregation="sum", name=None, **kwargs
+    ):
         # sort feature columns to make layer independent of column order
         feature_columns = _sort_columns(feature_columns)
         _validate_dense_feature_columns(feature_columns)
@@ -141,8 +180,11 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
         if aggregation == "stack":
             _validate_stack_dimensions(feature_columns)
 
+        assert sparse_aggregation in ("mean", "sqrtn", "sum")
+
         self.feature_columns = feature_columns
         self.aggregation = aggregation
+        self.sparse_aggregation = sparse_aggregation
         super(ScalarDenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
@@ -179,7 +221,9 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
             else:
                 feature_name = feature_column.categorical_column.name
                 table = self.embedding_tables[feature_name]
-                embeddings = tf.gather(table, inputs[feature_name][:, 0])
+                embeddings = _categorical_embedding_lookup(
+                    table, inputs, feature_name, self.sparse_aggregation
+                )
                 features.append(embeddings)
 
         if self.aggregation == "stack":
@@ -230,7 +274,7 @@ def _validate_linear_feature_columns(feature_columns):
 # embeddings and the numeric matmul, both of which seem
 # reasonably easy to check. At the very least, we should
 # be able to subclass I think?
-class ScalarLinearFeatures(tf.keras.layers.Layer):
+class LinearFeatures(tf.keras.layers.Layer):
     """
     Layer which implements a linear combination of one-hot categorical
     and scalar numeric features. Based on the "wide" branch of the Wide & Deep
@@ -260,13 +304,20 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
     ----------
     feature_columns : list of tf.feature_column
         feature columns describing the inputs to the layer
+    sparse_aggregation : str in ("mean", "sqrtn", "sum")
+        how to aggregate embeddings from multi-valent categorical features.
+        See `tf.nn.embedding_lookup_sparse` documentation for details on
+        how this is used.
     """
 
-    def __init__(self, feature_columns, name=None, **kwargs):
+    def __init__(self, feature_columns, sparse_aggregation="sum", name=None, **kwargs):
         feature_columns = _sort_columns(feature_columns)
         _validate_linear_feature_columns(feature_columns)
 
+        assert sparse_aggregation in ("mean", "sqrtn", "sum")
+
         self.feature_columns = feature_columns
+        self.sparse_aggregation = sparse_aggregation
         super(ScalarLinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
@@ -310,7 +361,10 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
                 numeric_inputs.append(inputs[feature_column.key])
             else:
                 table = self.embedding_tables[feature_column.key]
-                x = x + tf.gather(table, inputs[feature_column.key][:, 0])
+                embeddings = _categorical_embedding_lookup(
+                    table, inputs, feature_column.key, self.sparse_aggregation
+                )
+                x = x + embeddings
 
         if len(numeric_inputs) > 0:
             numerics = tf.concat(numeric_inputs, axis=1)

@@ -364,6 +364,7 @@ class DataLoader:
                     if use_nnz:
                         _nnzs = self._split_fn(_nnzs, offsets_split_idx, axis=1)
 
+                    # TODO: does this need to be ordereddict?
                     batch_lists = {}
                     for k, (column_name, values) in enumerate(lists.items()):
                         off0, off1 = off0s[k], off1s[k]
