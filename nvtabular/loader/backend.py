@@ -369,8 +369,7 @@ class DataLoader:
                         if use_nnz:
                             nnz = _nnzs[k]
 
-                        # TODO: this slicing using tensor values might cause
-                        # a problem for TensorFlow, tbd...
+                        # need to grab scalars for TF case
                         if len(off0.shape) == 1:
                             start, stop = off0[0], off1[0]
                         elif len(off0.shape) == 2:
