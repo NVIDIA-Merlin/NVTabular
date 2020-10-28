@@ -115,7 +115,6 @@ class ChunkQueue:
                     if self.shuffle:
                         _shuffle_gdf(chunks)
 
-                    num_samples = len(chunks)
                     if len(chunks) > 0:
                         chunks = dataloader.make_tensors(chunks, dataloader._use_nnz)
                         # put returns True if buffer is stopped before
