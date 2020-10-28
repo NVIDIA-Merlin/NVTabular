@@ -19,7 +19,6 @@ from operator import getitem
 
 import cudf
 import cupy as cp
-import dask_cudf
 import numpy as np
 import pyarrow as pa
 from cudf.core.column import as_column, build_column
@@ -563,7 +562,7 @@ def _finish_labels(paths, cols):
 
 
 def _groupby_to_disk(
-    _ddf,
+    ddf,
     write_func,
     col_groups,
     agg_cols,
@@ -603,40 +602,25 @@ def _groupby_to_disk(
     out_path = fs.sep.join([out_path, stat_name])
     fs.mkdirs(out_path, exist_ok=True)
 
-    # NOTE: Using `map_partitions` for initial groupby. The output
-    # will be a dictionary (of splits) for each input partition.
-    #
-    # We do this to ensure the initial "partition-wise" groupby
-    # tasks will be constructed as a `Blockwise` layer in the
-    # high-level graph (HLG) (by Dask).  This is ideal for NVTabular,
-    # because it effectively fuses all (previous) adjacent
-    # transformation ops into the same low-level task as the groupby
-    # (avoiding unnecessary spilling in-between).
-    #
-    # TODO: Introduce a similar optimization for other global stats.
-    # This may require upstream (Dask/Dask-CuDF) changes.
-    ddf = dask_cudf.DataFrame.map_partitions(
-        _ddf,
-        _top_level_groupby,
-        col_groups,
-        tree_width,
-        agg_cols,
-        agg_list,
-        on_host,
-        concat_groups,
-        name_sep,
-        enforce_metadata=False,
-        transform_divisions=False,
-    )
-
     dsk = {}
     token = tokenize(ddf, col_groups, out_path, freq_limit, tree_width, on_host)
-    level_1_name = ddf._name
+    level_1_name = "level_1-" + token
     split_name = "split-" + token
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = stat_name + "-" + token
     for p in range(ddf.npartitions):
+        dsk[(level_1_name, p)] = (
+            _top_level_groupby,
+            (ddf._name, p),
+            col_groups,
+            tree_width,
+            agg_cols,
+            agg_list,
+            on_host,
+            concat_groups,
+            name_sep,
+        )
         k = 0
         for c, col in enumerate(col_groups):
             col = [col] if isinstance(col, str) else col
