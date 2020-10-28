@@ -69,21 +69,20 @@ class MultiHotEmbeddings(torch.nn.Module):
 
     def __init__(self, embedding_table_shapes, dropout=0.0, mode="sum"):
         super().__init__()
+        self.embedding_names = [i for i in embedding_table_shapes.keys()]
         self.embedding_layers = torch.nn.ModuleList(
             [
-                torch.nn.EmbeddingBag(cat_size, emb_size, mode=mode)
-                for cat_size, emb_size in embedding_table_shapes.values()
+                torch.nn.EmbeddingBag(*embedding_table_shapes[key], mode=mode)
+                for key in self.embedding_names
             ]
         )
         self.dropout = torch.nn.Dropout(p=dropout)
 
     def forward(self, x):
         embs = []
-        x = list(x)
-        for idx, entry in enumerate(x):
-            for k, v in entry.items():
-                values, offsets = v
-                embs.append(self.embedding_layers[idx](values, offsets))
+        for n, key in enumerate(self.embedding_names):
+            values, offsets = x[key]
+            embs.append(self.embedding_layers[n](values, offsets[:, 0]))
         x = torch.cat(embs, dim=1)
         x = self.dropout(x)
         return x

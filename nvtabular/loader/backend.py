@@ -358,10 +358,11 @@ class DataLoader:
             for n, c in enumerate(chunk):
                 if isinstance(c, tuple):
                     c, off0s, off1s, _nnzs = c
-                    off0s = self._split_fn(off0s, num_list_columns, axis=1)
-                    off1s = self._split_fn(off1s, num_list_columns, axis=1)
+                    offsets_split_idx = [1 for _ in range(num_list_columns)]
+                    off0s = self._split_fn(off0s, offsets_split_idx, axis=1)
+                    off1s = self._split_fn(off1s, offsets_split_idx, axis=1)
                     if use_nnz:
-                        _nnzs = self._split_fn(_nnzs, num_list_columns, axis=1)
+                        _nnzs = self._split_fn(_nnzs, offsets_split_idx, axis=1)
 
                     batch_lists = {}
                     for k, (column_name, values) in enumerate(lists.items()):
@@ -376,7 +377,6 @@ class DataLoader:
                         elif len(off0.shape) == 2:
                             start, stop = off0[0, 0], off1[0, 0]
                         else:
-                            print(off0.shape)
                             raise ValueError
 
                         value = values[start:stop]
