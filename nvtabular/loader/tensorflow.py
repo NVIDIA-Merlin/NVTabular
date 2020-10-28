@@ -16,7 +16,7 @@
 import contextlib
 import os
 
-# import cupy
+import cudf
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
@@ -300,10 +300,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
         # make vectors (N, 1), and undo transpose
         # we needed to do above for matrices
-        if len(gdf.shape) == 1:
-            x = tf.expand_dims(x, -1)
-        elif gdf.shape[0] == 1:
+        if gdf.shape[0] == 1:
             x = tf.expand_dims(x, 0)
+        elif len(gdf.shape) == 1 or len(x.shape) == 1:
+            x = tf.expand_dims(x, -1)
         elif gdf.shape[1] > 1:
             x = tf.transpose(x)
 
@@ -327,7 +327,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
             # now add in any scalar tensors
             if len(names) > 1:
-                tensors = tf.split(tensor, len(names), axis=1)
+                try:
+                    tensors = tf.split(tensor, len(names), axis=1)
+                except:
+                    print(tensor, names)
+                    raise
                 lists.update({name: x for name, x in zip(names, tensors)})
             elif len(names) == 1:
                 lists[names[0]] = tensor

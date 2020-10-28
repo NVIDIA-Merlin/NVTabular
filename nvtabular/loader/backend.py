@@ -126,7 +126,7 @@ class ChunkQueue:
 
                 # takes care final batch, which is less than batch size
                 if spill is not None and not spill.empty:
-                    spill = dataloader.make_tensors(spill)
+                    spill = dataloader.make_tensors(spill, dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
             self.put(e)
@@ -330,7 +330,11 @@ class DataLoader:
             lists = None
             if isinstance(chunk, tuple):
                 chunk, lists = chunk
-            chunk = self._split_fn(chunk, split_idx)
+
+            if len(split_idx) > 1:
+                chunk = self._split_fn(chunk, split_idx)
+            else:
+                chunk = [chunk]
 
             if lists is not None:
                 num_list_columns = len(lists)
@@ -345,10 +349,12 @@ class DataLoader:
                 # split them into batches, including an extra 1 on the offsets
                 # so we know how long the very last element is
                 batch_offsets = self._split_fn(chunk_offsets, split_idx + [1])
-                if use_nnz:
+                if use_nnz and len(split_idx) > 1:
                     batch_nnzs = self._split_fn(chunk_nnzs, split_idx)
+                elif use_nnz:
+                    batch_nnzs = [chunk_nnzs]
                 else:
-                    batch_nnzs = [None] * len(batch_offsets)
+                    batch_nnzs = [None] * (len(batch_offsets) - 1)
 
                 # group all these indices together and iterate through
                 # them in batches to grab the proper elements from each

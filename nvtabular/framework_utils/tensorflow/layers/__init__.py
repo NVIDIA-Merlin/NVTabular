@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from .embedding import ScalarDenseFeatures, ScalarLinearFeatures
+from .embedding import DenseFeatures, LinearFeatures
 from .interaction import DotProductInteraction
 
-__all__ = [ScalarLinearFeatures, ScalarDenseFeatures, DotProductInteraction]
+__all__ = [LinearFeatures, DenseFeatures, DotProductInteraction]

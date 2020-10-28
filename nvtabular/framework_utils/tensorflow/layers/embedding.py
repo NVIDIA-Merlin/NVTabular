@@ -117,7 +117,7 @@ def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
 
         # build values and nnz tensors into ragged array, convert to sparse
         values = inputs[feature_name + "__values"][:, 0]
-        row_lengths = inputs[feautre_name + "__nnzs"][:, 0]
+        row_lengths = inputs[feature_name + "__nnzs"][:, 0]
         x = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
 
         # use ragged array for sparse embedding lookup
@@ -185,7 +185,7 @@ class DenseFeatures(tf.keras.layers.Layer):
         self.feature_columns = feature_columns
         self.aggregation = aggregation
         self.sparse_aggregation = sparse_aggregation
-        super(ScalarDenseFeatures, self).__init__(name=name, **kwargs)
+        super(DenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
         assert all(shape[1] == 1 for shape in input_shapes.values())
@@ -318,7 +318,7 @@ class LinearFeatures(tf.keras.layers.Layer):
 
         self.feature_columns = feature_columns
         self.sparse_aggregation = sparse_aggregation
-        super(ScalarLinearFeatures, self).__init__(name=name, **kwargs)
+        super(LinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
         assert all(shape[1] == 1 for shape in input_shapes.values())
