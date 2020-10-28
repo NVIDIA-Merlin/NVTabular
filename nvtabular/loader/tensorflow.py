@@ -16,7 +16,6 @@
 import contextlib
 import os
 
-import cudf
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
