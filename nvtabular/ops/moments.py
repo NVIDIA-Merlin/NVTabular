@@ -128,6 +128,8 @@ def _chunkwise_moments(df):
         "df-sum": df.sum().to_frame().transpose(),
         "df2-sum": df2.sum().to_frame().transpose(),
     }
+    # NOTE: Perhaps we should convert to pandas here
+    # (since we know the results should be small)?
     del df2
     return vals
 
@@ -142,24 +144,26 @@ def _tree_node_moments(inputs):
 
 
 def _finalize_moments(inp, ddof=1):
-    df_count = inp["df-count"]
-    out = pd.DataFrame(index=df_count.columns)
-    out["count"] = df_count.iloc[0].to_pandas()
-    out["sum"] = inp["df-sum"].iloc[0].to_pandas()
-    out["sum2"] = inp["df2-sum"].iloc[0].to_pandas()
-    out["mean"] = out["sum"] / out["count"]
+    n = inp["df-count"].iloc[0].to_pandas()
+    x = inp["df-sum"].iloc[0].to_pandas()
+    x2 = inp["df2-sum"].iloc[0].to_pandas()
 
     # Use sum-squared approach to get variance
-    out["var"] = out["sum2"] - out["sum"] ** 2 / out["count"]
-    div = out["count"] - ddof
+    var = x2 - x ** 2 / n
+    div = n - ddof
     div[div < 1] = 1  # Avoid division by 0
-    out["var"] /= div
+    var /= div
 
     # Set appropriate NaN elements
     # (since we avoided 0-division)
-    out["var"][(out["count"] - ddof) == 0] = np.nan
+    var[(n - ddof) == 0] = np.nan
 
-    # Get std
-    out["std"] = np.sqrt(out["var"])
-
+    # Construct output DataFrame
+    out = pd.DataFrame(index=inp["df-count"].columns)
+    out["count"] = n
+    out["sum"] = x
+    out["sum2"] = x2
+    out["mean"] = x / n
+    out["var"] = var
+    out["std"] = np.sqrt(var)
     return out
