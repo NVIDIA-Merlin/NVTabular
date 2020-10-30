@@ -6,7 +6,7 @@ ENABLE_MULTINODES=OFF
 NCCL_A2A=ON
 
 # Install HugeCTR
-git clone --depth 1 --branch "v2.2.1" https://github.com/NVIDIA/HugeCTR &&\
+git clone -b v2.3-integration https://gitlab-master.nvidia.com/zehuanw/hugectr.git &&\
     cd HugeCTR && \
     git submodule update --init --recursive && \
     sed -i '27,28 s/^/#/' ./test/utest/CMakeLists.txt && \
