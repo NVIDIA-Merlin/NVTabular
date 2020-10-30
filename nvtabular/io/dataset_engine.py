@@ -25,8 +25,8 @@ class DatasetEngine:
         paths = sorted(paths, key=natural_sort_key)
         self.paths = paths
         self.part_size = part_size
-
-        fs, fs_token, _ = get_fs_token_paths(paths, mode="rb", storage_options=storage_options)
+        self.storage_options = storage_options
+        fs, fs_token, _ = get_fs_token_paths(paths, mode="rb", storage_options=self.storage_options)
         self.fs = fs
         self.fs_token = fs_token
 

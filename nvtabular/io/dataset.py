@@ -146,7 +146,7 @@ class Dataset:
         directories are not yet supported).
     engine : str or DatasetEngine
         DatasetEngine object or string identifier of engine. Current
-        string options include: ("parquet", "csv"). This argument
+        string options include: ("parquet", "csv", "avro"). This argument
         is ignored if path_or_source is a DataFrame type.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
@@ -225,6 +225,17 @@ class Dataset:
                     )
                 elif engine == "csv":
                     self.engine = CSVDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
+                elif engine == "avro":
+                    try:
+                        from .avro import AvroDatasetEngine
+                    except ImportError:
+                        raise RuntimeError(
+                            "Failed to import AvroDatasetEngine. Make sure uavro is installed."
+                        )
+
+                    self.engine = AvroDatasetEngine(
                         paths, part_size, storage_options=storage_options, **kwargs
                     )
                 else:
