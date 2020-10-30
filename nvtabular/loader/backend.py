@@ -383,6 +383,7 @@ class DataLoader:
                         elif len(off0.shape) == 2:
                             start, stop = off0[0, 0], off1[0, 0]
                         else:
+                            print(off0, off1)
                             raise ValueError
 
                         value = values[start:stop]
@@ -476,7 +477,7 @@ class DataLoader:
 
         if not offsets.empty:
             offsets_tensor = self._to_tensor(offsets, self._LONG_DTYPE)
-            if len(offsets.columns) == 1:
+            if len(offsets_tensor.shape) == 1:
                 offsets_tensor = offsets_tensor[:, None]
             tensors.append(offsets_tensor)
         del gdf, offsets

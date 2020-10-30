@@ -297,15 +297,18 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             tf.random.uniform((1,))
             x = from_dlpack(dlpack)
 
-        # make vectors (N, 1), and undo transpose
-        # we needed to do above for matrices
         if gdf.shape[0] == 1:
+            # batch size 1 so got squashed to a vector
             x = tf.expand_dims(x, 0)
         elif len(gdf.shape) == 1 or len(x.shape) == 1:
+            # sort of a generic check for any other
+            # len(shape)==1 case, could probably
+            # be more specific
             x = tf.expand_dims(x, -1)
         elif gdf.shape[1] > 1:
+            # matrix which means we had to transpose
+            # for the bug above, so untranspose
             x = tf.transpose(x)
-
         return x
 
     def _handle_tensors(self, cats, conts, labels):
@@ -336,8 +339,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
-        # else:
-        #     labels = labels
         return X, labels
 
 
@@ -363,10 +364,17 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
         streaming_metrics = [_StreamingMetric(name) for name in self.model.metrics_names]
         for X, y in self.dataloader:
-            n = y[0].shape[0]
-            scores = self.model.evaluate(X, y, batch_size=n, verbose=0)
-            for metric, score in zip(streaming_metrics, scores):
-                metric.update(score, n)
+            if isinstance(y, tf.Tensor):
+                n = y.shape[0]
+            else:
+                n = y[0].shape[0]
+
+            # do scoring this way since model methods complain
+            # about non-matching input shapes due to multi-hot
+            for metric, streaming_metric in zip(self.model.metrics, streaming_metrics):
+                y_pred = self.model(X)
+                score = metric(y, y_pred)
+                streaming_metric.update(score, n)
         for metric in streaming_metrics:
             logs["val_" + metric.name] = metric.value
         return logs
