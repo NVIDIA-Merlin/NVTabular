@@ -908,6 +908,7 @@ class Workflow(BaseWorkflow):
         iterate=False,
         nfiles=None,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Write data to shuffled parquet dataset.
 
@@ -932,6 +933,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
         else:
             self.build_and_process_graph(
@@ -943,6 +945,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def ddf_to_dataset(
@@ -996,6 +999,7 @@ class Workflow(BaseWorkflow):
             fut.compute(scheduler="synchronous")
         else:
             fut.compute()
+
 
 def _set_dtypes(chunk, dtypes):
     for col, dtype in dtypes.items():

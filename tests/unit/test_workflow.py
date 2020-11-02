@@ -443,6 +443,7 @@ def test_chaining_3():
         x in result.columns for x in ["ad_id_count", "ad_id_clicked_sum_ctr", "ad_id_clicked_sum"]
     )
 
+
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("use_client", [True, False])
 def test_workflow_apply(client, use_client, tmpdir, shuffle):
@@ -458,19 +459,30 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle):
     cat_columns = ["cat1", "cat2"]
     label_column = ["label"]
 
-    df = pd.DataFrame({"cont1": np.arange(size), "cont2": np.arange(size), "cat1": np.arange(size), "cat2": np.arange(size), "label": np.arange(size)})
+    df = pd.DataFrame(
+        {
+            "cont1": np.arange(size),
+            "cont2": np.arange(size),
+            "cat1": np.arange(size),
+            "cat2": np.arange(size),
+            "label": np.arange(size),
+        }
+    )
     df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
 
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
     processor = nvt.Workflow(
-        cat_names=cat_columns, cont_names=cont_columns, label_name=label_column, client=client if use_client else None
+        cat_names=cat_columns,
+        cont_names=cont_columns,
+        label_name=label_column,
+        client=client if use_client else None,
     )
     processor.add_cont_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_cat_preprocess(ops.Categorify())
 
     processor.finalize()
     # Force dtypes
-    dict_dtypes={}
+    dict_dtypes = {}
     for col in cont_columns:
         dict_dtypes[col] = np.float32
     for col in cat_columns:
@@ -479,7 +491,11 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle):
         dict_dtypes[col] = np.int64
 
     processor.apply(
-        dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc, dtypes=dict_dtypes
+        dataset,
+        output_path=out_path,
+        shuffle=shuffle,
+        out_files_per_proc=out_files_per_proc,
+        dtypes=dict_dtypes,
     )
 
     # Check dtypes
