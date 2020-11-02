@@ -453,16 +453,17 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle):
 
     size = 25
     row_group_size = 5
-    df = pd.DataFrame({"cont1": np.arange(size), "cont2": np.arange(size), "cat1": np.arange(size), "cat2": np.arange(size), "label": np.arange(size)})
-    df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
 
     cont_columns = ["cont1", "cont2"]
     cat_columns = ["cat1", "cat2"]
     label_column = ["label"]
 
+    df = pd.DataFrame({"cont1": np.arange(size), "cont2": np.arange(size), "cat1": np.arange(size), "cat2": np.arange(size), "label": np.arange(size)})
+    df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
+
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
     processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client if use_client else None
+        cat_names=cat_columns, cont_names=cont_columns, label_name=label_column, client=client if use_client else None
     )
     processor.add_cont_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_cat_preprocess(ops.Categorify())
@@ -478,21 +479,10 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle):
         dict_dtypes[col] = np.int64
 
     processor.apply(
-        dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc, dtypes=dtypes
+        dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc, dtypes=dict_dtypes
     )
 
     # Check dtypes
     for filename in glob.glob(os.path.join(out_path, "*.parquet")):
         gdf = cudf.io.read_parquet(filename)
         assert dict(gdf.dtypes) == dict_dtypes
-
-    assert len(result) == out_files_per_proc * n_workers
-
-    # Make sure _metadata exists
-    meta_path = os.path.join(out_path, "_metadata")
-    assert os.path.exists(meta_path)
-
-    # Make sure _metadata makes sense
-    _metadata = cudf.io.read_parquet_metadata(meta_path)
-    assert _metadata[0] == size
-    assert _metadata[2] == columns
