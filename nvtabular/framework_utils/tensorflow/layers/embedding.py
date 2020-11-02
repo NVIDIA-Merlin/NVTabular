@@ -28,10 +28,6 @@ def _validate_numeric_column(feature_column):
         return "Matrix numeric features are not allowed, " "found feature {} with shape {}".format(
             feature_column.key, feature_column.shape
         )
-    elif feature_column.shape[0] != 1:
-        return "Vector numeric features are not allowed, " "found feature {} with shape {}".format(
-            feature_column.key, feature_column.shape
-        )
 
 
 def _validate_categorical_column(feature_column):
@@ -58,7 +54,7 @@ def _validate_dense_feature_columns(feature_columns):
                 )
             else:
                 _errors.append(
-                    "Found bucketized column {}. ScalarDenseFeatures layer "
+                    "Found bucketized column {}. DenseFeatures layer "
                     "cannot apply bucketization preprocessing. Consider using "
                     "NVTabular to do preprocessing offline".format(feature_column.name)
                 )
@@ -70,7 +66,7 @@ def _validate_dense_feature_columns(feature_columns):
 
     _errors = list(filter(lambda e: e is not None, _errors))
     if len(_errors) > 0:
-        msg = "Found issues with columns passed to ScalarDenseFeatures:"
+        msg = "Found issues with columns passed to DenseFeatures:"
         msg += "\n\t".join(_errors)
         raise ValueError(_errors)
 
@@ -128,11 +124,18 @@ def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
     return embeddings
 
 
+def _handle_continuous_feature(inputs, feature_column):
+    if feature_column.shape[0] > 1:
+        x = inputs[feature_column.name + "__values"]
+        return tf.reshape(x, (-1, feature_column.shape[0]))
+    return inputs[feature_column.name]
+
+
 class DenseFeatures(tf.keras.layers.Layer):
     """
-    Layer which maps one-hot categorical and scalar numeric features to
-    a dense embedding. Meant to reproduce the API exposed by
-    `tf.keras.layers.DenseFeatures` while reducing overhead for the
+    Layer which maps a dictionary of input tensors to a dense, continuous
+    vector digestible by a neural network. Meant to reproduce the API exposed
+    by `tf.keras.layers.DenseFeatures` while reducing overhead for the
     case of one-hot categorical and scalar numeric features.
 
     Uses TensorFlow `feature_column`s to represent inputs to the layer, but
@@ -155,7 +158,7 @@ class DenseFeatures(tf.keras.layers.Layer):
             "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
             "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64)
         }
-        x = ScalarDenseFeatures([column_a, column_b_embedding])(inputs)
+        x = DenseFeatures([column_a, column_b_embedding])(inputs)
 
     Parameters
     ----------
@@ -210,7 +213,8 @@ class DenseFeatures(tf.keras.layers.Layer):
         features = []
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
-                features.append(inputs[feature_column.name])
+                x = _handle_continuous_feature(inputs, feature_column)
+                features.append(x)
             else:
                 feature_name = feature_column.categorical_column.name
                 table = self.embedding_tables[feature_name]
@@ -304,14 +308,11 @@ class LinearFeatures(tf.keras.layers.Layer):
         how this is used.
     """
 
-    def __init__(self, feature_columns, sparse_aggregation="sum", name=None, **kwargs):
+    def __init__(self, feature_columns, name=None, **kwargs):
         feature_columns = _sort_columns(feature_columns)
         _validate_linear_feature_columns(feature_columns)
 
-        assert sparse_aggregation in ("mean", "sqrtn", "sum")
-
         self.feature_columns = feature_columns
-        self.sparse_aggregation = sparse_aggregation
         super(LinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
@@ -352,11 +353,12 @@ class LinearFeatures(tf.keras.layers.Layer):
         numeric_inputs = []
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
-                numeric_inputs.append(inputs[feature_column.key])
+                x = _handle_continuous_feature(inputs, feature_column)
+                numeric_inputs.append(x)
             else:
                 table = self.embedding_tables[feature_column.key]
                 embeddings = _categorical_embedding_lookup(
-                    table, inputs, feature_column.key, self.sparse_aggregation
+                    table, inputs, feature_column.key, "sum"
                 )
                 x = x + embeddings
 
