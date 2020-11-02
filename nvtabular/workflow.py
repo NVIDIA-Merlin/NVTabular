@@ -508,6 +508,10 @@ class BaseWorkflow:
                     writer.need_cal_col_names = False
 
                 start_write = time.time()
+                # Special dtype conversion
+                if dtypes:
+                    _meta = _set_dtypes(gdf._meta, dtypes)
+                    gdf = gdf.map_partitions(_set_dtypes, dtypes, meta=_meta)
                 writer.add_data(gdf)
                 self.timings["write_df"] += time.time() - start_write
 
@@ -714,6 +718,7 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         out_files_per_proc=None,
         num_io_threads=0,
+        dtypes=None,
     ):
         """
         Runs all the preprocessing and feature engineering operators.
@@ -753,6 +758,9 @@ class Workflow(BaseWorkflow):
         num_io_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for colums.
+            Keys are column names, values datatypes.
         """
 
         # Check shuffle argument
@@ -773,6 +781,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
         else:
             self.iterate_online(
@@ -782,6 +791,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def iterate_online(
@@ -794,6 +804,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Iterate through dataset and (optionally) apply/shuffle/write."""
         # Check shuffle argument
@@ -814,7 +825,7 @@ class Workflow(BaseWorkflow):
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
             for gdf in dataset.to_iter(shuffle=(shuffle is not None)):
-                self.apply_ops(gdf, output_path=output_path, writer=writer)
+                self.apply_ops(gdf, output_path=output_path, writer=writer, dtypes=dtypes)
 
         # Close writer and write general/specialized metadata
         if writer:
@@ -844,6 +855,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Build Dask-task graph for workflow.
 
@@ -882,6 +894,7 @@ class Workflow(BaseWorkflow):
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
                 num_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def write_to_dataset(
@@ -939,6 +952,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         output_format="parquet",
         num_threads=0,
+        dtypes=None,
     ):
         """Dask-based dataset output.
 
@@ -947,6 +961,10 @@ class Workflow(BaseWorkflow):
         if output_format not in ("parquet", "hugectr"):
             raise ValueError("Only parquet/hugectr output supported with Dask.")
         ddf = self.get_ddf()
+        # Special dtype conversion
+        if dtypes:
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc:
@@ -978,3 +996,13 @@ class Workflow(BaseWorkflow):
             fut.compute(scheduler="synchronous")
         else:
             fut.compute()
+
+def _set_dtypes(chunk, dtypes):
+    for col, dtype in dtypes.items():
+        if type(dtype) is str:
+            if "hex" in dtype and chunk[col].dtype == "object":
+                chunk[col] = chunk[col].str.htoi()
+                chunk[col] = chunk[col].astype(np.int32)
+        else:
+            chunk[col] = chunk[col].astype(dtype)
+    return chunk
