@@ -165,15 +165,20 @@ def test_dense_embedding_layer(aggregation, combiner):
 def test_linear_embedding_layer():
     raw_good_columns = get_good_feature_columns()
     scalar_numeric, vector_numeric, one_hot_col, multi_hot_col = raw_good_columns
+    one_hot_embedding = tf.feature_column.indicator_column(one_hot_col)
 
     with pytest.raises(ValueError):
         embedding_layer = layers.LinearFeatures([scalar_numeric, one_hot_embedding])
     embedding_layer = layers.LinearFeatures(raw_good_columns)
 
     inputs = {
-        "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
-        "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64),
-        "c": tf.keras.Input(name="c", shape=(1,), dtype=tf.int64),
+        "scalar_continuous": tf.keras.Input(name="scalar_continuous", shape=(1,), dtype=tf.float32),
+        "vector_continuous": tf.keras.Input(
+            name="vector_continuous", shape=(128,), dtype=tf.float32
+        ),
+        "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
+        "multi_hot__values": tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
+        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
     }
 
     output = embedding_layer(inputs)
