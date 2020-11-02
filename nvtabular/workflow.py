@@ -20,6 +20,7 @@ import warnings
 
 import dask
 import dask_cudf
+import numpy as np
 import yaml
 from fsspec.core import get_fs_token_paths
 
@@ -483,7 +484,9 @@ class BaseWorkflow:
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
         return gdf
 
-    def apply_ops(self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None):
+    def apply_ops(
+        self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None, dtypes=None
+    ):
         """
         gdf: cudf dataframe
         Controls the application of registered preprocessing phase op

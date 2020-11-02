@@ -448,7 +448,6 @@ def test_chaining_3():
 @pytest.mark.parametrize("use_client", [True, False])
 def test_workflow_apply(client, use_client, tmpdir, shuffle):
     out_files_per_proc = 2
-    n_workers = len(client.cluster.workers) if use_client else 1
     out_path = str(tmpdir.mkdir("processed"))
     path = str(tmpdir.join("simple.parquet"))
 
