@@ -163,14 +163,10 @@ class DenseFeatures(tf.keras.layers.Layer):
         feature columns describing the inputs to the layer
     aggregation : str in ("concat", "stack")
         how to combine the embeddings from multiple features
-    sparse_aggregation : str in ("mean", "sqrtn", "sum")
-        how to aggregate embeddings from multi-valent categorical features.
-        See `tf.nn.embedding_lookup_sparse` documentation for details on
-        how this is used.
     """
 
     def __init__(
-        self, feature_columns, aggregation="concat", sparse_aggregation="sum", name=None, **kwargs
+        self, feature_columns, aggregation="concat", name=None, **kwargs
     ):
         # sort feature columns to make layer independent of column order
         feature_columns = _sort_columns(feature_columns)
@@ -180,11 +176,8 @@ class DenseFeatures(tf.keras.layers.Layer):
         if aggregation == "stack":
             _validate_stack_dimensions(feature_columns)
 
-        assert sparse_aggregation in ("mean", "sqrtn", "sum")
-
         self.feature_columns = feature_columns
         self.aggregation = aggregation
-        self.sparse_aggregation = sparse_aggregation
         super(DenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
@@ -221,8 +214,9 @@ class DenseFeatures(tf.keras.layers.Layer):
             else:
                 feature_name = feature_column.categorical_column.name
                 table = self.embedding_tables[feature_name]
+                combiner = getattr(feature_column,  "combiner", "sum")
                 embeddings = _categorical_embedding_lookup(
-                    table, inputs, feature_name, self.sparse_aggregation
+                    table, inputs, feature_name, combiner
                 )
                 features.append(embeddings)
 
