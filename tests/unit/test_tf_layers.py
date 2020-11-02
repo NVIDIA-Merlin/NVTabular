@@ -42,7 +42,7 @@ def _compute_expected_multi_hot(table, values, nnzs, combiner):
     start_idx = 0
     for nnz in nnzs:
         vals = values[start_idx : start_idx + nnz]
-        vectors = table[values]
+        vectors = table[vals]
         if combiner == "sum":
             rows.append(vectors.sum(axis=0))
         else:
@@ -138,8 +138,8 @@ def test_dense_embedding_layer(aggregation, combiner):
         assert len(y_hat.shape) == 2
         assert y_hat.shape[1] == 1 + 8 + 5 + 128
 
-        assert (y_hat[:, 13] == scalar_continuous).all()
-        assert (y_hat[:, 13:] == vector_continuous).all()
+        assert (y_hat[:, 13] == scalar).all()
+        assert (y_hat[:, 13:] == vector).all()
         assert (y_hat[:, :8] == multi_hot_embedding_rows).all()
 
         y_c = y_hat[:, 8:13]
@@ -165,8 +165,6 @@ def test_dense_embedding_layer(aggregation, combiner):
 def test_linear_embedding_layer():
     raw_good_columns = get_good_feature_columns()
     scalar_numeric, vector_numeric, one_hot_col, multi_hot_col = raw_good_columns
-    one_hot_embedding = tf.feature_column.indicator_column(one_hot_col)
-    multi_hot_embedding = tf.feature_column.embedding_column(multi_hot_col, 8, combiner=combiner)
 
     with pytest.raises(ValueError):
         embedding_layer = layers.LinearFeatures([scalar_numeric, one_hot_embedding])
