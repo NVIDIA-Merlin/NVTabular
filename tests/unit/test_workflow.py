@@ -442,3 +442,57 @@ def test_chaining_3():
     assert all(
         x in result.columns for x in ["ad_id_count", "ad_id_clicked_sum_ctr", "ad_id_clicked_sum"]
     )
+
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, nvt.io.Shuffle.PER_PARTITION, None])
+@pytest.mark.parametrize("use_client", [True, False])
+def test_workflow_apply(client, use_client, tmpdir, shuffle):
+    out_files_per_proc = 2
+    n_workers = len(client.cluster.workers) if use_client else 1
+    out_path = str(tmpdir.mkdir("processed"))
+    path = str(tmpdir.join("simple.parquet"))
+
+    size = 25
+    row_group_size = 5
+    df = pd.DataFrame({"cont1": np.arange(size), "cont2": np.arange(size), "cat1": np.arange(size), "cat2": np.arange(size), "label": np.arange(size)})
+    df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
+
+    cont_columns = ["cont1", "cont2"]
+    cat_columns = ["cat1", "cat2"]
+    label_column = ["label"]
+
+    dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client if use_client else None
+    )
+    processor.add_cont_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
+    processor.add_cat_preprocess(ops.Categorify())
+
+    processor.finalize()
+    # Force dtypes
+    dict_dtypes={}
+    for col in cont_columns:
+        dict_dtypes[col] = np.float32
+    for col in cat_columns:
+        dict_dtypes[col] = np.float32
+    for col in label_column:
+        dict_dtypes[col] = np.int64
+
+    processor.apply(
+        dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc, dtypes=dtypes
+    )
+
+    # Check dtypes
+    for filename in glob.glob(os.path.join(out_path, "*.parquet")):
+        gdf = cudf.io.read_parquet(filename)
+        assert dict(gdf.dtypes) == dict_dtypes
+
+    assert len(result) == out_files_per_proc * n_workers
+
+    # Make sure _metadata exists
+    meta_path = os.path.join(out_path, "_metadata")
+    assert os.path.exists(meta_path)
+
+    # Make sure _metadata makes sense
+    _metadata = cudf.io.read_parquet_metadata(meta_path)
+    assert _metadata[0] == size
+    assert _metadata[2] == columns
