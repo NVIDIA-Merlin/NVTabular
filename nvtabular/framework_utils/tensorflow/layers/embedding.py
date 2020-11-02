@@ -175,9 +175,7 @@ class DenseFeatures(tf.keras.layers.Layer):
         how to combine the embeddings from multiple features
     """
 
-    def __init__(
-        self, feature_columns, aggregation="concat", name=None, **kwargs
-    ):
+    def __init__(self, feature_columns, aggregation="concat", name=None, **kwargs):
         # sort feature columns to make layer independent of column order
         feature_columns = _sort_columns(feature_columns)
         _validate_dense_feature_columns(feature_columns)
@@ -185,8 +183,9 @@ class DenseFeatures(tf.keras.layers.Layer):
         if aggregation == "stack":
             _validate_stack_dimensions(feature_columns)
         elif aggregation != "concat":
-            raise ValueError("Unrecognized aggregation {}, must be stack or concat".format(
-                aggregation))
+            raise ValueError(
+                "Unrecognized aggregation {}, must be stack or concat".format(aggregation)
+            )
 
         self.feature_columns = feature_columns
         self.aggregation = aggregation
@@ -227,10 +226,8 @@ class DenseFeatures(tf.keras.layers.Layer):
             else:
                 feature_name = feature_column.categorical_column.name
                 table = self.embedding_tables[feature_name]
-                combiner = getattr(feature_column,  "combiner", "sum")
-                embeddings = _categorical_embedding_lookup(
-                    table, inputs, feature_name, combiner
-                )
+                combiner = getattr(feature_column, "combiner", "sum")
+                embeddings = _categorical_embedding_lookup(table, inputs, feature_name, combiner)
                 features.append(embeddings)
 
         if self.aggregation == "stack":
@@ -366,9 +363,7 @@ class LinearFeatures(tf.keras.layers.Layer):
                 numeric_inputs.append(x)
             else:
                 table = self.embedding_tables[feature_column.key]
-                embeddings = _categorical_embedding_lookup(
-                    table, inputs, feature_column.key, "sum"
-                )
+                embeddings = _categorical_embedding_lookup(table, inputs, feature_column.key, "sum")
                 x = x + embeddings
 
         if len(numeric_inputs) > 0:

@@ -41,7 +41,7 @@ def _compute_expected_multi_hot(table, values, nnzs, combiner):
     rows = []
     start_idx = 0
     for nnz in nnzs:
-        vals = values[start_idx:start_idx+nnz]
+        vals = values[start_idx : start_idx + nnz]
         vectors = table[values]
         if combiner == "sum":
             rows.append(vectors.sum(axis=0))
@@ -52,10 +52,10 @@ def _compute_expected_multi_hot(table, values, nnzs, combiner):
 
 
 @pytest.mark.parametrize("aggregation", ["stack", "concat"])
-@pytest.mark.parametrize("combiner", ["sum", "mean"]) # TODO: add sqrtn
+@pytest.mark.parametrize("combiner", ["sum", "mean"])  # TODO: add sqrtn
 def test_dense_embedding_layer(aggregation, combiner):
     raw_good_columns = get_good_feature_columns()
-    scalar_numeric, vector_numeric, one_hot, multi_hot =raw_good_columns
+    scalar_numeric, vector_numeric, one_hot, multi_hot = raw_good_columns
     one_hot_embedding = tf.feature_column.indicator_column(one_hot)
     multi_hot_embedding = tf.feature_column.embedding_column(multi_hot, 8, combiner=combiner)
 
@@ -67,7 +67,8 @@ def test_dense_embedding_layer(aggregation, combiner):
         # can't pass numeric to stack aggregation unless dims are 1
         with pytest.raises(ValueError):
             embedding_layer = layers.DenseFeatures(
-                [scalar_numeric, vector_numeric, one_hot_embedding, multi_hot_embedding], aggregation=aggregation
+                [scalar_numeric, vector_numeric, one_hot_embedding, multi_hot_embedding],
+                aggregation=aggregation,
             )
         # can't have mismatched dims with stack aggregation
         with pytest.raises(ValueError):
@@ -85,10 +86,12 @@ def test_dense_embedding_layer(aggregation, combiner):
 
     inputs = {
         "scalar_continuous": tf.keras.Input(name="scalar_continuous", shape=(1,), dtype=tf.float32),
-        "vector_continuous": tf.keras.Input(name="vector_continuous", shape=(128,), dtype=tf.float32),
+        "vector_continuous": tf.keras.Input(
+            name="vector_continuous", shape=(128,), dtype=tf.float32
+        ),
         "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
         "multi_hot__values": tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
-        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64)
+        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
     }
     if aggregation == "stack":
         inputs.pop("scalar_continuous")
@@ -109,7 +112,7 @@ def test_dense_embedding_layer(aggregation, combiner):
         "vector_continuous": vector,
         "one_hot": one_hot[:, None],
         "multi_hot__values": multi_hot_values[:, None],
-        "multi_hot__nnzs": multi_hot_nnzs[:, None]
+        "multi_hot__nnzs": multi_hot_nnzs[:, None],
     }
     if aggregation == "stack":
         x.pop("scalar_continuous")
@@ -117,7 +120,8 @@ def test_dense_embedding_layer(aggregation, combiner):
 
     multi_hot_embedding_table = embedding_layer.embedding_tables["multi_hot"].numpy()
     multi_hot_embedding_rows = _compute_expected_multi_hot(
-        multi_hot_embedding_table, multi_hot_values, multi_hot_nnzs, combiner)
+        multi_hot_embedding_table, multi_hot_values, multi_hot_nnzs, combiner
+    )
 
     # check that shape and values match up
     y_hat = model(x).numpy()
@@ -189,7 +193,7 @@ def test_linear_embedding_layer():
         "vector_continuous": vector,
         "one_hot": one_hot[:, None],
         "multi_hot__values": multi_hot_values[:, None],
-        "multi_hot__nnzs": multi_hot_nnzs[:, None]
+        "multi_hot__nnzs": multi_hot_nnzs[:, None],
     }
 
     y_hat = model(x).numpy()
@@ -204,7 +208,8 @@ def test_linear_embedding_layer():
     numeric_weight = embedding_layer.embedding_tables["numeric"].numpy()[:, 0]
     one_hot_weights = embedding_layer.embedding_tables["one_hot"].numpy()[one_hot][:, 0]
     multi_hot_weights = _compute_expected_multi_hot(
-        embedding_layer.embedding_tables["multi_hot"], multi_hot_values, multi_hot_nnzs, "sum")[:, 0]
+        embedding_layer.embedding_tables["multi_hot"], multi_hot_values, multi_hot_nnzs, "sum"
+    )[:, 0]
     bias = embedding_layer.bias.numpy()[0]
 
     rtol = 1e-6
