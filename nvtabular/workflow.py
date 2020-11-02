@@ -20,12 +20,11 @@ import warnings
 
 import dask
 import dask_cudf
-import numpy as np
 import yaml
 from fsspec.core import get_fs_token_paths
 
 from nvtabular.io.dask import _ddf_to_dataset
-from nvtabular.io.dataset import Dataset
+from nvtabular.io.dataset import Dataset, _set_dtypes
 from nvtabular.io.shuffle import Shuffle, _check_shuffle_arg
 from nvtabular.io.writer_factory import writer_factory
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
@@ -1002,14 +1001,3 @@ class Workflow(BaseWorkflow):
             fut.compute(scheduler="synchronous")
         else:
             fut.compute()
-
-
-def _set_dtypes(chunk, dtypes):
-    for col, dtype in dtypes.items():
-        if type(dtype) is str:
-            if "hex" in dtype and chunk[col].dtype == "object":
-                chunk[col] = chunk[col].str.htoi()
-                chunk[col] = chunk[col].astype(np.int32)
-        else:
-            chunk[col] = chunk[col].astype(dtype)
-    return chunk
