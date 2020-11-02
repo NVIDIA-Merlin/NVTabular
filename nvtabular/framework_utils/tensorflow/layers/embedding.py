@@ -144,7 +144,14 @@ class DenseFeatures(tf.keras.layers.Layer):
     `embedding_column` and `indicator_column`. Preprocessing functionality should
     be moved to NVTabular.
 
-    Note that caategorical columns should be wrapped in embedding or
+    For multi-hot categorical or vector continuous data, represent the data for
+    a feature with a dictionary entry `"<feature_name>__values"` corresponding
+    to the flattened array of all values in the batch. For multi-hot categorical
+    data, there should be a corresponding `"<feature_name>__nnzs" entry that
+    describes how many categories are present in each sample (and so has length
+    `batch_size`).
+
+    Note that categorical columns should be wrapped in embedding or
     indicator columns first, consistent with the API used by
     `tf.keras.layers.DenseFeatures`.
 
@@ -175,9 +182,11 @@ class DenseFeatures(tf.keras.layers.Layer):
         feature_columns = _sort_columns(feature_columns)
         _validate_dense_feature_columns(feature_columns)
 
-        assert aggregation in ("concat", "stack")
         if aggregation == "stack":
             _validate_stack_dimensions(feature_columns)
+        elif aggregation != "concat":
+            raise ValueError("Unrecognized aggregation {}, must be stack or concat".format(
+                aggregation))
 
         self.feature_columns = feature_columns
         self.aggregation = aggregation
