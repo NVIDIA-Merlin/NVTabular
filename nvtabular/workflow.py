@@ -20,6 +20,7 @@ import warnings
 
 import dask
 import dask_cudf
+import numpy as np
 import yaml
 from fsspec.core import get_fs_token_paths
 
@@ -511,9 +512,7 @@ class BaseWorkflow:
 
                 start_write = time.time()
                 # Special dtype conversion
-                if dtypes:
-                    _meta = _set_dtypes(gdf._meta, dtypes)
-                    gdf = gdf.map_partitions(_set_dtypes, dtypes, meta=_meta)
+                gdf = _set_dtypes(dtypes)
                 writer.add_data(gdf)
                 self.timings["write_df"] += time.time() - start_write
 
@@ -761,8 +760,8 @@ class Workflow(BaseWorkflow):
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
         dtypes : dict
-            Dictionary containing desired datatypes for colums.
-            Keys are column names, values datatypes.
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
         """
 
         # Check shuffle argument
@@ -887,6 +886,12 @@ class Workflow(BaseWorkflow):
             for idx, _ in enumerate(self.phases[:end]):
                 self.exec_phase(idx, record_stats=record_stats, update_ddf=(idx == (end - 1)))
             self._base_phase = 0  # Re-Set _base_phase
+
+        if dtypes:
+            ddf = self.get_ddf()
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            self.set_ddf(ddf.map_partitions(_set_dtypes, dtypes, meta=_meta))
+
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)
@@ -896,7 +901,6 @@ class Workflow(BaseWorkflow):
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
                 num_threads=num_io_threads,
-                dtypes=dtypes,
             )
 
     def write_to_dataset(
@@ -957,7 +961,6 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         output_format="parquet",
         num_threads=0,
-        dtypes=None,
     ):
         """Dask-based dataset output.
 
@@ -966,10 +969,6 @@ class Workflow(BaseWorkflow):
         if output_format not in ("parquet", "hugectr"):
             raise ValueError("Only parquet/hugectr output supported with Dask.")
         ddf = self.get_ddf()
-        # Special dtype conversion
-        if dtypes:
-            _meta = _set_dtypes(ddf._meta, dtypes)
-            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc:

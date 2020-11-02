@@ -446,7 +446,8 @@ def test_chaining_3():
 
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("use_client", [True, False])
-def test_workflow_apply(client, use_client, tmpdir, shuffle):
+@pytest.mark.parametrize("apply_offline", [True, False])
+def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     out_files_per_proc = 2
     out_path = str(tmpdir.mkdir("processed"))
     path = str(tmpdir.join("simple.parquet"))
@@ -491,6 +492,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle):
 
     processor.apply(
         dataset,
+        apply_offline=apply_offline,
         output_path=out_path,
         shuffle=shuffle,
         out_files_per_proc=out_files_per_proc,
