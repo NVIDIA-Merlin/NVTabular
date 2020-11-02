@@ -121,8 +121,14 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         if tensor is None:
             return [[] * num_samples]
         idx = self._get_segment_lengths(num_samples)
-        return torch.split(tensor, idx)
+        return tensor.split(idx)
 
+    def _handle_tensors(self, cats, conts, labels):
+#         import pdb; pdb.set_trace()
+#         if isinstance(conts, torch.Tensor):
+#             conts = conts.detach().clone()
+        return cats, conts, labels
+    
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """

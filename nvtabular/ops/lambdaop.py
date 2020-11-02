@@ -92,6 +92,7 @@ class LambdaOp(TransformOperator):
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+        import pdb; pdb.set_trace()
         new_gdf = cudf.DataFrame()
         for col in target_columns:
             new_gdf[col] = self.f(gdf[col], gdf)

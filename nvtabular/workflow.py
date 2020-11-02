@@ -96,6 +96,12 @@ class BaseWorkflow:
             identifier for feature engineering FE or preprocessing PP
         """
         target_cols = self._get_target_cols(operators)
+        # get actual input columns
+        target_cols = self.columns_ctx
+        # generate actual output columns (for full df)
+        # check number of operators of that type - possibly create lookup dictionary op_id: count 
+        # override id with delimiter and count
+        # 
         # must have columns to target to
         if not target_cols or (
             target_cols in self.columns_ctx and not self.columns_ctx[target_cols]["base"]
