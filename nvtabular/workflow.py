@@ -24,7 +24,7 @@ import yaml
 from fsspec.core import get_fs_token_paths
 
 from nvtabular.io.dask import _ddf_to_dataset
-from nvtabular.io.dataset import Dataset
+from nvtabular.io.dataset import Dataset, _set_dtypes
 from nvtabular.io.shuffle import Shuffle, _check_shuffle_arg
 from nvtabular.io.writer_factory import writer_factory
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator
@@ -483,7 +483,9 @@ class BaseWorkflow:
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
         return gdf
 
-    def apply_ops(self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None):
+    def apply_ops(
+        self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None, dtypes=None
+    ):
         """
         gdf: cudf dataframe
         Controls the application of registered preprocessing phase op
@@ -508,6 +510,8 @@ class BaseWorkflow:
                     writer.need_cal_col_names = False
 
                 start_write = time.time()
+                # Special dtype conversion
+                gdf = _set_dtypes(gdf, dtypes)
                 writer.add_data(gdf)
                 self.timings["write_df"] += time.time() - start_write
 
@@ -567,6 +571,7 @@ class Workflow(BaseWorkflow):
         self.ddf = None
         self.client = client
         self._shuffle_parts = False
+        self._base_phase = 0
 
     def set_ddf(self, ddf, shuffle=None):
         if isinstance(ddf, (dask_cudf.DataFrame, Dataset)):
@@ -591,45 +596,57 @@ class Workflow(BaseWorkflow):
             gdf = logic(gdf, columns_ctx, cols_grp, target_cols, stats_context)
         return gdf
 
-    def _aggregated_dask_transform(self, transforms):
+    def _aggregated_dask_transform(self, ddf, transforms):
         # Assuming order of transforms corresponds to dependency ordering
-        ddf = self.get_ddf()
         meta = ddf._meta
         for transform in transforms:
             columns_ctx, cols_grp, target_cols, logic, stats_context = transform
             meta = logic(meta, columns_ctx, cols_grp, target_cols, stats_context)
-        new_ddf = ddf.map_partitions(self.__class__._aggregated_op, transforms, meta=meta)
-        self.set_ddf(new_ddf)
+        return ddf.map_partitions(self.__class__._aggregated_op, transforms, meta=meta)
 
-    def exec_phase(self, phase_index, record_stats=True):
+    def exec_phase(self, phase_index, record_stats=True, update_ddf=True):
         """
         Gather necessary column statistics in single pass.
-        Execute one phase only, given by phase index
+        Execute statistics for one phase only (given by phase index),
+        but (laxily) perform all transforms for current and previous phases.
         """
         transforms = []
-        for task in self.phases[phase_index]:
-            op, cols_grp, target_cols, _ = task
-            if isinstance(op, TransformOperator):
-                stats_context = self.stats if isinstance(op, DFOperator) else None
-                logic = op.apply_op
-                transforms.append((self.columns_ctx, cols_grp, target_cols, logic, stats_context))
-            elif not isinstance(op, StatOperator):
-                raise ValueError("Unknown Operator Type")
 
-        # Preform transforms as single dask task (per ddf partition)
+        # Need to perform all transforms up to, and including,
+        # the current phase (not only the current phase).  We do this
+        # so that we can avoid persisitng intermediate transforms
+        # needed for statistics.
+        phases = range(self._base_phase, phase_index + 1)
+        for ind in phases:
+            for task in self.phases[ind]:
+                op, cols_grp, target_cols, _ = task
+                if isinstance(op, TransformOperator):
+                    stats_context = self.stats if isinstance(op, DFOperator) else None
+                    logic = op.apply_op
+                    transforms.append(
+                        (self.columns_ctx, cols_grp, target_cols, logic, stats_context)
+                    )
+                elif not isinstance(op, StatOperator):
+                    raise ValueError("Unknown Operator Type")
+
+        # Perform transforms as single dask task (per ddf partition)
+        _ddf = self.get_ddf()
         if transforms:
-            self._aggregated_dask_transform(transforms)
+            _ddf = self._aggregated_dask_transform(_ddf, transforms)
 
         stats = []
         if record_stats:
             for task in self.phases[phase_index]:
                 op, cols_grp, target_cols, _ = task
                 if isinstance(op, StatOperator):
-                    stats.append(
-                        (op.stat_logic(self.get_ddf(), self.columns_ctx, cols_grp, target_cols), op)
-                    )
+                    stats.append((op.stat_logic(_ddf, self.columns_ctx, cols_grp, target_cols), op))
+                    # TODO: Don't want to update the internal ddf here if we can
+                    # avoid it.  It may be better to just add the new column?
                     if op._ddf_out is not None:
                         self.set_ddf(op._ddf_out)
+                        # We are updating the internal `ddf`, so we shouldn't
+                        # redo transforms up to this phase in later phases.
+                        self._base_phase = phase_index
 
         # Compute statistics if necessary
         if stats:
@@ -647,27 +664,49 @@ class Workflow(BaseWorkflow):
                     op.clear()
             del stats
 
-    def reorder_tasks(self, end):
-        if end != 2:
-            # Opt only works for two phases (for now)
-            return
-        stat_tasks = []
-        trans_tasks = []
-        for idx, _ in enumerate(self.phases[:end]):
-            for task in self.phases[idx]:
-                deps = task[2]
+        # Update interal ddf.
+        # Cancel futures and delete _ddf if allowed.
+        if transforms and update_ddf:
+            self.set_ddf(_ddf)
+        else:
+            if self.client:
+                self.client.cancel(_ddf)
+            del _ddf
+
+    def reorder_tasks(self):
+        # Reorder the phases so that dependency-free stat ops
+        # are performed in the first two phases. This helps
+        # avoid the need to persist transformed data between
+        # phases (when unnecessary).
+        cat_stat_tasks = []
+        cont_stat_tasks = []
+        new_phases = []
+        for idx, phase in enumerate(self.phases):
+            new_phase = []
+            for task in phase:
+                targ = task[1]  # E.g. "categorical"
+                deps = task[2]  # E.g. ["base"]
                 if isinstance(task[0], StatOperator):
                     if deps == ["base"]:
-                        stat_tasks.append(task)
+                        if targ == "categorical":
+                            cat_stat_tasks.append(task)
+                        else:
+                            cont_stat_tasks.append(task)
                     else:
-                        # This statistics depends on a transform
-                        # (Opt wont work)
-                        return
+                        # This stat op depends on a transform
+                        new_phase.append(task)
                 elif isinstance(task[0], TransformOperator):
-                    trans_tasks.append(task)
+                    new_phase.append(task)
+            if new_phase:
+                new_phases.append(new_phase)
 
-        self.phases[0] = stat_tasks
-        self.phases[1] = trans_tasks
+        # Construct new phases
+        self.phases = []
+        if cat_stat_tasks:
+            self.phases.append(cat_stat_tasks)
+        if cont_stat_tasks:
+            self.phases.append(cont_stat_tasks)
+        self.phases += new_phases
 
     def apply(
         self,
@@ -679,6 +718,7 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         out_files_per_proc=None,
         num_io_threads=0,
+        dtypes=None,
     ):
         """
         Runs all the preprocessing and feature engineering operators.
@@ -718,6 +758,9 @@ class Workflow(BaseWorkflow):
         num_io_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
         """
 
         # Check shuffle argument
@@ -738,6 +781,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
         else:
             self.iterate_online(
@@ -747,6 +791,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def iterate_online(
@@ -759,6 +804,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Iterate through dataset and (optionally) apply/shuffle/write."""
         # Check shuffle argument
@@ -778,8 +824,9 @@ class Workflow(BaseWorkflow):
 
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
-            for gdf in dataset.to_iter(shuffle=(shuffle is not None)):
-                self.apply_ops(gdf, output_path=output_path, writer=writer)
+            columns = self.columns_ctx["all"]["base"]
+            for gdf in dataset.to_iter(shuffle=(shuffle is not None), columns=columns):
+                self.apply_ops(gdf, output_path=output_path, writer=writer, dtypes=dtypes)
 
         # Close writer and write general/specialized metadata
         if writer:
@@ -809,6 +856,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Build Dask-task graph for workflow.
 
@@ -817,14 +865,14 @@ class Workflow(BaseWorkflow):
         # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
 
+        # Reorder tasks for two-phase workflows
+        # TODO: Generalize this type of optimization
+        self.reorder_tasks()
+
         end = end_phase if end_phase else len(self.phases)
 
         if output_format not in ("parquet", "hugectr", None):
             raise ValueError(f"Output format {output_format} not yet supported with Dask.")
-
-        # Reorder tasks for two-phase workflows
-        # TODO: Generalize this type of optimization
-        self.reorder_tasks(end)
 
         # Clear worker caches to be "safe"
         if self.client:
@@ -834,8 +882,16 @@ class Workflow(BaseWorkflow):
 
         self.set_ddf(dataset, shuffle=(shuffle is not None))
         if apply_ops:
+            self._base_phase = 0  # Set _base_phase
             for idx, _ in enumerate(self.phases[:end]):
-                self.exec_phase(idx, record_stats=record_stats)
+                self.exec_phase(idx, record_stats=record_stats, update_ddf=(idx == (end - 1)))
+            self._base_phase = 0  # Re-Set _base_phase
+
+        if dtypes:
+            ddf = self.get_ddf()
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            self.set_ddf(ddf.map_partitions(_set_dtypes, dtypes, meta=_meta))
+
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)
@@ -858,6 +914,7 @@ class Workflow(BaseWorkflow):
         iterate=False,
         nfiles=None,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Write data to shuffled parquet dataset.
 
@@ -882,6 +939,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
         else:
             self.build_and_process_graph(
@@ -893,6 +951,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def ddf_to_dataset(
