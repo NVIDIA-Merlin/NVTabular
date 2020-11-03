@@ -313,7 +313,7 @@ class DataLoader:
             gdf = workflow.apply_ops(gdf)
         split_idx = self._get_segment_lengths(len(gdf))
 
-        # map from big chunk to fraemwork specific tensors
+        # map from big chunk to framework-specific tensors
         chunks = self._create_tensors(gdf)
 
         # if we have any offsets, calculate nnzs up front
@@ -331,10 +331,10 @@ class DataLoader:
             if isinstance(chunk, tuple):
                 chunk, lists = chunk
 
-            if len(split_idx) > 1:
+            if len(split_idx) > 1 and chunk is not None:
                 chunk = self._split_fn(chunk, split_idx)
             else:
-                chunk = [chunk]
+                chunk = [chunk for _ in split_idx]
 
             if lists is not None:
                 num_list_columns = len(lists)

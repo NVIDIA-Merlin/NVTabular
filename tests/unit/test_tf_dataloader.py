@@ -16,6 +16,8 @@
 
 import pytest
 
+import numpy as np
+import cudf
 import nvtabular as nvt
 from nvtabular import ops as ops
 
@@ -31,7 +33,9 @@ tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("use_paths", [True, False])
-def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine):
+def test_tf_gpu_dl(
+    tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine
+):
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
     label_name = ["label"]
@@ -40,7 +44,9 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
     columns = cont_names + cat_names
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    )
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
@@ -69,7 +75,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
             X0, y0 = X, y
 
         # check that we have at most batch_size elements
-        num_samples = y[0].shape[0]
+        num_samples = y.shape[0]
         if num_samples != batch_size:
             try:
                 next(data_itr)
@@ -124,13 +130,23 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     assert data_itr._batch_itr is None
 
 
-@pytest.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [1, 2, 3])
 def test_mh_support(tmpdir, batch_size):
     data = {
         "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
-        "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+        "Reviewers": [
+            ["User_A"],
+            ["User_A", "User_E"],
+            ["User_B", "User_C"],
+            ["User_C"],
+        ],
         "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
-        "Embedding": [[0.1, 0.2, 0.3], [0.3, 0.4, 0.5], [0.6, 0.7, 0.8], [0.8, 0.4, 0.2]],
+        "Embedding": [
+            [0.1, 0.2, 0.3],
+            [0.3, 0.4, 0.5],
+            [0.6, 0.7, 0.8],
+            [0.8, 0.4, 0.2],
+        ],
         "Post": [1, 2, 3, 4],
     }
     df = cudf.DataFrame(data)
@@ -138,23 +154,26 @@ def test_mh_support(tmpdir, batch_size):
     cont_names = ["Embedding"]
     label_name = ["Post"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor = nvt.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    )
     processor.add_preprocess(ops.HashBucket(num_buckets=10))
     processor.finalize()
 
     data_itr = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(df),
-        batch_size,
         cat_names=cat_names,
         cont_names=cont_names,
         label_names=label_name,
         batch_size=batch_size,
-        shuffle=False
+        shuffle=False,
     )
+    data_itr.map(processor)
 
     idx = 0
     for X, y in data_itr:
         assert len(X) == 7
+        n_samples = y.shape[0]
 
         for mh_name in ["Authors", "Reviewers", "Embedding"]:
             for postfix in ["__nnzs", "__values"]:
@@ -165,12 +184,17 @@ def test_mh_support(tmpdir, batch_size):
                     if mh_name == "Embedding":
                         assert (array == 3).all()
                     else:
-                        lens = [len(x) for x in data[mh_name][idx*batch_size:(idx+1)*batch_size]]
+                        lens = [
+                            len(x)
+                            for x in data[mh_name][
+                                idx * batch_size : idx * batch_size + n_samples
+                            ]
+                        ]
                         assert (array == np.array(lens)).all()
                 else:
                     if mh_name == "Embedding":
-                        assert len(array) == (batch_size)*3
+                        assert len(array) == (n_samples * 3)
                     else:
                         assert len(array) == sum(lens)
         idx += 1
-    assert idx == 3
+    assert idx == (3 // batch_size + 1)
