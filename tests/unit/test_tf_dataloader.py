@@ -122,3 +122,46 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     data_itr.stop()
     assert not data_itr._working
     assert data_itr._batch_itr is None
+
+
+def test_mh_support(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Reviewers", "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.HashBucket(num_buckets=10))
+    processor.finalize()
+
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        nvt.Dataset(df),
+        batch_size,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_names=label_name,
+        batch_size=1,
+    )
+
+    idx = 0
+    for X, y in data_itr:
+        idx = idx + 1
+        assert len(batch) == 5
+
+        for mh_name in ["Authors", "Reviewers"]:
+            for postfix in ["__values", "__nnzs"]:
+                assert (mh_name + postfix) in X
+                array = X[mh_name + postfix].numpy()[:, 0]
+
+                if postfix == "__nnzs":
+                    assert (array == np.array([1, 2, 2, 1])).all()
+                else:
+                    assert len(array) == 6
+    assert idx == 3
