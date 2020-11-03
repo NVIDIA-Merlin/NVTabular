@@ -308,10 +308,6 @@ class LinearFeatures(tf.keras.layers.Layer):
     ----------
     feature_columns : list of tf.feature_column
         feature columns describing the inputs to the layer
-    sparse_aggregation : str in ("mean", "sqrtn", "sum")
-        how to aggregate embeddings from multi-valent categorical features.
-        See `tf.nn.embedding_lookup_sparse` documentation for details on
-        how this is used.
     """
 
     def __init__(self, feature_columns, name=None, **kwargs):
