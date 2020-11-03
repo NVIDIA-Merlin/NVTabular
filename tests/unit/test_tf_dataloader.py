@@ -113,8 +113,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
     # check start of next epoch to ensure consistency
     X, y = next(data_itr)
-    for _y, _y0 in zip(y, y0):
-        assert (_y.numpy() == _y0.numpy()).all()
+    assert (y.numpy() == y0.numpy()).all()
 
     for column, x in X.items():
         x0 = X0.pop(column)

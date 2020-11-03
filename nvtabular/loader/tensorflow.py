@@ -375,6 +375,7 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
                 y_pred = self.model(X)
                 score = metric(y, y_pred)
                 streaming_metric.update(score, n)
+
         for metric in streaming_metrics:
             logs["val_" + metric.name] = metric.value
         return logs

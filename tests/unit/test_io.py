@@ -266,7 +266,9 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
-def test_parquet_lists(tmpdir, freq_threshold):
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_PARTITION, None])
+@pytest.mark.parametrize("out_files_per_proc", [None, 2])
+def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -291,12 +293,13 @@ def test_parquet_lists(tmpdir, freq_threshold):
         nvt.Dataset(filename),
         output_format="parquet",
         output_path=output_dir,
+        shuffle=shuffle,
+        out_files_per_proc=out_files_per_proc,
     )
 
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
-    print(out_paths)
     df_out = cudf.read_parquet(out_paths)
-
+    df_out = df_out.sort_values(by="Post", ascending=True)
     assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
 
 
