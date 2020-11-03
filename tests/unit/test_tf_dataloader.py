@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 
+import cudf
+import numpy as np
 import pytest
 
-import numpy as np
-import cudf
 import nvtabular as nvt
 from nvtabular import ops as ops
 
