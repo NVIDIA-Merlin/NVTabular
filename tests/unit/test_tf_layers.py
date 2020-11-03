@@ -57,15 +57,11 @@ def test_dense_embedding_layer(aggregation, combiner):
     raw_good_columns = get_good_feature_columns()
     scalar_numeric, vector_numeric, one_hot, multi_hot = raw_good_columns
     one_hot_embedding = tf.feature_column.indicator_column(one_hot)
-    multi_hot_embedding = tf.feature_column.embedding_column(
-        multi_hot, 8, combiner=combiner
-    )
+    multi_hot_embedding = tf.feature_column.embedding_column(multi_hot, 8, combiner=combiner)
 
     # should raise ValueError if passed categorical columns
     with pytest.raises(ValueError):
-        embedding_layer = layers.DenseFeatures(
-            raw_good_columns, aggregation=aggregation
-        )
+        embedding_layer = layers.DenseFeatures(raw_good_columns, aggregation=aggregation)
 
     if aggregation == "stack":
         # can't pass numeric to stack aggregation unless dims are 1
@@ -86,28 +82,20 @@ def test_dense_embedding_layer(aggregation, combiner):
             )
 
         # reset b embedding to have matching dims
-        multi_hot_embedding = tf.feature_column.embedding_column(
-            multi_hot, 100, combiner=combiner
-        )
+        multi_hot_embedding = tf.feature_column.embedding_column(multi_hot, 100, combiner=combiner)
         cols = [one_hot_embedding, multi_hot_embedding]
     else:
         cols = [scalar_numeric, vector_numeric, one_hot_embedding, multi_hot_embedding]
 
     embedding_layer = layers.DenseFeatures(cols, aggregation=aggregation)
     inputs = {
-        "scalar_continuous": tf.keras.Input(
-            name="scalar_continuous", shape=(1,), dtype=tf.float32
-        ),
+        "scalar_continuous": tf.keras.Input(name="scalar_continuous", shape=(1,), dtype=tf.float32),
         "vector_continuous__values": tf.keras.Input(
             name="vector_continuous__values", shape=(1,), dtype=tf.float32
         ),
         "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
-        "multi_hot__values": tf.keras.Input(
-            name="multi_hot__values", shape=(1,), dtype=tf.int64
-        ),
-        "multi_hot__nnzs": tf.keras.Input(
-            name="multi_hot__nnzs", shape=(1,), dtype=tf.int64
-        ),
+        "multi_hot__values": tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
+        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
     }
     if aggregation == "stack":
         inputs.pop("scalar_continuous")
@@ -188,19 +176,13 @@ def test_linear_embedding_layer():
     embedding_layer = layers.LinearFeatures(raw_good_columns)
 
     inputs = {
-        "scalar_continuous": tf.keras.Input(
-            name="scalar_continuous", shape=(1,), dtype=tf.float32
-        ),
+        "scalar_continuous": tf.keras.Input(name="scalar_continuous", shape=(1,), dtype=tf.float32),
         "vector_continuous__values": tf.keras.Input(
             name="vector_continuous__values", shape=(1,), dtype=tf.float32
         ),
         "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
-        "multi_hot__values": tf.keras.Input(
-            name="multi_hot__values", shape=(1,), dtype=tf.int64
-        ),
-        "multi_hot__nnzs": tf.keras.Input(
-            name="multi_hot__nnzs", shape=(1,), dtype=tf.int64
-        ),
+        "multi_hot__values": tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
+        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
     }
 
     output = embedding_layer(inputs)
@@ -246,9 +228,7 @@ def test_linear_embedding_layer():
 
     rtol = 1e-6
     numeric = np.concatenate([scalar[:, None], vector], axis=1)
-    expected_y_hat = (
-        (numeric @ numeric_weight)[:, 0] + one_hot_weights + multi_hot_weights + bias
-    )
+    expected_y_hat = (numeric @ numeric_weight)[:, 0] + one_hot_weights + multi_hot_weights + bias
     assert np.isclose(y_hat, expected_y_hat, rtol=rtol).all()
 
     # make sure unusable columns get flagged
@@ -256,16 +236,12 @@ def test_linear_embedding_layer():
     with pytest.raises(ValueError):
         embedding_layer = layers.LinearFeatures([bad_col_a, one_hot_col, multi_hot_col])
     with pytest.raises(ValueError):
-        embedding_layer = layers.LinearFeatures(
-            [scalar_numeric, bad_col_b, multi_hot_col]
-        )
+        embedding_layer = layers.LinearFeatures([scalar_numeric, bad_col_b, multi_hot_col])
 
 
 @pytest.mark.parametrize("embedding_dim", [1, 4, 16])
 @pytest.mark.parametrize("num_features", [1, 16, 64])
-@pytest.mark.parametrize(
-    "interaction_type", [None, "field_all", "field_each", "field_interaction"]
-)
+@pytest.mark.parametrize("interaction_type", [None, "field_all", "field_each", "field_interaction"])
 @pytest.mark.parametrize("self_interaction", [True, False])
 def test_dot_product_interaction_layer(
     embedding_dim, num_features, interaction_type, self_interaction
@@ -273,9 +249,7 @@ def test_dot_product_interaction_layer(
     if num_features == 1 and not self_interaction:
         return
 
-    input = tf.keras.Input(
-        name="x", shape=(num_features, embedding_dim), dtype=tf.float32
-    )
+    input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
     interaction_layer = layers.DotProductInteraction(interaction_type, self_interaction)
     output = interaction_layer(input)
     model = tf.keras.Model(inputs=input, outputs=output)
