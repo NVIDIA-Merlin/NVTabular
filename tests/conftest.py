@@ -57,16 +57,14 @@ mynames = [
     "Zelda",
 ]
 
-_CLIENT = None
 _CUDA_CLUSTER = None
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
-    global _CLIENT
-    if _CLIENT is None:
-        _CLIENT = Client(LocalCluster(n_workers=2))
-    return _CLIENT
+    client = Client(LocalCluster(n_workers=2))
+    yield client
+    client.close()
 
 
 @contextlib.contextmanager
