@@ -305,8 +305,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
-        # else:
-        #     labels = [labels]
         return X, labels
 
 

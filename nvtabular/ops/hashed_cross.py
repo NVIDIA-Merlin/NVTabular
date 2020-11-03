@@ -52,6 +52,6 @@ class HashedCross(TransformOperator):
             val = 0
             for column in columns:
                 val ^= gdf[column].hash_values()  # or however we want to do this aggregation
-            val = cudf.Series(val).hash_values() % bucket_size
+            val = val % bucket_size
             new_gdf["_X_".join(columns)] = val
         return new_gdf
