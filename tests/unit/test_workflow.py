@@ -461,11 +461,11 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
 
     df = pd.DataFrame(
         {
-            "cont1": np.arange(size),
-            "cont2": np.arange(size),
-            "cat1": np.arange(size),
-            "cat2": np.arange(size),
-            "label": np.arange(size),
+            "cont1": np.arange(size, dtype=np.float64),
+            "cont2": np.arange(size, dtype=np.float64),
+            "cat1": np.arange(size, dtype=np.int32),
+            "cat2": np.arange(size, dtype=np.int32),
+            "label": np.arange(size, dtype=np.float64),
         }
     )
     df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
