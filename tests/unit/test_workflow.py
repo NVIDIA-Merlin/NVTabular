@@ -490,9 +490,16 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     for col in label_column:
         dict_dtypes[col] = np.int64
 
+    if not apply_offline:
+        processor.apply(
+            dataset,
+            output_format=None,
+            record_stats=True,
+        )
     processor.apply(
         dataset,
         apply_offline=apply_offline,
+        record_stats=apply_offline,
         output_path=out_path,
         shuffle=shuffle,
         out_files_per_proc=out_files_per_proc,

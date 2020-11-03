@@ -20,7 +20,6 @@ import warnings
 
 import dask
 import dask_cudf
-import numpy as np
 import yaml
 from fsspec.core import get_fs_token_paths
 
@@ -512,7 +511,7 @@ class BaseWorkflow:
 
                 start_write = time.time()
                 # Special dtype conversion
-                gdf = _set_dtypes(dtypes)
+                gdf = _set_dtypes(gdf, dtypes)
                 writer.add_data(gdf)
                 self.timings["write_df"] += time.time() - start_write
 
@@ -825,7 +824,8 @@ class Workflow(BaseWorkflow):
 
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
-            for gdf in dataset.to_iter(shuffle=(shuffle is not None)):
+            columns = self.columns_ctx["all"]["base"]
+            for gdf in dataset.to_iter(shuffle=(shuffle is not None), columns=columns):
                 self.apply_ops(gdf, output_path=output_path, writer=writer, dtypes=dtypes)
 
         # Close writer and write general/specialized metadata
