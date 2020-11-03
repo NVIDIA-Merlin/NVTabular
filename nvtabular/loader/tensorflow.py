@@ -305,8 +305,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
-        else:
-            labels = [labels]
         return X, labels
 
 
@@ -332,7 +330,11 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
         streaming_metrics = [_StreamingMetric(name) for name in self.model.metrics_names]
         for X, y in self.dataloader:
-            n = y[0].shape[0]
+            if isinstance(y, tf.Tensor):
+                n = y.shape[0]
+            else:
+                n = y[0].shape[0]
+
             scores = self.model.evaluate(X, y, batch_size=n, verbose=0)
             for metric, score in zip(streaming_metrics, scores):
                 metric.update(score, n)
