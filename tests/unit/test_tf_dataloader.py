@@ -33,9 +33,7 @@ tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("use_paths", [True, False])
-def test_tf_gpu_dl(
-    tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine
-):
+def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine):
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
     label_name = ["label"]
@@ -44,9 +42,7 @@ def test_tf_gpu_dl(
 
     columns = cont_names + cat_names
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
     processor.add_feature([ops.FillMedian()])
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
@@ -154,9 +150,7 @@ def test_mh_support(tmpdir, batch_size):
     cont_names = ["Embedding"]
     label_name = ["Post"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name
-    )
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
     processor.add_preprocess(ops.HashBucket(num_buckets=10))
     processor.finalize()
 
@@ -186,9 +180,7 @@ def test_mh_support(tmpdir, batch_size):
                     else:
                         lens = [
                             len(x)
-                            for x in data[mh_name][
-                                idx * batch_size : idx * batch_size + n_samples
-                            ]
+                            for x in data[mh_name][idx * batch_size : idx * batch_size + n_samples]
                         ]
                         assert (array == np.array(lens)).all()
                 else:
