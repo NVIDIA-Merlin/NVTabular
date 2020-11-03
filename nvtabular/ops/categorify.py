@@ -207,7 +207,7 @@ class Categorify(DFOperator):
             )
         if num_buckets:
             if isinstance(num_buckets, dict):
-                columns = [i for i in num_buckets.keys()]
+                columns = list(num_buckets)
                 self.num_buckets = num_buckets
             elif isinstance(num_buckets, (tuple, list)):
                 assert columns is not None
