@@ -805,8 +805,6 @@ def _encode(
     if buckets:
         if isinstance(buckets, int):
             buckets = {name: buckets for name in gdf.columns}
-        else:
-            buckets = buckets
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
