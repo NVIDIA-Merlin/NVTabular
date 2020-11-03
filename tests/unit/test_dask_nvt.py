@@ -319,7 +319,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine):
     processor = Workflow(
         client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
     )
-    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess([ops.FillMissing(), ops.Normalize()])
     processor.finalize()
 
     dataset = Dataset(paths, engine)

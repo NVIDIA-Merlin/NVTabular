@@ -200,7 +200,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
     label_name = ["Post"]
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
+    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
     processor.add_preprocess(
         ops.TargetEncoding(
             cat_groups,
@@ -983,10 +983,16 @@ def test_difference_lag():
     columns_ctx["all"] = {}
     columns_ctx["all"]["base"] = columns
 
-    op = ops.DifferenceLag("userid", columns=["timestamp"])
+    op = ops.DifferenceLag("userid", shift=[1, -1], columns=["timestamp"])
     new_gdf = op.apply_op(df, columns_ctx, "all", target_cols=["timestamp"])
 
-    assert new_gdf["timestamp_DifferenceLag"][0] is None
-    assert new_gdf["timestamp_DifferenceLag"][1] == 5
-    assert new_gdf["timestamp_DifferenceLag"][2] == 95
-    assert new_gdf["timestamp_DifferenceLag"][3] is None
+    assert new_gdf["timestamp_DifferenceLag_1"][0] is None
+    assert new_gdf["timestamp_DifferenceLag_1"][1] == 5
+    assert new_gdf["timestamp_DifferenceLag_1"][2] == 95
+    assert new_gdf["timestamp_DifferenceLag_1"][3] is None
+
+    assert new_gdf["timestamp_DifferenceLag_-1"][0] == -5
+    assert new_gdf["timestamp_DifferenceLag_-1"][1] == -95
+    assert new_gdf["timestamp_DifferenceLag_-1"][2] is None
+    assert new_gdf["timestamp_DifferenceLag_-1"][3] == -1
+    assert new_gdf["timestamp_DifferenceLag_-1"][5] is None
