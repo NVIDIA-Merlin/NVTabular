@@ -359,8 +359,7 @@ class LinearFeatures(tf.keras.layers.Layer):
         numeric_inputs = []
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
-                x = _handle_continuous_feature(inputs, feature_column)
-                numeric_inputs.append(x)
+                numeric_inputs.append(_handle_continuous_feature(inputs, feature_column))
             else:
                 table = self.embedding_tables[feature_column.key]
                 embeddings = _categorical_embedding_lookup(table, inputs, feature_column.key, "sum")
