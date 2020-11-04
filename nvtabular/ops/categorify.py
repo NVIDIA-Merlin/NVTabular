@@ -224,6 +224,7 @@ class Categorify(DFOperator):
             self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
         elif isinstance(num_buckets, int) or num_buckets is None:
             self.num_buckets = num_buckets
+            print(self.num_buckets)
         elif num_buckets == 0 or 0 in num_buckets:
             raise ValueError(
                 "For hashing num_buckets should be an int > 1, otherwise set it to None."
@@ -851,22 +852,23 @@ def _encode(
                     if c in buckets:
                         codes[c + "_hashed"] = _hash_bucket(gdf, buckets, c)
         # apply frequency hashing
-        if freq_threshold and name in buckets:
-            merged_df = codes.merge(
-                value, left_on=selection_l, right_on=selection_r, how="left"
-            ).sort_values("order")
-            max_id = merged_df["labels"].max()
-            merged_df["labels"].fillna(na_sentinel, inplace=True)
-            merged_df.loc[merged_df["labels"] == 0, ["labels"]] = (
-                merged_df.loc[merged_df["labels"] == 0, [name + "_hashed"]].values + max_id + 1
-            )
-            labels = merged_df["labels"].values
+        if freq_threshold and buckets:
+            if name in buckets:
+                merged_df = codes.merge(
+                    value, left_on=selection_l, right_on=selection_r, how="left"
+                ).sort_values("order")
+                max_id = merged_df["labels"].max()
+                merged_df["labels"].fillna(na_sentinel, inplace=True)
+                merged_df.loc[merged_df["labels"] == 0, ["labels"]] = (
+                    merged_df.loc[merged_df["labels"] == 0, [name + "_hashed"]].values + max_id + 1
+                )
+                labels = merged_df["labels"].values
         # only do hashing
         elif buckets:
             if name in buckets:
                 labels = codes[name + "_hashed"].values
         # no hashing
-        if name not in buckets:
+        if not buckets or name not in buckets:
             labels = codes.merge(
                 value, left_on=selection_l, right_on=selection_r, how="left"
             ).sort_values("order")["labels"]
