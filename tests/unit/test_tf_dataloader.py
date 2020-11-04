@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+import cudf
+import numpy as np
 import pytest
 
 import nvtabular as nvt
@@ -121,3 +123,69 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
     data_itr.stop()
     assert not data_itr._working
     assert data_itr._batch_itr is None
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 3])
+def test_mh_support(tmpdir, batch_size):
+    data = {
+        "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+        "Reviewers": [
+            ["User_A"],
+            ["User_A", "User_E"],
+            ["User_B", "User_C"],
+            ["User_C"],
+        ],
+        "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+        "Embedding": [
+            [0.1, 0.2, 0.3],
+            [0.3, 0.4, 0.5],
+            [0.6, 0.7, 0.8],
+            [0.8, 0.4, 0.2],
+        ],
+        "Post": [1, 2, 3, 4],
+    }
+    df = cudf.DataFrame(data)
+    cat_names = ["Authors", "Reviewers", "Engaging User"]
+    cont_names = ["Embedding"]
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.HashBucket(num_buckets=10))
+    processor.finalize()
+
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        nvt.Dataset(df),
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_names=label_name,
+        batch_size=batch_size,
+        shuffle=False,
+    )
+    data_itr.map(processor)
+
+    idx = 0
+    for X, y in data_itr:
+        assert len(X) == 7
+        n_samples = y.shape[0]
+
+        for mh_name in ["Authors", "Reviewers", "Embedding"]:
+            for postfix in ["__nnzs", "__values"]:
+                assert (mh_name + postfix) in X
+                array = X[mh_name + postfix].numpy()[:, 0]
+
+                if postfix == "__nnzs":
+                    if mh_name == "Embedding":
+                        assert (array == 3).all()
+                    else:
+                        lens = [
+                            len(x)
+                            for x in data[mh_name][idx * batch_size : idx * batch_size + n_samples]
+                        ]
+                        assert (array == np.array(lens)).all()
+                else:
+                    if mh_name == "Embedding":
+                        assert len(array) == (n_samples * 3)
+                    else:
+                        assert len(array) == sum(lens)
+        idx += 1
+    assert idx == (3 // batch_size + 1)

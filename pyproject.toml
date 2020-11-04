@@ -2,6 +2,11 @@
 line-length = 100
 
 [tool.isort]
+use_parentheses = true
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+ensure_newline_before_comments = true
 line_length = 100
 balanced_wrapping = true
 indent = "    "

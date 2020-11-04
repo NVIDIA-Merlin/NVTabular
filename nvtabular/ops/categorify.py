@@ -265,6 +265,11 @@ class Categorify(DFOperator):
             else:
                 storage_name = name
             path = stats_context[self.stat_name][storage_name]
+            if not self.column_groups and _is_list_col([name], gdf):
+                if "mh" not in columns_ctx["categorical"]:
+                    columns_ctx["categorical"]["mh"] = []
+                if name not in columns_ctx["categorical"]["mh"]:
+                    columns_ctx["categorical"]["mh"].append(name)
             new_gdf[new_col] = _encode(
                 use_name,
                 storage_name,
@@ -303,8 +308,16 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(workflow):
+    mh_cols = None
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    return _get_embeddings_dask(workflow.stats["categories"], cols)
+    if "mh" in workflow.columns_ctx["categorical"]:
+        mh_cols = _get_embedding_order(workflow.columns_ctx["categorical"]["mh"])
+        for col in mh_cols:
+            cols.remove(col)
+    res = _get_embeddings_dask(workflow.stats["categories"], cols)
+    if mh_cols:
+        res = res, _get_embeddings_dask(workflow.stats["categories"], mh_cols)
+    return res
 
 
 def _get_embeddings_dask(paths, cat_names):
