@@ -122,6 +122,8 @@ class HashBucket(TransformOperator):
             new_col = f"{col}_{self._id}"
             if is_list_dtype(gdf[col].dtype):
                 encoded = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
+            elif gdf[col].dtype == np.int32 or  gdf[col].dtype == np.int64:
+                encoded = gdf[col] % nb
             else:
                 encoded = gdf[col].hash_values() % nb
 
