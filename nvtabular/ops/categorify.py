@@ -844,6 +844,9 @@ def _encode(
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
+            if buckets:
+                if selection_l[0] in buckets:
+                    codes[selection_l[0] + "_hashed"] = _hash_bucket(gdf, buckets, selection_l[0])
         else:
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
             for c in selection_l:
