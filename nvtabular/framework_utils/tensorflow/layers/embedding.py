@@ -28,10 +28,6 @@ def _validate_numeric_column(feature_column):
         return "Matrix numeric features are not allowed, " "found feature {} with shape {}".format(
             feature_column.key, feature_column.shape
         )
-    elif feature_column.shape[0] != 1:
-        return "Vector numeric features are not allowed, " "found feature {} with shape {}".format(
-            feature_column.key, feature_column.shape
-        )
 
 
 def _validate_categorical_column(feature_column):
@@ -58,7 +54,7 @@ def _validate_dense_feature_columns(feature_columns):
                 )
             else:
                 _errors.append(
-                    "Found bucketized column {}. ScalarDenseFeatures layer "
+                    "Found bucketized column {}. DenseFeatures layer "
                     "cannot apply bucketization preprocessing. Consider using "
                     "NVTabular to do preprocessing offline".format(feature_column.name)
                 )
@@ -70,7 +66,7 @@ def _validate_dense_feature_columns(feature_columns):
 
     _errors = list(filter(lambda e: e is not None, _errors))
     if len(_errors) > 0:
-        msg = "Found issues with columns passed to ScalarDenseFeatures:"
+        msg = "Found issues with columns passed to DenseFeatures:"
         msg += "\n\t".join(_errors)
         raise ValueError(_errors)
 
@@ -97,11 +93,49 @@ def _validate_stack_dimensions(feature_columns):
         )
 
 
-class ScalarDenseFeatures(tf.keras.layers.Layer):
+def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
+    # check for sparse embeddings by name
+    if feature_name + "__values" in inputs:
+        if feature_name in inputs:
+            raise ValueError(
+                "Feature {} has both a dense entry and a sparse entry "
+                "with __values postfix in input dict. If {}__values "
+                "is another dense feature, please rename your features"
+                "as this syntax is reserved for identifying multi-valent"
+                "categorical variables".format(feature_name, feature_name)
+            )
+        if feature_name + "__nnzs" not in inputs:
+            raise ValueError(
+                "Feature {} had __values entry in input dictionary, "
+                "but no __nnzs entry. Make sure all the relevant data "
+                "is being passed".format(feature_name)
+            )
+
+        # build values and nnz tensors into ragged array, convert to sparse
+        values = inputs[feature_name + "__values"][:, 0]
+        row_lengths = inputs[feature_name + "__nnzs"][:, 0]
+        x = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
+
+        # use ragged array for sparse embedding lookup
+        embeddings = tf.nn.embedding_lookup_sparse(table, x, None, combiner=combiner)
+    else:
+        embeddings = tf.gather(table, inputs[feature_name][:, 0])
+
+    return embeddings
+
+
+def _handle_continuous_feature(inputs, feature_column):
+    if feature_column.shape[0] > 1:
+        x = inputs[feature_column.name + "__values"]
+        return tf.reshape(x, (-1, feature_column.shape[0]))
+    return inputs[feature_column.name]
+
+
+class DenseFeatures(tf.keras.layers.Layer):
     """
-    Layer which maps one-hot categorical and scalar numeric features to
-    a dense embedding. Meant to reproduce the API exposed by
-    `tf.keras.layers.DenseFeatures` while reducing overhead for the
+    Layer which maps a dictionary of input tensors to a dense, continuous
+    vector digestible by a neural network. Meant to reproduce the API exposed
+    by `tf.keras.layers.DenseFeatures` while reducing overhead for the
     case of one-hot categorical and scalar numeric features.
 
     Uses TensorFlow `feature_column`s to represent inputs to the layer, but
@@ -110,7 +144,14 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
     `embedding_column` and `indicator_column`. Preprocessing functionality should
     be moved to NVTabular.
 
-    Note that caategorical columns should be wrapped in embedding or
+    For multi-hot categorical or vector continuous data, represent the data for
+    a feature with a dictionary entry `"<feature_name>__values"` corresponding
+    to the flattened array of all values in the batch. For multi-hot categorical
+    data, there should be a corresponding `"<feature_name>__nnzs" entry that
+    describes how many categories are present in each sample (and so has length
+    `batch_size`).
+
+    Note that categorical columns should be wrapped in embedding or
     indicator columns first, consistent with the API used by
     `tf.keras.layers.DenseFeatures`.
 
@@ -124,12 +165,14 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
             "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
             "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64)
         }
-        x = ScalarDenseFeatures([column_a, column_b_embedding])(inputs)
+        x = DenseFeatures([column_a, column_b_embedding])(inputs)
 
     Parameters
     ----------
     feature_columns : list of `tf.feature_column`
         feature columns describing the inputs to the layer
+    aggregation : str in ("concat", "stack")
+        how to combine the embeddings from multiple features
     """
 
     def __init__(self, feature_columns, aggregation="concat", name=None, **kwargs):
@@ -137,13 +180,16 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
         feature_columns = _sort_columns(feature_columns)
         _validate_dense_feature_columns(feature_columns)
 
-        assert aggregation in ("concat", "stack")
         if aggregation == "stack":
             _validate_stack_dimensions(feature_columns)
+        elif aggregation != "concat":
+            raise ValueError(
+                "Unrecognized aggregation {}, must be stack or concat".format(aggregation)
+            )
 
         self.feature_columns = feature_columns
         self.aggregation = aggregation
-        super(ScalarDenseFeatures, self).__init__(name=name, **kwargs)
+        super(DenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
         assert all(shape[1] == 1 for shape in input_shapes.values())
@@ -175,11 +221,13 @@ class ScalarDenseFeatures(tf.keras.layers.Layer):
         features = []
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
-                features.append(inputs[feature_column.name])
+                x = _handle_continuous_feature(inputs, feature_column)
+                features.append(x)
             else:
                 feature_name = feature_column.categorical_column.name
                 table = self.embedding_tables[feature_name]
-                embeddings = tf.gather(table, inputs[feature_name][:, 0])
+                combiner = getattr(feature_column, "combiner", "sum")
+                embeddings = _categorical_embedding_lookup(table, inputs, feature_name, combiner)
                 features.append(embeddings)
 
         if self.aggregation == "stack":
@@ -230,7 +278,7 @@ def _validate_linear_feature_columns(feature_columns):
 # embeddings and the numeric matmul, both of which seem
 # reasonably easy to check. At the very least, we should
 # be able to subclass I think?
-class ScalarLinearFeatures(tf.keras.layers.Layer):
+class LinearFeatures(tf.keras.layers.Layer):
     """
     Layer which implements a linear combination of one-hot categorical
     and scalar numeric features. Based on the "wide" branch of the Wide & Deep
@@ -267,7 +315,7 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
         _validate_linear_feature_columns(feature_columns)
 
         self.feature_columns = feature_columns
-        super(ScalarLinearFeatures, self).__init__(name=name, **kwargs)
+        super(LinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
         assert all(shape[1] == 1 for shape in input_shapes.values())
@@ -307,10 +355,11 @@ class ScalarLinearFeatures(tf.keras.layers.Layer):
         numeric_inputs = []
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
-                numeric_inputs.append(inputs[feature_column.key])
+                numeric_inputs.append(_handle_continuous_feature(inputs, feature_column))
             else:
                 table = self.embedding_tables[feature_column.key]
-                x = x + tf.gather(table, inputs[feature_column.key][:, 0])
+                embeddings = _categorical_embedding_lookup(table, inputs, feature_column.key, "sum")
+                x = x + embeddings
 
         if len(numeric_inputs) > 0:
             numerics = tf.concat(numeric_inputs, axis=1)

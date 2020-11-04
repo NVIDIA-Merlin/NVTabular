@@ -747,7 +747,6 @@ def test_categorify_multi(tmpdir, groups, kind):
 
 
 def test_categorify_multi_combo(tmpdir):
-
     groups = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
     df = pd.DataFrame(
@@ -996,3 +995,60 @@ def test_difference_lag():
     assert new_gdf["timestamp_DifferenceLag_-1"][2] is None
     assert new_gdf["timestamp_DifferenceLag_-1"][3] == -1
     assert new_gdf["timestamp_DifferenceLag_-1"][5] is None
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("use_dict", [True, False])
+def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, use_dict):
+    # TODO: add tests for > 2 features, multiple crosses, etc.
+    cat_names = ("name-string", "id")
+    num_buckets = 10
+
+    if use_dict:
+        hashed_cross_op = ops.HashedCross({cat_names: num_buckets})
+    else:
+        hashed_cross_op = ops.HashedCross([cat_names], [num_buckets])
+
+    columns_ctx = {}
+    columns_ctx["categorical"] = {}
+    columns_ctx["categorical"]["base"] = list(cat_names)
+
+    # check sums for determinancy
+    checksums = []
+    for gdf in dataset.to_iter():
+        new_gdf = hashed_cross_op.apply_op(gdf, columns_ctx, "categorical")
+        new_column_name = "_X_".join(cat_names)
+        assert np.all(new_gdf[new_column_name].values >= 0)
+        assert np.all(new_gdf[new_column_name].values <= 9)
+        checksums.append(new_gdf[new_column_name].sum())
+
+    for checksum, gdf in zip(checksums, dataset.to_iter()):
+        new_gdf = hashed_cross_op.apply_op(gdf, columns_ctx, "categorical")
+        assert new_gdf[new_column_name].sum() == checksum
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("use_dict", [True, False])
+def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, use_dict):
+    cont_names = ["x", "y"]
+    boundaries = [[-1, 0, 1], [-4, 100]]
+
+    if use_dict:
+        bucketize_op = ops.Bucketize(
+            {name: boundary for name, boundary in zip(cont_names, boundaries)}
+        )
+    else:
+        bucketize_op = ops.Bucketize(boundaries, cont_names)
+
+    columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = list(cont_names)
+    for gdf in dataset.to_iter():
+        new_gdf = bucketize_op.apply_op(gdf, columns_ctx, "continuous")
+        for col, bs in zip(cont_names, boundaries):
+            assert np.all(new_gdf[col].values >= 0)
+            assert np.all(new_gdf[col].values <= len(bs))
+            # TODO: add checks for correctness here that don't just
+            # repeat the existing logic
