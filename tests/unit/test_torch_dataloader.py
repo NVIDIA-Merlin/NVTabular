@@ -24,13 +24,14 @@ from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 from nvtabular import ops as ops
+from nvtabular.framework_utils.torch.models import Model
+from nvtabular.framework_utils.torch.utils import process_epoch
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
-
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
@@ -220,3 +221,110 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
             "time",
             stop - start,
         )
+
+
+def test_mh_support(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Reviewers"]  # , "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.HashBucket(num_buckets=10))
+    processor.finalize()
+    processor.apply(nvt.Dataset(df), output_format=None)
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    # check to make sure that the same strings are hashed the same
+    authors = df_out["Authors"].to_arrow().to_pylist()
+    assert authors[0][0] == authors[1][0]  # 'User_A'
+    assert authors[2][1] == authors[3][0]  # 'User_C'
+
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name
+    )
+    idx = 0
+    for batch in data_itr:
+        idx = idx + 1
+        cats, conts, labels = batch
+        cats, mh = cats
+        # mh is a tuple of dictionaries {Column name: (values, offsets)}
+        assert len(mh) == len(cat_names)
+        assert not cats
+    assert idx > 0
+
+
+def test_mh_model_support(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Null User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+            "Cont1": [0.3, 0.4, 0.5, 0.6],
+            "Cont2": [0.3, 0.4, 0.5, 0.6],
+            "Cat1": ["A", "B", "A", "C"],
+        }
+    )
+    cat_names = ["Cat1", "Null User", "Authors", "Reviewers"]  # , "Engaging User"]
+    cont_names = ["Cont1", "Cont2"]
+    label_name = ["Post"]
+    out_path = os.path.join(tmpdir, "train/")
+    os.mkdir(out_path)
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess(ops.Categorify())
+    processor.finalize()
+    processor.apply(
+        nvt.Dataset(df),
+        record_stats=True,
+    )
+    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out),
+        cats=cat_names,
+        conts=cont_names,
+        labels=label_name,
+        batch_size=2,
+    )
+    emb_sizes = nvt.ops.get_embedding_sizes(processor)
+    EMBEDDING_DROPOUT_RATE = 0.04
+    DROPOUT_RATES = [0.001, 0.01]
+    HIDDEN_DIMS = [1000, 500]
+    LEARNING_RATE = 0.001
+    model = Model(
+        embedding_table_shapes=emb_sizes,
+        num_continuous=len(cont_names),
+        emb_dropout=EMBEDDING_DROPOUT_RATE,
+        layer_hidden_dims=HIDDEN_DIMS,
+        layer_dropout_rates=DROPOUT_RATES,
+    ).cuda()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    def rmspe_func(y_pred, y):
+        "Return y_pred and y to non-log space and compute RMSPE"
+        y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
+        pct_var = (y_pred - y) / y
+        return (pct_var ** 2).mean().pow(0.5)
+
+    train_loss, y_pred, y = process_epoch(
+        data_itr,
+        model,
+        train=True,
+        optimizer=optimizer,
+        # transform=batch_transform,
+        amp=False,
+    )
+    train_rmspe = None
+    train_rmspe = rmspe_func(y_pred, y)
+    assert train_rmspe is not None
+    assert len(y_pred) > 0
+    assert len(y) > 0

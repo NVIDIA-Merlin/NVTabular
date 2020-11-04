@@ -17,8 +17,6 @@ import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
 
-from nvtabular.ops import _get_embedding_order
-
 from .backend import DataLoader
 
 
@@ -94,34 +92,20 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return torch.cuda.device("cuda:{}".format(dev))
 
     def _to_tensor(self, gdf, dtype=None):
-        if gdf.empty:
-            return
         dl_pack = gdf.to_dlpack()
-        # keep next two lines separated, hurts perf, casts incorrectly
-        tens = from_dlpack(dl_pack)
-        tens = tens.type(dtype)
-        return tens
+        tensor = from_dlpack(dl_pack)
+        return tensor.type(dtype)
 
-    # TODO: do we need casting or can we replace this with
-    # parent class version?
-    def _create_tensors(self, gdf):
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(self.cat_names)],
-            gdf[self.cont_names],
-            gdf[self.label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats, torch.long)
-        conts = self._to_tensor(gdf_conts, torch.float32)
-        label = self._to_tensor(gdf_label, torch.float32)
-        del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
+    def _split_fn(self, tensor, idx, axis=0):
+        return torch.split(tensor, idx, dim=axis)
 
-    def _create_batch(self, tensor, num_samples):
-        if tensor is None:
-            return [[] * num_samples]
-        idx = self._get_segment_lengths(num_samples)
-        return torch.split(tensor, idx)
+    @property
+    def _LONG_DTYPE(self):
+        return torch.long
+
+    @property
+    def _FLOAT32_DTYPE(self):
+        return torch.float32
 
 
 class DLDataLoader(torch.utils.data.DataLoader):

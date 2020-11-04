@@ -442,3 +442,71 @@ def test_chaining_3():
     assert all(
         x in result.columns for x in ["ad_id_count", "ad_id_clicked_sum_ctr", "ad_id_clicked_sum"]
     )
+
+
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, nvt.io.Shuffle.PER_PARTITION, None])
+@pytest.mark.parametrize("use_client", [True, False])
+@pytest.mark.parametrize("apply_offline", [True, False])
+def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
+    out_files_per_proc = 2
+    out_path = str(tmpdir.mkdir("processed"))
+    path = str(tmpdir.join("simple.parquet"))
+
+    size = 25
+    row_group_size = 5
+
+    cont_columns = ["cont1", "cont2"]
+    cat_columns = ["cat1", "cat2"]
+    label_column = ["label"]
+
+    df = pd.DataFrame(
+        {
+            "cont1": np.arange(size, dtype=np.float64),
+            "cont2": np.arange(size, dtype=np.float64),
+            "cat1": np.arange(size, dtype=np.int32),
+            "cat2": np.arange(size, dtype=np.int32),
+            "label": np.arange(size, dtype=np.float64),
+        }
+    )
+    df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
+
+    dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
+    processor = nvt.Workflow(
+        cat_names=cat_columns,
+        cont_names=cont_columns,
+        label_name=label_column,
+        client=client if use_client else None,
+    )
+    processor.add_cont_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
+    processor.add_cat_preprocess(ops.Categorify())
+
+    processor.finalize()
+    # Force dtypes
+    dict_dtypes = {}
+    for col in cont_columns:
+        dict_dtypes[col] = np.float32
+    for col in cat_columns:
+        dict_dtypes[col] = np.float32
+    for col in label_column:
+        dict_dtypes[col] = np.int64
+
+    if not apply_offline:
+        processor.apply(
+            dataset,
+            output_format=None,
+            record_stats=True,
+        )
+    processor.apply(
+        dataset,
+        apply_offline=apply_offline,
+        record_stats=apply_offline,
+        output_path=out_path,
+        shuffle=shuffle,
+        out_files_per_proc=out_files_per_proc,
+        dtypes=dict_dtypes,
+    )
+
+    # Check dtypes
+    for filename in glob.glob(os.path.join(out_path, "*.parquet")):
+        gdf = cudf.io.read_parquet(filename)
+        assert dict(gdf.dtypes) == dict_dtypes

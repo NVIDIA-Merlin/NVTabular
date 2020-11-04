@@ -15,7 +15,7 @@
 #
 import torch
 
-from nvtabular.framework_utils.torch.layers import ConcatenatedEmbeddings
+from nvtabular.framework_utils.torch.layers import ConcatenatedEmbeddings, MultiHotEmbeddings
 
 
 class Model(torch.nn.Module):
@@ -47,13 +47,21 @@ class Model(torch.nn.Module):
         layer_hidden_dims,
         layer_dropout_rates,
         max_output=None,
+        bag_mode="sum",
     ):
         super().__init__()
         self.max_output = max_output
+        mh_shapes = None
+        if isinstance(embedding_table_shapes, tuple):
+            embedding_table_shapes, mh_shapes = embedding_table_shapes
         self.initial_cat_layer = ConcatenatedEmbeddings(embedding_table_shapes, dropout=emb_dropout)
+        if mh_shapes:
+            self.mh_cat_layer = MultiHotEmbeddings(mh_shapes, dropout=emb_dropout, mode=bag_mode)
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
 
         embedding_size = sum(emb_size for _, emb_size in embedding_table_shapes.values())
+        if mh_shapes is not None:
+            embedding_size = embedding_size + sum(emb_size for _, emb_size in mh_shapes.values())
         layer_input_sizes = [embedding_size + num_continuous] + layer_hidden_dims[:-1]
         layer_output_sizes = layer_hidden_dims
         self.layers = torch.nn.ModuleList(
@@ -71,9 +79,17 @@ class Model(torch.nn.Module):
         self.output_layer = torch.nn.Linear(layer_output_sizes[-1], 1)
 
     def forward(self, x_cat, x_cont):
+        mh_cat = None
+        if isinstance(x_cat, tuple):
+            x_cat, mh_cat = x_cat
+        if mh_cat:
+            mh_cat = self.mh_cat_layer(mh_cat)
         x_cat = self.initial_cat_layer(x_cat)
         x_cont = self.initial_cont_layer(x_cont)
-        x = torch.cat([x_cat, x_cont], 1)
+        if mh_cat is not None:
+            x = torch.cat([x_cat, x_cont, mh_cat], 1)
+        else:
+            x = torch.cat([x_cat, x_cont], 1)
         for layer in self.layers:
             x = layer(x)
         x = self.output_layer(x)

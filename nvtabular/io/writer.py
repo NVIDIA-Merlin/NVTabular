@@ -124,7 +124,7 @@ class ThreadedWriter(Writer):
         # this restriction can be removed once cudf supports chunked writing
         # in parquet
         if any(is_list_dtype(gdf[col].dtype) for col in gdf.columns):
-            self._write_table(gdf, 0, True)
+            self._write_table(0, gdf, True)
             return
 
         # Generate `ind` array to map each row to an output file.
