@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 import cudf
+import numpy as np
 from cudf.utils.dtypes import is_list_dtype
+
 from nvtx import annotate
 
 from .categorify import _encode_list_column
@@ -122,7 +124,7 @@ class HashBucket(TransformOperator):
             new_col = f"{col}_{self._id}"
             if is_list_dtype(gdf[col].dtype):
                 encoded = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
-            elif gdf[col].dtype == np.int32 or  gdf[col].dtype == np.int64:
+            elif gdf[col].dtype == np.int32 or gdf[col].dtype == np.int64:
                 encoded = gdf[col] % nb
             else:
                 encoded = gdf[col].hash_values() % nb
