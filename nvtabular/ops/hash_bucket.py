@@ -16,7 +16,6 @@
 import cudf
 import numpy as np
 from cudf.utils.dtypes import is_list_dtype
-
 from nvtx import annotate
 
 from .categorify import _encode_list_column
