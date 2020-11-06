@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import cudf
-import numpy as np
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
@@ -122,11 +121,17 @@ class HashBucket(TransformOperator):
         for col, nb in num_buckets.items():
             new_col = f"{col}_{self._id}"
             if is_list_dtype(gdf[col].dtype):
-                encoded = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
-            elif gdf[col].dtype == np.int32 or gdf[col].dtype == np.int64:
-                encoded = gdf[col] % nb
+                encoded = _encode_list_column(gdf[col], _hash_values(gdf[col].list.leaves) % nb)
             else:
-                encoded = gdf[col].hash_values() % nb
+                encoded = _hash_values(gdf[col]) % nb
 
             new_gdf[new_col] = encoded
         return new_gdf
+
+
+def _hash_values(col):
+    # Adding because of cudf hashing integers will be spread out over the complete range
+    # https://github.com/NVIDIA/NVTabular/issues/402
+    if col.dtype.kind in ["u", "i"]:
+        return col
+    return col.hash_values()

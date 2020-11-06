@@ -377,6 +377,23 @@ def test_hash_bucket_lists(tmpdir):
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
 
+@pytest.mark.parametrize("sign", ["uint", "int"])
+@pytest.mark.parametrize("size", ["8", "16", "32", "64"])
+def test_hash_bucket_integers(tmpdir, sign, size):
+    columns = ["a", "b"]
+    columns_ctx = {}
+    columns_ctx["categorical"] = {}
+    columns_ctx["categorical"]["base"] = columns
+
+    nb = 10
+    hash_bucket_op = ops.HashBucket(nb)
+
+    gdf = cudf.DataFrame(np.random.randn(10, 2).astype(sign + size), columns=columns)
+    new_gdf = hash_bucket_op.apply_op(gdf, columns_ctx, "categorical")
+    for col in columns:
+        assert_eq(new_gdf[col], gdf[col] % nb)
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_fill_missing(tmpdir, df, dataset, engine):
     op = nvt.ops.FillMissing(42)
