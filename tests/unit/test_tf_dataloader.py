@@ -17,6 +17,7 @@
 import cudf
 import numpy as np
 import pytest
+from sklearn.metrics import roc_auc_score
 
 import nvtabular as nvt
 from nvtabular import ops as ops
@@ -189,3 +190,56 @@ def test_mh_support(tmpdir, batch_size):
                         assert len(array) == sum(lens)
         idx += 1
     assert idx == (3 // batch_size + 1)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 4])
+def test_validater(tmpdir, batch_size):
+    n_samples = 9
+    gdf = cudf.DataFrame({
+        "a": np.random.randn(n_samples),
+        "label": np.random.randint(2, size=n_samples)
+    })
+
+    dataloader = tf_dataloader.KerasSequenceLoader(
+        nvt.Dataset(gdf),
+        batch_size=batch_size,
+        cat_names=[],
+        cont_names=["a"],
+        label_names=["label"],
+        shuffle=False
+    )
+
+    input = tf.keras.Input(name="a", dtype=tf.float32, shape=(1,))
+    x = tf.keras.layers.Dense(128, "relu")(input)
+    x = tf.keras.layers.Dense(1, activation="softmax")(x)
+
+    model = tf.keras.Model(inputs=input, outputs=x)
+    model.compile(
+        "sgd",
+        "binary_crossentropy",
+        metrics=["accuracy", tf.keras.metrics.AUC()]
+    )
+
+    validater = tf_dataloader.KerasSequenceValidater(dataloader)
+    model.fit(dataloader, epochs=2, verbose=0, callbacks=[validater])
+
+    predictions, labels = [], []
+    for X, y_true in dataloader:
+        y_pred = model(X)
+        labels.extend(y_true.numpy()[:, 0])
+        predictions.extend(y_pred.numpy()[:, 0])
+    predictions = np.array(predictions)
+    labels = np.array(labels)
+
+    logs = {}
+    validater.on_epoch_end(0, logs)
+    auc_key = [i for i in logs.keys() if i.startswith("val_auc")][0]
+
+    true_accuracy = (labels == (predictions > 0.5)).mean()
+    estimated_accuracy = logs["val_accuracy"]
+    assert np.isclose(true_accuracy, estimated_accuracy, rtol=1e-6)
+
+    true_auc = roc_auc_score(labels, predictions)
+    estimated_auc = logs[auc_key]
+    assert np.isclose(true_auc, estimated_auc, rtol=1e-6)
+
