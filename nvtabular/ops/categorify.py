@@ -232,41 +232,29 @@ class Categorify(DFOperator):
 
     @property
     def req_stats(self):
-        if not self.num_buckets:
-            return [
-                GroupbyStatistics(
-                    columns=self.column_groups or self.columns,
-                    concat_groups=self.encode_type == "joint",
-                    cont_names=[],
-                    stats=[],
-                    freq_threshold=self.freq_threshold,
-                    tree_width=self.tree_width,
-                    out_path=self.out_path,
-                    on_host=self.on_host,
-                    stat_name=self.stat_name,
-                    name_sep=self.name_sep,
-                )
-            ]
-        else:
-            return [
-                GroupbyStatistics(
-                    columns=self.column_groups or self.columns,
-                    concat_groups=self.encode_type == "joint",
-                    cont_names=[],
-                    stats=[],
-                    freq_threshold=self.freq_threshold,
-                    tree_width=self.tree_width,
-                    out_path=self.out_path,
-                    on_host=self.on_host,
-                    stat_name=self.stat_name,
-                    name_sep=self.name_sep,
-                ),
+        stats = [
+            GroupbyStatistics(
+                columns=self.column_groups or self.columns,
+                concat_groups=self.encode_type == "joint",
+                cont_names=[],
+                stats=[],
+                freq_threshold=self.freq_threshold,
+                tree_width=self.tree_width,
+                out_path=self.out_path,
+                on_host=self.on_host,
+                stat_name=self.stat_name,
+                name_sep=self.name_sep,
+            )
+        ]
+        if self.num_buckets:
+            stats += [
                 SetBuckets(
                     columns=self.column_groups or self.columns,
                     num_buckets=self.num_buckets,
                     freq_limit=self.freq_threshold,
-                ),
+                )
             ]
+        return stats
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
     def apply_op(
