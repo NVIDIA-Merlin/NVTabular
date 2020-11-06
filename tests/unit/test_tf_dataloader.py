@@ -195,10 +195,9 @@ def test_mh_support(tmpdir, batch_size):
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_validater(tmpdir, batch_size):
     n_samples = 9
-    gdf = cudf.DataFrame({
-        "a": np.random.randn(n_samples),
-        "label": np.random.randint(2, size=n_samples)
-    })
+    gdf = cudf.DataFrame(
+        {"a": np.random.randn(n_samples), "label": np.random.randint(2, size=n_samples)}
+    )
 
     dataloader = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(gdf),
@@ -206,7 +205,7 @@ def test_validater(tmpdir, batch_size):
         cat_names=[],
         cont_names=["a"],
         label_names=["label"],
-        shuffle=False
+        shuffle=False,
     )
 
     input = tf.keras.Input(name="a", dtype=tf.float32, shape=(1,))
@@ -214,11 +213,7 @@ def test_validater(tmpdir, batch_size):
     x = tf.keras.layers.Dense(1, activation="softmax")(x)
 
     model = tf.keras.Model(inputs=input, outputs=x)
-    model.compile(
-        "sgd",
-        "binary_crossentropy",
-        metrics=["accuracy", tf.keras.metrics.AUC()]
-    )
+    model.compile("sgd", "binary_crossentropy", metrics=["accuracy", tf.keras.metrics.AUC()])
 
     validater = tf_dataloader.KerasSequenceValidater(dataloader)
     model.fit(dataloader, epochs=2, verbose=0, callbacks=[validater])
@@ -242,4 +237,3 @@ def test_validater(tmpdir, batch_size):
     true_auc = roc_auc_score(labels, predictions)
     estimated_auc = logs[auc_key]
     assert np.isclose(true_auc, estimated_auc, rtol=1e-6)
-
