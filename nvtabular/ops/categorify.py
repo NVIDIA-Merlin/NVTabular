@@ -105,17 +105,13 @@ class Categorify(DFOperator):
         for multi-column groups.
     search_sorted : bool, default False.
         Set it True to apply searchsorted algorithm in encoding.
-    num_buckets : int, list of int, or dictionary:{column: num_hash_buckets}
+    num_buckets : int, or dictionary:{column: num_hash_buckets}
         Column-wise modulo to apply after hash function. Note that this
         means that the corresponding value will be the categorical cardinality
         of the transformed categorical feature. If given as an int, that value
-        will be used as the number of "hash buckets" for every feature. If
-        a list is provided, it must be of the same length as `columns` (which
-        should not be `None`), and the values will correspond to the number
-        of buckets to use for the feature specified at the same index in
-        `columns`. If a dictionary is passed, it will be used to specify
-        explicit mappings from a column name to a number of buckets. In
-        this case, only the columns specified in the keys of `num_buckets`
+        will be used as the number of "hash buckets" for every feature. If a dictionary is passed,
+        it will be used to specify explicit mappings from a column name to a number of buckets.
+        In this case, only the columns specified in the keys of `num_buckets`
         will be transformed.
     """
 
@@ -215,58 +211,46 @@ class Categorify(DFOperator):
             raise ValueError(
                 "cannot use search_sorted=True with anything else than the default freq_threshold"
             )
-        if isinstance(num_buckets, dict):
+        if num_buckets == 0 or 0 in num_buckets.values():
+            raise ValueError(
+                "For hashing num_buckets should be an int > 1, otherwise set it to None."
+            )
+        elif isinstance(num_buckets, dict):
             columns = list(num_buckets)
             self.num_buckets = num_buckets
-        elif isinstance(num_buckets, list):
-            assert columns is not None
-            assert len(columns) == len(num_buckets)
-            self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
         elif isinstance(num_buckets, int) or num_buckets is None:
             self.num_buckets = num_buckets
             print(self.num_buckets)
-        elif num_buckets == 0 or 0 in num_buckets:
+        else:
             raise ValueError(
-                "For hashing num_buckets should be an int > 1, otherwise set it to None."
+                "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
 
     @property
     def req_stats(self):
-        if not self.num_buckets:
-            return [
-                GroupbyStatistics(
-                    columns=self.column_groups or self.columns,
-                    concat_groups=self.encode_type == "joint",
-                    cont_names=[],
-                    stats=[],
-                    freq_threshold=self.freq_threshold,
-                    tree_width=self.tree_width,
-                    out_path=self.out_path,
-                    on_host=self.on_host,
-                    stat_name=self.stat_name,
-                    name_sep=self.name_sep,
-                )
-            ]
-        else:
-            return [
-                GroupbyStatistics(
-                    columns=self.column_groups or self.columns,
-                    concat_groups=self.encode_type == "joint",
-                    cont_names=[],
-                    stats=[],
-                    freq_threshold=self.freq_threshold,
-                    tree_width=self.tree_width,
-                    out_path=self.out_path,
-                    on_host=self.on_host,
-                    stat_name=self.stat_name,
-                    name_sep=self.name_sep,
-                ),
+        stats = [
+            GroupbyStatistics(
+                columns=self.column_groups or self.columns,
+                concat_groups=self.encode_type == "joint",
+                cont_names=[],
+                stats=[],
+                freq_threshold=self.freq_threshold,
+                tree_width=self.tree_width,
+                out_path=self.out_path,
+                on_host=self.on_host,
+                stat_name=self.stat_name,
+                name_sep=self.name_sep,
+            )
+        ]
+        if self.num_buckets:
+            stats += [
                 SetBuckets(
                     columns=self.column_groups or self.columns,
                     num_buckets=self.num_buckets,
                     freq_limit=self.freq_threshold,
-                ),
+                )
             ]
+        return stats
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
     def apply_op(
@@ -360,8 +344,11 @@ def _get_embedding_order(cat_names):
 def get_embedding_sizes(workflow):
     mh_cols = None
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
+    # when only hashing is applied. this will return embedding shape as (num_buckets, emb_dim)
     if "buckets" in workflow.stats.keys() and "freq_limit" not in workflow.stats.keys():
         return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
+    # when frequency hashing is applied,
+    # this will return embedding shape:(num_buckets+cardinality, emb_dim)
     elif "buckets" in workflow.stats.keys() and "freq_limit" in workflow.stats.keys():
         return _get_embeddings_dask(
             workflow.stats["categories"],
@@ -388,7 +375,10 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     for col in cat_names:
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
-        num_rows += buckets.get(col, 0) if buckets else 0
+        if col in buckets and freq_limit[col] > 1:
+            num_rows += buckets.get(col, 0)
+        if col in buckets and not freq_limit[col]:
+            num_rows = buckets.get(col, 0)
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -855,23 +845,21 @@ def _encode(
                     if c in buckets:
                         codes[c + "_hashed"] = _hash_bucket(gdf, buckets, c)
         # apply frequency hashing
-        if freq_threshold and buckets:
-            if name in buckets:
-                merged_df = codes.merge(
-                    value, left_on=selection_l, right_on=selection_r, how="left"
-                ).sort_values("order")
-                max_id = merged_df["labels"].max()
-                merged_df["labels"].fillna(na_sentinel, inplace=True)
-                merged_df.loc[merged_df["labels"] == 0, ["labels"]] = (
-                    merged_df.loc[merged_df["labels"] == 0, [name + "_hashed"]].values + max_id + 1
-                )
-                labels = merged_df["labels"].values
+        if freq_threshold and buckets and name in buckets:
+            merged_df = codes.merge(
+                value, left_on=selection_l, right_on=selection_r, how="left"
+            ).sort_values("order")
+            max_id = merged_df["labels"].max()
+            merged_df["labels"].fillna(na_sentinel, inplace=True)
+            merged_df.loc[merged_df["labels"] == 0, ["labels"]] = (
+                merged_df.loc[merged_df["labels"] == 0, [name + "_hashed"]].values + max_id + 1
+            )
+            labels = merged_df["labels"].values
         # only do hashing
-        elif buckets:
-            if name in buckets:
-                labels = codes[name + "_hashed"].values
+        elif buckets and name in buckets:
+            labels = codes[name + "_hashed"].values
         # no hashing
-        if not buckets or name not in buckets:
+        else:
             labels = codes.merge(
                 value, left_on=selection_l, right_on=selection_r, how="left"
             ).sort_values("order")["labels"]
