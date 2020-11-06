@@ -25,10 +25,18 @@ class Operator:
 
     def __init__(self, columns=None):
         self.columns = columns
+        self._id_set = None
 
     @property
     def _id(self):
-        return str(self.__class__.__name__)
+        c_id = self._id_set
+        if not self._id_set:
+            c_id = str(self.__class__.__name__)
+        return c_id
+    
+    def set_id(self, id_to_set):
+        self._id_set = id_to_set
+            
 
     def describe(self):
         raise NotImplementedError("All operators must have a desription.")
@@ -45,3 +53,6 @@ class Operator:
         if len(tar_cols) < 1:
             tar_cols = cols_ctx[cols_grp]["base"]
         return tar_cols
+
+
+            

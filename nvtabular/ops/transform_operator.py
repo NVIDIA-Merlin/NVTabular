@@ -30,6 +30,22 @@ class TransformOperator(Operator):
         super().__init__(columns=columns)
         self.preprocessing = preprocessing
         self.replace = replace
+        
+    def _set_id(self, id_to_set):
+        self._id_set = id_to_set
+
+    def _sanitized_id(self, delim):
+        if self._id_set:
+            # should split on delim for added id for multi op support
+            return self._id.split(delim)[0]
+
+    def out_columns(self, tar_cols, extra_cols, delim):
+        new_cols = []
+        if not self.replace:
+            id_split = self._sanitized_id(delim)
+            new_cols = [f"{col}{delim}{id_split}" for col in tar_cols]
+        return new_cols + tar_cols, extra_cols
+        
 
     def get_default_in(self):
         if self.default_in is None:
