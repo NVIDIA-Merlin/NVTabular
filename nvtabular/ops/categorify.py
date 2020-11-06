@@ -834,32 +834,29 @@ def _encode(
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
-            if buckets:
-                if selection_l[0] in buckets:
-                    codes[selection_l[0] + "_hashed"] = _hash_bucket(gdf, buckets, selection_l[0])
+            if buckets and selection_l[0] in buckets:
+                na_sentinel = _hash_bucket(gdf, buckets, selection_l[0])
         else:
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
             for c in selection_l:
                 codes[c] = gdf[c].copy()
-                if buckets:
-                    if c in buckets:
-                        codes[c + "_hashed"] = _hash_bucket(gdf, buckets, c)
+                if buckets and c in buckets:
+                    na_sentinel = _hash_bucket(gdf, buckets, c)
         # apply frequency hashing
         if freq_threshold and buckets and name in buckets:
             merged_df = codes.merge(
                 value, left_on=selection_l, right_on=selection_r, how="left"
             ).sort_values("order")
+            merged_df.reset_index(drop=True, inplace=True)
             max_id = merged_df["labels"].max()
-            merged_df["labels"].fillna(na_sentinel, inplace=True)
-            merged_df.loc[merged_df["labels"] == 0, ["labels"]] = (
-                merged_df.loc[merged_df["labels"] == 0, [name + "_hashed"]].values + max_id + 1
-            )
+            merged_df["labels"].fillna(cudf.Series(na_sentinel + max_id + 1), inplace=True)
             labels = merged_df["labels"].values
         # only do hashing
         elif buckets and name in buckets:
-            labels = codes[name + "_hashed"].values
+            labels = na_sentinel
         # no hashing
         else:
+            na_sentinel = 0
             labels = codes.merge(
                 value, left_on=selection_l, right_on=selection_r, how="left"
             ).sort_values("order")["labels"]
