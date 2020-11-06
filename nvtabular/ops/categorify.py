@@ -211,9 +211,9 @@ class Categorify(DFOperator):
             raise ValueError(
                 "cannot use search_sorted=True with anything else than the default freq_threshold"
             )
-        if num_buckets == 0 or 0 in num_buckets.values():
+        if num_buckets == 0:
             raise ValueError(
-                "For hashing num_buckets should be an int > 1, otherwise set it to None."
+                "For hashing num_buckets should be an int > 1, otherwise set num_buckets=None."
             )
         elif isinstance(num_buckets, dict):
             columns = list(num_buckets)
@@ -375,9 +375,9 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     for col in cat_names:
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
-        if col in buckets and freq_limit[col] > 1:
+        if buckets and col in buckets and freq_limit[col] > 1:
             num_rows += buckets.get(col, 0)
-        if col in buckets and not freq_limit[col]:
+        if buckets and col in buckets and not freq_limit[col]:
             num_rows = buckets.get(col, 0)
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
