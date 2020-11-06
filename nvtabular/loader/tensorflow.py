@@ -342,18 +342,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         return X, labels
 
 
-class _StreamingMetric:
-    def __init__(self, name):
-        self.name = name
-        self.value = 0
-        self.samples = 0
-
-    def update(self, update, n):
-        self.value *= self.samples / (self.samples + n)
-        self.value += (n * update) / (n + self.samples)
-        self.samples += n
-
-
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
     # TODO: document
     _supports_tf_logs = True
@@ -362,20 +350,13 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
         self.dataloader = dataloader
 
     def on_epoch_end(self, epoch, logs={}):
-        streaming_metrics = [_StreamingMetric(name) for name in self.model.metrics_names]
-        for X, y in self.dataloader:
-            if isinstance(y, tf.Tensor):
-                n = y.shape[0]
-            else:
-                n = y[0].shape[0]
+        for X, y_true in self.dataloader:
+            y_pred = self.model(X)
 
-            # do scoring this way since model methods complain
-            # about non-matching input shapes due to multi-hot
-            for metric, streaming_metric in zip(self.model.metrics, streaming_metrics):
-                y_pred = self.model(X)
-                score = metric(y, y_pred)
-                streaming_metric.update(score, n)
+            # TODO: how do we want to handle the multi-output case?
+            for metric in self.model.metrics:
+                metric.update_state(y_true, y_pred)
 
-        for metric in streaming_metrics:
-            logs["val_" + metric.name] = metric.value
+        for metric in self.model.metrics:
+            logs["val_" + metric.name] = metric.result().numpy()
         return logs
