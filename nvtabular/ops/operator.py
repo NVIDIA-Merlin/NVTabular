@@ -34,9 +34,11 @@ class Operator:
             c_id = str(self.__class__.__name__)
         return c_id
     
-    def set_id(self, id_to_set):
-        self._id_set = id_to_set
-            
+    def _set_id(self, id_to_set):
+        # only set one time
+        if not self._id_set:
+            self._id_set = id_to_set
+
 
     def describe(self):
         raise NotImplementedError("All operators must have a desription.")

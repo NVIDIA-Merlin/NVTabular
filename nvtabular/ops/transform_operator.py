@@ -30,19 +30,23 @@ class TransformOperator(Operator):
         super().__init__(columns=columns)
         self.preprocessing = preprocessing
         self.replace = replace
-        
-    def _set_id(self, id_to_set):
-        self._id_set = id_to_set
+        self.delim = None
 
-    def _sanitized_id(self, delim):
+    def _set_id(self, id_to_set):
+        # only set one time
+        if not self._id_set:
+            self._id_set = id_to_set
+
+    def _sanitized_id(self, delim=None):
         if self._id_set:
+            self.delim = delim if delim else self.delim
             # should split on delim for added id for multi op support
             return self._id.split(delim)[0]
-
+        
     def out_columns(self, tar_cols, extra_cols, delim):
         new_cols = []
         if not self.replace:
-            id_split = self._sanitized_id(delim)
+            id_split = self._sanitized_id(delim=delim)
             new_cols = [f"{col}{delim}{id_split}" for col in tar_cols]
         return new_cols + tar_cols, extra_cols
         
@@ -84,7 +88,7 @@ class TransformOperator(Operator):
         if not self.preprocessing and self._id not in columns_ctx["final"]["ctx"][input_cols]:
             if "base" in columns_ctx["final"]["ctx"][input_cols]:
                 columns_ctx["final"]["ctx"][input_cols].remove("base")
-            columns_ctx["final"]["ctx"][input_cols].append(self._id)
+            columns_ctx["final"]["ctx"][input_cols].append(self._sanitized_id())
 
     def apply_op(
         self,
