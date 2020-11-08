@@ -21,6 +21,7 @@ import tensorflow as tf
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
+from nvtabular.ops import _get_embedding_order
 
 from_dlpack = configure_tensorflow()
 
@@ -210,6 +211,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
         )
         cat_names, cont_names = _validate_schema(feature_columns, cat_names, cont_names)
+
+        # sort the ccolumns to avoid getting incorrect output
+        # (https://github.com/NVIDIA/NVTabular/issues/412)
+        cat_names = _get_embedding_order(cat_names)
+        cont_names = _get_embedding_order(cont_names)
 
         assert devices is None or len(devices) == 1  # TODO: figure out multi-gpu support
         devices = devices or [0]
