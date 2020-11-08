@@ -42,13 +42,12 @@ class TransformOperator(Operator):
             self.delim = delim if delim else self.delim
             # should split on delim for added id for multi op support
             return self._id.split(delim)[0]
-        
+
     def out_columns(self, tar_cols, extra_cols, delim):
         new_cols = []
         if not self.replace:
             new_cols = [f"{col}{delim}{self._id}" for col in tar_cols]
         return new_cols + tar_cols, extra_cols
-        
 
     def get_default_in(self):
         if self.default_in is None:

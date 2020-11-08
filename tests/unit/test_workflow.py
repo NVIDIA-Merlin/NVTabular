@@ -188,18 +188,19 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-
     processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
         client=client,
     )
-    
-    processor.add_feature([ops.FillMissing(replace=replace), ops.LogOp(replace=replace), ops.Normalize()])
+
+    processor.add_feature(
+        [ops.FillMissing(replace=replace), ops.LogOp(replace=replace), ops.Normalize()]
+    )
     processor.add_feature(ops.Categorify())
     processor.finalize()
-        
+
     processor.update_stats(dataset)
 
     if dump:

@@ -17,7 +17,6 @@ import collections
 import logging
 import time
 import warnings
-import copy
 
 import dask
 import dask_cudf
@@ -28,7 +27,7 @@ from nvtabular.io.dask import _ddf_to_dataset
 from nvtabular.io.dataset import Dataset, _set_dtypes
 from nvtabular.io.shuffle import Shuffle, _check_shuffle_arg
 from nvtabular.io.writer_factory import writer_factory
-from nvtabular.ops import DFOperator, StatOperator, TransformOperator, Operator
+from nvtabular.ops import DFOperator, Operator, StatOperator, TransformOperator
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -76,7 +75,7 @@ class BaseWorkflow:
             self.config = get_new_config()
 
         self.clear_stats()
-        
+
     def _register_ops(self, operators):
         if not isinstance(operators, list):
             operators = [operators]
@@ -85,16 +84,16 @@ class BaseWorkflow:
             self.columns_ctx["full"] = collections.OrderedDict()
             # full current will always be the most up to date version of columns,
             # based on operators added
-            self.columns_ctx["full"]["base"] = self.columns_ctx["all"]["base"],
-            current = self.columns_ctx["all"]["base"],
-        # for all what does not exist in                                     
+            self.columns_ctx["full"]["base"] = (self.columns_ctx["all"]["base"],)
+            current = (self.columns_ctx["all"]["base"],)
+        # for all what does not exist in
         for op, col_focus, chain_on_ops, child, parent in operators:
             target_cols = op.get_columns(self.columns_ctx, col_focus, chain_on_ops)
             # grab the input target columns and the input extra columns
             extra_cols = []
             cur_extra_cols = [] if len(current) < 2 else current[1]
             full_list = current[0] + cur_extra_cols
-            for col in full_list :
+            for col in full_list:
                 if col not in target_cols:
                     extra_cols.append(col)
             current = self.create_full_col_ctx_entry(op, target_cols, extra_cols, parent=parent)
@@ -104,8 +103,7 @@ class BaseWorkflow:
         self.remove_dupes(full_dict)
         # this will guide phase placement
         self.analyze_placement(full_dict)
-        
-    
+
     def analyze_placement(self, full_dict):
         # detect num collisions for each op_id to find correct placement.
         self.placement = {}
@@ -115,7 +113,6 @@ class BaseWorkflow:
             in_tar_cols, _, _, _, _, _ = cols_ops
             in_tar_cols = in_tar_cols if in_tar_cols else []
             self.placement[op_id] = self.detect_num_col_collisions(in_tar_cols.copy(), op_id)
-    
 
     def remove_dupes(self, full_dict):
         remove_keys = []
@@ -133,11 +130,10 @@ class BaseWorkflow:
                 remove_keys.append(op_id)
         for key in remove_keys:
             del full_dict[key]
-    
-            
+
     def detect_cols_collision(self, columns, op_id, index=0):
         """
-        Given a list of columns find the task AFTER which all 
+        Given a list of columns find the task AFTER which all
         columns in list exists and return that task.
         """
         action_cols = columns
@@ -151,7 +147,14 @@ class BaseWorkflow:
             if k in "base":
                 fin_tar_cols = self.columns_ctx["full"][k][0]
             else:
-                in_tar_cols, in_extra_cols, op, parent, fin_tar_cols, fin_extra_cols = self.columns_ctx["full"][k]
+                (
+                    in_tar_cols,
+                    in_extra_cols,
+                    op,
+                    parent,
+                    fin_tar_cols,
+                    fin_extra_cols,
+                ) = self.columns_ctx["full"][k]
             # if anything is inside, find it and remove it
             # found col, cannot remove in mid iteration... causes issues
             found = list(set(fin_tar_cols).intersection(action_cols))
@@ -159,8 +162,7 @@ class BaseWorkflow:
             # if empty found end
             if not action_cols:
                 return k, idx + index
-        
-        
+
     def detect_num_col_collisions(self, columns, op_id):
         """
         Detect the number of times you see all columns in tasks, before getting
@@ -174,44 +176,38 @@ class BaseWorkflow:
             indexes.append((current_op, index))
             index = index + 1
         return indexes
-        
-            
+
     def check_op_count(self, op):
         if op._id_set is None:
             count = self.get_op_count(op._id)
-            #reset id based on count of op in workflow already
+            # reset id based on count of op in workflow already
             op_id = f"{op._id}{self.delim}{str(count + 1)}"
             op._set_id(op_id)
-            
-    
+
     def create_full_col_ctx_entry(self, op, target_cols, extra_cols, parent=None):
         if isinstance(parent, Operator):
             parent = parent._id
-#         self.check_op_count(op)
+        #         self.check_op_count(op)
         tup_rep = None
-        # initalize to incoming columns for stats
-        in_cols = target_cols + extra_cols
         # requires target columns, extra columns (target+extra == all columns in df) and delim
         if isinstance(op, TransformOperator):
-#             if isinstance(op, DFOperator):
-#                 if op.req_stats:
-#                     self.handle_req_stats(op, target_cols, extra_cols, op._id)
+            #             if isinstance(op, DFOperator):
+            #                 if op.req_stats:
+            #                     self.handle_req_stats(op, target_cols, extra_cols, op._id)
             fin_tar_cols, fin_extra_cols = op.out_columns(target_cols, extra_cols, self.delim)
             tup_rep = target_cols, extra_cols, op, parent, fin_tar_cols, fin_extra_cols
         # for stat ops, which do not change data in columns
         if not tup_rep:
             tup_rep = target_cols, extra_cols, op, parent, target_cols, extra_cols
         self.columns_ctx["full"][op._id] = tup_rep
-        return tup_rep        
-    
-    
+        return tup_rep
+
     def handle_req_stats(self, op, target_cols, extra_cols, parent):
         if isinstance(op, TransformOperator):
             if op.req_stats:
                 for op_r in op.req_stats:
                     self.create_full_col_ctx_entry(op_r, target_cols, extra_cols, parent=parent)
-    
-        
+
     def get_op_count(self, op_id):
         count = 0
         for op in self.ops_in:
@@ -219,7 +215,7 @@ class BaseWorkflow:
             if op_id in op:
                 count = count + 1
         return count
-    
+
     def create_phases(self):
         # create new ordering based on placement and full_dict keys list
         ordered_ops = self.find_order()
@@ -229,14 +225,13 @@ class BaseWorkflow:
             phase, excess = self.create_phase(excess)
             phases.append(phase)
         return phases
-        
+
     def find_order(self):
-        place = self.placement
         ops_ordered = []
         ops_origin = list(self.columns_ctx["full"].keys()).copy()
         ops_not_added = ops_origin[1:]
         for op_focus in ops_origin:
-            ops_added, ops_not_added = self.find_order_single(op_focus, ops_not_added) 
+            ops_added, ops_not_added = self.find_order_single(op_focus, ops_not_added)
             ops_ordered.append(ops_added)
         ops_ordered.append(ops_not_added)
         res_list = []
@@ -244,12 +239,11 @@ class BaseWorkflow:
             res_list = res_list + ops_set
         return res_list
 
-    
     def find_order_single(self, op_focus, op_ids):
         op_ordered, not_added, parents_ref = [], [], []
         for op_id in op_ids:
             place = self.placement[op_id]
-            #k is op._id, v is all finds... need second to last
+            # k is op._id, v is all finds... need second to last
             if len(place) > 1:
                 op_after, idx = place[-2]
             else:
@@ -264,20 +258,20 @@ class BaseWorkflow:
             else:
                 not_added.append(op_id)
         return op_ordered, not_added
-    
-    
-            
+
     def create_phase(self, op_ordered):
         # given the correctly ordered op_task list (full_dict),
         # decide index splits for individual phases
         parents_ref = []
         for idx, op_id in enumerate(op_ordered):
-            target_cols, extra_cols, op, parent, fin_tar_cols, fin_extra_cols = self.columns_ctx["full"][op_id]
+            target_cols, extra_cols, op, parent, fin_tar_cols, fin_extra_cols = self.columns_ctx[
+                "full"
+            ][op_id]
             if op._id in parents_ref:
                 return op_ordered[:idx], op_ordered[idx:]
             if parent:
                 parents_ref.append(parent)
-        
+
         return op_ordered, []
 
     def _get_target_cols(self, operators):
@@ -302,13 +296,13 @@ class BaseWorkflow:
             identifier for feature engineering FE or preprocessing PP
         """
         target_cols = self._get_target_cols(operators)
-#         self._register_ops(operators)
+        #         self._register_ops(operators)
         # get actual input columns
-#         target_cols = self.columns_ctx
+        #         target_cols = self.columns_ctx
         # generate actual output columns (for full df)
-        # check number of operators of that type - possibly create lookup dictionary op_id: count 
+        # check number of operators of that type - possibly create lookup dictionary op_id: count
         # override id with delimiter and count
-        # 
+        #
         # must have columns to target to
         if not target_cols or (
             target_cols in self.columns_ctx and not self.columns_ctx[target_cols]["base"]
@@ -472,17 +466,17 @@ class BaseWorkflow:
             task_sets[task_set] = self._build_tasks(config[task_set], task_set, master_task_list)
             master_task_list = master_task_list + task_sets[task_set]
 
-#         self.mtl = master_task_list
+        #         self.mtl = master_task_list
         self._register_ops(master_task_list.copy())
-#         baseline, leftovers = self._sort_task_types(master_task_list)
-        
+        #         baseline, leftovers = self._sort_task_types(master_task_list)
+
         phases = self.create_phases()
         self.phases = self.translate(master_task_list, phases)
-#         if baseline:
-#             self.phases.append(baseline)
-#         self._phase_creator(leftovers)
+        #         if baseline:
+        #             self.phases.append(baseline)
+        #         self._phase_creator(leftovers)
         self._create_final_col_refs(task_sets)
-    
+
     def translate(self, mtl, phases):
         real_phases = []
         for phase in phases:
@@ -710,7 +704,7 @@ class BaseWorkflow:
 
     def _run_trans_ops_for_phase(self, gdf, tasks):
         for task in tasks:
-            op, cols_grp, target_cols, _ = task
+            op, cols_grp, target_cols, _, _ = task
             if isinstance(op, DFOperator):
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols, self.stats)
             elif isinstance(op, TransformOperator):
@@ -823,12 +817,9 @@ class Workflow(BaseWorkflow):
         if self.ddf is None:
             raise ValueError("No dask_cudf frame available.")
         elif isinstance(self.ddf, Dataset):
-<<<<<<< HEAD
-=======
             # Right now we can't distinguish between input columns and generated columns
             # in the dataset, we don't limit the columm set right now in the to_ddf call
             # (https://github.com/NVIDIA/NVTabular/issues/409 )
->>>>>>> 94c70a53f2e49608dd5c82d63f6dc507819e6e99
             return self.ddf.to_ddf(shuffle=self._shuffle_parts)
         return self.ddf
 
@@ -915,22 +906,21 @@ class Workflow(BaseWorkflow):
             if self.client:
                 self.client.cancel(_ddf)
             del _ddf
-        
 
     def reorder_tasks(self):
         # Separate into phase buckets
         # sort within phases (all transforms first, stats last)
-        
+
         # Reorder the phases so that dependency-free stat ops
         # are performed in the first two phases. This helps
         # avoid the need to persist transformed data between
         # phases (when unnecessary).
-        
+
         # order based on full dict
         # break full dict into phases
         # match tasks to full dict splits to create phases
-        stat_tasks = []
-        trans_tasks = []
+        cat_stat_tasks = []
+        cont_stat_tasks = []
         new_phases = []
         for idx, phase in enumerate(self.phases):
             new_phase = []
@@ -958,9 +948,6 @@ class Workflow(BaseWorkflow):
         if cont_stat_tasks:
             self.phases.append(cont_stat_tasks)
         self.phases += new_phases
-    
-
-        
 
     def apply(
         self,
@@ -1121,7 +1108,7 @@ class Workflow(BaseWorkflow):
 
         # Reorder tasks for two-phase workflows
         # TODO: Generalize this type of optimization
-#         self.reorder_tasks()
+        #         self.reorder_tasks()
 
         end = end_phase if end_phase else len(self.phases)
 

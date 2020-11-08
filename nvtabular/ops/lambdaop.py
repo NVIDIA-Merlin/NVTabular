@@ -93,7 +93,6 @@ class LambdaOp(TransformOperator):
             c_id = str(self.op_name)
         return c_id
 
-
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         new_gdf = cudf.DataFrame()

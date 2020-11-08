@@ -107,6 +107,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _FLOAT32_DTYPE(self):
         return torch.float32
 
+
 class DLDataLoader(torch.utils.data.DataLoader):
     """
     This class is an extension of the torch dataloader.
