@@ -220,7 +220,6 @@ class Categorify(DFOperator):
             self.num_buckets = num_buckets
         elif isinstance(num_buckets, int) or num_buckets is None:
             self.num_buckets = num_buckets
-            print(self.num_buckets)
         else:
             raise ValueError(
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
@@ -248,6 +247,7 @@ class Categorify(DFOperator):
                     columns=self.column_groups or self.columns,
                     num_buckets=self.num_buckets,
                     freq_limit=self.freq_threshold,
+                    encode_type=self.encode_type,
                 )
             ]
         return stats
@@ -315,6 +315,8 @@ class Categorify(DFOperator):
                 else self.freq_threshold,
                 search_sorted=self.search_sorted,
                 buckets=self.num_buckets,
+                encode_type=self.encode_type,
+                cat_names=cat_names,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
@@ -798,11 +800,13 @@ def _encode(
     freq_threshold=0,
     search_sorted=False,
     buckets=None,
+    encode_type="joint",
+    cat_names=None,
 ):
 
-    if buckets:
-        if isinstance(buckets, int):
-            buckets = {name: buckets for name in gdf.columns}
+    if isinstance(buckets, int):
+        buckets = {name: buckets for name in cat_names}
+
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
@@ -840,10 +844,17 @@ def _encode(
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
             for c in selection_l:
                 codes[c] = gdf[c].copy()
-                if buckets and c in buckets:
+                if buckets and c in buckets and encode_type == "joint":
                     na_sentinel = _hash_bucket(gdf, buckets, c)
+                elif buckets and encode_type == "combo":
+                    if len(selection_l) > 1:
+                        na_sentinel = _hash_bucket(
+                            gdf, buckets, tuple(selection_l), encode_type="combo"
+                        )
+                    else:
+                        na_sentinel = _hash_bucket(gdf, buckets, selection_l, encode_type="combo")
         # apply frequency hashing
-        if freq_threshold and buckets and name in buckets:
+        if freq_threshold and buckets and storage_name in buckets:
             merged_df = codes.merge(
                 value, left_on=selection_l, right_on=selection_r, how="left"
             ).sort_values("order")
@@ -922,26 +933,49 @@ def _encode_list_column(original, encoded):
     )
 
 
-def _hash_bucket(gdf, num_buckets, col):
-    nb = num_buckets[col]
-    if is_list_dtype(gdf[col].dtype):
-        encoded = gdf[col].list.leaves.hash_values() % nb
-    else:
-        encoded = gdf[col].hash_values() % nb
+def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
+    if encode_type == "joint":
+        nb = num_buckets[col]
+        if is_list_dtype(gdf[col].dtype):
+            encoded = gdf[col].list.leaves.hash_values() % nb
+        else:
+            encoded = gdf[col].hash_values() % nb
+    elif encode_type == "combo":
+        if isinstance(col, tuple):
+            name = _make_name(*col, sep="_")
+        else:
+            name = col[0]
+        nb = num_buckets[name]
+        val = 0
+        for column in col:
+            val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+        val = val % nb
+        encoded = val
     return encoded
 
 
 class SetBuckets(StatOperator):
-    def __init__(self, columns=None, num_buckets=None, freq_limit=0):
+    def __init__(self, columns=None, num_buckets=None, freq_limit=0, encode_type="joint"):
         super().__init__(columns=columns)
         self.num_buckets = num_buckets
         self.freq_limit = freq_limit
+        self.encode_type = encode_type
 
     @annotate("SetBuckets_op", color="green", domain="nvt_python")
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        if isinstance(self.num_buckets, int):
+        if isinstance(self.num_buckets, int) and self.encode_type == "joint":
             self.num_buckets = {name: self.num_buckets for name in cols}
+        elif isinstance(self.num_buckets, int) and self.encode_type == "combo":
+            buckets = {}
+            for group in cols:
+                if isinstance(group, list) and len(group) > 1:
+                    # For multi-column groups, we concatenate column names.
+                    name = _make_name(*group, sep="_")
+                    buckets[name] = self.num_buckets
+                elif isinstance(group, str):
+                    buckets[group] = self.num_buckets
+            self.num_buckets = buckets
         return self.num_buckets
 
     @annotate("SetBuckets_finalize", color="green", domain="nvt_python")
