@@ -25,7 +25,7 @@ import yaml
 from fsspec.core import get_fs_token_paths
 
 from nvtabular.io.dask import _ddf_to_dataset
-from nvtabular.io.dataset import Dataset
+from nvtabular.io.dataset import Dataset, _set_dtypes
 from nvtabular.io.shuffle import Shuffle, _check_shuffle_arg
 from nvtabular.io.writer_factory import writer_factory
 from nvtabular.ops import DFOperator, StatOperator, TransformOperator, Operator
@@ -717,7 +717,9 @@ class BaseWorkflow:
                 gdf = op.apply_op(gdf, self.columns_ctx, cols_grp, target_cols=target_cols)
         return gdf
 
-    def apply_ops(self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None):
+    def apply_ops(
+        self, gdf, start_phase=None, end_phase=None, writer=None, output_path=None, dtypes=None
+    ):
         """
         gdf: cudf dataframe
         Controls the application of registered preprocessing phase op
@@ -742,6 +744,8 @@ class BaseWorkflow:
                     writer.need_cal_col_names = False
 
                 start_write = time.time()
+                # Special dtype conversion
+                gdf = _set_dtypes(gdf, dtypes)
                 writer.add_data(gdf)
                 self.timings["write_df"] += time.time() - start_write
 
@@ -819,6 +823,12 @@ class Workflow(BaseWorkflow):
         if self.ddf is None:
             raise ValueError("No dask_cudf frame available.")
         elif isinstance(self.ddf, Dataset):
+<<<<<<< HEAD
+=======
+            # Right now we can't distinguish between input columns and generated columns
+            # in the dataset, we don't limit the columm set right now in the to_ddf call
+            # (https://github.com/NVIDIA/NVTabular/issues/409 )
+>>>>>>> 94c70a53f2e49608dd5c82d63f6dc507819e6e99
             return self.ddf.to_ddf(shuffle=self._shuffle_parts)
         return self.ddf
 
@@ -962,6 +972,7 @@ class Workflow(BaseWorkflow):
         output_format="parquet",
         out_files_per_proc=None,
         num_io_threads=0,
+        dtypes=None,
     ):
         """
         Runs all the preprocessing and feature engineering operators.
@@ -1001,6 +1012,9 @@ class Workflow(BaseWorkflow):
         num_io_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
         """
 
         # Check shuffle argument
@@ -1021,6 +1035,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
         else:
             self.iterate_online(
@@ -1030,6 +1045,7 @@ class Workflow(BaseWorkflow):
                 output_format=output_format,
                 out_files_per_proc=out_files_per_proc,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def iterate_online(
@@ -1042,6 +1058,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Iterate through dataset and (optionally) apply/shuffle/write."""
         # Check shuffle argument
@@ -1061,8 +1078,9 @@ class Workflow(BaseWorkflow):
 
         # Iterate through dataset, apply ops, and write out processed data
         if apply_ops:
-            for gdf in dataset.to_iter(shuffle=(shuffle is not None)):
-                self.apply_ops(gdf, output_path=output_path, writer=writer)
+            columns = self.columns_ctx["all"]["base"]
+            for gdf in dataset.to_iter(shuffle=(shuffle is not None), columns=columns):
+                self.apply_ops(gdf, output_path=output_path, writer=writer, dtypes=dtypes)
 
         # Close writer and write general/specialized metadata
         if writer:
@@ -1092,6 +1110,7 @@ class Workflow(BaseWorkflow):
         out_files_per_proc=None,
         apply_ops=True,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Build Dask-task graph for workflow.
 
@@ -1121,6 +1140,12 @@ class Workflow(BaseWorkflow):
             for idx, _ in enumerate(self.phases[:end]):
                 self.exec_phase(idx, record_stats=record_stats, update_ddf=(idx == (end - 1)))
             self._base_phase = 0  # Re-Set _base_phase
+
+        if dtypes:
+            ddf = self.get_ddf()
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            self.set_ddf(ddf.map_partitions(_set_dtypes, dtypes, meta=_meta))
+
         if output_format:
             output_path = output_path or "./"
             output_path = str(output_path)
@@ -1143,6 +1168,7 @@ class Workflow(BaseWorkflow):
         iterate=False,
         nfiles=None,
         num_io_threads=0,
+        dtypes=None,
     ):
         """Write data to shuffled parquet dataset.
 
@@ -1167,6 +1193,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
         else:
             self.build_and_process_graph(
@@ -1178,6 +1205,7 @@ class Workflow(BaseWorkflow):
                 out_files_per_proc=out_files_per_proc,
                 apply_ops=apply_ops,
                 num_io_threads=num_io_threads,
+                dtypes=dtypes,
             )
 
     def ddf_to_dataset(

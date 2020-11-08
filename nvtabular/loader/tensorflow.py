@@ -16,12 +16,12 @@
 import contextlib
 import os
 
-# import cupy
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
+from nvtabular.ops import _get_embedding_order
 
 from_dlpack = configure_tensorflow()
 
@@ -189,6 +189,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         `nvtabular.Dataset`
     """
 
+    _use_nnz = True
+
     def __init__(
         self,
         paths_or_dataset,
@@ -209,6 +211,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
         )
         cat_names, cont_names = _validate_schema(feature_columns, cat_names, cont_names)
+
+        # sort the ccolumns to avoid getting incorrect output
+        # (https://github.com/NVIDIA/NVTabular/issues/412)
+        cat_names = _get_embedding_order(cat_names)
+        cont_names = _get_embedding_order(cont_names)
 
         assert devices is None or len(devices) == 1  # TODO: figure out multi-gpu support
         devices = devices or [0]
@@ -264,62 +271,81 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # are running at once (e.g. train and validation)
         yield dev
 
+    def _split_fn(self, tensor, idx, axis=0):
+        return tf.split(tensor, idx, axis=axis)
+
+    @property
+    def _LONG_DTYPE(self):
+        return tf.int64
+
+    @property
+    def _FLOAT32_DTYPE(self):
+        return tf.float32
+
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
+
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
-        if gdf.shape[1] == 1:
+        if len(gdf.shape) == 1 or gdf.shape[1] == 1:
             dlpack = gdf.to_dlpack()
         elif gdf.shape[0] == 1:
             dlpack = gdf.values[0].toDlpack()
         else:
             dlpack = gdf.values.T.toDlpack()
 
-        x = from_dlpack(dlpack)
+        # catch error caused by tf eager context
+        # not being initialized
+        try:
+            x = from_dlpack(dlpack)
+        except AssertionError:
+            tf.random.uniform((1,))
+            x = from_dlpack(dlpack)
 
         if gdf.shape[0] == 1:
+            # batch size 1 so got squashed to a vector
             x = tf.expand_dims(x, 0)
+        elif len(gdf.shape) == 1 or len(x.shape) == 1:
+            # sort of a generic check for any other
+            # len(shape)==1 case, could probably
+            # be more specific
+            x = tf.expand_dims(x, -1)
         elif gdf.shape[1] > 1:
+            # matrix which means we had to transpose
+            # for the bug above, so untranspose
             x = tf.transpose(x)
         return x
-
-    def _create_batch(self, tensor, num_samples):
-        if tensor is None:
-            return []
-        idx = self._get_segment_lengths(num_samples)
-        return tf.split(tensor, idx)
 
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            if len(names) == 0:
-                continue
-            elif len(names) > 1:
+            lists = {}
+            if isinstance(tensor, tuple):
+                tensor, lists = tensor
+            names = [i for i in names if i not in lists]
+
+            # break list tuples into two keys, with postfixes
+            # TODO: better choices for naming?
+            list_columns = [i for i in lists.keys()]
+            for column in list_columns:
+                values, nnzs = lists.pop(column)
+                lists[column + "__values"] = values
+                lists[column + "__nnzs"] = nnzs
+
+            # now add in any scalar tensors
+            if len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
-            else:
-                tensors = [tensor]
-            X.update({name: x for name, x in zip(names, tensors)})
+                lists.update({name: x for name, x in zip(names, tensors)})
+            elif len(names) == 1:
+                lists[names[0]] = tensor
+            X.update(lists)
 
         # TODO: use dict for labels as well?
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
-        else:
-            labels = [labels]
         return X, labels
-
-
-class _StreamingMetric:
-    def __init__(self, name):
-        self.name = name
-        self.value = 0
-        self.samples = 0
-
-    def update(self, update, n):
-        self.value *= self.samples / (self.samples + n)
-        self.value += (n * update) / (n + self.samples)
-        self.samples += n
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
@@ -330,12 +356,13 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
         self.dataloader = dataloader
 
     def on_epoch_end(self, epoch, logs={}):
-        streaming_metrics = [_StreamingMetric(name) for name in self.model.metrics_names]
-        for X, y in self.dataloader:
-            n = y[0].shape[0]
-            scores = self.model.evaluate(X, y, batch_size=n, verbose=0)
-            for metric, score in zip(streaming_metrics, scores):
-                metric.update(score, n)
-        for metric in streaming_metrics:
-            logs["val_" + metric.name] = metric.value
+        for X, y_true in self.dataloader:
+            y_pred = self.model(X)
+
+            # TODO: how do we want to handle the multi-output case?
+            for metric in self.model.metrics:
+                metric.update_state(y_true, y_pred)
+
+        for metric in self.model.metrics:
+            logs["val_" + metric.name] = metric.result().numpy()
         return logs
