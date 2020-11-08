@@ -238,6 +238,7 @@ class BaseWorkflow:
         for op_focus in ops_origin:
             ops_added, ops_not_added = self.find_order_single(op_focus, ops_not_added) 
             ops_ordered.append(ops_added)
+        ops_ordered.append(ops_not_added)
         res_list = []
         for ops_set in ops_ordered:
             res_list = res_list + ops_set
@@ -247,13 +248,17 @@ class BaseWorkflow:
     def find_order_single(self, op_focus, op_ids):
         op_ordered, not_added, parents_ref = [], [], []
         for op_id in op_ids:
+            place = self.placement[op_id]
             #k is op._id, v is all finds... need second to last
-            op_after, idx = self.placement[op_id][-2]
+            if len(place) > 1:
+                op_after, idx = place[-2]
+            else:
+                op_after, idx = place[-1]
             op_task = self.columns_ctx["full"][op_id]
             target_cols, extra_cols, op, parent, fin_tar_cols, fin_extra_cols = op_task
             if parent:
                 parents_ref.append(parent)
-            if op_after in op_focus and op_after not in parents_ref:
+            if op_after in op_focus and op_id not in parents_ref and op_after not in parents_ref:
                 # op has no requirements move to front
                 op_ordered.append(op_id)
             else:
@@ -311,6 +316,8 @@ class BaseWorkflow:
             warnings.warn(f"Did not add operators: {operators}, target columns is empty.")
             return
         if phase in self.config and target_cols in self.config[phase]:
+            for op in operators:
+                self.check_op_count(op)
             self.config[phase][target_cols].append(operators)
             return
 
@@ -339,7 +346,8 @@ class BaseWorkflow:
             list of operators or single operator, Op/s to be
             added into the feature engineering phase
         """
-
+        if not isinstance(operators, list):
+            operators = [operators]
         self._config_add_ops(operators, "FE")
 
     def add_cat_feature(self, operators):
@@ -484,7 +492,7 @@ class BaseWorkflow:
                     op = op_task[0]
                     if op._id == op_id:
                         real_phase.append(op_task)
-                        continue
+                        break
             real_phases.append(real_phase)
         return real_phases
 
@@ -669,7 +677,6 @@ class BaseWorkflow:
         dep_tasks = []
         for cols, task_list in task_dict.items():
             for target_op, dep_grp in task_list:
-                self.check_op_count(target_op)
                 if isinstance(target_op, DFOperator):
                     # check that the required stat is grabbed
                     # for all necessary parents
@@ -750,7 +757,11 @@ class BaseWorkflow:
             if name not in stats_drop.keys():
                 stats_drop[name] = stat
         main_obj["stats"] = stats_drop
-        main_obj["columns_ctx"] = self.columns_ctx
+        main_obj["columns_ctx"] = {}
+        for key in self.columns_ctx.keys():
+            if "full" != key:
+                main_obj["columns_ctx"][key] = self.columns_ctx[key]
+        self.columns_ctx
         with open(path, "w") as outfile:
             yaml.safe_dump(main_obj, outfile, default_flow_style=False)
 

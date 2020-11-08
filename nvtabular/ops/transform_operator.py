@@ -46,8 +46,7 @@ class TransformOperator(Operator):
     def out_columns(self, tar_cols, extra_cols, delim):
         new_cols = []
         if not self.replace:
-            id_split = self._sanitized_id(delim=delim)
-            new_cols = [f"{col}{delim}{id_split}" for col in tar_cols]
+            new_cols = [f"{col}{delim}{self._id}" for col in tar_cols]
         return new_cols + tar_cols, extra_cols
         
 
@@ -88,7 +87,7 @@ class TransformOperator(Operator):
         if not self.preprocessing and self._id not in columns_ctx["final"]["ctx"][input_cols]:
             if "base" in columns_ctx["final"]["ctx"][input_cols]:
                 columns_ctx["final"]["ctx"][input_cols].remove("base")
-            columns_ctx["final"]["ctx"][input_cols].append(self._sanitized_id())
+            columns_ctx["final"]["ctx"][input_cols].append(self._id)
 
     def apply_op(
         self,

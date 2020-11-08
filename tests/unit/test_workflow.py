@@ -188,20 +188,18 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    config = nvt.workflow.get_new_config()
-    # add operators with dependencies
-    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp(replace=replace)]]
-    config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]
-    config["PP"]["categorical"] = [ops.Categorify()]
 
     processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
-        config=config,
         client=client,
     )
-
+    
+    processor.add_feature([ops.FillMissing(replace=replace), ops.LogOp(replace=replace), ops.Normalize()])
+    processor.add_feature(ops.Categorify())
+    processor.finalize()
+        
     processor.update_stats(dataset)
 
     if dump:
@@ -218,7 +216,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     # Check mean and std - No good right now we have to add all other changes; Clip, Log
 
-    concat_ops = "_FillMissing_LogOp"
+    concat_ops = "_FillMissing_1_LogOp_1"
     if replace:
         concat_ops = ""
     assert math.isclose(
