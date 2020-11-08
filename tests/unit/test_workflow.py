@@ -510,3 +510,38 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     for filename in glob.glob(os.path.join(out_path, "*.parquet")):
         gdf = cudf.io.read_parquet(filename)
         assert dict(gdf.dtypes) == dict_dtypes
+
+
+@pytest.mark.parametrize("use_parquet", [True, False])
+def test_workflow_generate_columns(tmpdir, use_parquet):
+    out_path = str(tmpdir.mkdir("processed"))
+    path = str(tmpdir.join("simple.parquet"))
+
+    # Stripped down dataset with geo_locaiton codes like in outbrains
+    df = cudf.DataFrame({"geo_location": ["US>CA", "CA>BC", "US>TN>659"]})
+
+    # defining a simple workflow that strips out the country code from the first two digits of the
+    # geo_location code and sticks in a new 'geo_location_country' field
+    cat_names = ["geo_location", "geo_location_country"]
+    workflow = nvt.Workflow(cat_names=cat_names, cont_names=[], label_name=[])
+    workflow.add_feature(
+        [
+            ops.LambdaOp(
+                op_name="country",
+                f=lambda col, gdf: col.str.slice(0, 2),
+                columns=["geo_location"],
+                replace=False,
+            ),
+            ops.Categorify(replace=False),
+        ]
+    )
+    workflow.finalize()
+
+    if use_parquet:
+        df.to_parquet(path)
+        dataset = nvt.Dataset(path)
+    else:
+        dataset = nvt.Dataset(df)
+
+    # just make sure this owrks without errors
+    workflow.apply(dataset, output_path=out_path)
