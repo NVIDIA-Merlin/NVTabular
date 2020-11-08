@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+import os
+
 import cudf
 import numpy as np
 import pytest
@@ -26,6 +28,31 @@ tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
+
+
+def test_tf_catname_ordering(tmpdir):
+    df = cudf.DataFrame(
+        {"cat1": [1] * 100, "cat2": [2] * 100, "cat3": [3] * 100, "label": [0] * 100}
+    )
+    path = os.path.join(tmpdir, "dataset.parquet")
+    df.to_parquet(path)
+    cat_names = ["cat3", "cat2", "cat1"]
+    cont_names = []
+    label_name = ["label"]
+
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        [path],
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=10,
+        label_names=label_name,
+        shuffle=False,
+    )
+
+    for X, y in data_itr:
+        assert list(X["cat1"].numpy()) == [1] * 10
+        assert list(X["cat2"].numpy()) == [2] * 10
+        assert list(X["cat3"].numpy()) == [3] * 10
 
 
 # TODO: include use_columns option
