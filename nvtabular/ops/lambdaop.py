@@ -22,7 +22,7 @@ from .transform_operator import TransformOperator
 
 class LambdaOp(TransformOperator):
     """
-    LambdaOp allows you to apply row level functions to a NVTabular workflow.
+    LambdaOp allows you to apply row level functions to an NVTabular workflow.
 
     Example usage 1::
 
