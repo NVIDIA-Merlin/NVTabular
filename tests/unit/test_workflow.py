@@ -56,6 +56,7 @@ def test_gpu_workflow_api(
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify(cat_cache="host"))
     processor.finalize()
+    assert len(processor.phases) == 2
 
     processor.update_stats(dataset)
 
@@ -200,6 +201,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     )
     processor.add_feature(ops.Categorify())
     processor.finalize()
+    assert len(processor.phases) == 2
 
     processor.update_stats(dataset)
 
@@ -432,6 +434,7 @@ def test_chaining_3():
     )
 
     proc.finalize()
+    assert len(proc.phases) == 2
     GPU_MEMORY_FRAC = 0.2
     train_dataset = nvt.Dataset(gdf_test, engine="parquet", part_mem_fraction=GPU_MEMORY_FRAC)
     proc.apply(
@@ -480,6 +483,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     processor.add_cat_preprocess(ops.Categorify())
 
     processor.finalize()
+    assert len(processor.phases) == 2
     # Force dtypes
     dict_dtypes = {}
     for col in cont_columns:
@@ -535,6 +539,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
         ]
     )
     workflow.finalize()
+    assert len(workflow.phases) == 2
 
     if use_parquet:
         df.to_parquet(path)
