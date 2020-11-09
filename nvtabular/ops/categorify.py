@@ -346,7 +346,7 @@ def _get_embedding_order(cat_names):
 def get_embedding_sizes(workflow):
     mh_cols = None
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    # when only hashing is applied. this will return embedding shape as (num_buckets, emb_dim)
+    # when only hashing is applied, this will return embedding shape as (num_buckets, emb_dim)
     if "buckets" in workflow.stats.keys() and "freq_limit" not in workflow.stats.keys():
         return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
     # when frequency hashing is applied,
@@ -841,7 +841,7 @@ def _encode(
             if buckets and selection_l[0] in buckets:
                 na_sentinel = _hash_bucket(gdf, buckets, selection_l[0])
         else:
-            codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
+            codes = cudf.DataFrame({"order": cp.arange(len(gdf))}, index=gdf.index)
             for c in selection_l:
                 codes[c] = gdf[c].copy()
                 if buckets and c in buckets and encode_type == "joint":
@@ -863,7 +863,7 @@ def _encode(
             merged_df["labels"].fillna(cudf.Series(na_sentinel + max_id + 1), inplace=True)
             labels = merged_df["labels"].values
         # only do hashing
-        elif buckets and name in buckets:
+        elif buckets and storage_name in buckets:
             labels = na_sentinel
         # no hashing
         else:
