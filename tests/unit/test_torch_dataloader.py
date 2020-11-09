@@ -98,7 +98,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_feature([ops.FillMedian()])
-    processor.add_preprocess(ops.Normalize())
+    processor.add_feature(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
 
     output_train = os.path.join(tmpdir, "train/")
