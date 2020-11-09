@@ -57,8 +57,8 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_feature([ops.FillMedian()])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
+    processor.add_feature(ops.Normalize())
+    processor.add_feature(ops.Categorify())
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
@@ -103,7 +103,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
-
+    
     processor.apply(
         dataset,
         apply_offline=True,
@@ -170,11 +170,13 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
     processor.add_feature([ops.FillMedian()])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
+    processor.add_feature(ops.Normalize())
+    processor.add_feature(ops.Categorify())
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
+    
+    processor.finalize()
 
     processor.apply(
         dataset,
