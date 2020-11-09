@@ -103,7 +103,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
-    
+
     processor.apply(
         dataset,
         apply_offline=True,
@@ -175,7 +175,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
-    
+
     processor.finalize()
 
     processor.apply(
