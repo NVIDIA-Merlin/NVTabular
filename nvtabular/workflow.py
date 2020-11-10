@@ -650,7 +650,7 @@ class BaseWorkflow:
             # add if doesnt exist
             self.stats.update(stat_op.stats_collected())
         else:
-            #if it does exist, append to it
+            # if it does exist, append to it
             for key, val in stat_op.stats_collected():
                 self.stats[key].update(val)
 

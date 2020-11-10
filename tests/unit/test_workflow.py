@@ -116,20 +116,21 @@ def test_gpu_dataset_iterator_csv(df, dataset, engine):
 
 def test_spec_set(tmpdir, client):
     gdf_test = cudf.DataFrame(
-    {
-        "ad_id": [1,2,2,6,6,8,3,3],
-        "source_id": [2,4,4,7,5,2,5,2],
-        "platform": [1, 2, np.nan, 2,1,3,3,1],
-        "cont": [1,2,np.nan,2,1,3,3,1],
-        "clicked": [1,0,1,0,0,1,1,0]
-    })
-    
+        {
+            "ad_id": [1, 2, 2, 6, 6, 8, 3, 3],
+            "source_id": [2, 4, 4, 7, 5, 2, 5, 2],
+            "platform": [1, 2, np.nan, 2, 1, 3, 3, 1],
+            "cont": [1, 2, np.nan, 2, 1, 3, 3, 1],
+            "clicked": [1, 0, 1, 0, 0, 1, 1, 0],
+        }
+    )
+
     p = nvt.Workflow(
         cat_names=["ad_id", "source_id", "platform"],
         cont_names=["cont"],
         label_name=["clicked"],
         client=client,
-        )
+    )
     p.add_feature(ops.FillMissing())
     p.add_feature(ops.Normalize())
     p.add_feature(ops.Categorify())
@@ -139,11 +140,13 @@ def test_spec_set(tmpdir, client):
             cont_target="clicked",
             kfold=5,
             fold_seed=42,
-            p_smooth=20
-        ))
-    
+            p_smooth=20,
+        )
+    )
+
     p.apply(nvt.Dataset(gdf_test), record_stats=True)
     assert p.stats
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
