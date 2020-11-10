@@ -37,12 +37,6 @@ class TransformOperator(Operator):
         if not self._id_set:
             self._id_set = id_to_set
 
-    def _sanitized_id(self, delim=None):
-        if self._id_set:
-            self.delim = delim if delim else self.delim
-            # should split on delim for added id for multi op support
-            return self._id.split(delim)[0]
-
     def out_columns(self, tar_cols, extra_cols, delim):
         new_cols = []
         if not self.replace:
