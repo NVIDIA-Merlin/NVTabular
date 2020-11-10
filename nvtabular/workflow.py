@@ -296,14 +296,6 @@ class BaseWorkflow:
             identifier for feature engineering FE or preprocessing PP
         """
         target_cols = self._get_target_cols(operators)
-        #         self._register_ops(operators)
-        # get actual input columns
-        #         target_cols = self.columns_ctx
-        # generate actual output columns (for full df)
-        # check number of operators of that type - possibly create lookup dictionary op_id: count
-        # override id with delimiter and count
-        #
-        # must have columns to target to
         if not target_cols or (
             target_cols in self.columns_ctx and not self.columns_ctx[target_cols]["base"]
         ):
@@ -348,7 +340,6 @@ class BaseWorkflow:
         """
         Adds categorical feature engineering operator(s), while mapping
         to the correct columns given operator dependencies.
-
         Parameters
         -----------
         operators : object
@@ -365,7 +356,6 @@ class BaseWorkflow:
         """
         Adds continuous feature engineering operator(s)
         to the workflow.
-
         Parameters
         -----------
         operators : object
@@ -381,7 +371,6 @@ class BaseWorkflow:
         """
         Adds categorical pre-processing operator(s)
         to the workflow.
-
         Parameters
         -----------
         operators : object
@@ -397,7 +386,6 @@ class BaseWorkflow:
         """
         Adds continuous pre-processing operator(s)
         to the workflow.
-
         Parameters
         -----------
         operators : object
@@ -466,15 +454,9 @@ class BaseWorkflow:
             task_sets[task_set] = self._build_tasks(config[task_set], task_set, master_task_list)
             master_task_list = master_task_list + task_sets[task_set]
 
-        #         self.mtl = master_task_list
         self._register_ops(master_task_list.copy())
-        #         baseline, leftovers = self._sort_task_types(master_task_list)
-
         phases = self.create_phases()
         self.phases = self.translate(master_task_list, phases)
-        #         if baseline:
-        #             self.phases.append(baseline)
-        #         self._phase_creator(leftovers)
         self._create_final_col_refs(task_sets)
 
     def translate(self, mtl, phases):
@@ -489,71 +471,6 @@ class BaseWorkflow:
                         break
             real_phases.append(real_phase)
         return real_phases
-
-    def _phase_creator(self, task_list):
-        """
-        task_list: list, phase specific list of operators and dependencies
-        ---
-        This function splits the operators in the task list and adds in any
-        dependent operators i.e. statistical operators required by selected
-        operators.
-        """
-        for task in task_list:
-            added = False
-
-            cols_needed = task[2].copy()
-            if "base" in cols_needed:
-                cols_needed.remove("base")
-            for idx, phase in enumerate(self.phases):
-                if added:
-                    break
-                for p_task in phase:
-                    if not cols_needed:
-                        break
-                    if p_task[0]._id in cols_needed:
-                        cols_needed.remove(p_task[0]._id)
-                if not cols_needed and self._find_parents(task[3], idx):
-                    added = True
-                    phase.append(task)
-
-            if not added:
-                self.phases.append([task])
-
-    def _find_parents(self, ops_list, phase_idx):
-        """
-        Attempt to find all ops in ops_list within subrange of phases
-        """
-        ops_copy = ops_list.copy()
-        for op in ops_list:
-            for phase in self.phases[:phase_idx]:
-                if not ops_copy:
-                    break
-                for task in phase:
-                    if not ops_copy:
-                        break
-                    if op._id in task[0]._id:
-                        ops_copy.remove(op)
-        if not ops_copy:
-            return True
-
-    def _sort_task_types(self, master_list):
-        """
-        This function helps ordering and breaking up the master list of operators into the
-        correct phases.
-
-        Parameters
-        -----------
-        master_list : list
-            a complete list of all necessary operators to complete specified pipeline
-        """
-        nodeps = []
-        for tup in master_list:
-            if "base" in tup[2]:
-                # base feature with no dependencies
-                if not tup[3]:
-                    master_list.remove(tup)
-                    nodeps.append(tup)
-        return nodeps, master_list
 
     def _compile_dict_from_list(self, config):
         """
@@ -667,7 +584,7 @@ class BaseWorkflow:
         task_dict: the task dictionary retrieved from the config
         Based on input config information
         """
-        # task format = (operator, main_columns_class, col_sub_key,  required_operators)
+        # task format = (operator, main_columns_class, col_sub_key,  required_operators, parent)
         dep_tasks = []
         for cols, task_list in task_dict.items():
             for target_op, dep_grp in task_list:
@@ -685,22 +602,6 @@ class BaseWorkflow:
                 req_ops = [] if not hasattr(target_op, "req_stats") else target_op.req_stats
                 dep_tasks.append((target_op, cols, dep_grp, req_ops, []))
         return dep_tasks
-
-    def _is_repeat_op(self, op, cols, master_task_list):
-        """
-        Helper function to find if a given operator targeting a column set
-        already exists in the master task list.
-
-        Parameters
-        ----------
-        op: operator;
-        cols: str
-            one of the following; continuous, categorical, all
-        """
-        for task_d in master_task_list:
-            if op._id in task_d[0]._id and cols == task_d[1]:
-                return True
-        return False
 
     def _run_trans_ops_for_phase(self, gdf, tasks):
         for task in tasks:
@@ -736,17 +637,22 @@ class BaseWorkflow:
                     label_names = self.get_final_cols_names("label")
                     writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
                     writer.need_cal_col_names = False
-
                 start_write = time.time()
                 # Special dtype conversion
                 gdf = _set_dtypes(gdf, dtypes)
                 writer.add_data(gdf)
                 self.timings["write_df"] += time.time() - start_write
-
         return gdf
 
     def _update_statistics(self, stat_op):
-        self.stats.update(stat_op.stats_collected())
+        stats = [stat for stat in stat_op.registered_stats() if stat in self.stats.keys()]
+        if not stats:
+            # add if doesnt exist
+            self.stats.update(stat_op.stats_collected())
+        else:
+            #if it does exist, append to it
+            for key, val in stat_op.stats_collected():
+                self.stats[key].update(val)
 
     def save_stats(self, path):
         main_obj = {}
