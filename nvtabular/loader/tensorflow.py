@@ -66,7 +66,7 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
     return Dataset(files, engine=engine, **reader_kwargs)
 
 
-def _validate_schema(feature_columns, cont_names, cat_names):
+def _validate_schema(feature_columns, cat_names, cont_names):
     _uses_feature_columns = feature_columns is not None
     _uses_explicit_schema = (cat_names is not None) or (cont_names is not None)
     if _uses_feature_columns and _uses_explicit_schema:
