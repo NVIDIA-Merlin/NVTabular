@@ -28,10 +28,10 @@ Our goal is faster iteration on massive tabular datasets, both for experimentati
 ### Getting Started
 NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
-Currently we have the beta release (0.2) container, you can pull the container using the following command:
+Currently we have the beta release (0.3) container, you can pull the container using the following command:
 
 ```
-docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.2 /bin/bash
+docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.3 /bin/bash
 ```
 
 If you are running on a docker version 19+, change ```--runtime=nvidia``` to ```--gpus all```.
@@ -74,7 +74,7 @@ The code base with examples, can be found at the following directory location wi
 NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 
 ```
-conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.6 cudatoolkit=10.2
+conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
 ### Examples and Tutorials
