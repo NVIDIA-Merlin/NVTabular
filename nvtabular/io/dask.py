@@ -37,6 +37,7 @@ def _write_output_partition(
     cat_names,
     cont_names,
     label_names,
+    passthru, 
     output_format,
     num_threads,
 ):
@@ -56,7 +57,7 @@ def _write_output_partition(
                 bytes_io=(shuffle == Shuffle.PER_WORKER),
                 num_threads=num_threads,
             )
-            writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+            writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names, passthru=passthru)
             writer_cache[processed_path] = writer
 
         # Add data
@@ -74,6 +75,7 @@ def _ddf_to_dataset(
     cat_names,
     cont_names,
     label_names,
+    passthru,
     output_format,
     client,
     num_threads,
@@ -97,6 +99,7 @@ def _ddf_to_dataset(
             cat_names,
             cont_names,
             label_names,
+            passthru,
             output_format,
             num_threads,
         )

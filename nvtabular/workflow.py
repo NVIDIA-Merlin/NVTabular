@@ -50,7 +50,7 @@ class BaseWorkflow:
     config : object
     """
 
-    def __init__(self, cat_names=None, cont_names=None, label_name=None, config=None):
+    def __init__(self, cat_names=None, cont_names=None, label_name=None, passthru=None, config=None):
         self.phases = []
 
         self.columns_ctx = {}
@@ -58,10 +58,12 @@ class BaseWorkflow:
         self.columns_ctx["continuous"] = {}
         self.columns_ctx["categorical"] = {}
         self.columns_ctx["label"] = {}
-        self.columns_ctx["all"]["base"] = cont_names + cat_names + label_name
+        self.columns_ctx["passthru"] = {}
+        self.columns_ctx["all"]["base"] = cont_names + cat_names + label_name + passthru
         self.columns_ctx["continuous"]["base"] = cont_names
         self.columns_ctx["categorical"]["base"] = cat_names
         self.columns_ctx["label"]["base"] = label_name
+        self.columns_ctx["passthru"]["base"] = passthru
 
         self.stats = {}
         self.current_file_num = 0
@@ -390,6 +392,8 @@ class BaseWorkflow:
             final["categorical"] = ["base"]
         if "all" not in final:
             final["all"] = ["base"]
+        if "passthru" not in final:
+            final["passthru"] = ["base"]
         self.columns_ctx["final"] = {}
         self.columns_ctx["final"]["ctx"] = final
 
@@ -506,7 +510,8 @@ class BaseWorkflow:
                     cat_names = self.get_final_cols_names("categorical")
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
-                    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+                    passthru_names = self.get_final_cols_names("passthru")
+                    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names, passthru=passthru_names)
                     writer.need_cal_col_names = False
 
                 start_write = time.time()
@@ -978,6 +983,7 @@ class Workflow(BaseWorkflow):
             cat_names = self.get_final_cols_names("categorical")
             cont_names = self.get_final_cols_names("continuous")
             label_names = self.get_final_cols_names("label")
+            passthru = self.get_final_cols_names("passthru")
 
             # Output dask_cudf DataFrame to dataset
             _ddf_to_dataset(
@@ -989,6 +995,7 @@ class Workflow(BaseWorkflow):
                 cat_names,
                 cont_names,
                 label_names,
+                passthru,
                 output_format,
                 self.client,
                 num_threads,

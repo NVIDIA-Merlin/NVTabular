@@ -778,7 +778,7 @@ def _encode(
         else:
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
             for c in selection_l:
-                codes[c] = gdf[c].copy()
+                codes[c] = gdf[c].copy().reset_index(drop=True)
         labels = codes.merge(
             value, left_on=selection_l, right_on=selection_r, how="left"
         ).sort_values("order")["labels"]

@@ -56,6 +56,7 @@ class ThreadedWriter(Writer):
         cats=None,
         conts=None,
         labels=None,
+        passthru=None,
         shuffle=None,
         fs=None,
         use_guid=False,
@@ -66,10 +67,11 @@ class ThreadedWriter(Writer):
         self.cats = cats
         self.conts = conts
         self.labels = labels
+        self.passthru = passthru
         self.shuffle = shuffle
-        self.column_names = None
-        if labels and conts:
-            self.column_names = labels + conts
+#         self.column_names = None
+#         if labels and conts:
+#             self.column_names = labels + conts
 
         self.col_idx = {}
 
@@ -100,11 +102,12 @@ class ThreadedWriter(Writer):
                 write_thread = threading.Thread(target=self._write_thread, daemon=True)
                 write_thread.start()
 
-    def set_col_names(self, labels, cats, conts):
+    def set_col_names(self, labels, cats, conts, passthru):
         self.cats = cats
         self.conts = conts
         self.labels = labels
-        self.column_names = labels + conts
+        self.passthru = passthru
+#         self.column_names = labels + conts
 
     def _write_table(self, idx, data, has_list_column=False):
         return
@@ -173,7 +176,10 @@ class ThreadedWriter(Writer):
         data["labels"] = []
         for c in self.labels:
             data["labels"].append({"col_name": c, "index": self.col_idx[c]})
-
+        # passthru
+        data["passthru"] = []
+        for c in self.passthru:
+            data["passthru"].append({"col_name": c, "index": self.col_idx[c]})
         return data
 
     @classmethod

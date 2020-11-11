@@ -239,12 +239,18 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
+    passthru_names = ["id"]
     label_names = ["label"]
-    columns = cat_names + cont_names + label_names
+    columns = cat_names + cont_names + label_names + passthru_names
 
     outdir = str(tmpdir.mkdir("out"))
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
+    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names, passthru=passthru_names)
+    processor.add_feature(
+        [ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()]
+    )
+    processor.add_preprocess(ops.Normalize())
+    processor.add_preprocess(ops.Categorify())
     processor.finalize()
     processor.apply(
         nvt.Dataset(df),
@@ -259,10 +265,12 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
     out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
     df_check = cudf.read_parquet(out_paths)
     assert_eq(
-        df_check[columns].sort_values(["x", "y"]),
-        df[columns].sort_values(["x", "y"]),
+        df_check[cont_names + label_names + passthru_names].sort_values(["x", "y"]),
+        df[cont_names + label_names + passthru_names].sort_values(["x", "y"]),
         check_index=False,
     )
+
+    
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
