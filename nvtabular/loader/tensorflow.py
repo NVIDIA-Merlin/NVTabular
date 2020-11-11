@@ -215,7 +215,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # sort the ccolumns to avoid getting incorrect output
         # (https://github.com/NVIDIA/NVTabular/issues/412)
         cat_names = _get_embedding_order(cat_names)
-        cont_names = cont_names
+        cont_names = _get_embedding_order(cont_names)
 
         assert devices is None or len(devices) == 1  # TODO: figure out multi-gpu support
         devices = devices or [0]
