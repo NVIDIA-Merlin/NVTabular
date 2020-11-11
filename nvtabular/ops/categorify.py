@@ -347,11 +347,7 @@ def get_embedding_sizes(workflow):
     mh_cols = None
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
     # when only hashing is applied, this will return embedding shape as (num_buckets, emb_dim)
-    if "buckets" in workflow.stats.keys() and "freq_limit" not in workflow.stats.keys():
-        return _get_embeddings_dask(workflow.stats["categories"], cols, workflow.stats["buckets"])
-    # when frequency hashing is applied,
-    # this will return embedding shape:(num_buckets+cardinality, emb_dim)
-    elif "buckets" in workflow.stats.keys() and "freq_limit" in workflow.stats.keys():
+    if "mh" not in workflow.columns_ctx["categorical"]:
         return _get_embeddings_dask(
             workflow.stats["categories"],
             cols,
@@ -359,14 +355,19 @@ def get_embedding_sizes(workflow):
             workflow.stats["freq_limit"],
         )
     else:
-        return _get_embeddings_dask(workflow.stats["categories"], cols)
-    if "mh" in workflow.columns_ctx["categorical"]:
         mh_cols = _get_embedding_order(workflow.columns_ctx["categorical"]["mh"])
         for col in mh_cols:
             cols.remove(col)
-    res = _get_embeddings_dask(workflow.stats["categories"], cols)
+    res = _get_embeddings_dask(
+        workflow.stats["categories"], cols, workflow.stats["buckets"], workflow.stats["freq_limit"]
+    )
     if mh_cols:
-        res = res, _get_embeddings_dask(workflow.stats["categories"], mh_cols)
+        res = res, _get_embeddings_dask(
+            workflow.stats["categories"],
+            mh_cols,
+            workflow.stats["buckets"],
+            workflow.stats["freq_limit"],
+        )
     return res
 
 
