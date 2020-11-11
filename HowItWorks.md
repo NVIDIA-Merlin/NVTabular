@@ -101,6 +101,53 @@ Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/
 
 Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](./examples/multigpu_bench.md) section of this documentation.
 
+Multi-Node Support
+-----------------------
+NVTabular supports multi node scaling with [Dask-CUDA](https://github.com/rapidsai/dask-cuda) and [dask.distributed](https://distributed.dask.org/en/latest/).  To enable distributed parallelism, we need to start a cluster and then connect to it to run the application.
+
+1) Start the scheduler `dask-scheduler`
+2) Start the workers `dask-cuda-worker schedulerIP:schedulerPort`
+3) Run the NVTabular application where the NVTabular `Workflow` has been initialized as described in the Multi-GPU Support section.
+
+For a detailed description of all the existing methods to start a cluster, please read [this article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters).
+
+MultiHot Encoding and Pre-existing Embeddings
+---------------------------------------------
+
+NVTabular now supports processing datasets with multihot categorical columns, and also supports passing along
+vector continuous features like pretrained embeddings. This support includes basic preprocessing
+and feature engineering ability, as well as full support in the dataloaders for training models
+using these features with both TensorFlow and PyTorch.
+
+Multihot's let you represent a set of categories as a single feature. For example, in a movie recommendation system each movie might 
+have a list of genres associated with the movie like comedy, drama, horror or science fiction. Since movies can
+belong to more than one genre we can't use single-hot encoding like we are doing for scalar
+columns. Instead we train models with multihot embeddings for these features, with the deep
+learning model looking up an embedding for each categorical in the list and then summing all the
+categories for each row.
+
+Both multihot categoricals and vector continuous features are represented using list columns in
+our datasets. cuDF has recently added support for list columns, and we're leveraging that support in NVTabular
+0.3 to power this feature. 
+
+We've added support to our Categorify and HashBucket operators to map list columns down to small
+contiguous integers suitable for use in an embedding lookup table. That is if you pass a dataset
+containing two rows like ```[['comedy', 'horror'], ['comedy', 'sciencefiction']]``` we can transform
+the strings for each into categorical ids like ```[[0, 1], [0, 2]]``` that can be used in our embeddings
+layers using these two operators.
+
+Our PyTorch and TensorFlow dataloaders have been extended to handle both categorical and
+continuous list columns.  In TensorFlow, the KerasSequenceLoader class will transform each list
+column into two tensors representing the values and offsets into those values for each batch.
+These tensors can be converted into RaggedTensors for multihot columns, and for vector continuous
+columns the offsets tensor can be safely ignored. We've provided a
+```nvtabular.framework_utils.layers.tensorflow.DenseFeatures``` Keras layer that will
+automatically handle these conversions for both continuous and categorical columns. For PyTorch, 
+we've added support for multihot columns to our
+```nvtabular.framework_utils.torch.models.Model``` class, which internally is using a the PyTorch
+[EmbeddingBag](https://pytorch.org/docs/stable/generated/torch.nn.EmbeddingBag.html) layer to
+handle the multihot columns.
+
 CPU Support
 ------------
 Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that NVTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.
