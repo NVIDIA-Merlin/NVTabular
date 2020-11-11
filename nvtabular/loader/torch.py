@@ -107,6 +107,11 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _FLOAT32_DTYPE(self):
         return torch.float32
 
+    def _handle_tensors(self, cats, conts, labels):
+        if isinstance(conts, torch.Tensor):
+            conts = conts.clone()
+        return cats, conts, labels
+
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """
