@@ -32,8 +32,15 @@ tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 
 def test_tf_catname_ordering(tmpdir):
     df = cudf.DataFrame(
-        {"cat1": [1] * 100, "cat2": [2] * 100, "cat3": [3] * 100, "label": [0] * 100,
-        "cont3": [3.0] * 100, "cont2": [2.0] * 100, "cont1": [1.0] * 100 }
+        {
+            "cat1": [1] * 100,
+            "cat2": [2] * 100,
+            "cat3": [3] * 100,
+            "label": [0] * 100,
+            "cont3": [3.0] * 100,
+            "cont2": [2.0] * 100,
+            "cont1": [1.0] * 100,
+        }
     )
     path = os.path.join(tmpdir, "dataset.parquet")
     df.to_parquet(path)
@@ -268,5 +275,3 @@ def test_validater(tmpdir, batch_size):
     true_auc = roc_auc_score(labels, predictions)
     estimated_auc = logs[auc_key]
     assert np.isclose(true_auc, estimated_auc, rtol=1e-6)
-
-    
