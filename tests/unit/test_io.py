@@ -246,12 +246,8 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
     outdir = str(tmpdir.mkdir("out"))
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names, passthru=passthru_names)
-    processor.add_feature(
-        [ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()]
-    )
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
+    # add op just to be sure not adding diff behavior
+    processor.add_feature(ops.Categorify())
     processor.apply(
         nvt.Dataset(df),
         output_format="parquet",
@@ -269,7 +265,19 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
         df[cont_names + label_names + passthru_names].sort_values(["x", "y"]),
         check_index=False,
     )
+    # make sure out columns has all columns from start
+    assert all(col in df_check.columns.tolist() for col in columns)
 
+    if shuffle:
+        data = {}
+        col_summary = {}
+        with open(outdir + "/_metadata.json", "r") as fil:
+            for k, v in json.load(fil).items():
+                data[k] = v
+        assert "cats" in data
+        assert "conts" in data
+        assert "labels" in data
+        assert "passthru" in data
     
 
 
