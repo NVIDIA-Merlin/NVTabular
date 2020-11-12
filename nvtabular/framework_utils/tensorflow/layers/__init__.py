@@ -14,8 +14,14 @@
 # limitations under the License.
 #
 
-from .embedding import DenseFeatures, LinearFeatures
+from .embedding import DenseFeatures, LinearFeatures, SparseEmbeddingLookup
 from .interaction import DotProductInteraction
 from .outer_product import XDeepFmOuterProduct
 
-__all__ = [LinearFeatures, DenseFeatures, DotProductInteraction, XDeepFmOuterProduct]
+__all__ = [
+    LinearFeatures,
+    DenseFeatures,
+    DotProductInteraction,
+    XDeepFmOuterProduct,
+    SparseEmbeddingLookup,
+]
