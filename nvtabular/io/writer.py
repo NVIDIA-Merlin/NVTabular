@@ -69,9 +69,6 @@ class ThreadedWriter(Writer):
         self.labels = labels
         self.passthru = passthru
         self.shuffle = shuffle
-#         self.column_names = None
-#         if labels and conts:
-#             self.column_names = labels + conts
 
         self.col_idx = {}
 
@@ -107,7 +104,6 @@ class ThreadedWriter(Writer):
         self.conts = conts
         self.labels = labels
         self.passthru = passthru
-#         self.column_names = labels + conts
 
     def _write_table(self, idx, data, has_list_column=False):
         return

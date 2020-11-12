@@ -50,20 +50,22 @@ class BaseWorkflow:
     config : object
     """
 
-    def __init__(self, cat_names=None, cont_names=None, label_name=None, passthru=None, config=None):
+    def __init__(
+        self, cat_names=None, cont_names=None, label_name=None, passthru=None, config=None
+    ):
         self.phases = []
-
+        passthru = passthru if passthru else []
         self.columns_ctx = {}
         self.columns_ctx["all"] = {}
         self.columns_ctx["continuous"] = {}
         self.columns_ctx["categorical"] = {}
         self.columns_ctx["label"] = {}
         self.columns_ctx["passthru"] = {}
+        self.columns_ctx["passthru"]["base"] = passthru
         self.columns_ctx["all"]["base"] = cont_names + cat_names + label_name + passthru
         self.columns_ctx["continuous"]["base"] = cont_names
         self.columns_ctx["categorical"]["base"] = cat_names
         self.columns_ctx["label"]["base"] = label_name
-        self.columns_ctx["passthru"]["base"] = passthru
 
         self.stats = {}
         self.current_file_num = 0
@@ -511,7 +513,12 @@ class BaseWorkflow:
                     cont_names = self.get_final_cols_names("continuous")
                     label_names = self.get_final_cols_names("label")
                     passthru_names = self.get_final_cols_names("passthru")
-                    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names, passthru=passthru_names)
+                    writer.set_col_names(
+                        labels=label_names,
+                        cats=cat_names,
+                        conts=cont_names,
+                        passthru=passthru_names,
+                    )
                     writer.need_cal_col_names = False
 
                 start_write = time.time()
