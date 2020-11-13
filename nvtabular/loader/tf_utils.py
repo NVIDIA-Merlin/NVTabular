@@ -57,7 +57,7 @@ def configure_tensorflow(memory_allocation=None, device=None):
         )
     except RuntimeError as e:
         # Virtual devices must be set before GPUs have been initialized
-        print(e)
+        warnings.warn(e)
 
     # versions using TF earlier than 2.3.0 need to use extension
     # library for dlpack support to avoid memory leak issue

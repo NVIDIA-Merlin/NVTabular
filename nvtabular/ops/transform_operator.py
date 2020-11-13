@@ -32,11 +32,6 @@ class TransformOperator(Operator):
         self.replace = replace
         self.delim = None
 
-    def _set_id(self, id_to_set):
-        # only set one time
-        if not self._id_set:
-            self._id_set = id_to_set
-
     def out_columns(self, tar_cols, extra_cols, delim):
         new_cols = []
         if not self.replace:
