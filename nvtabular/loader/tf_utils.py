@@ -50,6 +50,15 @@ def configure_tensorflow(memory_allocation=None, device=None):
     except RuntimeError:
         warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
 
+    try:
+        tf.config.experimental.set_virtual_device_configuration(
+            tf_devices[device],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=memory_allocation)],
+        )
+    except RuntimeError as e:
+        # Virtual devices must be set before GPUs have been initialized
+        warnings.warn(e)
+
     # versions using TF earlier than 2.3.0 need to use extension
     # library for dlpack support to avoid memory leak issue
     __TF_DLPACK_STABLE_VERSION = "2.3.0"
