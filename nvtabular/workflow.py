@@ -123,10 +123,7 @@ class BaseWorkflow:
             if not parent:
                 continue
             found = False
-            for op_id_2, cols_ops_2 in full_dict.items():
-                if op_id_2 == parent:
-                    found = True
-            if not found:
+            if parent not in full_dict:
                 remove_keys.append(op_id)
         for key in remove_keys:
             del full_dict[key]
@@ -162,6 +159,7 @@ class BaseWorkflow:
             # if empty found end
             if not action_cols:
                 return k, idx + index
+        raise("Unknown columns found")
 
     def detect_num_col_collisions(self, columns, op_id):
         """
@@ -191,9 +189,6 @@ class BaseWorkflow:
         tup_rep = None
         # requires target columns, extra columns (target+extra == all columns in df) and delim
         if isinstance(op, TransformOperator):
-            #             if isinstance(op, DFOperator):
-            #                 if op.req_stats:
-            #                     self.handle_req_stats(op, target_cols, extra_cols, op._id)
             fin_tar_cols, fin_extra_cols = op.out_columns(target_cols, extra_cols, self.delim)
             tup_rep = target_cols, extra_cols, op, parent, fin_tar_cols, fin_extra_cols
         # for stat ops, which do not change data in columns
@@ -202,19 +197,8 @@ class BaseWorkflow:
         self.columns_ctx["full"][op._id] = tup_rep
         return tup_rep
 
-    def handle_req_stats(self, op, target_cols, extra_cols, parent):
-        if isinstance(op, TransformOperator):
-            if op.req_stats:
-                for op_r in op.req_stats:
-                    self.create_full_col_ctx_entry(op_r, target_cols, extra_cols, parent=parent)
-
     def get_op_count(self, op_id):
-        count = 0
-        for op in self.ops_in:
-            # "in" allows for detection of count appended IDs
-            if op_id in op:
-                count = count + 1
-        return count
+        return sum(1 for op in self.ops_in if op_id in op)
 
     def create_phases(self):
         # create new ordering based on placement and full_dict keys list
@@ -813,48 +797,6 @@ class Workflow(BaseWorkflow):
                 self.client.cancel(_ddf)
             del _ddf
 
-    def reorder_tasks(self):
-        # Separate into phase buckets
-        # sort within phases (all transforms first, stats last)
-
-        # Reorder the phases so that dependency-free stat ops
-        # are performed in the first two phases. This helps
-        # avoid the need to persist transformed data between
-        # phases (when unnecessary).
-
-        # order based on full dict
-        # break full dict into phases
-        # match tasks to full dict splits to create phases
-        cat_stat_tasks = []
-        cont_stat_tasks = []
-        new_phases = []
-        for idx, phase in enumerate(self.phases):
-            new_phase = []
-            for task in phase:
-                targ = task[1]  # E.g. "categorical"
-                deps = task[2]  # E.g. ["base"]
-                if isinstance(task[0], StatOperator):
-                    if deps == ["base"]:
-                        if targ == "categorical":
-                            cat_stat_tasks.append(task)
-                        else:
-                            cont_stat_tasks.append(task)
-                    else:
-                        # This stat op depends on a transform
-                        new_phase.append(task)
-                elif isinstance(task[0], TransformOperator):
-                    new_phase.append(task)
-            if new_phase:
-                new_phases.append(new_phase)
-
-        # Construct new phases
-        self.phases = []
-        if cat_stat_tasks:
-            self.phases.append(cat_stat_tasks)
-        if cont_stat_tasks:
-            self.phases.append(cont_stat_tasks)
-        self.phases += new_phases
-
     def apply(
         self,
         dataset,
@@ -1011,10 +953,6 @@ class Workflow(BaseWorkflow):
         """
         # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
-
-        # Reorder tasks for two-phase workflows
-        # TODO: Generalize this type of optimization
-        #         self.reorder_tasks()
 
         end = end_phase if end_phase else len(self.phases)
 
