@@ -38,6 +38,10 @@ class Operator:
         # only set one time
         if not self._id_set:
             self._id_set = id_to_set
+        else:
+            warnings.warn(
+                f"trying to reset operator id, for operator: {self._id_set} to {id_to_set}"
+            )
 
     def describe(self):
         raise NotImplementedError("All operators must have a desription.")
