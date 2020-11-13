@@ -96,15 +96,15 @@ class BaseWorkflow:
             for col in full_list:
                 if col not in target_cols:
                     extra_cols.append(col)
-            current = self.create_full_col_ctx_entry(op, target_cols, extra_cols, parent=parent)
-        self.reduce(self.columns_ctx["full"])
+            current = self._create_full_col_ctx_entry(op, target_cols, extra_cols, parent=parent)
+        self._reduce(self.columns_ctx["full"])
 
-    def reduce(self, full_dict):
-        self.remove_dupes(full_dict)
+    def _reduce(self, full_dict):
+        self._remove_dupes(full_dict)
         # this will guide phase placement
-        self.analyze_placement(full_dict)
+        self._analyze_placement(full_dict)
 
-    def analyze_placement(self, full_dict):
+    def _analyze_placement(self, full_dict):
         # detect num collisions for each op_id to find correct placement.
         self.placement = {}
         for op_id, cols_ops in full_dict.items():
@@ -112,9 +112,9 @@ class BaseWorkflow:
                 continue
             in_tar_cols, _, _, _, _, _ = cols_ops
             in_tar_cols = in_tar_cols if in_tar_cols else []
-            self.placement[op_id] = self.detect_num_col_collisions(in_tar_cols.copy(), op_id)
+            self.placement[op_id] = self._detect_num_col_collisions(in_tar_cols.copy(), op_id)
 
-    def remove_dupes(self, full_dict):
+    def _remove_dupes(self, full_dict):
         remove_keys = []
         for op_id, cols_ops in full_dict.items():
             parent = None
@@ -127,7 +127,7 @@ class BaseWorkflow:
         for key in remove_keys:
             del full_dict[key]
 
-    def detect_cols_collision(self, columns, op_id, index=0):
+    def _detect_cols_collision(self, columns, op_id, index=0):
         """
         Given a list of columns find the task AFTER which all
         columns in list exists and return that task.
@@ -160,7 +160,7 @@ class BaseWorkflow:
                 return k, idx + index
         raise ValueError(f"Unknown columns found: {action_cols}")
 
-    def detect_num_col_collisions(self, columns, op_id):
+    def _detect_num_col_collisions(self, columns, op_id):
         """
         Detect the number of times you see all columns in tasks, before getting
         to self in task list
@@ -169,22 +169,21 @@ class BaseWorkflow:
         index = 0
         indexes = []
         while current_op != op_id:
-            current_op, index = self.detect_cols_collision(columns.copy(), op_id, index=index)
+            current_op, index = self._detect_cols_collision(columns.copy(), op_id, index=index)
             indexes.append((current_op, index))
             index = index + 1
         return indexes
 
-    def check_op_count(self, op):
+    def _check_op_count(self, op):
         if op._id_set is None:
-            count = self.get_op_count(op._id)
+            count = self._get_op_count(op._id)
             # reset id based on count of op in workflow already
             op_id = f"{op._id}{self.delim}{str(count + 1)}"
             op._set_id(op_id)
 
-    def create_full_col_ctx_entry(self, op, target_cols, extra_cols, parent=None):
+    def _create_full_col_ctx_entry(self, op, target_cols, extra_cols, parent=None):
         if isinstance(parent, Operator):
             parent = parent._id
-        #         self.check_op_count(op)
         tup_rep = None
         # requires target columns, extra columns (target+extra == all columns in df) and delim
         if isinstance(op, TransformOperator):
@@ -196,25 +195,25 @@ class BaseWorkflow:
         self.columns_ctx["full"][op._id] = tup_rep
         return tup_rep
 
-    def get_op_count(self, op_id):
+    def _get_op_count(self, op_id):
         return sum(1 for op in self.ops_in if op_id in op)
 
-    def create_phases(self):
+    def _create_phases(self):
         # create new ordering based on placement and full_dict keys list
-        ordered_ops = self.find_order()
+        ordered_ops = self._find_order()
         phases = []
         excess = ordered_ops
         while excess:
-            phase, excess = self.create_phase(excess)
+            phase, excess = self._create_phase(excess)
             phases.append(phase)
         return phases
 
-    def find_order(self):
+    def _find_order(self):
         ops_ordered = []
         ops_origin = list(self.columns_ctx["full"].keys()).copy()
         ops_not_added = ops_origin[1:]
         for op_focus in ops_origin:
-            ops_added, ops_not_added = self.find_order_single(op_focus, ops_not_added)
+            ops_added, ops_not_added = self._find_order_single(op_focus, ops_not_added)
             ops_ordered.append(ops_added)
         ops_ordered.append(ops_not_added)
         res_list = []
@@ -222,7 +221,7 @@ class BaseWorkflow:
             res_list = res_list + ops_set
         return res_list
 
-    def find_order_single(self, op_focus, op_ids):
+    def _find_order_single(self, op_focus, op_ids):
         op_ordered, not_added, parents_ref = [], [], []
         for op_id in op_ids:
             place = self.placement[op_id]
@@ -242,7 +241,7 @@ class BaseWorkflow:
                 not_added.append(op_id)
         return op_ordered, not_added
 
-    def create_phase(self, op_ordered):
+    def _create_phase(self, op_ordered):
         # given the correctly ordered op_task list (full_dict),
         # decide index splits for individual phases
         parents_ref = []
@@ -286,7 +285,7 @@ class BaseWorkflow:
             return
         if phase in self.config and target_cols in self.config[phase]:
             for op in operators:
-                self.check_op_count(op)
+                self._check_op_count(op)
             self.config[phase][target_cols].append(operators)
             return
 
@@ -438,7 +437,7 @@ class BaseWorkflow:
             master_task_list = master_task_list + task_sets[task_set]
 
         self._register_ops(master_task_list.copy())
-        phases = self.create_phases()
+        phases = self._create_phases()
         self.phases = self.translate(master_task_list, phases)
         self._create_final_col_refs(task_sets)
 
@@ -575,7 +574,7 @@ class BaseWorkflow:
                     # check that the required stat is grabbed
                     # for all necessary parents
                     for opo in target_op.req_stats:
-                        self.check_op_count(opo)
+                        self._check_op_count(opo)
                         self.ops_in.append(opo._id)
                         dep_grp = dep_grp if dep_grp else ["base"]
                         dep_tasks.append((opo, cols, dep_grp, [], target_op))
