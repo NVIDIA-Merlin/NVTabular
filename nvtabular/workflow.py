@@ -134,7 +134,7 @@ class BaseWorkflow:
         """
         action_cols = columns
         # start at the index provided, scan forward.
-        keys = list(self.columns_ctx["full"].keys()).copy()
+        keys = list(self.columns_ctx["full"].keys())
         keys = keys[index:]
         for idx, k in enumerate(keys):
             if k == op_id:
