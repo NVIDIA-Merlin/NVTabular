@@ -81,7 +81,7 @@ class BaseWorkflow:
             operators = [operators]
         # order matters!!!
         if "full" not in self.columns_ctx:
-            self.columns_ctx["full"] = collections.OrderedDict()
+            self.columns_ctx["full"] = {}
             # full current will always be the most up to date version of columns,
             # based on operators added
             self.columns_ctx["full"]["base"] = (self.columns_ctx["all"]["base"],)
@@ -153,7 +153,7 @@ class BaseWorkflow:
                 ) = self.columns_ctx["full"][k]
             # if anything is inside, find it and remove it
             # found col, cannot remove in mid iteration... causes issues
-            found = list(set(fin_tar_cols).intersection(action_cols))
+            found = set(fin_tar_cols).intersection(action_cols)
             action_cols = [col for col in action_cols if col not in found]
             # if empty found end
             if not action_cols:
