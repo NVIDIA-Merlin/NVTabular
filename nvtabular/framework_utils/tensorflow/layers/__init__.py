@@ -16,5 +16,6 @@
 
 from .embedding import DenseFeatures, LinearFeatures
 from .interaction import DotProductInteraction
+from .outer_product import XDeepFmOuterProduct
 
-__all__ = [LinearFeatures, DenseFeatures, DotProductInteraction]
+__all__ = [LinearFeatures, DenseFeatures, DotProductInteraction, XDeepFmOuterProduct]
