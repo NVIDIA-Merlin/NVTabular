@@ -122,7 +122,6 @@ class BaseWorkflow:
                 in_tar_cols, in_extra_cols, op, parent, fin_tar_cols, fin_extra_cols = cols_ops
             if not parent:
                 continue
-            found = False
             if parent not in full_dict:
                 remove_keys.append(op_id)
         for key in remove_keys:
