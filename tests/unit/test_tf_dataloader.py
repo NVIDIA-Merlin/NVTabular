@@ -83,7 +83,7 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
     processor.add_feature([ops.FillMedian()])
-    processor.add_preprocess(ops.Normalize())
+    processor.add_feature(ops.Normalize())
     processor.add_preprocess(ops.Categorify())
     processor.finalize()
 
