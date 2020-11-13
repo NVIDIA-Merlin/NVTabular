@@ -159,7 +159,7 @@ class BaseWorkflow:
             # if empty found end
             if not action_cols:
                 return k, idx + index
-        raise("Unknown columns found")
+        raise ("Unknown columns found")
 
     def detect_num_col_collisions(self, columns, op_id):
         """
