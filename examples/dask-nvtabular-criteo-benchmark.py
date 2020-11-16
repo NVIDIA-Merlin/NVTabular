@@ -120,33 +120,38 @@ def main(args):
     elif args.shuffle == "PER_PARTITION":
         shuffle = nvt_io.Shuffle.PER_PARTITION
 
-    # Check if any device memory is already occupied
-    for dev in args.devices.split(","):
-        fmem = _pynvml_mem_size(kind="free", index=int(dev))
-        used = (device_size - fmem) / 1e9
-        if used > 1.0:
-            warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
-
     # Setup LocalCUDACluster
-    if args.protocol == "tcp":
-        cluster = LocalCUDACluster(
-            protocol=args.protocol,
-            n_workers=args.n_workers,
-            CUDA_VISIBLE_DEVICES=args.devices,
-            device_memory_limit=device_limit,
-            local_directory=dask_workdir,
-            dashboard_address=":" + dashboard_port,
-        )
-    else:
-        cluster = LocalCUDACluster(
-            protocol=args.protocol,
-            n_workers=args.n_workers,
-            CUDA_VISIBLE_DEVICES=args.devices,
-            enable_nvlink=True,
-            device_memory_limit=device_limit,
-            local_directory=dask_workdir,
-            dashboard_address=":" + dashboard_port,
-        )
+    ephemeral_cluster = False
+    cluster = args.cluster
+    if cluster is None:
+
+        ephemeral_cluster = True
+        # Check if any device memory is already occupied
+        for dev in args.devices.split(","):
+            fmem = _pynvml_mem_size(kind="free", index=int(dev))
+            used = (device_size - fmem) / 1e9
+            if used > 1.0:
+                warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
+
+        if args.protocol == "tcp":
+            cluster = LocalCUDACluster(
+                protocol=args.protocol,
+                n_workers=args.n_workers,
+                CUDA_VISIBLE_DEVICES=args.devices,
+                device_memory_limit=device_limit,
+                local_directory=dask_workdir,
+                dashboard_address=":" + dashboard_port,
+            )
+        else:
+            cluster = LocalCUDACluster(
+                protocol=args.protocol,
+                n_workers=args.n_workers,
+                CUDA_VISIBLE_DEVICES=args.devices,
+                enable_nvlink=True,
+                device_memory_limit=device_limit,
+                local_directory=dask_workdir,
+                dashboard_address=":" + dashboard_port,
+            )
     client = Client(cluster)
 
     # Setup RMM pool
@@ -210,7 +215,9 @@ def main(args):
     print(f"Runtime[s]         | {runtime}")
     print("======================================\n")
 
-    client.close()
+    # Cleanup the cluster if it was created in this script
+    if ephemeral_cluster:
+        client.close()
 
 
 def parse_args():
@@ -252,6 +259,14 @@ def parse_args():
         type=float,
         help="RMM pool size for each worker  as a fraction of GPU capacity (Default 0.9). "
         "If 0 is specified, the RMM pool will be disabled",
+    )
+    parser.add_argument(
+        "--cluster",
+        default=None,
+        type=str,
+        help="Specify the address of an existing cluster/scheduler (Default `None`). "
+        "If this option is used, the script will NOT create a new cluster/dashboard."
+        "The address should be a string like tcp://<IP>:<PORT>",
     )
     parser.add_argument(
         "--num-io-threads",

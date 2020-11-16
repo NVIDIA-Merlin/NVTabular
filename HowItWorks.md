@@ -109,7 +109,7 @@ NVTabular supports multi node scaling with [Dask-CUDA](https://github.com/rapids
 2) Start the workers `dask-cuda-worker schedulerIP:schedulerPort`
 3) Run the NVTabular application where the NVTabular `Workflow` has been initialized as described in the Multi-GPU Support section.
 
-For a detailed description of all the existing methods to start a cluster, please read [this article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters).
+The NVTabular repository includes a simple [cluster-startup script](https://github.com/NVIDIA/NVTabular/examples/cluster-startup-example.sh) that demonstrates how to deploy an NVLink and Infiniband-enabled Dask-CUDA cluster using the command-line API. For a detailed description of all the existing methods to start a cluster, please read [this article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters).
 
 MultiHot Encoding and Pre-existing Embeddings
 ---------------------------------------------
