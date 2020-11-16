@@ -101,6 +101,16 @@ Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/
 
 Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](./examples/multigpu_bench.md) section of this documentation.
 
+Multi-Node Support
+-----------------------
+NVTabular supports multi node scaling with [Dask-CUDA](https://github.com/rapidsai/dask-cuda) and [dask.distributed](https://distributed.dask.org/en/latest/).  To enable distributed parallelism, we need to start a cluster and then connect to it to run the application.
+
+1) Start the scheduler `dask-scheduler`
+2) Start the workers `dask-cuda-worker schedulerIP:schedulerPort`
+3) Run the NVTabular application where the NVTabular `Workflow` has been initialized as described in the Multi-GPU Support section.
+
+For a detailed description of all the existing methods to start a cluster, please read [this article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters).
+
 MultiHot Encoding and Pre-existing Embeddings
 ---------------------------------------------
 
