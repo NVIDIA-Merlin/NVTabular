@@ -88,12 +88,15 @@ class LambdaOp(TransformOperator):
 
     @property
     def _id(self):
-        return str(self.op_name)
+        c_id = self._id_set
+        if not self._id_set:
+            c_id = str(self.op_name)
+        return c_id
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
         new_gdf = cudf.DataFrame()
         for col in target_columns:
             new_gdf[col] = self.f(gdf[col], gdf)
-        new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
+        new_gdf.columns = [f"{col}_{self.op_name}" for col in new_gdf.columns]
         return new_gdf

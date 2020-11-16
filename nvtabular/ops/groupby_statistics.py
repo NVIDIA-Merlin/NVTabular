@@ -134,7 +134,10 @@ class GroupbyStatistics(StatOperator):
 
     @property
     def _id(self):
-        return str(self.op_name)
+        c_id = self._id_set
+        if not self._id_set:
+            c_id = str(self.op_name)
+        return c_id
 
     def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
         if self.column_groups is None:

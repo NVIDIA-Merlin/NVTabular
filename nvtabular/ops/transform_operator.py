@@ -30,6 +30,13 @@ class TransformOperator(Operator):
         super().__init__(columns=columns)
         self.preprocessing = preprocessing
         self.replace = replace
+        self.delim = None
+
+    def out_columns(self, tar_cols, extra_cols, delim):
+        new_cols = []
+        if not self.replace:
+            new_cols = [f"{col}{delim}{self._id}" for col in tar_cols]
+        return new_cols + tar_cols, extra_cols
 
     def get_default_in(self):
         if self.default_in is None:
