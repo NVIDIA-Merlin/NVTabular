@@ -56,6 +56,7 @@ def test_gpu_workflow_api(
     processor.add_preprocess(ops.Normalize())
     processor.add_preprocess(ops.Categorify(cat_cache="host"))
     processor.finalize()
+    assert len(processor.phases) == 2
 
     processor.update_stats(dataset)
 
@@ -111,6 +112,40 @@ def test_gpu_workflow_api(
 def test_gpu_dataset_iterator_csv(df, dataset, engine):
     df_itr = cudf.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
+
+
+def test_spec_set(tmpdir, client):
+    gdf_test = cudf.DataFrame(
+        {
+            "ad_id": [1, 2, 2, 6, 6, 8, 3, 3],
+            "source_id": [2, 4, 4, 7, 5, 2, 5, 2],
+            "platform": [1, 2, np.nan, 2, 1, 3, 3, 1],
+            "cont": [1, 2, np.nan, 2, 1, 3, 3, 1],
+            "clicked": [1, 0, 1, 0, 0, 1, 1, 0],
+        }
+    )
+
+    p = nvt.Workflow(
+        cat_names=["ad_id", "source_id", "platform"],
+        cont_names=["cont"],
+        label_name=["clicked"],
+        client=client,
+    )
+    p.add_feature(ops.FillMissing())
+    p.add_feature(ops.Normalize())
+    p.add_feature(ops.Categorify())
+    p.add_feature(
+        ops.TargetEncoding(
+            cat_groups=["ad_id", "source_id", "platform"],
+            cont_target="clicked",
+            kfold=5,
+            fold_seed=42,
+            p_smooth=20,
+        )
+    )
+
+    p.apply(nvt.Dataset(gdf_test), record_stats=True)
+    assert p.stats
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -188,19 +223,19 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    config = nvt.workflow.get_new_config()
-    # add operators with dependencies
-    config["FE"]["continuous"] = [[ops.FillMissing(replace=replace), ops.LogOp(replace=replace)]]
-    config["PP"]["continuous"] = [[ops.LogOp(replace=replace), ops.Normalize()]]
-    config["PP"]["categorical"] = [ops.Categorify()]
-
     processor = nvt.Workflow(
         cat_names=cat_names,
         cont_names=cont_names,
         label_name=label_name,
-        config=config,
         client=client,
     )
+
+    processor.add_feature(
+        [ops.FillMissing(replace=replace), ops.LogOp(replace=replace), ops.Normalize()]
+    )
+    processor.add_feature(ops.Categorify())
+    processor.finalize()
+    assert len(processor.phases) == 2
 
     processor.update_stats(dataset)
 
@@ -218,7 +253,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     # Check mean and std - No good right now we have to add all other changes; Clip, Log
 
-    concat_ops = "_FillMissing_LogOp"
+    concat_ops = "_FillMissing_1_LogOp_1"
     if replace:
         concat_ops = ""
     assert math.isclose(
@@ -433,6 +468,7 @@ def test_chaining_3():
     )
 
     proc.finalize()
+    assert len(proc.phases) == 2
     GPU_MEMORY_FRAC = 0.2
     train_dataset = nvt.Dataset(gdf_test, engine="parquet", part_mem_fraction=GPU_MEMORY_FRAC)
     proc.apply(
@@ -481,6 +517,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     processor.add_cat_preprocess(ops.Categorify())
 
     processor.finalize()
+    assert len(processor.phases) == 2
     # Force dtypes
     dict_dtypes = {}
     for col in cont_columns:
@@ -536,6 +573,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
         ]
     )
     workflow.finalize()
+    assert len(workflow.phases) == 2
 
     if use_parquet:
         df.to_parquet(path)
