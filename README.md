@@ -74,7 +74,7 @@ The code base with examples, can be found at the following directory location wi
 NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 
 ```
-conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.6 cudatoolkit=10.2
+conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
 ### Examples and Tutorials
