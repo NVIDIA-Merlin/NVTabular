@@ -836,21 +836,12 @@ def _encode(
         if list_col:
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
-            if buckets and selection_l[0] in buckets:
-                na_sentinel = _hash_bucket(gdf, buckets, selection_l[0])
         else:
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))}, index=gdf.index)
             for c in selection_l:
                 codes[c] = gdf[c].copy()
-                if buckets and c in buckets and encode_type == "joint":
-                    na_sentinel = _hash_bucket(gdf, buckets, c)
-                elif buckets and encode_type == "combo":
-                    if len(selection_l) > 1:
-                        na_sentinel = _hash_bucket(
-                            gdf, buckets, tuple(selection_l), encode_type="combo"
-                        )
-                    else:
-                        na_sentinel = _hash_bucket(gdf, buckets, selection_l, encode_type="combo")
+        if buckets and storage_name in buckets:
+            na_sentinel = _hash_bucket(gdf, buckets, selection_l, encode_type=encode_type)
         # apply frequency hashing
         if freq_threshold and buckets and storage_name in buckets:
             merged_df = codes.merge(
@@ -933,14 +924,14 @@ def _encode_list_column(original, encoded):
 
 def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
-        nb = num_buckets[col]
-        if is_list_dtype(gdf[col].dtype):
-            encoded = gdf[col].list.leaves.hash_values() % nb
+        nb = num_buckets[col[0]]
+        if is_list_dtype(gdf[col[0]].dtype):
+            encoded = gdf[col[0]].list.leaves.hash_values() % nb
         else:
-            encoded = gdf[col].hash_values() % nb
+            encoded = gdf[col[0]].hash_values() % nb
     elif encode_type == "combo":
-        if isinstance(col, tuple):
-            name = _make_name(*col, sep="_")
+        if len(col) > 1:
+            name = _make_name(*tuple(col), sep="_")
         else:
             name = col[0]
         nb = num_buckets[name]
@@ -954,6 +945,8 @@ def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
 
 class SetBuckets(StatOperator):
     def __init__(self, columns=None, num_buckets=None, freq_limit=0, encode_type="joint"):
+        if isinstance(columns, list):
+            columns = list(set(flatten(columns, container=list)))
         super().__init__(columns=columns)
         self.num_buckets = num_buckets
         self.freq_limit = freq_limit
