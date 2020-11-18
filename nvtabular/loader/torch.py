@@ -116,7 +116,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 class DLDataLoader(torch.utils.data.DataLoader):
     """
     This class is an extension of the torch dataloader.
-    It is required, to support the FastAI framework.
+    It is required to support the FastAI framework.
     """
 
     def __len__(self):

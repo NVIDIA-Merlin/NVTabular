@@ -44,7 +44,7 @@ NVTabular code is targeted at the operator level, not the dataframe level, provi
 
 We make an explicit distinction between feature engineering ops, which create new variables, and preprocessing ops which transform data more directly to make it ready for the model to which it’s feeding.  While the type of computation involved in these two stages is often similar, we want to allow for the creation of new features that will then be preprocessed in the same way as other input variables.
 
-Two main data types are currently supported: categorical variables and continuous variables.  Feature engineering operators explicitly take as input one or more continuous or categorical columns and produce one or more columns of a specific type.  By default the input columns used to create the new feature are also included in the output, however this can be overridden with the [replace] keyword in the operator.  We hope to extend this to multi-hot categoricals in the future in addition to providing specific functionality for high cardinality categoricals which must be treated differently due to memory constraints.
+Two main data types are currently supported: categorical variables and continuous variables. Feature engineering operators explicitly take as input one or more continuous or categorical columns and produce one or more columns of a specific type.  By default the input columns used to create the new feature are also included in the output, however this can be overridden with the [replace] keyword in the operator. We extend this to multihot categoricals with the transition to v0.3 in addition to providing specific functionality for high cardinality categoricals which must be treated differently due to memory constraints.
 
 Preprocessing operators take in a set of columns of the same type and perform the operation across each column, transforming the output during the final operation into a long tensor in the case of categorical variables or a float tensor in the case of continuous variables.  Preprocessing operations replace the column values with their new representation by default, but again we allow the user to override this.
 
@@ -75,7 +75,7 @@ In addition to providing mechanisms for transforming the data to prepare it for 
 
 In NVTabular we provide an option to shuffle during dataset creation, creating a uniformly shuffled dataset allowing the dataloader to read in contiguous chunks of data that are already randomized across the entire dataset.  NVTabular provides the option to control the number of chunks that are combined into a batch, allowing the end user flexibility when trading off between performance and true randomization.  This mechanism is critical when dealing with datasets that exceed CPU memory and per epoch shuffling is desired during training.  Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.
 
-Stay tuned for benchmarks on our dataloader performance as compared to those native to the frameworks.
+Stay tuned for benchmarks on our dataloader performance as compared to those native frameworks.
 
 Multi-GPU Support
 -----------------------
@@ -97,9 +97,9 @@ workflow = nvt.Workflow(..., client=client)
 
 There are currenly many ways to deploy a "cluster" for Dask.  [This article](https://blog.dask.org/2020/07/23/current-state-of-distributed-dask-clusters) gives a nice summary of all practical options.  For a single machine with multiple GPUs, the `dask_cuda.LocalCUDACluster` API is typically the most convenient option.
 
-Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. See the [Multi-GPU](./examples/multigpu) section of this documentation for a simple step-by-step example.
+Since NVTabular already uses [Dask-CuDF](https://docs.rapids.ai/api/cudf/stable/dask-cudf.html) for internal data processing, there are no other requirements for multi-GPU scaling.  With that said, the parallel performance can depend strongly on (1) the size of `Dataset` partitions, (2) the shuffling procedure used for data output, and (3) the specific arguments used for both global-statistics and transformation operations. See the [Multi-GPU](https://github.com/NVIDIA/NVTabular/blob/main/examples/multi-gpu_dask.ipynb) section of this documentation for a simple step-by-step example.
 
-Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](./examples/multigpu_bench.md) section of this documentation.
+Users are also encouraged to experiment with the [multi-GPU Criteo/DLRM benchmark example](https://github.com/NVIDIA/NVTabular/blob/main/examples/dask-nvtabular-criteo-benchmark.py). For detailed notes on the parameter space for the benchmark, see the [Multi-GPU Criteo Benchmark](https://github.com/NVIDIA/NVTabular/blob/main/examples/MultiGPUBench.md) section of this documentation.
 
 Multi-Node Support
 -----------------------
@@ -119,7 +119,7 @@ vector continuous features like pretrained embeddings. This support includes bas
 and feature engineering ability, as well as full support in the dataloaders for training models
 using these features with both TensorFlow and PyTorch.
 
-Multihot's let you represent a set of categories as a single feature. For example, in a movie recommendation system each movie might 
+Multihots let you represent a set of categories as a single feature. For example, in a movie recommendation system each movie might 
 have a list of genres associated with the movie like comedy, drama, horror or science fiction. Since movies can
 belong to more than one genre we can't use single-hot encoding like we are doing for scalar
 columns. Instead we train models with multihot embeddings for these features, with the deep
@@ -141,10 +141,10 @@ continuous list columns.  In TensorFlow, the KerasSequenceLoader class will tran
 column into two tensors representing the values and offsets into those values for each batch.
 These tensors can be converted into RaggedTensors for multihot columns, and for vector continuous
 columns the offsets tensor can be safely ignored. We've provided a
-```nvtabular.framework_utils.layers.tensorflow.DenseFeatures``` Keras layer that will
+```nvtabular.framework_utils.tensorflow.layers.DenseFeatures``` Keras layer that will
 automatically handle these conversions for both continuous and categorical columns. For PyTorch, 
 we've added support for multihot columns to our
-```nvtabular.framework_utils.torch.models.Model``` class, which internally is using a the PyTorch
+```nvtabular.framework_utils.torch.models.Model``` class, which internally is using the PyTorch
 [EmbeddingBag](https://pytorch.org/docs/stable/generated/torch.nn.EmbeddingBag.html) layer to
 handle the multihot columns.
 
