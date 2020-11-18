@@ -50,6 +50,24 @@ class TargetEncoding(DFOperator):
     mean_global := mean of the target value in the dataset
     p_smooth := smoothing factor
 
+    Example usage::
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=CATEGORICAL_COLUMNS,
+            cont_names=CONTINUOUS_COLUMNS,
+            label_name=LABEL_COLUMNS
+        )
+
+        # Add TE op to the workflow
+        proc.add_feature(
+            TargetEncoding(
+            cat_groups = ['cat1', 'cat2', ['cat2','cat3']],
+            cont_target = LABEL_COLUMNS,
+            kfold = 5,
+            p_smooth = 20)
+        )
+
     Parameters
     -----------
     cat_groups : list of column-groups

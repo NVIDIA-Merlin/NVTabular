@@ -13,6 +13,7 @@ Operators
    FillMedian <fillmedian>
    Filter <filter>
    HashBucket <hashbucket>
+   HashedCross <hashedcross>
    JoinExternal <joinexternal>
    JoinGroupby <groupby>
    LambdaOp <lambdaop>
