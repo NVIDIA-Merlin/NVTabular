@@ -152,6 +152,7 @@ def main(args):
                 local_directory=dask_workdir,
                 dashboard_address=":" + dashboard_port,
             )
+
     client = Client(cluster)
 
     # Setup RMM pool

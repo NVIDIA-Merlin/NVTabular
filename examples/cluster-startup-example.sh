@@ -24,12 +24,12 @@
 # To start a single "scheduler" process and a distinct
 # worker process for every visible GPU:
 #
-#     $ bash cluster-startup.sh SCHEDULER
+#     $ bash cluster-startup-example.sh SCHEDULER
 #
 # To only start the worker processes (if the scheduler
 # is already up):
 #
-#     $ bash cluster-startup.sh
+#     $ bash cluster-startup-example.sh
 
 
 # Specify the protocol for cluster communication.
