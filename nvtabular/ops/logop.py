@@ -24,7 +24,7 @@ from .transform_operator import TransformOperator
 class LogOp(TransformOperator):
     """
     This operator calculates the log of continuous columns. Note that
-    to handle the common case of zerofilling null values, this is
+    to handle the common case of zerofilling null values, this
     calculates ``log(1+x)`` instead of just ``log(x)``.
 
     Example usage::

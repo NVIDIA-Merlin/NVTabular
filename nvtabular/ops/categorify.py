@@ -59,6 +59,28 @@ class Categorify(DFOperator):
         # Add Categorify for categorical columns to the workflow
         proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
 
+    Example with multi-hot::
+
+        # Create toy dataframe
+        df = cudf.DataFrame({
+            'userID': [10001, 10002, 10003],
+            'productID': [30003, 30005, 40005],
+            'categories': [['Cat A', 'Cat B'], ['Cat C'], ['Cat A', 'Cat C', 'Cat D']],
+            'label': [0,0,1]
+        })
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=['userID', 'productID', 'categories'],
+            cont_names=[],
+            label_name=['label']
+        )
+
+        # Add Categorify for categorical columns to the workflow
+        proc.add_preprocess(nvt.ops.Categorify())
+        # Apply workflow
+        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
+
     Parameters
     -----------
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
