@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import warnings
+
 CONT = "continuous"
 CAT = "categorical"
 ALL = "all"
@@ -25,10 +27,23 @@ class Operator:
 
     def __init__(self, columns=None):
         self.columns = columns
+        self._id_set = None
 
     @property
     def _id(self):
-        return str(self.__class__.__name__)
+        c_id = self._id_set
+        if not self._id_set:
+            c_id = str(self.__class__.__name__)
+        return c_id
+
+    def _set_id(self, id_to_set):
+        # only set one time
+        if not self._id_set:
+            self._id_set = id_to_set
+        else:
+            warnings.warn(
+                f"trying to reset operator id, for operator: {self._id_set} to {id_to_set}"
+            )
 
     def describe(self):
         raise NotImplementedError("All operators must have a desription.")

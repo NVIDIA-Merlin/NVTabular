@@ -89,8 +89,8 @@ class FillMedian(DFOperator):
     Parameters
     -----------
     columns : list of str, default None
-        Continous columns to target for this op. If None, the operation will target all known
-        continous columns.
+        Continuous columns to target for this op. If None, the operation will target all known
+        continuous columns.
     replace : bool, default True
         Whether to replace existing columns or create new ones.
     """
