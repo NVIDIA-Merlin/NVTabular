@@ -48,5 +48,6 @@ def device_mem_size(kind="total"):
         size = _pynvml_mem_size(kind="total", index=0)
     return size
 
+
 def get_rmm_size(size):
     return (size // 256) * 256
