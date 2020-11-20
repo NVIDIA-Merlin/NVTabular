@@ -47,3 +47,7 @@ def device_mem_size(kind="total"):
             warnings.warn("get_memory_info is not supported. Using total device memory from NVML.")
         size = _pynvml_mem_size(kind="total", index=0)
     return size
+
+
+def get_rmm_size(size):
+    return (size // 256) * 256
