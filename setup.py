@@ -22,6 +22,7 @@ import versioneer
 setup(
     name="nvtabular",
     version=versioneer.get_version(),
+    packages=find_packages(),
     url="https://github.com/NVIDIA/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
