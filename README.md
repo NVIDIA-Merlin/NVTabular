@@ -3,7 +3,7 @@
 
 NVTabular, a component of [**NVIDIA Merlin Open Beta**](https://developer.nvidia.com/nvidia-merlin), is a feature engineering and preprocessing library for tabular data that is designed to quickly and easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
 
-Recommender systems require massive datasets to train, particularly for deep learning based solutions. The transformation of these datasets after ETL in order to prepare them for model training is particularly challenging. Often the time taken to complete the necessary steps, such as feature engineering, categorical encoding, and normalization of continuous variables exceeds the time it takes to train a model.
+Recommender systems require massive datasets to train, particularly for deep learning based solutions. The transformation of these datasets in order to prepare them for model training is particularly challenging. Often the time taken to complete the necessary steps, such as feature engineering, categorical encoding, and normalization of continuous variables exceeds the time it takes to train a model.
 
 With NVTabular being a part of the Merlin ecosystem, it also works with the other Merlin components including [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server) to provide end-to-end acceleration of recommender systems on the GPU.
 
