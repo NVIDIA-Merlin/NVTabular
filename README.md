@@ -17,7 +17,7 @@ It is also meant to help ML/Ops Engineers with deploying models into production 
 
 The library is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that we have developed as extensions of native framework code. NVTabular provides the option to shuffle data during preprocessing, allowing the dataloader to load large contiguous chunks from files rather than individual elements. This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset. Loading tabular data is almost always a training bottleneck. In our benchmarking, we've seen 10x improvements in training time on the GPU relative to the native dataloaders.
 
-Extending beyond model training, we plan on integrating with model-serving frameworks like NVIDIA’s Triton Inference Server. This will only create a clear path to production inference for these models and allow the feature engineering and preprocessing steps performed on the data during training to be automatically applied to incoming data during inference.
+Extending beyond model training, we plan on integrating with model-serving frameworks like NVIDIA’s Triton Inference Server. This will create a clear path to production inference for these models and allow the feature engineering and preprocessing steps performed on the data during training to be automatically applied to incoming data during inference.
 
 Our goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness.
 
