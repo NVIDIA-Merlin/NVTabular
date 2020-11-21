@@ -25,11 +25,15 @@ RUN apt update -y --fix-missing && \
         python3-pip \
         python3-setuptools \
         python3-wheel \
+        software-properties-common \
         texlive-xetex \
         tzdata \
         vim \
         wget \
         zlib1g-dev
+
+# Needed to avoid tensorflow error
+ENV ln -s /usr/local/cuda/lib64/libcudart.so.$CUDA_VERSION /usr/local/cuda/lib64/libcudart.so.10.1
 
 # Add HugeCTR installation script
 ADD ./examples/hugectr/docker/hugectr_setup.sh /hugectr_setup.sh
