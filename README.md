@@ -13,7 +13,7 @@ NVTabular is designed to support data scientists and machine learning (ML) engin
 * work with datasets that exceed GPU and CPU memory without having to worry about scale.
 * focus on what to do with the data, and not how to do it, using our abstraction at the operation level.
 
-It is also meant to help ML/Ops Engineers with deploying models into production by providing faster dataset transformation. This only makes it easy for production models to be trained more frequently and kept up to date, helping improve responsiveness and model performance.
+It is also meant to help ML/Ops Engineers with deploying models into production by providing faster dataset transformation. This makes it easy for production models to be trained more frequently and kept up to date, helping improve responsiveness and model performance.
 
 The library is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that we have developed as extensions of native framework code. NVTabular provides the option to shuffle data during preprocessing, allowing the dataloader to load large contiguous chunks from files rather than individual elements. This allows us to do per epoch shuffles orders of magnitude faster than a full shuffle of the dataset. Loading tabular data is almost always a training bottleneck. In our benchmarking, we've seen 10x improvements in training time on the GPU relative to the native dataloaders.
 
