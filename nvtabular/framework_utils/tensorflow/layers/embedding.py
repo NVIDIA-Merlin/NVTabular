@@ -116,8 +116,10 @@ def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
         row_lengths = inputs[feature_name + "__nnzs"][:, 0]
         x = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
 
-        # use ragged array for sparse embedding lookup
-        embeddings = tf.nn.embedding_lookup_sparse(table, x, None, combiner=combiner)
+        # use ragged array for sparse embedding lookup.
+        # note we're using safe_embedding_lookup_sparse to handle empty rows
+        # ( https://github.com/NVIDIA/NVTabular/issues/389 )
+        embeddings = tf.nn.safe_embedding_lookup_sparse(table, x, None, combiner=combiner)
     else:
         embeddings = tf.gather(table, inputs[feature_name][:, 0])
 
