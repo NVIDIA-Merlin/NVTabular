@@ -14,44 +14,58 @@
 # limitations under the License.
 #
 
+import os
+
 import boto3
 
-ec2 = boto3.resource('ec2')
+client = boto3.client("ec2")
+resource = boto3.resource("ec2")
 
 # Create EC2 key pair
-outfile = open('ec2-keypair.pem','w')
-key_pair = ec2.create_key_pair(KeyName='ec2-keypair')
-KeyPairOut = str(key_pair.key_material)
+keypair_id = "ec2-keypair"
+keypair_file = "ec2-keypair.pem"
+outfile = open(keypair_file, "w")
+key_pair = client.create_key_pair(KeyName=keypair_id)
+KeyPairOut = str(key_pair["KeyMaterial"])
 print(KeyPairOut)
 outfile.write(KeyPairOut)
 
 # Create EC2 instances
-instances = ec2.create_instances(
-     ImageId='ami-063585f0e06d22308', # Deep Learning AMI (Ubuntu 18.04) Version 36.0 
-     MinCount=1,
-     MaxCount=1,
-     InstanceType='p4d.24xlarge', # 8xA100
-     KeyName='ec2-keypair'
- )
+instances = resource.create_instances(
+    ImageId="ami-0f899ff8474ea45a9",  # Deep Learning AMI (Amazon Linux 2) Version 36.0
+    MinCount=1,
+    MaxCount=1,
+    InstanceType="p3dn.24xlarge",  # 8xV100
+    KeyName="ec2-keypair",
+    SecurityGroupIds=[
+        "launch-wizard-3",
+    ],
+)
+instances = [ins.id for ins in instances]
+print(instances)
 
 # Start EC2 instances
-ec2.start_instances(InstanceIds=instances)
+client.start_instances(InstanceIds=instances)
 
 # Run NVTabular Tests
-ssm = boto3.client('ssm')
-commands = ['docker run --runtime=nvidia --ipc=host --name aws_test nvcr.io/nvidia/nvtabular:0.2 /bin/bash -c "source activate rapids && pytest /nvtabular/tests"']
+ssm = boto3.client("ssm")
+commands = [
+    "docker run --runtime=nvidia --ipc=host --name aws_test nvcr.io/nvidia/nvtabular:0.2 "
+    '/bin/bash -c "source activate rapids && pytest /nvtabular/tests"'
+]
 result = ssm.send_command(
-        DocumentName="AWS-RunShellScript", # One of AWS' preconfigured documents
-        Parameters={'commands': commands},
-        InstanceIds=instance_ids,
-    )
-print{result)
+    DocumentName="AWS-RunShellScript",
+    Parameters={"commands": commands},
+    InstanceIds=instances,
+)
+print(result)
 
 # Stop EC2 instances
-ec2.stop_instances(InstanceIds=instances)
+client.stop_instances(InstanceIds=instances)
 
 # Remove EC2 instances
-ec2.terminate_instances(InstanceIds=instances)
+resource.terminate_instances(InstanceIds=instances)
 
 # Delete EC2 key pair
-ec2.delete_key_pair(KeyName='KEY_PAIR_NAME')
+client.delete_key_pair(KeyName=keypair_id)
+os.remove(keypair_file)
