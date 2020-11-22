@@ -16,6 +16,7 @@
 import warnings
 
 from . import io, workflow  # noqa
+from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
 # and numba warning about deprecated environment variables
@@ -31,3 +32,7 @@ __all__ = ["Workflow", "Dataset"]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+
+
+__version__ = get_versions()["version"]
+del get_versions
