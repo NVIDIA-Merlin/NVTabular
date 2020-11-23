@@ -29,6 +29,7 @@ class DotProductInteraction(tf.keras.layers.Layer):
     tensors of shape `(batch_size, num_features, embedding_dim)` to
     tensors of shape `(batch_size, (num_features - 1)*num_features // 2)`
     if `self_interaction` is `False`, otherwise `(batch_size, num_features**2)`.
+
     Parameters
     ------------------------
     interaction_type: {}
