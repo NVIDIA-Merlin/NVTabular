@@ -64,6 +64,11 @@ class HashBucket(DFOperator):
         1         70         40
         2         52          9
 
+    If you would like to do frequency capping or frequency hashing,
+    you should use Categorify op instead. See
+    `Categorify op <https://github.com/NVIDIA/NVTabular/blob/main/nvtabular/ops/categorify.py#L43>`_
+    for example usage.
+
 
     Parameters
     ----------
