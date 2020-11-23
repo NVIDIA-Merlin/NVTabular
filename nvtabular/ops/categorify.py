@@ -379,7 +379,7 @@ def get_embedding_sizes(workflow):
     elif "buckets" in workflow.stats.keys():
         buckets = workflow.stats["buckets"]
 
-    # if we have hash buckets, but no coategorical just use the buckets
+    # if we have hash buckets, but no categories just use the buckets
     if buckets and "categories" not in workflow.stats:
         return {col: _emb_sz_rule(num_rows) for col, num_rows in buckets.items()}
 
