@@ -378,6 +378,11 @@ def get_embedding_sizes(workflow):
     # when only hashing is applied, this will return embedding shape as (num_buckets, emb_dim)
     elif "buckets" in workflow.stats.keys():
         buckets = workflow.stats["buckets"]
+
+    # if we have hash buckets, but no coategorical just use the buckets
+    if buckets and "categories" not in workflow.stats:
+        return {col: _emb_sz_rule(num_rows) for col, num_rows in buckets.items()}
+
     if "mh" not in workflow.columns_ctx["categorical"]:
         return _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
     else:
