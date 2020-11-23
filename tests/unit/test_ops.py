@@ -376,6 +376,9 @@ def test_hash_bucket_lists(tmpdir):
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
+    # make sure we get the embedding sizes
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == 10
+
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_fill_missing(tmpdir, df, dataset, engine):

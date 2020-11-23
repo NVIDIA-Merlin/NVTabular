@@ -17,12 +17,12 @@ import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from .categorify import _encode_list_column
+from .categorify import SetBuckets, _encode_list_column
 from .operator import CAT
-from .transform_operator import TransformOperator
+from .transform_operator import DFOperator
 
 
-class HashBucket(TransformOperator):
+class HashBucket(DFOperator):
     """
     This op maps categorical columns to a contiguous integer range
     by first hashing the column then modulating by the number of
@@ -127,3 +127,12 @@ class HashBucket(TransformOperator):
 
             new_gdf[new_col] = encoded
         return new_gdf
+
+    @property
+    def req_stats(self):
+        return [
+            SetBuckets(
+                columns=self.columns,
+                num_buckets=self.num_buckets,
+            )
+        ]
