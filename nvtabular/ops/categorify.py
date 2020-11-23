@@ -60,6 +60,30 @@ class Categorify(DFOperator):
         # Add Categorify for categorical columns to the workflow
         proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
 
+    Example for frequency hashing::
+
+        # Create toy dataframe
+        df = cudf.DataFrame({
+            'author': ['User_A', 'User_B', 'User_C', 'User_C', 'User_A', 'User_B', 'User_A'],
+            'productID': [100, 101, 102, 101, 102, 103, 103],
+            'label': [0, 0, 1, 1, 1, 0, 0]
+        })
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=['author', 'productID'],
+            cont_names=[],
+            label_name=['label']
+        )
+
+        # Add num_buckets param and freq_threshold param
+        proc.add_cat_preprocess(nvt.ops.Categorify(
+            freq_threshold={"author": 3, "productID": 2},
+            num_buckets={"author": 10, "productID": 20})
+        )
+        # Apply workflow
+        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
+
     Example with multi-hot::
 
         # Create toy dataframe
