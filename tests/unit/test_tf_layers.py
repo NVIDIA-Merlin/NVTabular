@@ -289,3 +289,33 @@ def test_dot_product_interaction_layer(
     frac_correct = 1.0
     match = np.isclose(expected_output, y_hat, rtol=rtol, atol=atol)
     assert match.mean() >= frac_correct
+
+
+def test_multihot_empty_rows():
+    multi_hot = tf.feature_column.categorical_column_with_identity("multihot", 5)
+    multi_hot_embedding = tf.feature_column.embedding_column(multi_hot, 8, combiner="sum")
+
+    embedding_layer = layers.DenseFeatures([multi_hot_embedding])
+    inputs = {
+        "multihot__values": tf.keras.Input(name="multihot__values", shape=(1,), dtype=tf.int64),
+        "multihot__nnzs": tf.keras.Input(name="multihot__nnzs", shape=(1,), dtype=tf.int64),
+    }
+    output = embedding_layer(inputs)
+
+    model = tf.keras.Model(inputs=inputs, outputs=output)
+    model.compile("sgd", "binary_crossentropy")
+
+    multi_hot_values = np.array([0, 2, 1, 4, 1, 3, 1])
+    multi_hot_nnzs = np.array([1, 0, 2, 4, 0])
+    x = {
+        "multihot__values": multi_hot_values[:, None],
+        "multihot__nnzs": multi_hot_nnzs[:, None],
+    }
+
+    multi_hot_embedding_table = embedding_layer.embedding_tables["multihot"].numpy()
+    multi_hot_embedding_rows = _compute_expected_multi_hot(
+        multi_hot_embedding_table, multi_hot_values, multi_hot_nnzs, "sum"
+    )
+
+    y_hat = model(x).numpy()
+    np.testing.assert_allclose(y_hat, multi_hot_embedding_rows)

@@ -36,6 +36,7 @@ from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .groupby_statistics import GroupbyStatistics
 from .operator import CAT
+from .stat_operator import StatOperator
 from .transform_operator import DFOperator
 
 
@@ -58,6 +59,30 @@ class Categorify(DFOperator):
 
         # Add Categorify for categorical columns to the workflow
         proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
+
+    Example for frequency hashing::
+
+        # Create toy dataframe
+        df = cudf.DataFrame({
+            'author': ['User_A', 'User_B', 'User_C', 'User_C', 'User_A', 'User_B', 'User_A'],
+            'productID': [100, 101, 102, 101, 102, 103, 103],
+            'label': [0, 0, 1, 1, 1, 0, 0]
+        })
+
+        # Initialize the workflow
+        proc = nvt.Workflow(
+            cat_names=['author', 'productID'],
+            cont_names=[],
+            label_name=['label']
+        )
+
+        # Add num_buckets param and freq_threshold param
+        proc.add_cat_preprocess(nvt.ops.Categorify(
+            freq_threshold={"author": 3, "productID": 2},
+            num_buckets={"author": 10, "productID": 20})
+        )
+        # Apply workflow
+        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
 
     Example with multi-hot::
 
@@ -126,6 +151,14 @@ class Categorify(DFOperator):
         for multi-column groups.
     search_sorted : bool, default False.
         Set it True to apply searchsorted algorithm in encoding.
+    num_buckets : int, or dictionary:{column: num_hash_buckets}
+        Column-wise modulo to apply after hash function. Note that this
+        means that the corresponding value will be the categorical cardinality
+        of the transformed categorical feature. If given as an int, that value
+        will be used as the number of "hash buckets" for every feature. If a dictionary is passed,
+        it will be used to specify explicit mappings from a column name to a number of buckets.
+        In this case, only the columns specified in the keys of `num_buckets`
+        will be transformed.
     """
 
     default_in = CAT
@@ -145,6 +178,7 @@ class Categorify(DFOperator):
         encode_type="joint",
         name_sep="_",
         search_sorted=False,
+        num_buckets=None,
     ):
 
         # We need to handle three types of encoding here:
@@ -223,10 +257,23 @@ class Categorify(DFOperator):
             raise ValueError(
                 "cannot use search_sorted=True with anything else than the default freq_threshold"
             )
+        if num_buckets == 0:
+            raise ValueError(
+                "For hashing num_buckets should be an int > 1, otherwise set num_buckets=None."
+            )
+        elif isinstance(num_buckets, dict):
+            columns = list(num_buckets)
+            self.num_buckets = num_buckets
+        elif isinstance(num_buckets, int) or num_buckets is None:
+            self.num_buckets = num_buckets
+        else:
+            raise ValueError(
+                "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
+            )
 
     @property
     def req_stats(self):
-        return [
+        stats = [
             GroupbyStatistics(
                 columns=self.column_groups or self.columns,
                 concat_groups=self.encode_type == "joint",
@@ -240,6 +287,16 @@ class Categorify(DFOperator):
                 name_sep=self.name_sep,
             )
         ]
+        if self.num_buckets:
+            stats += [
+                SetBuckets(
+                    columns=self.column_groups or self.columns,
+                    num_buckets=self.num_buckets,
+                    freq_limit=self.freq_threshold,
+                    encode_type=self.encode_type,
+                )
+            ]
+        return stats
 
     @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
     def apply_op(
@@ -303,6 +360,9 @@ class Categorify(DFOperator):
                 if isinstance(self.freq_threshold, dict)
                 else self.freq_threshold,
                 search_sorted=self.search_sorted,
+                buckets=self.num_buckets,
+                encode_type=self.encode_type,
+                cat_names=cat_names,
             )
             if self.dtype:
                 new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
@@ -332,21 +392,44 @@ def _get_embedding_order(cat_names):
 def get_embedding_sizes(workflow):
     mh_cols = None
     cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    if "mh" in workflow.columns_ctx["categorical"]:
+    buckets = None
+    freq = 0
+    # when frequency hashing is applied,
+    # this will return embedding shape:(num_buckets+cardinality, emb_dim)
+    if "buckets" in workflow.stats.keys() and "freq_limit" in workflow.stats.keys():
+        buckets = workflow.stats["buckets"]
+        freq = workflow.stats["freq_limit"]
+    # when only hashing is applied, this will return embedding shape as (num_buckets, emb_dim)
+    elif "buckets" in workflow.stats.keys():
+        buckets = workflow.stats["buckets"]
+
+    # if we have hash buckets, but no categories just use the buckets
+    if buckets and "categories" not in workflow.stats:
+        return {col: _emb_sz_rule(num_rows) for col, num_rows in buckets.items()}
+
+    if "mh" not in workflow.columns_ctx["categorical"]:
+        return _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
+    else:
         mh_cols = _get_embedding_order(workflow.columns_ctx["categorical"]["mh"])
         for col in mh_cols:
             cols.remove(col)
-    res = _get_embeddings_dask(workflow.stats["categories"], cols)
-    if mh_cols:
-        res = res, _get_embeddings_dask(workflow.stats["categories"], mh_cols)
-    return res
+        res = _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
+        if mh_cols:
+            res = res, _get_embeddings_dask(workflow.stats["categories"], mh_cols, buckets, freq)
+        return res
 
 
-def _get_embeddings_dask(paths, cat_names):
+def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     embeddings = {}
+    if isinstance(freq_limit, int):
+        freq_limit = {name: freq_limit for name in cat_names}
     for col in cat_names:
-        path = paths[col]
-        num_rows, _, _ = cudf.io.read_parquet_metadata(path)
+        path = paths.get(col)
+        num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
+        if buckets and col in buckets and freq_limit[col] > 1:
+            num_rows += buckets.get(col, 0)
+        if buckets and col in buckets and not freq_limit[col]:
+            num_rows = buckets.get(col, 0)
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -765,7 +848,14 @@ def _encode(
     na_sentinel=-1,
     freq_threshold=0,
     search_sorted=False,
+    buckets=None,
+    encode_type="joint",
+    cat_names=None,
 ):
+
+    if isinstance(buckets, int):
+        buckets = {name: buckets for name in cat_names}
+
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
@@ -798,14 +888,31 @@ def _encode(
             codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
             codes["order"] = cp.arange(len(codes))
         else:
-            codes = cudf.DataFrame({"order": cp.arange(len(gdf))})
+            codes = cudf.DataFrame({"order": cp.arange(len(gdf))}, index=gdf.index)
             for c in selection_l:
                 codes[c] = gdf[c].copy()
-        labels = codes.merge(
-            value, left_on=selection_l, right_on=selection_r, how="left"
-        ).sort_values("order")["labels"]
-        labels.fillna(na_sentinel, inplace=True)
-        labels = labels.values
+        if buckets and storage_name in buckets:
+            na_sentinel = _hash_bucket(gdf, buckets, selection_l, encode_type=encode_type)
+        # apply frequency hashing
+        if freq_threshold and buckets and storage_name in buckets:
+            merged_df = codes.merge(
+                value, left_on=selection_l, right_on=selection_r, how="left"
+            ).sort_values("order")
+            merged_df.reset_index(drop=True, inplace=True)
+            max_id = merged_df["labels"].max()
+            merged_df["labels"].fillna(cudf.Series(na_sentinel + max_id + 1), inplace=True)
+            labels = merged_df["labels"].values
+        # only do hashing
+        elif buckets and storage_name in buckets:
+            labels = na_sentinel
+        # no hashing
+        else:
+            na_sentinel = 0
+            labels = codes.merge(
+                value, left_on=selection_l, right_on=selection_r, how="left"
+            ).sort_values("order")["labels"]
+            labels.fillna(na_sentinel, inplace=True)
+            labels = labels.values
     else:
         # Use `searchsorted` if we are using a "full" encoding
         if list_col:
@@ -864,3 +971,67 @@ def _encode_list_column(original, encoded):
         size=original.size,
         children=(original._column.offsets, encoded),
     )
+
+
+def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
+    if encode_type == "joint":
+        nb = num_buckets[col[0]]
+        if is_list_dtype(gdf[col[0]].dtype):
+            encoded = gdf[col[0]].list.leaves.hash_values() % nb
+        else:
+            encoded = gdf[col[0]].hash_values() % nb
+    elif encode_type == "combo":
+        if len(col) > 1:
+            name = _make_name(*tuple(col), sep="_")
+        else:
+            name = col[0]
+        nb = num_buckets[name]
+        val = 0
+        for column in col:
+            val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+        val = val % nb
+        encoded = val
+    return encoded
+
+
+class SetBuckets(StatOperator):
+    def __init__(self, columns=None, num_buckets=None, freq_limit=0, encode_type="joint"):
+        if isinstance(columns, list):
+            columns = list(set(flatten(columns, container=list)))
+        super().__init__(columns=columns)
+        self.num_buckets = num_buckets
+        self.freq_limit = freq_limit
+        self.encode_type = encode_type
+
+    @annotate("SetBuckets_op", color="green", domain="nvt_python")
+    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
+        cols = self.get_columns(columns_ctx, input_cols, target_cols)
+        if isinstance(self.num_buckets, int) and self.encode_type == "joint":
+            self.num_buckets = {name: self.num_buckets for name in cols}
+        elif isinstance(self.num_buckets, int) and self.encode_type == "combo":
+            buckets = {}
+            for group in cols:
+                if isinstance(group, list) and len(group) > 1:
+                    # For multi-column groups, we concatenate column names.
+                    name = _make_name(*group, sep="_")
+                    buckets[name] = self.num_buckets
+                elif isinstance(group, str):
+                    buckets[group] = self.num_buckets
+            self.num_buckets = buckets
+        return self.num_buckets
+
+    @annotate("SetBuckets_finalize", color="green", domain="nvt_python")
+    def finalize(self, dask_stats):
+        self.num_buckets = dask_stats
+
+    def registered_stats(self):
+        return ["buckets", "freq_limit"]
+
+    def stats_collected(self):
+        result = [("buckets", self.num_buckets), ("freq_limit", self.freq_limit)]
+        return result
+
+    def clear(self):
+        self.num_buckets = {}
+        self.freq_limit = {}
+        return

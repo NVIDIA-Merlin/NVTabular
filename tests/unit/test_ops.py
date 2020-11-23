@@ -376,6 +376,9 @@ def test_hash_bucket_lists(tmpdir):
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
+    # make sure we get the embedding sizes
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == 10
+
 
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_fill_missing(tmpdir, df, dataset, engine):
@@ -414,6 +417,38 @@ def test_dropna(tmpdir, df, dataset, engine):
 def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
+    label_name = ["label"]
+
+    config = nvt.workflow.get_new_config()
+    config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
+
+    processor = nvtabular.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+
+    processor.update_stats(dataset)
+
+    op = ops.Normalize()
+
+    columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = op_columns or cont_names
+
+    new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
+    df["x"] = (df["x"] - processor.stats["means"]["x"]) / processor.stats["stds"]["x"]
+    assert new_gdf["x"].equals(df["x"])
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.1])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("op_columns", [["x"], None])
+def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_columns):
+    df = cudf.DataFrame(
+        {"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1, 0, 1, 0]}, dtype="float32"
+    )
+
+    cat_names = []
+    cont_names = ["x"]
     label_name = ["label"]
 
     config = nvt.workflow.get_new_config()
@@ -775,8 +810,9 @@ def test_categorify_multi_combo(tmpdir):
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
+@pytest.mark.parametrize("buckets", [None, 10, {"Author": 10, "Engaging User": 20}])
 @pytest.mark.parametrize("search_sort", [True, False])
-def test_categorify_freq_limit(tmpdir, freq_limit, search_sort):
+def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
     df = cudf.DataFrame(
         {
             "Author": [
@@ -821,19 +857,38 @@ def test_categorify_freq_limit(tmpdir, freq_limit, search_sort):
                 freq_threshold=freq_limit,
                 out_path=str(tmpdir),
                 search_sorted=search_sort,
+                num_buckets=buckets,
             )
         )
         processor.finalize()
         processor.apply(nvt.Dataset(df), output_format=None)
         df_out = processor.get_ddf().compute(scheduler="synchronous")
 
-        # Column combinations are encoded
-        if isinstance(freq_limit, dict):
-            assert df_out["Author"].max() == 2
-            assert df_out["Engaging User"].max() == 1
-        else:
-            assert len(df["Author"].unique()) == df_out["Author"].max()
-            assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
+        if freq_limit and not buckets:
+            # Column combinations are encoded
+            if isinstance(freq_limit, dict):
+                assert df_out["Author"].max() == 2
+                assert df_out["Engaging User"].max() == 1
+            else:
+                assert len(df["Author"].unique()) == df_out["Author"].max()
+                assert len(df["Engaging User"].unique()) == df_out["Engaging User"].max()
+        elif not freq_limit and buckets:
+            if isinstance(buckets, dict):
+                assert df_out["Author"].max() <= 9
+                assert df_out["Engaging User"].max() <= 19
+            else:
+                assert df_out["Author"].max() <= 9
+                assert df_out["Engaging User"].max() <= 9
+        elif freq_limit and buckets:
+            if isinstance(buckets, dict) and isinstance(buckets, dict):
+                assert (
+                    df_out["Author"].max()
+                    <= (df["Author"].hash_values() % buckets["Author"]).max() + 2 + 1
+                )
+                assert (
+                    df_out["Engaging User"].max()
+                    <= (df["Engaging User"].hash_values() % buckets["Engaging User"]).max() + 1 + 1
+                )
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])

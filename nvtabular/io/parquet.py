@@ -53,8 +53,12 @@ class ParquetDatasetEngine(DatasetEngine):
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
-                    f"Row group size {rg_byte_size_0} is bigger than requested part_size "
-                    f"{self.part_size}"
+                    f"Row group memory size ({rg_byte_size_0}) (bytes) of parquet file is bigger"
+                    f" than requested part_size ({self.part_size}) for the NVTabular dataset."
+                    f"A row group memory size of 128 MB is generally recommended. You can find"
+                    f" info on how to set the row group size of parquet files in "
+                    f"https://nvidia.github.io/NVTabular/main/HowItWorks.html"
+                    f"#getting-your-data-ready-for-nvtabular"
                 )
                 row_groups_per_part = 1.0
 
