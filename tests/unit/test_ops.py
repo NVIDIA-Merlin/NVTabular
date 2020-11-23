@@ -436,6 +436,38 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     assert new_gdf["x"].equals(df["x"])
 
 
+@pytest.mark.parametrize("gpu_memory_frac", [0.1])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("op_columns", [["x"], None])
+def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_columns):
+    df = cudf.DataFrame(
+        {"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1, 0, 1, 0]}, dtype="float32"
+    )
+
+    cat_names = []
+    cont_names = ["x"]
+    label_name = ["label"]
+
+    config = nvt.workflow.get_new_config()
+    config["PP"]["continuous"] = [ops.Moments(columns=op_columns)]
+
+    processor = nvtabular.Workflow(
+        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
+    )
+
+    processor.update_stats(dataset)
+
+    op = ops.Normalize()
+
+    columns_ctx = {}
+    columns_ctx["continuous"] = {}
+    columns_ctx["continuous"]["base"] = op_columns or cont_names
+
+    new_gdf = op.apply_op(df, columns_ctx, "continuous", stats_context=processor.stats)
+    df["x"] = (df["x"] - processor.stats["means"]["x"]) / processor.stats["stds"]["x"]
+    assert new_gdf["x"].equals(df["x"])
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])

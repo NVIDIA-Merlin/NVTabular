@@ -272,7 +272,7 @@ class BaseWorkflow:
         Parameters
         ----------
         operators: list
-            list of operators or single operator, Op/s to be added into the
+            list of operators or single operator to be added into the
             preprocessing phase
         phase:
             identifier for feature engineering FE or preprocessing PP
@@ -311,7 +311,7 @@ class BaseWorkflow:
         Parameters
         -----------
         operators : object
-            list of operators or single operator, Op/s to be
+            list of operators or single operator to be
             added into the feature engineering phase
         """
         if not isinstance(operators, list):
@@ -325,7 +325,7 @@ class BaseWorkflow:
         Parameters
         -----------
         operators : object
-            list of categorical operators or single operator, Op/s to be
+            list of categorical operators or single operator to be
             added into the feature engineering phase
         """
 
@@ -371,7 +371,7 @@ class BaseWorkflow:
         Parameters
         -----------
         operators : object
-            categorical objects such as Normalize
+            continuous objects such as Normalize
         """
 
         operators = self.op_default_check(operators, "continuous")
@@ -929,7 +929,7 @@ class Workflow(BaseWorkflow):
             writer.write_general_metadata(general_md, writer.fs, output_path)
 
     def update_stats(self, dataset, end_phase=None):
-        """Colllect statistics only."""
+        """Collect statistics only."""
         self.build_and_process_graph(dataset, end_phase=end_phase, record_stats=True)
 
     def build_and_process_graph(

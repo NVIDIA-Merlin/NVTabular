@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import os
+from uuid import uuid4
 
 import numpy as np
 
@@ -23,7 +24,14 @@ from .writer import ThreadedWriter
 class HugeCTRWriter(ThreadedWriter):
     def __init__(self, out_dir, **kwargs):
         super().__init__(out_dir, **kwargs)
-        self.data_paths = [os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)]
+        if self.use_guid:
+            self.data_paths = [
+                os.path.join(out_dir, f"{i}i.{uuid4().hex}.data") for i in range(self.num_out_files)
+            ]
+        else:
+            self.data_paths = [
+                os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)
+            ]
         self.data_writers = [open(f, "wb") for f in self.data_paths]
         # Reserve 64 bytes for header
         header = np.array([0, 0, 0, 0, 0, 0, 0, 0], dtype=np.longlong)
