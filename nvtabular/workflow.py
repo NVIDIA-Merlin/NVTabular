@@ -322,6 +322,7 @@ class BaseWorkflow:
         """
         Adds categorical feature engineering operator(s), while mapping
         to the correct columns given operator dependencies.
+
         Parameters
         -----------
         operators : object
@@ -338,6 +339,7 @@ class BaseWorkflow:
         """
         Adds continuous feature engineering operator(s)
         to the workflow.
+
         Parameters
         -----------
         operators : object
@@ -353,6 +355,7 @@ class BaseWorkflow:
         """
         Adds categorical pre-processing operator(s)
         to the workflow.
+
         Parameters
         -----------
         operators : object
@@ -368,6 +371,7 @@ class BaseWorkflow:
         """
         Adds continuous pre-processing operator(s)
         to the workflow.
+
         Parameters
         -----------
         operators : object
@@ -550,6 +554,7 @@ class BaseWorkflow:
         """
         Returns all the column names after preprocessing and feature
         engineering.
+
         Parameters
         -----------
         col_type : str
