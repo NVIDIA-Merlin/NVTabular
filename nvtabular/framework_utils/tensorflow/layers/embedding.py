@@ -140,16 +140,16 @@ class DenseFeatures(tf.keras.layers.Layer):
     by `tf.keras.layers.DenseFeatures` while reducing overhead for the
     case of one-hot categorical and scalar numeric features.
 
-    Uses TensorFlow `feature_column`s to represent inputs to the layer, but
+    Uses TensorFlow `feature_column` to represent inputs to the layer, but
     does not perform any preprocessing associated with those columns. As such,
-    it should only be passed `numeric_column`s and their subclasses,
+    it should only be passed `numeric_column` objects and their subclasses,
     `embedding_column` and `indicator_column`. Preprocessing functionality should
     be moved to NVTabular.
 
     For multi-hot categorical or vector continuous data, represent the data for
     a feature with a dictionary entry `"<feature_name>__values"` corresponding
     to the flattened array of all values in the batch. For multi-hot categorical
-    data, there should be a corresponding `"<feature_name>__nnzs" entry that
+    data, there should be a corresponding `"<feature_name>__nnzs"` entry that
     describes how many categories are present in each sample (and so has length
     `batch_size`).
 
