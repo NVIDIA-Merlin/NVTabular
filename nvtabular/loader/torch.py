@@ -37,10 +37,9 @@ class IterDL(torch.utils.data.IterableDataset):
 
 
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
-    """This class, creates batches of, a user defined size, tensor
-    represenation of the data supplied. The data input requires an
-    NVTabular dataset. Handles spillover to ensure all batches are
-    the specified size until the final batch.
+    """This class creates batches of tensor. Each batch size is specified by the user.
+    The data input requires an NVTabular dataset. Handles spillover to ensure all
+    batches are the specified size until the final batch.
 
     Parameters
     -----------
