@@ -161,7 +161,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         shutil.rmtree(output_train)
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
+@pytest.mark.parametrize("part_mem_fraction", [0.001, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     cat_names = ["name-cat", "name-string"]
