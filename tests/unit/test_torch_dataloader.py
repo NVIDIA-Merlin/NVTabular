@@ -53,12 +53,13 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_name):
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
-    # first with no continuous columns
     processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
 
-    processor.add_feature([ops.FillMedian()])
-    processor.add_feature(ops.Normalize())
-    processor.add_feature(ops.Categorify())
+    if cont_names:
+        processor.add_feature([ops.FillMedian()])
+        processor.add_feature(ops.Normalize())
+    if cat_names:
+        processor.add_feature(ops.Categorify())
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
@@ -86,7 +87,7 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
             assert labels.shape[-1] == len(label_name)
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.06])
+@pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("devices", [None, GPU_DEVICE_IDS[:2]])
