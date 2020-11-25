@@ -19,6 +19,7 @@ import cupy.sparse
 import numba
 import numpy
 import scipy.sparse
+from cupyx.scipy.sparse import coo_matrix
 from nvtx import annotate
 
 from .operator import CAT, CONT
@@ -36,8 +37,8 @@ class ColumnSimilarity(TransformOperator):
         # Read in the 'document_categories' file from the kaggle outbrains dataset and convert
         # to a sparse matrix
         df = cudf.read_csv("document_categories.csv.zip")
-        categories = cupy.sparse.coo_matrix((cupy.ones(len(df)),
-                                            (df.document_id.values, df.category_id.values))
+        categories = cupyx.scipy.sparse.coo_matrix((cupy.ones(len(df)),
+                                                   (df.document_id.values, df.category_id.values))
         # compute a new column 'similarity' between the document_id and promo_document_id columns
         # on tfidf distance on the categories matrix we just loaded up
         workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
@@ -217,7 +218,7 @@ def _convert_features(features, metric, on_device):
         # take a shallow copy to avoid mutating the input, but keep gpu
         # memory as low as possible. (also convert to coo_matrix if passed
         # a CSR etc)
-        features = cupy.sparse.coo_matrix(features)
+        features = coo_matrix(features)
     else:
         if not isinstance(features, scipy.sparse.coo_matrix):
             # convert to host first if the sparse matrix is on the device
