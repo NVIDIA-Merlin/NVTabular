@@ -16,6 +16,7 @@
 import cudf
 import cupy
 import pytest
+from cupyx.scipy.sparse import coo_matrix
 
 import nvtabular
 from nvtabular.ops.column_similarity import ColumnSimilarity
@@ -24,7 +25,7 @@ from nvtabular.ops.column_similarity import ColumnSimilarity
 @pytest.mark.parametrize("on_device", [True, False])
 @pytest.mark.parametrize("metric", ["tfidf", "cosine", "inner"])
 def test_column_similarity(on_device, metric):
-    categories = cupy.sparse.coo_matrix(
+    categories = coo_matrix(
         (
             cupy.ones(14),
             (
