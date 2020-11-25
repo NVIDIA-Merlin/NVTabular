@@ -90,7 +90,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     """
     Infinite generator used to asynchronously iterate through CSV or Parquet
     dataframes on GPU by leveraging an NVTabular `Dataset`. Applies preprocessing
-    via NVTabular `Workflow`s and outputs tabular dictionaries of TensorFlow
+    via NVTabular `Workflow` objects and outputs tabular dictionaries of TensorFlow
     Tensors via `dlpack <https://github.com/dmlc/dlpack>`_. Useful for training tabular models
     built in Keras and trained via
     `tf.keras.Model.fit <https://www.tensorflow.org/api_docs/python/tf/keras/Model>`_.
