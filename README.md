@@ -83,7 +83,7 @@ Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NV
 
 With NVTabular running on a single V100 32GB GPU, we were able to complete ETL in 13 minutes. With a DGX-1 cluster of eight V100 GPUs, we can accelerate ETL to 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/), we can process the dataset and train the full model in only 6 minutes. This fast iteration is the goal of NVTabular and the [Merlin application framework](https://developer.nvidia.com/nvidia-merlin). We're working on A100 benchmarks and will share them as soon as they are available.
 
-We also have a [simple tutorial](examples/rossmann-store-sales-example.ipynb) that demonstrates similar functionality on a much smaller dataset. A pipeline for the [Rossman store sales dataset](https://www.kaggle.com/c/rossmann-store-sales) that feeds into a [fast.ai tabular data model](https://docs.fast.ai/tabular.learner.html) is provided.
+We also have a [simple tutorial](examples/rossmann/) that demonstrates similar functionality on a much smaller dataset. A pipeline for the [Rossman store sales dataset](https://www.kaggle.com/c/rossmann-store-sales) that feeds into a [fast.ai tabular data model](https://docs.fast.ai/tabular.learner.html) is provided.
 
 ### Contributing
 
