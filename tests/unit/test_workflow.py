@@ -425,9 +425,7 @@ def test_chaining_2():
     )
     proc = nvt.Workflow(cat_names=["C"], cont_names=["A", "B"], label_name=[])
 
-    proc.add_feature(
-        nvt.ops.LambdaOp(op_name="isnull", f=lambda col, gdf: col.isnull(), replace=False)
-    )
+    proc.add_feature(nvt.ops.LambdaOp(op_name="isnull", f=lambda col: col.isnull(), replace=False))
 
     proc.add_cat_preprocess(nvt.ops.Categorify())
     train_dataset = nvt.Dataset(gdf, engine="parquet")
@@ -562,7 +560,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
         [
             ops.LambdaOp(
                 op_name="country",
-                f=lambda col, gdf: col.str.slice(0, 2),
+                f=lambda col: col.str.slice(0, 2),
                 columns=["geo_location"],
                 replace=False,
             ),
