@@ -77,13 +77,19 @@ def test_rossman_example(tmpdir):
     output_path = os.path.join(DATA_START, "rossman/output")
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples", "rossmann-store-sales-preproc.ipynb"
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-preproc.ipynb"
     )
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
 
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-feature-engineering.ipynb"
+    )
+
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
+    
     notebookex_path = os.path.join(
-        dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-fastai.ipynb"
     )
     _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
 
@@ -133,8 +139,14 @@ def _run_notebook(
     script_path = os.path.join(tmpdir, "notebook.py")
     with open(script_path, "w") as script:
         script.write("\n".join(lines))
-    subprocess.check_output([sys.executable, script_path])
-
+    output = subprocess.check_output([sys.executable, script_path])
+    # save location will default to run location
+    output = output.decode("utf-8") 
+    _,  note_name = os.path.split(notebook_path)
+    note_name = note_name.split(".")[0]
+    if output:
+        with open(f"test_res_{note_name}", "w") as w_file:
+            w_file.write(output)
     # clear out products
     if clean_up:
         shutil.rmtree(output_path)
