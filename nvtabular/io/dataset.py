@@ -482,7 +482,7 @@ def validate_dataset(dataset, add_metadata_file=False):
     for path, size in file_sizes.items():
         if size < file_size_lower_lim and len(pa_dataset.pieces) > 1:
             msg = (
-                f"File {max_rg_size_path} is smaller than the desired dataset "
+                f"File {path} is smaller than the desired dataset "
                 f"partition size ({dataset.engine.part_size}). Consider using the "
                 f"regenerate_dataset utility to rewrite your dataset with a smaller "
                 f"number of (larger) files."
