@@ -17,6 +17,8 @@
 import logging
 import random
 import warnings
+from collections import defaultdict
+from io import BytesIO
 
 import cudf
 import dask
@@ -25,6 +27,7 @@ import numpy as np
 import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
+from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
 from fsspec.utils import stringify_path
@@ -356,3 +359,151 @@ class DataFrameIter:
             else:
                 yield part.compute(scheduler="synchronous")
             part = None
+
+
+def regenerate_nvt_dataset(dataset, output_path, columns=None):
+    # TODO: Implement simple utility to rewrite a dataset into
+    # parquet format with proper row-group sizes and a global
+    # metadata file.  For input datasets with excessive row-group
+    # sizes, the data will need to be ingested on the CPU (pyarrow)
+    raise NotImplementedError
+
+
+def _append_row_groups(metadata, md, err_collector, path):
+    try:
+        metadata.append_row_groups(md)
+    except RuntimeError as err:
+        if "requires equal schemas" in str(err):
+            schema = metadata.schema.to_arrow_schema()
+            schema_new = md.schema.to_arrow_schema()
+            for i, name in enumerate(schema.names):
+                if schema_new.types[i] != schema.types[i]:
+                    err_collector[name].add(
+                        (path, schema.types[i], schema_new.types[i])
+                    )
+        else:
+            raise err
+
+
+def validate_dataset(dataset, add_metadata_file=False):
+
+    # Check that the dataset format is Parquet
+    if not isinstance(dataset.engine, ParquetDatasetEngine):
+        raise TypeError(
+            "NVTabular is optimized for the parquet format. Please use "
+            "the regenerate_dataset utility to convert your dataset."
+        )
+
+    # Get dataset and path list
+    pa_dataset = dataset.engine._dataset
+    paths = [p.path for p in pa_dataset.pieces]
+    root_dir, fns = _analyze_paths(paths, dataset.engine.fs)
+
+    # Collect dataset metadata
+    metadata_file_exists = bool(pa_dataset.metadata)
+    schema_errors = defaultdict(set)
+    if metadata_file_exists:
+        # We have a metadata file
+        metadata = pa_dataset.metadata
+    else:
+        # No metadata file - Collect manually
+        metadata = None
+        for piece, fn in zip(pa_dataset.pieces, fns):
+            md = piece.get_metadata()
+            md.set_file_path(fn)
+            if metadata:
+                _append_row_groups(metadata, md, schema_errors, piece.path)
+            else:
+                metadata = md
+
+        # Check for inconsistent schemas.
+        # This is not a problem if a _metadata file exists
+        for field in schema_errors:
+            msg = f"Schema mismatch detected in column: '{field}'."
+            warnings.warn(msg)
+            for item in schema_errors[field]:
+                msg = f"[{item[0]}] Expected {item[1]}, got {item[2]}."
+                warnings.warn(msg)
+        
+        # If there is schema mismatch, urge the user to add a _metadata file
+        if len(schema_errors):
+            import pyarrow.parquet as pq
+
+            # Collect the metadata with dask_cudf and then convert to pyarrow
+            metadata_bytes = dask_cudf.io.parquet.create_metadata_file(
+                paths, out_dir=False,
+            )
+            with BytesIO() as myio:
+                myio.write(memoryview(metadata_bytes))
+                myio.seek(0)
+                metadata = pq.ParquetFile(myio).metadata
+
+            if not add_metadata_file:
+                msg = (
+                    f"\nPlease pass add_metadata_file=True to add a global "
+                    f"_metadata file, or use the regenerate_dataset utility to "
+                    f"rewrite your dataset. Without a _metadata file, the schema "
+                    f"mismatch may cause errors at read time."
+                )
+                warnings.warn(msg)
+
+    # Record the total byte size of all row groups and files
+    max_rg_size = 0
+    max_rg_size_path = None
+    file_sizes = defaultdict(int)
+    for rg in range(metadata.num_row_groups):
+        row_group = metadata.row_group(rg)
+        path = row_group.column(0).file_path
+        total_byte_size = row_group.total_byte_size
+        if total_byte_size > max_rg_size:
+            max_rg_size = total_byte_size
+            max_rg_size_path = path
+        file_sizes[path] += total_byte_size
+
+    # Check if any row groups are prohibitively large.
+    # Also check if any row groups are larger than recommended.
+    rg_size_recommended_upper_lim = 500_000_000
+    rg_size_required_upper_lim = dataset.engine.part_size
+    if max_rg_size > rg_size_required_upper_lim:
+        raise TypeError(
+            f"Excessive row_group size ({max_rg_size}) detected in file "
+            f"{max_rg_size_path}. Please use the regenerate_dataset utility "
+            f"to rewrite your dataset."
+        )
+    elif max_rg_size > rg_size_recommended_upper_lim:
+        msg = (
+            f"Larger than recommended row_group size ({max_rg_size}) detected in "
+            f"file {max_rg_size_path}. Consider using the regenerate_dataset "
+            f"utility to rewrite your dataset."
+        )
+        warnings.warn(msg)
+
+    # Check if any files are smaller than the desired partition size
+    file_size_lower_lim = dataset.engine.part_size
+    for path, size in file_sizes.items():
+        if size < file_size_lower_lim and len(pa_dataset.pieces) > 1:
+            msg = (
+                f"File {max_rg_size_path} is smaller than the desired dataset "
+                f"partition size ({dataset.engine.part_size}). Consider using the "
+                f"regenerate_dataset utility to rewrite your dataset with a smaller "
+                f"number of (larger) files."
+            )
+            warnings.warn(msg)
+
+    # If the _metadata file is missing, we need to write
+    # it (or inform the user that it is missing)
+    if not metadata_file_exists:
+        if add_metadata_file:
+            # Write missing _metadata file
+            fs = dataset.engine.fs
+            metadata_path = fs.sep.join([root_dir, "_metadata"])
+            with fs.open(metadata_path, "wb") as fil:
+                metadata.write_metadata_file(fil)
+        else:
+            # Inform user that the _metadata file is missing
+            raise TypeError(
+                "For best performance with NVTabular, there should be a "
+                "global _metadata file located in the root directory of the "
+                "dataset. Please pass add_metadata_file=True to add the "
+                "missing file."
+            )
