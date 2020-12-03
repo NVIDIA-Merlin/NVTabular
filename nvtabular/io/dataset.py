@@ -378,9 +378,7 @@ def _append_row_groups(metadata, md, err_collector, path):
             schema_new = md.schema.to_arrow_schema()
             for i, name in enumerate(schema.names):
                 if schema_new.types[i] != schema.types[i]:
-                    err_collector[name].add(
-                        (path, schema.types[i], schema_new.types[i])
-                    )
+                    err_collector[name].add((path, schema.types[i], schema_new.types[i]))
         else:
             raise err
 
@@ -424,14 +422,15 @@ def validate_dataset(dataset, add_metadata_file=False):
             for item in schema_errors[field]:
                 msg = f"[{item[0]}] Expected {item[1]}, got {item[2]}."
                 warnings.warn(msg)
-        
+
         # If there is schema mismatch, urge the user to add a _metadata file
         if len(schema_errors):
             import pyarrow.parquet as pq
 
             # Collect the metadata with dask_cudf and then convert to pyarrow
             metadata_bytes = dask_cudf.io.parquet.create_metadata_file(
-                paths, out_dir=False,
+                paths,
+                out_dir=False,
             )
             with BytesIO() as myio:
                 myio.write(memoryview(metadata_bytes))
@@ -440,10 +439,10 @@ def validate_dataset(dataset, add_metadata_file=False):
 
             if not add_metadata_file:
                 msg = (
-                    f"\nPlease pass add_metadata_file=True to add a global "
-                    f"_metadata file, or use the regenerate_dataset utility to "
-                    f"rewrite your dataset. Without a _metadata file, the schema "
-                    f"mismatch may cause errors at read time."
+                    "\nPlease pass add_metadata_file=True to add a global "
+                    "_metadata file, or use the regenerate_dataset utility to "
+                    "rewrite your dataset. Without a _metadata file, the schema "
+                    "mismatch may cause errors at read time."
                 )
                 warnings.warn(msg)
 
