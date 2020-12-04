@@ -15,57 +15,84 @@
 #
 
 import os
+import time
 
 import boto3
+import paramiko
+
+
+def wait_until_checks(instances):
+    while True:
+        response = client.describe_instance_status(InstanceIds=instances)
+        try:
+            if response["InstanceStatuses"][0]["InstanceStatus"]["Status"] == "ok":
+                if response["InstanceStatuses"][0]["SystemStatus"]["Status"] == "ok":
+                    break
+        except Exception:
+            pass
+        finally:
+            time.sleep(10)
+
 
 client = boto3.client("ec2")
 resource = boto3.resource("ec2")
 
 # Create EC2 key pair
+print("[+] Creating EC2 KeyPar")
 keypair_id = "ec2-keypair"
 keypair_file = "ec2-keypair.pem"
 outfile = open(keypair_file, "w")
 key_pair = client.create_key_pair(KeyName=keypair_id)
-KeyPairOut = str(key_pair["KeyMaterial"])
-print(KeyPairOut)
-outfile.write(KeyPairOut)
+outfile.write(str(key_pair["KeyMaterial"]))
+outfile.close()
+os.chmod(keypair_file, 0o400)
 
-# Create EC2 instances
+# Create EC2 instance
+print("[+] Creating instances")
 instances = resource.create_instances(
     ImageId="ami-0f899ff8474ea45a9",  # Deep Learning AMI (Amazon Linux 2) Version 36.0
+    BlockDeviceMappings=[{"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 1000}}],  # 1TB Storage
     MinCount=1,
     MaxCount=1,
     InstanceType="p3dn.24xlarge",  # 8xV100
     KeyName="ec2-keypair",
-    SecurityGroupIds=[
-        "launch-wizard-3",
-    ],
+    SecurityGroupIds=["launch-wizard-3"],
 )
 instances = [ins.id for ins in instances]
-print(instances)
 
-# Start EC2 instances
+# Start EC2 instances make sure it is ready
+print("[+] Starting instances")
+print(instances)
 client.start_instances(InstanceIds=instances)
+wait_until_checks(instances)
+current_instance = list(resource.instances.filter(InstanceIds=instances))
+print(current_instance)
+ip_address = current_instance[0].public_ip_address
+print(ip_address)
 
 # Run NVTabular Tests
-ssm = boto3.client("ssm")
-commands = [
+print("[+] Running tests")
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+privkey = paramiko.RSAKey.from_private_key_file(keypair_file)
+ssh.connect(hostname=ip_address, username="ec2-user", pkey=privkey)
+command = (
     "docker run --runtime=nvidia --ipc=host --name aws_test nvcr.io/nvidia/nvtabular:0.2 "
     '/bin/bash -c "source activate rapids && pytest /nvtabular/tests"'
-]
-result = ssm.send_command(
-    DocumentName="AWS-RunShellScript",
-    Parameters={"commands": commands},
-    InstanceIds=instances,
 )
-print(result)
+stdin, stdout, stderr = ssh.exec_command(command)
+print("stdout:", stdout.read())
+print("stderr:", stderr.read())
 
 # Stop EC2 instances
+print("[+] Stopping instances")
 client.stop_instances(InstanceIds=instances)
 
 # Remove EC2 instances
-resource.terminate_instances(InstanceIds=instances)
+print("[+] Removing instances")
+client.terminate_instances(InstanceIds=instances)
 
 # Delete EC2 key pair
+print("[+] Deleting KeyPar")
 client.delete_key_pair(KeyName=keypair_id)
 os.remove(keypair_file)
