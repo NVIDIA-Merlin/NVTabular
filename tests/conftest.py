@@ -17,6 +17,9 @@ import contextlib
 import glob
 import os
 import random
+import platform
+import psutil
+from asvdb import utils, BenchmarkInfo, BenchmarkResult, ASVDb
 
 import cudf
 import numpy as np
@@ -181,3 +184,38 @@ def get_cats(processor, col, stat_name="categories"):
         return gdf[col].values_host
     else:
         return processor.stats["encoders"][col].get_cats().values_host
+
+    
+@pytest.fixture(scope="session")
+def db():
+    # Create an interface to an ASV "database" to write the results to.
+    (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
+
+    db = ASVDb(dbDir="/datasets/benchmarks/asv",
+               repo=repo,
+               branches=[branch])
+
+    return db
+
+@pytest.fixture(scope="session")
+def BenchInfo():
+    
+    # Create a BenchmarkInfo object describing the benchmarking environment.
+    # This can/should be reused when adding multiple results from the same environment.
+
+    uname = platform.uname()
+    (commitHash, commitTime) = utils.getCommitInfo()  # gets commit info from CWD by default
+    cuda_version = os.environ["CUDA_VERSION"]
+    # get GPU info from nvidia-smi
+
+    bInfo = BenchmarkInfo(machineName=uname.machine,
+                          cudaVer=cuda_version,
+                          osType="%s %s" % (uname.system, uname.release),
+                          pythonVer=platform.python_version(),
+                          commitHash=commitHash,
+                          commitTime=commitTime,
+                          gpuType="n/a",
+                          cpuType=uname.processor,
+                          arch=uname.machine,
+                          ram="%d" % psutil.virtual_memory().total)
+    return bInfo

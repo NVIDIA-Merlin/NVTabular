@@ -150,3 +150,5 @@ def _run_notebook(
     # clear out products
     if clean_up:
         shutil.rmtree(output_path)
+
+        
