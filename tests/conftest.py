@@ -16,9 +16,11 @@
 import contextlib
 import glob
 import os
+import sys
 import random
 import platform
 import psutil
+from numba import cuda 
 from asvdb import utils, BenchmarkInfo, BenchmarkResult, ASVDb
 
 import cudf
@@ -198,7 +200,7 @@ def db():
     return db
 
 @pytest.fixture(scope="session")
-def BenchInfo():
+def bench_info():
     
     # Create a BenchmarkInfo object describing the benchmarking environment.
     # This can/should be reused when adding multiple results from the same environment.
@@ -214,7 +216,7 @@ def BenchInfo():
                           pythonVer=platform.python_version(),
                           commitHash=commitHash,
                           commitTime=commitTime,
-                          gpuType="n/a",
+                          gpuType=cuda.get_current_device().name.decode("utf-8"),
                           cpuType=uname.processor,
                           arch=uname.machine,
                           ram="%d" % psutil.virtual_memory().total)
