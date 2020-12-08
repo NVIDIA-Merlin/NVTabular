@@ -7,13 +7,15 @@ terraform {
   }
 }
 
+variable "region" {
+  default = "us-west1-a"
+}
+
 provider "google" {
 
   credentials = file("<NAME>.json")
-
   project = "<PROJECT_ID>"
-  region  = "us-central1"
-  zone    = "us-central1-c"
+  region  = "${var.region}"
 }
 
 resource "google_compute_network" "vpc_network" {
@@ -26,12 +28,21 @@ resource "google_compute_instance" "vm_instance" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-9"
+      image = "debian-cloud/debian-10"
     }
   }
 
+  guest_accelerator{
+    type = "nvidia-tesla-v100" // Type GPU
+    count = 1 // Num GPU
+  }
+
+  scheduling{
+    on_host_maintenance = "TERMINATE"
+  }
+
   network_interface {
-    network = google_compute_network.vpc_network.name
+    network = "default"
     access_config {
     }
   }
