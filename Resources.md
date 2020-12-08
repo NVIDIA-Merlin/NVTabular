@@ -6,11 +6,11 @@ This is a collection of presentation, blog posts and documentations around NVIDI
 Talks
 ----------
 
-* [Part 6: "AI for Every Company" | GTC Keynote Oct 2020](https://www.youtube.com/watch?v=XiwVziNh_3s)
-* [A Deep Dive into the NVIDIA Merlin Recommendation Framework | GTC Session Oct 2020](https://www.nvidia.com/en-us/on-demand/session/gtcfall20-a21132/)
-* [Merlin: A GPU Accelerated Recommendation Framework | KDD 2020 Aug 2020](https://www.youtube.com/watch?v=Pi2kCE5xcpw&feature=youtu.be)
-* [NVTabular: GPU Accelerated ETL for Recommender Systems | GTC Session May 2020](https://www.nvidia.com/en-us/on-demand/session/gtcsj20-s21651/)
-* [HugeCTR: High-Performance Click-Through Rate Estimation Training | GTC Session May 2020](https://www.nvidia.com/en-us/on-demand/session/gtcsj20-s21455/)
+* [Part 6: "AI for Every Company" | GTC Keynote Oct 2020](https://www.youtube.com/watch?v=XiwVziNh_3s) Oct 5th, 2020
+* [A Deep Dive into the NVIDIA Merlin Recommendation Framework | GTC Session Oct 2020](https://www.nvidia.com/en-us/on-demand/session/gtcfall20-a21132/) Oct 6th, 2020
+* [Merlin: A GPU Accelerated Recommendation Framework | KDD 2020 Aug 2020](https://www.youtube.com/watch?v=Pi2kCE5xcpw&feature=youtu.be) Aug 22nd, 2020
+* [NVTabular: GPU Accelerated ETL for Recommender Systems | GTC Session May 2020](https://www.nvidia.com/en-us/on-demand/session/gtcsj20-s21651/) May 15th, 2020
+* [HugeCTR: High-Performance Click-Through Rate Estimation Training | GTC Session May 2020](https://www.nvidia.com/en-us/on-demand/session/gtcsj20-s21455/) May 15th, 2020
 
 
 Blog posts
