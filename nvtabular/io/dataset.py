@@ -18,6 +18,7 @@ import logging
 import random
 import warnings
 from collections import defaultdict
+from distutils.version import LooseVersion
 from io import BytesIO
 
 import cudf
@@ -362,14 +363,20 @@ class DataFrameIter:
 
 
 def regenerate_nvt_dataset(dataset, output_path, columns=None):
-    # TODO: Implement simple utility to rewrite a dataset into
-    # parquet format with proper row-group sizes and a global
-    # metadata file.  For input datasets with excessive row-group
-    # sizes, the data will need to be ingested on the CPU (pyarrow)
+    """Regenerate an NVTabular Dataset for efficient processing
+
+    TODO: Implement simple utility to rewrite a dataset into
+    parquet format with proper row-group sizes and a global
+    metadata file.  For input datasets with excessive row-group
+    sizes, the data will need to be ingested on the CPU (pyarrow)
+    """
     raise NotImplementedError
 
 
 def _append_row_groups(metadata, md, err_collector, path):
+    """Helper function to concatenate parquet metadata with
+    pyarrow, and catch relevant schema errors.
+    """
     try:
         metadata.append_row_groups(md)
     except RuntimeError as err:
@@ -383,14 +390,82 @@ def _append_row_groups(metadata, md, err_collector, path):
             raise err
 
 
-def validate_dataset(dataset, add_metadata_file=False):
+def validate_dataset(
+    dataset,
+    add_metadata_file=False,
+    row_group_max_size=None,
+    file_min_size=None,
+):
+    """Validate NVTabular Dataset object for efficient processing.
+
+    The purpose of this utility is to validate that an existing Dataset
+    object meets the minimal requirements for efficient NVTabular processing.
+    Warnings are raised if any of the following conditions are not met:
+
+        - The dataset must be in the parquet format.
+        - The raw dataset directory should contain a global "_metadata"
+          file.  If this file is missing, ``add_metadata_file=True`` can
+          be passed to generate a new one.
+        - If there is no _metadata file, the parquet schema must be
+          consistent for all row-groups/files in the raw dataset.
+          Otherwise, a new _metadata file must be generated to avoid
+          errors at IO time.
+        - The row-groups should be no larger than the maximum size limit
+          (``row_group_max_size``).
+        - For multi-file datasets, the files should be no smaller than
+          the minimum size limit (``file_min_size``).
+
+    Example Usage::
+
+        dataset = Dataset("/path/to/data_pq", engine="parquet")
+        assert validate_dataset(dataset)
+
+    Parameters
+    -----------
+    dataset : Dataset
+        An NVTabular Dataset object.
+    add_metadata_file : bool, default False
+        Whether to add a global _metadata file to the dataset if one
+        is missing.
+    row_group_max_size : int, default None
+        Maximum size (in bytes) of each parquet row-group in the
+        dataset. If None, the minimum of ``dataset.engine.part_size``
+        and 500MB will be used.
+    file_min_size : int, default None
+        Minimum size (in bytes) of each parquet file in the dataset. This
+        limit is only applied if there are >1 file in the dataset. If None,
+        ``dataset.engine.part_size`` will be used.
+
+    Returns
+    -------
+    valid : bool
+        Whether or not the input dataset is valid for efficient NVTabular
+        processing.
+    """
+    meta_valid = True  # Parquet format and _metadata exists
+    size_valid = False  # Row-group sizes are appropriate
+
+    # Check for user-specified row-group size limit.
+    # Otherwise we use the smaller of the dataset partition
+    # size and 500MB.
+    if row_group_max_size is None:
+        row_group_max_size = min(dataset.engine.part_size, 500_000_000)
+
+    # Check for user-specified file size limit.
+    # Otherwise we use the smaller of the dataset partition
+    # size and 500MB.
+    if file_min_size is None:
+        file_min_size = dataset.engine.part_size
 
     # Check that the dataset format is Parquet
     if not isinstance(dataset.engine, ParquetDatasetEngine):
-        raise TypeError(
+        meta_valid = False
+        msg = (
             "NVTabular is optimized for the parquet format. Please use "
             "the regenerate_dataset utility to convert your dataset."
         )
+        warnings.warn(msg)
+        return meta_valid and size_valid  # Early return
 
     # Get dataset and path list
     pa_dataset = dataset.engine._dataset
@@ -427,6 +502,17 @@ def validate_dataset(dataset, add_metadata_file=False):
         if len(schema_errors):
             import pyarrow.parquet as pq
 
+            meta_valid = False  # There are schema-mismatch errors
+
+            # Check that the Dask version supports `create_metadata_file`
+            if LooseVersion(dask.__version__) < "2.30.0":
+                msg = (
+                    "\nThe installed version of Dask is too old to handle "
+                    "schema mismatch. Try installing the latest version."
+                )
+                raise warnings.warn(msg)
+                return meta_valid and size_valid  # Early return
+
             # Collect the metadata with dask_cudf and then convert to pyarrow
             metadata_bytes = dask_cudf.io.parquet.create_metadata_file(
                 paths,
@@ -461,26 +547,22 @@ def validate_dataset(dataset, add_metadata_file=False):
 
     # Check if any row groups are prohibitively large.
     # Also check if any row groups are larger than recommended.
-    rg_size_recommended_upper_lim = 500_000_000
-    rg_size_required_upper_lim = dataset.engine.part_size
-    if max_rg_size > rg_size_required_upper_lim:
-        raise TypeError(
+    if max_rg_size > row_group_max_size:
+        # One or more row-groups are above the "required" limit
+        msg = (
             f"Excessive row_group size ({max_rg_size}) detected in file "
             f"{max_rg_size_path}. Please use the regenerate_dataset utility "
             f"to rewrite your dataset."
         )
-    elif max_rg_size > rg_size_recommended_upper_lim:
-        msg = (
-            f"Larger than recommended row_group size ({max_rg_size}) detected in "
-            f"file {max_rg_size_path}. Consider using the regenerate_dataset "
-            f"utility to rewrite your dataset."
-        )
         warnings.warn(msg)
+    else:
+        # The only way size_valid==True is if we get here
+        size_valid = True
 
-    # Check if any files are smaller than the desired partition size
-    file_size_lower_lim = dataset.engine.part_size
+    # Check if any files are smaller than the desired size.
+    # We only warn if there are >1 files in the dataset.
     for path, size in file_sizes.items():
-        if size < file_size_lower_lim and len(pa_dataset.pieces) > 1:
+        if size < file_min_size and len(pa_dataset.pieces) > 1:
             msg = (
                 f"File {path} is smaller than the desired dataset "
                 f"partition size ({dataset.engine.part_size}). Consider using the "
@@ -488,6 +570,7 @@ def validate_dataset(dataset, add_metadata_file=False):
                 f"number of (larger) files."
             )
             warnings.warn(msg)
+            size_valid = False
 
     # If the _metadata file is missing, we need to write
     # it (or inform the user that it is missing)
@@ -498,11 +581,18 @@ def validate_dataset(dataset, add_metadata_file=False):
             metadata_path = fs.sep.join([root_dir, "_metadata"])
             with fs.open(metadata_path, "wb") as fil:
                 metadata.write_metadata_file(fil)
+            meta_valid = True
         else:
             # Inform user that the _metadata file is missing
-            raise TypeError(
+            msg = (
                 "For best performance with NVTabular, there should be a "
                 "global _metadata file located in the root directory of the "
                 "dataset. Please pass add_metadata_file=True to add the "
                 "missing file."
             )
+            warnings.warn(msg)
+            meta_valid = False
+
+    # Return True if we have a parquet dataset with a _metadata file (meta_valid)
+    # and the row-groups and file are appropriate sizes (size_valid)
+    return meta_valid and size_valid
