@@ -56,7 +56,7 @@ class LogOp(TransformOperator):
         cont_names = target_columns
         if not cont_names:
             return gdf
-        new_gdf = np.log(gdf[cont_names].astype(np.float32) + 1)
+        new_gdf = (gdf[cont_names].astype(np.float32) + 1).log()
         new_cols = [f"{col}_{self._id}" for col in new_gdf.columns]
         new_gdf.columns = new_cols
         return new_gdf
