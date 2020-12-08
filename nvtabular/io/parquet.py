@@ -18,13 +18,17 @@ import logging
 import os
 import threading
 import warnings
+from collections import defaultdict
+from distutils.version import LooseVersion
 from io import BytesIO
 from uuid import uuid4
 
 import cudf
+import dask
 import dask_cudf
 from cudf.io.parquet import ParquetWriter as pwriter
-from dask.utils import natural_sort_key
+from dask.dataframe.io.parquet.utils import _analyze_paths
+from dask.utils import natural_sort_key, parse_bytes
 from pyarrow import parquet as pq
 
 from .dataset_engine import DatasetEngine
@@ -108,6 +112,200 @@ class ParquetDatasetEngine(DatasetEngine):
             split_row_groups=self.row_groups_per_part,
             storage_options=self.storage_options,
         )
+
+    def validate_dataset(
+        self,
+        add_metadata_file=False,
+        row_group_max_size=None,
+        file_min_size=None,
+    ):
+        """Validate ParquetDataset object for efficient processing.
+
+        The purpose of this method is to validate that the raw dataset
+        meets the minimal requirements for efficient NVTabular processing.
+        Warnings are raised if any of the following conditions are not met:
+
+            - The raw dataset directory should contain a global "_metadata"
+            file.  If this file is missing, ``add_metadata_file=True`` can
+            be passed to generate a new one.
+            - If there is no _metadata file, the parquet schema must be
+            consistent for all row-groups/files in the raw dataset.
+            Otherwise, a new _metadata file must be generated to avoid
+            errors at IO time.
+            - The row-groups should be no larger than the maximum size limit
+            (``row_group_max_size``).
+            - For multi-file datasets, the files should be no smaller than
+            the minimum size limit (``file_min_size``).
+
+        Parameters
+        -----------
+        add_metadata_file : bool, default False
+            Whether to add a global _metadata file to the dataset if one
+            is missing.
+        row_group_max_size : int or str, default None
+            Maximum size (in bytes) of each parquet row-group in the
+            dataset. If None, the minimum of ``self.part_size`` and 500MB
+            will be used.
+        file_min_size : int or str, default None
+            Minimum size (in bytes) of each parquet file in the dataset. This
+            limit is only applied if there are >1 file in the dataset. If None,
+            ``self.part_size`` will be used.
+
+        Returns
+        -------
+        valid : bool
+            Whether or not the input dataset is valid for efficient NVTabular
+            processing.
+        """
+
+        meta_valid = True  # Parquet format and _metadata exists
+        size_valid = False  # Row-group sizes are appropriate
+
+        # Check for user-specified row-group size limit.
+        # Otherwise we use the smaller of the dataset partition
+        # size and 500MB.
+        if row_group_max_size is None:
+            row_group_max_size = min(self.part_size, 500_000_000)
+        else:
+            row_group_max_size = parse_bytes(row_group_max_size)
+
+        # Check for user-specified file size limit.
+        # Otherwise we use the smaller of the dataset partition
+        # size and 500MB.
+        if file_min_size is None:
+            file_min_size = self.part_size
+        else:
+            file_min_size = parse_bytes(file_min_size)
+
+        # Get dataset and path list
+        pa_dataset = self._dataset
+        paths = [p.path for p in pa_dataset.pieces]
+        root_dir, fns = _analyze_paths(paths, self.fs)
+
+        # Collect dataset metadata
+        metadata_file_exists = bool(pa_dataset.metadata)
+        schema_errors = defaultdict(set)
+        if metadata_file_exists:
+            # We have a metadata file
+            metadata = pa_dataset.metadata
+        else:
+            # No metadata file - Collect manually
+            metadata = None
+            for piece, fn in zip(pa_dataset.pieces, fns):
+                md = piece.get_metadata()
+                md.set_file_path(fn)
+                if metadata:
+                    _append_row_groups(metadata, md, schema_errors, piece.path)
+                else:
+                    metadata = md
+
+            # Check for inconsistent schemas.
+            # This is not a problem if a _metadata file exists
+            for field in schema_errors:
+                msg = f"Schema mismatch detected in column: '{field}'."
+                warnings.warn(msg)
+                for item in schema_errors[field]:
+                    msg = f"[{item[0]}] Expected {item[1]}, got {item[2]}."
+                    warnings.warn(msg)
+
+            # If there is schema mismatch, urge the user to add a _metadata file
+            if len(schema_errors):
+                import pyarrow.parquet as pq
+
+                meta_valid = False  # There are schema-mismatch errors
+
+                # Check that the Dask version supports `create_metadata_file`
+                if LooseVersion(dask.__version__) < "2.30.0":
+                    msg = (
+                        "\nThe installed version of Dask is too old to handle "
+                        "schema mismatch. Try installing the latest version."
+                    )
+                    raise warnings.warn(msg)
+                    return meta_valid and size_valid  # Early return
+
+                # Collect the metadata with dask_cudf and then convert to pyarrow
+                metadata_bytes = dask_cudf.io.parquet.create_metadata_file(
+                    paths,
+                    out_dir=False,
+                )
+                with BytesIO() as myio:
+                    myio.write(memoryview(metadata_bytes))
+                    myio.seek(0)
+                    metadata = pq.ParquetFile(myio).metadata
+
+                if not add_metadata_file:
+                    msg = (
+                        "\nPlease pass add_metadata_file=True to add a global "
+                        "_metadata file, or use the regenerate_dataset utility to "
+                        "rewrite your dataset. Without a _metadata file, the schema "
+                        "mismatch may cause errors at read time."
+                    )
+                    warnings.warn(msg)
+
+        # Record the total byte size of all row groups and files
+        max_rg_size = 0
+        max_rg_size_path = None
+        file_sizes = defaultdict(int)
+        for rg in range(metadata.num_row_groups):
+            row_group = metadata.row_group(rg)
+            path = row_group.column(0).file_path
+            total_byte_size = row_group.total_byte_size
+            if total_byte_size > max_rg_size:
+                max_rg_size = total_byte_size
+                max_rg_size_path = path
+            file_sizes[path] += total_byte_size
+
+        # Check if any row groups are prohibitively large.
+        # Also check if any row groups are larger than recommended.
+        if max_rg_size > row_group_max_size:
+            # One or more row-groups are above the "required" limit
+            msg = (
+                f"Excessive row_group size ({max_rg_size}) detected in file "
+                f"{max_rg_size_path}. Please use the regenerate_dataset utility "
+                f"to rewrite your dataset."
+            )
+            warnings.warn(msg)
+        else:
+            # The only way size_valid==True is if we get here
+            size_valid = True
+
+        # Check if any files are smaller than the desired size.
+        # We only warn if there are >1 files in the dataset.
+        for path, size in file_sizes.items():
+            if size < file_min_size and len(pa_dataset.pieces) > 1:
+                msg = (
+                    f"File {path} is smaller than the desired dataset "
+                    f"partition size ({self.part_size}). Consider using the "
+                    f"regenerate_dataset utility to rewrite your dataset with a smaller "
+                    f"number of (larger) files."
+                )
+                warnings.warn(msg)
+                size_valid = False
+
+        # If the _metadata file is missing, we need to write
+        # it (or inform the user that it is missing)
+        if not metadata_file_exists:
+            if add_metadata_file:
+                # Write missing _metadata file
+                fs = self.fs
+                metadata_path = fs.sep.join([root_dir, "_metadata"])
+                with fs.open(metadata_path, "wb") as fil:
+                    metadata.write_metadata_file(fil)
+                meta_valid = True
+            else:
+                # Inform user that the _metadata file is missing
+                msg = (
+                    "For best performance with NVTabular, there should be a "
+                    "global _metadata file located in the root directory of the "
+                    "dataset. Please pass add_metadata_file=True to add the "
+                    "missing file."
+                )
+                warnings.warn(msg)
+                meta_valid = False
+
+        # Return True if we have a parquet dataset with a _metadata file (meta_valid)
+        # and the row-groups and file are appropriate sizes (size_valid)
+        return meta_valid and size_valid
 
 
 class ParquetWriter(ThreadedWriter):
@@ -218,3 +416,20 @@ def _memory_usage(df):
             size += col._memory_usage(deep=True)
     size += df.index.memory_usage(deep=True)
     return size
+
+
+def _append_row_groups(metadata, md, err_collector, path):
+    """Helper function to concatenate parquet metadata with
+    pyarrow, and catch relevant schema errors.
+    """
+    try:
+        metadata.append_row_groups(md)
+    except RuntimeError as err:
+        if "requires equal schemas" in str(err):
+            schema = metadata.schema.to_arrow_schema()
+            schema_new = md.schema.to_arrow_schema()
+            for i, name in enumerate(schema.names):
+                if schema_new.types[i] != schema.types[i]:
+                    err_collector[name].add((path, schema.types[i], schema_new.types[i]))
+        else:
+            raise err

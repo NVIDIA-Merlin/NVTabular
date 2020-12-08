@@ -19,4 +19,3 @@ from . import dataset, shuffle
 Dataset = dataset.Dataset
 Shuffle = shuffle.Shuffle
 _shuffle_gdf = shuffle._shuffle_gdf
-validate_dataset = dataset.validate_dataset

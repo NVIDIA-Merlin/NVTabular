@@ -36,3 +36,6 @@ class DatasetEngine:
     @property
     def num_rows(self):
         raise NotImplementedError(""" Returns the number of rows in the dataset """)
+
+    def validate_dataset(self, **kwargs):
+        raise NotImplementedError(""" Returns True if the raw data is efficient for NVTabular """)
