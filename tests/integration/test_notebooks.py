@@ -20,6 +20,8 @@ import os
 import shutil
 import subprocess
 import sys
+import ast
+import re
 from os.path import dirname, realpath
 
 import pytest
@@ -93,7 +95,8 @@ def test_rossman_example(tmpdir, bench_info, db):
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-fastai.ipynb"
     )
     out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
-    bench_results = bench_fastai().get_epochs(out)
+    bench_results = bench_fastai("rossmann").get_epochs(out.splitlines())
+    import pdb; pdb.set_trace()
     for results in bench_results:
         for result in results:
             db.addResult(bench_info, result)
@@ -150,7 +153,8 @@ def _run_notebook(
     _,  note_name = os.path.split(notebook_path)
     note_name = note_name.split(".")[0]
     if output:
-        with open(f"test_res_{note_name}", "w") as w_file:
+#         re_t = re.compile(r"^[^<>/{}[\]~`]*$")
+        with open(f"test_res_{note_name}", "w+") as w_file:
             w_file.write(output)
     # clear out products
     if clean_up:
@@ -159,7 +163,7 @@ def _run_notebook(
 
         
 class bench_fastai():
-    def __init__(self, target_id)
+    def __init__(self, target_id):
         self.name = f"{target_id}_train_fastai"
     
     def bres_t_loss(self, epoch, t_loss):
@@ -199,7 +203,7 @@ class bench_fastai():
         epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
         t_loss = self.bres_t_loss(epoch, t_loss)
         v_loss = self.bres_v_loss(epoch, v_loss)
-        exp_rmspe = self.bres_rmspe(epoch, bres_rmspe)
+        exp_rmspe = self.bres_rmspe(epoch, exp_rmspe)
         o_time = self.bres_time(epoch, o_time)
         return [t_loss, v_loss, exp_rmspe, o_time]
     
@@ -208,10 +212,18 @@ class bench_fastai():
         epochs = []
         for line in output:
             split_line = line.split()
-            if int(split_line[0]):
+            if len(split_line) > 1 and is_number(split_line[0]):
                 # epoch line, detected based on if 1st character is a number
-                post_evts = get_epoch(line)
+                post_evts = self.get_epoch(line)
                 epochs.append(post_evts)
         return epochs
+
+def is_number(str_to_num):
+    try:
+        val = int(str_to_num)
+        return True
+    except ValueError:
+        return False
                 
+
     

@@ -20,6 +20,7 @@ import sys
 import random
 import platform
 import psutil
+import socket
 from numba import cuda 
 from asvdb import utils, BenchmarkInfo, BenchmarkResult, ASVDb
 
@@ -193,7 +194,7 @@ def db():
     # Create an interface to an ASV "database" to write the results to.
     (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
 
-    db = ASVDb(dbDir="/datasets/benchmarks/asv",
+    db = ASVDb(dbDir="/nvtabular/benchmarks/.asv",
                repo=repo,
                branches=[branch])
 
@@ -210,7 +211,7 @@ def bench_info():
     cuda_version = os.environ["CUDA_VERSION"]
     # get GPU info from nvidia-smi
 
-    bInfo = BenchmarkInfo(machineName=uname.machine,
+    bInfo = BenchmarkInfo(machineName=socket.gethostname(),
                           cudaVer=cuda_version,
                           osType="%s %s" % (uname.system, uname.release),
                           pythonVer=platform.python_version(),
