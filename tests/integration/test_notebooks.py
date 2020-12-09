@@ -162,38 +162,33 @@ def _run_notebook(
         shutil.rmtree(output_path)
     return output
 
+
+def create_bench_result(name, arg_tuple_list, result, unit):
+    return BenchmarkResult(funcName=name,
+                           argNameValuePairs=arg_tuple_list,
+                           unit=unit,
+                           result=result)
+
+
         
 class bench_fastai():
     def __init__(self, target_id):
-        self.name = f"{target_id}_train_fastai"
+        self.name = f"{target_id}_fastai"
     
-    def bres_t_loss(self, epoch, t_loss):
-        b_res = BenchmarkResult(funcName=f"{self.name}_train_loss",
-                           argNameValuePairs=[
-                              ("epoch", epoch)
-                           ],
-                           unit='percent',
-                           result=t_loss)
-        return b_res
+    def bres_loss(self, epoch, loss, l_type="train"):
+        return create_bench_result(f"{self.name}_{l_type}_loss",
+                                   [("epoch", epoch)],
+                                   loss,
+                                   "percent")
 
-    def bres_v_loss(self, epoch, v_loss):
-        b_res = BenchmarkResult(funcName=f"{self.name}_valid_loss",
-                           argNameValuePairs=[
-                              ("epoch", epoch)
-                           ],
-                           unit='percent',
-                           result=v_loss)
-        return b_res
 
     def bres_rmspe(self, epoch, rmspe):
-        b_res = BenchmarkResult(funcName=f"{self.name}_exp_rmspe",
-                           argNameValuePairs=[
-                              ("epoch", epoch)
-                           ],
-                           unit='percent',
-                           result=rmspe)
-        return b_res
+        return create_bench_result(f"{self.name}_exp_rmspe",
+                                   [("epoch", epoch)],
+                                   rmspe,
+                                   "percent")  
 
+    
     def bres_time(self, epoch, r_time):
         x = time.strptime(r_time.split(',')[0],'%M:%S')
         r_time = datetime.timedelta(
@@ -201,19 +196,16 @@ class bench_fastai():
                     minutes=x.tm_min,
                     seconds=x.tm_sec
                 ).total_seconds()
-        b_res = BenchmarkResult(funcName=f"{self.name}_time",
-                           argNameValuePairs=[
-                              ("epoch", epoch)
-                           ],
-                           unit='seconds',
-                           result=r_time)
-        return b_res        
+        return create_bench_result(f"{self.name}_time",
+                                   [("epoch", epoch)],
+                                   r_time,
+                                   "seconds")      
     
     
     def get_epoch(self, line):
         epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
-        t_loss = self.bres_t_loss(epoch, float(t_loss))
-        v_loss = self.bres_v_loss(epoch, float(v_loss))
+        t_loss = self.bres_loss(epoch, float(t_loss))
+        v_loss = self.bres_loss(epoch, float(v_loss), l_type="valid")
         exp_rmspe = self.bres_rmspe(epoch, float(exp_rmspe))
         o_time = self.bres_time(epoch, o_time)
         return [t_loss, v_loss, exp_rmspe, o_time]
