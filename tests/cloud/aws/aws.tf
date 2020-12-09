@@ -51,7 +51,7 @@ resource "aws_instance" "dgx-100" {
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/${var.script}",
-      "python /tmp/${var.script} -v gcp",
+      "python /tmp/${var.script} -v aws",
     ]
   }
 }

@@ -7,6 +7,10 @@ terraform {
   }
 }
 
+variable "gce_ssh_user" {
+  default = "albertoa"
+}
+
 variable "script" {
   default = "run.py"
 }
@@ -31,6 +35,8 @@ resource "google_compute_instance" "v100" {
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-10"
+      size = 1000
+      type = "pd-ssd"
     }
   }
 
@@ -52,7 +58,7 @@ resource "google_compute_instance" "v100" {
   connection {
     type = "ssh"
     host = self.network_interface[0].access_config[0].nat_ip
-    user = "gcp"
+    user = var.gce_ssh_user
     private_key = file("~/.ssh/id_rsa.pub")
   }
 
@@ -67,5 +73,8 @@ resource "google_compute_instance" "v100" {
       "chmod +x /tmp/${var.script}",
       "python /tmp/${var.script} -c gcp",
     ]
+  }
+  metadata = {
+    ssh-keys = "${var.gce_ssh_user}:${file("~/.ssh/id_rsa.pub")}"
   }
 }

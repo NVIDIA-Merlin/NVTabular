@@ -44,12 +44,14 @@ def parse_args():
 
 
 def main(args):
+    print("[+] Selecting Dataset")
     # Select dataset based on cloud option
     if args.cloud == "aws":
         dataset = "s3://merlin-datasets/crit_int_pq/"
     else:
         dataset = "gs://merlin-datasets/crit_int_pq/"
 
+    print("[+] Selecting Programs")
     # Programs to run within the container
     tests = "pytest /nvtabular/tests"
     benchmark = (
@@ -61,6 +63,7 @@ def main(args):
         + " --device-pool-frac 0.9"
     )
 
+    print("[+] Building docker command")
     # Pull and run container
     docker = (
         'docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host '
@@ -71,7 +74,8 @@ def main(args):
         + benchmark + '"'
         + ' &> /tmp/nvtabular_output.log'
     )
-
+   
+    print("[+] Running Docker: ", docker)
     # Run shell command
     os.system(docker)
 
