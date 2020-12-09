@@ -154,7 +154,6 @@ def _run_notebook(
     _,  note_name = os.path.split(notebook_path)
     note_name = note_name.split(".")[0]
     if output:
-#         re_t = re.compile(r"^[^<>/{}[\]~`]*$")
         with open(f"test_res_{note_name}", "w+") as w_file:
             w_file.write(output)
     # clear out products
