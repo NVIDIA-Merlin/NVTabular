@@ -22,6 +22,8 @@ import subprocess
 import sys
 import ast
 import re
+import time
+import datetime
 from os.path import dirname, realpath
 
 import pytest
@@ -96,7 +98,6 @@ def test_rossman_example(tmpdir, bench_info, db):
     )
     out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
     bench_results = bench_fastai("rossmann").get_epochs(out.splitlines())
-    import pdb; pdb.set_trace()
     for results in bench_results:
         for result in results:
             db.addResult(bench_info, result)
@@ -171,6 +172,7 @@ class bench_fastai():
                            argNameValuePairs=[
                               ("epoch", epoch)
                            ],
+                           unit='percent',
                            result=t_loss)
         return b_res
 
@@ -179,6 +181,7 @@ class bench_fastai():
                            argNameValuePairs=[
                               ("epoch", epoch)
                            ],
+                           unit='percent',
                            result=v_loss)
         return b_res
 
@@ -187,23 +190,31 @@ class bench_fastai():
                            argNameValuePairs=[
                               ("epoch", epoch)
                            ],
+                           unit='percent',
                            result=rmspe)
         return b_res
 
     def bres_time(self, epoch, r_time):
+        x = time.strptime(r_time.split(',')[0],'%M:%S')
+        r_time = datetime.timedelta(
+                    hours=x.tm_hour,
+                    minutes=x.tm_min,
+                    seconds=x.tm_sec
+                ).total_seconds()
         b_res = BenchmarkResult(funcName=f"{self.name}_time",
                            argNameValuePairs=[
                               ("epoch", epoch)
                            ],
+                           unit='seconds',
                            result=r_time)
         return b_res        
     
     
     def get_epoch(self, line):
         epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
-        t_loss = self.bres_t_loss(epoch, t_loss)
-        v_loss = self.bres_v_loss(epoch, v_loss)
-        exp_rmspe = self.bres_rmspe(epoch, exp_rmspe)
+        t_loss = self.bres_t_loss(epoch, float(t_loss))
+        v_loss = self.bres_v_loss(epoch, float(v_loss))
+        exp_rmspe = self.bres_rmspe(epoch, float(exp_rmspe))
         o_time = self.bres_time(epoch, o_time)
         return [t_loss, v_loss, exp_rmspe, o_time]
     
