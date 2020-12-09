@@ -219,7 +219,7 @@ class ParquetDatasetEngine(DatasetEngine):
                 meta_valid = False  # There are schema-mismatch errors
 
                 # Check that the Dask version supports `create_metadata_file`
-                if LooseVersion(dask.__version__) < "2.30.0":
+                if LooseVersion(dask.__version__) <= "2.30.0":
                     msg = (
                         "\nThe installed version of Dask is too old to handle "
                         "schema mismatch. Try installing the latest version."
