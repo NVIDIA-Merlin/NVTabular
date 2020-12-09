@@ -344,9 +344,9 @@ class Dataset:
         **kwargs :
             Key-word arguments to pass down to the engine's validate_dataset
             method. For the recommended parquet format, these arguments
-            include `add_metadata_file`, `row_group_max_size`, and
-            `file_min_size`.  See `ParquetDatasetEngine.validate_dataset`
-            for more information.
+            include `add_metadata_file`, `row_group_max_size`, `file_min_size`,
+            and `require_metadata_file`. For more information, see
+            `ParquetDatasetEngine.validate_dataset`.
 
         Returns
         -------

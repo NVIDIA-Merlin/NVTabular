@@ -360,3 +360,41 @@ def test_avro_basic(tmpdir, part_size, size, nfiles):
     expect = pd.DataFrame.from_records(records)
     expect["age"] = expect["age"].astype("int32")
     assert_eq(df.compute().reset_index(drop=True), expect)
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet"])
+def test_validate_dataset(datasets, engine):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    if engine == "parquet":
+        dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine)
+
+        # Default file_min_size should result in failed validation
+        assert not dataset.validate_dataset()
+        assert dataset.validate_dataset(file_min_size=1, require_metadata_file=False)
+    else:
+        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
+
+        # CSV format should always fail validation
+        assert not dataset.validate_dataset()
+
+
+def test_validate_dataset_bad_schema(tmpdir):
+    path = str(tmpdir)
+    for (fn, df) in [
+        ("part.0.parquet", pd.DataFrame({"a": range(10), "b": range(10)})),
+        ("part.1.parquet", pd.DataFrame({"a": [None] * 10, "b": range(10)})),
+    ]:
+        df.to_parquet(os.path.join(path, fn))
+
+    # Initial dataset has mismatched schema and is missing a _metadata file.
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    # Schema issue should cause validation failure, even if _metadata is ignored
+    assert not dataset.validate_dataset(require_metadata_file=False)
+    # File size should cause validation error, even if _metadata is generated
+    assert not dataset.validate_dataset(add_metadata_file=True)
+
+    # New datset has a _metadata file, but the file size is still too small
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    assert not dataset.validate_dataset()
+    # Ignore file size to get validation success
+    assert dataset.validate_dataset(file_min_size=1)

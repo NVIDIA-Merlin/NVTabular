@@ -116,6 +116,7 @@ class ParquetDatasetEngine(DatasetEngine):
     def validate_dataset(
         self,
         add_metadata_file=False,
+        require_metadata_file=True,
         row_group_max_size=None,
         file_min_size=None,
     ):
@@ -142,6 +143,9 @@ class ParquetDatasetEngine(DatasetEngine):
         add_metadata_file : bool, default False
             Whether to add a global _metadata file to the dataset if one
             is missing.
+        require_metadata_file : bool, default True
+            Whether to require the existence of a _metadata file to pass
+            the dataset validation.
         row_group_max_size : int or str, default None
             Maximum size (in bytes) of each parquet row-group in the
             dataset. If None, the minimum of ``self.part_size`` and 500MB
@@ -301,7 +305,8 @@ class ParquetDatasetEngine(DatasetEngine):
                     "missing file."
                 )
                 warnings.warn(msg)
-                meta_valid = False
+                if require_metadata_file:
+                    meta_valid = False
 
         # Return True if we have a parquet dataset with a _metadata file (meta_valid)
         # and the row-groups and file are appropriate sizes (size_valid)
