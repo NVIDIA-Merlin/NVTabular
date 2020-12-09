@@ -194,7 +194,7 @@ def db():
     # Create an interface to an ASV "database" to write the results to.
     (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
 
-    db = ASVDb(dbDir="/nvtabular/benchmarks/.asv",
+    db = ASVDb(dbDir="/nvtabular/benchmarks",
                repo=repo,
                branches=[branch])
 
