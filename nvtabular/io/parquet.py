@@ -397,7 +397,7 @@ class ParquetDatasetEngine(DatasetEngine):
 
                 gets[out_parts].append(i)
                 split[out_parts] = (last, last + remaining_out_part_rows)
-                last = remaining_out_part_rows
+                last += remaining_out_part_rows
                 in_part_size = in_part_size - remaining_out_part_rows
 
                 remaining_out_part_rows = rows_per_part
@@ -413,12 +413,24 @@ class ParquetDatasetEngine(DatasetEngine):
                 out_parts += 1
 
             splits.append(split)
+            dsk2[(split_name, i)] = (_split_part, (_ddf._name, i), split)
 
-            dsk2[split_name] = (_split_part, (_ddf._name, i), split)
-        import pdb
+        for k, v_list in gets.items():
+            last = None
+            for v in v_list:
+                pass
+                # dsk2[(getitem_name, v, k)] = (getitem, (split_name, v), k)
 
-        pdb.set_trace()
-        pass
+                # Perhaps we can define a "write" task for each "getitem" task,
+                # and allow appending to the same file by passing forward a file
+                # handle to the next split to write to the same output file?
+
+                # Actually - We probably want to concatenate many splits into a
+                # single cudf partition, and then do the "file-handle" linking
+                # to allow many partitions to be written to the same output file?
+
+        # import pdb; pdb.set_trace();
+        # pass
 
 
 class ParquetWriter(ThreadedWriter):
