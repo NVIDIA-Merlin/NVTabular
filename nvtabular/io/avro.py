@@ -41,7 +41,10 @@ class AvroDatasetEngine(DatasetEngine):
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
-    def to_ddf(self, columns=None):
+    def to_ddf(self, columns=None, cpu=False):
+
+        if cpu:
+            raise ValueError("cpu=True not supported for AvroDatasetEngine.")
 
         # Get list of pieces for each output
         pieces, meta = self.process_metadata(columns=columns)

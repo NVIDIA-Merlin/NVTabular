@@ -25,9 +25,13 @@ from uuid import uuid4
 
 import cudf
 import dask
+import dask.dataframe as dd
 import dask_cudf
 from cudf.io.parquet import ParquetWriter as pwriter
+from dask.base import tokenize
 from dask.dataframe.io.parquet.utils import _analyze_paths
+from dask.delayed import Delayed
+from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from pyarrow import parquet as pq
 
@@ -102,7 +106,19 @@ class ParquetDatasetEngine(DatasetEngine):
                 num_rows += piece.get_metadata().num_rows
             return num_rows
 
-    def to_ddf(self, columns=None):
+    def to_ddf(self, columns=None, cpu=False):
+        if cpu:
+            # Return a Dask-Dataframe in CPU memory
+            return dd.read_parquet(
+                self.paths,
+                engine="pyarrow-dataset",
+                columns=columns,
+                index=None if columns is None else False,
+                gather_statistics=False,
+                split_row_groups=self.row_groups_per_part,
+                storage_options=self.storage_options,
+            )
+
         return dask_cudf.read_parquet(
             self.paths,
             columns=columns,
@@ -120,7 +136,7 @@ class ParquetDatasetEngine(DatasetEngine):
         row_group_max_size=None,
         file_min_size=None,
     ):
-        """Validate ParquetDataset object for efficient processing.
+        """Validate ParquetDatasetEngine object for efficient processing.
 
         The purpose of this method is to validate that the raw dataset
         meets the minimal requirements for efficient NVTabular processing.
@@ -224,7 +240,7 @@ class ParquetDatasetEngine(DatasetEngine):
                         "\nThe installed version of Dask is too old to handle "
                         "schema mismatch. Try installing the latest version."
                     )
-                    raise warnings.warn(msg)
+                    warnings.warn(msg)
                     return meta_valid and size_valid  # Early return
 
                 # Collect the metadata with dask_cudf and then convert to pyarrow
@@ -311,6 +327,98 @@ class ParquetDatasetEngine(DatasetEngine):
         # Return True if we have a parquet dataset with a _metadata file (meta_valid)
         # and the row-groups and file are appropriate sizes (size_valid)
         return meta_valid and size_valid
+
+    @classmethod
+    def regenerate_dataset(
+        cls,
+        dataset,
+        output_path,
+        columns=None,
+        file_size=None,
+        part_size=None,
+        **kwargs,
+    ):
+
+        row_group_size = 128_000_000
+        file_size = file_size or row_group_size * 100
+        part_size = part_size or row_group_size * 10
+
+        # Start by converting the original dataset to a Dask-Dataframe
+        # object in CPU memory.  We avoid GPU memory in case the original
+        # dataset is prone to OOM errors.
+        _ddf = dataset.engine.to_ddf(columns=columns, cpu=True)
+
+        def _get_len(x):
+            return len(x)
+
+        # Get list of partition lengths
+        token = tokenize(dataset, output_path, columns, **kwargs)
+        getlen_name = "getlen-" + token
+        name = "all-" + getlen_name
+        dsk = {(getlen_name, i): (_get_len, (_ddf._name, i)) for i in range(_ddf.npartitions)}
+        dsk[name] = [(getlen_name, i) for i in range(_ddf.npartitions)]
+        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[_ddf])
+        size_list = Delayed(name, graph).compute()
+
+        # Get memory usage per row using first partition
+        p0_mem_size = _ddf.partitions[0].memory_usage(deep=True, index=True).sum().compute()
+        mem_per_row = int(float(p0_mem_size) / float(size_list[0]))
+
+        rows_per_part = int(part_size / mem_per_row)
+        # rows_per_file = int(file_size / mem_per_row)
+        # parts_per_file = int(rows_per_file / rows_per_part)
+
+        # Construct regeneration graph
+        dsk2 = {}
+        regen_name = "regen-" + token
+        split_name = "split-" + regen_name
+
+        def _split_part(x, split):
+            out = {}
+            for k, v in split.items():
+                out[k] = x.iloc[v[0] : v[1]]
+            return out
+
+        #
+        splits = []
+        gets = defaultdict(list)
+        out_parts = 0
+        remaining_out_part_rows = rows_per_part
+        for i, in_part_size in enumerate(size_list):
+
+            # The `split` dictionary will be passed to this input
+            # partition to dictate how that partition will be split
+            # into different output partitions/files.  The "key" of
+            # this dict is the output partition, and the value is a
+            # tuple specifying the (start, end) row range.
+            split = {}
+            last = 0
+            while in_part_size >= remaining_out_part_rows:
+
+                gets[out_parts].append(i)
+                split[out_parts] = (last, last + remaining_out_part_rows)
+                last = remaining_out_part_rows
+                in_part_size = in_part_size - remaining_out_part_rows
+
+                remaining_out_part_rows = rows_per_part
+                out_parts += 1
+
+            if in_part_size:
+                gets[out_parts].append(i)
+                split[out_parts] = (last, last + in_part_size)
+                remaining_out_part_rows -= in_part_size
+
+            if remaining_out_part_rows == 0:
+                remaining_out_part_rows = rows_per_part
+                out_parts += 1
+
+            splits.append(split)
+
+            dsk2[split_name] = (_split_part, (_ddf._name, i), split)
+        import pdb
+
+        pdb.set_trace()
+        pass
 
 
 class ParquetWriter(ThreadedWriter):
