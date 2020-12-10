@@ -15,7 +15,6 @@
 #
 import functools
 import logging
-import os
 import threading
 import warnings
 from io import BytesIO
@@ -124,7 +123,7 @@ class ParquetWriter(ThreadedWriter):
         else:
             fn = f"{i}.parquet"
 
-        return os.path.join(self.out_dir, fn)
+        return self.fs.sep.join(self.out_dir, fn)
 
     def _get_or_create_writer(self, idx):
         # lazily initializes a writer for the given index
@@ -137,7 +136,7 @@ class ParquetWriter(ThreadedWriter):
                     self.data_bios.append(bio)
                     self.data_writers.append(pwriter(bio, compression=None))
                 else:
-                    self.data_writers.append(pwriter(path, compression=None))
+                    self.data_writers.append(pwriter(self.fs.open(path, "w"), compression=None))
 
             return self.data_writers[idx]
 

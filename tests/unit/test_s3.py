@@ -50,6 +50,7 @@ def test_s3_dataset(s3, paths, engine, df):
     # create a mocked out bucket here
     bucket = "testbucket"
     s3.create_bucket(Bucket=bucket)
+    output_dir = f"s3://{bucket}/output"
 
     s3_paths = []
     for path in paths:
