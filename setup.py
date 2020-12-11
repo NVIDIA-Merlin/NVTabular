@@ -17,9 +17,11 @@
 
 from setuptools import find_packages, setup
 
+import versioneer
+
 setup(
     name="nvtabular",
-    version="0.3.0a1",
+    version=versioneer.get_version(),
     packages=find_packages(),
     url="https://github.com/NVIDIA/NVTabular",
     author="NVIDIA Corporation",
@@ -33,4 +35,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Scientific/Engineering",
     ],
+    cmdclass=versioneer.get_cmdclass(),
 )

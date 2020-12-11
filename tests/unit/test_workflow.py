@@ -409,8 +409,6 @@ def test_chaining_1():
     workflow.add_cont_preprocess(nvt.ops.NormalizeMinMax(columns=["cont01", "cont02"]))
     workflow.finalize()
 
-    print(df)
-
     workflow.apply(nvt.Dataset(df), output_path=None)
     result = workflow.get_ddf().compute()
     assert result["cont01"].max() <= 1.0
@@ -427,9 +425,7 @@ def test_chaining_2():
     )
     proc = nvt.Workflow(cat_names=["C"], cont_names=["A", "B"], label_name=[])
 
-    proc.add_feature(
-        nvt.ops.LambdaOp(op_name="isnull", f=lambda col, gdf: col.isnull(), replace=False)
-    )
+    proc.add_feature(nvt.ops.LambdaOp(op_name="isnull", f=lambda col: col.isnull(), replace=False))
 
     proc.add_cat_preprocess(nvt.ops.Categorify())
     train_dataset = nvt.Dataset(gdf, engine="parquet")
@@ -469,8 +465,7 @@ def test_chaining_3():
 
     proc.finalize()
     assert len(proc.phases) == 2
-    GPU_MEMORY_FRAC = 0.2
-    train_dataset = nvt.Dataset(gdf_test, engine="parquet", part_mem_fraction=GPU_MEMORY_FRAC)
+    train_dataset = nvt.Dataset(gdf_test, engine="parquet")
     proc.apply(
         train_dataset, apply_offline=True, record_stats=True, output_path=None, shuffle=False
     )
@@ -565,7 +560,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
         [
             ops.LambdaOp(
                 op_name="country",
-                f=lambda col, gdf: col.str.slice(0, 2),
+                f=lambda col: col.str.slice(0, 2),
                 columns=["geo_location"],
                 replace=False,
             ),

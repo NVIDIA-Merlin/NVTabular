@@ -234,8 +234,8 @@ def test_dataset_partition_shuffle(tmpdir):
 @pytest.mark.parametrize("engine", ["csv"])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
 @pytest.mark.parametrize("nfiles", [0, 1, 2])
-@pytest.mark.parametrize("shuffle", [True, False])
-def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
+def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]

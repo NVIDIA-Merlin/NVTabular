@@ -27,13 +27,13 @@ from dask_cuda import LocalCUDACluster
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
 from nvtabular import ops as ops
-from nvtabular.utils import _pynvml_mem_size, device_mem_size
+from nvtabular.utils import _pynvml_mem_size, device_mem_size, get_rmm_size
 
 
 def setup_rmm_pool(client, pool_size):
     # Initialize an RMM pool allocator.
     # Note: RMM may require the pool size to be a multiple of 256.
-    pool_size = (pool_size // 256) * 256
+    pool_size = get_rmm_size(pool_size)
     client.run(rmm.reinitialize, pool_allocator=True, initial_pool_size=pool_size)
     return None
 

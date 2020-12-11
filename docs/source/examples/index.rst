@@ -5,7 +5,7 @@ Examples
    :maxdepth: 2
 
    Criteo Example <criteo>
-   Rossmann Example <rossmann>
+   Rossmann Example <rossmann/index>
    Multi-GPU Example <multigpu>
    HugeCTR Example <hugectr>
    Outbrain Example <outbrain>

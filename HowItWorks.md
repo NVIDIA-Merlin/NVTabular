@@ -151,3 +151,66 @@ handle the multihot columns.
 CPU Support
 ------------
 Operators will also be developed using pandas to provide support for users who don’t have access to GPU resources and who wish to use the higher level API that NVTabular provides.  We will try to provide support and feature parity for CPU but GPU acceleration is the focus of this library.  Check the API documentation for coverage.
+
+
+Getting your data ready for NVTabular
+------------
+
+
+NVTabular is designed with a specific type of dataset in mind. Ideally, the dataset will have the following characteristics:
+
+1. Comprises 1+ parquet files
+2.  All parquet files must have the same schema (including column types and nullable ("not null") option)
+3. Each parquet file consists of row-groups around 128MB in size
+4. Each parquet file is large enough to map onto an entire dask_cudf.DataFrame partition. This typically means >=1GB.
+5.  All parquet files should be located within a "root" directory, and that directory should contain a global "_metadata" file.
+*Note*: This "_metadata" file allows the dask_cudf client to produce a DataFrame collection much faster, because all metadata can be accessed from a single file. When this file is not present, the client needs to aggregate footer metadata from all files in the dataset. 
+
+CSV files are support but not recommended, because they are not efficiently stored and loaded into memory compared to parquet files (columnar format).
+
+#### Troubleshooting
+
+##### Checking the schema of parquet files
+
+NVTabular expects that all input parquet files have the same schema (including column types and nullable (not null) option).
+
+If you get the error ```RuntimeError: Schemas are inconsistent, try using to_parquet(..., schema="infer"), or pass an explicit pyarrow schema. Such as to_parquet(..., schema={"column1": pa.string()})``` when you load the dataset as below, some parquet file might have a different schema:
+
+```python
+ds = nvt.Dataset(PATH, engine="parquet", part_size="1000MB")
+ds.to_ddf().head()
+```
+
+The easiest way to fix this is to load your dataset with dask_cudf and save it again to parquet format ( ```dask_cudf.read_parquet("INPUT_FOLDER").to_parquet("OUTPUT_FOLDER")```), so that files are standardized and the ```_metadata``` file is generated.
+
+If you want to identify which parquet files and which columns have a different schema, you may run one of these scripts, using either [PyArrow](https://github.com/dask/dask/issues/6504#issuecomment-675465645) or [cudf=0.17](https://github.com/rapidsai/cudf/pull/6796#issue-522934284), which checks the consistency and generates only the ```_metadata``` file, rather than converting all parquet files. If the schema is not consistent across all files, the script will raise an exception describing inconsistent files with schema for troubleshooting. More info in this issue [here](https://github.com/NVIDIA/NVTabular/issues/429).
+
+
+##### Setting the row group size of parquet files
+You can set the row group size (number of rows) of your parquet files by using most Data Frame frameworks. In the following examples with Pandas and cuDF, the ```row_group_size``` is the number of rows that will be stored in each row group (internal structure within the parquet file):
+```python
+#Pandas
+pandas_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
+#cuDF
+cudf_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
+```
+
+The row group **memory** size of the parquet files should be lower than the **part_size** you set for the NVTabular dataset (like in ```nvt.Dataset(TRAIN_DIR, engine="parquet", part_size="1000MB"```). 
+To know how much memory a row group will hold, you can slice your dataframe to a specific number of rows and use the following function to get the memory usage in bytes. Then, you can set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size of around 128MB is recommended in general.
+
+```python
+def _memory_usage(df):
+    """this function is a workaround of a problem with getting memory usage of lists
+    in cudf0.16.  This can be deleted and just use `df.memory_usage(deep= True, index=True).sum()`
+    once we are using cudf 0.17 (fixed in https://github.com/rapidsai/cudf/pull/6549)"""
+    size = 0
+    for col in df._data.columns:
+        if cudf.utils.dtypes.is_list_dtype(col.dtype):
+            for child in col.base_children:
+                size += child.__sizeof__()
+        else:
+            size += col._memory_usage(deep=True)
+    size += df.index.memory_usage(deep=True)
+    return size
+```
+

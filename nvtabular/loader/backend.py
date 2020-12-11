@@ -35,6 +35,7 @@ class ChunkQueue:
      and concatenates them into a cudf dataframe "chunk". This chunk
     is subsequently transformed into its tensor representation using
     the iterator's transform.
+
     Parameters
     -----------
     qsize: int

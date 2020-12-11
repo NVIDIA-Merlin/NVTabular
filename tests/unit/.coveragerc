@@ -4,6 +4,9 @@ branch = True
 omit =
     tests/*
     *.tf
+    versioneer.py
+    nvtabular/_version.py
+    setup.py
 
 [report]
 # Regexes for lines to exclude from consideration

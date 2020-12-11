@@ -88,7 +88,7 @@ html_sidebars = {"**": ["versions.html"]}
 _REPO = "https://github.com/NVIDIA/NVTabular/blob/main/"
 _URL_MAP = {
     "./examples": "examples/index",
-    "examples/rossmann-store-sales-example.ipynb": "examples/rossmann",
+    "examples/rossmann/": "examples/rossmann/index",
     "examples/criteo-example.ipynb": "examples/criteo",
     "./CONTRIBUTING": _REPO + "/CONTRIBUTING.md",
     "./Operators": _REPO + "/Operators.md",
