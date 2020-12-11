@@ -15,6 +15,7 @@
 #
 import functools
 import logging
+import operator
 import os
 import threading
 import warnings
@@ -29,10 +30,12 @@ import dask.dataframe as dd
 import dask_cudf
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
+from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
+from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from .dataset_engine import DatasetEngine
@@ -336,26 +339,28 @@ class ParquetDatasetEngine(DatasetEngine):
         columns=None,
         file_size=None,
         part_size=None,
+        storage_options=None,
         **kwargs,
     ):
-
+        # Specify ideal file size and partition size
         row_group_size = 128_000_000
         file_size = file_size or row_group_size * 100
         part_size = part_size or row_group_size * 10
+
+        fs, _, _ = get_fs_token_paths(output_path, mode="wb", storage_options=storage_options)
 
         # Start by converting the original dataset to a Dask-Dataframe
         # object in CPU memory.  We avoid GPU memory in case the original
         # dataset is prone to OOM errors.
         _ddf = dataset.engine.to_ddf(columns=columns, cpu=True)
 
-        def _get_len(x):
-            return len(x)
-
         # Get list of partition lengths
         token = tokenize(dataset, output_path, columns, **kwargs)
         getlen_name = "getlen-" + token
         name = "all-" + getlen_name
-        dsk = {(getlen_name, i): (_get_len, (_ddf._name, i)) for i in range(_ddf.npartitions)}
+        dsk = {
+            (getlen_name, i): (lambda x: len(x), (_ddf._name, i)) for i in range(_ddf.npartitions)
+        }
         dsk[name] = [(getlen_name, i) for i in range(_ddf.npartitions)]
         graph = HighLevelGraph.from_collections(name, dsk, dependencies=[_ddf])
         size_list = Delayed(name, graph).compute()
@@ -364,14 +369,16 @@ class ParquetDatasetEngine(DatasetEngine):
         p0_mem_size = _ddf.partitions[0].memory_usage(deep=True, index=True).sum().compute()
         mem_per_row = int(float(p0_mem_size) / float(size_list[0]))
 
+        # Determine the number of rows to assign to each output partition
+        # and the number of output partitions to assign to each output file
         rows_per_part = int(part_size / mem_per_row)
-        # rows_per_file = int(file_size / mem_per_row)
-        # parts_per_file = int(rows_per_file / rows_per_part)
+        parts_per_file = int(file_size / part_size)
 
-        # Construct regeneration graph
+        # Construct re-partition graph
         dsk2 = {}
-        regen_name = "regen-" + token
-        split_name = "split-" + regen_name
+        repartition_name = "repartition-" + token
+        split_name = "split-" + repartition_name
+        getitem_name = "getitem-" + repartition_name
 
         def _split_part(x, split):
             out = {}
@@ -379,8 +386,6 @@ class ParquetDatasetEngine(DatasetEngine):
                 out[k] = x.iloc[v[0] : v[1]]
             return out
 
-        #
-        splits = []
         gets = defaultdict(list)
         out_parts = 0
         remaining_out_part_rows = rows_per_part
@@ -412,25 +417,66 @@ class ParquetDatasetEngine(DatasetEngine):
                 remaining_out_part_rows = rows_per_part
                 out_parts += 1
 
-            splits.append(split)
             dsk2[(split_name, i)] = (_split_part, (_ddf._name, i), split)
+        npartitions = max(gets) + 1
 
         for k, v_list in gets.items():
             last = None
+            _concat_list = []
             for v in v_list:
-                pass
-                # dsk2[(getitem_name, v, k)] = (getitem, (split_name, v), k)
+                key = (getitem_name, v, k)
+                _concat_list.append(key)
+                dsk2[key] = (operator.getitem, (split_name, v), k)
 
-                # Perhaps we can define a "write" task for each "getitem" task,
-                # and allow appending to the same file by passing forward a file
-                # handle to the next split to write to the same output file?
+            ignore_index = True
+            dsk2[(repartition_name, k)] = (_concat, _concat_list, ignore_index)
 
-                # Actually - We probably want to concatenate many splits into a
-                # single cudf partition, and then do the "file-handle" linking
-                # to allow many partitions to be written to the same output file?
+        graph2 = HighLevelGraph.from_collections(repartition_name, dsk2, dependencies=[_ddf])
+        divisions = [None] * (npartitions + 1)
+        _ddf2 = new_dd_object(graph2, repartition_name, _ddf._meta, divisions)
 
-        # import pdb; pdb.set_trace();
-        # pass
+        # dask_cudf.from_dask_dataframe(_ddf2).to_parquet(output_path)
+
+        # Construct rewrite graph
+        dsk3 = {}
+        rewrite_name = "rewrite-" + token
+        write_data_name = "write-data-" + rewrite_name
+        # write_metadata_name = "write-metadata-" + rewrite_name
+        dep_task = None
+        final_tasks = {}
+        for i in range(_ddf2.npartitions):
+            fn = f"part.{i//parts_per_file}.parquet"
+            if fn not in final_tasks:
+                dep_task = None
+            final_tasks[fn] = i
+            dsk3[(write_data_name, i)] = (
+                _write_data,
+                (repartition_name, i),
+                output_path,
+                fs,
+                fn,
+                dep_task,
+            )
+            dep_task = (write_data_name, i)
+
+        # # TODO: Finish the metadata write step, clean up code, and deal with fsspec issues
+
+        # dsk3[write_metadata_name] = (
+        #     _write_metadata_file,
+        #     [(write_data_name, i) for i in sorted(list(final_tasks.values()))],
+        #     output_path,
+        #     fs,
+        # )
+
+        # import pdb; pdb.set_trace(); pass
+
+
+def _write_data(data, output_path, fs, fn, writer):
+    if writer is None:
+        path = fs.sep.join([output_path, fn])
+        writer = pwriter(path, compression=None)
+    writer.write_table(data)
+    return writer
 
 
 class ParquetWriter(ThreadedWriter):
