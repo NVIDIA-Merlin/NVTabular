@@ -51,6 +51,7 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
     workflow.fit(dataset)
 
     if dump:
+        # TODO: load/save stats
         config_file = tmpdir + "/temp.yaml"
         workflow.save_stats(config_file)
         workflow.clear_stats()
@@ -121,7 +122,7 @@ def test_spec_set(tmpdir, client):
     te_features = cats >> ops.TargetEncoding("clicked", kfold=5, fold_seed=42, p_smooth=20)
 
     p = Workflow(cat_features + cont_features + te_features, client=client)
-    p.fit_transform(nvt.Dataset(gdf_test), record_stats=True).to_ddf().compute()
+    p.fit_transform(nvt.Dataset(gdf_test)).to_ddf().compute()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -132,50 +133,43 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    config = nvt.workflow.get_new_config()
-    config["FE"]["continuous"] = [ops.FillMissing(), ops.Clip(min_value=0)]
-    config["PP"]["continuous"] = [[ops.FillMissing(), ops.Clip(min_value=0), ops.Normalize()]]
-    config["PP"]["categorical"] = [ops.Categorify()]
+    norms = ops.Normalize()
+    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> norms
+    cats = cat_names >> ops.Categorify()
+    workflow = nvt.Workflow(conts + cats + label_name)
 
-    processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        config=config,
-        client=client,
-    )
-
-    processor.update_stats(dataset)
+    workflow.fit(dataset)
     if dump:
+        # TODO: serialization
         config_file = tmpdir + "/temp.yaml"
-        processor.save_stats(config_file)
-        processor.clear_stats()
-        processor.load_stats(config_file)
+        workflow.save_stats(config_file)
+        workflow.clear_stats()
+        workflow.load_stats(config_file)
 
     def get_norms(tar: cudf.Series):
         gdf = tar.fillna(0)
         gdf = gdf * (gdf >= 0).astype("int")
         return gdf
 
-    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"]["x"], rel_tol=1e-4)
-    assert math.isclose(get_norms(df.y).mean(), processor.stats["means"]["y"], rel_tol=1e-4)
-    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"]["x"], rel_tol=1e-3)
-    assert math.isclose(get_norms(df.y).std(), processor.stats["stds"]["y"], rel_tol=1e-3)
+    assert math.isclose(get_norms(df.x).mean(), norms.means["x"], rel_tol=1e-4)
+    assert math.isclose(get_norms(df.y).mean(), norms.means["y"], rel_tol=1e-4)
+    assert math.isclose(get_norms(df.x).std(), norms.stds["x"], rel_tol=1e-3)
+    assert math.isclose(get_norms(df.y).std(), norms.stds["y"], rel_tol=1e-3)
 
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_host
-        cats0 = get_cats(processor, "name-cat")
+        cats0 = get_cats(workflow, "name-cat")
         # adding the None entry as a string because of move from gpu
         assert cats0.tolist() == [None] + cats_expected0.tolist()
     cats_expected1 = df["name-string"].unique().values_host
-    cats1 = get_cats(processor, "name-string")
+    cats1 = get_cats(workflow, "name-string")
     # adding the None entry as a string because of move from gpu
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
+    workflow.transform(dataset).to_parquet(
+        output_path=tmpdir, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)

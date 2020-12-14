@@ -116,6 +116,7 @@ def test_hugectr(
     ext = ""
     outdir = tmpdir + "/hugectr"
     os.mkdir(outdir)
+    outdir = str(outdir)
 
     conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
@@ -130,7 +131,7 @@ def test_hugectr(
             labels=label_names,
             output_path=outdir,
             out_files_per_proc=nfiles,
-            num_thread=num_io_threads,
+            num_threads=num_io_threads,
         )
     else:
         transformed.to_parquet(
@@ -274,8 +275,8 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     df.to_parquet(filename)
 
     cat_names = ["Authors", "Engaging User"]
-    cats = nvt.ColumnGroup(cat_names) >> ops.Categorify(out_path=str(output_dir))
-    workflow = nvt.Workflow(cats)
+    cats = cat_names >> ops.Categorify(out_path=str(output_dir))
+    workflow = nvt.Workflow(cats + "Post")
 
     transformed = workflow.fit_transform(nvt.Dataset(filename))
     transformed.to_parquet(
