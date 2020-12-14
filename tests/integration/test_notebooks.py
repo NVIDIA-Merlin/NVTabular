@@ -104,6 +104,22 @@ def test_rossman_example(tmpdir, bench_info, db):
     send_results(db, bench_info, bench_results)
 
 
+    notebookex_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-pytorch.ipynb"
+    )
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
+    bench_results = RossBenchPytorch().get_epochs(out.splitlines())
+    send_results(db, bench_info, bench_results)
+
+    
+    notebookex_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-tensorflow.ipynb"
+    )
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
+    bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
+    send_results(db, bench_info, bench_results)
+
+
 # def test_gpu_benchmark(tmpdir):
 #     input_path = os.path.join(DATA_START, "outbrains/input")
 #     output_path = os.path.join(DATA_START, "outbrains/output")
@@ -162,9 +178,15 @@ def _run_notebook(
         shutil.rmtree(output_path)
     return output
 
-class BenchFastAI():
+
+
+    
+
+
+
+class Benchmark():
     def __init__(self, target_id, val=1, split=None):
-        self.name = f"{target_id}_fastai"
+        self.name = f"{target_id}"
         self.val = val
         self.split = split
     
@@ -204,7 +226,75 @@ class BenchFastAI():
         return create_bench_result(f"{self.name}_time",
                                    [("epoch", epoch)],
                                    r_time,
-                                   "seconds")      
+                                   "seconds")
+    def bres_aps(self, epoch, aps):
+        return create_bench_result(f"{self.name}_Avg_Prec",
+                                   [("epoch", epoch)],
+                                   aps,
+                                   "percent")
+
+    def get_epoch(self, line):
+        raise NotImplementedError("Must Define logic for parsing metrics per epoch")
+        
+    def get_epochs(self, output):
+        raise NotImplementedError("Must Define logic for parsing output")
+
+        
+class RossBenchTensorFlow(Benchmark):
+    def __init__(self, split=" - "):
+        super().__init__(f"Rossmann_tf", split=split)
+        
+    def get_epoch(self, line, epoch=0):
+        _, _, t_loss, t_rmspe = line.split(self.split)
+        t_loss = self.bres_loss(epoch, float(t_loss.split(": ")[1]))
+#         v_loss = self.bres_loss(epoch, float(v_loss.split(": ")[1]), l_type="valid")
+        t_rmspe = self.bres_rmspe(epoch, float(t_rmspe.split(": ")[1]))
+#         v_rmspe = self.bres_rmspe(epoch, float(v_rmspe.split(": ")[1]))
+#         return [t_loss, v_loss, t_rmspe, v_rmspe]
+        return [t_loss, t_rmspe]
+            
+        
+    def get_epochs(self, output):
+        epochs = []
+        for idx, line in enumerate(output):
+            if "Epoch" in line:
+                epoch = int(line.split()[-1].split("/")[0])
+                # output skips line for formatting and remove returns (\x08)
+                content_line = output[idx + 2].rstrip("\x08")
+                # epoch line, detected based on if 1st character is a number
+                post_evts = self.get_epoch(content_line, epoch=epoch)
+                epochs.append(post_evts)
+        return epochs
+
+
+class RossBenchPytorch(Benchmark):
+    def __init__(self, split=". "):
+        super().__init__(f"Rossmann_torch", split=split)
+        
+        
+    def get_epoch(self, line):
+        epoch, t_loss, t_rmspe, v_loss, v_rmspe = line.split(self.split)
+        epoch = epoch.split()[1]
+        t_loss = self.bres_loss(epoch, float(t_loss.split(": ")[1]))
+        v_loss = self.bres_loss(epoch, float(v_loss.split(": ")[1]), l_type="valid")
+        t_rmspe = self.bres_rmspe(epoch, float(t_rmspe.split(": ")[1]))
+        v_rmspe = self.bres_rmspe(epoch, float(v_rmspe.split(": ")[1].split(".")[0]))
+        return [t_loss, v_loss, t_rmspe, v_rmspe]
+            
+        
+    def get_epochs(self, output):
+        epochs = []
+        for line in output:
+            if "Epoch" in line:
+                # epoch line, detected based on if 1st character is a number
+                post_evts = self.get_epoch(line)
+                epochs.append(post_evts)
+        return epochs
+
+        
+class BenchFastAI(Benchmark):
+    def __init__(self, target_id, val=6, split=None):
+        super().__init__(f"{target_id}_fastai", val=val, split=split)
     
     def get_epochs(self, output):
         epochs = []
@@ -216,18 +306,21 @@ class BenchFastAI():
                 epochs.append(post_evts)
         return epochs
 
+
+
+
 class CriteoBenchFastAI(BenchFastAI):
-    def __init__(self, val=5, split=None):
+    def __init__(self, val=6, split=None):
         super().__init__("Criteo", val=val, split=split)
         
     def get_epoch(self, line):
-        epoch, t_loss, v_loss, acc, o_time = line.split()
+        epoch, t_loss, v_loss, roc, aps, o_time = line.split()
         t_loss = self.bres_loss(epoch, float(t_loss))
         v_loss = self.bres_loss(epoch, float(v_loss), l_type="valid")
-        acc = self.bres_acc(epoch, float(acc))
-#         roc = self.bres_roc_auc(epoch, float(roc_auc))
+        roc = self.bres_roc_auc(epoch, float(roc))
+        aps = self.bres_aps(epoch, float(aps))
         o_time = self.bres_time(epoch, o_time)
-        return [t_loss, v_loss, acc, o_time]
+        return [t_loss, v_loss, roc, aps, o_time]
 
 
 class RossBenchFastAI(BenchFastAI):
