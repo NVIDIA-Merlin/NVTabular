@@ -27,6 +27,7 @@ from cudf.utils.dtypes import is_list_dtype
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
+from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 from nvtx import annotate
@@ -34,13 +35,10 @@ from pyarrow import parquet as pq
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .groupby_statistics import GroupbyStatistics
-from .operator import CAT
 from .stat_operator import StatOperator
-from .transform_operator import DFOperator
 
 
-class Categorify(DFOperator):
+class Categorify(StatOperator):
     """
     Most of the data set will contain categorical features,
     and these variables are typically stored as text values.
@@ -115,21 +113,12 @@ class Categorify(DFOperator):
         a dictionary with column names as keys and frequency limit as
         value. If dictionary is used, all columns targeted must be included
         in the dictionary.
-    columns : list of str or list(str), default None
-        Categorical columns (or multi-column "groups") to target for this op.
-        If None, the operation will target all known categorical columns.
-        If columns contains 1+ list(str) elements, the columns within each
-        list/group will be encoded according to the `encode_type` setting.
     encode_type : {"joint", "combo"}, default "joint"
         If "joint", the columns within any multi-column group will be
         jointly encoded. If "combo", the combination of values will be
         encoded as a new column. Note that replacement is not allowed for
         "combo", because the same column name can be included in
         multiple groups.
-    replace : bool, default True
-        Replaces the transformed column with the original input.
-        Note that this does not apply to multi-column groups with
-        `encoded_type="combo"`.
     tree_width : dict or int, optional
         Passed to `GroupbyStatistics` dependency.
     out_path : str, optional
@@ -161,14 +150,9 @@ class Categorify(DFOperator):
         will be transformed.
     """
 
-    default_in = CAT
-    default_out = CAT
-
     def __init__(
         self,
         freq_threshold=0,
-        columns=None,
-        replace=True,
         out_path=None,
         tree_width=None,
         na_sentinel=None,
@@ -213,35 +197,13 @@ class Categorify(DFOperator):
         # For case (3), we also use this "storage name" to signify the name of
         # the file with the required "combination" groupby statistics.
         self.storage_name = {}
-        if isinstance(columns, str):
-            columns = [columns]
-        if isinstance(columns, list):
-            # User passed in a list of column groups. We need to figure out
-            # if this list contains any multi-column groups, and if there
-            # are any (obvious) problems with these groups
-            self.column_groups = columns
-            columns = list(set(flatten(columns, container=list)))
-            columns_all = list(flatten(columns, container=list))
-            if sorted(columns_all) != sorted(columns) and encode_type == "joint":
-                # If we are doing "joint" encoding, there must be unique mapping
-                # between input column names and column groups.  Otherwise, more
-                # than one unique-value table could be used to encode the same
-                # column.
-                raise ValueError("Same column name included in multiple groups.")
-            for group in self.column_groups:
-                if isinstance(group, list) and len(group) > 1:
-                    # For multi-column groups, we concatenate column names
-                    # to get the "group" name.
-                    name = _make_name(*group, sep=self.name_sep)
-                    for col in group:
-                        self.storage_name[col] = name
 
         # Only support two kinds of multi-column encoding
         if encode_type not in ("joint", "combo"):
             raise ValueError(f"encode_type={encode_type} not supported.")
 
         # Other self-explanatory intialization
-        super().__init__(columns=columns, replace=replace)
+        super().__init__()
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
@@ -249,9 +211,9 @@ class Categorify(DFOperator):
         self.dtype = dtype
         self.on_host = on_host
         self.cat_cache = cat_cache
-        self.stat_name = "categories"
         self.encode_type = encode_type
         self.search_sorted = search_sorted
+        self.categories = {}
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -262,7 +224,6 @@ class Categorify(DFOperator):
                 "For hashing num_buckets should be an int > 1, otherwise set num_buckets=None."
             )
         elif isinstance(num_buckets, dict):
-            columns = list(num_buckets)
             self.num_buckets = num_buckets
         elif isinstance(num_buckets, int) or num_buckets is None:
             self.num_buckets = num_buckets
@@ -271,50 +232,37 @@ class Categorify(DFOperator):
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
 
-    @property
-    def req_stats(self):
-        stats = [
-            GroupbyStatistics(
-                columns=self.column_groups or self.columns,
-                concat_groups=self.encode_type == "joint",
-                cont_names=[],
-                stats=[],
-                freq_threshold=self.freq_threshold,
-                tree_width=self.tree_width,
-                out_path=self.out_path,
-                on_host=self.on_host,
-                stat_name=self.stat_name,
-                name_sep=self.name_sep,
-            )
-        ]
-        if self.num_buckets:
-            stats += [
-                SetBuckets(
-                    columns=self.column_groups or self.columns,
-                    num_buckets=self.num_buckets,
-                    freq_limit=self.freq_threshold,
-                    encode_type=self.encode_type,
-                )
-            ]
-        return stats
+    @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
+    def fit(self, columns, ddf):
+        dsk, key = _category_stats(
+            ddf,
+            columns,
+            [],
+            [],
+            self.out_path,
+            self.freq_threshold,
+            self.tree_width,
+            self.on_host,
+            concat_groups=self.encode_type == "joint",
+            name_sep=self.name_sep,
+        )
+        return Delayed(key, dsk)
 
-    @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
+    def fit_finalize(self, dask_stats):
+        for col in dask_stats:
+            self.categories[col] = dask_stats[col]
+
+    @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
+    def transform(
         self,
+        columns,
         gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context={},
     ):
         new_gdf = gdf.copy(deep=False)
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         if isinstance(self.freq_threshold, dict):
-            assert all(x in self.freq_threshold for x in target_columns)
-        if not target_columns:
-            return new_gdf
+            assert all(x in self.freq_threshold for x in columns)
 
-        if self.column_groups and not self.encode_type == "joint":
+        if self.encode_type == "combo":
             # Case (3) - We want to track multi- and single-column groups separately
             #            when we are NOT performing a joint encoding. This is because
             #            there is not a 1-to-1 mapping for columns in multi-col groups.
@@ -322,20 +270,17 @@ class Categorify(DFOperator):
             #            multi-column groups only, and use `cat_names` to store the
             #            string representation of both single- and multi-column groups.
             #
-            cat_names, multi_col_group = _get_multicolumn_names(
-                self.column_groups, gdf.columns, self.name_sep
-            )
+            cat_names, multi_col_group = _get_multicolumn_names(columns, gdf.columns, self.name_sep)
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
-            cat_names = [name for name in target_columns if name in gdf.columns]
+            cat_names = columns
 
         # Encode each column-group separately
         for name in cat_names:
-            new_col = f"{name}_{self._id}"
-
             # Use the column-group `list` directly (not the string name)
             use_name = multi_col_group.get(name, name)
+
             # Storage name may be different than group for case (2)
             # Only use the "aliased" `storage_name` if we are dealing with
             # a multi-column group, or if we are doing joint encoding
@@ -343,13 +288,16 @@ class Categorify(DFOperator):
                 storage_name = self.storage_name.get(name, name)
             else:
                 storage_name = name
-            path = stats_context[self.stat_name][storage_name]
+
+            path = self.categories[storage_name]
+            """ TODO ??
             if not self.column_groups and _is_list_col([name], gdf):
                 if "mh" not in columns_ctx["categorical"]:
                     columns_ctx["categorical"]["mh"] = []
                 if name not in columns_ctx["categorical"]["mh"]:
                     columns_ctx["categorical"]["mh"].append(name)
-            new_gdf[new_col] = _encode(
+            """
+            new_gdf[name] = _encode(
                 use_name,
                 storage_name,
                 path,
@@ -365,17 +313,15 @@ class Categorify(DFOperator):
                 cat_names=cat_names,
             )
             if self.dtype:
-                new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
+                new_gdf[name] = new_gdf[name].astype(self.dtype, copy=False)
 
-        # Deal with replacement
-        if self.replace:
-            for name in cat_names:
-                new_col = f"{name}_{self._id}"
-                new_gdf[name] = new_gdf[new_col]
-                new_gdf.drop(columns=[new_col], inplace=True)
-
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
+
+    def output_column_names(self, columns):
+        if self.encode_type == "combo":
+            cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
+            return cat_names
+        return list(flatten(columns))
 
 
 def _get_embedding_order(cat_names):
@@ -434,8 +380,8 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     return embeddings
 
 
-def _emb_sz_rule(n_cat: int) -> int:
-    return n_cat, int(min(16, round(1.6 * n_cat ** 0.56)))
+def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
+    return n_cat, min(max(minimum_size, round(1.6 * n_cat ** 0.56)), maximum_size)
 
 
 def _make_name(*args, sep="_"):

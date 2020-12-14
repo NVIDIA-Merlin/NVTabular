@@ -15,7 +15,6 @@
 #
 import cupy
 import numpy as np
-from dask.core import flatten
 from dask.delayed import Delayed
 
 from . import categorify as nvt_cat
@@ -85,37 +84,18 @@ class GroupbyStatistics(StatOperator):
         self,
         cont_names=None,
         stats=None,
-        columns=None,
         fold_groups=None,
         tree_width=None,
         out_path=None,
         on_host=True,
         freq_threshold=None,
-        stat_name=None,
         concat_groups=False,
         name_sep="_",
         fold_name="__fold__",
         fold_seed=42,
         kfold=None,
     ):
-        # Set column_groups if the user has passed in a list of columns
-        self.column_groups = None
-        if isinstance(columns, str):
-            columns = [columns]
-        if isinstance(columns, list):
-            self.column_groups = columns
-            columns = list(set(flatten(columns, container=list)))
-
-        # Add fold_groups to columns
-        if fold_groups and kfold > 1:
-            fold_groups = [fold_groups] if isinstance(fold_groups, str) else fold_groups
-            columns = columns or []
-            self.column_groups = self.column_groups or []
-            for col in list(set(flatten(fold_groups, container=list))):
-                if col not in columns:
-                    columns.append(col)
-
-        super(GroupbyStatistics, self).__init__(columns)
+        super(GroupbyStatistics, self).__init__()
         self.cont_names = cont_names or []
         self.stats = stats or []
         self.categories = {}
@@ -123,8 +103,6 @@ class GroupbyStatistics(StatOperator):
         self.on_host = on_host
         self.freq_threshold = freq_threshold
         self.out_path = out_path or "./"
-        self.stat_name = stat_name or "categories"
-        self.op_name = "GroupbyStatistics-" + self.stat_name
         self.concat_groups = concat_groups
         self.name_sep = name_sep
         self.kfold = kfold or 3
@@ -132,23 +110,14 @@ class GroupbyStatistics(StatOperator):
         self.fold_seed = fold_seed
         self.fold_groups = fold_groups
 
-    @property
-    def _id(self):
-        c_id = self._id_set
-        if not self._id_set:
-            c_id = str(self.op_name)
-        return c_id
-
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        if self.column_groups is None:
-            col_groups = self.get_columns(columns_ctx, input_cols, target_cols)
-        else:
-            col_groups = self.column_groups.copy()
+    def fit(self, columns, ddf):
         supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
+        # TODO: move all this 'fold' stuff into TargetEncoding
+        col_groups = columns
         if self.fold_groups and self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
@@ -176,6 +145,7 @@ class GroupbyStatistics(StatOperator):
                 self._ddf_out = ddf
 
             # Add new col_groups with fold
+
             for group in self.fold_groups:
                 if isinstance(group, list):
                     col_groups.append([self.fold_name] + group)
@@ -197,7 +167,6 @@ class GroupbyStatistics(StatOperator):
             self.freq_threshold,
             self.tree_width,
             self.on_host,
-            stat_name=self.stat_name,
             concat_groups=self.concat_groups,
             name_sep=self.name_sep,
         )

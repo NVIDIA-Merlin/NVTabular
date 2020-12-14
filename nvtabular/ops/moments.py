@@ -22,63 +22,6 @@ from dask.base import tokenize
 from dask.dataframe.core import _concat
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from nvtx import annotate
-
-from .stat_operator import StatOperator
-
-
-class Moments(StatOperator):
-    """
-    Moments operation calculates some of the statistics of features including
-    mean, variance, standarded deviation, and count.
-
-    Parameters
-    -----------
-    columns :
-    counts : list of float, default None
-    means : list of float, default None
-    varis : list of float, default None
-    stds : list of float, default None
-    """
-
-    def __init__(self, columns=None, counts=None, means=None, varis=None, stds=None):
-        super().__init__(columns=columns)
-        self.counts = counts if counts is not None else {}
-        self.means = means if means is not None else {}
-        self.varis = varis if varis is not None else {}
-        self.stds = stds if stds is not None else {}
-
-    @annotate("Moments_op", color="green", domain="nvt_python")
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        return _custom_moments(ddf[cols])
-
-    @annotate("Moments_finalize", color="green", domain="nvt_python")
-    def finalize(self, dask_stats):
-        for col in dask_stats.index:
-            self.counts[col] = float(dask_stats["count"].loc[col])
-            self.means[col] = float(dask_stats["mean"].loc[col])
-            self.stds[col] = float(dask_stats["std"].loc[col])
-            self.varis[col] = float(dask_stats["var"].loc[col])
-
-    def registered_stats(self):
-        return ["means", "stds", "vars", "counts"]
-
-    def stats_collected(self):
-        result = [
-            ("means", self.means),
-            ("stds", self.stds),
-            ("vars", self.varis),
-            ("counts", self.counts),
-        ]
-        return result
-
-    def clear(self):
-        self.counts = {}
-        self.means = {}
-        self.varis = {}
-        self.stds = {}
-        return
 
 
 def _custom_moments(ddf, split_every=32):

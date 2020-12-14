@@ -17,11 +17,10 @@ import cudf
 import numpy as np
 from nvtx import annotate
 
-from .operator import CONT
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class LogOp(TransformOperator):
+class LogOp(Operator):
     """
     This operator calculates the log of continuous columns. Note that
     to handle the common case of zerofilling null values, this
@@ -48,15 +47,6 @@ class LogOp(TransformOperator):
         Whether to replace existing columns or create new ones.
     """
 
-    default_in = CONT
-    default_out = CONT
-
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cont_names = target_columns
-        if not cont_names:
-            return gdf
-        new_gdf = np.log(gdf[cont_names].astype(np.float32) + 1)
-        new_cols = [f"{col}_{self._id}" for col in new_gdf.columns]
-        new_gdf.columns = new_cols
-        return new_gdf
+    def transform(self, columns, gdf: cudf.DataFrame):
+        return np.log(gdf[columns].astype(np.float32) + 1)

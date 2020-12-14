@@ -26,45 +26,35 @@ from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
+from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular import ops as ops
-from nvtabular.io import Dataset
 from tests.conftest import get_cats, mycols_csv
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
-@pytest.mark.parametrize("op_columns", [["x"], None])
 @pytest.mark.parametrize("use_client", [True, False])
-def test_gpu_workflow_api(
-    tmpdir, client, df, dataset, gpu_memory_frac, engine, dump, op_columns, use_client
-):
+def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump, use_client):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
-        client=client if use_client else None,
+    norms = ops.Normalize()
+    cat_features = cat_names >> ops.Categorify(cat_cache="host")
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
+
+    workflow = Workflow(
+        cat_features + cont_features + label_name, client=client if use_client else None
     )
 
-    processor.add_feature(
-        [ops.FillMissing(), ops.Clip(min_value=0, columns=op_columns), ops.LogOp()]
-    )
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify(cat_cache="host"))
-    processor.finalize()
-    assert len(processor.phases) == 2
-
-    processor.update_stats(dataset)
+    workflow.fit(dataset)
 
     if dump:
         config_file = tmpdir + "/temp.yaml"
-        processor.save_stats(config_file)
-        processor.clear_stats()
-        processor.load_stats(config_file)
+        workflow.save_stats(config_file)
+        workflow.clear_stats()
+        workflow.load_stats(config_file)
 
     def get_norms(tar: cudf.Series):
         gdf = tar.fillna(0)
@@ -73,27 +63,27 @@ def test_gpu_workflow_api(
         return gdf
 
     # Check mean and std - No good right now we have to add all other changes; Clip, Log
-
-    if not op_columns:
-        assert math.isclose(get_norms(df.y).mean(), processor.stats["means"]["y"], rel_tol=1e-1)
-        assert math.isclose(get_norms(df.y).std(), processor.stats["stds"]["y"], rel_tol=1e-1)
-    assert math.isclose(get_norms(df.x).mean(), processor.stats["means"]["x"], rel_tol=1e-1)
-    assert math.isclose(get_norms(df.x).std(), processor.stats["stds"]["x"], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.y).mean(), norms.means["y"], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.y).std(), norms.stds["y"], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.x).mean(), norms.means["x"], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.x).std(), norms.stds["x"], rel_tol=1e-1)
 
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_host
-        cats0 = get_cats(processor, "name-cat")
+        cats0 = get_cats(workflow, "name-cat")
         # adding the None entry as a string because of move from gpu
         assert cats0.tolist() == [None] + cats_expected0.tolist()
     cats_expected1 = df["name-string"].unique().values_host
-    cats1 = get_cats(processor, "name-string")
+    cats1 = get_cats(workflow, "name-string")
     # adding the None entry as a string because of move from gpu
     assert cats1.tolist() == [None] + cats_expected1.tolist()
 
     # Write to new "shuffled" and "processed" dataset
-    processor.write_to_dataset(
-        tmpdir, dataset, out_files_per_proc=10, shuffle=nvt.io.Shuffle.PER_PARTITION, apply_ops=True
+    workflow.transform(dataset).to_parquet(
+        tmpdir,
+        out_files_per_proc=10,
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
@@ -125,27 +115,13 @@ def test_spec_set(tmpdir, client):
         }
     )
 
-    p = nvt.Workflow(
-        cat_names=["ad_id", "source_id", "platform"],
-        cont_names=["cont"],
-        label_name=["clicked"],
-        client=client,
-    )
-    p.add_feature(ops.FillMissing())
-    p.add_feature(ops.Normalize())
-    p.add_feature(ops.Categorify())
-    p.add_feature(
-        ops.TargetEncoding(
-            cat_groups=["ad_id", "source_id", "platform"],
-            cont_target="clicked",
-            kfold=5,
-            fold_seed=42,
-            p_smooth=20,
-        )
-    )
+    cats = ColumnGroup(["ad_id", "source_id", "platform"])
+    cat_features = cats >> ops.Categorify
+    cont_features = ColumnGroup(["cont"]) >> ops.FillMissing >> ops.Normalize
+    te_features = cats >> ops.TargetEncoding("clicked", kfold=5, fold_seed=42, p_smooth=20)
 
-    p.apply(nvt.Dataset(gdf_test), record_stats=True)
-    assert p.stats
+    p = Workflow(cat_features + cont_features + te_features, client=client)
+    p.fit_transform(nvt.Dataset(gdf_test), record_stats=True).to_ddf().compute()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -312,13 +288,10 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
 
     columns = ["a"]
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
-    processor = nvt.Workflow(
-        cat_names=[], cont_names=columns, label_name=[], client=client if use_client else None
-    )
-    processor.add_preprocess(ops.Normalize())
-    processor.finalize()
-    processor.apply(
-        dataset, output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
+
+    workflow = nvt.Workflow(columns >> ops.Normalize(), client=client if use_client else None)
+    workflow.fit_transform(dataset).to_parquet(
+        output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
 
     # Check that the number of output files is correct
@@ -402,15 +375,12 @@ def test_chaining_1():
     )
     df["cont01"][:10] = None
 
-    workflow = nvt.Workflow(
-        cat_names=["cat01"], cont_names=["cont01", "cont02"], label_name=["label"]
-    )
-    workflow.add_cont_feature(nvt.ops.FillMissing(columns=["cont01"], replace=True))
-    workflow.add_cont_preprocess(nvt.ops.NormalizeMinMax(columns=["cont01", "cont02"]))
-    workflow.finalize()
+    cont1 = "cont01" >> ops.FillMissing()
+    conts = cont1 + "cont02" >> ops.NormalizeMinMax()
+    workflow = Workflow(conts + "cat01" + "label")
 
-    workflow.apply(nvt.Dataset(df), output_path=None)
-    result = workflow.get_ddf().compute()
+    result = workflow.fit_transform(Dataset(df)).to_ddf().compute()
+
     assert result["cont01"].max() <= 1.0
     assert result["cont02"].max() <= 1.0
 
@@ -578,3 +548,36 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
 
     # just make sure this owrks without errors
     workflow.apply(dataset, output_path=out_path)
+
+
+def test_transform_geolocation():
+    raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
+    data = cudf.DataFrame({"geo_location": raw})
+
+    geo_location = ColumnGroup(["geo_location"])
+    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
+    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    geo_features = state + country + geo_location >> ops.HashBucket(num_buckets=100)
+
+    # for this workflow we don't have any statoperators, so we can get away without fitting
+    workflow = Workflow(geo_features)
+    transformed = workflow.transform(Dataset(data)).to_ddf().compute()
+
+    expected = cudf.DataFrame()
+    expected["geo_location_state"] = data["geo_location"].str.slice(0, 5).hash_values() % 100
+    expected["geo_location_country"] = data["geo_location"].str.slice(0, 2).hash_values() % 100
+    expected["geo_location"] = data["geo_location"].hash_values() % 100
+    assert_eq(expected, transformed)
+
+
+def test_fit_simple():
+    data = cudf.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
+    dataset = Dataset(data)
+
+    workflow = Workflow(["x", "y"] >> ops.FillMedian >> (lambda x: x * x))
+
+    workflow.fit(dataset)
+    transformed = workflow.transform(dataset).to_ddf().compute()
+
+    expected = cudf.DataFrame({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
+    assert_eq(expected, transformed)

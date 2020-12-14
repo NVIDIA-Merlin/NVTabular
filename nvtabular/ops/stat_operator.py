@@ -18,32 +18,22 @@ from .operator import Operator
 
 class StatOperator(Operator):
     """
-    Base class for statistical operator classes.
+    Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
+    on top of
     """
 
-    def __init__(self, columns=None):
-        super(StatOperator, self).__init__(columns)
+    def __init__(self):
+        super(StatOperator, self).__init__()
         self._ddf_out = None
 
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def fit(self, columns, ddf):
         raise NotImplementedError(
             """The dask operations needed to return a dictionary of uncomputed statistics."""
         )
 
-    def finalize(self, dask_stats):
+    def fit_finalize(self, dask_stats):
         raise NotImplementedError(
             """Follow-up operations to convert dask statistics in to member variables"""
-        )
-
-    def registered_stats(self):
-        raise NotImplementedError(
-            """Should return a list of statistics this operator will collect.
-                The list is comprised of simple string values."""
-        )
-
-    def stats_collected(self):
-        raise NotImplementedError(
-            """Should return a list of tuples of name and statistics operator."""
         )
 
     def clear(self):

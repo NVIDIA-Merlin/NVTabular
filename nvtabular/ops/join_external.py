@@ -20,11 +20,10 @@ import pyarrow as pa
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .operator import ALL
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class JoinExternal(TransformOperator):
+class JoinExternal(Operator):
     """
     Join each dataset partition to an external table. For performance
     reasons, only "left" and "inner" join transformations are supported.
@@ -76,9 +75,6 @@ class JoinExternal(TransformOperator):
         Where to cache ``df_ext`` between transformations. Only used
         if the data is originally stored on disk.
     """
-
-    default_in = ALL
-    default_out = ALL
 
     def __init__(
         self,
@@ -144,15 +140,11 @@ class JoinExternal(TransformOperator):
 
         return _ext
 
-    def apply_op(
+    def transform(
         self,
+        columns,
         gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
     ):
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
         new_gdf = gdf.merge(self._ext, left_on=self.on, right_on=self.on_ext, how=self.how)
@@ -160,8 +152,12 @@ class JoinExternal(TransformOperator):
         new_gdf.drop(columns=[tmp], inplace=True)
         gdf.drop(columns=[tmp], inplace=True)
         new_gdf.reset_index(drop=True, inplace=True)
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
+
+    def output_column_names(self, columns):
+        if self.ext_columns:
+            return columns + self.ext_columns
+        return columns + self._ext.columns
 
 
 def _detect_format(data):

@@ -19,11 +19,11 @@ from dask.core import flatten
 
 from . import categorify as nvt_cat
 from .groupby_statistics import GroupbyStatistics
-from .operator import CAT
-from .transform_operator import DFOperator
+from .stat_operator import StatOperator
 
 
-class JoinGroupby(DFOperator):
+# TODO: statoperator new api
+class JoinGroupby(StatOperator):
     """
     One of the ways to create new features is to calculate
     the basic statistics of the data that is grouped by categorical
@@ -73,9 +73,6 @@ class JoinGroupby(DFOperator):
         String separator to use between concatenated column names
         for multi-column groups.
     """
-
-    default_in = CAT
-    default_out = CAT
 
     def __init__(
         self,

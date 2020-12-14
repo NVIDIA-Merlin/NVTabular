@@ -16,42 +16,25 @@
 import cudf
 from nvtx import annotate
 
-from .operator import CAT
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class HashedCross(TransformOperator):
-    """"""
-
-    default_in = CAT
-    default_out = CAT
-
-    def __init__(self, crosses, num_buckets=None, **kwargs):
-        if isinstance(crosses, dict):
-            cross_sets = list(crosses.keys())
-            num_buckets = [crosses[c] for c in cross_sets]
-            crosses = cross_sets
-        else:
-            if num_buckets is None:
-                raise ValueError("Must provide `num_buckets` if crosses is not dict")
-            assert len(num_buckets) == len(crosses)
-        assert all([isinstance(c, (tuple, list)) for c in crosses])
-        assert all([len(c) > 1 for c in crosses])
-
-        kwargs["replace"] = False
-        kwargs["columns"] = list(set([i for j in crosses for i in j]))
-        super().__init__(**kwargs)
-
-        self.crosses = crosses
+class HashedCross(Operator):
+    def __init__(self, num_buckets):
+        super().__init__()
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def op_logic(self, columns, gdf: cudf.DataFrame):
         new_gdf = cudf.DataFrame()
-        for columns, bucket_size in zip(self.crosses, self.num_buckets):
+        for cross in columns:
             val = 0
-            for column in columns:
+            for column in cross:
                 val ^= gdf[column].hash_values()  # or however we want to do this aggregation
-            val = val % bucket_size
-            new_gdf["_X_".join(columns)] = val
+            # TODO: support different size buckets per cross
+            val = val % self.bucket_size
+            new_gdf["_X_".join(cross)] = val
         return new_gdf
+
+    def output_column_names(self, columns):
+        return ["_X_".join(cross) for cross in columns]
