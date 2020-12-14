@@ -16,11 +16,10 @@
 import cudf
 from nvtx import annotate
 
-from .operator import CONT
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class DifferenceLag(TransformOperator):
+class DifferenceLag(Operator):
     """Calculates the difference between two consecutive rows of the dataset. For instance, this
     operator can calculate the time since a user last had another interaction.
 
@@ -57,16 +56,13 @@ class DifferenceLag(TransformOperator):
         Whether to replace existing columns or create new ones.
     """
 
-    default_in = CONT
-    default_out = CONT
-
     def __init__(self, partition_cols, shift=1, columns=None, replace=False):
         super(DifferenceLag, self).__init__(columns=columns, replace=replace)
         self.partition_cols = partition_cols
         self.shifts = [shift] if isinstance(shift, int) else shift
 
     @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def transform(self, columns, gdf: cudf.DataFrame):
         # compute a mask indicating partition boundaries, handling multiple partition_cols
         # represent partition boundaries by None values
         output = {}
@@ -76,6 +72,15 @@ class DifferenceLag(TransformOperator):
                 mask = mask.all(axis=1)
             mask[mask == False] = None  # noqa
 
-            for col in target_columns:
-                output[f"{col}_{self._id}_{shift}"] = (gdf[col] - gdf[col].shift(shift)) * mask
+            for col in columns:
+                output[self._column_name(col, shift)] = (gdf[col] - gdf[col].shift(shift)) * mask
         return cudf.DataFrame(output)
+
+    def dependencies(self):
+        return self.partition_cols
+
+    def output_column_names(self, columns):
+        return [self._column_name(col, shift) for shift in self.shifts for col in columns]
+
+    def _column_name(self, col, shift):
+        return f"{col}_difference_lag_{shift}"

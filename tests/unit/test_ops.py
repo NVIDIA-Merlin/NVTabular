@@ -728,14 +728,13 @@ def test_categorify_lists(tmpdir, freq_threshold):
         }
     )
     cat_names = ["Authors", "Engaging User"]
-    cont_names = []
     label_name = ["Post"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold))
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold)
+
+    workflow = nvt.Workflow(cat_features + label_name)
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    print(df_out)
 
     # Columns are encoded independently
     if freq_threshold < 2:
@@ -744,10 +743,9 @@ def test_categorify_lists(tmpdir, freq_threshold):
         assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 0], [0, 2], [2]]
 
 
-@pytest.mark.parametrize("groups", [[["Author", "Engaging User"]], None])
+@pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
-def test_categorify_multi(tmpdir, groups, kind):
-
+def test_categorify_multi(tmpdir, cat_names, kind):
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_E", "User_B", "User_C"],
@@ -756,18 +754,15 @@ def test_categorify_multi(tmpdir, groups, kind):
         }
     )
 
-    cat_names = ["Author", "Engaging User"]
-    cont_names = []
     label_name = ["Post"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
 
-    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir), encode_type=kind))
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    workflow = nvt.Workflow(cats + label_name)
 
-    if groups:
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+
+    if len(cat_names) == 1:
         if kind == "joint":
             # Columns are encoded jointly
             assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
@@ -782,7 +777,7 @@ def test_categorify_multi(tmpdir, groups, kind):
 
 
 def test_categorify_multi_combo(tmpdir):
-    groups = [["Author", "Engaging User"], ["Author"], "Engaging User"]
+    cat_names = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
     df = pd.DataFrame(
         {
@@ -792,16 +787,10 @@ def test_categorify_multi_combo(tmpdir):
         }
     )
 
-    cat_names = ["Author", "Engaging User"]
-    cont_names = []
     label_name = ["Post"]
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
-    processor.add_preprocess(ops.Categorify(columns=groups, out_path=str(tmpdir), encode_type=kind))
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
+    workflow = nvt.Workflow(cats + label_name)
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
     # Column combinations are encoded
     assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]

@@ -117,30 +117,27 @@ def test_hugectr(
     outdir = tmpdir + "/hugectr"
     os.mkdir(outdir)
 
-    # process data
-    processor = nvt.Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_names
-    )
-    processor.add_feature(
-        [
-            ops.FillMissing(columns=op_columns),
-            ops.Clip(min_value=0, columns=op_columns),
-            ops.LogOp(),
-        ]
-    )
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
+    conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
+    cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
 
-    # apply the workflow and write out the dataset
-    processor.apply(
-        dataset,
-        output_path=outdir,
-        out_files_per_proc=nfiles,
-        output_format=output_format,
-        shuffle=None,
-        num_io_threads=num_io_threads,
-    )
+    workflow = nvt.Workflow(conts + cats + label_names)
+    transformed = workflow.fit_transform(dataset)
+
+    if output_format == "hugectr":
+        transformed.to_hugectr(
+            cats=cat_names,
+            conts=cont_names,
+            labels=label_names,
+            output_path=outdir,
+            out_files_per_proc=nfiles,
+            num_thread=num_io_threads,
+        )
+    else:
+        transformed.to_parquet(
+            output_path=outdir,
+            out_files_per_proc=nfiles,
+            num_threads=num_io_threads,
+        )
 
     # Check for _file_list.txt
     assert os.path.isfile(outdir + "/_file_list.txt")
@@ -241,18 +238,12 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     cont_names = ["x", "y"]
     label_names = ["label"]
     columns = cat_names + cont_names + label_names
+    workflow = nvt.Workflow(nvt.ColumnGroup(columns))
 
     outdir = str(tmpdir.mkdir("out"))
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
-    processor.finalize()
-    processor.apply(
-        nvt.Dataset(df),
-        output_format="parquet",
-        output_path=outdir,
-        out_files_per_proc=nfiles,
-        num_io_threads=num_io_threads,
-        shuffle=shuffle,
+    transformed = workflow.transform(nvt.Dataset(df))
+    transformed.to_parquet(
+        output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, out_files_per_proc=nfiles
     )
 
     # Check that our output data is exactly the same
@@ -283,15 +274,11 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     df.to_parquet(filename)
 
     cat_names = ["Authors", "Engaging User"]
-    cont_names = []
-    label_name = ["Post"]
+    cats = nvt.ColumnGroup(cat_names) >> ops.Categorify(out_path=str(output_dir))
+    workflow = nvt.Workflow(cats)
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_preprocess(ops.Categorify(out_path=str(output_dir)))
-    processor.finalize()
-    processor.apply(
-        nvt.Dataset(filename),
-        output_format="parquet",
+    transformed = workflow.fit_transform(nvt.Dataset(filename))
+    transformed.to_parquet(
         output_path=output_dir,
         shuffle=shuffle,
         out_files_per_proc=out_files_per_proc,

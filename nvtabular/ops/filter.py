@@ -16,11 +16,10 @@
 import cudf
 from nvtx import annotate
 
-from .operator import ALL
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class Filter(TransformOperator):
+class Filter(Operator):
     """
     Filters rows from the dataset. This works by taking a callable that takes a dataframe,
     and returns a dataframe with unwanted rows filtered out.
@@ -36,11 +35,8 @@ class Filter(TransformOperator):
         dataframe with unwanted rows filtered out.
     """
 
-    default_in = ALL
-    default_out = ALL
-
     def __init__(self, f):
-        super().__init__(replace=True)
+        super().__init__()
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
@@ -48,11 +44,8 @@ class Filter(TransformOperator):
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
     def apply_op(
         self,
+        columns,
         gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
     ):
         filtered = self.f(gdf)
         if isinstance(filtered, cudf.DataFrame):

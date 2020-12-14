@@ -16,11 +16,10 @@
 import cudf
 from nvtx import annotate
 
-from .operator import ALL
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class Dropna(TransformOperator):
+class Dropna(Operator):
     """
     This operation detects missing values, and filters out rows with null values.
 
@@ -44,20 +43,12 @@ class Dropna(TransformOperator):
         for null values.
     """
 
-    default_in = ALL
-    default_out = ALL
-
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
+    def transform(
         self,
+        columns,
         gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
     ):
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
-        new_gdf = gdf.dropna(subset=target_columns or None)
+        new_gdf = gdf.dropna(subset=columns or None)
         new_gdf.reset_index(drop=True, inplace=True)
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf

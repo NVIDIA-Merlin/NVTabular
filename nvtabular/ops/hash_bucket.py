@@ -17,12 +17,11 @@ import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from .categorify import SetBuckets, _encode_list_column
-from .operator import CAT
-from .transform_operator import DFOperator
+from .categorify import _encode_list_column
+from .operator import Operator
 
 
-class HashBucket(DFOperator):
+class HashBucket(Operator):
     """
     This op maps categorical columns to a contiguous integer range
     by first hashing the column then modulating by the number of
@@ -93,10 +92,7 @@ class HashBucket(DFOperator):
         an `int`.
     """
 
-    default_in = CAT
-    default_out = CAT
-
-    def __init__(self, num_buckets, columns=None, **kwargs):
+    def __init__(self, num_buckets):
         if isinstance(num_buckets, dict):
             columns = [i for i in num_buckets.keys()]
             self.num_buckets = num_buckets
@@ -112,32 +108,18 @@ class HashBucket(DFOperator):
                     type(num_buckets)
                 )
             )
-        super(HashBucket, self).__init__(columns=columns, **kwargs)
+        super(HashBucket, self).__init__()
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cat_names = target_columns
+    def transform(self, columns, gdf: cudf.DataFrame):
         if isinstance(self.num_buckets, int):
-            num_buckets = {name: self.num_buckets for name in cat_names}
+            num_buckets = {name: self.num_buckets for name in columns}
         else:
             num_buckets = self.num_buckets
 
-        new_gdf = cudf.DataFrame()
         for col, nb in num_buckets.items():
-            new_col = f"{col}_{self._id}"
             if is_list_dtype(gdf[col].dtype):
-                encoded = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
+                gdf[col] = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
             else:
-                encoded = gdf[col].hash_values() % nb
-
-            new_gdf[new_col] = encoded
-        return new_gdf
-
-    @property
-    def req_stats(self):
-        return [
-            SetBuckets(
-                columns=self.columns,
-                num_buckets=self.num_buckets,
-            )
-        ]
+                gdf[col] = gdf[col].hash_values() % nb
+        return gdf
