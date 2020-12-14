@@ -182,10 +182,6 @@ def _transform_partition(root_gdf, column_group, parent_only=False):
     # this also selects columns (handling the case of removing columns from the output using
     # "-" overload)
     output = cudf.DataFrame()
-    if column_group.op:
-        print("transform", column_group.columns, column_group.op, column_group.op.encode_type)
-        print(gdf)
-        print(column_group.columns)
     for column in column_group.columns:
         output[column] = gdf[column]
     return output
