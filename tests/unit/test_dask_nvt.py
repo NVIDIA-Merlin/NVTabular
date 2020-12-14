@@ -121,7 +121,11 @@ def test_dask_workflow_api_dlrm(
             assert_eq(result[col], df_disk[col])
 
     else:
-        df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+        # Removed index as a parameter due to an error when updating to cudf 0.17
+        # There is a bug in Dask that Rick is fixing
+        # Rick's PR: https://github.com/dask/dask/pull/6969
+        # df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+        df_disk = dask_cudf.read_parquet(output_path).compute()
         assert len(df0) == len(df_disk)
 
 

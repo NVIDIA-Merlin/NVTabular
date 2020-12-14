@@ -1029,16 +1029,16 @@ def test_difference_lag():
     op = ops.DifferenceLag("userid", shift=[1, -1], columns=["timestamp"])
     new_gdf = op.apply_op(df, columns_ctx, "all", target_cols=["timestamp"])
 
-    assert new_gdf["timestamp_DifferenceLag_1"][0] is None
+    assert new_gdf["timestamp_DifferenceLag_1"][0] is cudf.NA 
     assert new_gdf["timestamp_DifferenceLag_1"][1] == 5
     assert new_gdf["timestamp_DifferenceLag_1"][2] == 95
-    assert new_gdf["timestamp_DifferenceLag_1"][3] is None
+    assert new_gdf["timestamp_DifferenceLag_1"][3] is cudf.NA
 
     assert new_gdf["timestamp_DifferenceLag_-1"][0] == -5
     assert new_gdf["timestamp_DifferenceLag_-1"][1] == -95
-    assert new_gdf["timestamp_DifferenceLag_-1"][2] is None
+    assert new_gdf["timestamp_DifferenceLag_-1"][2] is cudf.NA
     assert new_gdf["timestamp_DifferenceLag_-1"][3] == -1
-    assert new_gdf["timestamp_DifferenceLag_-1"][5] is None
+    assert new_gdf["timestamp_DifferenceLag_-1"][5] is cudf.NA
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
