@@ -68,7 +68,6 @@ def test_criteo_notebook(db, bench_info, tmpdir):
 #     )
 
 
-
 def test_rossman_example(tmpdir, bench_info, db):
     pytest.importorskip("tensorflow")
     data_path = os.path.join(DATA_START, "rossman/data")
