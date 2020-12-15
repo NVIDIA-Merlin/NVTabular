@@ -22,7 +22,7 @@ import platform
 import psutil
 import socket
 from numba import cuda
-from asvdb import utils, BenchmarkInfo, BenchmarkResult, ASVDb
+from asvdb import utils, BenchmarkInfo, ASVDb
 
 import cudf
 import numpy as np
@@ -193,8 +193,9 @@ def get_cats(processor, col, stat_name="categories"):
 def db():
     # Create an interface to an ASV "database" to write the results to.
     (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
-
-    db = ASVDb(dbDir="/nvtabular/benchmarks", repo=repo, branches=[branch])
+    # allows control of results location
+    db_dir = os.environ.get("ASVDB_DIR", "./benchmarks")
+    db = ASVDb(dbDir=db_dir, repo=repo, branches=[branch])
 
     return db
 
