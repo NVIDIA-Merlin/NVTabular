@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
-from nvtabular import Dataset, Workflow
+from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular import ops as ops
 from nvtabular.io.shuffle import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
@@ -138,20 +138,13 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    features = cat_names >> ops.JoinGroupby(
+        cont_names=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
     )
-
-    processor.add_preprocess(
-        ops.JoinGroupby(
-            cont_names=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
-        )
-    )
-    processor.finalize()
 
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
-    processor.apply(dataset)
-    result = processor.get_ddf().compute(scheduler="synchronous")
+    workflow = Workflow(features + cat_names + cont_names + label_name, client=client)
+    result = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     # Validate result
     assert len(df0) == len(result)
@@ -195,32 +188,21 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
 @pytest.mark.parametrize("use_client", [True, False])
 def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use_client):
-
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
-    label_name = ["label"]
 
-    processor = Workflow(
-        client=client if use_client else None,
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
+    cats = ColumnGroup(cat_names)
+    cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
+    groupby_features = cats >> ops.JoinGroupby(
+        cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
     )
 
-    processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True))
-
-    processor.add_cat_feature(
-        ops.JoinGroupby(cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir))
-    )
-
-    processor.finalize()
+    workflow = Workflow(cat_features + groupby_features, client=client)
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
-
-    processor.apply(dataset, output_path=str(tmpdir))
-    result = processor.get_ddf().compute()
+    result = workflow.fit_transform(dataset).to_ddf().compute()
 
     assert "name-cat_x_sum" in result.columns
     assert "name-string_x_sum" in result.columns

@@ -15,14 +15,12 @@
 #
 import cudf
 import cupy
-from dask.core import flatten
+from dask.delayed import Delayed
 
 from . import categorify as nvt_cat
-from .groupby_statistics import GroupbyStatistics
 from .stat_operator import StatOperator
 
 
-# TODO: statoperator new api
 class JoinGroupby(StatOperator):
     """
     One of the ways to create new features is to calculate
@@ -78,7 +76,6 @@ class JoinGroupby(StatOperator):
         self,
         cont_names=None,
         stats=["count"],
-        columns=None,
         tree_width=None,
         cat_cache="host",
         out_path=None,
@@ -86,64 +83,64 @@ class JoinGroupby(StatOperator):
         name_sep="_",
         stat_name=None,
     ):
-        self.column_groups = None
+        super().__init__()
+
         self.storage_name = {}
         self.name_sep = name_sep
-        if isinstance(columns, str):
-            columns = [columns]
-        if isinstance(columns, list):
-            self.column_groups = columns
-            columns = list(set(flatten(columns, container=list)))
-            for group in self.column_groups:
-                if isinstance(group, list) and len(group) > 1:
-                    name = nvt_cat._make_name(*group, sep=self.name_sep)
-                    for col in group:
-                        self.storage_name[col] = name
-
-        super().__init__(columns=columns, replace=False)
         self.cont_names = cont_names
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path
         self.on_host = on_host
         self.cat_cache = cat_cache
-        self.stat_name = stat_name or "gb_categories"
+        self.categories = {}
 
-    @property
-    def req_stats(self):
-        return [
-            GroupbyStatistics(
-                columns=self.column_groups or self.columns,
-                concat_groups=False,
-                cont_names=self.cont_names,
-                stats=self.stats,
-                tree_width=self.tree_width,
-                out_path=self.out_path,
-                on_host=self.on_host,
-                stat_name=self.stat_name,
-                name_sep=self.name_sep,
-            )
-        ]
+        supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
+        for op in self.stats:
+            if op not in supported_ops:
+                raise ValueError(op + " operation is not supported.")
 
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def fit(self, columns, ddf):
+        if isinstance(columns, list):
+            for group in columns:
+                if isinstance(group, (list, tuple)) and len(group) > 1:
+                    name = nvt_cat._make_name(*group, sep=self.name_sep)
+                    for col in group:
+                        self.storage_name[col] = name
 
+        dsk, key = nvt_cat._category_stats(
+            ddf,
+            columns,
+            self.cont_names,
+            self.stats,
+            self.out_path,
+            0,
+            self.tree_width,
+            self.on_host,
+            concat_groups=False,
+            name_sep=self.name_sep,
+        )
+        return Delayed(key, dsk)
+
+    def fit_finalize(self, dask_stats):
+        for col in dask_stats:
+            self.categories[col] = dask_stats[col]
+
+    def transform(self, columns, gdf: cudf.DataFrame):
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-        if self.column_groups:
-            cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-                self.column_groups, gdf.columns, self.name_sep
-            )
-        else:
-            multi_col_group = {}
-            cat_names = [name for name in target_columns if name in gdf.columns]
+
+        cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
+            columns, gdf.columns, self.name_sep
+        )
 
         for name in cat_names:
             storage_name = self.storage_name.get(name, name)
             name = multi_col_group.get(name, name)
-            path = stats_context[self.stat_name][storage_name]
-            selection_l = name.copy() if isinstance(name, list) else [name]
-            selection_r = name if isinstance(name, list) else [storage_name]
+            path = self.categories[storage_name]
+            selection_l = list(name) if isinstance(name, tuple) else [name]
+            selection_r = list(name) if isinstance(name, tuple) else [storage_name]
 
             stat_gdf = nvt_cat._read_groupby_stat_df(path, storage_name, self.cat_cache)
             tran_gdf = gdf[selection_l + [tmp]].merge(
@@ -155,3 +152,21 @@ class JoinGroupby(StatOperator):
             new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
         gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
+
+    def dependencies(self):
+        return self.cont_names
+
+    def output_column_names(self, columns):
+        # TODO: the names here are defined in categorify/mid_level_groupby
+        # refactor to have a common implementation
+        output = []
+        for name in columns:
+            if isinstance(name, (tuple, list)):
+                name = nvt_cat._make_name(*name, sep=self.name_sep)
+            for cont in self.cont_names:
+                for stat in self.stats:
+                    if stat == "count":
+                        output.append(f"{name}_{stat}")
+                    else:
+                        output.append(f"{name}_{cont}_{stat}")
+        return output

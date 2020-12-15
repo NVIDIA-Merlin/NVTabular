@@ -15,6 +15,8 @@
 #
 import collections.abc
 
+from dask.core import flatten
+
 from nvtabular.ops import LambdaOp, Operator
 
 
@@ -26,19 +28,22 @@ class ColumnGroup:
 
     Parameters
     ----------
-    columns: list of str
-        The columns to select from the input Dataset
+    columns: list of (str or tuple of str)
+        The columns to select from the input Dataset. The elements of this list are strings
+        indicating the column names in most cases, but can also be tuples of strings
+        for feature crosses.
     """
 
     def __init__(self, columns):
         if isinstance(columns, str):
-            columns = [columns]
-
-        self.columns = columns
+            self.columns = [columns]
+        else:
+            self.columns = [_convert_col(col) for col in columns]
         self.parents = []
         self.children = []
         self.op = None
         self.kind = None
+        self.dependencies = None
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
@@ -68,6 +73,7 @@ class ColumnGroup:
 
         dependencies = operator.dependencies()
         if dependencies:
+            child.dependencies = set()
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
@@ -76,6 +82,7 @@ class ColumnGroup:
                     dependency = ColumnGroup(dependency)
                 dependency.children.append(child)
                 child.parents.append(dependency)
+                child.dependencies.add(dependency)
 
         return child
 
@@ -139,6 +146,18 @@ class ColumnGroup:
     def __repr__(self):
         output = " output" if not self.children else ""
         return f"<ColumnGroup {self.label}{output}>"
+
+    @property
+    def flattened_columns(self):
+        return list(flatten(self.columns, container=tuple))
+
+    @property
+    def input_column_names(self):
+        """ returns the names of columns in the main chain """
+        dependencies = self.dependencies or set()
+        return [
+            col for parent in self.parents for col in parent.columns if parent not in dependencies
+        ]
 
     @property
     def label(self):
@@ -228,3 +247,12 @@ def _merge_add_nodes(graph):
         queue.extend(current.parents)
 
     return graph
+
+
+def _convert_col(col):
+    if isinstance(col, (str, tuple)):
+        return col
+    elif isinstance(col, list):
+        return tuple(col)
+    else:
+        raise ValueError("Invalid column value for ColumnGroup: %s", col)

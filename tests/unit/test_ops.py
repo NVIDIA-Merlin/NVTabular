@@ -734,7 +734,6 @@ def test_categorify_lists(tmpdir, freq_threshold):
 
     workflow = nvt.Workflow(cat_features + label_name)
     df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
-    print(df_out)
 
     # Columns are encoded independently
     if freq_threshold < 2:
@@ -835,23 +834,16 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
 
     if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
         cat_names = ["Author", "Engaging User"]
-        cont_names = []
-        label_name = []
 
-        processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
-        processor.add_preprocess(
-            ops.Categorify(
-                columns=cat_names,
-                freq_threshold=freq_limit,
-                out_path=str(tmpdir),
-                search_sorted=search_sort,
-                num_buckets=buckets,
-            )
+        cats = cat_names >> ops.Categorify(
+            freq_threshold=freq_limit,
+            out_path=str(tmpdir),
+            search_sorted=search_sort,
+            num_buckets=buckets,
         )
-        processor.finalize()
-        processor.apply(nvt.Dataset(df), output_format=None)
-        df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+        workflow = nvt.Workflow(cats)
+        df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
         if freq_limit and not buckets:
             # Column combinations are encoded
@@ -892,18 +884,12 @@ def test_joingroupby_multi(tmpdir, groups):
         }
     )
 
-    cat_names = ["Author", "Engaging-User"]
-    cont_names = ["Cost"]
-    label_name = ["Post"]
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
-    processor.add_preprocess(
-        ops.JoinGroupby(columns=groups, out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"])
+    groupby_features = groups >> ops.JoinGroupby(
+        out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"]
     )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    workflow = nvt.Workflow(groupby_features + "Post")
+
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
     if isinstance(groups, list):
         # Join on ["Author", "Engaging-User"]
