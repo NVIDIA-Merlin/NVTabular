@@ -884,18 +884,12 @@ def test_joingroupby_multi(tmpdir, groups):
         }
     )
 
-    cat_names = ["Author", "Engaging-User"]
-    cont_names = ["Cost"]
-    label_name = ["Post"]
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
-    processor.add_preprocess(
-        ops.JoinGroupby(columns=groups, out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"])
+    groupby_features = groups >> ops.JoinGroupby(
+        out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"]
     )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    workflow = nvt.Workflow(groupby_features + "Post")
+
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
     if isinstance(groups, list):
         # Join on ["Author", "Engaging-User"]

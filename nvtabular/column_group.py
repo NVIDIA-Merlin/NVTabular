@@ -43,6 +43,7 @@ class ColumnGroup:
         self.children = []
         self.op = None
         self.kind = None
+        self.dependencies = None
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
@@ -72,6 +73,7 @@ class ColumnGroup:
 
         dependencies = operator.dependencies()
         if dependencies:
+            child.dependencies = set()
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
@@ -80,6 +82,7 @@ class ColumnGroup:
                     dependency = ColumnGroup(dependency)
                 dependency.children.append(child)
                 child.parents.append(dependency)
+                child.dependencies.add(dependency)
 
         return child
 
@@ -147,6 +150,14 @@ class ColumnGroup:
     @property
     def flattened_columns(self):
         return list(flatten(self.columns, container=tuple))
+
+    @property
+    def input_column_names(self):
+        """ returns the names of columns in the main chain """
+        dependencies = self.dependencies or set()
+        return [
+            col for parent in self.parents for col in parent.columns if parent not in dependencies
+        ]
 
     @property
     def label(self):

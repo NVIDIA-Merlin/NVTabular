@@ -42,7 +42,7 @@ class Filter(Operator):
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
+    def transform(
         self,
         columns,
         gdf: cudf.DataFrame,

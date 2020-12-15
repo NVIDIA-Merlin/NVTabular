@@ -101,11 +101,9 @@ class Workflow:
                 # the transforms from the statop itself
                 transformed_ddf = _transform_ddf(ddf, column_group.parents)
 
-                input_column_names = [
-                    col for parent in column_group.parents for col in parent.columns
-                ]
-                stats.append(column_group.op.fit(input_column_names, transformed_ddf))
-                ops.append(column_group.op)
+                op = column_group.op
+                stats.append(op.fit(column_group.input_column_names, transformed_ddf))
+                ops.append(op)
 
             if self.client:
                 results = [r.result() for r in self.client.compute(stats)]
@@ -178,9 +176,8 @@ def _transform_partition(root_gdf, column_groups):
 
         # apply the operator if necessary
         if column_group.op:
-            input_column_names = [col for parent in column_group.parents for col in parent.columns]
             try:
-                gdf = column_group.op.transform(input_column_names, gdf)
+                gdf = column_group.op.transform(column_group.input_column_names, gdf)
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
