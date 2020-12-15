@@ -16,18 +16,17 @@
 import contextlib
 import glob
 import os
-import sys
-import random
 import platform
-import psutil
+import random
 import socket
-from numba import cuda
-from asvdb import utils, BenchmarkInfo, ASVDb
 
 import cudf
 import numpy as np
+import psutil
 import pytest
+from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
+from numba import cuda
 
 import nvtabular
 

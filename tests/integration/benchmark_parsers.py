@@ -1,5 +1,6 @@
-import time
 import datetime
+import time
+
 from asvdb import BenchmarkResult
 
 
@@ -65,7 +66,7 @@ class Benchmark:
         raise NotImplementedError("Must Define logic for parsing output")
 
 
-### Sub classes
+# Sub classes
 
 
 class BenchFastAI(Benchmark):
@@ -83,9 +84,12 @@ class BenchFastAI(Benchmark):
         return epochs
 
 
+# Utils
+
+
 def is_number(str_to_num):
     try:
-        val = int(str_to_num)
+        int(str_to_num)
         return True
     except ValueError:
         return False

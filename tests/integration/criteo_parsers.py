@@ -1,7 +1,4 @@
-import time
-import datetime
 from benchmark_parsers import BenchFastAI
-from asvdb import BenchmarkResult
 
 
 class CriteoBenchFastAI(BenchFastAI):

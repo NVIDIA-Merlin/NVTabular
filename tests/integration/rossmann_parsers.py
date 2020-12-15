@@ -1,12 +1,9 @@
-import time
-import datetime
-from benchmark_parsers import Benchmark, BenchFastAI
-from asvdb import BenchmarkResult
+from benchmark_parsers import BenchFastAI, Benchmark
 
 
 class RossBenchTensorFlow(Benchmark):
     def __init__(self, split=" - "):
-        super().__init__(f"Rossmann_tf", split=split)
+        super().__init__("Rossmann_tf", split=split)
 
     def get_epoch(self, line, epoch=0):
         _, _, t_loss, t_rmspe = line.split(self.split)
@@ -29,7 +26,7 @@ class RossBenchTensorFlow(Benchmark):
 
 class RossBenchPytorch(Benchmark):
     def __init__(self, split=". "):
-        super().__init__(f"Rossmann_torch", split=split)
+        super().__init__("Rossmann_torch", split=split)
 
     def get_epoch(self, line):
         epoch, t_loss, t_rmspe, v_loss, v_rmspe = line.split(self.split)

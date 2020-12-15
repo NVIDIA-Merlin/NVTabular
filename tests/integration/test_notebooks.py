@@ -20,15 +20,12 @@ import os
 import shutil
 import subprocess
 import sys
-import ast
-import re
-import time
 from os.path import dirname, realpath
 
 import pytest
 from benchmark_parsers import send_results
-from rossmann_parsers import RossBenchTensorFlow, RossBenchPytorch, RossBenchFastAI
 from criteo_parsers import CriteoBenchFastAI
+from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/criteo")
