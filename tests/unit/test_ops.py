@@ -35,33 +35,16 @@ from tests.conftest import get_cats, mycols_csv, mycols_pq
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
-@pytest.mark.parametrize("op_columns", [["x"]])
+@pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 def test_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns):
-    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
-    cont_names = ["x", "y"]
-    label_name = ["label"]
-
-    config = nvtabular.workflow.get_new_config()
-    config["PP"]["all"] = [ops.MinMax(columns=op_columns)]
-
-    processor = nvtabular.Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, config=config
-    )
-    processor.update_stats(dataset)
-    x_min = df["x"].min()
-
-    assert x_min == pytest.approx(processor.stats["mins"]["x"], 1e-2)
-    x_max = df["x"].max()
-    assert x_max == pytest.approx(processor.stats["maxs"]["x"], 1e-2)
-    if not op_columns:
-        name_min = min(df["name-string"].tolist())
-        name_max = max(df["name-string"].tolist())
-        assert name_min == processor.stats["mins"]["name-string"]
-        y_max = df["y"].max()
-        y_min = df["y"].min()
-        assert y_max == processor.stats["maxs"]["y"]
-        assert name_max == processor.stats["maxs"]["name-string"]
-        assert y_min == processor.stats["mins"]["y"]
+    cont_features = op_columns >> ops.NormalizeMinMax()
+    processor = nvtabular.Workflow(cont_features)
+    processor.fit(dataset)
+    for col in op_columns:
+        col_min = df[col].min()
+        assert col_min == pytest.approx(processor.column_group.op.mins[col], 1e-2)
+        col_max = df[col].max()
+        assert col_max == pytest.approx(processor.column_group.op.maxs[col], 1e-2)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
