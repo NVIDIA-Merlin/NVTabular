@@ -68,13 +68,6 @@ def test_criteo_notebook(db, bench_info, tmpdir):
 #     )
 
 
-# def test_optimize_criteo(tmpdir):
-#     input_path = os.path.join(DATA_START, "criteo/crit_orig")
-#     output_path = os.path.join(DATA_START, "criteo/crit_test_opt")
-
-#     notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
-#     _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=2)
-
 
 def test_rossman_example(tmpdir, bench_info, db):
     pytest.importorskip("tensorflow")
