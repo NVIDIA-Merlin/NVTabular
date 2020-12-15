@@ -304,9 +304,6 @@ class DataLoader:
                 self.num_rows_processed += len(sub)
                 break
         return batch
-    
-    
-    
 
     def map(self, workflow):
         """
