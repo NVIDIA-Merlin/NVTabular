@@ -200,6 +200,7 @@ class DataLoader:
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.devices = devices
+        self.num_rows_processed = 0
 
         self._buff = ChunkQueue(len(devices), num_parts=parts_per_chunk, shuffle=shuffle)
         self._batch_itr = None
@@ -233,6 +234,7 @@ class DataLoader:
 
     def __iter__(self):
         self.stop()
+        self.num_rows_processed = 0
         if self._buff.stopped:
             self._buff.start()
 
@@ -296,6 +298,7 @@ class DataLoader:
             # the first batch
             self._fetch_chunk()
             batch = next(self._batch_itr)
+        self.num_rows_processed += len(batch[0]) 
         return batch
 
     def map(self, workflow):
