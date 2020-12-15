@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2020, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -234,6 +233,28 @@ class Categorify(StatOperator):
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
     def fit(self, columns, ddf):
+        # User passed in a list of column groups. We need to figure out
+        # if this list contains any multi-column groups, and if there
+        # are any (obvious) problems with these groups
+        columns_uniq = list(set(flatten(columns, container=tuple)))
+        columns_all = list(flatten(columns, container=tuple))
+        if sorted(columns_all) != sorted(columns_uniq) and self.encode_type == "joint":
+            # If we are doing "joint" encoding, there must be unique mapping
+            # between input column names and column groups.  Otherwise, more
+            # than one unique-value table could be used to encode the same
+            # column.
+            raise ValueError("Same column name included in multiple groups.")
+
+        for group in columns:
+            if isinstance(group, tuple) and len(group) > 1:
+                # For multi-column groups, we concatenate column names
+                # to get the "group" name.
+                name = _make_name(*group, sep=self.name_sep)
+                for col in group:
+                    self.storage_name[col] = name
+
+        # convert tuples to lists
+        columns = [list(c) if isinstance(c, tuple) else c for c in columns]
         dsk, key = _category_stats(
             ddf,
             columns,
@@ -274,7 +295,7 @@ class Categorify(StatOperator):
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
-            cat_names = columns
+            cat_names = list(flatten(columns, container=tuple))
 
         # Encode each column-group separately
         for name in cat_names:
@@ -284,10 +305,14 @@ class Categorify(StatOperator):
             # Storage name may be different than group for case (2)
             # Only use the "aliased" `storage_name` if we are dealing with
             # a multi-column group, or if we are doing joint encoding
+
             if use_name != name or self.encode_type == "joint":
                 storage_name = self.storage_name.get(name, name)
             else:
                 storage_name = name
+
+            if isinstance(use_name, tuple):
+                use_name = list(use_name)
 
             path = self.categories[storage_name]
             """ TODO ??
@@ -321,7 +346,7 @@ class Categorify(StatOperator):
         if self.encode_type == "combo":
             cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
             return cat_names
-        return list(flatten(columns))
+        return list(flatten(columns, container=tuple))
 
 
 def _get_embedding_order(cat_names):
@@ -400,6 +425,8 @@ def _top_level_groupby(
     output = {}
     k = 0
     for i, cat_col_group in enumerate(cat_col_groups):
+        if isinstance(cat_col_group, tuple):
+            cat_col_group = list(cat_col_group)
 
         if isinstance(cat_col_group, str):
             cat_col_group = [cat_col_group]
@@ -466,6 +493,8 @@ def _mid_level_groupby(
 ):
     if isinstance(col_group, str):
         col_group = [col_group]
+    elif isinstance(col_group, tuple):
+        col_group = list(col_group)
 
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
@@ -652,6 +681,9 @@ def _groupby_to_disk(
     tw = {}
     for col in col_groups:
         col = [col] if isinstance(col, str) else col
+        if isinstance(col, tuple):
+            col = list(col)
+
         col_str = _make_name(*col, sep=name_sep)
         if tree_width is None:
             tw[col_str] = 8
@@ -798,7 +830,6 @@ def _encode(
     encode_type="joint",
     cat_names=None,
 ):
-
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
 
@@ -890,7 +921,7 @@ def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
     cat_names = []
     multi_col_group = {}
     for col_group in column_groups:
-        if isinstance(col_group, list):
+        if isinstance(col_group, (list, tuple)):
             name = _make_name(*col_group, sep=name_sep)
             if name not in cat_names:
                 cat_names.append(name)

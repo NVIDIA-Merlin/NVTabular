@@ -15,6 +15,8 @@
 #
 import collections.abc
 
+from dask.core import flatten
+
 from nvtabular.ops import LambdaOp, Operator
 
 
@@ -26,15 +28,17 @@ class ColumnGroup:
 
     Parameters
     ----------
-    columns: list of str
-        The columns to select from the input Dataset
+    columns: list of (str or tuple of str)
+        The columns to select from the input Dataset. The elements of this list are strings
+        indicating the column names in most cases, but can also be tuples of strings
+        for feature crosses.
     """
 
     def __init__(self, columns):
         if isinstance(columns, str):
-            columns = [columns]
-
-        self.columns = columns
+            self.columns = [columns]
+        else:
+            self.columns = [_convert_col(col) for col in columns]
         self.parents = []
         self.children = []
         self.op = None
@@ -141,6 +145,10 @@ class ColumnGroup:
         return f"<ColumnGroup {self.label}{output}>"
 
     @property
+    def flattened_columns(self):
+        return list(flatten(self.columns, container=tuple))
+
+    @property
     def label(self):
         if self.op:
             return str(self.op.__class__.__name__)
@@ -228,3 +236,12 @@ def _merge_add_nodes(graph):
         queue.extend(current.parents)
 
     return graph
+
+
+def _convert_col(col):
+    if isinstance(col, (str, tuple)):
+        return col
+    elif isinstance(col, list):
+        return tuple(col)
+    else:
+        raise ValueError("Invalid column value for ColumnGroup: %s", col)

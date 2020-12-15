@@ -99,7 +99,7 @@ class Workflow:
             for column_group in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = _transform_ddf(ddf, column_group, parent_only=True)
+                transformed_ddf = _transform_ddf(ddf, column_group.parents)
 
                 input_column_names = [
                     col for parent in column_group.parents for col in parent.columns
@@ -139,7 +139,7 @@ class Workflow:
 
     def _input_columns(self):
         input_nodes = set(node for node in iter_nodes([self.column_group]) if not node.parents)
-        return list(set(col for node in input_nodes for col in flatten(node.columns)))
+        return list(set(col for node in input_nodes for col in node.flattened_columns))
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
@@ -149,39 +149,45 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, column_group, parent_only=False):
+def _transform_ddf(ddf, column_groups):
+    if isinstance(column_groups, ColumnGroup):
+        column_groups = [column_groups]
+
+    columns = list(flatten(cg.flattened_columns for cg in column_groups))
+
     return ddf.map_partitions(
-        lambda gdf: _transform_partition(gdf, column_group, parent_only),
-        meta=cudf.DataFrame({k: [] for k in column_group.columns}),
+        lambda gdf: _transform_partition(gdf, column_groups),
+        meta=cudf.DataFrame({k: [] for k in columns}),
     )
 
 
-def _transform_partition(root_gdf, column_group, parent_only=False):
+def _transform_partition(root_gdf, column_groups):
     """ Transforms a single partition by appyling all operators in a ColumnGroup """
-    # collect dependencies recursively if we have parents
-    if column_group.parents:
-        gdf = cudf.DataFrame()
-        for parent in column_group.parents:
-            parent_gdf = _transform_partition(root_gdf, parent)
-            for column in parent.columns:
-                gdf[column] = parent_gdf[column]
-    else:
-        # otherwise select the input from the root gdf
-        gdf = root_gdf[list(flatten(column_group.columns))]
-
-    # apply the operator if necessary
-    if column_group.op and not parent_only:
-        input_column_names = [col for parent in column_group.parents for col in parent.columns]
-        try:
-            gdf = column_group.op.transform(input_column_names, gdf)
-        except Exception:
-            LOG.exception("Failed to transform operator %s", column_group.op)
-            raise
-
-    # dask needs output to be in the same order defined as meta, reorder partitions here
-    # this also selects columns (handling the case of removing columns from the output using
-    # "-" overload)
     output = cudf.DataFrame()
-    for column in column_group.columns:
-        output[column] = gdf[column]
+    for column_group in column_groups:
+        # collect dependencies recursively if we have parents
+        if column_group.parents:
+            gdf = cudf.DataFrame()
+            for parent in column_group.parents:
+                parent_gdf = _transform_partition(root_gdf, [parent])
+                for column in parent.flattened_columns:
+                    gdf[column] = parent_gdf[column]
+        else:
+            # otherwise select the input from the root gdf
+            gdf = root_gdf[column_group.flattened_columns]
+
+        # apply the operator if necessary
+        if column_group.op:
+            input_column_names = [col for parent in column_group.parents for col in parent.columns]
+            try:
+                gdf = column_group.op.transform(input_column_names, gdf)
+            except Exception:
+                LOG.exception("Failed to transform operator %s", column_group.op)
+                raise
+
+        # dask needs output to be in the same order defined as meta, reorder partitions here
+        # this also selects columns (handling the case of removing columns from the output using
+        # "-" overload)
+        for column in column_group.flattened_columns:
+            output[column] = gdf[column]
     return output
