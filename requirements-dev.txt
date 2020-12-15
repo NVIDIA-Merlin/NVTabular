@@ -12,3 +12,4 @@ sphinx-multiversion
 moto
 boto3
 s3fs
+git+https://github.com/rapidsai/asvdb.git
