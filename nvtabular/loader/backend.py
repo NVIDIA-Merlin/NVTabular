@@ -298,8 +298,15 @@ class DataLoader:
             # the first batch
             self._fetch_chunk()
             batch = next(self._batch_itr)
-        self.num_rows_processed += len(batch[0])
+        # if batch[0] is empty but other exist
+        for sub in batch:
+            if sub is not None and len(sub) > 0:
+                self.num_rows_processed += len(sub)
+                break
         return batch
+    
+    
+    
 
     def map(self, workflow):
         """
