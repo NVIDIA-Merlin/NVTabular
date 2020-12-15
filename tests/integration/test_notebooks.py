@@ -27,9 +27,7 @@ from os.path import dirname, realpath
 
 import pytest
 from benchmark_parsers import send_results
-from rossmann_parsers import (RossBenchTensorFlow, 
-                              RossBenchPytorch, 
-                              RossBenchFastAI)
+from rossmann_parsers import RossBenchTensorFlow, RossBenchPytorch, RossBenchFastAI
 from criteo_parsers import CriteoBenchFastAI
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
@@ -54,7 +52,6 @@ def test_criteo_notebook(db, bench_info, tmpdir):
     bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
     bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
     send_results(db, bench_info, bench_results)
-    
 
 
 # def test_criteohugectr_notebook(tmpdir):
@@ -99,7 +96,7 @@ def test_rossman_example(tmpdir, bench_info, db):
     )
 
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
-    
+
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-fastai.ipynb"
     )
@@ -107,7 +104,6 @@ def test_rossman_example(tmpdir, bench_info, db):
     bench_results = RossBenchFastAI().get_epochs(out.splitlines())
     bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
     send_results(db, bench_info, bench_results)
-
 
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-pytorch.ipynb"
@@ -117,7 +113,6 @@ def test_rossman_example(tmpdir, bench_info, db):
     bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
     send_results(db, bench_info, bench_results)
 
-    
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-tensorflow.ipynb"
     )
@@ -166,8 +161,8 @@ def _run_notebook(
         script.write("\n".join(lines))
     output = subprocess.check_output([sys.executable, script_path])
     # save location will default to run location
-    output = output.decode("utf-8") 
-    _,  note_name = os.path.split(notebook_path)
+    output = output.decode("utf-8")
+    _, note_name = os.path.split(notebook_path)
     note_name = note_name.split(".")[0]
     if output:
         with open(f"test_res_{note_name}", "w+") as w_file:
@@ -176,4 +171,3 @@ def _run_notebook(
     if clean_up:
         shutil.rmtree(output_path)
     return output
-

@@ -298,7 +298,7 @@ class DataLoader:
             # the first batch
             self._fetch_chunk()
             batch = next(self._batch_itr)
-        self.num_rows_processed += len(batch[0]) 
+        self.num_rows_processed += len(batch[0])
         return batch
 
     def map(self, workflow):

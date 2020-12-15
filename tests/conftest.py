@@ -21,7 +21,7 @@ import random
 import platform
 import psutil
 import socket
-from numba import cuda 
+from numba import cuda
 from asvdb import utils, BenchmarkInfo, BenchmarkResult, ASVDb
 
 import cudf
@@ -188,21 +188,20 @@ def get_cats(processor, col, stat_name="categories"):
     else:
         return processor.stats["encoders"][col].get_cats().values_host
 
-    
+
 @pytest.fixture(scope="session")
 def db():
     # Create an interface to an ASV "database" to write the results to.
     (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
 
-    db = ASVDb(dbDir="/nvtabular/benchmarks",
-               repo=repo,
-               branches=[branch])
+    db = ASVDb(dbDir="/nvtabular/benchmarks", repo=repo, branches=[branch])
 
     return db
 
+
 @pytest.fixture(scope="session")
 def bench_info():
-    
+
     # Create a BenchmarkInfo object describing the benchmarking environment.
     # This can/should be reused when adding multiple results from the same environment.
 
@@ -211,14 +210,16 @@ def bench_info():
     cuda_version = os.environ["CUDA_VERSION"]
     # get GPU info from nvidia-smi
 
-    bInfo = BenchmarkInfo(machineName=socket.gethostname(),
-                          cudaVer=cuda_version,
-                          osType="%s %s" % (uname.system, uname.release),
-                          pythonVer=platform.python_version(),
-                          commitHash=commitHash,
-                          commitTime=commitTime,
-                          gpuType=cuda.get_current_device().name.decode("utf-8"),
-                          cpuType=uname.processor,
-                          arch=uname.machine,
-                          ram="%d" % psutil.virtual_memory().total)
+    bInfo = BenchmarkInfo(
+        machineName=socket.gethostname(),
+        cudaVer=cuda_version,
+        osType="%s %s" % (uname.system, uname.release),
+        pythonVer=platform.python_version(),
+        commitHash=commitHash,
+        commitTime=commitTime,
+        gpuType=cuda.get_current_device().name.decode("utf-8"),
+        cpuType=uname.processor,
+        arch=uname.machine,
+        ram="%d" % psutil.virtual_memory().total,
+    )
     return bInfo

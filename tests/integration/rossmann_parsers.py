@@ -4,19 +4,16 @@ from benchmark_parsers import Benchmark, BenchFastAI
 from asvdb import BenchmarkResult
 
 
-
-
 class RossBenchTensorFlow(Benchmark):
     def __init__(self, split=" - "):
         super().__init__(f"Rossmann_tf", split=split)
-        
+
     def get_epoch(self, line, epoch=0):
         _, _, t_loss, t_rmspe = line.split(self.split)
         t_loss = self.bres_loss(epoch, float(t_loss.split(": ")[1]))
         t_rmspe = self.bres_rmspe(epoch, float(t_rmspe.split(": ")[1]))
         return [t_loss, t_rmspe]
-            
-        
+
     def get_epochs(self, output):
         epochs = []
         for idx, line in enumerate(output):
@@ -33,8 +30,7 @@ class RossBenchTensorFlow(Benchmark):
 class RossBenchPytorch(Benchmark):
     def __init__(self, split=". "):
         super().__init__(f"Rossmann_torch", split=split)
-        
-        
+
     def get_epoch(self, line):
         epoch, t_loss, t_rmspe, v_loss, v_rmspe = line.split(self.split)
         epoch = epoch.split()[1]
@@ -43,8 +39,7 @@ class RossBenchPytorch(Benchmark):
         t_rmspe = self.bres_rmspe(epoch, float(t_rmspe.split(": ")[1]))
         v_rmspe = self.bres_rmspe(epoch, float(v_rmspe.split(": ")[1].split(".")[0]))
         return [t_loss, v_loss, t_rmspe, v_rmspe]
-            
-        
+
     def get_epochs(self, output):
         epochs = []
         for line in output:
@@ -54,10 +49,11 @@ class RossBenchPytorch(Benchmark):
                 epochs.append(post_evts)
         return epochs
 
+
 class RossBenchFastAI(BenchFastAI):
     def __init__(self, val=5, split=None):
         super().__init__("Rossmann", val=val, split=split)
-        
+
     def get_epoch(self, line):
         epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
         t_loss = self.bres_loss(epoch, float(t_loss))
@@ -65,5 +61,3 @@ class RossBenchFastAI(BenchFastAI):
         exp_rmspe = self.bres_rmspe(epoch, float(exp_rmspe))
         o_time = self.bres_time(epoch, o_time)
         return [t_loss, v_loss, exp_rmspe, o_time]
-
-
