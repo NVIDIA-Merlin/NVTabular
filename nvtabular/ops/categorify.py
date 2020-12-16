@@ -119,11 +119,19 @@ class Categorify(StatOperator):
         "combo", because the same column name can be included in
         multiple groups.
     tree_width : dict or int, optional
-        Passed to `GroupbyStatistics` dependency.
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Passed to `GroupbyStatistics` dependency.
+        Root directory where groupby statistics will be written out in
+        parquet format.
     on_host : bool, default True
-        Passed to `GroupbyStatistics` dependency.
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     na_sentinel : default 0
         Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
