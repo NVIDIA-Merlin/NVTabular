@@ -1,0 +1,4 @@
+{"cats": ["Store", "DayOfWeek", "Year", "Month", "Day", "StateHoliday", "CompetitionMonthsOpen", "Promo2Weeks", "StoreType", "Assortment", "PromoInterval", "CompetitionOpenSinceYear", "Promo2SinceYear", "State", "Week", "Events", "Promo_fw", "Promo_bw", "StateHoliday_fw", "StateHoliday_bw", "SchoolHoliday_fw", "SchoolHoliday_bw"], 
+ "conts": ["CompetitionDistance", "Max_TemperatureC", "Mean_TemperatureC", "Min_TemperatureC", "Max_Humidity", "Mean_Humidity", "Min_Humidity", "Max_Wind_SpeedKm_h", "Mean_Wind_SpeedKm_h", "CloudCover", "trend", "trend_DE", "AfterStateHoliday", "BeforeStateHoliday", "Promo", "SchoolHoliday"],
+ "labels": ["Sales"]
+}
