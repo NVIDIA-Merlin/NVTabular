@@ -49,15 +49,10 @@ class DifferenceLag(Operator):
     shift : int, default 1
         The number of rows to look backwards when computing the difference lag. Negative values
         indicate the number of rows to look forwards, making this compute the lead instead of lag.
-    columns : list of str, default None
-        Continuous columns to target for this op. If None, the operation will target all known
-        continuous columns.
-    replace: bool, default False
-        Whether to replace existing columns or create new ones.
     """
 
-    def __init__(self, partition_cols, shift=1, columns=None, replace=False):
-        super(DifferenceLag, self).__init__(columns=columns, replace=replace)
+    def __init__(self, partition_cols, shift=1):
+        super(DifferenceLag, self).__init__()
         self.partition_cols = partition_cols
         self.shifts = [shift] if isinstance(shift, int) else shift
 
