@@ -102,8 +102,12 @@ class Workflow:
                 transformed_ddf = _transform_ddf(ddf, column_group.parents)
 
                 op = column_group.op
-                stats.append(op.fit(column_group.input_column_names, transformed_ddf))
-                ops.append(op)
+                try:
+                    stats.append(op.fit(column_group.input_column_names, transformed_ddf))
+                    ops.append(op)
+                except Exception:
+                    LOG.exception("Failed to fit operator %s", column_group.op)
+                    raise
 
             if self.client:
                 results = [r.result() for r in self.client.compute(stats)]

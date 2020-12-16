@@ -15,8 +15,11 @@
 #
 import cudf
 import cupy
+import numpy as np
+from dask.delayed import Delayed
 
 from . import categorify as nvt_cat
+from .moments import _custom_moments
 from .stat_operator import StatOperator
 
 
@@ -132,14 +135,62 @@ class TargetEncoding(StatOperator):
         self.out_col = [out_col] if isinstance(out_col, str) else out_col
         self.out_dtype = out_dtype
         self.tree_width = tree_width
-        self.out_path = out_path
+        self.out_path = out_path or "./"
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.name_sep = name_sep
         self.drop_folds = drop_folds
-        self.stat_name = stat_name or "te_stats"
+        self.fold_name = "__fold__"
+        self.stats = {}
+        self.means = {}  # TODO: just update target_mean?
 
-    # TODO: fit/fit_finalize methods
+    def fit(self, columns, ddf):
+        moments = None
+        if self.target_mean is None:
+            # calcualte the mean if we don't have it already
+            moments = _custom_moments(ddf[self.target])
+
+        col_groups = columns[:]
+        if self.kfold > 1:
+            # Add new fold column if necessary
+            if self.fold_name not in ddf.columns:
+                ddf[self.fold_name] = ddf.index.map_partitions(
+                    _add_fold,
+                    self.kfold,
+                    self.fold_seed,
+                    meta=_add_fold(ddf._meta.index, self.kfold, self.fold_seed),
+                )
+
+            # Add new col_groups with fold
+            for group in columns:
+                if isinstance(group, tuple):
+                    group = list(group)
+                if isinstance(group, list):
+                    col_groups.append([self.fold_name] + group)
+                else:
+                    col_groups.append([self.fold_name, group])
+
+        dsk, key = nvt_cat._category_stats(
+            ddf,
+            col_groups,
+            self.target,
+            ["count", "sum"],
+            self.out_path,
+            0,
+            self.tree_width,
+            self.on_host,
+            concat_groups=False,
+            name_sep=self.name_sep,
+        )
+        return Delayed(key, dsk), moments
+
+    def fit_finalize(self, dask_stats):
+        for col, value in dask_stats[0].items():
+            self.stats[col] = value
+        print(self.stats)
+
+        for col in dask_stats[1].index:
+            self.means[col] = float(dask_stats[1]["mean"].loc[col])
 
     def dependencies(self):
         return self.dependency
@@ -149,14 +200,17 @@ class TargetEncoding(StatOperator):
         for cat in columns:
             cat = [cat] if isinstance(cat, str) else cat
             ret.extend(self._make_te_name(cat))
+
+        if self.kfold > 1 and not self.drop_folds:
+            ret.append(self.fold_name)
+
         return ret
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
         return [f"TE_{tag}_{x}" for x in self.target]
 
-    def _op_group_logic(self, cat_group, gdf, stats_context, y_mean, fit_folds, group_ind):
-
+    def _op_group_logic(self, cat_group, gdf, y_mean, fit_folds, group_ind):
         # Define name of new TE column
         if isinstance(self.out_col, list):
             if group_ind >= len(self.out_col):
@@ -177,7 +231,7 @@ class TargetEncoding(StatOperator):
             # Groupby Aggregation for each fold
             cols = ["__fold__"] + cat_group
             storage_name_folds = nvt_cat._make_name(*cols, sep=self.name_sep)
-            path_folds = stats_context[self.stat_name][storage_name_folds]
+            path_folds = self.stats[storage_name_folds]
             agg_each_fold = nvt_cat._read_groupby_stat_df(
                 path_folds, storage_name_folds, self.cat_cache
             )
@@ -187,7 +241,7 @@ class TargetEncoding(StatOperator):
 
         # Groupby Aggregation for all data
         storage_name_all = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        path_all = stats_context[self.stat_name][storage_name_all]
+        path_all = self.stats[storage_name_all]
         agg_all = nvt_cat._read_groupby_stat_df(path_all, storage_name_all, self.cat_cache)
         agg_all.columns = cat_group + ["count_y_all"] + [x + "_sum_y_all" for x in self.target]
 
@@ -238,31 +292,51 @@ class TargetEncoding(StatOperator):
         new_gdf.index = gdf.index
         return new_gdf
 
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-
+    def transform(self, columns, gdf: cudf.DataFrame):
         # Add temporary column for sorting
         tmp = "__tmp__"
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
 
-        # Only perform "fit" if fold column is present
-        fit_folds = "__fold__" in gdf.columns
+        fit_folds = self.kfold > 1
+        if fit_folds:
+            gdf[self.fold_name] = _add_fold(gdf.index, self.kfold, self.fold_seed)
 
         # Need mean of contiuous target column
-        y_mean = self.target_mean or stats_context["means"]
+        y_mean = self.target_mean or self.means
 
         # Loop over categorical-column groups and apply logic
         new_gdf = None
-        for ind, cat_group in enumerate(self.cat_groups):
+        for ind, cat_group in enumerate(columns):
+            if isinstance(cat_group, tuple):
+                cat_group = list(cat_group)
+            elif isinstance(cat_group, str):
+                cat_group = [cat_group]
+
             if new_gdf is None:
-                new_gdf = self._op_group_logic(
-                    cat_group, gdf, stats_context, y_mean, fit_folds, ind
-                )
+                new_gdf = self._op_group_logic(cat_group, gdf, y_mean, fit_folds, ind)
             else:
-                _df = self._op_group_logic(cat_group, gdf, stats_context, y_mean, fit_folds, ind)
+                _df = self._op_group_logic(cat_group, gdf, y_mean, fit_folds, ind)
                 new_gdf = cudf.concat([new_gdf, _df], axis=1)
 
         # Drop temporary columns
         gdf.drop(
             columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True
         )
+        if fit_folds and not self.drop_folds:
+            new_gdf[self.fold_name] = gdf[self.fold_name]
         return new_gdf
+
+
+def _add_fold(s, kfold, fold_seed=None):
+    """Deterministically computes a '__fold__' column, given an optional
+    random seed"""
+    typ = np.min_scalar_type(kfold * 2)
+    if fold_seed is None:
+        # If we don't have a specific seed,
+        # just use a simple modulo-based mapping
+        fold = cupy.arange(len(s), dtype=typ)
+        cupy.mod(fold, kfold, out=fold)
+        return fold
+    else:
+        state = cupy.random.RandomState(fold_seed)
+        return state.choice(cupy.arange(kfold, dtype=typ), len(s))
