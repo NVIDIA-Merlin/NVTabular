@@ -320,6 +320,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     def _handle_tensors(self, cats, conts, labels):
         X = {}
+        conts = tf.identity(conts)
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
             lists = {}
             if isinstance(tensor, tuple):
