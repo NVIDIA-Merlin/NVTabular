@@ -320,7 +320,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     def _handle_tensors(self, cats, conts, labels):
         X = {}
-        conts = tf.identity(conts)
+        # cover pretrained embeddings structures
+        if isinstance(conts, tuple) and conts[0] is not None:
+            conts[0] = tf.identity(conts[0])
+        elif not isinstance(conts, tuple) and conts is not None:
+            conts = tf.identity(conts)
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
             lists = {}
             if isinstance(tensor, tuple):
