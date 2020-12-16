@@ -24,8 +24,6 @@ from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
 
-# import yaml
-
 
 LOG = logging.getLogger("nvtabular")
 
