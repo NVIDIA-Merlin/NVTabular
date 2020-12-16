@@ -184,30 +184,19 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
     )
     df = dask_cudf.from_cudf(df, npartitions=3)
 
-    cat_names = ["Author", "Engaging-User"]
     cont_names = ["Cost"]
-    label_name = ["Post"]
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
-    processor.add_preprocess(
-        ops.TargetEncoding(
-            cat_groups,
-            "Cost",  # cont_target
-            out_path=str(tmpdir),
-            kfold=kfold,
-            out_col="test_name",
-            out_dtype="float32",
-            fold_seed=fold_seed,
-            drop_folds=False,  # Keep folds to validate
-        )
+    te_features = cat_groups >> ops.TargetEncoding(
+        cont_names,
+        out_path=str(tmpdir),
+        kfold=kfold,
+        out_dtype="float32",
+        fold_seed=fold_seed,
+        drop_folds=False,  # Keep folds to validate
     )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
 
-    assert "test_name" in df_out.columns
-    assert df_out["test_name"].dtype == "float32"
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+    workflow = nvt.Workflow(te_features + cont_features + ["Author", "Engaging-User"])
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
     if kfold > 1:
         # Cat columns are unique.
@@ -218,7 +207,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
         else:
             name = "__fold___Author_Engaging-User"
             cols = ["__fold__", "Author", "Engaging-User"]
-        check = cudf.io.read_parquet(processor.stats["te_stats"][name])
+        check = cudf.io.read_parquet(te_features.op.stats[name])
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
         assert_eq(check, df_out_check)
@@ -234,26 +223,14 @@ def test_target_encode_multi(tmpdir, npartitions):
     df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
-    cat_names = ["cat", "cat2"]
-    cont_names = ["num", "num_2"]
-    label_name = []
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-
     cat_groups = ["cat", "cat2", ["cat", "cat2"]]
-
-    processor.add_preprocess(
-        ops.TargetEncoding(
-            cat_groups,
-            ["num", "num_2"],  # cont_target
-            out_path=str(tmpdir),
-            kfold=1,
-            p_smooth=5,
-            out_dtype="float32",
-        )
+    te_features = cat_groups >> ops.TargetEncoding(
+        ["num", "num_2"], out_path=str(tmpdir), kfold=1, p_smooth=5, out_dtype="float32"
     )
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    workflow = nvt.Workflow(te_features)
+
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
     assert "TE_cat_cat2_num" in df_out.columns
     assert "TE_cat_num" in df_out.columns

@@ -75,7 +75,7 @@ class LambdaOp(Operator):
         Whether to replace existing columns or create new ones.
     """
 
-    def __init__(self, f):
+    def __init__(self, f, dependency=None):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
@@ -83,6 +83,7 @@ class LambdaOp(Operator):
         self._param_count = len(signature(self.f).parameters)
         if self._param_count not in (1, 2):
             raise ValueError("lambda function must accept either one or two parameters")
+        self.dependency = dependency
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, gdf: cudf.DataFrame):
@@ -96,3 +97,6 @@ class LambdaOp(Operator):
                 # shouldn't ever happen,
                 raise RuntimeError(f"unhandled lambda param count {self._param_count}")
         return new_gdf
+
+    def dependencies(self):
+        return self.dependency

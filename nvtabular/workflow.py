@@ -24,8 +24,6 @@ from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
 
-# import yaml
-
 
 LOG = logging.getLogger("nvtabular")
 
@@ -102,8 +100,12 @@ class Workflow:
                 transformed_ddf = _transform_ddf(ddf, column_group.parents)
 
                 op = column_group.op
-                stats.append(op.fit(column_group.input_column_names, transformed_ddf))
-                ops.append(op)
+                try:
+                    stats.append(op.fit(column_group.input_column_names, transformed_ddf))
+                    ops.append(op)
+                except Exception:
+                    LOG.exception("Failed to fit operator %s", column_group.op)
+                    raise
 
             if self.client:
                 results = [r.result() for r in self.client.compute(stats)]
@@ -154,7 +156,8 @@ def _transform_ddf(ddf, column_groups):
     columns = list(flatten(cg.flattened_columns for cg in column_groups))
 
     return ddf.map_partitions(
-        lambda gdf: _transform_partition(gdf, column_groups),
+        _transform_partition,
+        column_groups,
         meta=cudf.DataFrame({k: [] for k in columns}),
     )
 
