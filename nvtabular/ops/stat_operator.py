@@ -24,7 +24,6 @@ class StatOperator(Operator):
 
     def __init__(self):
         super(StatOperator, self).__init__()
-        self._ddf_out = None
 
     def fit(self, columns, ddf):
         raise NotImplementedError(
