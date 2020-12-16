@@ -30,6 +30,8 @@ class NpEncoder(json.JSONEncoder):
             return int(obj)
         elif isinstance(obj, np.floating):
             return float(obj)
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
         else:
@@ -72,6 +74,9 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def stringlen(x):
+    return len(x)
+
 def get_all_stats(ddf, col, data):
     data[col] = {}
     # Get dtype
@@ -82,6 +87,12 @@ def get_all_stats(ddf, col, data):
 
 def get_cats_stats(ddf, col, data):
     data[col]['cardinality'] = ddf[col].nunique().compute()
+    if data[col]['dtype'] == "string":
+        ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
+        ddf[col].compute()
+        data[col]['min'] = ddf[col].min().compute()
+        data[col]['max'] = ddf[col].max().compute()
+        data[col]['avg'] = int(ddf[col].mean().compute())
     
 def get_conts_stats(ddf, col, data):
     data[col]['min'] = ddf[col].min().compute()
@@ -114,7 +125,7 @@ def main(args):
     # Dictionary to store collected information
     data = {}
     # Store general info
-    # data['num_rows'] = dataset.num_rows
+    data['num_rows'] = ddf.shape[0].compute()
     data['cats'] = cats
     data['conts'] = conts
     data['labels'] = labels
@@ -125,20 +136,23 @@ def main(args):
         get_cats_stats(ddf, col, data)
 
     # Get continuous columnd stats
-    for col in conts:
-        get_all_stats(ddf, col, data)
-        get_conts_stats(ddf, col, data)
+    #for col in conts:
+    #    get_all_stats(ddf, col, data)
+    #    get_conts_stats(ddf, col, data)
 
     # Get labels columns stats
-    for col in conts:
-        get_all_stats(ddf, col, data)
-        get_labels_stats(ddf, col, data)
+    #for col in conts:
+    #    get_all_stats(ddf, col, data)
+    #    get_labels_stats(ddf, col, data)
     
     print(data)
 
     # Write json file
     with fsspec.open(args.output_file, 'w') as outfile:
         json.dump(data, outfile, cls=NpEncoder)
+
+    # Stop Dask Cluster
+    client.shutdown()
 
 if __name__ == "__main__":
     main(parse_args())
