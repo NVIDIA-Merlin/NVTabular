@@ -88,7 +88,7 @@ class JoinExternal(Operator):
         cache="host",
         **kwargs,
     ):
-        super().__init__(replace=False)
+        super(JoinExternal).__init__()
         self.on = on
         self.df_ext = df_ext
         self.on_ext = on_ext or self.on
@@ -155,9 +155,9 @@ class JoinExternal(Operator):
         return new_gdf
 
     def output_column_names(self, columns):
-        if self.ext_columns:
-            return columns + self.ext_columns
-        return columns + self._ext.columns
+        if self.columns_ext:
+            return list(set(columns + self.columns_ext))
+        return list(set(columns + list(self._ext.columns)))
 
 
 def _detect_format(data):
