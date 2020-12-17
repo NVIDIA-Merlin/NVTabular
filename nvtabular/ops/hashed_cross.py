@@ -20,6 +20,30 @@ from .operator import Operator
 
 
 class HashedCross(Operator):
+    """
+    This ops creates hashed cross columns by first combining categorical features
+    and hashing the combined feature then modulating by the number of
+    buckets.
+
+    Example usage::
+
+        # Define parameters
+        cat_names = [["name-string", "id"]]
+        num_buckets = 10
+
+        # Use HashedCross operator to define NVTabular workflow
+        hashed_cross = cat_names >> ops.HashedCross(num_buckets)
+        processor = nvtabular.Workflow(hashed_cross)
+
+    Parameters
+    ----------
+    num_buckets : int
+        Column-wise modulo to apply after hash function. Note that this
+        means that the corresponding value will be the categorical cardinality
+        of the transformed categorical feature. That value will be used as the
+        number of "hash buckets" for every output feature.
+    """
+
     def __init__(self, num_buckets):
         super().__init__()
         self.num_buckets = num_buckets
