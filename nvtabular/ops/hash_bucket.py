@@ -30,33 +30,13 @@ class HashBucket(Operator):
     Example usage::
 
         cat_names = ["feature_a", "feature_b"]
-        cont_names = ...
-        label_name = ...
-        workflow = nvt.Workflow(
-            cat_names=cat_names, cont_names=cont_names, label_name=label_names
-        )
 
         # this will hash both features a and b to 100 buckets
-        op = nvt.ops.HashBucket(100)
+        hash_features = cat_names >> ops.HashBucket({"feature_a": 100, "feature_b": 50})
+        processor = nvtabular.Workflow(hash_features)
 
-        # for different numbers of buckets per feature, initialize with a dict
-        op = nvt.ops.HashBucket({"feature_a": 100, "feature_b": 50})
-
-        # or, equivalently
-        op = nvt.ops.HashBucket(
-            num_buckets=[100, 50], columns=["feature_a", "feature_b"]
-        )
-
-        workflow.add_cat_preprocess(op)
 
     The output of this op would be::
-
-        workflow.finalize()
-        gdf = cudf.DataFrame({
-            "feature_a": [101588, 2214177, 92855],
-            "feature_b": ["foo", "bar", "baz"]
-        })
-        workflow.apply_ops(gdf)
 
            feature_a  feature_b
         0         90         11
@@ -71,15 +51,12 @@ class HashBucket(Operator):
 
     Parameters
     ----------
-    num_buckets : int, list of int, or dictionary:{column: num_hash_buckets}
+    num_buckets : int or dictionary:{column: num_hash_buckets}
         Column-wise modulo to apply after hash function. Note that this
         means that the corresponding value will be the categorical cardinality
         of the transformed categorical feature. If given as an int, that value
-        will be used as the number of "hash buckets" for every feature. If
-        a list is provided, it must be of the same length as `columns` (which
-        should not be `None`), and the values will correspond to the number
-        of buckets to use for the feature specified at the same index in
-        `columns`. If a dictionary is passed, it will be used to specify
+        will be used as the number of "hash buckets" for every feature.
+        If a dictionary is passed, it will be used to specify
         explicit mappings from a column name to a number of buckets. In
         this case, only the columns specified in the keys of `num_buckets`
         will be transformed.

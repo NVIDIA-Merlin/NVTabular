@@ -47,15 +47,13 @@ class Categorify(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
+        # Define pipeline
+        cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(freq_threshold=10)
 
-        # Add Categorify for categorical columns to the workflow
-        proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
+        # Initialize the workflow and execute it
+        proc = nvt.Workflow(cat_features)
+        proc.fit(dataset)
+        proc.transform(dataset).to_parquet('./test/')
 
     Example for frequency hashing::
 
@@ -65,21 +63,18 @@ class Categorify(StatOperator):
             'productID': [100, 101, 102, 101, 102, 103, 103],
             'label': [0, 0, 1, 1, 1, 0, 0]
         })
+        CATEGORICAL_COLUMNS = ['author', 'productID']
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=['author', 'productID'],
-            cont_names=[],
-            label_name=['label']
-        )
-
-        # Add num_buckets param and freq_threshold param
-        proc.add_cat_preprocess(nvt.ops.Categorify(
+        # Define pipeline
+        cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(
             freq_threshold={"author": 3, "productID": 2},
             num_buckets={"author": 10, "productID": 20})
         )
-        # Apply workflow
-        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
+
+        # Initialize the workflow and execute it
+        proc = nvt.Workflow(cat_features)
+        proc.fit(dataset)
+        proc.transform(dataset).to_parquet('./test/')
 
     Example with multi-hot::
 
@@ -90,18 +85,15 @@ class Categorify(StatOperator):
             'categories': [['Cat A', 'Cat B'], ['Cat C'], ['Cat A', 'Cat C', 'Cat D']],
             'label': [0,0,1]
         })
+        CATEGORICAL_COLUMNS = ['userID', 'productID', 'categories']
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=['userID', 'productID', 'categories'],
-            cont_names=[],
-            label_name=['label']
-        )
+        # Define pipeline
+        cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify()
 
-        # Add Categorify for categorical columns to the workflow
-        proc.add_preprocess(nvt.ops.Categorify())
-        # Apply workflow
-        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
+        # Initialize the workflow and execute it
+        proc = nvt.Workflow(cat_features)
+        proc.fit(dataset)
+        proc.transform(dataset).to_parquet('./test/')
 
     Parameters
     -----------
