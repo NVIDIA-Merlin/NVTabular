@@ -17,13 +17,13 @@ import logging
 
 import cudf
 import dask
+import yaml
 from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, iter_nodes
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
-
 
 LOG = logging.getLogger("nvtabular")
 
@@ -80,10 +80,7 @@ class Workflow:
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
-        def get_stat_ops(nodes):
-            return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
-
-        stat_ops = {op: get_stat_ops(op.parents) for op in get_stat_ops([self.column_group])}
+        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.column_group])}
 
         while stat_ops:
             # get all the StatOperators that we can currently call fit on (no outstanding
@@ -137,6 +134,68 @@ class Workflow:
         self.fit(dataset)
         return self.transform(dataset)
 
+    def save_stats(self, path):
+        node_ids = {}
+        output_data = []
+
+        def add_node(node):
+            if node in node_ids:
+                return node_ids[node]
+
+            data = {
+                "columns": node.columns,
+            }
+            if node.parents:
+                data["name"] = node.label
+                data["parents"] = [add_node(parent) for parent in node.parents]
+            else:
+                data["name"] = "input"
+
+            if isinstance(node.op, StatOperator):
+                data["stats"] = node.op.save()
+
+            nodeid = len(output_data)
+            data["id"] = nodeid
+            node_ids[node] = nodeid
+            output_data.append(data)
+            return nodeid
+
+        # recursively save each operator, providing enough context
+        # to (columns/labels etc) to load again
+        add_node(self.column_group)
+        with open(path, "w") as outfile:
+            yaml.safe_dump(output_data, outfile, default_flow_style=False)
+
+    def load_stats(self, path):
+        def load_node(nodeid, node):
+            saved = nodes[nodeid]
+            if "parents" not in saved:
+                return
+
+            if node.label != saved["name"]:
+                raise ValueError(
+                    "Failed to load saved statistics: names %s != %s" % (node.label, saved["name"])
+                )
+            if node.columns != saved["columns"]:
+                raise ValueError(
+                    "Failed to load saved statistics: columns %s != %s"
+                    % (node.columns, saved["column"])
+                )
+
+            if isinstance(node.op, StatOperator):
+                node.op.load(saved["stats"])
+
+            for parentid, parent in zip(saved["parents"], node.parents):
+                load_node(parentid, parent)
+
+        # recursively load each operator in the graph
+        nodes = yaml.safe_load(open(path))
+        load_node(nodes[-1]["id"], self.column_group)
+
+    def clear_stats(self):
+        for stat in _get_stat_ops([self.column_group]):
+            stat.op.clear()
+
     def _input_columns(self):
         input_nodes = set(node for node in iter_nodes([self.column_group]) if not node.parents)
         return list(set(col for node in input_nodes for col in node.flattened_columns))
@@ -160,6 +219,10 @@ def _transform_ddf(ddf, column_groups):
         column_groups,
         meta=cudf.DataFrame({k: [] for k in columns}),
     )
+
+
+def _get_stat_ops(nodes):
+    return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
 
 
 def _transform_partition(root_gdf, column_groups):

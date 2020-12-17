@@ -45,6 +45,5 @@ class Bucketize(Operator):
             val = 0
             for boundary in b:
                 val += (gdf[col] >= boundary).astype("int")
-            new_col = f"{col}_{self._id}"
-            new_gdf[new_col] = val
+            new_gdf[col] = val
         return new_gdf

@@ -92,3 +92,12 @@ class FillMedian(StatOperator):
     def fit_finalize(self, dask_stats):
         for col in dask_stats.index.values_host:
             self.medians[col] = float(dask_stats[col])
+
+    def save(self):
+        return self.medians
+
+    def load(self, data):
+        self.medians = data
+
+    def clear(self):
+        self.medians = {}

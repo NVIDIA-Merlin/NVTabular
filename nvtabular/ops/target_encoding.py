@@ -77,13 +77,9 @@ class TargetEncoding(StatOperator):
         Global mean of the target column to use for encoding.
         Supplying this value up-front will improve performance.
     kfold : int, default 3
-        Number of cross-validation folds to use while gathering
-        statistics (during `GroupbyStatistics`).
+        Number of cross-validation folds to use while gathering statistics.
     fold_seed : int, default 42
         Random seed to use for cupy-based fold assignment.
-    drop_folds : bool, default True
-        Whether to drop the "__fold__" column created by the
-        `GroupbyStatistics` dependency (after the transformation).
     p_smooth : int, default 20
         Smoothing factor.
     out_col : str or list of str, default is problem-specific
@@ -93,14 +89,24 @@ class TargetEncoding(StatOperator):
     out_dtype : str, default is problem-specific
         dtype of output target-encoding columns.
     tree_width : dict or int, optional
-        Passed to `GroupbyStatistics` dependency.
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Passed to `GroupbyStatistics` dependency.
+        Root directory where category statistics will be written out in
+        parquet format.
     on_host : bool, default True
-        Passed to `GroupbyStatistics` dependency.
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     name_sep : str, default "_"
         String separator to use between concatenated column names
         for multi-column groups.
+    drop_folds : bool, default True
+        Whether to drop the "__fold__" column created. This is really only useful for unittests.
     """
 
     def __init__(
@@ -117,7 +123,6 @@ class TargetEncoding(StatOperator):
         out_path=None,
         on_host=True,
         name_sep="_",
-        stat_name=None,
         drop_folds=True,
     ):
         super().__init__()
@@ -187,8 +192,6 @@ class TargetEncoding(StatOperator):
     def fit_finalize(self, dask_stats):
         for col, value in dask_stats[0].items():
             self.stats[col] = value
-        print(self.stats)
-
         for col in dask_stats[1].index:
             self.means[col] = float(dask_stats[1]["mean"].loc[col])
 
@@ -205,6 +208,17 @@ class TargetEncoding(StatOperator):
             ret.append(self.fold_name)
 
         return ret
+
+    def save(self):
+        return {"stats": self.stats, "means": self.means}
+
+    def load(self, data):
+        self.stats = data["stats"]
+        self.means = data["means"]
+
+    def clear(self):
+        self.stats = {}
+        self.means = {}
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)

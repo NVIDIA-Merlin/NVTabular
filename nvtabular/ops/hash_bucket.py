@@ -17,7 +17,7 @@ import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from .categorify import _encode_list_column
+from .categorify import _emb_sz_rule, _encode_list_column
 from .operator import Operator
 
 
@@ -83,23 +83,11 @@ class HashBucket(Operator):
         explicit mappings from a column name to a number of buckets. In
         this case, only the columns specified in the keys of `num_buckets`
         will be transformed.
-    columns: list of str or None
-        Column names to apply hash bucket transformation to. Ignored if
-        `num_buckets` is a `dict`. If `num_buckets` is given as a list,
-        `columns` must not be None and have the same length. If left
-        as None, transformation will be applied to all categorical
-        columns. Note that this case is only used if `num_buckets` is
-        an `int`.
     """
 
     def __init__(self, num_buckets):
         if isinstance(num_buckets, dict):
-            columns = [i for i in num_buckets.keys()]
             self.num_buckets = num_buckets
-        elif isinstance(num_buckets, (tuple, list)):
-            assert columns is not None
-            assert len(columns) == len(num_buckets)
-            self.num_buckets = {col: nb for col, nb in zip(columns, num_buckets)}
         elif isinstance(num_buckets, int):
             self.num_buckets = num_buckets
         else:
@@ -123,3 +111,10 @@ class HashBucket(Operator):
             else:
                 gdf[col] = gdf[col].hash_values() % nb
         return gdf
+
+    def get_embedding_sizes(self, columns):
+        if isinstance(self.num_buckets, int):
+            embedding_size = _emb_sz_rule(self.num_buckets)
+            return {col: embedding_size for col in columns}
+        else:
+            return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}

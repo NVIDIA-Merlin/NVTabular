@@ -175,10 +175,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         the last chunk in a dataset, which will, in general, be smaller).
         Larger chunk sizes will lead to more efficieny and randomness,
         but require more memory.
-    - workflows: list(nvtabular.Workflow)
-        `nvtabular.Workflow`s for applying online preprocessing. Must
-        be consistent with the dataset schema specified by `feature_columns`
-        or `cat_names` and `cont_names`
     - devices: None
         Which GPU devices to load from. Ignored for now
     - parts_per_chunk: int
@@ -203,7 +199,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         engine=None,
         shuffle=True,
         buffer_size=0.1,
-        workflows=None,
         devices=None,
         parts_per_chunk=1,
         reader_kwargs=None,
@@ -229,7 +224,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             batch_size,
             shuffle,
             parts_per_chunk=parts_per_chunk,
-            workflows=workflows,
             devices=devices,
         )
 
