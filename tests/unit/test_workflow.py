@@ -192,18 +192,21 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
-    
+
     norms = ops.Normalize()
     cat_features = cat_names >> ops.Categorify()
     if replace:
         cont_features = cont_names >> ops.FillMissing() >> ops.LogOp >> norms
     else:
-        fillmissing_logop = cont_names >> ops.FillMissing() >> ops.LogOp >> ops.Rename(postfix="_FillMissing_1_LogOp_1")
+        fillmissing_logop = (
+            cont_names
+            >> ops.FillMissing()
+            >> ops.LogOp
+            >> ops.Rename(postfix="_FillMissing_1_LogOp_1")
+        )
         cont_features = cont_names + fillmissing_logop >> norms
 
-    workflow = Workflow(
-        cat_features + cont_features + label_name, client=client
-    )
+    workflow = Workflow(cat_features + cont_features + label_name, client=client)
 
     workflow.fit(dataset)
 
@@ -224,19 +227,11 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     concat_ops = "_FillMissing_1_LogOp_1"
     if replace:
         concat_ops = ""
-    assert math.isclose(
-        get_norms(df.x).mean(), norms.means["x" + concat_ops], rel_tol=1e-1
-    )
-    assert math.isclose(
-        get_norms(df.y).mean(), norms.means["y" + concat_ops], rel_tol=1e-1
-    )
+    assert math.isclose(get_norms(df.x).mean(), norms.means["x" + concat_ops], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.y).mean(), norms.means["y" + concat_ops], rel_tol=1e-1)
 
-    assert math.isclose(
-        get_norms(df.x).std(), norms.stds["x" + concat_ops], rel_tol=1e-1
-    )
-    assert math.isclose(
-        get_norms(df.y).std(), norms.stds["y" + concat_ops], rel_tol=1e-1
-    )
+    assert math.isclose(get_norms(df.x).std(), norms.stds["x" + concat_ops], rel_tol=1e-1)
+    assert math.isclose(get_norms(df.y).std(), norms.stds["y" + concat_ops], rel_tol=1e-1)
     # Check that categories match
     if engine == "parquet":
         cats_expected0 = df["name-cat"].unique().values_host
@@ -331,7 +326,7 @@ def test_join_external_workflow(tmpdir, df, dataset, engine):
         cache=cache,
         drop_duplicates_ext=drop_duplicates,
     )
-    
+
     # Define Workflow
     gdf = df.reset_index()
     dataset = nvt.Dataset(gdf)
@@ -382,19 +377,21 @@ def test_chaining_2():
     cont_names = ["A", "B"]
     label_name = []
 
-    all_features = cat_names + cont_names >> ops.LambdaOp(f=lambda col: col.isnull()) >> ops.Rename(postfix="_isnull")
-    cat_features = cat_names >> ops.Categorify()
-    
-    workflow = Workflow(
-        all_features + cat_features + label_name
+    all_features = (
+        cat_names + cont_names
+        >> ops.LambdaOp(f=lambda col: col.isnull())
+        >> ops.Rename(postfix="_isnull")
     )
-     
+    cat_features = cat_names >> ops.Categorify()
+
+    workflow = Workflow(all_features + cat_features + label_name)
+
     dataset = nvt.Dataset(gdf, engine="parquet")
 
     workflow.fit(dataset)
 
     result = workflow.transform(dataset).to_ddf().compute()
-    
+
     assert all(x in list(result.columns) for x in ["A_isnull", "B_isnull", "C_isnull"])
     assert (x in result["C"].unique() for x in set(gdf["C"].dropna().to_arrow()))
 
@@ -409,25 +406,22 @@ def test_chaining_3():
         }
     )
 
-    cat_names=["ad_id", "source_id", "platform"]
-    cont_names=[]
-    label_name=["clicked"]
-
     platform_features = ["platform"] >> ops.Dropna()
     joined = ["ad_id"] >> ops.JoinGroupby(cont_names=["clicked"], stats=["sum", "count"])
-    #joined_lambda = joined >> ops.LambdaOp(f=lambda col, gdf: col / gdf["ad_id_count"], columns=["ad_id_clicked_sum"]) >> ops.Rename(postfix="_ctr")
-    joined_lambda = joined >> ops.LambdaOp(f=lambda col, gdf: col / gdf["ad_id_count"]) >> ops.Rename(postfix="_ctr")
-
-    workflow = Workflow(
-        platform_features + joined + joined_lambda
+    joined_lambda = (
+        joined
+        >> ops.LambdaOp(f=lambda col, gdf: col / gdf["ad_id_count"])
+        >> ops.Rename(postfix="_ctr")
     )
-    
+
+    workflow = Workflow(platform_features + joined + joined_lambda)
+
     dataset = nvt.Dataset(gdf_test, engine="parquet")
 
     workflow.fit(dataset)
 
     result = workflow.transform(dataset).to_ddf().compute()
-    
+
     assert all(
         x in result.columns for x in ["ad_id_count", "ad_id_clicked_sum_ctr", "ad_id_clicked_sum"]
     )
@@ -467,7 +461,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     workflow = Workflow(
         cat_features + cont_features + label_name, client=client if use_client else None
     )
-    
+
     workflow.fit(dataset)
 
     # Force dtypes
@@ -504,10 +498,14 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
 
     # defining a simple workflow that strips out the country code from the first two digits of the
     # geo_location code and sticks in a new 'geo_location_country' field
-    cat_names = ["geo_location", "geo_location_country"]
-
-    country = ["geo_location"] >> ops.LambdaOp(f=lambda col: col.str.slice(0, 2),) >> ops.Rename(postfix="_country")
-    cat_features = ["geo_location"] + country >>  ops.Categorify()
+    country = (
+        ["geo_location"]
+        >> ops.LambdaOp(
+            f=lambda col: col.str.slice(0, 2),
+        )
+        >> ops.Rename(postfix="_country")
+    )
+    cat_features = ["geo_location"] + country >> ops.Categorify()
 
     workflow = Workflow(cat_features)
 
@@ -520,6 +518,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
     # just make sure this works without errors
     workflow.fit(dataset)
     workflow.transform(dataset).to_parquet(out_path)
+
 
 def test_transform_geolocation():
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
@@ -545,7 +544,7 @@ def test_fit_simple():
     data = cudf.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
     dataset = Dataset(data)
 
-    workflow = Workflow(["x", "y"] >> ops.FillMedian >> (lambda x: x * x))
+    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
 
     workflow.fit(dataset)
     transformed = workflow.transform(dataset).to_ddf().compute()
