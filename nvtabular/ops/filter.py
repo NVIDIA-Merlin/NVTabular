@@ -26,7 +26,8 @@ class Filter(Operator):
 
     For example to filter out all rows that have a negative value in the ``a`` column::
 
-        op = Filter(lambda df: df["a"] >=0)
+        filtered = cont_names >> ops.Filter(f=lambda df: df["a"] >=0)
+        processor = nvtabular.Workflow(filtered)
 
     Parameters
     -----------

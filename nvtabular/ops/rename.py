@@ -20,6 +20,12 @@ class Rename(Operator):
     """This operation renames columns, either by using a user defined lambda function to
     transform column names, or by appending a postfix string to every column name
 
+    Example usage::
+
+        # Rename columns after LogOp
+        cont_features = cont_names >> nvt.ops.LogOp() >> Rename(postfix='_log')
+        processor = nvt.Workflow(cont_features)
+
     Parameters
     ----------
     f : callable, optional
