@@ -17,7 +17,7 @@ import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from .categorify import _emb_sz_rule, _encode_list_column
+from .categorify import _emb_sz_rule, _encode_list_column, _get_embedding_order
 from .operator import Operator
 
 
@@ -113,6 +113,7 @@ class HashBucket(Operator):
         return gdf
 
     def get_embedding_sizes(self, columns):
+        columns = _get_embedding_order(columns)
         if isinstance(self.num_buckets, int):
             embedding_size = _emb_sz_rule(self.num_buckets)
             return {col: embedding_size for col in columns}
