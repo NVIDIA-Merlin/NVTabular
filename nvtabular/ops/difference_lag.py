@@ -36,11 +36,12 @@ class DifferenceLag(Operator):
         # create a new nvtabular dataset on the partitioned/sorted values
         dataset = nvtabular.Dataset(ddf)
 
-    Once passed an appropiate dataset, this operator can be added to a nvtabular workflow to
+    Once passed an appropiate dataset, this operator can be used to create a workflow to
     compute the lagged difference within a partition::
 
         # compute the delta in timestamp for each users session
-        workflow.add_feature(DifferenceLag('userid', columns=["timestamp"]))
+        diff_features = ["quantity"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
+        processor = nvtabular.Workflow(diff_features)
 
     Parameters
     -----------

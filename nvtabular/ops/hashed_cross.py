@@ -20,6 +20,30 @@ from .operator import Operator
 
 
 class HashedCross(Operator):
+    """
+    This ops creates hashed cross columns by first combining categorical features
+    and hashing the combined feature then modulating by the number of
+    buckets.
+
+    Example usage::
+
+        # Define parameters
+        cat_names = [["name-string", "id"]]
+        num_buckets = 10
+
+        # Use HashedCross operator to define NVTabular workflow
+        hashed_cross = cat_names >> ops.HashedCross(num_buckets)
+        processor = nvtabular.Workflow(hashed_cross)
+
+    Parameters
+    ----------
+    num_buckets : int
+        Column-wise modulo to apply after hash function. Note that this
+        means that the corresponding value will be the categorical cardinality
+        of the transformed categorical feature. That value will be used as the
+        number of "hash buckets" for every output feature.
+    """
+
     def __init__(self, num_buckets):
         super().__init__()
         self.num_buckets = num_buckets
@@ -27,13 +51,14 @@ class HashedCross(Operator):
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, gdf: cudf.DataFrame):
         new_gdf = cudf.DataFrame()
-        val = 0
-        for column in columns:
-            val ^= gdf[column].hash_values()  # or however we want to do this aggregation
-        # TODO: support different size buckets per cross
-        val = val % self.num_buckets
-        new_gdf["_X_".join(columns)] = val
+        for cross in columns:
+            val = 0
+            for column in cross:
+                val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+            # TODO: support different size buckets per cross
+            val = val % self.num_buckets
+            new_gdf["_X_".join(cross)] = val
         return new_gdf
 
     def output_column_names(self, columns):
-        return ["_X_".join(columns)]
+        return ["_X_".join(cross) for cross in columns]

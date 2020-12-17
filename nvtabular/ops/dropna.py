@@ -25,22 +25,13 @@ class Dropna(Operator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add Dropna to the workflow and specify which columns to apply to
+        # Use Dropna to define a NVTabular workflow
         # Default is None and will check all columns
-        proc.add_preprocess(nvt.ops.Dropna(columns=['cat1', 'num1']))
+        dropna_features = ['cat1', 'num1'] >> ops.Dropna() >> ...
+        processor = nvtabular.Workflow(dropna_features)
 
     Parameters
     ----------
-    columns : list of str, default None
-        Columns to target for this op. If None, this operator will check all columns
-        for null values.
     """
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")

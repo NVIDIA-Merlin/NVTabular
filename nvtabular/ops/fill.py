@@ -26,16 +26,10 @@ class FillMissing(Operator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add FillMissing to the workflow for continuous columns and specify the fill value
+        # Use FillMissing to define a workflow for continuous columns and specify the fill value
         # Default is 0
-        proc.add_cont_feature(nvt.ops.FillMissing(fill_val=100))
+        cont_features = ['cont1', 'cont2', 'cont3'] >> ops.FillMissing() >> ...
+        processor = nvtabular.Workflow(cont_features)
 
     Parameters
     -----------
