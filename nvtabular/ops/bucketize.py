@@ -20,7 +20,25 @@ from .operator import Operator
 
 
 class Bucketize(Operator):
-    """"""
+    """This operation transforms continuous features into categorical features.
+    The outputs are bins based on the boundaries
+
+    Example usage::
+
+        #
+        cont_names = ['cont1', 'cont2']
+        boundaries = {
+            'cont1': [-50, 0, 50],
+            'cont2': [0, 25, 50, 75, 100]
+        }
+        bucketize_op = cont_names >> ops.Bucketize(boundaries)
+        processor = nvt.Workflow(bucketize_op)
+
+    Parameters
+    ----------
+    boundaries : int, dict or callable
+        Defines how to transform the continous values into bins
+    """
 
     def __init__(self, boundaries):
         # transform boundaries into a lookup function on column names

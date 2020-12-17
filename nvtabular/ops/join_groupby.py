@@ -33,20 +33,11 @@ class JoinGroupby(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
+        # Use JoinGroupby to define a NVTabular workflow
+        groupby_features = ['cat1', 'cat2', 'cat3'] >> ops.JoinGroupby(
+            out_path=str(tmpdir), stats=['sum','count'], cont_names=['num1']
         )
-
-        # Add JoinGroupby to the workflow
-        proc.add_feature(
-            JoinGroupby(
-                columns=['cat1', 'cat2', 'cat3'], # columns which are groupby
-                cont_names=['num1'], # continuous column, which the statistics are applied to
-                stats=['sum','count']), # statistics, which are applied
-        )
+        processor = nvtabular.Workflow(groupby_features)
 
     Parameters
     -----------
@@ -58,15 +49,14 @@ class JoinGroupby(StatOperator):
         that "count" corresponds to the group itself, while all
         other statistics correspond to a specific continuous column.
         Supported statistics include ["count", "sum", "mean", "std", "var"].
-    columns : list of str or list(str), default None
-        Categorical columns (or multi-column "groups") to target for this op.
-        If None, the operation will target all known categorical columns.
     tree_width : dict or int, optional
         Tree width of the hash-based groupby reduction for each categorical
         column. High-cardinality columns may require a large `tree_width`,
         while low-cardinality columns can likely use `tree_width=1`.
         If passing a dict, each key and value should correspond to the column
         name and width, respectively. The default value is 8 for all columns.
+    cat_cache: ToDo Describe
+        TEXT
     out_path : str, optional
         Root directory where groupby statistics will be written out in
         parquet format.
@@ -89,7 +79,6 @@ class JoinGroupby(StatOperator):
         out_path=None,
         on_host=True,
         name_sep="_",
-        stat_name=None,
     ):
         super().__init__()
 

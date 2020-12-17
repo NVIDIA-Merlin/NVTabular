@@ -656,7 +656,7 @@ def test_difference_lag():
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine):
     # TODO: add tests for > 2 features, multiple crosses, etc.
-    cat_names = ["name-string", "id"]
+    cat_names = [["name-string", "id"]]
     num_buckets = 10
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
@@ -666,7 +666,7 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine):
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
-    new_column_name = "_X_".join(cat_names)
+    new_column_name = "_X_".join(cat_names[0])
     assert np.all(new_gdf[new_column_name].values >= 0)
     assert np.all(new_gdf[new_column_name].values <= 9)
     checksum = new_gdf[new_column_name].sum()
