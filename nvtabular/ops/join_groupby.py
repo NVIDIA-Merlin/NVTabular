@@ -87,7 +87,7 @@ class JoinGroupby(StatOperator):
         self.cont_names = cont_names
         self.stats = stats
         self.tree_width = tree_width
-        self.out_path = out_path
+        self.out_path = out_path or "./"
         self.on_host = on_host
         self.cat_cache = cat_cache
         self.categories = {}

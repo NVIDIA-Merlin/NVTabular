@@ -36,7 +36,7 @@ from tests.conftest import mycols_csv, mycols_pq
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-def test_normalize_minmax(tmpdir, client, df, dataset, gpu_memory_frac, engine, op_columns):
+def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cont_features = op_columns >> ops.NormalizeMinMax()
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
@@ -277,7 +277,7 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine, client):
+def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     df_copy = df.copy()
 
     # Substring
@@ -592,7 +592,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, client):
+def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine):
     cont_names = ["x", "y"]
     filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
     processor = nvtabular.Workflow(filtered)
