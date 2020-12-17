@@ -31,23 +31,13 @@ class Normalize(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add Normalize to the workflow for continuous columns
-        proc.add_cont_feature(nvt.ops.Normalize())
+        # Use Normalize to define a NVTabular workflow
+        cont_features = CONTINUOUS_COLUMNS >> ops.Normalize()
+        processor = nvtabular.Workflow(cont_features)
 
     Parameters
     ----------
-    columns : list of str, default None
-        Continuous columns to target for this op. If None, the operation will target all known
-        continuous columns.
-    replace : bool, default False
-        Whether to replace existing columns or create new ones.
+
     """
 
     def __init__(self):
@@ -96,23 +86,13 @@ class NormalizeMinMax(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add NormalizeMinMax to the workflow for continuous columns
-        proc.add_cont_feature(nvt.ops.NormalizeMinMax())
+        # Use NormalizeMinMax to define a NVTabular workflow
+        cont_features = CONTINUOUS_COLUMNS >> ops.NormalizeMinMax()
+        processor = nvtabular.Workflow(cont_features)
 
     Parameters
     ----------
-    columns : list of str, default None
-        Continuous columns to target for this op. If None, the operation will target all known
-        continuous columns.
-    replace : bool, default False
-        Whether to replace existing columns or create new ones.
+
     """
 
     def __init__(self):
