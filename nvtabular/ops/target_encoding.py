@@ -52,21 +52,20 @@ class TargetEncoding(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
+        # First, we can transform the label columns to binary targets
+        LABEL_COLUMNS = ['label1', 'label2']
+        labels = nvt.ColumnGroup(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
+        # We target encode cat1, cat2 and the cross columns cat1 x cat2
+        target_encode = (
+            ['cat1', 'cat2', ['cat2','cat3']] >>
+            nvt.ops.TargetEncoding(
+                labels,
+                kfold=5,
+                p_smooth=20,
+                out_dtype="float32",
+                )
         )
-
-        # Add TE op to the workflow
-        proc.add_feature(
-            TargetEncoding(
-            cat_groups = ['cat1', 'cat2', ['cat2','cat3']],
-            target = LABEL_COLUMNS,
-            kfold = 5,
-            p_smooth = 20)
-        )
+        processor = nvt.Workflow(target_encode)
 
     Parameters
     -----------
@@ -94,6 +93,11 @@ class TargetEncoding(StatOperator):
         while low-cardinality columns can likely use `tree_width=1`.
         If passing a dict, each key and value should correspond to the column
         name and width, respectively. The default value is 8 for all columns.
+    cat_cache : {"device", "host", "disk"} or dict
+        Location to cache the list of unique categories for
+        each categorical column. If passing a dict, each key and value
+        should correspond to the column name and location, respectively.
+        Default is "host" for all columns.
     out_path : str, optional
         Root directory where category statistics will be written out in
         parquet format.
