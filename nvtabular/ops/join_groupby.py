@@ -178,3 +178,13 @@ class JoinGroupby(StatOperator):
                     else:
                         output.append(f"{name}_{cont}_{stat}")
         return output
+
+    def save(self):
+        return [self.categories, self.storage_name]
+
+    def load(self, stats):
+        self.categories, self.storage_name = stats
+
+    def clear(self):
+        self.categories = {}
+        self.storage_name = {}

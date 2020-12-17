@@ -192,8 +192,6 @@ class TargetEncoding(StatOperator):
     def fit_finalize(self, dask_stats):
         for col, value in dask_stats[0].items():
             self.stats[col] = value
-        print(self.stats)
-
         for col in dask_stats[1].index:
             self.means[col] = float(dask_stats[1]["mean"].loc[col])
 
@@ -210,6 +208,17 @@ class TargetEncoding(StatOperator):
             ret.append(self.fold_name)
 
         return ret
+
+    def save(self):
+        return {"stats": self.stats, "means": self.means}
+
+    def load(self, data):
+        self.stats = data["stats"]
+        self.means = data["means"]
+
+    def clear(self):
+        self.stats = {}
+        self.means = {}
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)

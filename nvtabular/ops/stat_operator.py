@@ -35,5 +35,16 @@ class StatOperator(Operator):
             """Follow-up operations to convert dask statistics in to member variables"""
         )
 
+    def save(self):
+        """Returns a json-able representation of the statistics for this object. This
+        is usually called by the workflow rather than diretly"""
+        raise NotImplementedError(".save isn't implemented for this op!")
+
+    def load(self, data):
+        """Loads statistics from a json-able blob of data. This is usually called
+        by the workflow rather than called directly"""
+        raise NotImplementedError(".load isn't implemented for this op!")
+
     def clear(self):
-        raise NotImplementedError("""zero and reinitialize all relevant statistical properties""")
+        """ zero and reinitialize all relevant statistical properties"""
+        raise NotImplementedError(".clear isn't implemented for this op!")

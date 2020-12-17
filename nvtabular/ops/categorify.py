@@ -239,7 +239,7 @@ class Categorify(StatOperator):
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
 
-    @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
+    @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
     def fit(self, columns, ddf):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
@@ -280,6 +280,15 @@ class Categorify(StatOperator):
     def fit_finalize(self, dask_stats):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
+
+    def save(self):
+        return self.categories
+
+    def load(self, data):
+        self.categories = data
+
+    def clear(self):
+        self.categories = {}
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
     def transform(
@@ -380,7 +389,9 @@ def get_embedding_sizes(workflow):
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.columns))
-        if current.kind == "+" or current.kind.startswith("-"):
+        elif not current.op:
+            # only follow parents if its not an operator node (which could
+            # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
     return output
 
