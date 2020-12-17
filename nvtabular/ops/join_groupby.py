@@ -62,11 +62,19 @@ class JoinGroupby(StatOperator):
         Categorical columns (or multi-column "groups") to target for this op.
         If None, the operation will target all known categorical columns.
     tree_width : dict or int, optional
-        Passed to `GroupbyStatistics` dependency.
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Passed to `GroupbyStatistics` dependency.
+        Root directory where groupby statistics will be written out in
+        parquet format.
     on_host : bool, default True
-        Passed to `GroupbyStatistics` dependency.
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     name_sep : str, default "_"
         String separator to use between concatenated column names
         for multi-column groups.
@@ -170,3 +178,13 @@ class JoinGroupby(StatOperator):
                     else:
                         output.append(f"{name}_{cont}_{stat}")
         return output
+
+    def save(self):
+        return [self.categories, self.storage_name]
+
+    def load(self, stats):
+        self.categories, self.storage_name = stats
+
+    def clear(self):
+        self.categories = {}
+        self.storage_name = {}

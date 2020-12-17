@@ -25,16 +25,15 @@ class HashedCross(Operator):
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns, gdf: cudf.DataFrame):
         new_gdf = cudf.DataFrame()
-        for cross in columns:
-            val = 0
-            for column in cross:
-                val ^= gdf[column].hash_values()  # or however we want to do this aggregation
-            # TODO: support different size buckets per cross
-            val = val % self.bucket_size
-            new_gdf["_X_".join(cross)] = val
+        val = 0
+        for column in columns:
+            val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+        # TODO: support different size buckets per cross
+        val = val % self.num_buckets
+        new_gdf["_X_".join(columns)] = val
         return new_gdf
 
     def output_column_names(self, columns):
-        return ["_X_".join(cross) for cross in columns]
+        return ["_X_".join(columns)]

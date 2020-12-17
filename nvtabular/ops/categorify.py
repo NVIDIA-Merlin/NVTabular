@@ -119,11 +119,19 @@ class Categorify(StatOperator):
         "combo", because the same column name can be included in
         multiple groups.
     tree_width : dict or int, optional
-        Passed to `GroupbyStatistics` dependency.
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Passed to `GroupbyStatistics` dependency.
+        Root directory where groupby statistics will be written out in
+        parquet format.
     on_host : bool, default True
-        Passed to `GroupbyStatistics` dependency.
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     na_sentinel : default 0
         Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
@@ -231,7 +239,7 @@ class Categorify(StatOperator):
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
 
-    @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
+    @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
     def fit(self, columns, ddf):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
@@ -272,6 +280,15 @@ class Categorify(StatOperator):
     def fit_finalize(self, dask_stats):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
+
+    def save(self):
+        return self.categories
+
+    def load(self, data):
+        self.categories = data
+
+    def clear(self):
+        self.categories = {}
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
     def transform(
@@ -348,6 +365,9 @@ class Categorify(StatOperator):
             return cat_names
         return list(flatten(columns, container=tuple))
 
+    def get_embedding_sizes(self, columns):
+        return _get_embeddings_dask(self.categories, columns, self.num_buckets, self.freq_threshold)
+
 
 def _get_embedding_order(cat_names):
     """Returns a consistent sorder order for categorical variables
@@ -361,33 +381,19 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(workflow):
-    mh_cols = None
-    cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    buckets = None
-    freq = 0
-    # when frequency hashing is applied,
-    # this will return embedding shape:(num_buckets+cardinality, emb_dim)
-    if "buckets" in workflow.stats.keys() and "freq_limit" in workflow.stats.keys():
-        buckets = workflow.stats["buckets"]
-        freq = workflow.stats["freq_limit"]
-    # when only hashing is applied, this will return embedding shape as (num_buckets, emb_dim)
-    elif "buckets" in workflow.stats.keys():
-        buckets = workflow.stats["buckets"]
-
-    # if we have hash buckets, but no categories just use the buckets
-    if buckets and "categories" not in workflow.stats:
-        return {col: _emb_sz_rule(num_rows) for col, num_rows in buckets.items()}
-
-    if "mh" not in workflow.columns_ctx["categorical"]:
-        return _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
-    else:
-        mh_cols = _get_embedding_order(workflow.columns_ctx["categorical"]["mh"])
-        for col in mh_cols:
-            cols.remove(col)
-        res = _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
-        if mh_cols:
-            res = res, _get_embeddings_dask(workflow.stats["categories"], mh_cols, buckets, freq)
-        return res
+    """ Returns a dictionary of best embedding sizes from the workflow """
+    # TODO: do we need to distinguish multihot columns here?  (if so why? )
+    queue = [workflow.column_group]
+    output = {}
+    while queue:
+        current = queue.pop()
+        if current.op and hasattr(current.op, "get_embedding_sizes"):
+            output.update(current.op.get_embedding_sizes(current.columns))
+        elif not current.op:
+            # only follow parents if its not an operator node (which could
+            # transform meaning of the get_embedding_sizes
+            queue.extend(current.parents)
+    return output
 
 
 def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
@@ -969,46 +975,3 @@ def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
         val = val % nb
         encoded = val
     return encoded
-
-
-class SetBuckets(StatOperator):
-    def __init__(self, columns=None, num_buckets=None, freq_limit=0, encode_type="joint"):
-        if isinstance(columns, list):
-            columns = list(set(flatten(columns, container=list)))
-        super().__init__(columns=columns)
-        self.num_buckets = num_buckets
-        self.freq_limit = freq_limit
-        self.encode_type = encode_type
-
-    @annotate("SetBuckets_op", color="green", domain="nvt_python")
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        if isinstance(self.num_buckets, int) and self.encode_type == "joint":
-            self.num_buckets = {name: self.num_buckets for name in cols}
-        elif isinstance(self.num_buckets, int) and self.encode_type == "combo":
-            buckets = {}
-            for group in cols:
-                if isinstance(group, list) and len(group) > 1:
-                    # For multi-column groups, we concatenate column names.
-                    name = _make_name(*group, sep="_")
-                    buckets[name] = self.num_buckets
-                elif isinstance(group, str):
-                    buckets[group] = self.num_buckets
-            self.num_buckets = buckets
-        return self.num_buckets
-
-    @annotate("SetBuckets_finalize", color="green", domain="nvt_python")
-    def finalize(self, dask_stats):
-        self.num_buckets = dask_stats
-
-    def registered_stats(self):
-        return ["buckets", "freq_limit"]
-
-    def stats_collected(self):
-        result = [("buckets", self.num_buckets), ("freq_limit", self.freq_limit)]
-        return result
-
-    def clear(self):
-        self.num_buckets = {}
-        self.freq_limit = {}
-        return
