@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import io, workflow, data_gen  # noqa
+from . import data_gen, io, workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack

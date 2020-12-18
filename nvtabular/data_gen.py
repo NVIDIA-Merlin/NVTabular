@@ -1,5 +1,5 @@
-import cupy
 import cudf
+import cupy
 import numpy as np
 from scipy import stats
 from scipy.stats import powerlaw, uniform
