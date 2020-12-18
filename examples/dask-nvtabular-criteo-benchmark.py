@@ -154,15 +154,12 @@ def main(args):
         setup_rmm_pool(client, device_pool_size)
 
     # Define Dask NVTabular "Workflow"
-    processor = Workflow(
-        cat_names=cat_names, cont_names=cont_names, label_name=label_name, client=client
-    )
     if args.normalize:
-        processor.add_feature([ops.FillMissing(), ops.Normalize()])
+        cont_features = cont_names >> ops.FillMissing() >> ops.Normalize()
     else:
-        processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
-    processor.add_preprocess(
-        ops.Categorify(
+        cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+
+    cat_features = cat_names >> ops.Categorify(
             out_path=stats_path,
             tree_width=tree_width,
             cat_cache=cat_cache,
@@ -170,29 +167,27 @@ def main(args):
             search_sorted=not freq_limit,
             on_host=not args.cats_on_device,
         )
-    )
-    processor.finalize()
+    processor = Workflow(cat_features+cont_features+label_name)
 
     dataset = Dataset(data_path, "parquet", part_size=part_size)
 
     # Execute the dask graph
     runtime = time.time()
+   
+    processor.fit(dataset)
+
     if args.profile is not None:
         with performance_report(filename=args.profile):
-            processor.apply(
-                dataset,
+            processor.transform(dataset).to_parquet(
+                output_path=output_path,
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
-                output_path=output_path,
-                num_io_threads=args.num_io_threads,
             )
     else:
-        processor.apply(
-            dataset,
-            num_io_threads=args.num_io_threads,
+        processor.transform(dataset).to_parquet(
+            output_path=output_path,
             shuffle=shuffle,
             out_files_per_proc=out_files_per_proc,
-            output_path=output_path,
         )
     runtime = time.time() - runtime
 
