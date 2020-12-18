@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import io, workflow  # noqa
+from . import io, workflow, data_gen # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -26,7 +26,6 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
-
 
 __all__ = ["Workflow", "Dataset"]
 
