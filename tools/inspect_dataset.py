@@ -24,6 +24,7 @@ from functools import singledispatch
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
+# Class to help Json to serialize the data
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -74,43 +75,48 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def stringlen(x):
-    return len(x)
-
-def get_all_stats(ddf, col, data):
+def get_stats(ddf, col, data, col_type):
     data[col] = {}
-    # Get dtype
+    
+    # Get dtype and convert cat-stings and cat_mh-lists
     data[col]['dtype'] = str(ddf[col].dtype) 
     if data[col]['dtype'] == "object":
-        data[col]['dtype'] = "string"
-    data[col]['nans_%'] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
-
-def get_cats_stats(ddf, col, data):
-    data[col]['cardinality'] = ddf[col].nunique().compute()
-    if data[col]['dtype'] == "string":
-        ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
+        if col_type == "cat": 
+            data[col]['dtype'] = "string"
+            ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
+        elif col_type == "cat_mh":
+            data[col]['dtype'] = "list"
+            ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
         ddf[col].compute()
+    
+    # Get percentage of nan for all
+    data[col]['nans_%'] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
+    
+    # Get cardinality for cat and label
+    data[col]['cardinality'] = ddf[col].nunique().compute()
+
+    # Get max/min/mean for cat, cat_mh, and cont
+    if col_type != "label": 
         data[col]['min'] = ddf[col].min().compute()
         data[col]['max'] = ddf[col].max().compute()
-        data[col]['avg'] = int(ddf[col].mean().compute())
-    
-def get_conts_stats(ddf, col, data):
-    data[col]['min'] = ddf[col].min().compute()
-    data[col]['max'] = ddf[col].max().compute()
-    data[col]['mean'] = ddf[col].mean().compute()
-    data[col]['std'] = ddf[col].std().compute()
+        if col_type == "cont":
+            data[col]['mean'] = ddf[col].mean().compute()
+        else:
+            data[col]['avg'] = int(ddf[col].mean().compute())
 
-def get_labels_stats(ddf, col, data):
-    data[col]['cardinality'] = ddf[col].nunique().compute()
+    # For conts get also std
+    if col_type == "cont":
+        data[col]['std'] = ddf[col].std().compute()
 
 def main(args):
     # Get dataset columns
     with fsspec.open(args.config_file) as f:
         config = json.load(f)
     cats = config['cats']
+    cats_mh = config['cats_mh']
     conts = config['conts']
     labels = config['labels']
-    columns = cats+conts+labels
+    columns = cats+cats_mh+conts+labels
 
     # Get dataset
     dataset = nvt.Dataset(args.data_path, engine=args.format)
@@ -127,26 +133,26 @@ def main(args):
     # Store general info
     data['num_rows'] = ddf.shape[0].compute()
     data['cats'] = cats
+    data['cats_mh'] = cats_mh
     data['conts'] = conts
     data['labels'] = labels
 
-    # Get continuous columnd stats
+    # Get categoricals columns stats
     for col in cats:
-        get_all_stats(ddf, col, data)
-        get_cats_stats(ddf, col, data)
+        get_stats(ddf, col, data, "cat")
 
-    # Get continuous columnd stats
-    #for col in conts:
-    #    get_all_stats(ddf, col, data)
-    #    get_conts_stats(ddf, col, data)
+    # Get categoricals multihot columns stats
+    for col in cats_mh:
+        get_stats(ddf, col, data, "cat_mh")
+
+    # Get continuous columns stats
+    for col in conts:
+        get_stats(ddf, col, data, "cont")
 
     # Get labels columns stats
-    #for col in conts:
-    #    get_all_stats(ddf, col, data)
-    #    get_labels_stats(ddf, col, data)
+    for col in conts:
+        get_stats(ddf, col, data, "label")
     
-    print(data)
-
     # Write json file
     with fsspec.open(args.output_file, 'w') as outfile:
         json.dump(data, outfile, cls=NpEncoder)
