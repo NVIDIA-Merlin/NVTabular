@@ -160,20 +160,20 @@ def main(args):
         cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
 
     cat_features = cat_names >> ops.Categorify(
-            out_path=stats_path,
-            tree_width=tree_width,
-            cat_cache=cat_cache,
-            freq_threshold=freq_limit,
-            search_sorted=not freq_limit,
-            on_host=not args.cats_on_device,
-        )
-    processor = Workflow(cat_features+cont_features+label_name)
+        out_path=stats_path,
+        tree_width=tree_width,
+        cat_cache=cat_cache,
+        freq_threshold=freq_limit,
+        search_sorted=not freq_limit,
+        on_host=not args.cats_on_device,
+    )
+    processor = Workflow(cat_features + cont_features + label_name)
 
     dataset = Dataset(data_path, "parquet", part_size=part_size)
 
     # Execute the dask graph
     runtime = time.time()
-   
+
     processor.fit(dataset)
 
     if args.profile is not None:
