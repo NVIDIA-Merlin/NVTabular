@@ -180,12 +180,14 @@ def main(args):
         with performance_report(filename=args.profile):
             processor.transform(dataset).to_parquet(
                 output_path=output_path,
+                num_threads=args.num_io_threads,
                 shuffle=shuffle,
                 out_files_per_proc=out_files_per_proc,
             )
     else:
         processor.transform(dataset).to_parquet(
             output_path=output_path,
+            num_threads=args.num_io_threads,
             shuffle=shuffle,
             out_files_per_proc=out_files_per_proc,
         )
