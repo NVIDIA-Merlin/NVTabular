@@ -214,6 +214,9 @@ def _transform_ddf(ddf, column_groups):
 
     columns = list(flatten(cg.flattened_columns for cg in column_groups))
 
+    # TODO: constructing meta like this loses dtype information on the ddf
+    # sets it all to 'float64'. We should propogate dtype information along
+    # with column names in the columngroup graph
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
