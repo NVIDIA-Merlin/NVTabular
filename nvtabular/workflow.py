@@ -261,7 +261,8 @@ def _transform_partition(root_gdf, column_groups):
         for column in column_group.flattened_columns:
             if column not in gdf:
                 raise ValueError(
-                    f"Failed to find {column} in output of {column_group}, which has columns {gdf.columns}"
+                    f"Failed to find {column} in output of {column_group}, which"
+                    f" has columns {gdf.columns}"
                 )
             output[column] = gdf[column]
     return output
