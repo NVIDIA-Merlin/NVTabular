@@ -251,13 +251,17 @@ def _transform_partition(root_gdf, column_groups):
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
             if gdf is None:
-                raise RuntimeError("Operator %s didn't return a value during transform" % column_group.op)
+                raise RuntimeError(
+                    "Operator %s didn't return a value during transform" % column_group.op
+                )
 
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
         for column in column_group.flattened_columns:
             if column not in gdf:
-                raise ValueError(f"Failed to find {column} in output of {column_group}, which has columns {gdf.columns}")
+                raise ValueError(
+                    f"Failed to find {column} in output of {column_group}, which has columns {gdf.columns}"
+                )
             output[column] = gdf[column]
     return output
