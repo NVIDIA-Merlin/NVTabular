@@ -172,7 +172,7 @@ class ColumnGroup:
 
     @property
     def _cols_repr(self):
-        cols = ", ".join(self.columns[:3])
+        cols = ", ".join(map(str, self.columns[:3]))
         if len(self.columns) > 3:
             cols += "..."
         return cols
