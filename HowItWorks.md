@@ -1,4 +1,4 @@
-How it Works
+How It Works
 ============
 
 ![NVTabular Workflow](./images/nvt_workflow.png)
