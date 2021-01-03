@@ -3,6 +3,8 @@ import cupy
 import numpy as np
 from scipy import stats
 from scipy.stats import powerlaw, uniform
+import string
+import random
 
 
 class UniformDistro:
@@ -66,6 +68,20 @@ class DatasetGen:
             ser.name = f"CAT_{x}"
             df = cudf.concat([df, ser], axis=1)
         return df
+    
+    def merge_cats_encoding(self, df, cats):
+        # set cats to dfs
+        df.join(cats, )
+    
+    def create_cat_entries(self, cardinality, min_size=1, max_size=5):
+        set_entries = []
+        while len(set_entries) < cardinality:
+            letters = string.ascii_letters + string.digits
+            entry_size = random.randint(min_size, max_size)
+            entry = ''.join(random.choice(letters) for i in range(entry_size))
+            if not in set_entries:
+                set_entries.append(entry)
+        return set_entries
 
     def create_df(self, size, num_conts, num_cats, cat_cardinality=[], dist=PowerLawDistro()):
         df = cudf.DataFrame()
@@ -83,3 +99,4 @@ class DatasetGen:
             sts.append(st_df)
             ps.append(p_df)
         return sts, ps
+    
