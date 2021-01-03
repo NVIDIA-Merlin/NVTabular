@@ -1,10 +1,11 @@
+import random
+import string
+
 import cudf
 import cupy
 import numpy as np
 from scipy import stats
 from scipy.stats import powerlaw, uniform
-import string
-import random
 
 
 class UniformDistro:
@@ -51,12 +52,13 @@ class DatasetGen:
             df = cudf.concat([df, ser], axis=1)
         return df
 
-    def create_cats(self, size, num_cols=1, cardinality=[1]):
+    def create_cats(self, size, num_cols=1, cardinality=[1], cats_rep=None):
         """
         size = number of rows
         num_cols = how many columns you want produced
         cardinality = a list of values representing the desired cardinalities for columns
-        dist = distribution type to use for creating columns ("powerlaw", "uniform")
+        cat_rep = a list of tuple values (min, max) representing the minimum and maximum
+                  categorical string length
         """
         # should alpha also be exposed? related to dist... should be part of that
         assert len(cardinality) == num_cols
@@ -65,29 +67,46 @@ class DatasetGen:
             ser = self.dist.create_col(
                 size, dtype=np.long, min_val=1.0, max_val=cardinality[x]
             ).ceil()
+            if cats_rep:
+                minn, maxx = cats_rep[x]
+                cat_names = self.create_cat_entries(cardinality[x], min_size=minn, max_size=maxx)
+                ser = self.merge_cats_encoding(ser, cat_names)
             ser.name = f"CAT_{x}"
             df = cudf.concat([df, ser], axis=1)
         return df
-    
-    def merge_cats_encoding(self, df, cats):
+
+    def merge_cats_encoding(self, ser, cats):
+        # df and cats are both series
         # set cats to dfs
-        df.join(cats, )
-    
+        ser = cudf.DataFrame({"vals": ser})
+        cats = cudf.DataFrame({"names": cats})
+        cats["vals"] = cats.index
+        ser = ser.merge(cats, on=["vals"], how="left")
+        return ser["names"]
+
     def create_cat_entries(self, cardinality, min_size=1, max_size=5):
         set_entries = []
         while len(set_entries) < cardinality:
             letters = string.ascii_letters + string.digits
             entry_size = random.randint(min_size, max_size)
-            entry = ''.join(random.choice(letters) for i in range(entry_size))
-            if not in set_entries:
+            entry = "".join(random.choice(letters) for i in range(entry_size))
+            if entry not in set_entries:
                 set_entries.append(entry)
         return set_entries
 
-    def create_df(self, size, num_conts, num_cats, cat_cardinality=[], dist=PowerLawDistro()):
+    def create_df(
+        self, size, num_conts, num_cats, cat_cardinality=[], dist=PowerLawDistro(), cats_rep=False
+    ):
         df = cudf.DataFrame()
         df = cudf.concat([df, self.create_conts(size, num_cols=num_conts)], axis=1)
         df = cudf.concat(
-            [df, self.create_cats(size, num_cols=num_cats, cardinality=cat_cardinality)], axis=1
+            [
+                df,
+                self.create_cats(
+                    size, num_cols=num_cats, cardinality=cat_cardinality, cats_rep=cats_rep
+                ),
+            ],
+            axis=1,
         )
         return df
 
@@ -99,4 +118,3 @@ class DatasetGen:
             sts.append(st_df)
             ps.append(p_df)
         return sts, ps
-    
