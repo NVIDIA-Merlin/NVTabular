@@ -170,44 +170,43 @@ class LabelCol(Col):
         self.cardinality = cardinality
 
 
-class DataGenSchema:
-    def _get_cols_from_schema(self, schema):
-        """
-        schema = a dictionary comprised of column information,
-                 where keys are column names, and the value
-                 contains spec info about column.
+def _get_cols_from_schema(schema):
+    """
+    schema = a dictionary comprised of column information,
+             where keys are column names, and the value
+             contains spec info about column.
 
-        Schema example
+    Schema example
 
-        conts:
-            col_name:
-                dtype:
-                min:
-                max:
-                mean:
-                standard deviation:
-                % NaNs:
-        cats:
-            col_name:
-                dtype:
-                cardinality:
-                max_entry_size:
-                min_entry_size:
-                avg_entry_size:
-                % NaNs:
-                multi_avg:
-                multi_min:
-                multi_max:
-        labels:
-            col_name:
-                dtype:
-                cardinality:
-                % NaNs:
-        """
-        cols = {}
-        executors = {"conts": ContCol, "cats": CatCol, "labels": LabelCol}
-        for section, vals in schema.items():
-            cols[section] = []
-            for col_name, val in vals.items():
-                cols.append(executor[section](**val).tupel())
-        return cols
+    conts:
+        col_name:
+            dtype:
+            min_val:
+            max_val:
+            mean:
+            standard deviation:
+            % NaNs:
+    cats:
+        col_name:
+            dtype:
+            cardinality:
+            max_entry_size:
+            min_entry_size:
+            avg_entry_size:
+            % NaNs:
+            multi_avg:
+            multi_min:
+            multi_max:
+    labels:
+        col_name:
+            dtype:
+            cardinality:
+            % NaNs:
+    """
+    cols = {}
+    executor = {"conts": ContCol, "cats": CatCol, "labels": LabelCol}
+    for section, vals in schema.items():
+        cols[section] = []
+        for col_name, val in vals.items():
+            cols[section].append(executor[section](**val).tupel())
+    return cols
