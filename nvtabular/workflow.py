@@ -107,7 +107,7 @@ class Workflow:
             if self.client:
                 results = [r.result() for r in self.client.compute(stats)]
             else:
-                results = dask.compute(stats, schedule="synchronous")[0]
+                results = dask.compute(stats, scheduler="synchronous")[0]
 
             for computed_stats, op in zip(results, ops):
                 op.fit_finalize(computed_stats)
@@ -214,6 +214,9 @@ def _transform_ddf(ddf, column_groups):
 
     columns = list(flatten(cg.flattened_columns for cg in column_groups))
 
+    # TODO: constructing meta like this loses dtype information on the ddf
+    # sets it all to 'float64'. We should propogate dtype information along
+    # with column names in the columngroup graph
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
@@ -247,10 +250,19 @@ def _transform_partition(root_gdf, column_groups):
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
+            if gdf is None:
+                raise RuntimeError(
+                    "Operator %s didn't return a value during transform" % column_group.op
+                )
 
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
         for column in column_group.flattened_columns:
+            if column not in gdf:
+                raise ValueError(
+                    f"Failed to find {column} in output of {column_group}, which"
+                    f" has columns {gdf.columns}"
+                )
             output[column] = gdf[column]
     return output

@@ -213,6 +213,7 @@ class Categorify(StatOperator):
         self.encode_type = encode_type
         self.search_sorted = search_sorted
         self.categories = {}
+        self.mh_columns = []
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -267,20 +268,26 @@ class Categorify(StatOperator):
             concat_groups=self.encode_type == "joint",
             name_sep=self.name_sep,
         )
-        return Delayed(key, dsk)
+        # TODO: we can't use the dtypes on the ddf here since they are incorrect
+        # so we're loading from the partitions. fix.
+        return Delayed(key, dsk), ddf.map_partitions(lambda gdf: gdf.dtypes)
 
     def fit_finalize(self, dask_stats):
-        for col in dask_stats:
-            self.categories[col] = dask_stats[col]
+        dtypes = dask_stats[1]
+        self.mh_columns = [col for col, dtype in zip(dtypes.index, dtypes) if is_list_dtype(dtype)]
+        categories = dask_stats[0]
+        for col in categories:
+            self.categories[col] = categories[col]
 
     def save(self):
-        return self.categories
+        return [self.categories, self.mh_columns]
 
     def load(self, data):
-        self.categories = data
+        self.categories, self.mh_columns = data
 
     def clear(self):
         self.categories = {}
+        self.mh_columns = []
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
     def transform(
@@ -324,13 +331,6 @@ class Categorify(StatOperator):
                 use_name = list(use_name)
 
             path = self.categories[storage_name]
-            """ TODO ??
-            if not self.column_groups and _is_list_col([name], gdf):
-                if "mh" not in columns_ctx["categorical"]:
-                    columns_ctx["categorical"]["mh"] = []
-                if name not in columns_ctx["categorical"]["mh"]:
-                    columns_ctx["categorical"]["mh"].append(name)
-            """
             new_gdf[name] = _encode(
                 use_name,
                 storage_name,
@@ -360,6 +360,9 @@ class Categorify(StatOperator):
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(self.categories, columns, self.num_buckets, self.freq_threshold)
 
+    def get_multihot_columns(self):
+        return self.mh_columns
+
 
 def _get_embedding_order(cat_names):
     """Returns a consistent sorder order for categorical variables
@@ -377,15 +380,28 @@ def get_embedding_sizes(workflow):
     # TODO: do we need to distinguish multihot columns here?  (if so why? )
     queue = [workflow.column_group]
     output = {}
+    multihot_columns = set()
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.columns))
+
+            if hasattr(current.op, "get_multihot_columns"):
+                multihot_columns.update(current.op.get_multihot_columns())
+
         elif not current.op:
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
-    return output
+
+    # TODO: returning differnt return types like this (based off the presence
+    # of multihot features) is pretty janky. fix.
+    if not multihot_columns:
+        return output
+
+    single_hots = {k: v for k, v in output.items() if k not in multihot_columns}
+    multi_hots = {k: v for k, v in output.items() if k in multihot_columns}
+    return single_hots, multi_hots
 
 
 def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
