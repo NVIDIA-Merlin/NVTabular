@@ -5,7 +5,7 @@ How It Works
 
 With the transition to v0.2 the NVTabular engine uses the [RAPIDS](http://www.rapids.ai) [Dask-cuDF library](https://github.com/rapidsai/dask-cuda) which provides the bulk of the functionality, accelerating dataframe operations on the GPU, and scaling across multiple GPUs.  NVTabular provides functionality commonly found in deep learning recommendation workflows, allowing you to focus on what you want to do with your data, not how you need to do it. We also provide a template for our core compute mechanism, Operations, or ‘ops’ allowing you to build your own custom ops from cuDF and other libraries.
 
-Follow our [getting started guide](https://nvidia.github.io/NVTabular/main/Introduction.html#getting-started) to get NVTabular installed on your container or system. Once installed, the next step is to define the preprocessing and feature engineering pipeline by applying the ops you need as defined in the following sections. 
+Follow our [getting started guide](https://nvidia.github.io/NVTabular/main/Introduction.html#getting-started) to get NVTabular installed on your container or system. Once installed, the next step is to define the preprocessing and feature engineering pipeline by applying the ops you need as defined in the following sections.
 
 Operations
 ----------
@@ -13,9 +13,9 @@ Operations are a reflection of the way in which compute happens on the GPU acros
 
 The second phase of operations is the transform phase, which uses the statistics created earlier to modify the dataset, transforming the data. Notably we allow for the application of transforms not only during the modification of the dataset, but also during dataloading, with plans to support the same transforms during inference.
 
-With the release of v0.4, we are extending our preprocessing and feature engineering workflows to be directed graphs of operators applied onto user defined groups of columns. Defining this graph is decoupled from the Workflow class, and let our users easily define complicated graphs of operations on their own custom defined sets of columns. Our Workflow is changed to adopt a similar API to that found with transformers in [scikit-learn](https://scikit-learn.org/stable/data_transforms.html): statistics will be calculated with a ‘fit’ method and applied with a ‘transform’ method. The NVTabular Dataset object is extended to handle both input and output of datasets with the ‘transform’ method of the workflow  taking an input Dataset and returning as output a transformed Dataset. 
+With the release of v0.4, we are extending our preprocessing and feature engineering workflows to be directed graphs of operators applied onto user defined groups of columns. Defining this graph is decoupled from the Workflow class, and lets our users easily define complicated graphs of operations on their own custom defined sets of columns. Our Workflow is changed to adopt a similar API to that found with transformers in [scikit-learn](https://scikit-learn.org/stable/data_transforms.html): statistics will be calculated with a ‘fit’ method and applied with a ‘transform’ method. The NVTabular Dataset object is extended to handle both input and output of datasets with the ‘transform’ method of the workflow  taking an input Dataset and returning as output a transformed Dataset.
 
-An op can be applied to a ColumnGroup from an overloaded >> operator, which in turn returns a new ColumnGroup, which further Operators can be applied on top of (see example below). A ColumnGroup is a list of string column names, and the operators work on every column in the ColumnGroup. 
+An op can be applied to a ColumnGroup from an overloaded >> operator, which returns a new ColumnGroup that more Operators can be applied to (see example below). A ColumnGroup is a list of string column names, and the operators work on every column in the ColumnGroup.
 
 In this example, CONT_COLUMNS represents a group of columns for continuous features. We can apply multiple ops basically by chaining the operators to CONT_COLUMNS to obtain transformed continuous features.
 
@@ -26,9 +26,9 @@ cont_features = CONT_COLUMNS >> <op1> >> <op2> >> ...
 
 A higher level of abstraction
 ----------------------
-NVTabular code is targeted at the operator level, not the dataframe level, providing a method for specifying the operation you want to perform, and the columns or type of data that you want to perform it on. We have two types of Operators. The base Operator class is responsible for transforming columns through a ‘transform’ method. This method takes a cudf dataframe object and list of columns to process, and return a transformed cudf dataframe object. The Operator class also declares what columns the operator produces via the ‘output_columns_names’ method, and declare what additional column groups it needs through a ‘dependencies’ method.   
+NVTabular code is targeted at the operator level, not the dataframe level, providing a method for specifying the operation you want to perform, and the columns or type of data that you want to perform it on. We have two types of Operators. The base Operator class is responsible for transforming columns through a ‘transform’ method. This method takes a cudf dataframe object and list of columns to process, and return a transformed cudf dataframe object. The Operator class also declares what columns the operator produces via the ‘output_columns_names’ method, and declare what additional column groups it needs through a ‘dependencies’ method.
 
-There is also a subclass StatOperator that has a ‘fit’ method to calculate statistics on a dask dataframe, a ‘finalize’ method to combine different statistics from various dask workers, as well as save/load methods to handle serialization.  
+There is also a subclass StatOperator that has a ‘fit’ method to calculate statistics on a dask dataframe, a ‘finalize’ method to combine different statistics from various dask workers, as well as save/load methods to handle serialization.
 
  We created a flexible method of defining the operators in our Workflow, which we treat as a directed acyclic graph of operators on set of columns. Operators take in a set of columns of the same type and perform the operation across each column, transforming the output during the final operation into a long tensor in the case of categorical variables or a float tensor in the case of continuous variables. Operators may also be chained to allow for more complex feature engineering or preprocessing. Chaining Operators to the ColumnGroup defines the graph necessary to produce the output dataset. All operators here work by replacing columns in a chain, i.e., transform the columns while retaining the same column names.
 
@@ -38,7 +38,7 @@ Here is a holistic example of the processing a workflow:
 import nvtabular as nvt
 from nvtabular import ops
 
-# define set of columns 
+# define set of columns
 cat_columns = ["user_id", "item_id", "city"],
 cont_columns = ["age", "time_of_day", "item_num_views"],
 label_column = ["label"]
@@ -49,7 +49,7 @@ cat_features = cat_columns >> ops.Categorify()
 cont_features = cont_columns >> ops.FillMissing() >> ops.Normalize()
 label_feature = label_column >> ops.LogOp()
 
-# A NVTabular workflow orchastrates the pipelines 
+# A NVTabular workflow orchastrates the pipelines
 # We create the NVTabular workflow with the output ColumnGroups
 proc = nvt.Workflow(cat_features + cont_features + label_feature)
 
@@ -73,7 +73,7 @@ Note that, we also developed a new operator, ‘Rename’, which can flexibly ha
 Framework Interoperability
 -----------------------
 
-In addition to providing mechanisms for transforming the data to prepare it for deep learning models we also provide framework-specific dataloaders to help optimize getting that data to the GPU.  Under a traditional dataloading scheme, data is read in item by item and collated into a batch. PyTorch allows for multiple processes to create many batches at the same time, however this still leads to many individual rows of tabular data accessed independently which impacts I/O, especially when this data is on the disk and not in CPU memory.  TensorFlow loads and shuffles TFRecords by adopting a windowed buffering scheme that loads data sequentially to a buffer, from which it randomly samples batches and replenishes with the next sequential elements from disk. Larger buffer sizes ensure more randomness, but can quickly bottleneck performance as TensorFlow tries to keep the buffer saturated. Smaller buffer sizes mean that datasets which aren't uniformly distributed on disk lead to biased sampling and potentially degraded convergence.  
+In addition to providing mechanisms for transforming the data to prepare it for deep learning models we also provide framework-specific dataloaders to help optimize getting that data to the GPU.  Under a traditional dataloading scheme, data is read in item by item and collated into a batch. PyTorch allows for multiple processes to create many batches at the same time, however this still leads to many individual rows of tabular data accessed independently which impacts I/O, especially when this data is on the disk and not in CPU memory.  TensorFlow loads and shuffles TFRecords by adopting a windowed buffering scheme that loads data sequentially to a buffer, from which it randomly samples batches and replenishes with the next sequential elements from disk. Larger buffer sizes ensure more randomness, but can quickly bottleneck performance as TensorFlow tries to keep the buffer saturated. Smaller buffer sizes mean that datasets which aren't uniformly distributed on disk lead to biased sampling and potentially degraded convergence.
 
 In NVTabular we provide an option to shuffle during dataset creation, creating a uniformly shuffled dataset allowing the dataloader to read in contiguous chunks of data that are already randomized across the entire dataset. NVTabular provides the option to control the number of chunks that are combined into a batch, allowing the end user flexibility when trading off between performance and true randomization.  This mechanism is critical when dealing with datasets that exceed CPU memory and per epoch shuffling is desired during training.  Full shuffle of such a dataset can exceed training time for the epoch by several orders of magnitude.
 
@@ -121,7 +121,7 @@ vector continuous features like pretrained embeddings. This support includes bas
 and feature engineering ability, as well as full support in the dataloaders for training models
 using these features with both TensorFlow and PyTorch.
 
-Multihots let you represent a set of categories as a single feature. For example, in a movie recommendation system each movie might 
+Multihots let you represent a set of categories as a single feature. For example, in a movie recommendation system each movie might
 have a list of genres associated with the movie like comedy, drama, horror or science fiction. Since movies can
 belong to more than one genre we can't use single-hot encoding like we are doing for scalar
 columns. Instead we train models with multihot embeddings for these features, with the deep
@@ -130,7 +130,7 @@ categories for each row.
 
 Both multihot categoricals and vector continuous features are represented using list columns in
 our datasets. cuDF has recently added support for list columns, and we're leveraging that support in NVTabular
-0.3 to power this feature. 
+0.3 to power this feature.
 
 We've added support to our Categorify and HashBucket operators to map list columns down to small
 contiguous integers suitable for use in an embedding lookup table. That is if you pass a dataset
@@ -144,7 +144,7 @@ column into two tensors representing the values and offsets into those values fo
 These tensors can be converted into RaggedTensors for multihot columns, and for vector continuous
 columns the offsets tensor can be safely ignored. We've provided a
 ```nvtabular.framework_utils.tensorflow.layers.DenseFeatures``` Keras layer that will
-automatically handle these conversions for both continuous and categorical columns. For PyTorch, 
+automatically handle these conversions for both continuous and categorical columns. For PyTorch,
 we've added support for multihot columns to our
 ```nvtabular.framework_utils.torch.models.Model``` class, which internally is using the PyTorch
 [EmbeddingBag](https://pytorch.org/docs/stable/generated/torch.nn.EmbeddingBag.html) layer to
@@ -166,7 +166,7 @@ NVTabular is designed with a specific type of dataset in mind. Ideally, the data
 3. Each parquet file consists of row-groups around 128MB in size
 4. Each parquet file is large enough to map onto an entire dask_cudf.DataFrame partition. This typically means >=1GB.
 5.  All parquet files should be located within a "root" directory, and that directory should contain a global "_metadata" file.
-*Note*: This "_metadata" file allows the dask_cudf client to produce a DataFrame collection much faster, because all metadata can be accessed from a single file. When this file is not present, the client needs to aggregate footer metadata from all files in the dataset. 
+*Note*: This "_metadata" file allows the dask_cudf client to produce a DataFrame collection much faster, because all metadata can be accessed from a single file. When this file is not present, the client needs to aggregate footer metadata from all files in the dataset.
 
 CSV files are support but not recommended, because they are not efficiently stored and loaded into memory compared to parquet files (columnar format).
 
@@ -197,7 +197,7 @@ pandas_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
 cudf_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
 ```
 
-The row group **memory** size of the parquet files should be lower than the **part_size** you set for the NVTabular dataset (like in ```nvt.Dataset(TRAIN_DIR, engine="parquet", part_size="1000MB"```). 
+The row group **memory** size of the parquet files should be lower than the **part_size** you set for the NVTabular dataset (like in ```nvt.Dataset(TRAIN_DIR, engine="parquet", part_size="1000MB"```).
 To know how much memory a row group will hold, you can slice your dataframe to a specific number of rows and use the following function to get the memory usage in bytes. Then, you can set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size of around 128MB is recommended in general.
 
 ```python
