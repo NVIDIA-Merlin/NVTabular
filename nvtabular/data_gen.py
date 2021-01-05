@@ -4,10 +4,9 @@ import string
 import cudf
 import cupy
 import numpy as np
+from cudf.core.column import as_column, build_column
 from scipy import stats
 from scipy.stats import powerlaw, uniform
-
-from cudf.core.column import as_column, build_column
 
 # from .utils import device_mem_size
 
