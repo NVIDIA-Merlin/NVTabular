@@ -220,31 +220,32 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         for keys, (hash_bucket_size, embedding_dim) in crosses.items():
             # if we're bucketizing the input we have to do more work here -
             if any(key.endswith("_bucketized") for key in keys):
-                bucket_columns, input_columns = [], []
+
+                cross_columns = []
                 for key in keys:
                     if key.endswith("_bucketized"):
                         key = key.replace("_bucketized", "")
                         if key in buckets:
-                            bucket_columns.append(
+                            cross_columns.append(
                                 [key] >> Bucketize(buckets[key][0]) >> Rename(postfix="_bucketized")
                             )
                         elif key in replaced_buckets:
-                            bucket_columns.append([key] >> Bucketize(replaced_buckets[key][0]))
+                            cross_columns.append([key] >> Bucketize(replaced_buckets[key][0]))
                         else:
                             raise RuntimeError("Unknown bucket column %s", key)
                     else:
-                        input_columns.append(key)
+                        cross_columns.append(nvt.ColumnGroup(key))
 
-                features += sum(bucket_columns, nvt.ColumnGroup(input_columns)) >> HashedCross(
+                features += sum(cross_columns[1:], cross_columns[0]) >> HashedCross(
                     hash_bucket_size
                 )
 
             else:
                 new_crosses[tuple(keys)] = hash_bucket_size
-                key = "_X_".join(keys)
-                new_feature_columns.append(
-                    _make_categorical_embedding(key, hash_bucket_size, embedding_dim)
-                )
+            key = "_X_".join(keys)
+            new_feature_columns.append(
+                _make_categorical_embedding(key, hash_bucket_size, embedding_dim)
+            )
 
         if new_crosses:
             features += new_crosses.keys() >> HashedCross(new_crosses)
