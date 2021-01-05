@@ -7,7 +7,9 @@ import numpy as np
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
-#from .utils import device_mem_size
+from cudf.core.column import as_column, build_column
+
+# from .utils import device_mem_size
 
 
 class UniformDistro:
@@ -25,13 +27,16 @@ class PowerLawDistro:
 
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
         gamma = 1 - self.alpha
-        ser = cudf.Series(cupy.random.uniform(0.0, 1.0, size=num_rows))
+        # to avoid using 0, which represents unknown, null, None
+        ser = cudf.Series(cupy.random.uniform(1.0, 2.0, size=num_rows))
         factor = (cupy.power(max_val, gamma) - cupy.power(min_val, gamma)) + cupy.power(
             min_val, gamma
         )
         ser = ser * factor.item()
         exp = 1.0 / gamma
         ser = ser.pow(exp)
+        # halving to account for 1.0 - 2.0 range
+        ser = ser // 2
         # add in nulls if requested
         # select indexes
         return ser.astype(dtype)
@@ -69,29 +74,32 @@ class DatasetGen:
                   minimum and maximum categorical string length
         """
         # should alpha also be exposed? related to dist... should be part of that
-
-        offs = None
         num_cols = len(cats_rep)
         df = cudf.DataFrame()
         for x in range(num_cols):
+            # if mh resets size
+            col_size = size
+            offs = None
             cardinality, minn, maxx = cats_rep[x][1:4]
             # calculate number of elements in each row for num rows
             mh_min, mh_max, mh_avg = cats_rep[x][6:]
             if mh_min and mh_max:
                 entrys_lens = self.dist.create_col(
-                    size, dtype=np.long, min_val=mh_min, max_val=mh_max
+                    col_size + 1, dtype=np.long, min_val=mh_min, max_val=mh_max
                 ).ceil()
-                size = entrys_lens.sum()
-                offs = cupy.cumsum(entrys_lens)
-            ser = self.dist.create_col(size, dtype=np.long, min_val=1.0, max_val=cardinality).ceil()
+                # sum returns numpy dtype
+                col_size = int(entrys_lens.sum())
+                offs = cupy.cumsum(entrys_lens.values)
+            ser = self.dist.create_col(
+                col_size, dtype=np.long, min_val=0, max_val=cardinality
+            ).ceil()
             if entries:
                 cat_names = self.create_cat_entries(cardinality, min_size=minn, max_size=maxx)
                 ser = self.merge_cats_encoding(ser, cat_names)
-            ser.name = f"CAT_{x}"
-            if offs:
+            if offs is not None:
                 # create multi_column from offs and ser
-                # TODO: remove stub
-                pass
+                ser = self.create_multihot_col(offs, ser)
+            ser.name = f"CAT_{x}"
             df = cudf.concat([df, ser], axis=1)
         return df
 
@@ -125,6 +133,21 @@ class DatasetGen:
             if entry not in set_entries:
                 set_entries.append(entry)
         return set_entries
+
+    def create_multihot_col(self, offsets, data):
+        """
+        offsets = cudf series with offset values for list data
+        data = cudf series with the list data flattened to 1-d
+        """
+        offs = as_column(offsets, dtype="int32")
+        encoded = as_column(data)
+        col = build_column(
+            None,
+            size=offs.size - 1,
+            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
+            children=(offs, encoded),
+        )
+        return cudf.Series(col)
 
     def create_df(
         self,
@@ -183,23 +206,23 @@ class CatCol(Col):
         self,
         dtype,
         cardinality,
-        max_entry_size=None,
         min_entry_size=None,
+        max_entry_size=None,
         avg_entry_size=None,
         per_nan=None,
-        multi_avg=None,
         multi_min=None,
         multi_max=None,
+        multi_avg=None,
     ):
         self.dtype = dtype
         self.cardinality = cardinality
-        self.max_entry_size = max_entry_size
         self.min_entry_size = min_entry_size
+        self.max_entry_size = max_entry_size
         self.avg_entry_size = avg_entry_size
         self.per_nan = None
-        self.multi_avg = multi_avg
         self.multi_min = multi_min
         self.multi_max = multi_max
+        self.multi_avg = multi_avg
 
 
 class LabelCol(Col):
@@ -228,13 +251,14 @@ def _get_cols_from_schema(schema):
         col_name:
             dtype:
             cardinality:
-            max_entry_size:
             min_entry_size:
+            max_entry_size:
             avg_entry_size:
             % NaNs:
-            multi_avg:
             multi_min:
             multi_max:
+            multi_avg:
+
     labels:
         col_name:
             dtype:
