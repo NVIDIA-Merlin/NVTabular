@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 import nvtabular as nvt
-from nvtabular.ops import Rename
+from nvtabular.ops import Bucketize, Categorify, HashBucket, HashedCross, Rename
 
 
 def _make_categorical_embedding(name, vocab_size, embedding_dim):
@@ -86,7 +86,6 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             cat_names.extend(column.key)
         else:
             cont_names.extend(column.key)
-    # workflow = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=[label_name])
 
     _CATEGORIFY_COLUMNS = (fc.VocabularyListCategoricalColumn, fc.VocabularyFileCategoricalColumn)
     categorifies, hashes, crosses, buckets, replaced_buckets = {}, {}, {}, {}, {}
@@ -164,7 +163,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             keys = []
             for key in cat_column.keys:
                 if isinstance(key, fc.BucketizedColumn):
-                    keys.append(key.source_column.key + "_Bucketize")
+                    keys.append(key.source_column.key + "_bucketized")
                 elif isinstance(key, str):
                     keys.append(key)
                 else:
@@ -187,62 +186,73 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             _make_categorical_embedding(key, cat_column.num_buckets, embedding_dim)
         )
 
+    features = nvt.ColumnGroup(label_name)
+
     if len(buckets) > 0:
         new_buckets = {}
         for key, (boundaries, embedding_dim) in buckets.items():
             new_feature_columns.append(
-                _make_categorical_embedding(key + "_Bucketize", len(boundaries) + 1, embedding_dim)
+                _make_categorical_embedding(key + "_bucketized", len(boundaries) + 1, embedding_dim)
             )
             new_buckets[key] = boundaries
-        # workflow.add_cont_feature(nvt.ops.Bucketize(new_buckets, replace=False))
-        bucket_cont_names = list(new_buckets.keys())
-        bucketized_features = (
-            bucket_cont_names >> nvt.ops.Bucketize(new_buckets) >> Rename(postfix="_Bucketize")
-        )
 
-    # commenting out for now due to flake8 error.
-    # if len(replaced_buckets) > 0:
-    #     new_replaced_buckets = {}
-    #     for key, (boundaries, embedding_dim) in replaced_buckets.items():
-    #         new_feature_columns.append(
-    #             _make_categorical_embedding(key, len(boundaries) + 1, embedding_dim)
-    #         )
-    #         new_replaced_buckets[key] = boundaries
-    #     # workflow.add_cont_preprocess(nvt.ops.Bucketize(new_replaced_buckets, replace=True))
-    #     replaced_buckets_names = list(new_replaced_buckets.keys())
-    #     rep_bucketized_features=replaced_buckets_names >> nvt.ops.Bucketize(new_replaced_buckets)
+        features += new_buckets.keys() >> Bucketize(new_buckets) >> Rename(postfix="_bucketized")
+
+    if len(replaced_buckets) > 0:
+        new_replaced_buckets = {}
+        for key, (boundaries, embedding_dim) in replaced_buckets.items():
+            new_feature_columns.append(
+                _make_categorical_embedding(key, len(boundaries) + 1, embedding_dim)
+            )
+            new_replaced_buckets[key] = boundaries
+        features += new_replaced_buckets.keys() >> Bucketize(new_replaced_buckets)
 
     if len(categorifies) > 0:
-        # workflow.add_cat_feature(nvt.ops.Categorify(columns=[key for key in categorifies.keys()]))
-        categ_columns = [key for key in categorifies.keys()]
-        cat_features = categ_columns >> nvt.ops.Categorify()
+        features += categorifies.keys() >> Categorify()
 
-    # just commenting out for now since the nb does not do hashing.
-    # if len(hashes) > 0:
-    #     #workflow.add_cat_feature(nvt.ops.HashBucket(hashes))
+    if len(hashes) > 0:
+        features += hashes.keys() >> HashBucket(hashes)
 
     if len(crosses) > 0:
         # need to check if any bucketized columns are coming from
         # the bucketized version or the raw version
         new_crosses = {}
         for keys, (hash_bucket_size, embedding_dim) in crosses.items():
-            new_keys = []
-            for key in keys:
-                if key.endswith("_Bucketize") and key in replaced_buckets:
-                    key = key.replace("_Bucketize", "")
-                new_keys.append(key)
-            new_crosses[tuple(new_keys)] = hash_bucket_size
+            # if we're bucketizing the input we have to do more work here -
+            if any(key.endswith("_bucketized") for key in keys):
+                bucket_columns, input_columns = [], []
+                for key in keys:
+                    if key.endswith("_bucketized"):
+                        key = key.replace("_bucketized", "")
+                        if key in buckets:
+                            bucket_columns.append(
+                                [key] >> Bucketize(buckets[key][0]) >> Rename(postfix="_bucketized")
+                            )
+                        elif key in replaced_buckets:
+                            bucket_columns.append([key] >> Bucketize(replaced_buckets[key][0]))
+                        else:
+                            raise RuntimeError("Unknown bucket column %s", key)
+                    else:
+                        input_columns.append(key)
 
-            key = "_X_".join(new_keys)
-            new_feature_columns.append(
-                _make_categorical_embedding(key, hash_bucket_size, embedding_dim)
-            )
+                features += sum(bucket_columns, nvt.ColumnGroup(input_columns)) >> HashedCross(
+                    hash_bucket_size
+                )
 
-        # workflow.add_cat_preprocess(nvt.ops.HashedCross(new_crosses))
-        hashed_cross_features = [new_keys] >> nvt.ops.HashedCross(hash_bucket_size)
+            else:
+                new_crosses[tuple(keys)] = hash_bucket_size
+                key = "_X_".join(keys)
+                new_feature_columns.append(
+                    _make_categorical_embedding(key, hash_bucket_size, embedding_dim)
+                )
 
-    # workflow.finalize()
-    workflow = nvt.Workflow(bucketized_features + cat_features + hashed_cross_features + label_name)
+        if new_crosses:
+            features += new_crosses.keys() >> HashedCross(new_crosses)
+
+    if numeric_columns:
+        features += [col.key for col in numeric_columns]
+
+    workflow = nvt.Workflow(features)
 
     # create stats for Categorify op if we need it
     if len(categorifies) > 0:
