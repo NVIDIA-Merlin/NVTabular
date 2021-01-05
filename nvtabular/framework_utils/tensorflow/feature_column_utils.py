@@ -196,7 +196,10 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             )
             new_buckets[key] = boundaries
 
-        features += new_buckets.keys() >> Bucketize(new_buckets) >> Rename(postfix="_bucketized")
+        features_buckets = (
+            new_buckets.keys() >> Bucketize(new_buckets) >> Rename(postfix="_bucketized")
+        )
+        features += features_buckets
 
     if len(replaced_buckets) > 0:
         new_replaced_buckets = {}
@@ -205,7 +208,8 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                 _make_categorical_embedding(key, len(boundaries) + 1, embedding_dim)
             )
             new_replaced_buckets[key] = boundaries
-        features += new_replaced_buckets.keys() >> Bucketize(new_replaced_buckets)
+        features_replaced_buckets = new_replaced_buckets.keys() >> Bucketize(new_replaced_buckets)
+        features += features_replaced_buckets
 
     if len(categorifies) > 0:
         features += categorifies.keys() >> Categorify()
@@ -220,17 +224,25 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         for keys, (hash_bucket_size, embedding_dim) in crosses.items():
             # if we're bucketizing the input we have to do more work here -
             if any(key.endswith("_bucketized") for key in keys):
-
                 cross_columns = []
                 for key in keys:
                     if key.endswith("_bucketized"):
+                        bucketized_cols = []
+                        bucketized_cols.append(key)
                         key = key.replace("_bucketized", "")
                         if key in buckets:
-                            cross_columns.append(
-                                [key] >> Bucketize(buckets[key][0]) >> Rename(postfix="_bucketized")
-                            )
+                            # find if there are different columns
+                            diff_col = list(set(features_buckets.columns) ^ set(bucketized_cols))
+                            if diff_col:
+                                features_buckets.columns.remove(diff_col[0])
+                            cross_columns.append(features_buckets)
                         elif key in replaced_buckets:
-                            cross_columns.append([key] >> Bucketize(replaced_buckets[key][0]))
+                            diff_col = list(
+                                set(features_replaced_buckets.columns) ^ set(bucketized_cols)
+                            )
+                            if diff_col:
+                                features_replaced_buckets.columns.remove(diff_col[0])
+                            cross_columns.append(features_replaced_buckets)
                         else:
                             raise RuntimeError("Unknown bucket column %s", key)
                     else:
