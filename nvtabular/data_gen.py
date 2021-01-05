@@ -67,15 +67,27 @@ class DatasetGen:
                   minimum and maximum categorical string length
         """
         # should alpha also be exposed? related to dist... should be part of that
+        
+        offs = None
         num_cols = len(cats_rep)
         df = cudf.DataFrame()
         for x in range(num_cols):
             cardinality, minn, maxx = cats_rep[x][1:4]
+            # calculate number of elements in each row for num rows
+            mh_min, mh_max, mh_avg = cats_rep[x][6:]
+            if mh_min and mh_max:
+                entrys_lens = self.dist.create_col(size, dtype=np.long, min_val=mh_min, max_val=mh_max).ceil()
+                size = entrys_lens.sum()
+                offs = cupy.cumsum(entrys_lens)
             ser = self.dist.create_col(size, dtype=np.long, min_val=1.0, max_val=cardinality).ceil()
             if entries:
                 cat_names = self.create_cat_entries(cardinality, min_size=minn, max_size=maxx)
                 ser = self.merge_cats_encoding(ser, cat_names)
             ser.name = f"CAT_{x}"
+            if offs:
+                #create multi_column from offs and ser
+                #TODO: remove stub 
+                pass
             df = cudf.concat([df, ser], axis=1)
         return df
 
