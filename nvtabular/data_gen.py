@@ -7,7 +7,7 @@ import numpy as np
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
-from .utils import device_mem_size
+#from .utils import device_mem_size
 
 
 class UniformDistro:
