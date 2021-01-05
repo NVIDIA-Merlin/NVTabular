@@ -42,7 +42,7 @@ class Bucketize(Operator):
 
     def __init__(self, boundaries):
         # transform boundaries into a lookup function on column names
-        if isinstance(boundaries, int):
+        if isinstance(boundaries, (list, tuple)):
             self.boundaries = lambda col: boundaries
         elif isinstance(boundaries, dict):
             self.boundaries = lambda col: boundaries[col]
@@ -50,7 +50,7 @@ class Bucketize(Operator):
             self.boundaries = boundaries
         else:
             raise TypeError(
-                "`boundaries` must be dict, callable, or int, got type {}".format(type(boundaries))
+                "`boundaries` must be dict, callable, or list, got type {}".format(type(boundaries))
             )
         super().__init__()
 

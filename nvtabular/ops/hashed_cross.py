@@ -46,19 +46,35 @@ class HashedCross(Operator):
 
     def __init__(self, num_buckets):
         super().__init__()
+        if not isinstance(num_buckets, (int, dict)):
+            raise ValueError(
+                "num_buckets should be an int or dict, found %s", num_buckets.__class__
+            )
+
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, gdf: cudf.DataFrame):
         new_gdf = cudf.DataFrame()
-        for cross in columns:
+        for cross in _nest_columns(columns):
             val = 0
             for column in cross:
                 val ^= gdf[column].hash_values()  # or however we want to do this aggregation
-            # TODO: support different size buckets per cross
-            val = val % self.num_buckets
+
+            if isinstance(self.num_buckets, dict):
+                val = val % self.num_buckets[cross]
+            else:
+                val = val % self.num_buckets
             new_gdf["_X_".join(cross)] = val
         return new_gdf
 
     def output_column_names(self, columns):
-        return ["_X_".join(cross) for cross in columns]
+        return ["_X_".join(cross) for cross in _nest_columns(columns)]
+
+
+def _nest_columns(columns):
+    # if we have a list of flat column names, lets cross the whole group
+    if all(isinstance(col, str) for col in columns):
+        return [tuple(columns)]
+    else:
+        return columns
