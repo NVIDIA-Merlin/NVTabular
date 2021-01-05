@@ -7,6 +7,8 @@ import numpy as np
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
+from .utils import device_mem_size
+
 
 class UniformDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
@@ -93,6 +95,18 @@ class DatasetGen:
             df = cudf.concat([df, ser], axis=1)
         return df
 
+    def create_labels(self, size, labs_rep):
+        num_cols = len(labs_rep)
+        df = cudf.DataFrame()
+        for x in range(num_cols):
+            cardinality = labs_rep[x][1]
+            ser = self.dist.create_col(size, dtype=np.long, min_val=1, max_val=cardinality).ceil()
+            # bring back down to correct representation because of ceil call
+            ser = ser - 1
+            ser.name = f"LAB_{x}"
+            df = cudf.concat([df, ser], axis=1)
+        return df
+
     def merge_cats_encoding(self, ser, cats):
         # df and cats are both series
         # set cats to dfs
@@ -104,7 +118,7 @@ class DatasetGen:
 
     def create_cat_entries(self, cardinality, min_size=1, max_size=5):
         set_entries = []
-        while len(set_entries) < cardinality:
+        while len(set_entries) <= cardinality:
             letters = string.ascii_letters + string.digits
             entry_size = random.randint(min_size, max_size)
             entry = "".join(random.choice(letters) for i in range(entry_size))
@@ -112,7 +126,15 @@ class DatasetGen:
                 set_entries.append(entry)
         return set_entries
 
-    def create_df(self, size, conts_rep, cats_rep, dist=PowerLawDistro(), entries=False):
+    def create_df(
+        self,
+        size,
+        conts_rep=None,
+        cats_rep=None,
+        labs_rep=None,
+        dist=PowerLawDistro(),
+        entries=False,
+    ):
         df = cudf.DataFrame()
         if conts_rep:
             df = cudf.concat([df, self.create_conts(size, conts_rep)], axis=1)
@@ -124,6 +146,8 @@ class DatasetGen:
                 ],
                 axis=1,
             )
+        if labs_rep:
+            df = cudf.concat([df, self.create_labels(size, labs_rep)], axis=1)
         return df
 
     def verify_df(self, df_to_verify):
@@ -218,7 +242,7 @@ def _get_cols_from_schema(schema):
             % NaNs:
     """
     cols = {}
-    executor = {"conts": ContCol, "cats": CatCol, "labels": LabelCol}
+    executor = {"conts": ContCol, "cats": CatCol, "labs": LabelCol}
     for section, vals in schema.items():
         cols[section] = []
         for col_name, val in vals.items():
