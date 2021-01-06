@@ -46,9 +46,15 @@ class PowerLawDistro:
 
 
 class DatasetGen:
-    def __init__(self, distribution):
+    def __init__(self, distribution, gpu_frac=1.0):
+        """
+        distribution = A Distribution Class (powerlaw, uniform)
+        gpu_frac = float between 0 - 1, representing fraction of gpu
+                    to use for Dataset Generation
+        """
         assert distribution is not None
         self.dist = distribution
+        self.gpu_frac = gpu_frac
 
     # need to be able to generate from scratch
     def create_conts(self, size, conts_rep):
@@ -226,7 +232,7 @@ class DatasetGen:
 
     def get_max_rows(self, row_size):
         # grab max amount of gpu memory
-        gpu_mem = device_mem_size()
+        gpu_mem = device_mem_size() * self.gpu_frac
         # find # of rows fit in gpu memory
         return gpu_mem // row_size
 
