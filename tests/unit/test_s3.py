@@ -75,4 +75,4 @@ def test_s3_dataset(s3, paths, engine, df):
     cats = cat_names >> ops.Categorify(cat_cache="host")
 
     processor = nvt.Workflow(conts + cats + label_name)
-    processor.fit(dataset)
+    processor.fit_transform(dataset).to_parquet(output_path=output_dir)

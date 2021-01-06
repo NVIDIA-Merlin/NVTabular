@@ -123,7 +123,7 @@ class ParquetWriter(ThreadedWriter):
         else:
             fn = f"{i}.parquet"
 
-        return self.fs.sep.join(self.out_dir, fn)
+        return self.fs.sep.join([self.out_dir, fn])
 
     def _get_or_create_writer(self, idx):
         # lazily initializes a writer for the given index
