@@ -74,7 +74,7 @@ conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7
 
 #### Amazon Web Services (AWS)
 
-Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x or 8x GPU instances (or multi-node setup). This example uses an EC2 instance with 8x NVIDIA A100 GPUs. Please checkout the $/h for instance types and adjust it. 
+Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x or 8x GPU instances (or multi-node setup). This example uses an EC2 instance with 8x NVIDIA A100 GPUs. Please checkout the $/h for this instance type and adjust the type. 
 
 1. Start AWS EC2 instance with [NVIDIA Deep Learning AMI image](https://aws.amazon.com/marketplace/pp/NVIDIA-NVIDIA-Deep-Learning-AMI/B076K31M1S) using aws-cli.
 
