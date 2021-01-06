@@ -80,7 +80,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             batch_size,
             shuffle,
             parts_per_chunk=parts_per_chunk,
-            workflows=None,
             devices=devices,
         )
 

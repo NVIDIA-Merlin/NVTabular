@@ -20,39 +20,30 @@ import pyarrow as pa
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .operator import ALL
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class JoinExternal(TransformOperator):
+class JoinExternal(Operator):
     """
     Join each dataset partition to an external table. For performance
     reasons, only "left" and "inner" join transformations are supported.
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
         # Load dataset which should be joined to the main dataset
         df_external = cudf.read_parquet('external.parquet')
 
-        # Add JoinExternal to the workflow
-        proc.add_preprocess(
-            nvt.ops.JoinExternal(
-                df_external,
-                on=['key1', 'key2'],
-                on_ext=['key1_ext', 'key2_ext'],
-                how='left',
-                columns_ext=['key1_ext', 'key2_ext', 'cat1', 'cat2', 'num1'],
-                kind_ext='cudf',
-                cache='device'
-            )
-        )
+        # Use JoinExternal to define a NVTabular workflow
+        joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
+            df_ext,
+            on=['key1', 'key2'],
+            on_ext=['key1_ext', 'key2_ext'],
+            how='left',
+            columns_ext=['key1_ext', 'key2_ext', 'cat1', 'cat2', 'num1'],
+            kind_ext='cudf',
+            cache='device'
+        ) >> ...
+        processor = nvtabular.Workflow(joined)
 
     Parameters
     -----------
@@ -77,9 +68,6 @@ class JoinExternal(TransformOperator):
         if the data is originally stored on disk.
     """
 
-    default_in = ALL
-    default_out = ALL
-
     def __init__(
         self,
         df_ext,
@@ -92,7 +80,7 @@ class JoinExternal(TransformOperator):
         cache="host",
         **kwargs,
     ):
-        super().__init__(replace=False)
+        super(JoinExternal).__init__()
         self.on = on
         self.df_ext = df_ext
         self.on_ext = on_ext or self.on
@@ -144,15 +132,11 @@ class JoinExternal(TransformOperator):
 
         return _ext
 
-    def apply_op(
+    def transform(
         self,
+        columns,
         gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
     ):
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
         new_gdf = gdf.merge(self._ext, left_on=self.on, right_on=self.on_ext, how=self.how)
@@ -160,8 +144,12 @@ class JoinExternal(TransformOperator):
         new_gdf.drop(columns=[tmp], inplace=True)
         gdf.drop(columns=[tmp], inplace=True)
         new_gdf.reset_index(drop=True, inplace=True)
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
+
+    def output_column_names(self, columns):
+        if self.columns_ext:
+            return list(set(columns + self.columns_ext))
+        return list(set(columns + list(self._ext.columns)))
 
 
 def _detect_format(data):
