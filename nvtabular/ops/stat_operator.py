@@ -18,33 +18,33 @@ from .operator import Operator
 
 class StatOperator(Operator):
     """
-    Base class for statistical operator classes.
+    Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
+    on top of
     """
 
-    def __init__(self, columns=None):
-        super(StatOperator, self).__init__(columns)
-        self._ddf_out = None
+    def __init__(self):
+        super(StatOperator, self).__init__()
 
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def fit(self, columns, ddf):
         raise NotImplementedError(
             """The dask operations needed to return a dictionary of uncomputed statistics."""
         )
 
-    def finalize(self, dask_stats):
+    def fit_finalize(self, dask_stats):
         raise NotImplementedError(
             """Follow-up operations to convert dask statistics in to member variables"""
         )
 
-    def registered_stats(self):
-        raise NotImplementedError(
-            """Should return a list of statistics this operator will collect.
-                The list is comprised of simple string values."""
-        )
+    def save(self):
+        """Returns a json-able representation of the statistics for this object. This
+        is usually called by the workflow rather than diretly"""
+        raise NotImplementedError("save isn't implemented for this op!")
 
-    def stats_collected(self):
-        raise NotImplementedError(
-            """Should return a list of tuples of name and statistics operator."""
-        )
+    def load(self, data):
+        """Loads statistics from a json-able blob of data. This is usually called
+        by the workflow rather than called directly"""
+        raise NotImplementedError("load isn't implemented for this op!")
 
     def clear(self):
-        raise NotImplementedError("""zero and reinitialize all relevant statistical properties""")
+        """ zero and reinitialize all relevant statistical properties"""
+        raise NotImplementedError("clear isn't implemented for this op!")
