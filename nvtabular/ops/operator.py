@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import warnings
-
-CONT = "continuous"
-CAT = "categorical"
-ALL = "all"
 
 
 class Operator:
@@ -25,38 +20,53 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def __init__(self, columns=None):
-        self.columns = columns
-        self._id_set = None
+    def transform(self, columns, gdf):
+        """Transform the dataframe by applying this operator to the set of input columns
 
-    @property
-    def _id(self):
-        c_id = self._id_set
-        if not self._id_set:
-            c_id = str(self.__class__.__name__)
-        return c_id
+        Parameters
+        -----------
+        columns: list of str or list of list of str
+            The columns to apply this operator to
+        gdf: Dataframe
+            A cudf dataframe that this operator will work on
 
-    def _set_id(self, id_to_set):
-        # only set one time
-        if not self._id_set:
-            self._id_set = id_to_set
-        else:
-            warnings.warn(
-                f"trying to reset operator id, for operator: {self._id_set} to {id_to_set}"
-            )
+        Returns
+        -------
+        Dataframe
+            Returns a transformed dataframe for this operator
 
-    def describe(self):
-        raise NotImplementedError("All operators must have a desription.")
+        """
+        raise NotImplementedError
 
-    def get_columns(self, cols_ctx, cols_grp, target_cols):
-        # providing any operator with direct list of columns overwrites cols dict
-        # burden on user to ensure columns exist in dataset (as discussed)
-        if self.columns:
-            return self.columns
-        tar_cols = []
-        for tar in target_cols:
-            if tar in cols_ctx[cols_grp].keys():
-                tar_cols = tar_cols + cols_ctx[cols_grp][tar]
-        if len(tar_cols) < 1:
-            tar_cols = cols_ctx[cols_grp]["base"]
-        return tar_cols
+    def output_column_names(self, columns):
+        """Given a set of columns names returns the names of the transformed columns this
+        operator will produce
+
+        Parameters
+        -----------
+        columns: list of str, or list of list of str
+            The columns to apply this operator to
+
+        Returns
+        -------
+        list of str, or list of list of str
+            The names of columns produced by this operator
+
+        """
+        return columns
+
+    def dependencies(self):
+        """Defines an optional list of column dependencies for this operator. This lets you consume columns
+        that aren't part of the main transformation workflow.
+
+        Returns
+        -------
+        str, list of str, ColumnGroup or None
+            Extra dependencies of this operator. Defaults to None
+        """
+        return None
+
+    def __rrshift__(self, other):
+        import nvtabular
+
+        return nvtabular.ColumnGroup(other) >> self
