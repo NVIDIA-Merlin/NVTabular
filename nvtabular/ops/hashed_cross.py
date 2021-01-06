@@ -16,42 +16,65 @@
 import cudf
 from nvtx import annotate
 
-from .operator import CAT
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class HashedCross(TransformOperator):
-    """"""
+class HashedCross(Operator):
+    """
+    This ops creates hashed cross columns by first combining categorical features
+    and hashing the combined feature then modulating by the number of
+    buckets.
 
-    default_in = CAT
-    default_out = CAT
+    Example usage::
 
-    def __init__(self, crosses, num_buckets=None, **kwargs):
-        if isinstance(crosses, dict):
-            cross_sets = list(crosses.keys())
-            num_buckets = [crosses[c] for c in cross_sets]
-            crosses = cross_sets
-        else:
-            if num_buckets is None:
-                raise ValueError("Must provide `num_buckets` if crosses is not dict")
-            assert len(num_buckets) == len(crosses)
-        assert all([isinstance(c, (tuple, list)) for c in crosses])
-        assert all([len(c) > 1 for c in crosses])
+        # Define parameters
+        cat_names = [["name-string", "id"]]
+        num_buckets = 10
 
-        kwargs["replace"] = False
-        kwargs["columns"] = list(set([i for j in crosses for i in j]))
-        super().__init__(**kwargs)
+        # Use HashedCross operator to define NVTabular workflow
+        hashed_cross = cat_names >> ops.HashedCross(num_buckets)
+        processor = nvtabular.Workflow(hashed_cross)
 
-        self.crosses = crosses
+    Parameters
+    ----------
+    num_buckets : int
+        Column-wise modulo to apply after hash function. Note that this
+        means that the corresponding value will be the categorical cardinality
+        of the transformed categorical feature. That value will be used as the
+        number of "hash buckets" for every output feature.
+    """
+
+    def __init__(self, num_buckets):
+        super().__init__()
+        if not isinstance(num_buckets, (int, dict)):
+            raise ValueError(
+                "num_buckets should be an int or dict, found %s", num_buckets.__class__
+            )
+
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
+    def transform(self, columns, gdf: cudf.DataFrame):
         new_gdf = cudf.DataFrame()
-        for columns, bucket_size in zip(self.crosses, self.num_buckets):
+        for cross in _nest_columns(columns):
             val = 0
-            for column in columns:
+            for column in cross:
                 val ^= gdf[column].hash_values()  # or however we want to do this aggregation
-            val = val % bucket_size
-            new_gdf["_X_".join(columns)] = val
+
+            if isinstance(self.num_buckets, dict):
+                val = val % self.num_buckets[cross]
+            else:
+                val = val % self.num_buckets
+            new_gdf["_X_".join(cross)] = val
         return new_gdf
+
+    def output_column_names(self, columns):
+        return ["_X_".join(cross) for cross in _nest_columns(columns)]
+
+
+def _nest_columns(columns):
+    # if we have a list of flat column names, lets cross the whole group
+    if all(isinstance(col, str) for col in columns):
+        return [tuple(columns)]
+    else:
+        return columns
