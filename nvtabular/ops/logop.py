@@ -39,4 +39,4 @@ class LogOp(Operator):
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, gdf: cudf.DataFrame):
-        return (gdf[cont_names].astype(np.float32) + 1).log()
+        return (gdf[columns].astype(np.float32) + 1).log()
