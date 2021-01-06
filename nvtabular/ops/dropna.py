@@ -16,48 +16,30 @@
 import cudf
 from nvtx import annotate
 
-from .operator import ALL
-from .transform_operator import TransformOperator
+from .operator import Operator
 
 
-class Dropna(TransformOperator):
+class Dropna(Operator):
     """
     This operation detects missing values, and filters out rows with null values.
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add Dropna to the workflow and specify which columns to apply to
+        # Use Dropna to define a NVTabular workflow
         # Default is None and will check all columns
-        proc.add_preprocess(nvt.ops.Dropna(columns=['cat1', 'num1']))
+        dropna_features = ['cat1', 'num1'] >> ops.Dropna() >> ...
+        processor = nvtabular.Workflow(dropna_features)
 
     Parameters
     ----------
-    columns : list of str, default None
-        Columns to target for this op. If None, this operator will check all columns
-        for null values.
     """
 
-    default_in = ALL
-    default_out = ALL
-
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
+    def transform(
         self,
+        columns,
         gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
     ):
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
-        new_gdf = gdf.dropna(subset=target_columns or None)
+        new_gdf = gdf.dropna(subset=columns or None)
         new_gdf.reset_index(drop=True, inplace=True)
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf

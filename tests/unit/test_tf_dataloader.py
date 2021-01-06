@@ -81,14 +81,15 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
 
     columns = cont_names + cat_names
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_feature([ops.FillMedian()])
-    processor.add_feature(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
+
+    workflow = nvt.Workflow(conts + cats + label_name)
+    workflow.fit(dataset)
+    workflow.transform(dataset).to_parquet(tmpdir + "/processed")
 
     data_itr = tf_dataloader.KerasSequenceLoader(
-        paths if use_paths else dataset,
+        str(tmpdir + "/processed"),  # workflow.transform(dataset),
         cat_names=cat_names,
         cont_names=cont_names,
         batch_size=batch_size,
@@ -98,8 +99,6 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         shuffle=False,
     )
     _ = tf.random.uniform((1,))
-    processor.update_stats(dataset)
-    data_itr.map(processor)
 
     rows = 0
     for idx in range(len(data_itr)):
@@ -188,19 +187,17 @@ def test_mh_support(tmpdir, batch_size):
     cont_names = ["Embedding"]
     label_name = ["Post"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_preprocess(ops.HashBucket(num_buckets=10))
-    processor.finalize()
+    cats = cat_names >> ops.HashBucket(num_buckets=10)
+    workflow = nvt.Workflow(cats + cont_names + label_name)
 
     data_itr = tf_dataloader.KerasSequenceLoader(
-        nvt.Dataset(df),
+        workflow.transform(nvt.Dataset(df)),
         cat_names=cat_names,
         cont_names=cont_names,
         label_names=label_name,
         batch_size=batch_size,
         shuffle=False,
     )
-    data_itr.map(processor)
 
     idx = 0
     for X, y in data_itr:
