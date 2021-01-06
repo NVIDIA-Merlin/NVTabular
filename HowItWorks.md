@@ -170,8 +170,18 @@ CSV files are support but not recommended, because they are not efficiently stor
 
 #### Troubleshooting
 
+##### Checking the schema of parquet files	
+NVTabular expects that all input parquet files have the same schema (including column types and nullable (not null) option).	
+If you get the error `RuntimeError: Schemas are inconsistent, try using to_parquet(..., schema="infer"), or pass an explicit pyarrow schema. Such as to_parquet(..., schema={"column1": pa.string()})` when you load the dataset as below, some parquet file might have a different schema:	
+```python	
+ds = nvt.Dataset(PATH, engine="parquet", part_size="1000MB")	
+ds.to_ddf().head()	
+```	
+The easiest way to fix this is to load your dataset with dask_cudf and save it again to parquet format ( `dask_cudf.read_parquet("INPUT_FOLDER").to_parquet("OUTPUT_FOLDER")`), so that files are standardized and the `_metadata` file is generated.	
+If you want to identify which parquet files and which columns have a different schema, you may run one of these scripts, using either [PyArrow](https://github.com/dask/dask/issues/6504#issuecomment-675465645) or [cudf=0.17](https://github.com/rapidsai/cudf/pull/6796#issue-522934284), which checks the consistency and generates only the ```_metadata``` file, rather than converting all parquet files. If the schema is not consistent across all files, the script will raise an exception describing inconsistent files with schema for troubleshooting. More info in this issue [here](https://github.com/NVIDIA/NVTabular/issues/429).
+
 ##### Checking and Setting the row group size of parquet files
-The ```row_group_size``` is the number of rows that are stored in each row group (internal structure within the parquet file).
+The `row_group_size` is the number of rows that are stored in each row group (internal structure within the parquet file).
 
 You can check the current row group size of your parquet files loading only the first row group, using cuDF, as follows:
 
@@ -204,5 +214,5 @@ pandas_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
 cudf_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
 ```
 
-The row group **memory** size of the parquet files should be lower than the **part_size** you set for the NVTabular dataset (like in ```nvt.Dataset(TRAIN_DIR, engine="parquet", part_size="1000MB"```). 
-To know how much memory a row group will hold, you can slice your dataframe to a specific number of rows and call the above method ( ```_memory_usage(df)``` ) to get the memory usage in bytes. Then, you can set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size of around 128MB is recommended in general.
+The row group **memory** size of the parquet files should be lower than the **part_size** you set for the NVTabular dataset (like in `nvt.Dataset(TRAIN_DIR, engine="parquet", part_size="1000MB"`). 
+To know how much memory a row group will hold, you can slice your dataframe to a specific number of rows and call the above method ( `_memory_usage(df)` ) to get the memory usage in bytes. Then, you can set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size of around 128MB is recommended in general.
