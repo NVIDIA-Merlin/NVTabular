@@ -87,7 +87,7 @@ aws ec2 run-instances --image-id ami-04c0416d6bd8e4b1f --count 1 --instance-type
     
 3. Create RAID volume
 
-Depending on the EC2 instance, the machine includes local disk storage. We can optimize the performance by creating a [RAID volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html). In our experience, 2 NVME volumes yields best performance.
+Depending on the EC2 instance, the machine includes local disk storage. We can optimize the performance by creating a [RAID volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html). In our experience, 2 NVME volumes yield best performance.
 
 ```
 sudo mdadm --create --verbose /dev/md0 --level=0 --name=MY_RAID --raid-devices=2 /dev/nvme1n1 /dev/nvme2n1
