@@ -1,7 +1,7 @@
 Resources
 ============
 
-This is a collection of presentation, blog posts and documentations around NVIDIA Merlin (NVTabular and HugeCTR).
+This is a collection of presentations, blog posts and documentation around NVIDIA Merlin (NVTabular and HugeCTR).
 
 Talks
 ----------
@@ -16,8 +16,10 @@ Talks
 Blog posts
 ----------
 
-Frequently, we will post updates on [our blog](https://medium.com/nvidia-merlin) or on the [NVIDIA Developer News](https://news.developer.nvidia.com/tag/recommendation-systems/).<br><br>
-Some highlights:<br>
+We frequently post updates on [our blog](https://medium.com/nvidia-merlin) and on the [NVIDIA Developer News](https://news.developer.nvidia.com/tag/recommendation-systems/).
+
+Some highlights:
+
 * [Why isn’t your recommender system training faster on GPU? (And what can you do about it?)](https://medium.com/nvidia-merlin/why-isnt-your-recommender-system-training-faster-on-gpu-and-what-can-you-do-about-it-6cb44a711ad4) Dec 3rd, 2020
 * [Democratizing Deep Learning Recommenders Resources](https://news.developer.nvidia.com/democratizing-deep-learning-recommenders-resources/?ncid=so-link-59588#cid=dl19_so-link_en-us) Dec 3rd, 2020
 * [NVIDIA Merlin Deepens Commitment to Deep Learning Recommenders with Latest Beta Update](https://news.developer.nvidia.com/nvidia-merlin-deepens-commitment-to-deep-learning-recommenders-with-latest-beta-update/), Nov 23rd, 2020
