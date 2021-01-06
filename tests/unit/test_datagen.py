@@ -110,8 +110,5 @@ def test_full_df(num_rows, tmpdir):
     for fi in df_files:
         df = cudf.read_parquet(fi)
         test_size = test_size + df.shape[0]
-        import pdb
-
-        pdb.set_trace()
     assert test_size == num_rows
     assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labs_rep)
