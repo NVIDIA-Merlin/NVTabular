@@ -38,10 +38,11 @@ class ColumnSimilarity(Operator):
         df = cudf.read_csv("document_categories.csv.zip")
         categories = cupyx.scipy.sparse.coo_matrix((cupy.ones(len(df)),
                                                    (df.document_id.values, df.category_id.values))
-        # compute a new column 'similarity' between the document_id and promo_document_id columns
-        # on tfidf distance on the categories matrix we just loaded up
-        workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
-                                              "promo_document_id"))
+        # compute a new column 'document_id_document_id_promo_sim' between the document_id and
+        # document_id_promo columns on tfidf distance on the categories matrix we just loaded up
+        sim_features = [["document_id", "document_id_promo"]] >> ColumnSimilarity(categories,
+                                                                metric='tfidf', on_device=False)
+        workflow = nvt.Workflow(sim_features)
 
     Parameters
     -----------
@@ -49,7 +50,7 @@ class ColumnSimilarity(Operator):
         Sparse feature matrix for the left column
     right_features : csr_matrix, optional
         Sparse feature matrix for the right column in each pair. If not given will use the
-        same feature matrix as for the left (for example when calculating document-document i
+        same feature matrix as for the left (for example when calculating document-document
         distances)
     on_device : bool
         Whether to compute on the GPU or CPU. Computing on the GPU will be

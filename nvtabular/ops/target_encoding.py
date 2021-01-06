@@ -93,8 +93,11 @@ class TargetEncoding(StatOperator):
         while low-cardinality columns can likely use `tree_width=1`.
         If passing a dict, each key and value should correspond to the column
         name and width, respectively. The default value is 8 for all columns.
-    cat_cache : ToDo Describe
-        Text
+    cat_cache : {"device", "host", "disk"} or dict
+        Location to cache the list of unique categories for
+        each categorical column. If passing a dict, each key and value
+        should correspond to the column name and location, respectively.
+        Default is "host" for all columns.
     out_path : str, optional
         Root directory where category statistics will be written out in
         parquet format.

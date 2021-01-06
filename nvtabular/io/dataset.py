@@ -330,7 +330,15 @@ class Dataset:
         )
 
     def to_parquet(
-        self, output_path, shuffle=None, out_files_per_proc=None, num_threads=0, dtypes=None
+        self,
+        output_path,
+        shuffle=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+        cats=None,
+        conts=None,
+        labels=None,
     ):
         """Writes out to a parquet dataset
 
@@ -362,6 +370,12 @@ class Dataset:
         dtypes : dict
             Dictionary containing desired datatypes for output columns.
             Keys are column names, values are datatypes.
+        cats : list of str, optional
+            List of categorical columns
+        conts : list of str, optional
+            List of continuous columns
+        labels : list of str, optional
+            List of label columns
         """
         shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
@@ -372,7 +386,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        if shuffle or out_files_per_proc:
+        if shuffle or out_files_per_proc or cats or conts or labels:
             # Output dask_cudf DataFrame to dataset
             _ddf_to_dataset(
                 ddf,
@@ -380,9 +394,9 @@ class Dataset:
                 output_path,
                 shuffle,
                 out_files_per_proc,
-                [],
-                [],
-                [],
+                cats or [],
+                conts or [],
+                labels or [],
                 "parquet",
                 self.client,
                 num_threads,
@@ -454,30 +468,21 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        if shuffle or out_files_per_proc:
-            # Output dask_cudf DataFrame to dataset
-            _ddf_to_dataset(
-                ddf,
-                fs,
-                output_path,
-                shuffle,
-                out_files_per_proc,
-                cats,
-                conts,
-                labels,
-                "hugectr",
-                self.client,
-                num_threads,
-            )
-            return
 
-        # Default (shuffle=None and out_files_per_proc=None)
-        # Just use `dask_cudf.to_parquet`
-        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
-        if self.client is None:
-            fut.compute(scheduler="synchronous")
-        else:
-            fut.compute()
+        # Output dask_cudf DataFrame to dataset,
+        _ddf_to_dataset(
+            ddf,
+            fs,
+            output_path,
+            shuffle,
+            out_files_per_proc,
+            cats,
+            conts,
+            labels,
+            "hugectr",
+            self.client,
+            num_threads,
+        )
 
     @property
     def num_rows(self):
