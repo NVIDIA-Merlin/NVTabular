@@ -70,11 +70,8 @@ def test_s3_dataset(s3, paths, engine, df):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+    cats = cat_names >> ops.Categorify(cat_cache="host")
 
-    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify(cat_cache="host"))
-    processor.finalize()
-
-    processor.update_stats(dataset)
+    processor = nvt.Workflow(conts + cats + label_name)
+    processor.fit(dataset)

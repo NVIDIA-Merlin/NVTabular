@@ -136,6 +136,9 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
         general_md, special_md = _worker_finish(output_path)
 
     # Write metadata on client
+    if not isinstance(output_path, str):
+        output_path = str(output_path)
+
     wc, fs = _writer_cls_factory(output_format, output_path)
     wc.write_general_metadata(general_md, fs, output_path)
     wc.write_special_metadata(special_md, fs, output_path)
