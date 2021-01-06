@@ -1,3 +1,4 @@
+import os
 import random
 import string
 
@@ -8,7 +9,7 @@ from cudf.core.column import as_column, build_column
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
-# from .utils import device_mem_size
+from .utils import device_mem_size
 
 
 class UniformDistro:
@@ -26,7 +27,7 @@ class PowerLawDistro:
 
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
         gamma = 1 - self.alpha
-        # to avoid using 0, which represents unknown, null, None
+        # range 1.0 - 2.0 to avoid using 0, which represents unknown, null, None
         ser = cudf.Series(cupy.random.uniform(1.0, 2.0, size=num_rows))
         factor = (cupy.power(max_val, gamma) - cupy.power(min_val, gamma)) + cupy.power(
             min_val, gamma
@@ -172,6 +173,48 @@ class DatasetGen:
             df = cudf.concat([df, self.create_labels(size, labs_rep)], axis=1)
         return df
 
+    def full_df_create(
+        self,
+        size,
+        conts_rep=None,
+        cats_rep=None,
+        labs_rep=None,
+        dist=PowerLawDistro(),
+        entries=False,
+        output=".",
+    ):
+        files_created = []
+        df_single = self.create_df(
+            1,
+            conts_rep=conts_rep,
+            cats_rep=cats_rep,
+            labs_rep=labs_rep,
+            dist=dist,
+            entries=entries,
+        )
+        row_size = self.get_row_size(df_single, cats_rep)
+        batch = self.get_max_rows(row_size)
+        file_count = 0
+        while size > 0:
+            x = batch
+            if size < batch:
+                x = size
+            df = self.create_df(
+                x,
+                conts_rep=conts_rep,
+                cats_rep=cats_rep,
+                labs_rep=labs_rep,
+                dist=dist,
+                entries=entries,
+            )
+            file_name = f"dataset_{file_count}.parquet"
+            full_file = os.path.join(output, file_name)
+            df.to_parquet(full_file)
+            files_created.append(full_file)
+            size = size - batch
+            file_count = file_count + 1
+        return files_created
+
     def verify_df(self, df_to_verify):
         sts = []
         ps = []
@@ -180,6 +223,29 @@ class DatasetGen:
             sts.append(st_df)
             ps.append(p_df)
         return sts, ps
+
+    def get_max_rows(self, row_size):
+        # grab max amount of gpu memory
+        gpu_mem = device_mem_size()
+        # find # of rows fit in gpu memory
+        return gpu_mem // row_size
+
+    def get_row_size(self, row, cats_reps):
+        """
+        row = cudf.DataFrame comprising of one row
+        """
+        size = 0
+        for col in row.columns:
+            if "CAT" in col:
+                if type(row[col].dtype) is cudf.core.dtypes.ListDtype:
+                    # column names for categorical CAT_x
+                    val_num = int(col.split("_")[1])
+                    # second from last position is max list length
+                    max_size = cats_reps[val_num][-2]
+                    size = size + row[col]._column.elements.dtype.itemsize * max_size
+            else:
+                size = size + row[col].dtype.itemsize
+        return size
 
 
 class Col:

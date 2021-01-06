@@ -93,3 +93,25 @@ def test_json_convert():
     assert len(cols["conts"]) == len(json_sample["conts"].keys())
     assert len(cols["cats"]) == len(json_sample["cats"].keys())
     assert len(cols["labs"]) == len(json_sample["labs"].keys())
+
+
+@pytest.mark.parametrize("num_rows", [1000, 10000])
+def test_full_df(num_rows, tmpdir):
+    cols = nvt.data_gen._get_cols_from_schema(json_sample)
+    conts_rep = cols["conts"]
+    cats_rep = cols["cats"]
+    labs_rep = cols["labs"]
+
+    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro())
+    df_files = df_gen.full_df_create(
+        num_rows, conts_rep, cats_rep, labs_rep, dist=df_gen, entries=True, output=tmpdir
+    )
+    test_size = 0
+    for fi in df_files:
+        df = cudf.read_parquet(fi)
+        test_size = test_size + df.shape[0]
+        import pdb
+
+        pdb.set_trace()
+    assert test_size == num_rows
+    assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labs_rep)
