@@ -9,6 +9,7 @@ from cudf.core.column import as_column, build_column
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
+from .io.dataset import Dataset
 from .utils import device_mem_size
 
 
@@ -46,7 +47,7 @@ class PowerLawDistro:
 
 
 class DatasetGen:
-    def __init__(self, distribution, gpu_frac=1.0):
+    def __init__(self, distribution, gpu_frac=0.8):
         """
         distribution = A Distribution Class (powerlaw, uniform)
         gpu_frac = float between 0 - 1, representing fraction of gpu
@@ -101,7 +102,7 @@ class DatasetGen:
             ).ceil()
             if entries:
                 cat_names = self.create_cat_entries(cardinality, min_size=minn, max_size=maxx)
-                ser = self.merge_cats_encoding(ser, cat_names)
+                ser, _ = self.merge_cats_encoding(ser, cat_names)
             if offs is not None:
                 # create multi_column from offs and ser
                 ser = self.create_multihot_col(offs, ser)
@@ -124,11 +125,15 @@ class DatasetGen:
     def merge_cats_encoding(self, ser, cats):
         # df and cats are both series
         # set cats to dfs
+        offs = None
+        if type(ser.dtype) is cudf.core.dtypes.ListDtype:
+            offs = ser._column.offsets
+            ser = ser.list.leaves
         ser = cudf.DataFrame({"vals": ser})
         cats = cudf.DataFrame({"names": cats})
         cats["vals"] = cats.index
         ser = ser.merge(cats, on=["vals"], how="left")
-        return ser["names"]
+        return ser["names"], offs
 
     def create_cat_entries(self, cardinality, min_size=1, max_size=5):
         set_entries = []
@@ -190,6 +195,7 @@ class DatasetGen:
         output=".",
     ):
         files_created = []
+        # always use entries for row_size estimate
         df_single = self.create_df(
             1,
             conts_rep=conts_rep,
@@ -199,7 +205,7 @@ class DatasetGen:
             entries=entries,
         )
         row_size = self.get_row_size(df_single, cats_rep)
-        batch = self.get_max_rows(row_size)
+        batch = self.get_batch(row_size)
         file_count = 0
         while size > 0:
             x = batch
@@ -211,15 +217,68 @@ class DatasetGen:
                 cats_rep=cats_rep,
                 labs_rep=labs_rep,
                 dist=dist,
-                entries=entries,
+                entries=False,
             )
-            file_name = f"dataset_{file_count}.parquet"
-            full_file = os.path.join(output, file_name)
+            full_file = os.path.join(output, f"dataset_{file_count}.parquet")
             df.to_parquet(full_file)
             files_created.append(full_file)
             size = size - batch
             file_count = file_count + 1
+        # rescan entire dataset to apply vocabulary to categoricals
+        if entries:
+            vocab_files = self.create_vocab(cats_rep, output)
+            files_created = self.merge_vocab(files_created, vocab_files, cats_rep, output)
+        # write out dataframe
         return files_created
+
+    def create_vocab(self, cats_rep, output):
+        # build vocab for necessary categoricals using cats_rep info
+        vocab_files = []
+        for idx, cat_rep in enumerate(cats_rep):
+            col_vocab = []
+            cardinality, minn, maxx = cat_rep[1:4]
+            # check if needs to be split into batches for size
+            batch = self.get_batch(cardinality * maxx)
+            file_count = 0
+            completed_vocab = 0
+            size = cardinality
+            while size > completed_vocab:
+                x = batch
+                if size < batch:
+                    x = size
+                ser = cudf.Series(self.create_cat_entries(x, min_size=minn, max_size=maxx))
+                # turn series to dataframe to keep index count
+                ser = cudf.DataFrame({f"CAT_{idx}": ser, "idx": ser.index + completed_vocab})
+                file_path = os.path.join(output, f"CAT_{idx}_vocab_{file_count}.parquet")
+                completed_vocab = completed_vocab + x
+                file_count = file_count + 1
+                # save vocab to file
+                ser.to_parquet(file_path)
+                col_vocab.append(file_path)
+            vocab_files.append(col_vocab)
+        return vocab_files
+
+    def merge_vocab(self, dataset_file_paths, vocab_file_paths, cats_rep, output):
+        # Load newly created dataset via Dataset
+        final_files = []
+        noe_df = Dataset(dataset_file_paths, engine="parquet")
+        # for each dataframe cycle through all cat col vocabs and left merge
+        for idx, df in enumerate(noe_df.to_iter()):
+            for x in range(0, len(cats_rep)):
+                # vocab_files is list of lists of file_paths
+                vocab_df = Dataset(vocab_file_paths[x])
+                for vdf in vocab_df.to_iter():
+                    col_name = f"CAT_{x}"
+                    focus_col = df[col_name]
+                    ser, offs = self.merge_cats_encoding(focus_col, vdf[col_name])
+                    if offs:
+                        df[col_name] = self.create_multihot_col(offs, ser)
+                    else:
+                        df[col_name] = ser
+            file_path = os.path.join(output, f"FINAL_{idx}.parquet")
+            df.to_parquet(file_path)
+            final_files.append(file_path)
+        return final_files
 
     def verify_df(self, df_to_verify):
         sts = []
@@ -230,9 +289,9 @@ class DatasetGen:
             ps.append(p_df)
         return sts, ps
 
-    def get_max_rows(self, row_size):
+    def get_batch(self, row_size):
         # grab max amount of gpu memory
-        gpu_mem = device_mem_size() * self.gpu_frac
+        gpu_mem = device_mem_size(kind="free") * self.gpu_frac
         # find # of rows fit in gpu memory
         return gpu_mem // row_size
 
