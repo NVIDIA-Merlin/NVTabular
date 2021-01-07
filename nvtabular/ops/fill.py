@@ -14,63 +14,42 @@
 # limitations under the License.
 #
 import cudf
+import dask_cudf
 from nvtx import annotate
 
-from .median import Median
-from .operator import CONT
-from .transform_operator import DFOperator
+from .operator import ColumnNames, Operator
+from .stat_operator import StatOperator
 
 
-class FillMissing(DFOperator):
+class FillMissing(Operator):
     """
     This operation replaces missing values with a constant pre-defined value
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add FillMissing to the workflow for continuous columns and specify the fill value
+        # Use FillMissing to define a workflow for continuous columns and specify the fill value
         # Default is 0
-        proc.add_cont_feature(nvt.ops.FillMissing(fill_val=100))
+        cont_features = ['cont1', 'cont2', 'cont3'] >> ops.FillMissing() >> ...
+        processor = nvtabular.Workflow(cont_features)
 
     Parameters
     -----------
     fill_val : float, default 0
         The constant value to replace missing values with.
-    columns : list of str, default None
-        Continuous columns to target for this op. If None, the operation will target all known
-        continuous columns.
-    replace : bool, default True
-        Whether to replace existing columns or create new ones.
     """
 
-    default_in = CONT
-    default_out = CONT
-
-    def __init__(self, fill_val=0, columns=None, replace=True):
-        super().__init__(columns=columns, replace=replace)
+    def __init__(self, fill_val=0):
+        super().__init__()
         self.fill_val = fill_val
 
-    @property
-    def req_stats(self):
-        return []
-
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cont_names = target_columns
-        if not cont_names:
-            return gdf
-        z_gdf = gdf[cont_names].fillna(self.fill_val)
-        z_gdf.columns = [f"{col}_{self._id}" for col in z_gdf.columns]
-        return z_gdf
+    def transform(self, columns, gdf: cudf.DataFrame) -> cudf.DataFrame:
+        return gdf[columns].fillna(self.fill_val)
+
+    transform.__doc__ = Operator.transform.__doc__
 
 
-class FillMedian(DFOperator):
+class FillMedian(StatOperator):
     """
     This operation replaces missing values with the median value for the column.
 
@@ -85,31 +64,41 @@ class FillMedian(DFOperator):
 
         # Add FillMedian to the workflow for continuous columns
         proc.add_cont_feature(nvt.ops.FillMedian())
-
-    Parameters
-    -----------
-    columns : list of str, default None
-        Continuous columns to target for this op. If None, the operation will target all known
-        continuous columns.
-    replace : bool, default True
-        Whether to replace existing columns or create new ones.
     """
 
-    default_in = CONT
-    default_out = CONT
+    def __init__(self):
+        super().__init__()
+        self.medians = {}
 
-    @property
-    def req_stats(self):
-        return [Median(columns=self.columns)]
+    @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+        if not self.medians:
+            raise RuntimeError("need to call 'fit' before running transform")
 
-    @annotate("FillMedian_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        if not target_columns:
-            return gdf
+        for col in columns:
+            gdf[col] = gdf[col].fillna(self.medians[col])
+        return gdf
 
-        new_gdf = cudf.DataFrame()
-        for col in target_columns:
-            stat_val = stats_context["medians"][col]
-            new_gdf[col] = gdf[col].fillna(stat_val)
-        new_gdf.columns = [f"{col}_{self._id}" for col in new_gdf.columns]
-        return new_gdf
+    @annotate("FillMedian_fit", color="green", domain="nvt_python")
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+        # TODO: Use `method="tidigest"` when crick supports device
+        dask_stats = ddf[columns].quantile(q=0.5, method="dask")
+        return dask_stats
+
+    @annotate("FillMedian_finalize", color="green", domain="nvt_python")
+    def fit_finalize(self, dask_stats):
+        for col in dask_stats.index.values_host:
+            self.medians[col] = float(dask_stats[col])
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
+    def save(self):
+        return self.medians
+
+    def load(self, data):
+        self.medians = data
+
+    def clear(self):
+        self.medians = {}

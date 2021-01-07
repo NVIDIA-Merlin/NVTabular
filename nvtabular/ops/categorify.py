@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2020, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,7 @@ from operator import getitem
 
 import cudf
 import cupy as cp
+import dask_cudf
 import numpy as np
 import pyarrow as pa
 from cudf.core.column import as_column, build_column
@@ -27,6 +27,7 @@ from cudf.utils.dtypes import is_list_dtype
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
+from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 from nvtx import annotate
@@ -34,13 +35,11 @@ from pyarrow import parquet as pq
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .groupby_statistics import GroupbyStatistics
-from .operator import CAT
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
-from .transform_operator import DFOperator
 
 
-class Categorify(DFOperator):
+class Categorify(StatOperator):
     """
     Most of the data set will contain categorical features,
     and these variables are typically stored as text values.
@@ -50,15 +49,13 @@ class Categorify(DFOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
+        # Define pipeline
+        cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(freq_threshold=10)
 
-        # Add Categorify for categorical columns to the workflow
-        proc.add_cat_preprocess(nvt.ops.Categorify(freq_threshold=10))
+        # Initialize the workflow and execute it
+        proc = nvt.Workflow(cat_features)
+        proc.fit(dataset)
+        proc.transform(dataset).to_parquet('./test/')
 
     Example for frequency hashing::
 
@@ -68,21 +65,18 @@ class Categorify(DFOperator):
             'productID': [100, 101, 102, 101, 102, 103, 103],
             'label': [0, 0, 1, 1, 1, 0, 0]
         })
+        CATEGORICAL_COLUMNS = ['author', 'productID']
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=['author', 'productID'],
-            cont_names=[],
-            label_name=['label']
-        )
-
-        # Add num_buckets param and freq_threshold param
-        proc.add_cat_preprocess(nvt.ops.Categorify(
+        # Define pipeline
+        cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(
             freq_threshold={"author": 3, "productID": 2},
             num_buckets={"author": 10, "productID": 20})
         )
-        # Apply workflow
-        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
+
+        # Initialize the workflow and execute it
+        proc = nvt.Workflow(cat_features)
+        proc.fit(dataset)
+        proc.transform(dataset).to_parquet('./test/')
 
     Example with multi-hot::
 
@@ -93,18 +87,15 @@ class Categorify(DFOperator):
             'categories': [['Cat A', 'Cat B'], ['Cat C'], ['Cat A', 'Cat C', 'Cat D']],
             'label': [0,0,1]
         })
+        CATEGORICAL_COLUMNS = ['userID', 'productID', 'categories']
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=['userID', 'productID', 'categories'],
-            cont_names=[],
-            label_name=['label']
-        )
+        # Define pipeline
+        cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify()
 
-        # Add Categorify for categorical columns to the workflow
-        proc.add_preprocess(nvt.ops.Categorify())
-        # Apply workflow
-        proc.apply(nvt.Dataset(df), record_stats=True, output_path='./test/')
+        # Initialize the workflow and execute it
+        proc = nvt.Workflow(cat_features)
+        proc.fit(dataset)
+        proc.transform(dataset).to_parquet('./test/')
 
     Parameters
     -----------
@@ -115,27 +106,26 @@ class Categorify(DFOperator):
         a dictionary with column names as keys and frequency limit as
         value. If dictionary is used, all columns targeted must be included
         in the dictionary.
-    columns : list of str or list(str), default None
-        Categorical columns (or multi-column "groups") to target for this op.
-        If None, the operation will target all known categorical columns.
-        If columns contains 1+ list(str) elements, the columns within each
-        list/group will be encoded according to the `encode_type` setting.
     encode_type : {"joint", "combo"}, default "joint"
         If "joint", the columns within any multi-column group will be
         jointly encoded. If "combo", the combination of values will be
         encoded as a new column. Note that replacement is not allowed for
         "combo", because the same column name can be included in
         multiple groups.
-    replace : bool, default True
-        Replaces the transformed column with the original input.
-        Note that this does not apply to multi-column groups with
-        `encoded_type="combo"`.
     tree_width : dict or int, optional
-        Passed to `GroupbyStatistics` dependency.
+        Tree width of the hash-based groupby reduction for each categorical
+        column. High-cardinality columns may require a large `tree_width`,
+        while low-cardinality columns can likely use `tree_width=1`.
+        If passing a dict, each key and value should correspond to the column
+        name and width, respectively. The default value is 8 for all columns.
     out_path : str, optional
-        Passed to `GroupbyStatistics` dependency.
+        Root directory where groupby statistics will be written out in
+        parquet format.
     on_host : bool, default True
-        Passed to `GroupbyStatistics` dependency.
+        Whether to convert cudf data to pandas between tasks in the hash-based
+        groupby reduction. The extra host <-> device data movement can reduce
+        performance.  However, using `on_host=True` typically improves stability
+        (by avoiding device-level memory pressure).
     na_sentinel : default 0
         Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
@@ -161,14 +151,9 @@ class Categorify(DFOperator):
         will be transformed.
     """
 
-    default_in = CAT
-    default_out = CAT
-
     def __init__(
         self,
         freq_threshold=0,
-        columns=None,
-        replace=True,
         out_path=None,
         tree_width=None,
         na_sentinel=None,
@@ -213,35 +198,13 @@ class Categorify(DFOperator):
         # For case (3), we also use this "storage name" to signify the name of
         # the file with the required "combination" groupby statistics.
         self.storage_name = {}
-        if isinstance(columns, str):
-            columns = [columns]
-        if isinstance(columns, list):
-            # User passed in a list of column groups. We need to figure out
-            # if this list contains any multi-column groups, and if there
-            # are any (obvious) problems with these groups
-            self.column_groups = columns
-            columns = list(set(flatten(columns, container=list)))
-            columns_all = list(flatten(columns, container=list))
-            if sorted(columns_all) != sorted(columns) and encode_type == "joint":
-                # If we are doing "joint" encoding, there must be unique mapping
-                # between input column names and column groups.  Otherwise, more
-                # than one unique-value table could be used to encode the same
-                # column.
-                raise ValueError("Same column name included in multiple groups.")
-            for group in self.column_groups:
-                if isinstance(group, list) and len(group) > 1:
-                    # For multi-column groups, we concatenate column names
-                    # to get the "group" name.
-                    name = _make_name(*group, sep=self.name_sep)
-                    for col in group:
-                        self.storage_name[col] = name
 
         # Only support two kinds of multi-column encoding
         if encode_type not in ("joint", "combo"):
             raise ValueError(f"encode_type={encode_type} not supported.")
 
         # Other self-explanatory intialization
-        super().__init__(columns=columns, replace=replace)
+        super().__init__()
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
@@ -249,9 +212,10 @@ class Categorify(DFOperator):
         self.dtype = dtype
         self.on_host = on_host
         self.cat_cache = cat_cache
-        self.stat_name = "categories"
         self.encode_type = encode_type
         self.search_sorted = search_sorted
+        self.categories = {}
+        self.mh_columns = []
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -262,7 +226,6 @@ class Categorify(DFOperator):
                 "For hashing num_buckets should be an int > 1, otherwise set num_buckets=None."
             )
         elif isinstance(num_buckets, dict):
-            columns = list(num_buckets)
             self.num_buckets = num_buckets
         elif isinstance(num_buckets, int) or num_buckets is None:
             self.num_buckets = num_buckets
@@ -271,50 +234,70 @@ class Categorify(DFOperator):
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
 
-    @property
-    def req_stats(self):
-        stats = [
-            GroupbyStatistics(
-                columns=self.column_groups or self.columns,
-                concat_groups=self.encode_type == "joint",
-                cont_names=[],
-                stats=[],
-                freq_threshold=self.freq_threshold,
-                tree_width=self.tree_width,
-                out_path=self.out_path,
-                on_host=self.on_host,
-                stat_name=self.stat_name,
-                name_sep=self.name_sep,
-            )
-        ]
-        if self.num_buckets:
-            stats += [
-                SetBuckets(
-                    columns=self.column_groups or self.columns,
-                    num_buckets=self.num_buckets,
-                    freq_limit=self.freq_threshold,
-                    encode_type=self.encode_type,
-                )
-            ]
-        return stats
+    @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+        # User passed in a list of column groups. We need to figure out
+        # if this list contains any multi-column groups, and if there
+        # are any (obvious) problems with these groups
+        columns_uniq = list(set(flatten(columns, container=tuple)))
+        columns_all = list(flatten(columns, container=tuple))
+        if sorted(columns_all) != sorted(columns_uniq) and self.encode_type == "joint":
+            # If we are doing "joint" encoding, there must be unique mapping
+            # between input column names and column groups.  Otherwise, more
+            # than one unique-value table could be used to encode the same
+            # column.
+            raise ValueError("Same column name included in multiple groups.")
 
-    @annotate("Categorify_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
-        self,
-        gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context={},
-    ):
+        for group in columns:
+            if isinstance(group, tuple) and len(group) > 1:
+                # For multi-column groups, we concatenate column names
+                # to get the "group" name.
+                name = _make_name(*group, sep=self.name_sep)
+                for col in group:
+                    self.storage_name[col] = name
+
+        # convert tuples to lists
+        columns = [list(c) if isinstance(c, tuple) else c for c in columns]
+        dsk, key = _category_stats(
+            ddf,
+            columns,
+            [],
+            [],
+            self.out_path,
+            self.freq_threshold,
+            self.tree_width,
+            self.on_host,
+            concat_groups=self.encode_type == "joint",
+            name_sep=self.name_sep,
+        )
+        # TODO: we can't use the dtypes on the ddf here since they are incorrect
+        # so we're loading from the partitions. fix.
+        return Delayed(key, dsk), ddf.map_partitions(lambda gdf: gdf.dtypes)
+
+    def fit_finalize(self, dask_stats):
+        dtypes = dask_stats[1]
+        self.mh_columns = [col for col, dtype in zip(dtypes.index, dtypes) if is_list_dtype(dtype)]
+        categories = dask_stats[0]
+        for col in categories:
+            self.categories[col] = categories[col]
+
+    def save(self):
+        return [self.categories, self.mh_columns]
+
+    def load(self, data):
+        self.categories, self.mh_columns = data
+
+    def clear(self):
+        self.categories = {}
+        self.mh_columns = []
+
+    @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         new_gdf = gdf.copy(deep=False)
-        target_columns = self.get_columns(columns_ctx, input_cols, target_cols)
         if isinstance(self.freq_threshold, dict):
-            assert all(x in self.freq_threshold for x in target_columns)
-        if not target_columns:
-            return new_gdf
+            assert all(x in self.freq_threshold for x in columns)
 
-        if self.column_groups and not self.encode_type == "joint":
+        if self.encode_type == "combo":
             # Case (3) - We want to track multi- and single-column groups separately
             #            when we are NOT performing a joint encoding. This is because
             #            there is not a 1-to-1 mapping for columns in multi-col groups.
@@ -322,34 +305,31 @@ class Categorify(DFOperator):
             #            multi-column groups only, and use `cat_names` to store the
             #            string representation of both single- and multi-column groups.
             #
-            cat_names, multi_col_group = _get_multicolumn_names(
-                self.column_groups, gdf.columns, self.name_sep
-            )
+            cat_names, multi_col_group = _get_multicolumn_names(columns, gdf.columns, self.name_sep)
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
-            cat_names = [name for name in target_columns if name in gdf.columns]
+            cat_names = list(flatten(columns, container=tuple))
 
         # Encode each column-group separately
         for name in cat_names:
-            new_col = f"{name}_{self._id}"
-
             # Use the column-group `list` directly (not the string name)
             use_name = multi_col_group.get(name, name)
+
             # Storage name may be different than group for case (2)
             # Only use the "aliased" `storage_name` if we are dealing with
             # a multi-column group, or if we are doing joint encoding
+
             if use_name != name or self.encode_type == "joint":
                 storage_name = self.storage_name.get(name, name)
             else:
                 storage_name = name
-            path = stats_context[self.stat_name][storage_name]
-            if not self.column_groups and _is_list_col([name], gdf):
-                if "mh" not in columns_ctx["categorical"]:
-                    columns_ctx["categorical"]["mh"] = []
-                if name not in columns_ctx["categorical"]["mh"]:
-                    columns_ctx["categorical"]["mh"].append(name)
-            new_gdf[new_col] = _encode(
+
+            if isinstance(use_name, tuple):
+                use_name = list(use_name)
+
+            path = self.categories[storage_name]
+            new_gdf[name] = _encode(
                 use_name,
                 storage_name,
                 path,
@@ -365,17 +345,25 @@ class Categorify(DFOperator):
                 cat_names=cat_names,
             )
             if self.dtype:
-                new_gdf[new_col] = new_gdf[new_col].astype(self.dtype, copy=False)
+                new_gdf[name] = new_gdf[name].astype(self.dtype, copy=False)
 
-        # Deal with replacement
-        if self.replace:
-            for name in cat_names:
-                new_col = f"{name}_{self._id}"
-                new_gdf[name] = new_gdf[new_col]
-                new_gdf.drop(columns=[new_col], inplace=True)
-
-        self.update_columns_ctx(columns_ctx, input_cols, new_gdf.columns, target_columns)
         return new_gdf
+
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+        if self.encode_type == "combo":
+            cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
+            return cat_names
+        return list(flatten(columns, container=tuple))
+
+    def get_embedding_sizes(self, columns):
+        return _get_embeddings_dask(self.categories, columns, self.num_buckets, self.freq_threshold)
+
+    def get_multihot_columns(self):
+        return self.mh_columns
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
 
 def _get_embedding_order(cat_names):
@@ -390,40 +378,39 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(workflow):
-    mh_cols = None
-    cols = _get_embedding_order(workflow.columns_ctx["categorical"]["base"])
-    buckets = None
-    freq = 0
-    # when frequency hashing is applied,
-    # this will return embedding shape:(num_buckets+cardinality, emb_dim)
-    if "buckets" in workflow.stats.keys() and "freq_limit" in workflow.stats.keys():
-        buckets = workflow.stats["buckets"]
-        freq = workflow.stats["freq_limit"]
-    # when only hashing is applied, this will return embedding shape as (num_buckets, emb_dim)
-    elif "buckets" in workflow.stats.keys():
-        buckets = workflow.stats["buckets"]
+    """ Returns a dictionary of best embedding sizes from the workflow """
+    # TODO: do we need to distinguish multihot columns here?  (if so why? )
+    queue = [workflow.column_group]
+    output = {}
+    multihot_columns = set()
+    while queue:
+        current = queue.pop()
+        if current.op and hasattr(current.op, "get_embedding_sizes"):
+            output.update(current.op.get_embedding_sizes(current.columns))
 
-    # if we have hash buckets, but no categories just use the buckets
-    if buckets and "categories" not in workflow.stats:
-        return {col: _emb_sz_rule(num_rows) for col, num_rows in buckets.items()}
+            if hasattr(current.op, "get_multihot_columns"):
+                multihot_columns.update(current.op.get_multihot_columns())
 
-    if "mh" not in workflow.columns_ctx["categorical"]:
-        return _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
-    else:
-        mh_cols = _get_embedding_order(workflow.columns_ctx["categorical"]["mh"])
-        for col in mh_cols:
-            cols.remove(col)
-        res = _get_embeddings_dask(workflow.stats["categories"], cols, buckets, freq)
-        if mh_cols:
-            res = res, _get_embeddings_dask(workflow.stats["categories"], mh_cols, buckets, freq)
-        return res
+        elif not current.op:
+            # only follow parents if its not an operator node (which could
+            # transform meaning of the get_embedding_sizes
+            queue.extend(current.parents)
+
+    # TODO: returning differnt return types like this (based off the presence
+    # of multihot features) is pretty janky. fix.
+    if not multihot_columns:
+        return output
+
+    single_hots = {k: v for k, v in output.items() if k not in multihot_columns}
+    multi_hots = {k: v for k, v in output.items() if k in multihot_columns}
+    return single_hots, multi_hots
 
 
 def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
-    for col in cat_names:
+    for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
         if buckets and col in buckets and freq_limit[col] > 1:
@@ -434,8 +421,8 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     return embeddings
 
 
-def _emb_sz_rule(n_cat: int) -> int:
-    return n_cat, int(min(16, round(1.6 * n_cat ** 0.56)))
+def _emb_sz_rule(n_cat: int, minimum_size=16, maximum_size=512) -> int:
+    return n_cat, min(max(minimum_size, round(1.6 * n_cat ** 0.56)), maximum_size)
 
 
 def _make_name(*args, sep="_"):
@@ -454,6 +441,8 @@ def _top_level_groupby(
     output = {}
     k = 0
     for i, cat_col_group in enumerate(cat_col_groups):
+        if isinstance(cat_col_group, tuple):
+            cat_col_group = list(cat_col_group)
 
         if isinstance(cat_col_group, str):
             cat_col_group = [cat_col_group]
@@ -520,6 +509,8 @@ def _mid_level_groupby(
 ):
     if isinstance(col_group, str):
         col_group = [col_group]
+    elif isinstance(col_group, tuple):
+        col_group = list(col_group)
 
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
@@ -706,6 +697,9 @@ def _groupby_to_disk(
     tw = {}
     for col in col_groups:
         col = [col] if isinstance(col, str) else col
+        if isinstance(col, tuple):
+            col = list(col)
+
         col_str = _make_name(*col, sep=name_sep)
         if tree_width is None:
             tw[col_str] = 8
@@ -852,7 +846,6 @@ def _encode(
     encode_type="joint",
     cat_names=None,
 ):
-
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
 
@@ -944,7 +937,7 @@ def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
     cat_names = []
     multi_col_group = {}
     for col_group in column_groups:
-        if isinstance(col_group, list):
+        if isinstance(col_group, (list, tuple)):
             name = _make_name(*col_group, sep=name_sep)
             if name not in cat_names:
                 cat_names.append(name)
@@ -992,46 +985,3 @@ def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
         val = val % nb
         encoded = val
     return encoded
-
-
-class SetBuckets(StatOperator):
-    def __init__(self, columns=None, num_buckets=None, freq_limit=0, encode_type="joint"):
-        if isinstance(columns, list):
-            columns = list(set(flatten(columns, container=list)))
-        super().__init__(columns=columns)
-        self.num_buckets = num_buckets
-        self.freq_limit = freq_limit
-        self.encode_type = encode_type
-
-    @annotate("SetBuckets_op", color="green", domain="nvt_python")
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
-        cols = self.get_columns(columns_ctx, input_cols, target_cols)
-        if isinstance(self.num_buckets, int) and self.encode_type == "joint":
-            self.num_buckets = {name: self.num_buckets for name in cols}
-        elif isinstance(self.num_buckets, int) and self.encode_type == "combo":
-            buckets = {}
-            for group in cols:
-                if isinstance(group, list) and len(group) > 1:
-                    # For multi-column groups, we concatenate column names.
-                    name = _make_name(*group, sep="_")
-                    buckets[name] = self.num_buckets
-                elif isinstance(group, str):
-                    buckets[group] = self.num_buckets
-            self.num_buckets = buckets
-        return self.num_buckets
-
-    @annotate("SetBuckets_finalize", color="green", domain="nvt_python")
-    def finalize(self, dask_stats):
-        self.num_buckets = dask_stats
-
-    def registered_stats(self):
-        return ["buckets", "freq_limit"]
-
-    def stats_collected(self):
-        result = [("buckets", self.num_buckets), ("freq_limit", self.freq_limit)]
-        return result
-
-    def clear(self):
-        self.num_buckets = {}
-        self.freq_limit = {}
-        return

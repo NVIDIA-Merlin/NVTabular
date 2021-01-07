@@ -17,11 +17,10 @@ import cudf
 import numpy as np
 from nvtx import annotate
 
-from .operator import CONT
-from .transform_operator import TransformOperator
+from .operator import ColumnNames, Operator
 
 
-class LogOp(TransformOperator):
+class LogOp(Operator):
     """
     This operator calculates the log of continuous columns. Note that
     to handle the common case of zerofilling null values, this
@@ -29,34 +28,13 @@ class LogOp(TransformOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add LogOp to the workflow for continuous columns
-        proc.add_cont_feature(nvt.ops.LogOp())
-
-    Parameters
-    ----------
-    columns : list of str, default None
-        Continuous columns to target for this op. If None, the operation will target all known
-        continuous columns.
-    replace : bool, default False
-        Whether to replace existing columns or create new ones.
+        # Use LogOp to define NVTabular workflow
+        cont_features = cont_names >> nvt.ops.LogOp() >> ...
+        processor = nvt.Workflow(cont_features)
     """
 
-    default_in = CONT
-    default_out = CONT
-
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cont_names = target_columns
-        if not cont_names:
-            return gdf
-        new_gdf = np.log(gdf[cont_names].astype(np.float32) + 1)
-        new_cols = [f"{col}_{self._id}" for col in new_gdf.columns]
-        new_gdf.columns = new_cols
-        return new_gdf
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> ColumnNames:
+        return (gdf[columns].astype(np.float32) + 1).log()
+
+    transform.__doc__ = Operator.transform.__doc__

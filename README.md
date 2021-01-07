@@ -27,7 +27,7 @@ NVTabular is available in the NVIDIA container repository at the following locat
 The beta (0.3) container is currently available. You can pull the container by running the following command:
 
 ```
-docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.2 /bin/bash
+docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.3 /bin/bash
 ```
 
 If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
@@ -94,3 +94,5 @@ If you'd like to contribute to the library directly, please see [Contributing.md
 If you're interested in learning more about how NVTabular works under the hood, we've provided this [more detailed description of the core functionality](HowItWorks.md).
 
 We also have [API documentation](https://nvidia.github.io/NVTabular/main/index.html) that outlines the specifics of the available calls within the library.
+
+You can find public presentations and blog posts under [Resources](Resources.md).

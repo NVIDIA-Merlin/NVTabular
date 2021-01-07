@@ -14,6 +14,7 @@ Welcome to NVTabular's documentation!
    Examples <examples/index>
    API Documentation <api/index>
    Github Repo <https://github.com/NVIDIA/NVTabular>
+   Resources <Resources>
 
 
 Indices and tables

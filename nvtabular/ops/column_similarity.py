@@ -22,11 +22,10 @@ import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
 from nvtx import annotate
 
-from .operator import CAT, CONT
-from .transform_operator import TransformOperator
+from .operator import ColumnNames, Operator
 
 
-class ColumnSimilarity(TransformOperator):
+class ColumnSimilarity(Operator):
     """Calculates the similarity between two columns using tf-idf, cosine or
     inner product as the distance metric. For each row, this calculates the distance
     between the two columns by looking up features for those columns in a sparse matrix,
@@ -39,75 +38,58 @@ class ColumnSimilarity(TransformOperator):
         df = cudf.read_csv("document_categories.csv.zip")
         categories = cupyx.scipy.sparse.coo_matrix((cupy.ones(len(df)),
                                                    (df.document_id.values, df.category_id.values))
-        # compute a new column 'similarity' between the document_id and promo_document_id columns
-        # on tfidf distance on the categories matrix we just loaded up
-        workflow.add_feature(ColumnSimilarity("similarity", "document_id", categories,
-                                              "promo_document_id"))
+        # compute a new column 'document_id_document_id_promo_sim' between the document_id and
+        # document_id_promo columns on tfidf distance on the categories matrix we just loaded up
+        sim_features = [["document_id", "document_id_promo"]] >> ColumnSimilarity(categories,
+                                                                metric='tfidf', on_device=False)
+        workflow = nvt.Workflow(sim_features)
 
     Parameters
     -----------
-    name : str
-        Name of the output column
-    a : str
-        Name of the first column to calculate similarity for
-    a_features : csr_matrix
-        Sparse feature matrix for the 'a' column
-    b : str
-        Name of the second column to calculate similarity for
-    b_features : csr_matrix, optional
-        Sparse feature matrix for the 'b' column. If not given will use the
-        same feature matrix as for 'a' (for example when calculating document-document distances)
+    left_features : csr_matrix
+        Sparse feature matrix for the left column
+    right_features : csr_matrix, optional
+        Sparse feature matrix for the right column in each pair. If not given will use the
+        same feature matrix as for the left (for example when calculating document-document
+        distances)
     on_device : bool
         Whether to compute on the GPU or CPU. Computing on the GPU will be
-        faster, but requires that the a_features/b_features sparse matrices
+        faster, but requires that the left_features/right_features sparse matrices
         fit into GPU memory.
     """
 
-    default_in = CAT
-    default_out = CONT
+    def __init__(self, left_features, right_features=None, metric="tfidf", on_device=True):
+        super(ColumnSimilarity, self).__init__()
 
-    def __init__(
-        self, name, a_col, a_features, b_col, b_features=None, metric="tfidf", on_device=True
-    ):
-        super(ColumnSimilarity, self).__init__(columns=[a_col, b_col], replace=False)
-        self.name = name
-        self.a_col = a_col
-        self.b_col = b_col
-
-        self.a_features = _convert_features(a_features, metric, on_device)
-        self.b_features = (
-            _convert_features(b_features, metric, on_device)
-            if b_features is not None
-            else self.a_features
+        self.left_features = _convert_features(left_features, metric, on_device)
+        self.right_features = (
+            _convert_features(right_features, metric, on_device)
+            if right_features is not None
+            else self.left_features
         )
         self.on_device = on_device
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
-        self,
-        gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
-    ):
-        a = gdf[self.a_col].values if self.on_device else gdf[self.a_col].values_host
-        b = gdf[self.b_col].values if self.on_device else gdf[self.b_col].values_host
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+        names = self.output_column_names(columns)
+        for name, (left, right) in zip(names, columns):
+            a = gdf[left].values if self.on_device else gdf[left].values_host
+            b = gdf[right].values if self.on_device else gdf[right].values_host
 
-        if len(a) and len(b):
-            similarities = row_wise_inner_product(
-                a, self.a_features, b, self.b_features, self.on_device
-            )
-        else:
-            similarities = []
-        gdf[self.name] = similarities
+            if len(a) and len(b):
+                similarities = row_wise_inner_product(
+                    a, self.left_features, b, self.right_features, self.on_device
+                )
+            else:
+                similarities = []
+            gdf[name] = similarities
 
-        columns_ctx[input_cols][self._id] = [self.name]
         return gdf
 
-    @property
-    def _id(self):
-        return f"{self.__class__.__name__}_{self.name}"
+    transform.__doc__ = Operator.transform.__doc__
+
+    def output_column_names(self, columns):
+        return [f"{a}_{b}_sim" for a, b in columns]
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):

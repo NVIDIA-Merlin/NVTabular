@@ -27,10 +27,14 @@ from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
+from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
+
+from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
+from .dask import _ddf_to_dataset
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -173,9 +177,11 @@ class Dataset:
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
+        client=None,
         **kwargs,
     ):
         self.dtypes = dtypes
+        self.client = client
         if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
@@ -298,7 +304,7 @@ class Dataset:
         each iteration.
 
         Parameters
-        -----------
+        ----------
         columns : str or list(str); default None
             Columns to include in each `DataFrame`. If not specified,
             the outputs will contain all known columns in the Dataset.
@@ -321,6 +327,161 @@ class Dataset:
 
         return DataFrameIter(
             self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+        )
+
+    def to_parquet(
+        self,
+        output_path,
+        shuffle=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
+        """Writes out to a parquet dataset
+
+        Parameters
+        ----------
+        output_path : string
+            Path to write processed/shuffled output data
+        shuffle : nvt.io.Shuffle enum
+            How to shuffle the output dataset. Shuffling is only
+            performed if the data is written to disk. For all options,
+            other than `None` (which means no shuffling), the partitions
+            of the underlying dataset/ddf will be randomly ordered. If
+            `PER_PARTITION` is specified, each worker/process will also
+            shuffle the rows within each partition before splitting and
+            appending the data to a number (`out_files_per_proc`) of output
+            files. Output files are distinctly mapped to each worker process.
+            If `PER_WORKER` is specified, each worker will follow the same
+            procedure as `PER_PARTITION`, but will re-shuffle each file after
+            all data is persisted.  This results in a full shuffle of the
+            data processed by each worker.  To improve performace, this option
+            currently uses host-memory `BytesIO` objects for the intermediate
+            persist stage. The `FULL` option is not yet implemented.
+        out_files_per_proc : integer
+            Number of files to create (per process) after
+            shuffling the data
+        num_threads : integer
+            Number of IO threads to use for writing the output dataset.
+            For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
+        cats : list of str, optional
+            List of categorical columns
+        conts : list of str, optional
+            List of continuous columns
+        labels : list of str, optional
+            List of label columns
+        """
+        shuffle = _check_shuffle_arg(shuffle)
+        ddf = self.to_ddf(shuffle=shuffle)
+
+        if dtypes:
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
+
+        fs = get_fs_token_paths(output_path)[0]
+        fs.mkdirs(output_path, exist_ok=True)
+        if shuffle or out_files_per_proc or cats or conts or labels:
+            # Output dask_cudf DataFrame to dataset
+            _ddf_to_dataset(
+                ddf,
+                fs,
+                output_path,
+                shuffle,
+                out_files_per_proc,
+                cats or [],
+                conts or [],
+                labels or [],
+                "parquet",
+                self.client,
+                num_threads,
+            )
+            return
+
+        # Default (shuffle=None and out_files_per_proc=None)
+        # Just use `dask_cudf.to_parquet`
+        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
+        if self.client is None:
+            fut.compute(scheduler="synchronous")
+        else:
+            fut.compute()
+
+    def to_hugectr(
+        self,
+        output_path,
+        cats,
+        conts,
+        labels,
+        shuffle=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+    ):
+        """Writes out to a parquet dataset
+
+        Parameters
+        ----------
+        output_path : string
+            Path to write processed/shuffled output data
+        cats : list of str
+            List of categorical columns
+        conts : list of str
+            List of continuous columns
+        labels : list of str
+            List of label columns
+        shuffle : nvt.io.Shuffle, optional
+            How to shuffle the output dataset. Shuffling is only
+            performed if the data is written to disk. For all options,
+            other than `None` (which means no shuffling), the partitions
+            of the underlying dataset/ddf will be randomly ordered. If
+            `PER_PARTITION` is specified, each worker/process will also
+            shuffle the rows within each partition before splitting and
+            appending the data to a number (`out_files_per_proc`) of output
+            files. Output files are distinctly mapped to each worker process.
+            If `PER_WORKER` is specified, each worker will follow the same
+            procedure as `PER_PARTITION`, but will re-shuffle each file after
+            all data is persisted.  This results in a full shuffle of the
+            data processed by each worker.  To improve performace, this option
+            currently uses host-memory `BytesIO` objects for the intermediate
+            persist stage. The `FULL` option is not yet implemented.
+        out_files_per_proc : integer
+            Number of files to create (per process) after
+            shuffling the data
+        num_threads : integer
+            Number of IO threads to use for writing the output dataset.
+            For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
+        """
+        shuffle = _check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
+        ddf = self.to_ddf(shuffle=shuffle)
+        if dtypes:
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
+
+        fs = get_fs_token_paths(output_path)[0]
+        fs.mkdirs(output_path, exist_ok=True)
+
+        # Output dask_cudf DataFrame to dataset,
+        _ddf_to_dataset(
+            ddf,
+            fs,
+            output_path,
+            shuffle,
+            out_files_per_proc,
+            cats,
+            conts,
+            labels,
+            "hugectr",
+            self.client,
+            num_threads,
         )
 
     @property

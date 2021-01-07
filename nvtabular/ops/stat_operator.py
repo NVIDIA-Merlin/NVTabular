@@ -13,38 +13,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .operator import Operator
+from typing import Any
+
+import dask_cudf
+
+from .operator import ColumnNames, Operator
 
 
 class StatOperator(Operator):
     """
-    Base class for statistical operator classes.
+    Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
+    on top of the Operator class.
     """
 
-    def __init__(self, columns=None):
-        super(StatOperator, self).__init__(columns)
-        self._ddf_out = None
+    def __init__(self):
+        super(StatOperator, self).__init__()
 
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame) -> Any:
+        """Calculate statistics for this operator, and return a dask future
+        to these statistics, which will be computed by the workflow."""
+
         raise NotImplementedError(
             """The dask operations needed to return a dictionary of uncomputed statistics."""
         )
 
-    def finalize(self, dask_stats):
+    def fit_finalize(self, dask_stats):
+        """Finalize statistics calculation - the workflow calls this function with
+        the computed statistics from the 'fit' object'"""
+
         raise NotImplementedError(
             """Follow-up operations to convert dask statistics in to member variables"""
         )
 
-    def registered_stats(self):
-        raise NotImplementedError(
-            """Should return a list of statistics this operator will collect.
-                The list is comprised of simple string values."""
-        )
+    def save(self):
+        """Returns a json-able representation of the statistics for this object. This
+        is usually called by the workflow rather than diretly"""
+        raise NotImplementedError("save isn't implemented for this op!")
 
-    def stats_collected(self):
-        raise NotImplementedError(
-            """Should return a list of tuples of name and statistics operator."""
-        )
+    def load(self, data):
+        """Loads statistics from a json-able blob of data. This is usually called
+        by the workflow rather than called directly"""
+        raise NotImplementedError("load isn't implemented for this op!")
 
     def clear(self):
-        raise NotImplementedError("""zero and reinitialize all relevant statistical properties""")
+        """ zero and reinitialize all relevant statistical properties"""
+        raise NotImplementedError("clear isn't implemented for this op!")
