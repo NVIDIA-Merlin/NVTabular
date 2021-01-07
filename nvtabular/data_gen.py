@@ -169,7 +169,6 @@ class DatasetGen:
         dist=PowerLawDistro(),
         entries=False,
     ):
-        size = int(size)
         df = cudf.DataFrame()
         if conts_rep:
             df = cudf.concat([df, self.create_conts(size, conts_rep)], axis=1)
@@ -207,6 +206,8 @@ class DatasetGen:
         )
         row_size = self.get_row_size(df_single, cats_rep)
         batch = self.get_batch(row_size) or 1
+        # ensure batch is an int
+        batch = int(batch)
         file_count = 0
         while size > 0:
             x = batch
