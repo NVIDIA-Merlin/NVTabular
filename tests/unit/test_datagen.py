@@ -79,9 +79,9 @@ def test_cat_rep(num_rows):
     assert df_cats.shape[1] == len(cats)
     assert df_cats.shape[0] == num_rows
     for idx, cat in enumerate(cats):
-        df_cats[cat].nunique() == cats_rep[idx][1]
-        len(df_cats[cat].min()) == cats_rep[idx][2]
-        len(df_cats[cat].max()) == cats_rep[idx][3]
+        df_cats[cat].nunique() == cats_rep[idx + 1][1]
+        len(df_cats[cat].min()) == cats_rep[idx + 1][2]
+        len(df_cats[cat].max()) == cats_rep[idx + 1][3]
     check_ser = cudf.Series(df_uni["CAT_0"]._column.elements.values_host)
     assert check_ser.nunique() == cats_rep[0][1]
     assert check_ser.str.len().min() == cats_rep[0][2]
@@ -95,20 +95,32 @@ def test_json_convert():
     assert len(cols["labs"]) == len(json_sample["labs"].keys())
 
 
-@pytest.mark.parametrize("num_rows", [1000, 10000])
+@pytest.mark.parametrize("num_rows", [1000, 100000])
 def test_full_df(num_rows, tmpdir):
+    cats = ["CAT_1", "CAT_2", "CAT_3", "CAT_4"]
+
     cols = nvt.data_gen._get_cols_from_schema(json_sample)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
 
-    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro())
+    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro(), gpu_frac=0.00001)
     df_files = df_gen.full_df_create(
         num_rows, conts_rep, cats_rep, labs_rep, dist=df_gen, entries=True, output=tmpdir
     )
     test_size = 0
+    full_df = cudf.DataFrame()
     for fi in df_files:
         df = cudf.read_parquet(fi)
         test_size = test_size + df.shape[0]
+        full_df = cudf.concat([full_df, df])
     assert test_size == num_rows
     assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labs_rep)
+    for idx, cat in enumerate(cats):
+        full_df[cat].nunique() == cats_rep[idx + 1][1]
+        len(full_df[cat].min()) == cats_rep[idx + 1][2]
+        len(full_df[cat].max()) == cats_rep[idx + 1][3]
+    check_ser = cudf.Series(full_df["CAT_0"]._column.elements.values_host)
+    assert check_ser.nunique() == cats_rep[0][1]
+    assert check_ser.str.len().min() == cats_rep[0][2]
+    assert check_ser.str.len().max() == cats_rep[0][3]
