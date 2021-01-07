@@ -4,6 +4,7 @@ Operators
 .. toctree::
    :maxdepth: 2
 
+   Bucketize <bucketize>
    Categorify <categorify>
    Clip <clip>
    ColumnSimilarity <columnsimilarity>
@@ -18,9 +19,10 @@ Operators
    JoinGroupby <groupby>
    LambdaOp <lambdaop>
    LogOp <log>
-   Moments <moments>
-   Median <median>
-   MinMax <minmax>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
    TargetEncoding <targetencoding>
+
+
+   Operator <operator>
+   StatOperator <stat_operator>

@@ -22,7 +22,7 @@ import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
 from nvtx import annotate
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class ColumnSimilarity(Operator):
@@ -70,7 +70,7 @@ class ColumnSimilarity(Operator):
         self.on_device = on_device
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         names = self.output_column_names(columns)
         for name, (left, right) in zip(names, columns):
             a = gdf[left].values if self.on_device else gdf[left].values_host
@@ -85,6 +85,8 @@ class ColumnSimilarity(Operator):
             gdf[name] = similarities
 
         return gdf
+
+    transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
         return [f"{a}_{b}_sim" for a, b in columns]

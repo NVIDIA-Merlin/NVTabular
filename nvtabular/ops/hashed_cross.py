@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict, Union
+
 import cudf
 from nvtx import annotate
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class HashedCross(Operator):
@@ -37,14 +39,14 @@ class HashedCross(Operator):
 
     Parameters
     ----------
-    num_buckets : int
+    num_buckets : int or dict
         Column-wise modulo to apply after hash function. Note that this
         means that the corresponding value will be the categorical cardinality
         of the transformed categorical feature. That value will be used as the
         number of "hash buckets" for every output feature.
     """
 
-    def __init__(self, num_buckets):
+    def __init__(self, num_buckets: Union[int, Dict[str, int]]):
         super().__init__()
         if not isinstance(num_buckets, (int, dict)):
             raise ValueError(
@@ -54,7 +56,7 @@ class HashedCross(Operator):
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         new_gdf = cudf.DataFrame()
         for cross in _nest_columns(columns):
             val = 0
@@ -67,6 +69,8 @@ class HashedCross(Operator):
                 val = val % self.num_buckets
             new_gdf["_X_".join(cross)] = val
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
         return ["_X_".join(cross) for cross in _nest_columns(columns)]
