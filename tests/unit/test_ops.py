@@ -640,16 +640,16 @@ def test_difference_lag():
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["timestamp_difference_lag_1"][0] is None
+    assert new_gdf["timestamp_difference_lag_1"][0] is cudf.NA
     assert new_gdf["timestamp_difference_lag_1"][1] == 5
     assert new_gdf["timestamp_difference_lag_1"][2] == 95
-    assert new_gdf["timestamp_difference_lag_1"][3] is None
+    assert new_gdf["timestamp_difference_lag_1"][3] is cudf.NA
 
     assert new_gdf["timestamp_difference_lag_-1"][0] == -5
     assert new_gdf["timestamp_difference_lag_-1"][1] == -95
-    assert new_gdf["timestamp_difference_lag_-1"][2] is None
+    assert new_gdf["timestamp_difference_lag_-1"][2] is cudf.NA
     assert new_gdf["timestamp_difference_lag_-1"][3] == -1
-    assert new_gdf["timestamp_difference_lag_-1"][5] is None
+    assert new_gdf["timestamp_difference_lag_-1"][5] is cudf.NA
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
