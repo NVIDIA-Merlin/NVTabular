@@ -13,6 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Optional, Union
+
+import cudf
+
+if TYPE_CHECKING:
+    # avoid circular references
+    from nvtabular import ColumnGroup
+
+ColumnNames = List[Union[str, List[str]]]
 
 
 class Operator:
@@ -20,7 +31,7 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def transform(self, columns, gdf):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
@@ -32,13 +43,12 @@ class Operator:
 
         Returns
         -------
-        Dataframe
+        DataFrame
             Returns a transformed dataframe for this operator
-
         """
         raise NotImplementedError
 
-    def output_column_names(self, columns):
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
         """Given a set of columns names returns the names of the transformed columns this
         operator will produce
 
@@ -51,22 +61,21 @@ class Operator:
         -------
         list of str, or list of list of str
             The names of columns produced by this operator
-
         """
         return columns
 
-    def dependencies(self):
+    def dependencies(self) -> Optional[List[Union[str, ColumnGroup]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
         that aren't part of the main transformation workflow.
 
         Returns
         -------
-        str, list of str, ColumnGroup or None
+        str, list of str or ColumnGroup, optional
             Extra dependencies of this operator. Defaults to None
         """
         return None
 
-    def __rrshift__(self, other):
+    def __rrshift__(self, other) -> ColumnGroup:
         import nvtabular
 
         return nvtabular.ColumnGroup(other) >> self

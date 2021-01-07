@@ -15,9 +15,11 @@
 #
 import cudf
 import cupy
+import dask_cudf
 from dask.delayed import Delayed
 
 from . import categorify as nvt_cat
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -97,7 +99,7 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         if isinstance(columns, list):
             for group in columns:
                 if isinstance(group, (list, tuple)) and len(group) > 1:
@@ -123,7 +125,7 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
@@ -177,3 +179,7 @@ class JoinGroupby(StatOperator):
     def clear(self):
         self.categories = {}
         self.storage_name = {}
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
