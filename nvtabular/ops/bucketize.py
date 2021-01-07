@@ -16,7 +16,7 @@ import cudf
 from nvtx import annotate
 from six import callable
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class Bucketize(Operator):
@@ -55,7 +55,7 @@ class Bucketize(Operator):
         super().__init__()
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         boundaries = {name: self.boundaries(name) for name in columns}
         new_gdf = cudf.DataFrame()
         for col, b in boundaries.items():
@@ -65,3 +65,5 @@ class Bucketize(Operator):
                 val += (gdf[col] >= boundary).astype("int")
             new_gdf[col] = val
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__

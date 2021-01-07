@@ -18,6 +18,7 @@ from operator import getitem
 
 import cudf
 import cupy as cp
+import dask_cudf
 import numpy as np
 import pyarrow as pa
 from cudf.core.column import as_column, build_column
@@ -34,6 +35,7 @@ from pyarrow import parquet as pq
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -233,7 +235,7 @@ class Categorify(StatOperator):
             )
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
@@ -290,11 +292,7 @@ class Categorify(StatOperator):
         self.mh_columns = []
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(
-        self,
-        columns,
-        gdf: cudf.DataFrame,
-    ):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         new_gdf = gdf.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in columns)
@@ -351,7 +349,7 @@ class Categorify(StatOperator):
 
         return new_gdf
 
-    def output_column_names(self, columns):
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
         if self.encode_type == "combo":
             cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
             return cat_names
@@ -362,6 +360,10 @@ class Categorify(StatOperator):
 
     def get_multihot_columns(self):
         return self.mh_columns
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
 
 def _get_embedding_order(cat_names):
