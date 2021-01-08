@@ -213,6 +213,8 @@ def bench_info():
         ram="%d" % psutil.virtual_memory().total,
     )
     return bInfo
+
+
 def get_cats(workflow, col, stat_name="categories"):
     # figure out the categorify node from the workflow graph
     cats = [
