@@ -56,8 +56,8 @@ class DatasetInspector:
 
     def __get_stats(self, ddf, col, data, col_type):
         data[col] = {}
-
         # Get dtype and convert cat-strings and cat_mh-lists
+        # TODO: Fix dask-cudf _meta
         data[col]["dtype"] = str(ddf[col].dtype)
         if data[col]["dtype"] == "object":
             if col_type == "cat":
@@ -72,13 +72,12 @@ class DatasetInspector:
         data[col]["nans_%"] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
 
         # Get max/min/mean for all (Before we were excluding label)
-        if col_type != "label":
-            data[col]["min"] = ddf[col].min().compute()
-            data[col]["max"] = ddf[col].max().compute()
-            if col_type == "cont":
-                data[col]["mean"] = ddf[col].mean().compute()
-            else:
-                data[col]["avg"] = int(ddf[col].mean().compute())
+        data[col]["min"] = ddf[col].min().compute()
+        data[col]["max"] = ddf[col].max().compute()
+        if col_type == "cont":
+            data[col]["mean"] = ddf[col].mean().compute()
+        else:
+            data[col]["avg"] = int(ddf[col].mean().compute())
 
         # Get cardinality for cat and label
         if col_type == "cat" or col_type == "label":
@@ -98,12 +97,10 @@ class DatasetInspector:
         # Get dataset
         dataset = Dataset(path, engine=dataset_format)
         ddf = dataset.to_ddf()
-        print(ddf.dtypes)
 
         # Create Dask Cluster
         cluster = LocalCUDACluster()
         client = Client(cluster)
-        print(client)
 
         # Dictionary to store collected information
         data = {}
@@ -127,7 +124,7 @@ class DatasetInspector:
             self.__get_stats(ddf, col, data, "cont")
 
         # Get labels columns stats
-        for col in conts:
+        for col in labels:
             self.__get_stats(ddf, col, data, "label")
 
         # Write json file
