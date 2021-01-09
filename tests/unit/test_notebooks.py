@@ -69,7 +69,6 @@ def test_rossman_example(tmpdir):
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
 
     notebooks = [
-        #         "rossmann-store-sales-feature-engineering.ipynb",
         "rossmann-store-sales-pytorch.ipynb",
         "rossmann-store-sales-fastai.ipynb",
         "rossmann-store-sales-tensorflow.ipynb",
