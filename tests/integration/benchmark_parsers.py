@@ -14,6 +14,19 @@ class Benchmark:
         self.val = val
         self.split = split
 
+
+
+    def get_epoch(self, line):
+        raise NotImplementedError("Must Define logic for parsing metrics per epoch")
+
+    def get_epochs(self, output):
+        raise NotImplementedError("Must Define logic for parsing output")
+
+
+# Sub classes
+
+
+class StandardBenchmark(Benchmark):
     def get_dl_thru(self, full_time, num_rows, epochs, throughput):
         return create_bench_result(
             f"{self.name}_dataloader",
@@ -59,17 +72,8 @@ class Benchmark:
                 timing_res.append(bres)
         return timing_res
 
-    def get_epoch(self, line):
-        raise NotImplementedError("Must Define logic for parsing metrics per epoch")
 
-    def get_epochs(self, output):
-        raise NotImplementedError("Must Define logic for parsing output")
-
-
-# Sub classes
-
-
-class BenchFastAI(Benchmark):
+class BenchFastAI(StandardBenchmark):
     def __init__(self, target_id, val=6, split=None):
         super().__init__(f"{target_id}_fastai", val=val, split=split)
 
@@ -77,23 +81,31 @@ class BenchFastAI(Benchmark):
         epochs = []
         for line in output:
             split_line = line.split(self.split) if self.split else line.split()
-            if len(split_line) == self.val and is_number(split_line[0]):
+            if len(split_line) == self.val and is_whole_number(split_line[0]):
                 # epoch line, detected based on if 1st character is a number
                 post_evts = self.get_epoch(line)
                 epochs.append(post_evts)
         return epochs
 
+    
 
 # Utils
 
-
-def is_number(str_to_num):
+def is_whole_number(str_to_num):
     try:
         int(str_to_num)
         return True
     except ValueError:
         return False
 
+
+def is_float(str_to_flt):
+    try:
+        float(str_to_num)
+        return True
+    except ValueError:
+        return False
+    
 
 def send_results(db, bench_info, results_list):
     for results in results_list:

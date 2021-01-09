@@ -179,7 +179,7 @@ def dataset(request, paths, engine):
 
 
 @pytest.fixture(scope="session")
-def db():
+def asv_db():
     # Create an interface to an ASV "database" to write the results to.
     (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
     # allows control of results location

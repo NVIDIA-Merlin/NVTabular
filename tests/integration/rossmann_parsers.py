@@ -1,7 +1,7 @@
-from benchmark_parsers import BenchFastAI, Benchmark
+from benchmark_parsers import BenchFastAI, StandardBenchmark
 
 
-class RossBenchTensorFlow(Benchmark):
+class RossBenchTensorFlow(StandardBenchmark):
     def __init__(self, split=" - "):
         super().__init__("Rossmann_tf", split=split)
 
@@ -24,7 +24,7 @@ class RossBenchTensorFlow(Benchmark):
         return epochs
 
 
-class RossBenchPytorch(Benchmark):
+class RossBenchPytorch(StandardBenchmark):
     def __init__(self, split=". "):
         super().__init__("Rossmann_torch", split=split)
 

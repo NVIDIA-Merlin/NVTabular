@@ -31,7 +31,7 @@ TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/criteo")
 
 
-def test_criteo_notebook(db, bench_info, tmpdir):
+def test_criteo_notebook(asv_db, bench_info, tmpdir):
     input_path = os.path.join(DATA_START, "tests/crit_int_pq")
     output_path = os.path.join(DATA_START, "tests/crit_test")
     os.environ["PARTS_PER_CHUNK"] = "1"
@@ -51,7 +51,7 @@ def test_criteo_notebook(db, bench_info, tmpdir):
     send_results(db, bench_info, bench_results)
 
 
-# def test_criteohugectr_notebook(tmpdir):
+# def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
 #     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
 #     output_path = os.path.join(DATA_START, "criteo/crit_test")
 #     os.environ["PARTS_PER_CHUNK"] = "1"
@@ -68,7 +68,7 @@ def test_criteo_notebook(db, bench_info, tmpdir):
 #     )
 
 
-def test_rossman_example(tmpdir, bench_info, db):
+def test_rossman_example(asv_db, bench_info, tmpdir):
     pytest.importorskip("tensorflow")
     data_path = os.path.join(DATA_START, "rossman/data")
     input_path = os.path.join(DATA_START, "rossman/input")
