@@ -43,12 +43,12 @@ def test_criteo_notebook(asv_db, bench_info, tmpdir):
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-        gpu_id=0,
+        gpu_id=6,
         batch_size=100000,
     )
     bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
     bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
-    send_results(db, bench_info, bench_results)
+    send_results(asv_db, bench_info, bench_results)
 
 
 # def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
@@ -78,37 +78,37 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-preproc.ipynb"
     )
 
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-feature-engineering.ipynb"
     )
 
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
 
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-fastai.ipynb"
     )
-    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
     bench_results = RossBenchFastAI().get_epochs(out.splitlines())
     bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
-    send_results(db, bench_info, bench_results)
+    send_results(asv_db, bench_info, bench_results)
 
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-pytorch.ipynb"
     )
-    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
     bench_results = RossBenchPytorch().get_epochs(out.splitlines())
     bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
-    send_results(db, bench_info, bench_results)
+    send_results(asv_db, bench_info, bench_results)
 
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-tensorflow.ipynb"
     )
-    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
     bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
     bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
-    send_results(db, bench_info, bench_results)
+    send_results(asv_db, bench_info, bench_results)
 
 
 def _run_notebook(

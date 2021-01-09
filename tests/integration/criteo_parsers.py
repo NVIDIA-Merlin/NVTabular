@@ -8,11 +8,11 @@ class CriteoBenchFastAI(BenchFastAI):
 
     def get_epoch(self, line):
         epoch, t_loss, v_loss, roc, aps, o_time = line.split()
-        t_loss = self.bres_loss(epoch, float(t_loss))
-        v_loss = self.bres_loss(epoch, float(v_loss), l_type="valid")
-        roc = self.bres_roc_auc(epoch, float(roc))
-        aps = self.bres_aps(epoch, float(aps))
-        o_time = self.bres_time(epoch, o_time)
+        t_loss = self.loss(epoch, float(t_loss))
+        v_loss = self.loss(epoch, float(v_loss), l_type="valid")
+        roc = self.roc_auc(epoch, float(roc))
+        aps = self.aps(epoch, float(aps))
+        o_time = self.time(epoch, o_time)
         return [t_loss, v_loss, roc, aps, o_time]
 
     

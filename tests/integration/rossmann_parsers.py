@@ -7,8 +7,8 @@ class RossBenchTensorFlow(StandardBenchmark):
 
     def get_epoch(self, line, epoch=0):
         _, _, t_loss, t_rmspe = line.split(self.split)
-        t_loss = self.bres_loss(epoch, float(t_loss.split(": ")[1]))
-        t_rmspe = self.bres_rmspe(epoch, float(t_rmspe.split(": ")[1]))
+        t_loss = self.loss(epoch, float(t_loss.split(": ")[1]))
+        t_rmspe = self.rmspe(epoch, float(t_rmspe.split(": ")[1]))
         return [t_loss, t_rmspe]
 
     def get_epochs(self, output):
@@ -31,10 +31,10 @@ class RossBenchPytorch(StandardBenchmark):
     def get_epoch(self, line):
         epoch, t_loss, t_rmspe, v_loss, v_rmspe = line.split(self.split)
         epoch = epoch.split()[1]
-        t_loss = self.bres_loss(epoch, float(t_loss.split(": ")[1]))
-        v_loss = self.bres_loss(epoch, float(v_loss.split(": ")[1]), l_type="valid")
-        t_rmspe = self.bres_rmspe(epoch, float(t_rmspe.split(": ")[1]))
-        v_rmspe = self.bres_rmspe(epoch, float(v_rmspe.split(": ")[1].split(".")[0]))
+        t_loss = self.loss(epoch, float(t_loss.split(": ")[1]))
+        v_loss = self.loss(epoch, float(v_loss.split(": ")[1]), l_type="valid")
+        t_rmspe = self.rmspe(epoch, float(t_rmspe.split(": ")[1]))
+        v_rmspe = self.rmspe(epoch, float(v_rmspe.split(": ")[1].split(".")[0]))
         return [t_loss, v_loss, t_rmspe, v_rmspe]
 
     def get_epochs(self, output):
@@ -53,8 +53,8 @@ class RossBenchFastAI(BenchFastAI):
 
     def get_epoch(self, line):
         epoch, t_loss, v_loss, exp_rmspe, o_time = line.split()
-        t_loss = self.bres_loss(epoch, float(t_loss))
-        v_loss = self.bres_loss(epoch, float(v_loss), l_type="valid")
-        exp_rmspe = self.bres_rmspe(epoch, float(exp_rmspe))
-        o_time = self.bres_time(epoch, o_time)
+        t_loss = self.loss(epoch, float(t_loss))
+        v_loss = self.loss(epoch, float(v_loss), l_type="valid")
+        exp_rmspe = self.rmspe(epoch, float(exp_rmspe))
+        o_time = self.time(epoch, o_time)
         return [t_loss, v_loss, exp_rmspe, o_time]
