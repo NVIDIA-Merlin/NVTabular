@@ -14,8 +14,6 @@ class Benchmark:
         self.val = val
         self.split = split
 
-
-
     def get_epoch(self, line):
         raise NotImplementedError("Must Define logic for parsing metrics per epoch")
 
@@ -87,9 +85,9 @@ class BenchFastAI(StandardBenchmark):
                 epochs.append(post_evts)
         return epochs
 
-    
 
 # Utils
+
 
 def is_whole_number(str_to_num):
     try:
@@ -101,11 +99,11 @@ def is_whole_number(str_to_num):
 
 def is_float(str_to_flt):
     try:
-        float(str_to_num)
+        float(str_to_flt)
         return True
     except ValueError:
         return False
-    
+
 
 def send_results(db, bench_info, results_list):
     for results in results_list:
