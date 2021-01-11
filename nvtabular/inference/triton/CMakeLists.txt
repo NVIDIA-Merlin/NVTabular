@@ -28,6 +28,8 @@ cmake_minimum_required(VERSION 3.17)
 
 project(tritonnvtabularbackend LANGUAGES C CXX)
 
+find_package(pybind11 REQUIRED)
+
 #
 # Options
 #
@@ -108,6 +110,7 @@ target_link_libraries(
   PRIVATE
     triton-backend-utils    # from repo-backend
     triton-core-serverstub  # from repo-core
+    pybind11::embed
 )
 
 set_target_properties(

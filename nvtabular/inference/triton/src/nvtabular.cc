@@ -27,7 +27,9 @@
 #include <memory>
 #include <thread>
 #include "triton/backend/backend_common.h"
+#include <pybind11/embed.h>
 
+namespace py = pybind11;
 namespace triton { namespace backend { namespace identity {
 
 //
@@ -681,6 +683,9 @@ TRITONBACKEND_ModelInstanceExecute(
             .c_str());
 
     printf("\nTESTTTTTT *** \n");
+
+    py::scoped_interpreter guard{}; // start the interpreter and keep it alive
+    py::print("Hello, World!"); // use the Python API
 
     const char* input_name;
     GUARDED_RESPOND_IF_ERROR(
