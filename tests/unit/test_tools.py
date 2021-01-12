@@ -20,15 +20,9 @@ def test_inspect(tmpdir, datasets, engine):
     # Dataset columns type config
     columns_dict = {}
     columns_dict["cats"] = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
-    columns_dict["cats_mh"] = []
     columns_dict["conts"] = ["x", "y"]
     columns_dict["labels"] = ["label"]
-    all_cols = (
-        columns_dict["cats"]
-        + columns_dict["cats_mh"]
-        + columns_dict["conts"]
-        + columns_dict["labels"]
-    )
+    all_cols = columns_dict["cats"] + columns_dict["conts"] + columns_dict["labels"]
 
     # Create inspector and inspect
     a = nvt.tools.DatasetInspector()
@@ -47,32 +41,66 @@ def test_inspect(tmpdir, datasets, engine):
     cluster = LocalCUDACluster()
     client = Client(cluster)
 
-    # Check conts
+    # Dictionary with json output key names
+    key_names = {}
+    key_names["min"] = {}
+    key_names["min"]["cat"] = "min_entry_size"
+    key_names["min"]["cont"] = "min_value"
+    key_names["max"] = {}
+    key_names["max"]["cat"] = "max_entry_size"
+    key_names["max"]["cont"] = "max_value"
+    key_names["mean"] = {}
+    key_names["mean"]["cat"] = "avg_entry_size"
+    key_names["mean"]["cont"] = "mean"
+    # Correct dtypes
+    ddf_dtypes = ddf.head(1)
+
+    # Check output
     for col in all_cols:
         # Check dtype for all
-        # TODO: Fix Dask-cudf _meta
-        if col in columns_dict["cats"]:
-            assert output[col]["dtype"] == "string"
+        assert output[col]["dtype"] == str(ddf_dtypes[col].dtype)
+        # Get string len for stats computation
+        if output[col]["dtype"] == "object":
             ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
             ddf.compute()
-        else:
-            assert output[col]["dtype"] == str(ddf[col].dtype)
+        # Check lists stats
+        elif output[col]["dtype"] == "list":
+            if ddf_dtypes[col].dtype.leaf_type == "string":
+                output[col]["multi_min"] == ddf[col].compute().list.leaves.applymap(
+                    lambda x: x.str.len()
+                ).min()
+                output[col]["multi_max"] == ddf[col].compute().list.leaves.applymap(
+                    lambda x: x.str.len()
+                ).max()
+                output[col]["multi_avg"] == ddf[col].compute().list.leaves.applymap(
+                    lambda x: x.str.len()
+                ).mean()
+            else:
+                output[col]["multi_min"] == ddf[col].compute().list.leaves.min()
+                output[col]["multi_max"] == ddf[col].compute().list.leaves.max()
+                output[col]["multi_avg"] == ddf[col].compute().list.leaves.mean()
+            # Get list len for stats computation
+            ddf[col] = ddf[col].map_partitions(lambda x: len(x), meta=(col, ddf_dtypes[col].dtype))
+            ddf[col].compute()
+
         # Check percentage of nan for all
         assert output[col]["nans_%"] == (100 * (1 - ddf[col].count().compute() / len(ddf[col])))
-        # Check max/min/mean for all
+
+        # Check max/min/mean for all but label
         if col not in columns_dict["labels"]:
-            assert output[col]["min"] == ddf[col].min().compute()
-            assert output[col]["max"] == ddf[col].max().compute()
-            if col in columns_dict["conts"]:
-                assert output[col]["mean"] == ddf[col].mean().compute()
-            else:
-                assert output[col]["avg"] == int(ddf[col].mean().compute())
+            col_type = "cont" if col in columns_dict["conts"] else "cat"
+            assert output[col][key_names["min"][col_type]] == ddf[col].min().compute()
+            assert output[col][key_names["max"][col_type]] == ddf[col].max().compute()
+            assert output[col][key_names["mean"][col_type]] == ddf[col].mean().compute()
+
         # Check cardinality for cat and label
         if col in columns_dict["cats"] + columns_dict["labels"]:
             assert output[col]["cardinality"] == ddf[col].nunique().compute()
+
         # Check std for cont
         if col in columns_dict["conts"]:
-            assert output[col]["std"] == ddf[col].std().compute()
+            assert output[col]["standard deviation"] == ddf[col].std().compute()
 
     # Stop Dask Cluster
     client.shutdown()
+    cluster.close()

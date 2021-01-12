@@ -14,15 +14,16 @@
 # limitations under the License.
 #
 
-import cudf
 import json
 
+import cudf
 import fsspec
 import numpy as np
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
 from nvtabular.io import Dataset
+
 
 # Class to help Json to serialize the data
 class NpEncoder(json.JSONEncoder):
@@ -37,6 +38,7 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return super(NpEncoder, self).default(obj)
+
 
 class DatasetInspector:
     """
@@ -55,29 +57,35 @@ class DatasetInspector:
 
     def __get_stats(self, ddf, ddf_dtypes, col, data, col_type, key_names):
         data[col] = {}
-        # Get dtype and convert cat-strings and cat_mh-lists
-        # TODO: Fix dask-cudf
-        print(col)
-        print(str(ddf_dtypes[col].dtype))
+        # Get dtype
         data[col]["dtype"] = str(ddf_dtypes[col].dtype)
-        
+
         # If string, chane string for its len
-        if data[col]["dtype"] == "string":
+        # TODO: Dask head() is not getting string properly
+        if data[col]["dtype"] == "object":
+            # data[col]["dtype"] = "string"
             ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
             ddf[col].compute()
         # If multihot, compute list content stats, and change list for its len
         elif data[col]["dtype"] == "list":
             # If list content is string
             if ddf_dtypes[col].dtype.leaf_type == "string":
-                data[col]["multi_min"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).min()
-                data[col]["multi_max"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).max()
-                data[col]["multi_avg"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).mean()
+                data[col]["multi_min"] = (
+                    ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).min()
+                )
+                data[col]["multi_max"] = (
+                    ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).max()
+                )
+                data[col]["multi_avg"] = (
+                    ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).mean()
+                )
             # If list content is a number
             else:
                 data[col]["multi_min"] = ddf[col].compute().list.leaves.min()
                 data[col]["multi_max"] = ddf[col].compute().list.leaves.max()
                 data[col]["multi_avg"] = ddf[col].compute().list.leaves.mean()
             # Get list len for min/max/mean entry computation
+            # TODO: Fix Dask_cudf meta error
             ddf[col] = ddf[col].map_partitions(lambda x: len(x), meta=(col, ddf_dtypes[col].dtype))
             ddf[col].compute()
 
@@ -86,7 +94,7 @@ class DatasetInspector:
             data[col][key_names["min"][col_type]] = ddf[col].min().compute()
             data[col][key_names["max"][col_type]] = ddf[col].max().compute()
             data[col][key_names["mean"][col_type]] = ddf[col].mean().compute()
-            
+
         # Get cardinality for cat and label
         if col_type == "cat" or col_type == "label":
             data[col]["cardinality"] = ddf[col].nunique().compute()
@@ -101,7 +109,6 @@ class DatasetInspector:
     def inspect(self, path, dataset_format, columns_dict, output_file):
         # Get dataset columns
         cats = columns_dict["cats"]
-        cats_mh = columns_dict["cats_mh"]
         conts = columns_dict["conts"]
         labels = columns_dict["labels"]
 
@@ -130,7 +137,6 @@ class DatasetInspector:
         # Store general info
         data["num_rows"] = ddf.shape[0].compute()
         data["cats"] = cats
-        data["cats_mh"] = cats_mh
         data["conts"] = conts
         data["labels"] = labels
 
@@ -140,10 +146,6 @@ class DatasetInspector:
         # Get categoricals columns stats
         for col in cats:
             self.__get_stats(ddf, ddf_dtypes, col, data, "cat", key_names)
-
-        # Get categoricals multihot columns stats
-        for col in cats_mh:
-            self.__get_stats(ddf, ddf_dtypes, col, data, "cat_mh", key_names)
 
         # Get continuous columns stats
         for col in conts:
