@@ -43,29 +43,29 @@ def test_criteo_notebook(asv_db, bench_info, tmpdir):
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-        gpu_id=6,
+        gpu_id=7,
         batch_size=100000,
     )
     bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
     bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
     send_results(asv_db, bench_info, bench_results)
 
+@pytest.mark.skip(reason="Criteo-hugectr notebook needs to be updated.")
+def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
+    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
+    output_path = os.path.join(DATA_START, "criteo/crit_test")
+    os.environ["PARTS_PER_CHUNK"] = "1"
 
-# def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
-#     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
-#     output_path = os.path.join(DATA_START, "criteo/crit_test")
-#     os.environ["PARTS_PER_CHUNK"] = "1"
-
-#     _run_notebook(
-#         tmpdir,
-#         os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
-#         input_path,
-#         output_path,
-#         # disable rmm.reinitialize, seems to be causing issues
-#         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-#         gpu_id="0,1",
-#         batch_size=100000,
-#     )
+    _run_notebook(
+        tmpdir,
+        os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
+        input_path,
+        output_path,
+        # disable rmm.reinitialize, seems to be causing issues
+        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
+        gpu_id="0,1",
+        batch_size=100000,
+    )
 
 
 def test_rossman_example(asv_db, bench_info, tmpdir):
