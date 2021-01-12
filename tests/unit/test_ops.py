@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from cudf.tests.utils import assert_eq
+from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
@@ -41,6 +42,7 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_min = df[col].min()
         assert col_min == pytest.approx(processor.column_group.op.mins[col], 1e-2)
@@ -137,6 +139,7 @@ def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(col_median, processor.column_group.op.medians[col], rel_tol=1e1)
@@ -151,6 +154,7 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     assert new_gdf[op_columns] == np.log(df[op_columns].astype(np.float32))
 
 
@@ -242,6 +246,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor.fit(dataset)
 
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         assert math.isclose(df[col].mean(), processor.column_group.op.means[col], rel_tol=1e-4)
         assert math.isclose(df[col].std(), processor.column_group.op.stds[col], rel_tol=1e-4)
@@ -287,8 +292,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.slice(1, 3))
-    assert new_gdf["name-string"].equals(df_copy["name-string"].str.slice(1, 3))
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"].str.slice(1, 3), check_index=False)
+    assert_eq_dd(new_gdf["name-string"], df_copy["name-string"].str.slice(1, 3), check_index=False)
 
     # No Replacement from old API (skipped for other examples)
     substring = (
@@ -300,10 +305,20 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat_slice"].equals(df_copy["name-cat"].str.slice(1, 3))
-    assert new_gdf["name-string_slice"].equals(df_copy["name-string"].str.slice(1, 3))
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
-    assert new_gdf["name-string"].equals(df_copy["name-string"])
+    assert_eq_dd(
+        new_gdf["name-cat_slice"],
+        df_copy["name-cat"].str.slice(1, 3),
+        check_index=False,
+        check_names=False,
+    )
+    assert_eq_dd(
+        new_gdf["name-string_slice"],
+        df_copy["name-string"].str.slice(1, 3),
+        check_index=False,
+        check_names=False,
+    )
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"], check_index=False)
+    assert_eq_dd(new_gdf["name-string"], df_copy["name-string"], check_index=False)
 
     # Replace
     # Replacement
@@ -312,8 +327,10 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.replace("e", "XX"))
-    assert new_gdf["name-string"].equals(df_copy["name-string"].str.replace("e", "XX"))
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"].str.replace("e", "XX"), check_index=False)
+    assert_eq_dd(
+        new_gdf["name-string"], df_copy["name-string"].str.replace("e", "XX"), check_index=False
+    )
 
     # astype
     # Replacement
