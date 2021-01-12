@@ -14,9 +14,10 @@
 # limitations under the License.
 #
 import cudf
+import dask_cudf
 from nvtx import annotate
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -42,8 +43,10 @@ class FillMissing(Operator):
         self.fill_val = fill_val
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns, gdf: cudf.DataFrame) -> cudf.DataFrame:
         return gdf[columns].fillna(self.fill_val)
+
+    transform.__doc__ = Operator.transform.__doc__
 
 
 class FillMedian(StatOperator):
@@ -68,7 +71,7 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
@@ -77,7 +80,7 @@ class FillMedian(StatOperator):
         return gdf
 
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         # TODO: Use `method="tidigest"` when crick supports device
         dask_stats = ddf[columns].quantile(q=0.5, method="dask")
         return dask_stats
@@ -86,6 +89,10 @@ class FillMedian(StatOperator):
     def fit_finalize(self, dask_stats):
         for col in dask_stats.index.values_host:
             self.medians[col] = float(dask_stats[col])
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
     def save(self):
         return self.medians

@@ -46,6 +46,7 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -106,3 +107,14 @@ class GitHubDomain(sphinx.domains.Domain):
 
 def setup(app):
     app.add_domain(GitHubDomain)
+
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "cudf": ("https://docs.rapids.ai/api/cudf/stable/", None),
+    "distributed": ("https://distributed.dask.org/en/latest/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+    "tensorflow": ("https://www.tensorflow.org/api_docs/python", None),
+}
+
+autodoc_inherit_docstrings = False

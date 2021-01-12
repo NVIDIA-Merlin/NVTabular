@@ -16,7 +16,7 @@
 import cudf
 from nvtx import annotate
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class DifferenceLag(Operator):
@@ -58,7 +58,7 @@ class DifferenceLag(Operator):
         self.shifts = [shift] if isinstance(shift, int) else shift
 
     @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         # compute a mask indicating partition boundaries, handling multiple partition_cols
         # represent partition boundaries by None values
         output = {}
@@ -72,10 +72,12 @@ class DifferenceLag(Operator):
                 output[self._column_name(col, shift)] = (gdf[col] - gdf[col].shift(shift)) * mask
         return cudf.DataFrame(output)
 
+    transform.__doc__ = Operator.transform.__doc__
+
     def dependencies(self):
         return self.partition_cols
 
-    def output_column_names(self, columns):
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
         return [self._column_name(col, shift) for shift in self.shifts for col in columns]
 
     def _column_name(self, col, shift):

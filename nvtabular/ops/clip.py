@@ -16,7 +16,7 @@
 import cudf
 from nvtx import annotate
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class Clip(Operator):
@@ -47,10 +47,12 @@ class Clip(Operator):
         self.max_value = max_value
 
     @annotate("Clip_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: list, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         z_gdf = gdf[columns]
         if self.min_value is not None:
             z_gdf[z_gdf < self.min_value] = self.min_value
         if self.max_value is not None:
             z_gdf[z_gdf > self.max_value] = self.max_value
         return z_gdf
+
+    transform.__doc__ = Operator.transform.__doc__
