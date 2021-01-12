@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import column_group, io, workflow  # noqa
+from . import column_group, io, tools, workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack

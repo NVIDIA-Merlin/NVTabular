@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import cudf
 import json
 
 import fsspec
@@ -52,32 +53,33 @@ class DatasetInspector:
         Dictionary indicating the diferent columns type
     """
 
-    def __get_stats(self, ddf, col, data, col_type, key_names):
+    def __get_stats(self, ddf, ddf_dtypes, col, data, col_type, key_names):
         data[col] = {}
         # Get dtype and convert cat-strings and cat_mh-lists
-        # TODO: Fix dask-cudf _meta
-        data[col]["dtype"] = str(ddf[col].dtype)
-        if data[col]["dtype"] == "object":
-            if col_type == "cat":
-                data[col]["dtype"] = "string"
-                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
-            elif col_type == "cat_mh":
-                data[col]["dtype"] = "list"
-                # For multihot columns, calculate min/max/mean for the content of the lists
-                if ddf[col].dtype is cudf.core.dtypes.ListDtype:
-                # For string
-                if ddf[col].dtype.leaf_type == "string":
-                    data[col]["multi_min"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).min()
-                    data[col]["multi_max"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).max()
-                    data[col]["multi_avg"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).mean()
-                # For int/float
-                else:
-                    data[col]["multi_min"] = ddf[col].compute().list.leaves.min()
-                    data[col]["multi_max"] = ddf[col].compute().list.leaves.max()
-                    data[col]["multi_avg"] = ddf[col].compute().list.leaves.mean()
-                # Get list size for min/max/mean entry computation
-                ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
-                ddf[col].compute()
+        # TODO: Fix dask-cudf
+        print(col)
+        print(str(ddf_dtypes[col].dtype))
+        data[col]["dtype"] = str(ddf_dtypes[col].dtype)
+        
+        # If string, chane string for its len
+        if data[col]["dtype"] == "string":
+            ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
+            ddf[col].compute()
+        # If multihot, compute list content stats, and change list for its len
+        elif data[col]["dtype"] == "list":
+            # If list content is string
+            if ddf_dtypes[col].dtype.leaf_type == "string":
+                data[col]["multi_min"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).min()
+                data[col]["multi_max"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).max()
+                data[col]["multi_avg"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).mean()
+            # If list content is a number
+            else:
+                data[col]["multi_min"] = ddf[col].compute().list.leaves.min()
+                data[col]["multi_max"] = ddf[col].compute().list.leaves.max()
+                data[col]["multi_avg"] = ddf[col].compute().list.leaves.mean()
+            # Get list len for min/max/mean entry computation
+            ddf[col] = ddf[col].map_partitions(lambda x: len(x), meta=(col, ddf_dtypes[col].dtype))
+            ddf[col].compute()
 
         # Get max/min/mean for all but label
         if col_type != "label":
@@ -132,21 +134,24 @@ class DatasetInspector:
         data["conts"] = conts
         data["labels"] = labels
 
+        # Compute first row to know correct dtypes
+        ddf_dtypes = ddf.head(1)
+
         # Get categoricals columns stats
         for col in cats:
-            self.__get_stats(ddf, col, data, "cat", key_names)
+            self.__get_stats(ddf, ddf_dtypes, col, data, "cat", key_names)
 
         # Get categoricals multihot columns stats
         for col in cats_mh:
-            self.__get_stats(ddf, col, data, "cat_mh", key_names)
+            self.__get_stats(ddf, ddf_dtypes, col, data, "cat_mh", key_names)
 
         # Get continuous columns stats
         for col in conts:
-            self.__get_stats(ddf, col, data, "cont", key_names)
+            self.__get_stats(ddf, ddf_dtypes, col, data, "cont", key_names)
 
         # Get labels columns stats
         for col in labels:
-            self.__get_stats(ddf, col, data, "label", key_names)
+            self.__get_stats(ddf, ddf_dtypes, col, data, "label", key_names)
 
         # Write json file
         with fsspec.open(output_file, "w") as outfile:
@@ -154,3 +159,4 @@ class DatasetInspector:
 
         # Stop Dask Cluster
         client.shutdown()
+        cluster.close()
