@@ -23,7 +23,6 @@ from dask_cuda import LocalCUDACluster
 
 from nvtabular.io import Dataset
 
-
 # Class to help Json to serialize the data
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -37,7 +36,6 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return super(NpEncoder, self).default(obj)
-
 
 class DatasetInspector:
     """
@@ -54,7 +52,7 @@ class DatasetInspector:
         Dictionary indicating the diferent columns type
     """
 
-    def __get_stats(self, ddf, col, data, col_type):
+    def __get_stats(self, ddf, col, data, col_type, key_names):
         data[col] = {}
         # Get dtype and convert cat-strings and cat_mh-lists
         # TODO: Fix dask-cudf _meta
@@ -65,27 +63,38 @@ class DatasetInspector:
                 ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
             elif col_type == "cat_mh":
                 data[col]["dtype"] = "list"
+                # For multihot columns, calculate min/max/mean for the content of the lists
+                if ddf[col].dtype is cudf.core.dtypes.ListDtype:
+                # For string
+                if ddf[col].dtype.leaf_type == "string":
+                    data[col]["multi_min"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).min()
+                    data[col]["multi_max"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).max()
+                    data[col]["multi_avg"] = ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).mean()
+                # For int/float
+                else:
+                    data[col]["multi_min"] = ddf[col].compute().list.leaves.min()
+                    data[col]["multi_max"] = ddf[col].compute().list.leaves.max()
+                    data[col]["multi_avg"] = ddf[col].compute().list.leaves.mean()
+                # Get list size for min/max/mean entry computation
                 ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
-            ddf[col].compute()
+                ddf[col].compute()
 
-        # Get percentage of nan for all
-        data[col]["nans_%"] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
-
-        # Get max/min/mean for all (Before we were excluding label)
-        data[col]["min"] = ddf[col].min().compute()
-        data[col]["max"] = ddf[col].max().compute()
-        if col_type == "cont":
-            data[col]["mean"] = ddf[col].mean().compute()
-        else:
-            data[col]["avg"] = int(ddf[col].mean().compute())
-
+        # Get max/min/mean for all but label
+        if col_type != "label":
+            data[col][key_names["min"][col_type]] = ddf[col].min().compute()
+            data[col][key_names["max"][col_type]] = ddf[col].max().compute()
+            data[col][key_names["mean"][col_type]] = ddf[col].mean().compute()
+            
         # Get cardinality for cat and label
         if col_type == "cat" or col_type == "label":
             data[col]["cardinality"] = ddf[col].nunique().compute()
 
         # For conts get also std
         if col_type == "cont":
-            data[col]["std"] = ddf[col].std().compute()
+            data[col]["standard deviation"] = ddf[col].std().compute()
+
+        # Get percentage of nan for all
+        data[col]["nans_%"] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
 
     def inspect(self, path, dataset_format, columns_dict, output_file):
         # Get dataset columns
@@ -93,6 +102,18 @@ class DatasetInspector:
         cats_mh = columns_dict["cats_mh"]
         conts = columns_dict["conts"]
         labels = columns_dict["labels"]
+
+        # Dictionary with json output key names
+        key_names = {}
+        key_names["min"] = {}
+        key_names["min"]["cat"] = "min_entry_size"
+        key_names["min"]["cont"] = "min_value"
+        key_names["max"] = {}
+        key_names["max"]["cat"] = "max_entry_size"
+        key_names["max"]["cont"] = "max_value"
+        key_names["mean"] = {}
+        key_names["mean"]["cat"] = "avg_entry_size"
+        key_names["mean"]["cont"] = "mean"
 
         # Get dataset
         dataset = Dataset(path, engine=dataset_format)
@@ -113,19 +134,19 @@ class DatasetInspector:
 
         # Get categoricals columns stats
         for col in cats:
-            self.__get_stats(ddf, col, data, "cat")
+            self.__get_stats(ddf, col, data, "cat", key_names)
 
         # Get categoricals multihot columns stats
         for col in cats_mh:
-            self.__get_stats(ddf, col, data, "cat_mh")
+            self.__get_stats(ddf, col, data, "cat_mh", key_names)
 
         # Get continuous columns stats
         for col in conts:
-            self.__get_stats(ddf, col, data, "cont")
+            self.__get_stats(ddf, col, data, "cont", key_names)
 
         # Get labels columns stats
         for col in labels:
-            self.__get_stats(ddf, col, data, "label")
+            self.__get_stats(ddf, col, data, "label", key_names)
 
         # Write json file
         with fsspec.open(output_file, "w") as outfile:
