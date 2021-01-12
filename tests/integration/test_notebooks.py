@@ -50,6 +50,7 @@ def test_criteo_notebook(asv_db, bench_info, tmpdir):
     bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
     send_results(asv_db, bench_info, bench_results)
 
+
 @pytest.mark.skip(reason="Criteo-hugectr notebook needs to be updated.")
 def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
