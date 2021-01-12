@@ -135,9 +135,11 @@ class ParquetWriter(ThreadedWriter):
                 if self.bytes_io:
                     bio = BytesIO()
                     self.data_bios.append(bio)
-                    self.data_writers.append(pwriter(bio, compression=None))
+                    # Passing index=False when creating ParquetWriter
+                    # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
+                    self.data_writers.append(pwriter(bio, compression=None, index=False))
                 else:
-                    self.data_writers.append(pwriter(path, compression=None))
+                    self.data_writers.append(pwriter(path, compression=None, index=False))
 
             return self.data_writers[idx]
 
