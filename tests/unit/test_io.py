@@ -95,7 +95,10 @@ def test_dask_dataset(datasets, engine, num_files):
         result = dataset.to_ddf(columns=mycols_csv)
 
     # We do not preserve the index in NVTabular
-    assert_eq(ddf0, result, check_index=False)
+    if engine == "parquet":
+        assert_eq(ddf0, result, check_index=False)
+    else:
+        assert_eq(ddf0, result)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
