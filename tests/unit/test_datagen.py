@@ -75,7 +75,6 @@ def test_uniform(num_rows, distro):
 @pytest.mark.parametrize("num_rows", [1000, 10000])
 @pytest.mark.parametrize("distro", [None, distros])
 def test_width(num_rows, distro):
-    conts = list(json_sample["conts"].keys())
     json_sample_1 = {
         "conts": {
             "cont_1": {"dtype": np.float32, "min_val": 0, "max_val": 1, "width": 20},
