@@ -15,8 +15,9 @@
 #
 import warnings
 
-from . import column_group, data_gen, io, workflow  # noqa
+from . import column_group, io, workflow  # noqa
 from ._version import get_versions
+from .tools import data_gen
 
 # suppress some warnings with cudf warning about column ordering with dlpack
 # and numba warning about deprecated environment variables

@@ -30,12 +30,20 @@ json_sample = {
     "labs": {"lab_1": {"dtype": None, "cardinality": 2}},
 }
 
+distros = {
+    "cont_1": {"name": "powerlaw", "params": {"alpha": 0.1}},
+    "cont_2": {"name": "powerlaw", "params": {"alpha": 0.2}},
+    "cat_1": {"name": "powerlaw", "params": {"alpha": 0.1}},
+    "cat_2": {"name": "powerlaw", "params": {"alpha": 0.2}},
+}
+
 
 @pytest.mark.parametrize("num_rows", [1000, 10000])
-def test_powerlaw(num_rows):
-    cats = ["CAT_1", "CAT_2", "CAT_3", "CAT_4"]
+@pytest.mark.parametrize("distro", [None, distros])
+def test_powerlaw(num_rows, distro):
+    cats = list(json_sample["cats"].keys())[1:]
 
-    cols = nvt.data_gen._get_cols_from_schema(json_sample)
+    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
@@ -50,10 +58,10 @@ def test_powerlaw(num_rows):
 
 
 @pytest.mark.parametrize("num_rows", [1000, 10000])
-def test_uniform(num_rows):
-    cats = ["CAT_1", "CAT_2", "CAT_3", "CAT_4"]
-
-    cols = nvt.data_gen._get_cols_from_schema(json_sample)
+@pytest.mark.parametrize("distro", [None, distros])
+def test_uniform(num_rows, distro):
+    cats = list(json_sample["cats"].keys())[1:]
+    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
@@ -65,10 +73,27 @@ def test_uniform(num_rows):
 
 
 @pytest.mark.parametrize("num_rows", [1000, 10000])
-def test_cat_rep(num_rows):
-    cats = ["CAT_1", "CAT_2", "CAT_3", "CAT_4"]
+@pytest.mark.parametrize("distro", [None, distros])
+def test_width(num_rows, distro):
+    conts = list(json_sample["conts"].keys())
+    json_sample_1 = {
+        "conts": {
+            "cont_1": {"dtype": np.float32, "min_val": 0, "max_val": 1, "width": 20},
+        }
+    }
+    cols = nvt.data_gen._get_cols_from_schema(json_sample_1, distros=distro)
+    conts_rep = cols["conts"]
 
-    cols = nvt.data_gen._get_cols_from_schema(json_sample)
+    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro())
+    df_uni = df_gen.create_df(num_rows, conts_rep, [], [], dist=df_gen)
+    assert df_uni.shape[1] == 20
+
+
+@pytest.mark.parametrize("num_rows", [1000, 10000])
+@pytest.mark.parametrize("distro", [None, distros])
+def test_cat_rep(num_rows, distro):
+    cats = list(json_sample["cats"].keys())
+    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
@@ -78,14 +103,14 @@ def test_cat_rep(num_rows):
     df_cats = df_uni[cats]
     assert df_cats.shape[1] == len(cats)
     assert df_cats.shape[0] == num_rows
-    for idx, cat in enumerate(cats):
-        df_cats[cat].nunique() == cats_rep[idx + 1][1]
-        len(df_cats[cat].min()) == cats_rep[idx + 1][2]
-        len(df_cats[cat].max()) == cats_rep[idx + 1][3]
-    check_ser = cudf.Series(df_uni["CAT_0"]._column.elements.values_host)
-    assert check_ser.nunique() == cats_rep[0][1]
-    assert check_ser.str.len().min() == cats_rep[0][2]
-    assert check_ser.str.len().max() == cats_rep[0][3]
+    for idx, cat in enumerate(cats[1:]):
+        df_cats[cat].nunique() == cats_rep[idx + 1][3]
+        df_cats[cat].str.len().min() == cats_rep[idx + 1][4]
+        df_cats[cat].str.len().max() == cats_rep[idx + 1][5]
+    check_ser = cudf.Series(df_uni[cats[0]]._column.elements.values_host)
+    assert check_ser.nunique() == cats_rep[0][3]
+    assert check_ser.str.len().min() == cats_rep[0][4]
+    assert check_ser.str.len().max() == cats_rep[0][5]
 
 
 def test_json_convert():
@@ -96,10 +121,10 @@ def test_json_convert():
 
 
 @pytest.mark.parametrize("num_rows", [1000, 100000])
-def test_full_df(num_rows, tmpdir):
-    cats = ["CAT_1", "CAT_2", "CAT_3", "CAT_4"]
-
-    cols = nvt.data_gen._get_cols_from_schema(json_sample)
+@pytest.mark.parametrize("distro", [None, distros])
+def test_full_df(num_rows, tmpdir, distro):
+    cats = list(json_sample["cats"].keys())
+    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
@@ -116,11 +141,19 @@ def test_full_df(num_rows, tmpdir):
         full_df = cudf.concat([full_df, df])
     assert test_size == num_rows
     assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labs_rep)
-    for idx, cat in enumerate(cats):
-        full_df[cat].nunique() == cats_rep[idx + 1][1]
-        len(full_df[cat].min()) == cats_rep[idx + 1][2]
-        len(full_df[cat].max()) == cats_rep[idx + 1][3]
-    check_ser = cudf.Series(full_df["CAT_0"]._column.elements.values_host)
-    assert check_ser.nunique() == cats_rep[0][1]
-    assert check_ser.str.len().min() == cats_rep[0][2]
-    assert check_ser.str.len().max() == cats_rep[0][3]
+    for idx, cat in enumerate(cats[1:]):
+        dist = cats_rep[idx + 1][2] or df_gen.dist
+        if type(full_df[cat]._column) is not cudf.core.column.string.StringColumn:
+            sts, ps = dist.verify(full_df[cat].to_pandas())
+            assert all(s > 0.9 for s in sts)
+        assert full_df[cat].nunique() == cats_rep[idx + 1][3]
+        assert full_df[cat].str.len().min() == cats_rep[idx + 1][4]
+        assert full_df[cat].str.len().max() == cats_rep[idx + 1][5]
+    check_ser = cudf.Series(full_df[cats[0]]._column.elements.values_host)
+    dist = cats_rep[0][2] or df_gen.dist
+    if type(full_df[cat]._column) is not cudf.core.column.string.StringColumn:
+        sts, ps = dist.verify(full_df[cats[0].to_pandas()])
+        assert all(s > 0.9 for s in sts)
+    assert check_ser.nunique() == cats_rep[0][3]
+    assert check_ser.str.len().min() == cats_rep[0][4]
+    assert check_ser.str.len().max() == cats_rep[0][5]
