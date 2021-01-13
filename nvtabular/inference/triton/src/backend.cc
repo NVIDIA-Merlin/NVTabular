@@ -27,9 +27,8 @@
 #include <memory>
 #include <thread>
 #include "triton/backend/backend_common.h"
-#include <pybind11/embed.h>
+#include "nvtabular.h"
 
-namespace py = pybind11;
 namespace triton { namespace backend { namespace identity {
 
 //
@@ -277,6 +276,9 @@ class ModelInstanceState {
   // Get the state of the model that corresponds to this instance.
   ModelState* StateForModel() const { return model_state_; }
 
+  bool inter_started = false;
+  NVTabular nvt;
+
  private:
   ModelInstanceState(
       ModelState* model_state,
@@ -288,6 +290,7 @@ class ModelInstanceState {
   const std::string name_;
   const TRITONSERVER_InstanceGroupKind kind_;
   const int32_t device_id_;
+
 };
 
 TRITONSERVER_Error*
@@ -310,6 +313,8 @@ ModelInstanceState::Create(
   *state = new ModelInstanceState(
       model_state, triton_model_instance, instance_name, instance_kind,
       instance_id);
+
+  (*state)->nvt.Deserialize("model.nvtabular");
   return nullptr;  // success
 }
 
@@ -569,7 +574,8 @@ TRITONBACKEND_ModelInstanceExecute(
     TRITONBACKEND_ModelInstance* instance, TRITONBACKEND_Request** requests,
     const uint32_t request_count)
 {
-  // Triton will not call this function simultaneously for the same
+
+		// Triton will not call this function simultaneously for the same
   // 'instance'. But since this backend could be used by multiple
   // instances from multiple models the implementation needs to handle
   // multiple calls to this function at the same time (with different
@@ -580,6 +586,7 @@ TRITONBACKEND_ModelInstanceExecute(
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceState(
       instance, reinterpret_cast<void**>(&instance_state)));
   ModelState* model_state = instance_state->StateForModel();
+
 
   // This backend specifies BLOCKING execution policy. That means that
   // we should not return from this function until execution is
@@ -681,11 +688,6 @@ TRITONBACKEND_ModelInstanceExecute(
          ", input_count = " + std::to_string(input_count) +
          ", requested_output_count = " + std::to_string(requested_output_count))
             .c_str());
-
-    printf("\nTESTTTTTT *** \n");
-
-    py::scoped_interpreter guard{}; // start the interpreter and keep it alive
-    py::print("Hello, World!"); // use the Python API
 
     const char* input_name;
     GUARDED_RESPOND_IF_ERROR(
@@ -846,6 +848,8 @@ TRITONBACKEND_ModelInstanceExecute(
             reinterpret_cast<char*>(output_buffer) + output_buffer_offset,
             input_buffer, buffer_byte_size);
         output_buffer_offset += buffer_byte_size;
+
+        //instance_state->nvt.Transform(1.0, "cat");
       }
 
       if (responses[r] == nullptr) {

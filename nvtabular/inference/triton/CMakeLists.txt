@@ -85,7 +85,7 @@ configure_file(src/libtriton_nvtabular.ldscript libtriton_nvtabular.ldscript COP
 
 add_library(
   triton-nvtabular-backend SHARED
-  src/nvtabular.cc
+  src/backend.cc
 )
 
 add_library(
