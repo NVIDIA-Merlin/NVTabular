@@ -15,11 +15,13 @@
 #
 import cudf
 import cupy
+import dask_cudf
 import numpy as np
 from dask.delayed import Delayed
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -153,7 +155,7 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
@@ -310,7 +312,7 @@ class TargetEncoding(StatOperator):
         new_gdf.index = gdf.index
         return new_gdf
 
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         # Add temporary column for sorting
         tmp = "__tmp__"
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
@@ -343,6 +345,10 @@ class TargetEncoding(StatOperator):
         if fit_folds and not self.drop_folds:
             new_gdf[self.fold_name] = gdf[self.fold_name]
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
 
 def _add_fold(s, kfold, fold_seed=None):

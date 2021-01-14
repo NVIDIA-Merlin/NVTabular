@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .operator import Operator
+import cudf
+
+from .operator import ColumnNames, Operator
 
 
 class Rename(Operator):
@@ -41,9 +43,11 @@ class Rename(Operator):
         self.postfix = postfix
         self.f = f
 
-    def transform(self, columns, gdf):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         gdf.columns = self.output_column_names(columns)
         return gdf
+
+    transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
         if self.f:

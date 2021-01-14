@@ -132,11 +132,7 @@ class JoinExternal(Operator):
 
         return _ext
 
-    def transform(
-        self,
-        columns,
-        gdf: cudf.DataFrame,
-    ):
+    def transform(self, columns, gdf: cudf.DataFrame) -> cudf.DataFrame:
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
         new_gdf = gdf.merge(self._ext, left_on=self.on, right_on=self.on_ext, how=self.how)
@@ -145,6 +141,8 @@ class JoinExternal(Operator):
         gdf.drop(columns=[tmp], inplace=True)
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
         if self.columns_ext:
