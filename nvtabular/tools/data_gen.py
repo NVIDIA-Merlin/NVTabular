@@ -209,12 +209,11 @@ class DatasetGen:
         row_size = self.get_row_size(df_single, cats_rep)
         batch = self.get_batch(row_size) or 1
         # ensure batch is an int
+
         batch = int(batch)
         file_count = 0
         while size > 0:
-            x = batch
-            if size < batch:
-                x = size
+            x = min(batch, size)
             df = self.create_df(
                 x,
                 conts_rep=conts_rep,
@@ -226,7 +225,7 @@ class DatasetGen:
             full_file = os.path.join(output, f"dataset_{file_count}.parquet")
             df.to_parquet(full_file)
             files_created.append(full_file)
-            size = size - batch
+            size = size - x
             file_count = file_count + 1
         # rescan entire dataset to apply vocabulary to categoricals
         if entries:
