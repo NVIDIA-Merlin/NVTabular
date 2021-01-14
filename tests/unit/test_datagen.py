@@ -2,7 +2,7 @@ import cudf
 import numpy as np
 import pytest
 
-import nvtabular as nvt
+import nvtabular.tools.data_gen as datagen
 
 json_sample = {
     "conts": {
@@ -43,12 +43,12 @@ distros = {
 def test_powerlaw(num_rows, distro):
     cats = list(json_sample["cats"].keys())[1:]
 
-    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
+    cols = datagen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
 
-    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.PowerLawDistro(0.1))
+    df_gen = datagen.DatasetGen(datagen.PowerLawDistro(0.1))
     df_pw = cudf.DataFrame()
     for x in range(10):
         df_pw_1 = df_gen.create_df(num_rows, conts_rep, cats_rep, labs_rep, dist=df_gen)
@@ -61,12 +61,12 @@ def test_powerlaw(num_rows, distro):
 @pytest.mark.parametrize("distro", [None, distros])
 def test_uniform(num_rows, distro):
     cats = list(json_sample["cats"].keys())[1:]
-    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
+    cols = datagen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
 
-    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro())
+    df_gen = datagen.DatasetGen(datagen.UniformDistro())
     df_uni = df_gen.create_df(num_rows, conts_rep, cats_rep, labs_rep, dist=df_gen)
     sts, ps = df_gen.verify_df(df_uni[cats])
     assert all(s > 0.9 for s in sts)
@@ -80,10 +80,10 @@ def test_width(num_rows, distro):
             "cont_1": {"dtype": np.float32, "min_val": 0, "max_val": 1, "width": 20},
         }
     }
-    cols = nvt.data_gen._get_cols_from_schema(json_sample_1, distros=distro)
+    cols = datagen._get_cols_from_schema(json_sample_1, distros=distro)
     conts_rep = cols["conts"]
 
-    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro())
+    df_gen = datagen.DatasetGen(datagen.UniformDistro())
     df_uni = df_gen.create_df(num_rows, conts_rep, [], [], dist=df_gen)
     assert df_uni.shape[1] == 20
 
@@ -92,12 +92,12 @@ def test_width(num_rows, distro):
 @pytest.mark.parametrize("distro", [None, distros])
 def test_cat_rep(num_rows, distro):
     cats = list(json_sample["cats"].keys())
-    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
+    cols = datagen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
 
-    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro())
+    df_gen = datagen.DatasetGen(datagen.UniformDistro())
     df_uni = df_gen.create_df(num_rows, conts_rep, cats_rep, labs_rep, dist=df_gen, entries=True)
     df_cats = df_uni[cats]
     assert df_cats.shape[1] == len(cats)
@@ -113,7 +113,7 @@ def test_cat_rep(num_rows, distro):
 
 
 def test_json_convert():
-    cols = nvt.data_gen._get_cols_from_schema(json_sample)
+    cols = datagen._get_cols_from_schema(json_sample)
     assert len(cols["conts"]) == len(json_sample["conts"].keys())
     assert len(cols["cats"]) == len(json_sample["cats"].keys())
     assert len(cols["labs"]) == len(json_sample["labs"].keys())
@@ -123,12 +123,12 @@ def test_json_convert():
 @pytest.mark.parametrize("distro", [None, distros])
 def test_full_df(num_rows, tmpdir, distro):
     cats = list(json_sample["cats"].keys())
-    cols = nvt.data_gen._get_cols_from_schema(json_sample, distros=distro)
+    cols = datagen._get_cols_from_schema(json_sample, distros=distro)
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
     labs_rep = cols["labs"]
 
-    df_gen = nvt.data_gen.DatasetGen(nvt.data_gen.UniformDistro(), gpu_frac=0.00001)
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.00001)
     df_files = df_gen.full_df_create(
         num_rows, conts_rep, cats_rep, labs_rep, dist=df_gen, entries=True, output=tmpdir
     )
