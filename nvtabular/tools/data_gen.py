@@ -318,12 +318,6 @@ class Col:
         self.dtype = dtype
         self.distro = distro
 
-    def tupel(self):
-        tupel = []
-        for attr, val in self.__dict__.items():
-            tupel.append(val)
-        return tupel
-
 
 class ContCol(Col):
     def __init__(
