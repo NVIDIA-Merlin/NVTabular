@@ -61,15 +61,15 @@ class DatasetInspector:
         data[col]["dtype"] = str(ddf_dtypes[col].dtype)
 
         # If string, chane string for its len
-        # TODO: Dask head() is not getting string properly
         if data[col]["dtype"] == "object":
             # data[col]["dtype"] = "string"
             ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
             ddf[col].compute()
         # If multihot, compute list content stats, and change list for its len
         elif data[col]["dtype"] == "list":
+            ddf._meta[col] = cudf.Series([np.array([0], dtype=ddf_dtypes[col].dtype.leaf_type)])[:0]
             # If list content is string
-            if ddf_dtypes[col].dtype.leaf_type == "string":
+            if ddf_dtypes[col].dtype.leaf_type == "object":
                 data[col]["multi_min"] = (
                     ddf[col].compute().list.leaves.applymap(lambda x: x.str.len()).min()
                 )
@@ -85,9 +85,9 @@ class DatasetInspector:
                 data[col]["multi_max"] = ddf[col].compute().list.leaves.max()
                 data[col]["multi_avg"] = ddf[col].compute().list.leaves.mean()
             # Get list len for min/max/mean entry computation
-            # TODO: Fix Dask_cudf meta error
-            ddf[col] = ddf[col].map_partitions(lambda x: len(x), meta=(col, ddf_dtypes[col].dtype))
-            ddf[col].compute()
+            # TODO: Add when cudf support is implemented - https://github.com/rapidsai/cudf/issues/7157
+            # ddf[col] = ddf[col].map_partitions(lambda x: x.list.len(), meta=(col, ddf_dtypes[col].dtype))
+            # ddf[col].compute()
 
         # Get max/min/mean for all but label
         if col_type != "label":
