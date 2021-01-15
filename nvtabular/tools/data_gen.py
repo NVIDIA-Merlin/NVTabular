@@ -15,7 +15,7 @@ from ..utils import device_mem_size
 
 class UniformDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
-        ser = cudf.Series(cupy.random.uniform(min_val, max_val, size=num_rows))
+        ser = cudf.Series(cupy.random.uniform(min_val, max_val, size=num_rows), dtype=dtype)
         return ser
 
     def verify(self, pandas_series):
@@ -56,22 +56,19 @@ class DatasetGen:
         self.dist = distribution
         self.gpu_frac = gpu_frac
 
-    # need to be able to generate from scratch
     def create_conts(self, size, conts_rep):
         """
         size = number of rows wanted
         conts_rep = list of tuples representing values of each column
         """
-        num_cols = len(conts_rep)
         df = cudf.DataFrame()
-        for x in range(num_cols):
-            name, dtype, distro, min_val, max_val = conts_rep[x][:5]
-            width = conts_rep[x][-1]
-            dist = distro or self.dist
-            for y in range(width):
-                ser = dist.create_col(size, min_val=min_val, max_val=max_val)
-                ser = ser.astype(dtype)
-                ser.name = name if y == 0 else f"{name}_{y}"
+        for col in conts_rep:
+            dist = col.distro or self.dist
+            for y in range(col.width):
+                ser = dist.create_col(
+                    size, min_val=col.min_val, max_val=col.max_val, dtype=col.dtype
+                )
+                ser.name = col.name if y == 0 else f"{col.name}_{y}"
                 df = cudf.concat([df, ser], axis=1)
         return df
 
@@ -83,44 +80,42 @@ class DatasetGen:
                   minimum and maximum categorical string length
         """
         # should alpha also be exposed? related to dist... should be part of that
-        num_cols = len(cats_rep)
         df = cudf.DataFrame()
-        for x in range(num_cols):
+        for col in cats_rep:
             # if mh resets size
             col_size = size
             offs = None
-            name, _, distro, cardinality, minn, maxx = cats_rep[x][:6]
-            # calculate number of elements in each row for num rows
-            mh_min, mh_max, mh_avg = cats_rep[x][-3:]
-            dist = distro or self.dist
-            if mh_min and mh_max:
+            dist = col.distro or self.dist
+            if col.multi_min and col.multi_max:
                 entrys_lens = dist.create_col(
-                    col_size + 1, dtype=np.long, min_val=mh_min, max_val=mh_max
+                    col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
                 ).ceil()
                 # sum returns numpy dtype
                 col_size = int(entrys_lens.sum())
                 offs = cupy.cumsum(entrys_lens.values)
-            ser = dist.create_col(col_size, dtype=np.long, min_val=0, max_val=cardinality).ceil()
+            ser = dist.create_col(
+                col_size, dtype=np.long, min_val=0, max_val=col.cardinality
+            ).ceil()
             if entries:
-                cat_names = self.create_cat_entries(cardinality, min_size=minn, max_size=maxx)
+                cat_names = self.create_cat_entries(
+                    col.cardinality, min_size=col.min_entry_size, max_size=col.max_entry_size
+                )
                 ser, _ = self.merge_cats_encoding(ser, cat_names)
             if offs is not None:
                 # create multi_column from offs and ser
                 ser = self.create_multihot_col(offs, ser)
-            ser.name = name
+            ser.name = col.name
             df = cudf.concat([df, ser], axis=1)
         return df
 
     def create_labels(self, size, labs_rep):
-        num_cols = len(labs_rep)
         df = cudf.DataFrame()
-        for x in range(num_cols):
-            name, dtype, distro, cardinality = labs_rep[x][:4]
-            dist = distro or self.dist
-            ser = dist.create_col(size, dtype=np.long, min_val=1, max_val=cardinality).ceil()
+        for col in labs_rep:
+            dist = col.distro or self.dist
+            ser = dist.create_col(size, dtype=col.dtype, min_val=1, max_val=col.cardinality).ceil()
             # bring back down to correct representation because of ceil call
             ser = ser - 1
-            ser.name = name
+            ser.name = col.name
             df = cudf.concat([df, ser], axis=1)
         return df
 
@@ -165,12 +160,12 @@ class DatasetGen:
     def create_df(
         self,
         size,
-        conts_rep=None,
-        cats_rep=None,
-        labs_rep=None,
-        dist=PowerLawDistro(),
+        cols,
         entries=False,
     ):
+        conts_rep = cols["conts"] if "conts" in cols else None
+        cats_rep = cols["cats"] if "cats" in cols else None
+        labs_rep = cols["labs"] if "labs" in cols else None
         df = cudf.DataFrame()
         if conts_rep:
             df = cudf.concat([df, self.create_conts(size, conts_rep)], axis=1)
@@ -189,10 +184,7 @@ class DatasetGen:
     def full_df_create(
         self,
         size,
-        conts_rep=None,
-        cats_rep=None,
-        labs_rep=None,
-        dist=PowerLawDistro(),
+        cols,
         entries=False,
         output=".",
     ):
@@ -200,26 +192,20 @@ class DatasetGen:
         # always use entries for row_size estimate
         df_single = self.create_df(
             1,
-            conts_rep=conts_rep,
-            cats_rep=cats_rep,
-            labs_rep=labs_rep,
-            dist=dist,
+            cols,
             entries=entries,
         )
-        row_size = self.get_row_size(df_single, cats_rep)
+        cats = cols["cats"] if "cats" in cols else None
+        row_size = self.get_row_size(df_single, cats)
         batch = self.get_batch(row_size) or 1
         # ensure batch is an int
-
         batch = int(batch)
         file_count = 0
         while size > 0:
             x = min(batch, size)
             df = self.create_df(
                 x,
-                conts_rep=conts_rep,
-                cats_rep=cats_rep,
-                labs_rep=labs_rep,
-                dist=dist,
+                cols,
                 entries=False,
             )
             full_file = os.path.join(output, f"dataset_{file_count}.parquet")
@@ -229,30 +215,31 @@ class DatasetGen:
             file_count = file_count + 1
         # rescan entire dataset to apply vocabulary to categoricals
         if entries:
-            vocab_files = self.create_vocab(cats_rep, output)
-            files_created = self.merge_vocab(files_created, vocab_files, cats_rep, output)
+            vocab_files = self.create_vocab(cats, output)
+            files_created = self.merge_vocab(files_created, vocab_files, cats, output)
         # write out dataframe
         return files_created
 
     def create_vocab(self, cats_rep, output):
         # build vocab for necessary categoricals using cats_rep info
         vocab_files = []
-        for idx, cat_rep in enumerate(cats_rep):
+        for col in cats_rep:
             col_vocab = []
-            name, _, distro, cardinality, minn, maxx = cat_rep[:6]
             # check if needs to be split into batches for size
-            batch = self.get_batch(cardinality * maxx)
+            batch = self.get_batch(col.cardinality * col.max_entry_size)
             file_count = 0
             completed_vocab = 0
-            size = cardinality
+            size = col.cardinality
             while size > completed_vocab:
-                x = batch
-                if size < batch:
-                    x = size
-                ser = cudf.Series(self.create_cat_entries(x, min_size=minn, max_size=maxx))
+                x = min(batch, size)
+                ser = cudf.Series(
+                    self.create_cat_entries(
+                        x, min_size=col.min_entry_size, max_size=col.max_entry_size
+                    )
+                )
                 # turn series to dataframe to keep index count
-                ser = cudf.DataFrame({f"{name}": ser, "idx": ser.index + completed_vocab})
-                file_path = os.path.join(output, f"{name}_vocab_{file_count}.parquet")
+                ser = cudf.DataFrame({f"{col.name}": ser, "idx": ser.index + completed_vocab})
+                file_path = os.path.join(output, f"{col.name}_vocab_{file_count}.parquet")
                 completed_vocab = completed_vocab + x
                 file_count = file_count + 1
                 # save vocab to file
@@ -267,11 +254,11 @@ class DatasetGen:
         noe_df = Dataset(dataset_file_paths, engine="parquet")
         # for each dataframe cycle through all cat col vocabs and left merge
         for idx, df in enumerate(noe_df.to_iter()):
-            for x in range(0, len(cats_rep)):
+            for ydx, col in enumerate(cats_rep):
                 # vocab_files is list of lists of file_paths
-                vocab_df = Dataset(vocab_file_paths[x])
+                vocab_df = Dataset(vocab_file_paths[ydx])
                 for vdf in vocab_df.to_iter():
-                    col_name = cats_rep[x][0]
+                    col_name = col.name
                     focus_col = df[col_name]
                     ser, offs = self.merge_cats_encoding(focus_col, vdf[col_name])
                     if offs:
@@ -298,7 +285,7 @@ class DatasetGen:
         # find # of rows fit in gpu memory
         return gpu_mem // row_size
 
-    def get_row_size(self, row, cats_reps):
+    def get_row_size(self, row, cats_rep):
         """
         row = cudf.DataFrame comprising of one row
         """
@@ -307,20 +294,22 @@ class DatasetGen:
             if type(row[col].dtype) is cudf.core.dtypes.ListDtype:
                 # second from last position is max list length
                 # find correct cats_rep by scanning through all for column name
-                tar_rep = self.find_target_rep(col, cats_reps)
-                max_size = tar_rep[-2]
-                size = size + row[col]._column.elements.dtype.itemsize * max_size
+                tar = self.find_target_rep(col, cats_rep)
+                # else use default 1
+                val = tar.multi_max if tar else 1
+                size = size + row[col]._column.elements.dtype.itemsize * val
             else:
                 size = size + row[col].dtype.itemsize
         return size
 
     def find_target_rep(self, name, cats_rep):
         for rep in cats_rep:
-            if name in rep[0]:
+            if name == rep.name:
                 return rep
+        return None
 
 
-distro_types = {"powerlaw": PowerLawDistro, "uniform": UniformDistro}
+DISTRO_TYPES = {"powerlaw": PowerLawDistro, "uniform": UniformDistro}
 
 
 class Col:
@@ -350,7 +339,6 @@ class ContCol(Col):
         distro=None,
     ):
         super().__init__(name, dtype, distro)
-        #         self.dtype = dtype
         self.min_val = min_val
         self.max_val = max_val
         self.mean = mean
@@ -375,7 +363,6 @@ class CatCol(Col):
         distro=None,
     ):
         super().__init__(name, dtype, distro)
-        #         self.dtype = dtype
         self.cardinality = cardinality
         self.min_entry_size = min_entry_size
         self.max_entry_size = max_entry_size
@@ -389,7 +376,6 @@ class CatCol(Col):
 class LabelCol(Col):
     def __init__(self, name, dtype, cardinality, distro=None):
         super().__init__(name, dtype, distro)
-        #         self.dtype = dtype
         self.cardinality = cardinality
 
 
@@ -436,7 +422,7 @@ def _get_cols_from_schema(schema, distros=None):
             v_dict.update(val)
             if distros and col_name in distros:
                 dis = distros[col_name]
-                new_distr = distro_types[dis["name"]](**dis["params"])
+                new_distr = DISTRO_TYPES[dis["name"]](**dis["params"])
                 v_dict.update({"distro": new_distr})
-            cols[section].append(executor[section](**v_dict).tupel())
+            cols[section].append(executor[section](**v_dict))
     return cols
