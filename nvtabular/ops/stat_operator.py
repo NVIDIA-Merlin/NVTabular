@@ -13,24 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .operator import Operator
+from typing import Any
+
+import dask_cudf
+
+from .operator import ColumnNames, Operator
 
 
 class StatOperator(Operator):
     """
     Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
-    on top of
+    on top of the Operator class.
     """
 
     def __init__(self):
         super(StatOperator, self).__init__()
 
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame) -> Any:
+        """Calculate statistics for this operator, and return a dask future
+        to these statistics, which will be computed by the workflow."""
+
         raise NotImplementedError(
             """The dask operations needed to return a dictionary of uncomputed statistics."""
         )
 
     def fit_finalize(self, dask_stats):
+        """Finalize statistics calculation - the workflow calls this function with
+        the computed statistics from the 'fit' object'"""
+
         raise NotImplementedError(
             """Follow-up operations to convert dask statistics in to member variables"""
         )

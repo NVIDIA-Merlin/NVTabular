@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import logging
+from typing import TYPE_CHECKING, Optional
 
 import cudf
 import dask
@@ -28,24 +29,44 @@ from nvtabular.worker import clean_worker_cache
 LOG = logging.getLogger("nvtabular")
 
 
+if TYPE_CHECKING:
+    import distributed
+
+
 class Workflow:
     """
-    Workflow organizes and runs all feature engineering and preprocessing operators for your
-    workflow.
+    The Workflow class applies a graph of operations onto a dataset, letting you transform
+    datasets to do feature engineering and preprocessing operations. This class follows an API
+    similar to Transformers in sklearn: we first 'fit' the workflow by calculating statistics
+    on the dataset, and then once fit we can 'transform' datasets by applying these statistics.
+
+    Example usage::
+
+        # define a graph of operations
+        cat_features = CAT_COLUMNS >> nvtabular.ops.Categorify()
+        cont_features = CONT_COLUMNS >> nvtabular.ops.FillMissing() >> nvtabular.ops.Normalize()
+        workflow = nvtabular.Workflow(cat_features + cont_features + "label")
+
+        # calculate statistics on the training dataset
+        workflow.fit(nvtabular.io.Dataset(TRAIN_PATH))
+
+        # transform the training and validation datasets and write out as parquet
+        workflow.transform(nvtabular.io.Dataset(TRAIN_PATH)).to_parquet(output_path=TRAIN_OUT_PATH)
+        workflow.transform(nvtabular.io.Dataset(VALID_PATH)).to_parquet(output_path=VALID_OUT_PATH)
 
     Parameters
     ----------
-    columns_group: ColumnGroup
-        The graph of transformations this workflow should apply
-    client: Dask.client, optional
-        The Dask client to use for multi-gpu processing
+    column_group: ColumnGroup
+        The graph of operators this workflow should apply
+    client: distributed.Client, optional
+        The Dask distributed client to use for multi-gpu processing and multi-node processing
     """
 
-    def __init__(self, column_group: ColumnGroup, client=None):
+    def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
         self.column_group = column_group
         self.client = client
 
-    def transform(self, dataset):
+    def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the 'fit'
         method to have already been called, or calculated statistics to be loaded from disk
 
@@ -65,7 +86,7 @@ class Workflow:
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(_transform_ddf(ddf, self.column_group), client=self.client)
 
-    def fit(self, dataset):
+    def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
 
         Parameters
@@ -119,7 +140,7 @@ class Workflow:
             for dependencies in stat_ops.values():
                 dependencies.difference_update(current_phase)
 
-    def fit_transform(self, dataset):
+    def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
         call. Equivalent to calling workflow.fit(dataset) followed by workflow.transform(dataset)
 
