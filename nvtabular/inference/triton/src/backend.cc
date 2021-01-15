@@ -28,6 +28,7 @@
 #include <thread>
 #include "triton/backend/backend_common.h"
 #include "nvtabular.h"
+#include <dlfcn.h>
 
 namespace triton { namespace backend { namespace identity {
 
@@ -109,6 +110,12 @@ class ModelState {
 TRITONSERVER_Error*
 ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
 {
+
+  void *handle = dlopen("libpython3.8.so", RTLD_LAZY | RTLD_GLOBAL);
+  if (!handle) {
+    fprintf(stderr, "\n******************** %s\n\n", dlerror());
+  }
+
   TRITONSERVER_Message* config_message;
   RETURN_IF_ERROR(TRITONBACKEND_ModelConfig(
       triton_model, 1 /* config_version */, &config_message));
@@ -824,7 +831,7 @@ TRITONBACKEND_ModelInstanceExecute(
 
       // Step 3. Copy input -> output. We can only handle if the input
       // buffers are on CPU so fail otherwise.
-      size_t output_buffer_offset = 0;
+      //size_t output_buffer_offset = 0;
       for (uint32_t b = 0; b < input_buffer_count; ++b) {
         const void* input_buffer = nullptr;
         uint64_t buffer_byte_size = 0;
@@ -844,12 +851,12 @@ TRITONBACKEND_ModelInstanceExecute(
                   "failed to get input buffer in CPU memory"));
         }
 
-        memcpy(
-            reinterpret_cast<char*>(output_buffer) + output_buffer_offset,
-            input_buffer, buffer_byte_size);
-        output_buffer_offset += buffer_byte_size;
+        float *inpt = (float *)input_buffer;
+        float *outpt = (float *)output_buffer;
+        //std::cout << "Input buffer: " << inpt[0] << ", " << std::endl;
+        //std::cout << "Input buffer: " << inpt[1] << ", " << std::endl;
 
-        //instance_state->nvt.Transform(1.0, "cat");
+        instance_state->nvt.Transform(inpt, input_shape[0], outpt, input_shape[0], "cat");
       }
 
       if (responses[r] == nullptr) {
