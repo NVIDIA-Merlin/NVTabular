@@ -29,7 +29,6 @@ cmake_minimum_required(VERSION 3.17)
 project(tritonnvtabularbackend LANGUAGES C CXX)
 
 find_package(pybind11 REQUIRED)
-find_package(PythonLibs REQUIRED)
 
 #
 # Options
@@ -46,6 +45,7 @@ option(TRITON_ENABLE_STATS "Include statistics collections in backend" ON)
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
 set(TRITON_BACKEND_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/backend repo")
+set(CMAKE_BUILD_TYPE Debug)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -97,6 +97,7 @@ target_include_directories(
   triton-nvtabular-backend
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    
 )
 
 target_compile_features(triton-nvtabular-backend PRIVATE cxx_std_11)
@@ -112,7 +113,6 @@ target_link_libraries(
     triton-backend-utils    # from repo-backend
     triton-core-serverstub  # from repo-core
     pybind11::embed
-    ${PYTHON_LIBRARIES}
 )
 
 set_target_properties(

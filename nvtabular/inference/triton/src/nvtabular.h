@@ -9,6 +9,7 @@
 #define NVTABULAR_H_
 
 #include <pybind11/embed.h>
+#include "triton/backend/backend_common.h"
 
 namespace py = pybind11;
 //using namespace py::literals;
@@ -70,14 +71,13 @@ public:
 
 	NVTabular() {
 		py::initialize_interpreter();
-		//py::object nvtabular = py::module_::import("nvt").attr("nvtabular");
-		//nt = nvtabular();
-
-		printf("\n******** initialized\n");
+		printf("\nPython interpreter is initialized\n");
+		LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Python interpreter is initialized");
 	}
 	~NVTabular() {
 		py::finalize_interpreter();
-		printf("\n******** finalized\n");
+		LOG_MESSAGE(TRITONSERVER_LOG_INFO,
+				"Python interpreter is  finalized\n");
 	}
 
 	void Deserialize(std::string path) {
@@ -86,36 +86,27 @@ public:
 		nt.attr("deserialize")("path");
 	}
 
-	void Transform(float* cont_in, int n_cont_in, float* cont_out, int n_cont, std::string cat) {
+	void Transform(float* cont_in, int n_cont_in_rows, int n_cont_in_cols,
+			float* cont_out, std::string cat) {
 		py::object nvtabular = py::module_::import("nvt").attr("nvtabular");
 		py::object nt = nvtabular();
 
 		py::dict cont_in_cai;
-		std::tuple<long> shape_in((long) n_cont_in);
+		std::tuple<long, long> shape_in((long) n_cont_in_rows,
+				(long) n_cont_in_cols);
 		cont_in_cai["shape"] = shape_in;
 		std::tuple<long, bool> data_in((long) *(&cont_in), false);
 		cont_in_cai["data"] = data_in;
 
 		py::dict cont_out_cai;
-		std::tuple<long> shape_out((long) n_cont_in);
+		std::tuple<long, long> shape_out((long) n_cont_in_rows,
+				(long) n_cont_in_cols);
 		cont_out_cai["shape"] = shape_out;
 		std::tuple<long, bool> data_out((long) *(&cont_out), false);
 		cont_out_cai["data"] = data_out;
 
 		nt.attr("transform")(cont_in_cai, cont_out_cai, cat);
 	}
-
-	/*
-	 void Test() {
-	 //auto va = py::module::import("numpy");
-	 py::print("******* pybind_test called!");
-	 auto kwargs = py::dict("name"_a="World", "number"_a=42);
-	 auto message = "Hello, {name}! The answer is {number}"_s.format(**kwargs);
-	 py::print(message);
-
-	 py::module_ sys = py::module_::import("sys");
-	 py::print(sys.attr("path"));
-	 }*/
 
 };
 

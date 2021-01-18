@@ -856,7 +856,7 @@ TRITONBACKEND_ModelInstanceExecute(
         //std::cout << "Input buffer: " << inpt[0] << ", " << std::endl;
         //std::cout << "Input buffer: " << inpt[1] << ", " << std::endl;
 
-        instance_state->nvt.Transform(inpt, input_shape[0], outpt, input_shape[0], "cat");
+        instance_state->nvt.Transform(inpt, input_shape[0], input_shape[1], outpt, "cat");
       }
 
       if (responses[r] == nullptr) {
