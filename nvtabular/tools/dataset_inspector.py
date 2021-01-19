@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import json
 
 import cudf
@@ -43,19 +42,25 @@ class NpEncoder(json.JSONEncoder):
 class DatasetInspector:
     """
     Analyzes an existing dataset to extract its statistics.
-
-    Parameters
-    -----------
-    path_or_source : str, list of str, or <dask.dataframe|cudf|pd>.DataFrame
-        Dataset path (or list of paths), or a DataFrame. If string,
-        should specify a specific file or directory path. If this is a
-        directory path, the directory structure must be flat (nested
-        directories are not yet supported).
-    columns_dict: dictionary
-        Dictionary indicating the diferent columns type
     """
 
     def __get_stats(self, ddf, ddf_dtypes, col, data, col_type, key_names):
+        """
+        Parameters
+        -----------
+        ddf : dask.dataframe.DataFrame
+            Dask dataframe with the data
+        ddf : dask.dataframe.DataFrame
+            Dask dataframe with the correct dtypes
+        col: string
+            Col to process
+        data: Dictionary
+            Dictionary to store the output stats
+        col_type: tring
+            Column type (i.e cat, cont, label)
+        key_names: Dictionary
+            Dictionary with store dict names mapping
+        """
         data[col] = {}
         # Get dtype
         data[col]["dtype"] = str(ddf_dtypes[col].dtype)
@@ -85,8 +90,10 @@ class DatasetInspector:
                 data[col]["multi_max"] = ddf[col].compute().list.leaves.max()
                 data[col]["multi_avg"] = ddf[col].compute().list.leaves.mean()
             # Get list len for min/max/mean entry computation
-            # TODO: Add when cudf support is implemented - https://github.com/rapidsai/cudf/issues/7157
-            # ddf[col] = ddf[col].map_partitions(lambda x: x.list.len(), meta=(col, ddf_dtypes[col].dtype))
+            # TODO: Add when cudf support is implemented
+            # https://github.com/rapidsai/cudf/issues/7157
+            # ddf[col] = ddf[col].map_partitions(lambda x: x.list.len(),
+            #                                    meta=(col, ddf_dtypes[col].dtype))
             # ddf[col].compute()
 
         # Get max/min/mean for all but label
@@ -107,6 +114,21 @@ class DatasetInspector:
         data[col]["nans_%"] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
 
     def inspect(self, path, dataset_format, columns_dict, output_file):
+        """
+        Parameters
+        -----------
+        path: str, list of str, or <dask.dataframe|cudf|pd>.DataFrame
+            Dataset path (or list of paths), or a DataFrame. If string,
+            should specify a specific file or directory path. If this is a
+            directory path, the directory structure must be flat (nested
+            directories are not yet supported).
+        dataset_format: string
+            Dataset format (i.e parquet or csv)
+        columns_dict: dictionary
+            Dictionary indicating the diferent columns type
+        output_file: string
+            Filename to write the output statistics
+        """
         # Get dataset columns
         cats = columns_dict["cats"]
         conts = columns_dict["conts"]
