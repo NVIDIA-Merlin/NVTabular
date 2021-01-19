@@ -23,6 +23,12 @@ import nvtabular.tools.dataset_inspector as datains
 
 
 def parse_args():
+    """
+    Use the inspector script indicating the config fil, path, format,
+    and (optional) the output file name
+
+    python inspector_script.py -c config_file.json -d dataset_path -f parquet -o dataset_info.json
+    """
     parser = argparse.ArgumentParser(description=("Dataset Inspect Tool"))
     # Config file
     parser.add_argument(

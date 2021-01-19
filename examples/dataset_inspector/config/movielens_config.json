@@ -1,6 +1,0 @@
-{
-    "cats": ["movieId", "userId"],
-    "cats_mh": ["genres"],
-    "conts": [],
-    "labels": []
-}
