@@ -31,7 +31,7 @@ import tritonclient.http as httpclient
 import numpy as np
 
 model_name = "nvtabular"
-shape = [2, 4]
+shape = [2, 5]
 
 with httpclient.InferenceServerClient("localhost:8000") as client:
     input0_data = np.random.rand(*shape).astype(np.float32)

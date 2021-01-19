@@ -853,8 +853,6 @@ TRITONBACKEND_ModelInstanceExecute(
 
         float *inpt = (float *)input_buffer;
         float *outpt = (float *)output_buffer;
-        //std::cout << "Input buffer: " << inpt[0] << ", " << std::endl;
-        //std::cout << "Input buffer: " << inpt[1] << ", " << std::endl;
 
         instance_state->nvt.Transform(inpt, input_shape[0], input_shape[1], outpt, "cat");
       }
