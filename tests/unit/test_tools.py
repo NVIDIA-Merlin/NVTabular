@@ -7,7 +7,7 @@ import pytest
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
-import nvtabular.tools.data_inspector as datains
+import nvtabular.tools.dataset_inspector as datains
 from nvtabular.io import Dataset
 
 

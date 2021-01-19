@@ -19,7 +19,7 @@ import json
 
 import fsspec
 
-import nvtabular as nvt
+import nvtabular.tools.dataset_inspector as datains
 
 
 def parse_args():
@@ -65,7 +65,7 @@ def main(args):
     with fsspec.open(args.config_file) as f:
         config = json.load(f)
 
-    a = nvt.tools.DatasetInspector()
+    a = datains.DatasetInspector()
     a.inspect(args.data_path, args.format, config, args.output_file)
 
 
