@@ -7,7 +7,7 @@ import pytest
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
-import nvtabular as nvt
+import nvtabular.tools.data_inspector as datains
 from nvtabular.io import Dataset
 
 
@@ -25,7 +25,7 @@ def test_inspect(tmpdir, datasets, engine):
     all_cols = columns_dict["cats"] + columns_dict["conts"] + columns_dict["labels"]
 
     # Create inspector and inspect
-    a = nvt.tools.DatasetInspector()
+    a = datains.DatasetInspector()
     a.inspect(paths, engine, columns_dict, output_file)
 
     # Check output_file was created
