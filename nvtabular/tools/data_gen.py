@@ -165,7 +165,7 @@ class DatasetGen:
     ):
         conts_rep = cols["conts"] if "conts" in cols else None
         cats_rep = cols["cats"] if "cats" in cols else None
-        labs_rep = cols["labs"] if "labs" in cols else None
+        labs_rep = cols["labels"] if "labels" in cols else None
         df = cudf.DataFrame()
         if conts_rep:
             df = cudf.concat([df, self.create_conts(size, conts_rep)], axis=1)
@@ -361,16 +361,17 @@ class CatCol(Col):
         self.min_entry_size = min_entry_size
         self.max_entry_size = max_entry_size
         self.avg_entry_size = avg_entry_size
-        self.per_nan = None
+        self.per_nan = per_nan
         self.multi_min = multi_min
         self.multi_max = multi_max
         self.multi_avg = multi_avg
 
 
 class LabelCol(Col):
-    def __init__(self, name, dtype, cardinality, distro=None):
+    def __init__(self, name, dtype, cardinality, per_nan=None, distro=None):
         super().__init__(name, dtype, distro)
         self.cardinality = cardinality
+        self.per_nan = per_nan
 
 
 def _get_cols_from_schema(schema, distros=None):
@@ -387,8 +388,8 @@ def _get_cols_from_schema(schema, distros=None):
             min_val:
             max_val:
             mean:
-            standard deviation:
-            % NaNs:
+            std:
+            per_nan:
     cats:
         col_name:
             dtype:
@@ -396,7 +397,7 @@ def _get_cols_from_schema(schema, distros=None):
             min_entry_size:
             max_entry_size:
             avg_entry_size:
-            % NaNs:
+            per_nan:
             multi_min:
             multi_max:
             multi_avg:
@@ -405,11 +406,13 @@ def _get_cols_from_schema(schema, distros=None):
         col_name:
             dtype:
             cardinality:
-            % NaNs:
+            per_nan:
     """
     cols = {}
-    executor = {"conts": ContCol, "cats": CatCol, "labs": LabelCol}
+    executor = {"conts": ContCol, "cats": CatCol, "labels": LabelCol}
     for section, vals in schema.items():
+        if section == "num_rows":
+            continue
         cols[section] = []
         for col_name, val in vals.items():
             v_dict = {"name": col_name}

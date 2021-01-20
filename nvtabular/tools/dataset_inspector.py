@@ -70,6 +70,11 @@ class DatasetInspector:
             # data[col]["dtype"] = "string"
             ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
             ddf[col].compute()
+
+        # Get cardinality for cat and label
+        if col_type == "cat" or col_type == "label":
+            data[col]["cardinality"] = ddf[col].nunique().compute()
+
         # If multihot, compute list content stats, and change list for its len
         elif data[col]["dtype"] == "list":
             ddf._meta[col] = cudf.Series([np.array([0], dtype=ddf_dtypes[col].dtype.leaf_type)])[:0]
@@ -102,16 +107,12 @@ class DatasetInspector:
             data[col][key_names["max"][col_type]] = ddf[col].max().compute()
             data[col][key_names["mean"][col_type]] = ddf[col].mean().compute()
 
-        # Get cardinality for cat and label
-        if col_type == "cat" or col_type == "label":
-            data[col]["cardinality"] = ddf[col].nunique().compute()
-
         # For conts get also std
         if col_type == "cont":
-            data[col]["standard deviation"] = ddf[col].std().compute()
+            data[col]["std"] = ddf[col].std().compute()
 
         # Get percentage of nan for all
-        data[col]["nans_%"] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
+        data[col]["per_nan"] = 100 * (1 - ddf[col].count().compute() / len(ddf[col]))
 
     def inspect(self, path, dataset_format, columns_dict, output_file):
         """
@@ -138,10 +139,10 @@ class DatasetInspector:
         key_names = {}
         key_names["min"] = {}
         key_names["min"]["cat"] = "min_entry_size"
-        key_names["min"]["cont"] = "min_value"
+        key_names["min"]["cont"] = "min_val"
         key_names["max"] = {}
         key_names["max"]["cat"] = "max_entry_size"
-        key_names["max"]["cont"] = "max_value"
+        key_names["max"]["cont"] = "max_val"
         key_names["mean"] = {}
         key_names["mean"]["cat"] = "avg_entry_size"
         key_names["mean"]["cont"] = "mean"
@@ -158,24 +159,27 @@ class DatasetInspector:
         data = {}
         # Store general info
         data["num_rows"] = ddf.shape[0].compute()
-        data["cats"] = cats
-        data["conts"] = conts
-        data["labels"] = labels
+        # data["cats"] = cats
+        # data["conts"] = conts
+        # data["labels"] = labels
 
         # Compute first row to know correct dtypes
         ddf_dtypes = ddf.head(1)
 
-        # Get categoricals columns stats
-        for col in cats:
-            self.__get_stats(ddf, ddf_dtypes, col, data, "cat", key_names)
-
         # Get continuous columns stats
+        data["conts"] = {}
         for col in conts:
-            self.__get_stats(ddf, ddf_dtypes, col, data, "cont", key_names)
+            self.__get_stats(ddf, ddf_dtypes, col, data["conts"], "cont", key_names)
+
+        # Get categoricals columns stats
+        data["cats"] = {}
+        for col in cats:
+            self.__get_stats(ddf, ddf_dtypes, col, data["cats"], "cat", key_names)
 
         # Get labels columns stats
+        data["labels"] = {}
         for col in labels:
-            self.__get_stats(ddf, ddf_dtypes, col, data, "label", key_names)
+            self.__get_stats(ddf, ddf_dtypes, col, data["labels"], "label", key_names)
 
         # Write json file
         with fsspec.open(output_file, "w") as outfile:
