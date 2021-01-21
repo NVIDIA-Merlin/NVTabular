@@ -74,7 +74,7 @@ conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7
 
 #### Google Cloud Platform (GCP)
 
-Google Cloud Platform (GCP) offers [Compute Engine instances with NVIDIA GPU Supporrt](https://cloud.google.com/compute/docs/gpus). This example uses a VM with 8x NVIDIA A100 GPUs, and 8 local SSD-NVMe devices configues as RAID 0.
+Google Cloud Platform (GCP) offers [Compute Engine instances with NVIDIA GPU Support](https://cloud.google.com/compute/docs/gpus). This example uses a VM with 8x NVIDIA A100 GPUs, and 8 local SSD-NVMe devices configured as RAID 0.
 1. Configure and create the VM. 
     * GPU: 8xA100 (a2-highgpu-8g)
     * Boot disk: Ubuntu 18.04
