@@ -36,7 +36,7 @@ json_sample = {
         "cat_4": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
         "cat_5": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
     },
-    "labs": {"lab_1": {"dtype": None, "cardinality": 2}},
+    "labels": {"lab_1": {"dtype": None, "cardinality": 2}},
 }
 
 distros = {
@@ -120,7 +120,7 @@ def test_json_convert():
     cols = datagen._get_cols_from_schema(json_sample)
     assert len(cols["conts"]) == len(json_sample["conts"].keys())
     assert len(cols["cats"]) == len(json_sample["cats"].keys())
-    assert len(cols["labs"]) == len(json_sample["labs"].keys())
+    assert len(cols["labels"]) == len(json_sample["labels"].keys())
 
 
 @pytest.mark.parametrize("num_rows", [1000, 100000])
@@ -141,8 +141,8 @@ def test_full_df(num_rows, tmpdir, distro):
     assert test_size == num_rows
     conts_rep = cols["conts"]
     cats_rep = cols["cats"]
-    labs_rep = cols["labs"]
-    assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labs_rep)
+    labels_rep = cols["labels"]
+    assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labels_rep)
     for idx, cat in enumerate(cats[1:]):
         dist = cats_rep[idx + 1].distro or df_gen.dist
         if type(full_df[cat]._column) is not cudf.core.column.string.StringColumn:
@@ -161,10 +161,11 @@ def test_full_df(num_rows, tmpdir, distro):
     assert check_ser.str.len().max() == cats_rep[0].max_entry_size
 
 
-@pytest.mark.parametrize("engine", ["csv", "parquet"])
+@pytest.mark.parametrize("engine", ["parquet"])
 def test_inspect(tmpdir, datasets, engine):
     # Dataset
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+
     output_file = tmpdir + "/dataset_info.json"
 
     # Dataset columns type config
@@ -172,7 +173,6 @@ def test_inspect(tmpdir, datasets, engine):
     columns_dict["cats"] = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     columns_dict["conts"] = ["x", "y"]
     columns_dict["labels"] = ["label"]
-    all_cols = columns_dict["cats"] + columns_dict["conts"] + columns_dict["labels"]
 
     # Create inspector and inspect
     a = datains.DatasetInspector()
@@ -206,50 +206,66 @@ def test_inspect(tmpdir, datasets, engine):
     ddf_dtypes = ddf.head(1)
 
     # Check output
-    for col in all_cols:
-        # Check dtype for all
-        assert output[col]["dtype"] == str(ddf_dtypes[col].dtype)
-        # Get string len for stats computation
-        if output[col]["dtype"] == "object":
-            ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
-            ddf.compute()
-        # Check lists stats
-        elif output[col]["dtype"] == "list":
-            if ddf_dtypes[col].dtype.leaf_type == "string":
-                output[col]["multi_min"] == ddf[col].compute().list.leaves.applymap(
-                    lambda x: x.str.len()
-                ).min()
-                output[col]["multi_max"] == ddf[col].compute().list.leaves.applymap(
-                    lambda x: x.str.len()
-                ).max()
-                output[col]["multi_avg"] == ddf[col].compute().list.leaves.applymap(
-                    lambda x: x.str.len()
-                ).mean()
-            else:
-                output[col]["multi_min"] == ddf[col].compute().list.leaves.min()
-                output[col]["multi_max"] == ddf[col].compute().list.leaves.max()
-                output[col]["multi_avg"] == ddf[col].compute().list.leaves.mean()
-            # Get list len for stats computation
-            ddf[col] = ddf[col].map_partitions(lambda x: len(x), meta=(col, ddf_dtypes[col].dtype))
-            ddf[col].compute()
+    assert output["num_rows"] == ddf.shape[0].compute()
 
-        # Check percentage of nan for all
-        assert output[col]["per_nan"] == (100 * (1 - ddf[col].count().compute() / len(ddf[col])))
+    for dcol in ["cats", "conts", "labels"]:
+        for col in columns_dict[dcol]:
+            # Check dtype for all
+            assert output[dcol][col]["dtype"] == str(ddf_dtypes[col].dtype)
+            # Get string len for stats computation
+            if output[dcol][col]["dtype"] == "object":
+                output[dcol][col]["cardinality"] = ddf[col].nunique().compute()
+                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
+                ddf.compute()
 
-        # Check max/min/mean for all but label
-        if col not in columns_dict["labels"]:
-            col_type = "cont" if col in columns_dict["conts"] else "cat"
-            assert output[col][key_names["min"][col_type]] == ddf[col].min().compute()
-            assert output[col][key_names["max"][col_type]] == ddf[col].max().compute()
-            assert output[col][key_names["mean"][col_type]] == ddf[col].mean().compute()
+            # Check cardinality for cat and label
+            elif col in columns_dict["cats"] + columns_dict["labels"]:
+                assert output[dcol][col]["cardinality"] == ddf[col].nunique().compute()
 
-        # Check cardinality for cat and label
-        if col in columns_dict["cats"] + columns_dict["labels"]:
-            assert output[col]["cardinality"] == ddf[col].nunique().compute()
+            # Check lists stats
+            if output[dcol][col]["dtype"] == "list":
+                if ddf_dtypes[col].dtype.leaf_type == "string":
+                    output[dcol][col]["multi_min"] == ddf[col].compute().list.leaves.applymap(
+                        lambda x: x.str.len()
+                    ).min()
+                    output[dcol][col]["multi_max"] == ddf[col].compute().list.leaves.applymap(
+                        lambda x: x.str.len()
+                    ).max()
+                    output[dcol][col]["multi_avg"] == ddf[col].compute().list.leaves.applymap(
+                        lambda x: x.str.len()
+                    ).mean()
+                else:
+                    output[dcol][col]["multi_min"] == ddf[col].compute().list.leaves.min()
+                    output[dcol][col]["multi_max"] == ddf[col].compute().list.leaves.max()
+                    output[dcol][col]["multi_avg"] == ddf[col].compute().list.leaves.mean()
+                # Get list len for stats computation
+                ddf[col] = ddf[col].map_partitions(
+                    lambda x: len(x), meta=(col, ddf_dtypes[col].dtype)
+                )
+                ddf[col].compute()
 
-        # Check std for cont
-        if col in columns_dict["conts"]:
-            assert output[col]["std"] == ddf[col].std().compute()
+            # Check percentage of nan for all
+            assert output[dcol][col]["per_nan"] == (
+                100 * (1 - ddf[col].count().compute() / len(ddf[col]))
+            )
+
+            # Check max/min/mean for all but label
+            if col not in columns_dict["labels"]:
+                col_type = "cont" if col in columns_dict["conts"] else "cat"
+                assert output[dcol][col][key_names["min"][col_type]] == ddf[col].min().compute()
+                assert output[dcol][col][key_names["max"][col_type]] == ddf[col].max().compute()
+                if col in columns_dict["conts"]:
+                    assert (
+                        output[dcol][col][key_names["mean"][col_type]] == ddf[col].mean().compute()
+                    )
+                else:
+                    assert output[dcol][col][key_names["mean"][col_type]] == int(
+                        ddf[col].mean().compute()
+                    )
+
+            # Check std for cont
+            if col in columns_dict["conts"]:
+                assert output[dcol][col]["std"] == ddf[col].std().compute()
 
     # Stop Dask Cluster
     client.shutdown()
@@ -299,23 +315,11 @@ def test_inspect_datagen(tmpdir, datasets, engine, dist):
         output2 = json.load(f)
     for k1 in output1.keys():
         if k1 == "num_rows":
-            print(
-                "Num_rows: ", output1[k1], " vs ", output2[k1], " == ", output1[k1] == output2[k1]
-            )
             assert output1[k1] == output2[k1]
         else:
             for k2 in output1[k1].keys():
-                print("Check column: ", k2)
                 for k3 in output1[k1][k2].keys():
                     if k3 == "dtype":
-                        print(
-                            "dtype: ",
-                            output1[k1][k2][k3],
-                            " vs ",
-                            output2[k1][k2][k3],
-                            " == ",
-                            output1[k1][k2][k3] == output2[k1][k2][k3],
-                        )
                         if output1[k1][k2][k3] == "object":
                             assert (
                                 output1[k1][k2][k3] == output2[k1][k2][k3]
@@ -324,16 +328,6 @@ def test_inspect_datagen(tmpdir, datasets, engine, dist):
                         else:
                             assert output1[k1][k2][k3] == output2[k1][k2][k3]
                     else:
-                        print(
-                            k3,
-                            ": ",
-                            output1[k1][k2][k3],
-                            " vs ",
-                            output2[k1][k2][k3],
-                            " == ",
-                            output1[k1][k2][k3]
-                            == pytest.approx(output2[k1][k2][k3], rel=1e-2, abs=1e-2),
-                        )
                         output1[k1][k2][k3] == pytest.approx(
-                            output2[k1][k2][k3], rel=1e-2, abs=1e-2
+                            output2[k1][k2][k3], rel=1e-1, abs=1e-1
                         )

@@ -112,9 +112,7 @@ class DatasetGen:
         df = cudf.DataFrame()
         for col in labs_rep:
             dist = col.distro or self.dist
-            ser = dist.create_col(size, dtype=col.dtype, min_val=1, max_val=col.cardinality).ceil()
-            # bring back down to correct representation because of ceil call
-            ser = ser - 1
+            ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality).ceil()
             ser.name = col.name
             df = cudf.concat([df, ser], axis=1)
         return df

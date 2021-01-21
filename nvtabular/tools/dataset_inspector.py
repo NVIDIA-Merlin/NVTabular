@@ -68,15 +68,16 @@ class DatasetInspector:
         # If string, chane string for its len
         if data[col]["dtype"] == "object":
             # data[col]["dtype"] = "string"
+            data[col]["cardinality"] = ddf[col].nunique().compute()
             ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
             ddf[col].compute()
 
         # Get cardinality for cat and label
-        if col_type == "cat" or col_type == "label":
+        elif col_type == "cat" or col_type == "label":
             data[col]["cardinality"] = ddf[col].nunique().compute()
 
         # If multihot, compute list content stats, and change list for its len
-        elif data[col]["dtype"] == "list":
+        if data[col]["dtype"] == "list":
             ddf._meta[col] = cudf.Series([np.array([0], dtype=ddf_dtypes[col].dtype.leaf_type)])[:0]
             # If list content is string
             if ddf_dtypes[col].dtype.leaf_type == "object":
@@ -105,7 +106,10 @@ class DatasetInspector:
         if col_type != "label":
             data[col][key_names["min"][col_type]] = ddf[col].min().compute()
             data[col][key_names["max"][col_type]] = ddf[col].max().compute()
-            data[col][key_names["mean"][col_type]] = ddf[col].mean().compute()
+            if col_type == "cont":
+                data[col][key_names["mean"][col_type]] = ddf[col].mean().compute()
+            else:
+                data[col][key_names["mean"][col_type]] = int(ddf[col].mean().compute())
 
         # For conts get also std
         if col_type == "cont":
@@ -159,9 +163,6 @@ class DatasetInspector:
         data = {}
         # Store general info
         data["num_rows"] = ddf.shape[0].compute()
-        # data["cats"] = cats
-        # data["conts"] = conts
-        # data["labels"] = labels
 
         # Compute first row to know correct dtypes
         ddf_dtypes = ddf.head(1)
