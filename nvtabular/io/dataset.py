@@ -366,23 +366,10 @@ class Dataset:
 
         return self.engine.validate_dataset(**kwargs)
 
-    def regenerate_dataset(self, output_path, columns=None, output_format="parquet", **kwargs):
-        """Regenerate an NVTabular Dataset for efficient processing
-
-        TODO: Implement simple utility to rewrite a dataset into
-        parquet format with proper row-group sizes and a global
-        metadata file.  For input datasets with excessive row-group
-        sizes, the data will need to be ingested on the CPU (pyarrow)
-        """
-
-        # # Check that the original dataset provides access to the
-        # # raw (on-disk) data.
-        # # TODO: Add avro support.
-        # if not isinstance(self.engine, (ParquetDatasetEngine, CSVDatasetEngine)):
-        #     raise ValueError(
-        #         f"The {self.engine} engine does not support regenerate_dataset. "
-        #         f"Access to raw (on-disk) data is required."
-        #     )
+    def regenerate_dataset(
+        self, output_path, columns=None, output_format="parquet", compute=True, **kwargs
+    ):
+        """Regenerate an NVTabular Dataset for efficient processing"""
 
         # Check that the desired output format is Parquet
         if output_format not in ["parquet"]:
@@ -393,7 +380,11 @@ class Dataset:
             )
             raise ValueError(msg)
 
-        return ParquetDatasetEngine.regenerate_dataset(self, output_path, columns=None, **kwargs)
+        regen = ParquetDatasetEngine.regenerate_dataset(self, output_path, columns=None, **kwargs)
+        if compute:
+            return regen.compute()
+        else:
+            return regen
 
 
 def _set_dtypes(chunk, dtypes):

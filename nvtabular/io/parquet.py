@@ -354,6 +354,23 @@ class ParquetDatasetEngine(DatasetEngine):
         # dataset is prone to OOM errors.
         _ddf = dataset.engine.to_ddf(columns=columns, cpu=True)
 
+        # Prepare general metadata (gmd)
+        gmd = {}
+        cats = kwargs.pop("cats", [])
+        conts = kwargs.pop("conts", [])
+        labels = kwargs.pop("labels", [])
+        if not len(cats + conts + labels):
+            warnings.warn(
+                "General-metadata information not detected! "
+                "Please pass lists for `cats`, `conts`, and `labels` as"
+                "arguments to `regenerate_dataset` to ensure a complete "
+                "and correct _metadata.json file."
+            )
+        col_idx = {str(name): i for i, name in enumerate(_ddf.columns)}
+        gmd["cats"] = [{"col_name": c, "index": col_idx[c]} for c in cats]
+        gmd["conts"] = [{"col_name": c, "index": col_idx[c]} for c in conts]
+        gmd["labels"] = [{"col_name": c, "index": col_idx[c]} for c in labels]
+
         # Get list of partition lengths
         token = tokenize(dataset, output_path, columns, **kwargs)
         getlen_name = "getlen-" + token
@@ -435,48 +452,95 @@ class ParquetDatasetEngine(DatasetEngine):
         divisions = [None] * (npartitions + 1)
         _ddf2 = new_dd_object(graph2, repartition_name, _ddf._meta, divisions)
 
-        # dask_cudf.from_dask_dataframe(_ddf2).to_parquet(output_path)
+        # Make sure the root directory exists
+        fs.mkdirs(output_path, exist_ok=True)
 
         # Construct rewrite graph
         dsk3 = {}
         rewrite_name = "rewrite-" + token
         write_data_name = "write-data-" + rewrite_name
-        # write_metadata_name = "write-metadata-" + rewrite_name
-        dep_task = None
+        write_metadata_name = "write-metadata-" + rewrite_name
+        dep_task = {}
         final_tasks = {}
         for i in range(_ddf2.npartitions):
-            fn = f"part.{i//parts_per_file}.parquet"
+            index = i // parts_per_file
+            fn = f"part.{index}.parquet"
             if fn not in final_tasks:
-                dep_task = None
+                dep_task = {}
             final_tasks[fn] = i
-            dsk3[(write_data_name, i)] = (
+            this_task_key = (write_data_name, i)
+            dsk3[this_task_key] = (
                 _write_data,
                 (repartition_name, i),
                 output_path,
                 fs,
                 fn,
                 dep_task,
+                (index != (i + 1) // parts_per_file) or (i == _ddf2.npartitions - 1),  # close_file
             )
-            dep_task = (write_data_name, i)
+            dep_task = this_task_key
 
-        # # TODO: Finish the metadata write step, clean up code, and deal with fsspec issues
+        # Finalization task collects and writes all metadata
+        dsk3[write_metadata_name] = (
+            _write_metadata_file,
+            [(write_data_name, i) for i in sorted(list(final_tasks.values()))],
+            fs,
+            output_path,
+            gmd,
+        )
+        graph3 = HighLevelGraph.from_collections(write_metadata_name, dsk3, dependencies=[_ddf2])
 
-        # dsk3[write_metadata_name] = (
-        #     _write_metadata_file,
-        #     [(write_data_name, i) for i in sorted(list(final_tasks.values()))],
-        #     output_path,
-        #     fs,
-        # )
-
-        # import pdb; pdb.set_trace(); pass
+        return Delayed(write_metadata_name, graph3)
 
 
-def _write_data(data, output_path, fs, fn, writer):
+def _write_metadata_file(md_list, fs, output_path, gmd_base):
+
+    # Prepare both "general" and parquet metadata
+    gmd = gmd_base.copy()
+    pmd = {}
+    data_paths = []
+    file_stats = []
+    for m in md_list:
+        for path in m.keys():
+            md = m[path]["md"]
+            rows = m[path]["rows"]
+            pmd[path] = md
+            data_paths.append(path)
+            fn = path.split(fs.sep)[-1]
+            file_stats.append({"file_name": fn, "num_rows": rows})
+    gmd["data_paths"] = data_paths
+    gmd["file_stats"] = file_stats
+
+    # Write general metadata file
+    ParquetWriter.write_general_metadata(gmd, fs, output_path)
+
+    # Write specialized parquet metadata file
+    ParquetWriter.write_special_metadata(pmd, fs, output_path)
+
+    # Return total file count (sanity check)
+    return len(data_paths)
+
+
+def _write_data(data, output_path, fs, fn, previous_write, close_file):
+
+    # Appending to previous write
+    rows = previous_write.get("rows", 0)
+    writer = previous_write.get("writer", None)
     if writer is None:
         path = fs.sep.join([output_path, fn])
         writer = pwriter(path, compression=None)
-    writer.write_table(data)
-    return writer
+
+    # Convert to cudf and append to the file
+    rows += len(data)
+    writer.write_table(cudf.from_pandas(data))
+
+    # If `close_file=True`, return the metadata
+    if close_file:
+        md_dict = {}
+        md_dict[fn] = {"md": writer.close(metadata_file_path=fn), "rows": rows}
+        return md_dict
+
+    return {"rows": rows, "writer": writer}
 
 
 class ParquetWriter(ThreadedWriter):
@@ -504,9 +568,9 @@ class ParquetWriter(ThreadedWriter):
                 if self.bytes_io:
                     bio = BytesIO()
                     self.data_bios.append(bio)
-                    self.data_writers.append(pwriter(bio, compression=None))
+                    self.data_writers.append(pwriter(bio, compression=None, index=False))
                 else:
-                    self.data_writers.append(pwriter(path, compression=None))
+                    self.data_writers.append(pwriter(path, compression=None, index=False))
 
             return self.data_writers[idx]
 
