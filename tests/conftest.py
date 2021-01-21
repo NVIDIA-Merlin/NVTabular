@@ -173,11 +173,16 @@ def dataset(request, paths, engine):
     return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
-def get_cats(processor, col, stat_name="categories"):
-    if isinstance(processor, nvtabular.workflow.Workflow):
-        filename = processor.stats[stat_name][col]
-        gdf = cudf.read_parquet(filename)
-        gdf.reset_index(drop=True, inplace=True)
-        return gdf[col].values_host
-    else:
-        return processor.stats["encoders"][col].get_cats().values_host
+def get_cats(workflow, col, stat_name="categories"):
+    # figure out the categorify node from the workflow graph
+    cats = [
+        cg.op
+        for cg in nvtabular.column_group.iter_nodes([workflow.column_group])
+        if isinstance(cg.op, nvtabular.ops.Categorify)
+    ]
+    if len(cats) != 1:
+        raise RuntimeError("Found {} categorical ops, expected 1", len(cats))
+    filename = cats[0].categories[col]
+    gdf = cudf.read_parquet(filename)
+    gdf.reset_index(drop=True, inplace=True)
+    return gdf[col].values_host

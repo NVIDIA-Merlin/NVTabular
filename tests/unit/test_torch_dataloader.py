@@ -51,27 +51,26 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 @pytest.mark.parametrize("cont_names", [["x", "y", "id"], []])
 @pytest.mark.parametrize("label_name", [["label"], []])
 def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_name):
+
+    features = []
+    if cont_names:
+        features.append(cont_names >> ops.FillMedian() >> ops.Normalize())
+    if cat_names:
+        features.append(cat_names >> ops.Categorify())
+
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    graph = sum(features, nvt.ColumnGroup(label_name))
+    if not graph.columns:
+        # if we don't have conts/cats/labels we're done
+        return
 
-    if cont_names:
-        processor.add_feature([ops.FillMedian()])
-        processor.add_feature(ops.Normalize())
-    if cat_names:
-        processor.add_feature(ops.Categorify())
+    processor = nvt.Workflow(sum(features, nvt.ColumnGroup(label_name)))
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
-    processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
-        shuffle=nvt.io.Shuffle.PER_PARTITION,
-        output_format=None,
-    )
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    df_out = processor.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     data_itr = torch_dataloader.TorchAsyncItr(
         nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
@@ -96,19 +95,15 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
 
-    processor.add_feature([ops.FillMedian()])
-    processor.add_feature(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
+    processor = nvt.Workflow(conts + cats + label_name)
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
-    processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
+    processor.fit_transform(dataset).to_parquet(
         shuffle=nvt.io.Shuffle.PER_PARTITION,
         output_path=output_train,
         out_files_per_proc=2,
@@ -168,23 +163,18 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
 
-    processor.add_feature([ops.FillMedian()])
-    processor.add_feature(ops.Normalize())
-    processor.add_feature(ops.Categorify())
+    processor = nvt.Workflow(conts + cats + label_name)
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
-    processor.finalize()
-
-    processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
+    processor.fit_transform(dataset).to_parquet(
         shuffle=nvt.io.Shuffle.PER_PARTITION,
         output_path=output_train,
+        out_files_per_proc=2,
     )
 
     tar_paths = [
@@ -239,11 +229,10 @@ def test_mh_support(tmpdir):
     cont_names = []
     label_name = ["Post"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_preprocess(ops.HashBucket(num_buckets=10))
-    processor.finalize()
-    processor.apply(nvt.Dataset(df), output_format=None)
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+    cats = cat_names >> ops.HashBucket(num_buckets=10)
+
+    processor = nvt.Workflow(cats + label_name)
+    df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
     # check to make sure that the same strings are hashed the same
     authors = df_out["Authors"].to_arrow().to_pylist()
@@ -282,15 +271,12 @@ def test_mh_model_support(tmpdir):
     label_name = ["Post"]
     out_path = os.path.join(tmpdir, "train/")
     os.mkdir(out_path)
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
-    processor.apply(
-        nvt.Dataset(df),
-        record_stats=True,
-    )
-    df_out = processor.get_ddf().compute(scheduler="synchronous")
+
+    cats = cat_names >> ops.Categorify()
+    conts = cont_names >> ops.Normalize()
+
+    processor = nvt.Workflow(cats + conts + label_name)
+    df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute()
     data_itr = torch_dataloader.TorchAsyncItr(
         nvt.Dataset(df_out),
         cats=cat_names,
