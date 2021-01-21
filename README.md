@@ -72,6 +72,49 @@ NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
+#### Amazon Web Services (AWS)
+
+Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x or 8x GPU instances (or multi-node setup). This example uses an EC2 instance with 8x NVIDIA A100 GPUs. Please checkout the $/h for this instance type and adjust the type. 
+
+1. Start AWS EC2 instance with [NVIDIA Deep Learning AMI image](https://aws.amazon.com/marketplace/pp/NVIDIA-NVIDIA-Deep-Learning-AMI/B076K31M1S) using aws-cli.
+
+```
+# Starts P4D instance with 8x NVIDIA A100 GPUs (take a look on the $/h for this instance type before using them)
+aws ec2 run-instances --image-id ami-04c0416d6bd8e4b1f --count 1 --instance-type p4d.24xlarge --key-name <MyKeyPair> --security-groups <my-sg>
+```
+
+2. SSH into the machine
+    
+3. Create RAID volume
+
+Depending on the EC2 instance, the machine includes local disk storage. We can optimize the performance by creating a [RAID volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html). In our experience, 2 NVME volumes yield best performance.
+
+```
+sudo mdadm --create --verbose /dev/md0 --level=0 --name=MY_RAID --raid-devices=2 /dev/nvme1n1 /dev/nvme2n1
+
+sudo mkfs.ext4 -L MY_RAID /dev/md0
+sudo mkdir -p /mnt/raid
+sudo mount LABEL=MY_RAID /mnt/raid
+
+sudo chmod -R 777 /mnt/raid
+
+# Copy dataset inside raid directory:
+cp -r data/ /mnt/raid/data/
+```
+
+4. Launch NVTabular docker container
+
+```
+docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
+```
+
+5. Start the jupyter-lab server by running the following command:
+    
+```
+jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
+```
+
+
 #### Google Cloud Platform (GCP)
 
 Google Cloud Platform (GCP) offers [Compute Engine instances with NVIDIA GPU Support](https://cloud.google.com/compute/docs/gpus). This example uses a VM with 8x NVIDIA A100 GPUs, and 8 local SSD-NVMe devices configured as RAID 0.
