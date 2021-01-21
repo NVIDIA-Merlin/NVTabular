@@ -6,12 +6,11 @@ import cudf
 import fsspec
 import numpy as np
 import pytest
-from dask.distributed import Client
-from dask_cuda import LocalCUDACluster
 
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
 from nvtabular.io import Dataset
+from tests.conftest import client
 
 json_sample = {
     "conts": {
@@ -159,117 +158,6 @@ def test_full_df(num_rows, tmpdir, distro):
     assert check_ser.nunique() == cats_rep[0].cardinality
     assert check_ser.str.len().min() == cats_rep[0].min_entry_size
     assert check_ser.str.len().max() == cats_rep[0].max_entry_size
-
-
-@pytest.mark.parametrize("engine", ["parquet"])
-def test_inspect(tmpdir, datasets, engine):
-    # Dataset
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-
-    output_file = tmpdir + "/dataset_info.json"
-
-    # Dataset columns type config
-    columns_dict = {}
-    columns_dict["cats"] = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
-    columns_dict["conts"] = ["x", "y"]
-    columns_dict["labels"] = ["label"]
-
-    # Create inspector and inspect
-    a = datains.DatasetInspector()
-    a.inspect(paths, engine, columns_dict, output_file)
-
-    # Check output_file was created
-    assert os.path.isfile(output_file)
-
-    # Read output file
-    with fsspec.open(output_file) as f:
-        output = json.load(f)
-
-    # Get ddf and cluster to check
-    dataset = Dataset(paths, engine=engine)
-    ddf = dataset.to_ddf()
-    cluster = LocalCUDACluster()
-    client = Client(cluster)
-
-    # Dictionary with json output key names
-    key_names = {}
-    key_names["min"] = {}
-    key_names["min"]["cat"] = "min_entry_size"
-    key_names["min"]["cont"] = "min_val"
-    key_names["max"] = {}
-    key_names["max"]["cat"] = "max_entry_size"
-    key_names["max"]["cont"] = "max_val"
-    key_names["mean"] = {}
-    key_names["mean"]["cat"] = "avg_entry_size"
-    key_names["mean"]["cont"] = "mean"
-    # Correct dtypes
-    ddf_dtypes = ddf.head(1)
-
-    # Check output
-    assert output["num_rows"] == ddf.shape[0].compute()
-
-    for dcol in ["cats", "conts", "labels"]:
-        for col in columns_dict[dcol]:
-            # Check dtype for all
-            assert output[dcol][col]["dtype"] == str(ddf_dtypes[col].dtype)
-            # Get string len for stats computation
-            if output[dcol][col]["dtype"] == "object":
-                output[dcol][col]["cardinality"] = ddf[col].nunique().compute()
-                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
-                ddf.compute()
-
-            # Check cardinality for cat and label
-            elif col in columns_dict["cats"] + columns_dict["labels"]:
-                assert output[dcol][col]["cardinality"] == ddf[col].nunique().compute()
-
-            # Check lists stats
-            if output[dcol][col]["dtype"] == "list":
-                if ddf_dtypes[col].dtype.leaf_type == "string":
-                    output[dcol][col]["multi_min"] == ddf[col].compute().list.leaves.applymap(
-                        lambda x: x.str.len()
-                    ).min()
-                    output[dcol][col]["multi_max"] == ddf[col].compute().list.leaves.applymap(
-                        lambda x: x.str.len()
-                    ).max()
-                    output[dcol][col]["multi_avg"] == ddf[col].compute().list.leaves.applymap(
-                        lambda x: x.str.len()
-                    ).mean()
-                else:
-                    output[dcol][col]["multi_min"] == ddf[col].compute().list.leaves.min()
-                    output[dcol][col]["multi_max"] == ddf[col].compute().list.leaves.max()
-                    output[dcol][col]["multi_avg"] == ddf[col].compute().list.leaves.mean()
-                # Get list len for stats computation
-                ddf[col] = ddf[col].map_partitions(
-                    lambda x: len(x), meta=(col, ddf_dtypes[col].dtype)
-                )
-                ddf[col].compute()
-
-            # Check percentage of nan for all
-            assert output[dcol][col]["per_nan"] == (
-                100 * (1 - ddf[col].count().compute() / len(ddf[col]))
-            )
-
-            # Check max/min/mean for all but label
-            if col not in columns_dict["labels"]:
-                col_type = "cont" if col in columns_dict["conts"] else "cat"
-                assert output[dcol][col][key_names["min"][col_type]] == ddf[col].min().compute()
-                assert output[dcol][col][key_names["max"][col_type]] == ddf[col].max().compute()
-                if col in columns_dict["conts"]:
-                    assert (
-                        output[dcol][col][key_names["mean"][col_type]] == ddf[col].mean().compute()
-                    )
-                else:
-                    assert output[dcol][col][key_names["mean"][col_type]] == int(
-                        ddf[col].mean().compute()
-                    )
-
-            # Check std for cont
-            if col in columns_dict["conts"]:
-                assert output[dcol][col]["std"] == ddf[col].std().compute()
-
-    # Stop Dask Cluster
-    client.shutdown()
-    cluster.close()
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

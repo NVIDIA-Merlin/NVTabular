@@ -380,6 +380,7 @@ def _get_cols_from_schema(schema, distros=None):
 
     Schema example
 
+    num_rows:
     conts:
         col_name:
             dtype:

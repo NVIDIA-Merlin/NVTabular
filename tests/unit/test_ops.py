@@ -709,3 +709,10 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
         assert np.all(new_gdf[col].values <= len(bs))
         # TODO: add checks for correctness here that don't just
         # repeat the existing logic
+
+
+@pytest.mark.skip(reason="Working on this")
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_data_stats(tmpdir, datasets, engine):
+    # TODO: Add data_stats test
+    print("TODO")
