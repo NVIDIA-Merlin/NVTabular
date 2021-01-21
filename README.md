@@ -72,6 +72,52 @@ NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
+#### Google Cloud Platform (GCP)
+
+Google Cloud Platform (GCP) offers [Compute Engine instances with NVIDIA GPU Support](https://cloud.google.com/compute/docs/gpus). This example uses a VM with 8x NVIDIA A100 GPUs, and 8 local SSD-NVMe devices configured as RAID 0.
+1. Configure and create the VM. 
+    * GPU: 8xA100 (a2-highgpu-8g)
+    * Boot disk: Ubuntu 18.04
+    * Storage: Local 8xSSD-NVMe
+
+2. [Install Nvidia Drivers and CUDA](https://cloud.google.com/compute/docs/gpus/install-drivers-gpu#ubuntu-driver-steps)
+```
+curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+sudo apt -y update
+sudo apt -y install cuda
+nvidia-smi # Check installation
+```
+3. [Install Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+```
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+   && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get -y update
+sudo apt-get install -y nvidia-docker2
+sudo systemctl restart docker
+sudo docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi # Check Installation
+```
+
+4. Configure Storage as RAID 0
+```
+sudo mdadm --create --verbose /dev/md0 --level=0 --name=MY_RAID --raid-devices=2 /dev/nvme0n1 /dev/nvme0n2
+sudo mkfs.ext4 -L MY_RAID /dev/md0
+sudo mkdir -p /mnt/raid
+sudo mount LABEL=MY_RAID /mnt/raid
+sudo chmod -R 777 /mnt/raid
+
+# Copy data to RAID
+cp -r data/ /mnt/raid/data/
+```
+
+5. Run container
+```
+docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
+```
+
 ### Examples and Tutorials
 
 The following use cases can be found in our [API documentation examples section](https://nvidia.github.io/NVTabular/main/examples/index.html).
