@@ -391,9 +391,11 @@ def test_validate_dataset_bad_schema(tmpdir):
     assert not dataset.validate_dataset(require_metadata_file=False)
     # File size should cause validation error, even if _metadata is generated
     assert not dataset.validate_dataset(add_metadata_file=True)
+    # Make sure the last call added a `_metadata` file
+    assert len(glob.glob(os.path.join(path, "_metadata")))
 
     # New datset has a _metadata file, but the file size is still too small
     dataset = nvtabular.io.Dataset(path, engine="parquet")
     assert not dataset.validate_dataset()
     # Ignore file size to get validation success
-    assert dataset.validate_dataset(file_min_size=1)
+    assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
