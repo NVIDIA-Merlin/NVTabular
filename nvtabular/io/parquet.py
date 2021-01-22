@@ -397,12 +397,6 @@ class ParquetDatasetEngine(DatasetEngine):
         split_name = "split-" + repartition_name
         getitem_name = "getitem-" + repartition_name
 
-        def _split_part(x, split):
-            out = {}
-            for k, v in split.items():
-                out[k] = x.iloc[v[0] : v[1]]
-            return out
-
         gets = defaultdict(list)
         out_parts = 0
         remaining_out_part_rows = rows_per_part
@@ -460,30 +454,29 @@ class ParquetDatasetEngine(DatasetEngine):
         rewrite_name = "rewrite-" + token
         write_data_name = "write-data-" + rewrite_name
         write_metadata_name = "write-metadata-" + rewrite_name
-        dep_task = {}
-        final_tasks = {}
+        inputs = []
+        final_inputs = []
         for i in range(_ddf2.npartitions):
             index = i // parts_per_file
+            nex_index = (i + 1) // parts_per_file
+            package_task = (index != nex_index) or (i == (_ddf2.npartitions - 1))
             fn = f"part.{index}.parquet"
-            if fn not in final_tasks:
-                dep_task = {}
-            final_tasks[fn] = i
-            this_task_key = (write_data_name, i)
-            dsk3[this_task_key] = (
-                _write_data,
-                (repartition_name, i),
-                output_path,
-                fs,
-                fn,
-                dep_task,
-                (index != (i + 1) // parts_per_file) or (i == _ddf2.npartitions - 1),  # close_file
-            )
-            dep_task = this_task_key
+            inputs.append((repartition_name, i))
+            if package_task:
+                final_inputs.append((write_data_name, i))
+                dsk3[(write_data_name, i)] = (
+                    _write_data,
+                    inputs,
+                    output_path,
+                    fs,
+                    fn,
+                )
+                inputs = []
 
-        # Finalization task collects and writes all metadata
+        # Final task collects and writes all metadata
         dsk3[write_metadata_name] = (
             _write_metadata_file,
-            [(write_data_name, i) for i in sorted(list(final_tasks.values()))],
+            final_inputs,
             fs,
             output_path,
             gmd,
@@ -521,26 +514,21 @@ def _write_metadata_file(md_list, fs, output_path, gmd_base):
     return len(data_paths)
 
 
-def _write_data(data, output_path, fs, fn, previous_write, close_file):
+def _write_data(data_list, output_path, fs, fn):
 
-    # Appending to previous write
-    rows = previous_write.get("rows", 0)
-    writer = previous_write.get("writer", None)
-    if writer is None:
-        path = fs.sep.join([output_path, fn])
-        writer = pwriter(path, compression=None)
+    # Initialize chunked writer
+    path = fs.sep.join([output_path, fn])
+    writer = pwriter(path, compression=None)
+    rows = 0
 
-    # Convert to cudf and append to the file
-    rows += len(data)
-    writer.write_table(cudf.from_pandas(data))
+    # Loop over the data_list, convert to cudf,
+    # and append to the file
+    for data in data_list:
+        rows += len(data)
+        writer.write_table(cudf.from_pandas(data))
 
-    # If `close_file=True`, return the metadata
-    if close_file:
-        md_dict = {}
-        md_dict[fn] = {"md": writer.close(metadata_file_path=fn), "rows": rows}
-        return md_dict
-
-    return {"rows": rows, "writer": writer}
+    # Return metadata and row-count in dict
+    return {fn: {"md": writer.close(metadata_file_path=fn), "rows": rows}}
 
 
 class ParquetWriter(ThreadedWriter):
@@ -671,3 +659,10 @@ def _append_row_groups(metadata, md, err_collector, path):
                     err_collector[name].add((path, schema.types[i], schema_new.types[i]))
         else:
             raise err
+
+
+def _split_part(x, split):
+    out = {}
+    for k, v in split.items():
+        out[k] = x.iloc[v[0] : v[1]]
+    return out
