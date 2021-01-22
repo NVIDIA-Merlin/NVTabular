@@ -358,9 +358,6 @@ def test_avro_basic(tmpdir, part_size, size, nfiles):
 
 @pytest.mark.parametrize("engine", ["csv", "parquet"])
 def test_validate_dataset(datasets, engine):
-    if LooseVersion(dask.__version__) <= "2.30.0":
-        pytest.mark.skip("Test requires newer version of Dask.")
-
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
         dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine)
@@ -377,7 +374,7 @@ def test_validate_dataset(datasets, engine):
 
 def test_validate_dataset_bad_schema(tmpdir):
     if LooseVersion(dask.__version__) <= "2.30.0":
-        pytest.mark.skip("Test requires newer version of Dask.")
+        pytest.skip("Test requires newer version of Dask.")
 
     path = str(tmpdir)
     for (fn, df) in [
