@@ -16,6 +16,7 @@
 
 import glob
 import json
+import math
 import os
 from distutils.version import LooseVersion
 
@@ -399,3 +400,39 @@ def test_validate_dataset_bad_schema(tmpdir):
     assert not dataset.validate_dataset()
     # Ignore file size to get validation success
     assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
+
+
+def test_validate_and_regenerate_dataset(tmpdir):
+
+    # Initial timeseries dataset (in cpu memory)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-05",
+        freq="60s",
+        partition_freq="1d",
+        seed=42,
+    )
+    ds = nvt.Dataset(ddf)
+
+    # Regenerate dataset on disk
+    path = str(tmpdir)
+    ds.regenerate_dataset(path, part_size="50KiB", file_size="150KiB")
+
+    # Check that the regenerated dataset makes sense.
+    # Dataset is ~544KiB - Expect 4 data files
+    N = math.ceil(ddf.compute().memory_usage(deep=True).sum() / 150000)
+    file_list = glob.glob(os.path.join(path, "*"))
+    assert os.path.join(path, "_metadata") in file_list
+    assert os.path.join(path, "_file_list.txt") in file_list
+    assert os.path.join(path, "_metadata.json") in file_list
+    assert len(file_list) == N + 3  # N data files + 3 metadata files
+
+    # Check new dataset validation
+    ds2 = nvt.Dataset(path, engine="parquet", part_size="64KiB")
+    ds2.validate_dataset(file_min_size=1)
+
+    # Check that dataset content is correct
+    assert_eq(ddf, ds2.to_ddf().compute())
+
+    # Check cpu version of `to_ddf`
+    assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
