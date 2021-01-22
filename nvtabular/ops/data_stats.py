@@ -89,10 +89,17 @@ class DataStats(StatOperator):
         df = cudf.DataFrame()
         df["Init"] = [0] * len(columns)
         dask_stats = dask_cudf.from_cudf(df, npartitions=2)
+        print("Init")
+        print(dask_stats.compute())
         for i, l in enumerate(l_cols):
             _, name, meta, divisions = dask_stats. __getstate__()
-            print(dask_cudf.Series(l, name, cudf.Series(), divisions))
-            dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
+            #print(dask_cudf.Series(l, name, cudf.Series(), divisions))
+            if i < 3:
+               dask_stats[ddf_col_name[i]] = cudf.Series(l)
+            else:
+                dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
+            print("Iter: ", i, l)
+            print(dask_stats.compute())
         dask_stats = dask_stats.drop("Init", axis=1)
 
         return dask_stats
