@@ -220,7 +220,7 @@ ModelState::ValidateModelConfig()
 
   // There must be 1 input and 1 output.
   RETURN_ERROR_IF_FALSE(
-      inputs.ArraySize() == 1, TRITONSERVER_ERROR_INVALID_ARG,
+      inputs.ArraySize() == 1 || inputs.ArraySize() == 2, TRITONSERVER_ERROR_INVALID_ARG,
       std::string("expected 1 input, got ") +
           std::to_string(inputs.ArraySize()));
   RETURN_ERROR_IF_FALSE(
@@ -243,14 +243,14 @@ ModelState::ValidateModelConfig()
           input_dtype + " and " + output_dtype);
 
   // Input and output must have same shape
-  std::vector<int64_t> input_shape, output_shape;
-  RETURN_IF_ERROR(backend::ParseShape(input, "dims", &input_shape));
+  std::vector<int64_t> input_cont_shape, output_shape;
+  RETURN_IF_ERROR(backend::ParseShape(input, "dims", &input_cont_shape));
   RETURN_IF_ERROR(backend::ParseShape(output, "dims", &output_shape));
 
   RETURN_ERROR_IF_FALSE(
-      input_shape == output_shape, TRITONSERVER_ERROR_INVALID_ARG,
+      input_cont_shape == output_shape, TRITONSERVER_ERROR_INVALID_ARG,
       std::string("expected input and output shape to match, got ") +
-          backend::ShapeToString(input_shape) + " and " +
+          backend::ShapeToString(input_cont_shape) + " and " +
           backend::ShapeToString(output_shape));
 
   return nullptr;  // success
@@ -545,7 +545,6 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
       instance, reinterpret_cast<void*>(instance_state)));
 
   // Because this backend just copies IN -> OUT and requires that
-  // input and output be in CPU memory, we fail if a GPU instances is
   // requested.
   RETURN_ERROR_IF_FALSE(
       instance_state->Kind() == TRITONSERVER_INSTANCEGROUPKIND_CPU,
@@ -696,14 +695,24 @@ TRITONBACKEND_ModelInstanceExecute(
          ", requested_output_count = " + std::to_string(requested_output_count))
             .c_str());
 
-    const char* input_name;
+    const char* input_cont_name;
     GUARDED_RESPOND_IF_ERROR(
         responses, r,
-        TRITONBACKEND_RequestInputName(request, 0 /* index */, &input_name));
+        TRITONBACKEND_RequestInputName(request, 0, &input_cont_name));
 
-    TRITONBACKEND_Input* input = nullptr;
+    TRITONBACKEND_Input* input_cont = nullptr;
     GUARDED_RESPOND_IF_ERROR(
-        responses, r, TRITONBACKEND_RequestInput(request, input_name, &input));
+        responses, r, TRITONBACKEND_RequestInput(request, input_cont_name, &input_cont));
+
+    const char* input_cat_name;
+    GUARDED_RESPOND_IF_ERROR(
+    	responses, r,
+        TRITONBACKEND_RequestInputName(request, 1, &input_cat_name));
+
+    TRITONBACKEND_Input* input_cat = nullptr;
+    GUARDED_RESPOND_IF_ERROR(
+        responses, r,
+        TRITONBACKEND_RequestInput(request, input_cat_name, &input_cat));
 
     // We also validated that the model configuration specifies only a
     // single output, but the request is not required to request any
@@ -729,16 +738,35 @@ TRITONBACKEND_ModelInstanceExecute(
       continue;
     }
 
-    TRITONSERVER_DataType input_datatype;
-    const int64_t* input_shape;
-    uint32_t input_dims_count;
-    uint64_t input_byte_size;
-    uint32_t input_buffer_count;
+    TRITONSERVER_DataType input_cont_dtype;
+    const int64_t* input_cont_shape;
+    uint32_t input_cont_dims_count;
+    uint64_t input_cont_byte_size;
+    uint32_t input_cont_buffer_count;
     GUARDED_RESPOND_IF_ERROR(
         responses, r,
         TRITONBACKEND_InputProperties(
-            input, nullptr /* input_name */, &input_datatype, &input_shape,
-            &input_dims_count, &input_byte_size, &input_buffer_count));
+            input_cont, &input_cont_name, &input_cont_dtype, &input_cont_shape,
+            &input_cont_dims_count, &input_cont_byte_size, &input_cont_buffer_count));
+    if (responses[r] == nullptr) {
+      LOG_MESSAGE(
+          TRITONSERVER_LOG_ERROR,
+          (std::string("request ") + std::to_string(r) +
+           ": failed to read input properties, error response sent")
+              .c_str());
+      continue;
+    }
+
+    TRITONSERVER_DataType input_cat_dtype;
+    const int64_t* input_cat_shape;
+    uint32_t input_cat_dims_count;
+    uint64_t input_cat_byte_size;
+    uint32_t input_cat_buffer_count;
+    GUARDED_RESPOND_IF_ERROR(
+        responses, r,
+        TRITONBACKEND_InputProperties(
+        	input_cat, &input_cat_name, &input_cat_dtype, &input_cat_shape,
+            &input_cat_dims_count, &input_cat_byte_size, &input_cat_buffer_count));
     if (responses[r] == nullptr) {
       LOG_MESSAGE(
           TRITONSERVER_LOG_ERROR,
@@ -750,12 +778,22 @@ TRITONBACKEND_ModelInstanceExecute(
 
     LOG_MESSAGE(
         TRITONSERVER_LOG_INFO,
-        (std::string("\tinput ") + input_name +
-         ": datatype = " + TRITONSERVER_DataTypeString(input_datatype) +
-         ", shape = " + backend::ShapeToString(input_shape, input_dims_count) +
-         ", byte_size = " + std::to_string(input_byte_size) +
-         ", buffer_count = " + std::to_string(input_buffer_count))
+        (std::string("\tinput ") + input_cont_name +
+         ": datatype = " + TRITONSERVER_DataTypeString(input_cont_dtype) +
+         ", shape = " + backend::ShapeToString(input_cont_shape, input_cont_dims_count) +
+         ", byte_size = " + std::to_string(input_cont_byte_size) +
+         ", buffer_count = " + std::to_string(input_cont_buffer_count))
             .c_str());
+
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO,
+        (std::string("\tinput ") + input_cat_name +
+        ": datatype = " + TRITONSERVER_DataTypeString(input_cat_dtype) +
+        ", shape = " + backend::ShapeToString(input_cat_shape, input_cat_dims_count) +
+        ", byte_size = " + std::to_string(input_cat_byte_size) +
+        ", buffer_count = " + std::to_string(input_cat_buffer_count))
+           .c_str());
+
     LOG_MESSAGE(
         TRITONSERVER_LOG_INFO,
         (std::string("\trequested_output ") + requested_output_name).c_str());
@@ -765,25 +803,14 @@ TRITONBACKEND_ModelInstanceExecute(
     // request is necessarily batch-size 1. If the model does support
     // batching then the first dimension of the shape is the batch
     // size.
-    if (supports_batching && (input_dims_count > 0)) {
-      total_batch_size += input_shape[0];
+    if (supports_batching && (input_cont_dims_count > 0)) {
+      total_batch_size += input_cont_shape[0];
     } else {
       total_batch_size++;
     }
 
     // We only need to produce an output if it was requested.
     if (requested_output_count > 0) {
-      // This backend simply copies the input tensor to the output
-      // tensor. The input tensor contents are available in one or
-      // more contiguous buffers. To do the copy we:
-      //
-      //   1. Create an output tensor in the response.
-      //
-      //   2. Allocate appropriately sized buffer in the output
-      //      tensor.
-      //
-      //   3. Iterate over the input tensor buffers and copy the
-      //      contents into the output buffer.
       TRITONBACKEND_Response* response = responses[r];
 
       // Step 1. Input and output have same datatype and shape...
@@ -791,8 +818,8 @@ TRITONBACKEND_ModelInstanceExecute(
       GUARDED_RESPOND_IF_ERROR(
           responses, r,
           TRITONBACKEND_ResponseOutput(
-              response, &output, requested_output_name, input_datatype,
-              input_shape, input_dims_count));
+              response, &output, requested_output_name, input_cont_dtype,
+              input_cont_shape, input_cont_dims_count));
       if (responses[r] == nullptr) {
         LOG_MESSAGE(
             TRITONSERVER_LOG_ERROR,
@@ -811,7 +838,7 @@ TRITONBACKEND_ModelInstanceExecute(
       GUARDED_RESPOND_IF_ERROR(
           responses, r,
           TRITONBACKEND_OutputBuffer(
-              output, &output_buffer, input_byte_size, &output_memory_type,
+              output, &output_buffer, input_cont_byte_size, &output_memory_type,
               &output_memory_type_id));
       if ((responses[r] == nullptr) ||
           (output_memory_type == TRITONSERVER_MEMORY_GPU)) {
@@ -829,18 +856,16 @@ TRITONBACKEND_ModelInstanceExecute(
         continue;
       }
 
-      // Step 3. Copy input -> output. We can only handle if the input
-      // buffers are on CPU so fail otherwise.
       //size_t output_buffer_offset = 0;
-      for (uint32_t b = 0; b < input_buffer_count; ++b) {
-        const void* input_buffer = nullptr;
+      for (uint32_t b = 0; b < input_cont_buffer_count; ++b) {
+        const void* input_cont_buffer = nullptr;
         uint64_t buffer_byte_size = 0;
         TRITONSERVER_MemoryType input_memory_type = TRITONSERVER_MEMORY_CPU;
         int64_t input_memory_type_id = 0;
         GUARDED_RESPOND_IF_ERROR(
             responses, r,
             TRITONBACKEND_InputBuffer(
-                input, b, &input_buffer, &buffer_byte_size, &input_memory_type,
+                input_cont, b, &input_cont_buffer, &buffer_byte_size, &input_memory_type,
                 &input_memory_type_id));
         if ((responses[r] == nullptr) ||
             (input_memory_type == TRITONSERVER_MEMORY_GPU)) {
@@ -851,10 +876,33 @@ TRITONBACKEND_ModelInstanceExecute(
                   "failed to get input buffer in CPU memory"));
         }
 
-        float *inpt = (float *)input_buffer;
+        const void* input_cat_buffer = nullptr;
+        buffer_byte_size = 0;
+        input_memory_type = TRITONSERVER_MEMORY_CPU;
+        input_memory_type_id = 0;
+        GUARDED_RESPOND_IF_ERROR(
+            responses, r,
+            TRITONBACKEND_InputBuffer(
+                input_cat, b, &input_cat_buffer, &buffer_byte_size, &input_memory_type,
+                &input_memory_type_id));
+        if ((responses[r] == nullptr) ||
+            (input_memory_type == TRITONSERVER_MEMORY_GPU)) {
+          GUARDED_RESPOND_IF_ERROR(
+              responses, r,
+              TRITONSERVER_ErrorNew(
+                  TRITONSERVER_ERROR_UNSUPPORTED,
+                  "failed to get input buffer in CPU memory"));
+        }
+
+        float *inpt_cont = (float *)input_cont_buffer;
+        //char *inpt_cat = (char *)input_cat_buffer;
         float *outpt = (float *)output_buffer;
 
-        instance_state->nvt.Transform(inpt, input_shape[0], input_shape[1], outpt, "cat");
+        //for (uint64_t c = 0; c < buffer_byte_size; c++) {
+        //	printf("*** %X\n", inpt_cat[c]);
+        //}
+
+        instance_state->nvt.Transform(inpt_cont, input_cont_shape[0], input_cont_shape[1], outpt, "cat");
       }
 
       if (responses[r] == nullptr) {

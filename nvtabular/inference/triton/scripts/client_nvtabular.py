@@ -34,15 +34,30 @@ model_name = "nvtabular"
 shape = [2, 5]
 
 with httpclient.InferenceServerClient("localhost:8000") as client:
-    input0_data = np.random.rand(*shape).astype(np.float32)
-    print(input0_data)
+    cont_data = np.random.rand(*shape).astype(np.float32)
+
+    #in0 = np.arange(start=1001, stop=1003, dtype=np.int32)
+    in0 = np.array([[4, 89], [13, 1034]])
+    in0 = np.expand_dims(in0, axis=0)
+    in0n = np.array([str(x) for x in in0.reshape(in0.size)], dtype=object)
+    #in0n[0][0] = 'Onur Yilmaz'
+    
+    cat_data = in0n.reshape(in0.shape)
+    cat_data = cat_data[0]
+    print("")
+    print(cat_data)
+    print("")
+    
     inputs = [
-        httpclient.InferInput("INPUT0", input0_data.shape,
-                              np_to_triton_dtype(input0_data.dtype)),
+        httpclient.InferInput("CONT", cont_data.shape,
+                              np_to_triton_dtype(cont_data.dtype)),
+        httpclient.InferInput("CAT", cat_data.shape, "BYTES")
     ]
 
-    inputs[0].set_data_from_numpy(input0_data)
-
+    inputs[0].set_data_from_numpy(cont_data, binary_data=False)
+    inputs[1].set_data_from_numpy(cat_data, binary_data=True)
+    print(inputs[1]._get_binary_data())
+    
     outputs = [
         httpclient.InferRequestedOutput("OUTPUT0"),
     ]
@@ -53,5 +68,5 @@ with httpclient.InferenceServerClient("localhost:8000") as client:
                             outputs=outputs)
 
     result = response.get_response()
-    print("INPUT0 ({}) = OUTPUT0 ({})".format(
-        input0_data, response.as_numpy("OUTPUT0")))
+    print("CONT ({}), CAT ({}) = OUTPUT0 ({})".format(
+        cont_data, cat_data, response.as_numpy("OUTPUT0")))

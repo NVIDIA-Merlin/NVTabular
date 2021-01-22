@@ -29,8 +29,14 @@ backend: "nvtabular"
 
 input [
   {
-    name: "INPUT0"
+    name: "CONT"
     data_type: TYPE_FP32
+    dims: [ -1, -1 ]
+    
+  },
+  {
+    name: "CAT"
+    data_type: TYPE_STRING
     dims: [ -1, -1 ]
     
   }
