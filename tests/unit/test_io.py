@@ -374,6 +374,7 @@ def test_validate_dataset(datasets, engine):
 
 def test_validate_dataset_bad_schema(tmpdir):
     if LooseVersion(dask.__version__) <= "2.30.0":
+        # Older versions of Dask will not handle schema mismatch
         pytest.skip("Test requires newer version of Dask.")
 
     path = str(tmpdir)
@@ -400,6 +401,9 @@ def test_validate_dataset_bad_schema(tmpdir):
 
 
 def test_validate_and_regenerate_dataset(tmpdir):
+    if LooseVersion(dask.__version__) <= "2.30.0":
+        # `_gddf_to_ddf` requires newer version of Dask.
+        pytest.skip("Test requires newer version of Dask.")
 
     # Initial timeseries dataset (in cpu memory)
     ddf = dask.datasets.timeseries(
