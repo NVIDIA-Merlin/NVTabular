@@ -40,36 +40,22 @@ class DataStats(StatOperator):
         l_max_val = []
         l_std_val = []
         l_pernan_val = []
-        l_multi_min = []
-        l_multi_max = []
-        l_multi_mean = []
         # list for indexing
-        l_cols = [l_col_name, l_col_type, l_dtype, l_cardinality, l_min_val, l_max_val, l_std_val, l_pernan_val, l_multi_min, l_multi_max, l_multi_mean]
-        ddf_col_name = ["col_name", "col_type", "dtype", "cardinality", "min_val", "max_val", "std_val", "pernan_val", "multi_min", "multi_max", "multi_mean"]
+        l_cols = [l_col_name, l_col_type, l_dtype, l_cardinality, l_min_val, l_max_val, l_std_val, l_pernan_val]
+        ddf_col_name = ["col_name", "col_type", "dtype", "cardinality", "min_val", "max_val", "std_val", "pernan_val"]
 
         # For each column, calculate the stats
         for col in columns:
             # Get dtype for all
             dtype = ddf[col].dtype
             # Identify column type (cont, cat, or cat_mh)
-            if is_list_dtype(dtype):
-                col_type = "cat_mh"
-                # Get flat list leaves (How to avoid the compute?)
-                if ddf_dtypes[col].dtype.leaf_type == "object":
-                    flatten = ddf[col].list.leaves.applymap(lambda x: x.str.len())
-                else:
-                    flatten = ddf[col].list.leaves
-            elif np.issubdtype(dtype, np.float):
+            if np.issubdtype(dtype, np.float):
                 col_type = "cont"
             else:
                 col_type = "cat"
-
+                
             # Get cardinality for all but conts
-            cardinality = 0
-            if col_type == "cat_mh":
-                cardinality = flatten.nunique()
-            elif col_type == "cat":
-                cardinality = ddf[col].nunique()
+            cardinality = ddf[col].nunique()
 
             # if string, replace string for their lengths for the rest of the computations
             if dtype == "object":
@@ -77,8 +63,8 @@ class DataStats(StatOperator):
             # if list, replace lists by their length
             # This will fail right now, we are waiting for cudf to add support:
             # https://github.com/rapidsai/cudf/issues/7157
-            elif col_type == "cat_mh":
-                ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
+            #elif col_type == "cat_mh":
+            #    ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
 
             # Get min,max, and mean for all
             min_val = ddf[col].min()
@@ -91,13 +77,8 @@ class DataStats(StatOperator):
             # Get Percentage of NaNs for all
             pernan_val = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
-            # Get multi stats for lists
-            multi_min = flatten.min() if col_type == "cat_mh" else 0
-            multi_max = flatten.max() if col_type == "cat_mh" else 0
-            multi_mean = flatten.min() if col_type == "cat_mh" else 0
-
             # Create list for indexing
-            l_temp = [col, col_type, str(dtype), cardinality, min_val, max_val, std_val, pernan_val, multi_min, multi_max, multi_mean]
+            l_temp = [col, col_type, str(dtype), cardinality, min_val, max_val, std_val, pernan_val]
 
             # Append stats to lists
             for i, l in enumerate(l_cols):
@@ -113,9 +94,6 @@ class DataStats(StatOperator):
             print(dask_cudf.Series(l, name, cudf.Series(), divisions))
             dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
         dask_stats = dask_stats.drop("Init", axis=1)
-
-        print("AWESOME")
-        print(dask_stats)
 
         return dask_stats
 
