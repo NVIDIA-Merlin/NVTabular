@@ -15,7 +15,7 @@
 #
 import math
 import string
-
+import yaml
 import cudf
 import dask_cudf
 import numpy as np
@@ -711,8 +711,20 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
         # repeat the existing logic
 
 
-@pytest.mark.skip(reason="Working on this")
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_data_stats(tmpdir, datasets, engine):
-    # TODO: Add data_stats test
-    print("TODO")
+def test_data_stats(tmpdir, df, datasets, engine):
+    # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cat_names = []
+    cont_names = ["x", "y"]
+    label_name = ["label"]
+    all_cols = cat_names + cont_names + label_name
+
+    dataset = nvtabular.Dataset(df, engine=engine)
+    features = all_cols >> ops.DataStats()
+    workflow = nvtabular.Workflow(features)
+    workflow.fit(dataset)
+    # Save stats in a file and read them back
+    stats_file = "stats_output.yaml"
+    workflow.save_stats(stats_file)
+    output = yaml.safe_load(open(stats_file))
+    print(output)

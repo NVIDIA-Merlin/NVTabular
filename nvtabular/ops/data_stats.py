@@ -14,11 +14,15 @@
 # limitations under the License.
 #
 import dask_cudf
+import cudf
 import numpy as np
 from cudf.utils.dtypes import is_list_dtype
+from nvtx import annotate
 
 from .stat_operator import StatOperator
 
+from .operator import ColumnNames, Operator
+import yaml
 
 class DataStats(StatOperator):
     def __init__(self):
@@ -27,8 +31,21 @@ class DataStats(StatOperator):
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
-        # Create dask DataFrame to store column stats
-        dask_stats = dask_cudf.DataFrame()
+        # Lists for columns values
+        l_col_name = []
+        l_col_type = []
+        l_dtype = []
+        l_cardinality = []
+        l_min_val = []
+        l_max_val = []
+        l_std_val = []
+        l_pernan_val = []
+        l_multi_min = []
+        l_multi_max = []
+        l_multi_mean = []
+        # list for indexing
+        l_cols = [l_col_name, l_col_type, l_dtype, l_cardinality, l_min_val, l_max_val, l_std_val, l_pernan_val, l_multi_min, l_multi_max, l_multi_mean]
+        ddf_col_name = ["col_name", "col_type", "dtype", "cardinality", "min_val", "max_val", "std_val", "pernan_val", "multi_min", "multi_max", "multi_mean"]
 
         # For each column, calculate the stats
         for col in columns:
@@ -48,7 +65,7 @@ class DataStats(StatOperator):
                 col_type = "cat"
 
             # Get cardinality for all but conts
-            cardinality = None
+            cardinality = 0
             if col_type == "cat_mh":
                 cardinality = flatten.nunique()
             elif col_type == "cat":
@@ -69,34 +86,45 @@ class DataStats(StatOperator):
             mean_val = ddf[col].mean()
 
             # Get std only for conts
-            std_val = ddf[col].std() if col_type == "cont" else None
+            std_val = ddf[col].std() if col_type == "cont" else 0
 
             # Get Percentage of NaNs for all
             pernan_val = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
             # Get multi stats for lists
-            multi_min = flatten.min() if col_type == "cat_mh" else None
-            multi_max = flatten.max() if col_type == "cat_mh" else None
-            multi_mean = flatten.min() if col_type == "cat_mh" else None
+            multi_min = flatten.min() if col_type == "cat_mh" else 0
+            multi_max = flatten.max() if col_type == "cat_mh" else 0
+            multi_mean = flatten.min() if col_type == "cat_mh" else 0
 
-            # Add column to dask_stats
-            dask_stats[col] = [
-                col_type,
-                dtype,
-                cardinality,
-                min_val,
-                max_val,
-                std_val,
-                pernan_val,
-                multi_min,
-                multi_max,
-                multi_mean,
-            ]
+            # Create list for indexing
+            l_temp = [col, col_type, str(dtype), cardinality, min_val, max_val, std_val, pernan_val, multi_min, multi_max, multi_mean]
+
+            # Append stats to lists
+            for i, l in enumerate(l_cols):
+                l.append(l_temp[i])
+
+        # Add column to dask_stats
+        # Create cudf DataFrame to store column stats
+        df = cudf.DataFrame()
+        df["Init"] = [0] * len(columns)
+        dask_stats = dask_cudf.from_cudf(df, npartitions=2)
+        for i, l in enumerate(l_cols):
+            _, name, meta, divisions = dask_stats. __getstate__()
+            print(dask_cudf.Series(l, name, cudf.Series(), divisions))
+            dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
+        dask_stats = dask_stats.drop("Init", axis=1)
+
+        print("AWESOME")
+        print(dask_stats)
+
         return dask_stats
 
     def fit_finalize(self, dask_stats):
-        for col in dask_stats:
-            output[col] = dask_stats[col].to_list()
+        self.output = dask_stats.to_pandas().set_index("col_name").T.to_dict()
+        print(self.output)
+
+    def save(self):
+        return self.output
 
     def load(self, data):
         self.output = data
@@ -104,6 +132,6 @@ class DataStats(StatOperator):
     def clear(self):
         self.output = {}
 
-    transform.__doc__ = Operator.transform.__doc__
+    #transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

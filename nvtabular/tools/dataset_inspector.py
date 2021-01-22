@@ -74,6 +74,7 @@ class DatasetInspector:
         cats = columns_dict["cats"]
         conts = columns_dict["conts"]
         labels = columns_dict["labels"]
+        all_cols = cats + conts + labels
 
         # Dictionary with json output key names
         key_names = {}
@@ -91,8 +92,13 @@ class DatasetInspector:
         dataset = Dataset(path, engine=dataset_format)
         features = all_cols >> DataStats()
         workflow = Workflow(features, client=client())
-        output = workflow.fit(dataset)
-
+        workflow.fit(dataset)
+        # Save stats in a file and read them back
+        stats_file = "stats_output.yaml"
+        workflow.save_stats(stats_file)
+        output = yaml.safe_load(open(stats_file))
+        
+        
         # Dictionary to store collected information
         data = {}
         # Store num_rows
