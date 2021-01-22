@@ -530,7 +530,39 @@ class Dataset:
     def regenerate_dataset(
         self, output_path, columns=None, output_format="parquet", compute=True, **kwargs
     ):
-        """Regenerate an NVTabular Dataset for efficient processing"""
+        """Regenerate an NVTabular Dataset for efficient processing.
+
+        Example Usage::
+
+            dataset = Dataset("/path/to/data_pq", engine="parquet")
+            dataset.regenerate_dataset(
+                out_path, part_size="1MiB", file_size="10MiB"
+            )
+
+        Parameters
+        -----------
+        output_path : string
+            Root directory path to use for the new (regenerated) dataset.
+        columns : list(string), optional
+            Subset of columns to include in the regenerated dataset.
+        output_format : string, optional
+            Format to use for regenerated dataset.  Only "parquet" (default)
+            is currently supported.
+        compute : bool, optional
+            Whether to compute the task graph or to return a Delayed object.
+            By default, the graph will be executed.
+        **kwargs :
+            Key-word arguments to pass down to the engine's regenerate_dataset
+            method. See `ParquetDatasetEngine.regenerate_dataset` for more
+            information.
+
+        Returns
+        -------
+        result : int or Delayed
+            If `compute=True` (default), the return value will be an integer
+            corresponding to the number of generated data files.  If `False`,
+            the returned value will be a `Delayed` object.
+        """
 
         # Check that the desired output format is Parquet
         if output_format not in ["parquet"]:
@@ -541,11 +573,11 @@ class Dataset:
             )
             raise ValueError(msg)
 
-        regen = ParquetDatasetEngine.regenerate_dataset(self, output_path, columns=None, **kwargs)
+        result = ParquetDatasetEngine.regenerate_dataset(self, output_path, columns=None, **kwargs)
         if compute:
-            return regen.compute()
+            return result.compute()
         else:
-            return regen
+            return result
 
 
 def _set_dtypes(chunk, dtypes):

@@ -339,13 +339,57 @@ class ParquetDatasetEngine(DatasetEngine):
         columns=None,
         file_size=None,
         part_size=None,
+        cats=None,
+        conts=None,
+        labels=None,
         storage_options=None,
-        **kwargs,
     ):
+        """Regenerate an NVTabular Dataset for efficient processing.
+
+        Example Usage::
+
+            dataset = Dataset("/path/to/data_pq", engine="parquet")
+            dataset.regenerate_dataset(
+                out_path, part_size="1MiB", file_size="10MiB"
+            )
+
+        Parameters
+        -----------
+        dataset : Dataset
+            Input `Dataset` object (to be regenerated).
+        output_path : string
+            Root directory path to use for the new (regenerated) dataset.
+        columns : list[string], optional
+            Subset of columns to include in the regenerated dataset.
+        file_size : int or string, optional
+            Desired size of each output file.
+        part_size : int or string, optional
+            Desired partition size to use within regeneration algorithm.
+            Note that this is effectively the size of each contiguous write
+            operation in cudf.
+        cats : list[string], optional
+            Categorical column list.
+        conts : list[string], optional
+            Continuous column list.
+        labels : list[string], optional
+            Label column list.
+        storage_options : dict, optional
+            Storage-option kwargs to pass through to the `fsspec` file-system
+            interface.
+
+        Returns
+        -------
+        result : int or Delayed
+            If `compute=True` (default), the return value will be an integer
+            corresponding to the number of generated data files.  If `False`,
+            the returned value will be a `Delayed` object.
+        """
+
         # Specify ideal file size and partition size
         row_group_size = 128_000_000
-        file_size = file_size or row_group_size * 100
-        part_size = part_size or row_group_size * 10
+        file_size = parse_bytes(file_size) or row_group_size * 100
+        part_size = parse_bytes(part_size) or row_group_size * 10
+        part_size = min(part_size, file_size)
 
         fs, _, _ = get_fs_token_paths(output_path, mode="wb", storage_options=storage_options)
 
@@ -356,9 +400,9 @@ class ParquetDatasetEngine(DatasetEngine):
 
         # Prepare general metadata (gmd)
         gmd = {}
-        cats = kwargs.pop("cats", [])
-        conts = kwargs.pop("conts", [])
-        labels = kwargs.pop("labels", [])
+        cats = cats or []
+        conts = conts or []
+        labels = labels or []
         if not len(cats + conts + labels):
             warnings.warn(
                 "General-metadata information not detected! "
@@ -372,7 +416,17 @@ class ParquetDatasetEngine(DatasetEngine):
         gmd["labels"] = [{"col_name": c, "index": col_idx[c]} for c in labels]
 
         # Get list of partition lengths
-        token = tokenize(dataset, output_path, columns, **kwargs)
+        token = tokenize(
+            dataset,
+            output_path,
+            columns,
+            part_size,
+            file_size,
+            cats,
+            conts,
+            labels,
+            storage_options,
+        )
         getlen_name = "getlen-" + token
         name = "all-" + getlen_name
         dsk = {
