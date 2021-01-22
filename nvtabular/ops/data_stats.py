@@ -27,58 +27,61 @@ import yaml
 class DataStats(StatOperator):
     def __init__(self):
         super().__init__()
+        self.col_names = []
+        self.col_types = []
+        self.dtypes = []
         self.output = {}
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         # Lists for columns values
-        l_col_name = []
-        l_col_type = []
-        l_dtype = []
         l_cardinality = []
         l_min_val = []
         l_max_val = []
         l_std_val = []
         l_pernan_val = []
         # list for indexing
-        l_cols = [l_col_name, l_col_type, l_dtype, l_cardinality, l_min_val, l_max_val, l_std_val, l_pernan_val]
-        ddf_col_name = ["col_name", "col_type", "dtype", "cardinality", "min_val", "max_val", "std_val", "pernan_val"]
+        l_cols = [l_cardinality, l_min_val, l_max_val, l_std_val, l_pernan_val]
+        ddf_col_name = ["cardinality", "min_val", "max_val", "std_val", "pernan_val"]
 
         # For each column, calculate the stats
         for col in columns:
+            self.col_names.append(col)
             # Get dtype for all
             dtype = ddf[col].dtype
+            self.dtypes.append(dtype)
+
             # Identify column type (cont, cat, or cat_mh)
             if np.issubdtype(dtype, np.float):
                 col_type = "cont"
             else:
                 col_type = "cat"
+            self.col_types.append(col_type)
                 
-            # Get cardinality for all but conts
+            # Get cardinality
             cardinality = ddf[col].nunique()
 
             # if string, replace string for their lengths for the rest of the computations
             if dtype == "object":
                 ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
-            # if list, replace lists by their length
-            # This will fail right now, we are waiting for cudf to add support:
+            # Add list support when cudf supports it:
             # https://github.com/rapidsai/cudf/issues/7157
             #elif col_type == "cat_mh":
             #    ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
 
-            # Get min,max, and mean for all
+            # Get min,max, and mean
             min_val = ddf[col].min()
             max_val = ddf[col].max()
             mean_val = ddf[col].mean()
 
             # Get std only for conts
-            std_val = ddf[col].std() if col_type == "cont" else 0
+            std_val = ddf[col].std()
 
             # Get Percentage of NaNs for all
             pernan_val = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
             # Create list for indexing
-            l_temp = [col, col_type, str(dtype), cardinality, min_val, max_val, std_val, pernan_val]
+            l_temp = [cardinality, min_val, max_val, std_val, pernan_val]
 
             # Append stats to lists
             for i, l in enumerate(l_cols):
@@ -89,25 +92,16 @@ class DataStats(StatOperator):
         df = cudf.DataFrame()
         df["Init"] = [0] * len(columns)
         dask_stats = dask_cudf.from_cudf(df, npartitions=2)
-        print("Init")
-        print(dask_stats.compute())
         for i, l in enumerate(l_cols):
             _, name, meta, divisions = dask_stats. __getstate__()
-            #print(dask_cudf.Series(l, name, cudf.Series(), divisions))
-            if i < 3:
-               dask_stats[ddf_col_name[i]] = cudf.Series(l)
-            else:
-                dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
-            print("Iter: ", i, l)
-            print(dask_stats.compute())
+            dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
         dask_stats = dask_stats.drop("Init", axis=1)
 
         return dask_stats
 
     def fit_finalize(self, dask_stats):
-        self.output = dask_stats.to_pandas().set_index("col_name").T.to_dict()
-        print(self.output)
-
+        self.output = {} #dask_stats.to_pandas().set_index("col_name").T.to_dict()
+        
     def save(self):
         return self.output
 
