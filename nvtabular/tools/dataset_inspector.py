@@ -30,8 +30,10 @@ from nvtabular.workflow import Workflow
 @contextlib.contextmanager
 def managed_client(devices):
     client = Client(LocalCUDACluster(n_workers=len(devices.split(","))))
-    yield client
-    client.close()
+    try:
+        yield client
+    finally:
+        client.shutdown()
 
 
 # Class to help Json to serialize the data
@@ -92,9 +94,9 @@ class DatasetInspector:
         dataset = Dataset(path, engine=dataset_format)
         features = all_cols >> DataStats()
         with managed_client(devices) as client:
-            print(client)
-        workflow = Workflow(features, client=client)
-        workflow.fit(dataset)
+            workflow = Workflow(features, client=client)
+            workflow.fit(dataset)
+
         # Save stats in a file and read them back
         stats_file = "stats_output.yaml"
         workflow.save_stats(stats_file)
