@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import contextlib
 import json
-from contextlib import contextmanager
 
-import cudf
 import fsspec
 import numpy as np
+import yaml
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
@@ -27,9 +27,9 @@ from nvtabular.ops import DataStats
 from nvtabular.workflow import Workflow
 
 
-# Context Manager for creating Dask Cluster
-def client():
-    client = Client(LocalCluster())
+@contextlib.contextmanager
+def managed_client(devices):
+    client = Client(LocalCUDACluster(n_workers=len(devices.split(","))))
     yield client
     client.close()
 
@@ -54,7 +54,7 @@ class DatasetInspector:
     Analyzes an existing dataset to extract its statistics.
     """
 
-    def inspect(self, path, dataset_format, columns_dict, output_file):
+    def inspect(self, path, dataset_format, columns_dict, devices, output_file):
         """
         Parameters
         -----------
@@ -91,30 +91,35 @@ class DatasetInspector:
         # Create Dataset, Workflow, and get Stats
         dataset = Dataset(path, engine=dataset_format)
         features = all_cols >> DataStats()
-        workflow = Workflow(features, client=client())
+        with managed_client(devices) as client:
+            print(client)
+        workflow = Workflow(features, client=client)
         workflow.fit(dataset)
         # Save stats in a file and read them back
         stats_file = "stats_output.yaml"
         workflow.save_stats(stats_file)
         output = yaml.safe_load(open(stats_file))
-        
-        
+        output = output[1]["stats"]
+
         # Dictionary to store collected information
         data = {}
         # Store num_rows
         data["num_rows"] = dataset.num_rows
         # Store cols
         for col_type in ["conts", "cats", "labels"]:
-            for col in all_cols:
-                data[col_type][col]["dtype"] = output[col][0]
-                data[col_type][col]["cardinality"] = output[col][1]
-                if col_type != "label":
-                    data[col_type][col][key_names["min"][col_type]] = output[col][2]
-                    data[col_type][col][key_names["max"][col_type]] = output[col][3]
-                    data[col_type][col][key_names["mean"][col_type]] = output[col][4]
-                if col_type == "cont":
-                    data[col_type][col]["std"] = output[col][5]
-                data[col_type][col]["per_nan"] = output[col][6]
+            data[col_type] = {}
+            for col in columns_dict[col_type]:
+                data[col_type][col] = {}
+                data[col_type][col]["dtype"] = output[col]["dtype"]
+                if col_type != "conts":
+                    data[col_type][col]["cardinality"] = output[col]["cardinality"]
+                if col_type != "labels":
+                    data[col_type][col][key_names["min"][col_type]] = output[col]["min"]
+                    data[col_type][col][key_names["max"][col_type]] = output[col]["max"]
+                    data[col_type][col][key_names["mean"][col_type]] = output[col]["mean"]
+                if col_type == "conts":
+                    data[col_type][col]["std"] = output[col]["std"]
+                data[col_type][col]["per_nan"] = output[col]["per_nan"]
 
         # Write json file
         with fsspec.open(output_file, "w") as outfile:

@@ -25,9 +25,10 @@ import nvtabular.tools.dataset_inspector as datains
 def parse_args():
     """
     Use the inspector script indicating the config fil, path, format,
-    and (optional) the output file name
+    gpus to use and (optional) the output file name
 
-    python inspector_script.py -c config_file.json -d dataset_path -f parquet -o dataset_info.json
+    python inspector_script.py -c config_file.json -d dataset_path -f parquet
+                               -g "0,1,2,3,4" -o dataset_info.json
     """
     parser = argparse.ArgumentParser(description=("Dataset Inspect Tool"))
     # Config file
@@ -54,6 +55,10 @@ def parse_args():
         type=str,
         help="Dataset format (Default 'parquet')",
     )
+    # Number of GPUs to use
+    parser.add_argument(
+        "-g", "--gpus", type=str, help="Number of GPUs to use, i.e '0', '0,1' (Required)"
+    )
     # Output file name
     parser.add_argument(
         "-o",
@@ -72,7 +77,7 @@ def main(args):
         config = json.load(f)
 
     a = datains.DatasetInspector()
-    a.inspect(args.data_path, args.format, config, args.output_file)
+    a.inspect(args.data_path, args.format, config, args.gpus, args.output_file)
 
 
 if __name__ == "__main__":

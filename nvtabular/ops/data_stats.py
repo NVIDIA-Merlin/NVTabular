@@ -14,94 +14,81 @@
 # limitations under the License.
 #
 import dask_cudf
-import cudf
 import numpy as np
-from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
+from .operator import ColumnNames
 from .stat_operator import StatOperator
 
-from .operator import ColumnNames, Operator
-import yaml
 
 class DataStats(StatOperator):
     def __init__(self):
         super().__init__()
         self.col_names = []
         self.col_types = []
-        self.dtypes = []
+        self.col_dtypes = []
         self.output = {}
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
-        # Lists for columns values
-        l_cardinality = []
-        l_min_val = []
-        l_max_val = []
-        l_std_val = []
-        l_pernan_val = []
-        # list for indexing
-        l_cols = [l_cardinality, l_min_val, l_max_val, l_std_val, l_pernan_val]
-        ddf_col_name = ["cardinality", "min_val", "max_val", "std_val", "pernan_val"]
+        dask_stats = {}
+
+        ddf_dtypes = ddf.head(1)
 
         # For each column, calculate the stats
         for col in columns:
+            dask_stats[col] = {}
             self.col_names.append(col)
             # Get dtype for all
-            dtype = ddf[col].dtype
-            self.dtypes.append(dtype)
+            dtype = ddf_dtypes[col].dtype
+            self.col_dtypes.append(dtype)
 
-            # Identify column type (cont, cat, or cat_mh)
+            # Identify column type
             if np.issubdtype(dtype, np.float):
                 col_type = "cont"
             else:
                 col_type = "cat"
             self.col_types.append(col_type)
-                
-            # Get cardinality
-            cardinality = ddf[col].nunique()
+
+            # Get cardinality for cats
+            if col_type == "cat":
+                dask_stats[col]["cardinality"] = ddf[col].nunique()
 
             # if string, replace string for their lengths for the rest of the computations
             if dtype == "object":
-                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len())
+                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
             # Add list support when cudf supports it:
             # https://github.com/rapidsai/cudf/issues/7157
-            #elif col_type == "cat_mh":
+            # elif col_type == "cat_mh":
             #    ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
 
             # Get min,max, and mean
-            min_val = ddf[col].min()
-            max_val = ddf[col].max()
-            mean_val = ddf[col].mean()
+            dask_stats[col]["min"] = ddf[col].min()
+            dask_stats[col]["max"] = ddf[col].max()
+            dask_stats[col]["mean"] = ddf[col].mean()
 
             # Get std only for conts
-            std_val = ddf[col].std()
+            if col_type == "cont":
+                dask_stats[col]["std"] = ddf[col].std()
 
             # Get Percentage of NaNs for all
-            pernan_val = 100 * (1 - ddf[col].count() / len(ddf[col]))
-
-            # Create list for indexing
-            l_temp = [cardinality, min_val, max_val, std_val, pernan_val]
-
-            # Append stats to lists
-            for i, l in enumerate(l_cols):
-                l.append(l_temp[i])
-
-        # Add column to dask_stats
-        # Create cudf DataFrame to store column stats
-        df = cudf.DataFrame()
-        df["Init"] = [0] * len(columns)
-        dask_stats = dask_cudf.from_cudf(df, npartitions=2)
-        for i, l in enumerate(l_cols):
-            _, name, meta, divisions = dask_stats. __getstate__()
-            dask_stats[ddf_col_name[i]] = dask_cudf.Series(l, name, cudf.Series(), divisions)
-        dask_stats = dask_stats.drop("Init", axis=1)
+            dask_stats[col]["per_nan"] = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
         return dask_stats
 
     def fit_finalize(self, dask_stats):
-        self.output = {} #dask_stats.to_pandas().set_index("col_name").T.to_dict()
-        
+        for i, col in enumerate(self.col_names):
+            # Add dtype
+            dask_stats[col]["dtype"] = str(self.col_dtypes[i])
+            # Cast types for yaml
+            dask_stats[col]["mean"] = dask_stats[col]["mean"].item()
+            dask_stats[col]["per_nan"] = dask_stats[col]["per_nan"].item()
+            if self.col_types[i] == "cont":
+                dask_stats[col]["std"] = dask_stats[col]["std"].item()
+            else:
+                dask_stats[col]["cardinality"] = dask_stats[col]["cardinality"].item()
+        self.output = dask_stats
+
     def save(self):
         return self.output
 
@@ -111,6 +98,6 @@ class DataStats(StatOperator):
     def clear(self):
         self.output = {}
 
-    #transform.__doc__ = Operator.transform.__doc__
+    # transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
