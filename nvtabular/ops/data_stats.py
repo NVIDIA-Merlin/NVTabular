@@ -45,13 +45,13 @@ class DataStats(StatOperator):
 
             # Identify column type
             if np.issubdtype(dtype, np.float):
-                col_type = "cont"
+                col_type = "conts"
             else:
-                col_type = "cat"
+                col_type = "cats"
             self.col_types.append(col_type)
 
             # Get cardinality for cats
-            if col_type == "cat":
+            if col_type == "cats":
                 dask_stats[col]["cardinality"] = ddf[col].nunique()
 
             # if string, replace string for their lengths for the rest of the computations
@@ -68,7 +68,7 @@ class DataStats(StatOperator):
             dask_stats[col]["mean"] = ddf[col].mean()
 
             # Get std only for conts
-            if col_type == "cont":
+            if col_type == "conts":
                 dask_stats[col]["std"] = ddf[col].std()
 
             # Get Percentage of NaNs for all
@@ -81,12 +81,16 @@ class DataStats(StatOperator):
             # Add dtype
             dask_stats[col]["dtype"] = str(self.col_dtypes[i])
             # Cast types for yaml
-            dask_stats[col]["mean"] = dask_stats[col]["mean"].item()
-            dask_stats[col]["per_nan"] = dask_stats[col]["per_nan"].item()
-            if self.col_types[i] == "cont":
-                dask_stats[col]["std"] = dask_stats[col]["std"].item()
+            if isinstance(dask_stats[col]["mean"], np.floating):
+                dask_stats[col]["mean"] = dask_stats[col]["mean"].item()
+            if isinstance(dask_stats[col]["per_nan"], np.floating):
+                dask_stats[col]["per_nan"] = dask_stats[col]["per_nan"].item()
+            if self.col_types[i] == "conts":
+                if isinstance(dask_stats[col]["std"], np.floating):
+                    dask_stats[col]["std"] = dask_stats[col]["std"].item()
             else:
-                dask_stats[col]["cardinality"] = dask_stats[col]["cardinality"].item()
+                if isinstance(dask_stats[col]["cardinality"], np.integer):
+                    dask_stats[col]["cardinality"] = dask_stats[col]["cardinality"].item()
         self.output = dask_stats
 
     def save(self):

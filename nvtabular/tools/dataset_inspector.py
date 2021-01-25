@@ -13,27 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import contextlib
+
 import json
 
 import fsspec
 import numpy as np
 import yaml
-from dask.distributed import Client
-from dask_cuda import LocalCUDACluster
 
-from nvtabular.io import Dataset
 from nvtabular.ops import DataStats
 from nvtabular.workflow import Workflow
-
-
-@contextlib.contextmanager
-def managed_client(devices):
-    client = Client(LocalCUDACluster(n_workers=len(devices.split(","))))
-    try:
-        yield client
-    finally:
-        client.shutdown()
 
 
 # Class to help Json to serialize the data
@@ -56,7 +44,10 @@ class DatasetInspector:
     Analyzes an existing dataset to extract its statistics.
     """
 
-    def inspect(self, path, dataset_format, columns_dict, devices, output_file):
+    def __init__(self, client):
+        self.client = client
+
+    def inspect(self, dataset, columns_dict, output_file):
         """
         Parameters
         -----------
@@ -72,30 +63,16 @@ class DatasetInspector:
         output_file: str
             Filename to write the output statistics
         """
+
         # Get dataset columns
         cats = columns_dict["cats"]
         conts = columns_dict["conts"]
         labels = columns_dict["labels"]
-        all_cols = cats + conts + labels
-
-        # Dictionary with json output key names
-        key_names = {}
-        key_names["min"] = {}
-        key_names["min"]["cats"] = "min_entry_size"
-        key_names["min"]["conts"] = "min_val"
-        key_names["max"] = {}
-        key_names["max"]["cats"] = "max_entry_size"
-        key_names["max"]["conts"] = "max_val"
-        key_names["mean"] = {}
-        key_names["mean"]["cats"] = "avg_entry_size"
-        key_names["mean"]["conts"] = "mean"
 
         # Create Dataset, Workflow, and get Stats
-        dataset = Dataset(path, engine=dataset_format)
-        features = all_cols >> DataStats()
-        with managed_client(devices) as client:
-            workflow = Workflow(features, client=client)
-            workflow.fit(dataset)
+        features = cats + conts + labels >> DataStats()
+        workflow = Workflow(features, client=self.client)
+        workflow.fit(dataset)
 
         # Save stats in a file and read them back
         stats_file = "stats_output.yaml"
@@ -113,14 +90,18 @@ class DatasetInspector:
             for col in columns_dict[col_type]:
                 data[col_type][col] = {}
                 data[col_type][col]["dtype"] = output[col]["dtype"]
-                if col_type != "conts":
+
+                if col_type == "cats":
                     data[col_type][col]["cardinality"] = output[col]["cardinality"]
-                if col_type != "labels":
-                    data[col_type][col][key_names["min"][col_type]] = output[col]["min"]
-                    data[col_type][col][key_names["max"][col_type]] = output[col]["max"]
-                    data[col_type][col][key_names["mean"][col_type]] = output[col]["mean"]
-                if col_type == "conts":
+                    data[col_type][col]["min_entry_size"] = output[col]["min"]
+                    data[col_type][col]["max_entry_size"] = output[col]["max"]
+                    data[col_type][col]["avg_entry_size"] = output[col]["mean"]
+                elif col_type == "conts":
+                    data[col_type][col]["min_val"] = output[col]["min"]
+                    data[col_type][col]["max_val"] = output[col]["max"]
+                    data[col_type][col]["mean_val"] = output[col]["mean"]
                     data[col_type][col]["std"] = output[col]["std"]
+
                 data[col_type][col]["per_nan"] = output[col]["per_nan"]
 
         # Write json file
