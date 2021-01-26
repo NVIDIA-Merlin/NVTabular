@@ -739,7 +739,7 @@ def test_data_stats(tmpdir, df, datasets, engine):
         assert output[col]["dtype"] == str(dtype)
 
         # Identify column type
-        if np.issubdtype(dtype, np.float):
+        if np.issubdtype(dtype, np.floating):
             col_type = "cont"
         else:
             col_type = "cat"

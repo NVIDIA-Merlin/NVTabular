@@ -9,6 +9,7 @@ import pytest
 
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
+from nvtabular.io import Dataset
 
 json_sample = {
     "conts": {
@@ -172,8 +173,9 @@ def test_inspect_datagen(tmpdir, datasets, engine, dist):
 
     # Create inspector and inspect
     output_inspect1 = tmpdir + "/dataset_info1.json"
+    dataset = Dataset(paths, engine=engine)
     a = datains.DatasetInspector()
-    a.inspect(paths, engine, columns_dict, "0", output_inspect1)
+    a.inspect(dataset, columns_dict, output_inspect1)
     assert os.path.isfile(output_inspect1)
 
     # Generate dataset using data_gen tool
@@ -193,7 +195,8 @@ def test_inspect_datagen(tmpdir, datasets, engine, dist):
 
     # Inspect again and check output are the same
     output_inspect2 = tmpdir + "/dataset_info2.json"
-    a.inspect(output_datagen_files, engine, columns_dict, "0", output_inspect2)
+    dataset = Dataset(output_datagen_files, engine=engine)
+    a.inspect(dataset, columns_dict, output_inspect2)
     assert os.path.isfile(output_inspect2)
 
     # Compare json outputs
@@ -215,5 +218,5 @@ def test_inspect_datagen(tmpdir, datasets, engine, dist):
                             assert output1[k1][k2][k3] == output2[k1][k2][k3]
                     else:
                         assert output1[k1][k2][k3] == pytest.approx(
-                            output2[k1][k2][k3], rel=1e-1, abs=1e-1
+                            output2[k1][k2][k3], rel=1e-0, abs=1e-0
                         )

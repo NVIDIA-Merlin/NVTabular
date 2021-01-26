@@ -44,7 +44,7 @@ class DatasetInspector:
     Analyzes an existing dataset to extract its statistics.
     """
 
-    def __init__(self, client):
+    def __init__(self, client=None):
         self.client = client
 
     def inspect(self, dataset, columns_dict, output_file):
@@ -91,15 +91,17 @@ class DatasetInspector:
                 data[col_type][col] = {}
                 data[col_type][col]["dtype"] = output[col]["dtype"]
 
-                if col_type == "cats":
+                if col_type != "conts":
                     data[col_type][col]["cardinality"] = output[col]["cardinality"]
+
+                if col_type == "cats":
                     data[col_type][col]["min_entry_size"] = output[col]["min"]
                     data[col_type][col]["max_entry_size"] = output[col]["max"]
                     data[col_type][col]["avg_entry_size"] = output[col]["mean"]
                 elif col_type == "conts":
                     data[col_type][col]["min_val"] = output[col]["min"]
                     data[col_type][col]["max_val"] = output[col]["max"]
-                    data[col_type][col]["mean_val"] = output[col]["mean"]
+                    data[col_type][col]["mean"] = output[col]["mean"]
                     data[col_type][col]["std"] = output[col]["std"]
 
                 data[col_type][col]["per_nan"] = output[col]["per_nan"]

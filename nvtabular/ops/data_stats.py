@@ -44,7 +44,7 @@ class DataStats(StatOperator):
             self.col_dtypes.append(dtype)
 
             # Identify column type
-            if np.issubdtype(dtype, np.float):
+            if np.issubdtype(dtype, np.floating):
                 col_type = "conts"
             else:
                 col_type = "cats"
