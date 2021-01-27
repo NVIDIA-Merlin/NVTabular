@@ -94,7 +94,11 @@ def test_dask_dataset(datasets, engine, num_files):
         dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
         result = dataset.to_ddf(columns=mycols_csv)
 
-    assert_eq(ddf0, result)
+    # We do not preserve the index in NVTabular
+    if engine == "parquet":
+        assert_eq(ddf0, result, check_index=False)
+    else:
+        assert_eq(ddf0, result)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])

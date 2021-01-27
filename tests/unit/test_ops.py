@@ -21,7 +21,9 @@ import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 from cudf.tests.utils import assert_eq
+from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
@@ -41,6 +43,7 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_min = df[col].min()
         assert col_min == pytest.approx(processor.column_group.op.mins[col], 1e-2)
@@ -137,6 +140,7 @@ def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(col_median, processor.column_group.op.medians[col], rel_tol=1e1)
@@ -151,6 +155,7 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     assert new_gdf[op_columns] == np.log(df[op_columns].astype(np.float32))
 
 
@@ -242,6 +247,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor.fit(dataset)
 
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         assert math.isclose(df[col].mean(), processor.column_group.op.means[col], rel_tol=1e-4)
         assert math.isclose(df[col].std(), processor.column_group.op.stds[col], rel_tol=1e-4)
@@ -287,8 +293,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.slice(1, 3))
-    assert new_gdf["name-string"].equals(df_copy["name-string"].str.slice(1, 3))
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"].str.slice(1, 3), check_index=False)
+    assert_eq_dd(new_gdf["name-string"], df_copy["name-string"].str.slice(1, 3), check_index=False)
 
     # No Replacement from old API (skipped for other examples)
     substring = (
@@ -300,10 +306,20 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat_slice"].equals(df_copy["name-cat"].str.slice(1, 3))
-    assert new_gdf["name-string_slice"].equals(df_copy["name-string"].str.slice(1, 3))
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
-    assert new_gdf["name-string"].equals(df_copy["name-string"])
+    assert_eq_dd(
+        new_gdf["name-cat_slice"],
+        df_copy["name-cat"].str.slice(1, 3),
+        check_index=False,
+        check_names=False,
+    )
+    assert_eq_dd(
+        new_gdf["name-string_slice"],
+        df_copy["name-string"].str.slice(1, 3),
+        check_index=False,
+        check_names=False,
+    )
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"], check_index=False)
+    assert_eq_dd(new_gdf["name-string"], df_copy["name-string"], check_index=False)
 
     # Replace
     # Replacement
@@ -312,8 +328,10 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.replace("e", "XX"))
-    assert new_gdf["name-string"].equals(df_copy["name-string"].str.replace("e", "XX"))
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"].str.replace("e", "XX"), check_index=False)
+    assert_eq_dd(
+        new_gdf["name-string"], df_copy["name-string"].str.replace("e", "XX"), check_index=False
+    )
 
     # astype
     # Replacement
@@ -640,16 +658,16 @@ def test_difference_lag():
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["timestamp_difference_lag_1"][0] is None
+    assert new_gdf["timestamp_difference_lag_1"][0] is (cudf.NA if hasattr(cudf, "NA") else None)
     assert new_gdf["timestamp_difference_lag_1"][1] == 5
     assert new_gdf["timestamp_difference_lag_1"][2] == 95
-    assert new_gdf["timestamp_difference_lag_1"][3] is None
+    assert new_gdf["timestamp_difference_lag_1"][3] is (cudf.NA if hasattr(cudf, "NA") else None)
 
     assert new_gdf["timestamp_difference_lag_-1"][0] == -5
     assert new_gdf["timestamp_difference_lag_-1"][1] == -95
-    assert new_gdf["timestamp_difference_lag_-1"][2] is None
+    assert new_gdf["timestamp_difference_lag_-1"][2] is (cudf.NA if hasattr(cudf, "NA") else None)
     assert new_gdf["timestamp_difference_lag_-1"][3] == -1
-    assert new_gdf["timestamp_difference_lag_-1"][5] is None
+    assert new_gdf["timestamp_difference_lag_-1"][5] is (cudf.NA if hasattr(cudf, "NA") else None)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -692,3 +710,63 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
         assert np.all(new_gdf[col].values <= len(bs))
         # TODO: add checks for correctness here that don't just
         # repeat the existing logic
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_data_stats(tmpdir, df, datasets, engine):
+    # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
+    label_name = ["label"]
+    all_cols = cat_names + cont_names + label_name
+
+    dataset = nvtabular.Dataset(df, engine=engine)
+    features = all_cols >> ops.DataStats()
+    workflow = nvtabular.Workflow(features)
+    workflow.fit(dataset)
+    # Save stats in a file and read them back
+    stats_file = "stats_output.yaml"
+    workflow.save_stats(stats_file)
+    output = yaml.safe_load(open(stats_file))
+    output = output[1]["stats"]
+
+    # Check Output
+    ddf = dask_cudf.from_cudf(df, 2)
+    ddf_dtypes = ddf.head(1)
+    for col in all_cols:
+        # Check dtype
+        dtype = ddf_dtypes[col].dtype
+        assert output[col]["dtype"] == str(dtype)
+
+        # Identify column type
+        if np.issubdtype(dtype, np.floating):
+            col_type = "cont"
+        else:
+            col_type = "cat"
+
+        # Get cardinality for cats
+        if col_type == "cat":
+            assert output[col]["cardinality"] == ddf[col].nunique().compute()
+
+        # if string, replace string for their lengths for the rest of the computations
+        if dtype == "object":
+            ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
+            ddf[col].compute()
+        # Add list support when cudf supports it:
+        # https://github.com/rapidsai/cudf/issues/7157
+        # elif col_type == "cat_mh":
+        #    ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
+
+        # Get min,max, and mean
+        assert output[col]["min"] == pytest.approx(ddf[col].min().compute())
+        assert output[col]["max"] == pytest.approx(ddf[col].max().compute())
+        assert output[col]["mean"] == pytest.approx(ddf[col].mean().compute())
+
+        # Get std only for conts
+        if col_type == "cont":
+            assert output[col]["std"] == pytest.approx(ddf[col].std().compute())
+
+        # Get Percentage of NaNs for all
+        assert output[col]["per_nan"] == pytest.approx(
+            100 * (1 - ddf[col].count().compute() / len(ddf[col]))
+        )

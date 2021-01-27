@@ -286,9 +286,8 @@ def test_dot_product_interaction_layer(
 
     rtol = 1e-3
     atol = 1e-6
-    frac_correct = 1.0
     match = np.isclose(expected_output, y_hat, rtol=rtol, atol=atol)
-    assert match.mean() >= frac_correct
+    assert match.all()
 
 
 def test_multihot_empty_rows():
