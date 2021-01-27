@@ -19,6 +19,7 @@ import os
 import sys
 import time
 from typing import TYPE_CHECKING, Optional
+import warnings
 
 import cloudpickle
 import cudf
@@ -216,8 +217,10 @@ class Workflow:
         # check version information from the metadata blob, and warn if we have a mismatch
         meta = json.load(open(os.path.join(path, "metadata.json")))
 
+        def parse_version(version):
+            return version.split(".")[:2]
+
         def check_version(stored, current, name):
-            parse_version = lambda version: version.split(".")[:2]
             if parse_version(stored) != parse_version(current):
                 warnings.warn(
                     f"Loading workflow generated with {name} version {stored} "

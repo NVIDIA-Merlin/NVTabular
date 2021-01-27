@@ -21,7 +21,6 @@ import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
-import yaml
 from cudf.tests.utils import assert_eq
 from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
