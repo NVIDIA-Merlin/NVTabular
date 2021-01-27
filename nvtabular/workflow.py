@@ -13,12 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import logging
+import os
+import sys
+import time
 from typing import TYPE_CHECKING, Optional
 
+import cloudpickle
 import cudf
 import dask
-import yaml
 from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, iter_nodes
@@ -155,63 +159,87 @@ class Workflow:
         self.fit(dataset)
         return self.transform(dataset)
 
-    def save_stats(self, path):
-        node_ids = {}
-        output_data = []
+    def save(self, path):
+        """Save this workflow to disk
 
-        def add_node(node):
-            if node in node_ids:
-                return node_ids[node]
+        Parameters
+        ----------
+        path: str
+            The path to save the workflow to
+        """
+        # avoid a circular import getting the version
+        from nvtabular import __version__ as nvt_version
 
-            data = {
-                "columns": node.columns,
-            }
-            if node.parents:
-                data["name"] = node.label
-                data["parents"] = [add_node(parent) for parent in node.parents]
-            else:
-                data["name"] = "input"
+        os.makedirs(path, exist_ok=True)
 
-            if isinstance(node.op, StatOperator):
-                data["stats"] = node.op.save()
+        # point all stat ops to store intermediate output (parquet etc) at the path
+        # this lets us easily bundle
+        for stat in _get_stat_ops([self.column_group]):
+            stat.op.set_storage_path(path, copy=True)
 
-            nodeid = len(output_data)
-            data["id"] = nodeid
-            node_ids[node] = nodeid
-            output_data.append(data)
-            return nodeid
+        # generate a file of all versions used to generate this bundle
+        with open(os.path.join(path, "metadata.json"), "w") as o:
+            json.dump(
+                {
+                    "versions": {
+                        "nvtabular": nvt_version,
+                        "cudf": cudf.__version__,
+                        "python": sys.version,
+                    },
+                    "generated_timestamp": int(time.time()),
+                },
+                o,
+            )
 
-        # recursively save each operator, providing enough context
-        # to (columns/labels etc) to load again
-        add_node(self.column_group)
-        with open(path, "w") as outfile:
-            yaml.safe_dump(output_data, outfile, default_flow_style=False)
+        # dump out the full workflow (graph/stats/operators etc) using cloudpickle
+        with open(os.path.join(path, "workflow.pkl"), "wb") as o:
+            cloudpickle.dump(self.column_group, o)
 
-    def load_stats(self, path):
-        def load_node(nodeid, node):
-            saved = nodes[nodeid]
-            if "parents" not in saved:
-                return
+    @classmethod
+    def load(cls, path, client=None):
+        """Load up a saved workflow object from disk
 
-            if node.label != saved["name"]:
-                raise ValueError(
-                    "Failed to load saved statistics: names %s != %s" % (node.label, saved["name"])
+        Parameters
+        ----------
+        path: str
+            The path to load the workflow from
+        client: distributed.Client, optional
+            The Dask distributed client to use for multi-gpu processing and multi-node processing
+
+        Returns
+        -------
+            Workflow
+        """
+        # avoid a circular import getting the version
+        from nvtabular import __version__ as nvt_version
+
+        # check version information from the metadata blob, and warn if we have a mismatch
+        meta = json.load(open(os.path.join(path, "metadata.json")))
+
+        def check_version(stored, current, name):
+            parse_version = lambda version: version.split(".")[:2]
+            if parse_version(stored) != parse_version(current):
+                warnings.warn(
+                    f"Loading workflow generated with {name} version {stored} "
+                    f"- but we are running {name} {current}. This might cause issues"
                 )
-            if node.columns != saved["columns"]:
-                raise ValueError(
-                    "Failed to load saved statistics: columns %s != %s"
-                    % (node.columns, saved["column"])
-                )
 
-            if isinstance(node.op, StatOperator):
-                node.op.load(saved["stats"])
+        # make sure we don't have any major/minor version conflicts between the stored worklflow
+        # and the current environment
+        versions = meta["versions"]
+        check_version(versions["nvtabular"], nvt_version, "nvtabular")
+        check_version(versions["cudf"], cudf.__version__, "cudf")
+        check_version(versions["python"], sys.version, "python")
 
-            for parentid, parent in zip(saved["parents"], node.parents):
-                load_node(parentid, parent)
+        # load up the workflow object di
+        column_group = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
 
-        # recursively load each operator in the graph
-        nodes = yaml.safe_load(open(path))
-        load_node(nodes[-1]["id"], self.column_group)
+        # we might have been copied since saving, update all the stat ops
+        # with the new path to their storage locations
+        for stat in _get_stat_ops([column_group]):
+            stat.op.set_storage_path(path, copy=False)
+
+        return cls(column_group, client)
 
     def clear_stats(self):
         for stat in _get_stat_ops([self.column_group]):

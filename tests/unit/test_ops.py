@@ -721,14 +721,15 @@ def test_data_stats(tmpdir, df, datasets, engine):
     all_cols = cat_names + cont_names + label_name
 
     dataset = nvtabular.Dataset(df, engine=engine)
-    features = all_cols >> ops.DataStats()
+
+    data_stats = ops.DataStats()
+
+    features = all_cols >> data_stats
     workflow = nvtabular.Workflow(features)
     workflow.fit(dataset)
-    # Save stats in a file and read them back
-    stats_file = "stats_output.yaml"
-    workflow.save_stats(stats_file)
-    output = yaml.safe_load(open(stats_file))
-    output = output[1]["stats"]
+
+    # get the output from the data_stats op
+    output = data_stats.output
 
     # Check Output
     ddf = dask_cudf.from_cudf(df, 2)
