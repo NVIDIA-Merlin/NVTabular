@@ -18,7 +18,6 @@ import json
 
 import fsspec
 import numpy as np
-import yaml
 
 from nvtabular.ops import DataStats
 from nvtabular.workflow import Workflow
