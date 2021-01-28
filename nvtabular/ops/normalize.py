@@ -65,13 +65,6 @@ class Normalize(StatOperator):
                 new_gdf[name] = new_gdf[name].astype("float32")
         return new_gdf
 
-    def save(self):
-        return {"means": self.means, "stds": self.stds}
-
-    def load(self, data):
-        self.means = data["means"]
-        self.stds = data["stds"]
-
     def clear(self):
         self.means = {}
         self.stds = {}
@@ -123,13 +116,6 @@ class NormalizeMinMax(StatOperator):
         for col in dask_stats["mins"].index.values_host:
             self.mins[col] = dask_stats["mins"][col]
             self.maxs[col] = dask_stats["maxs"][col]
-
-    def save(self):
-        return {"mins": self.mins, "maxs": self.maxs}
-
-    def load(self, data):
-        self.mins = data["mins"]
-        self.maxs = data["maxs"]
 
     def clear(self):
         self.mins = {}

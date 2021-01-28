@@ -170,11 +170,9 @@ class JoinGroupby(StatOperator):
                         output.append(f"{name}_{cont}_{stat}")
         return output
 
-    def save(self):
-        return [self.categories, self.storage_name]
-
-    def load(self, stats):
-        self.categories, self.storage_name = stats
+    def set_storage_path(self, new_path, copy=False):
+        self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
+        self.out_path = new_path
 
     def clear(self):
         self.categories = {}

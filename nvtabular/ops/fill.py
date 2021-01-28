@@ -94,11 +94,5 @@ class FillMedian(StatOperator):
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
-    def save(self):
-        return self.medians
-
-    def load(self, data):
-        self.medians = data
-
     def clear(self):
         self.medians = {}
