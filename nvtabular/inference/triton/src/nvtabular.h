@@ -14,6 +14,46 @@
 namespace py = pybind11;
 
 class NVTabular {
+
+private:
+	void fill_array_interface(py::dict &ai, TRITONSERVER_DataType dtype) {
+		py::list list_desc;
+		if (dtype == TRITONSERVER_TYPE_BYTES) {
+			ai["typestr"] = "<U6";
+			std::tuple<std::string, std::string> desc("", "<U6");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_INT8) {
+			ai["typestr"] = "<i1";
+			std::tuple<std::string, std::string> desc("", "<i1");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_INT16) {
+			ai["typestr"] = "<i2";
+			std::tuple<std::string, std::string> desc("", "<i2");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_INT32) {
+			ai["typestr"] = "<i4";
+			std::tuple<std::string, std::string> desc("", "<i4");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_INT64) {
+			ai["typestr"] = "<i8";
+			std::tuple<std::string, std::string> desc("", "<i8");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_FP16) {
+			ai["typestr"] = "<f2";
+			std::tuple<std::string, std::string> desc("", "<f2");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_FP32) {
+			ai["typestr"] = "<f4";
+			std::tuple<std::string, std::string> desc("", "<f4");
+			list_desc.append(desc);
+		} else if (dtype == TRITONSERVER_TYPE_FP64) {
+			ai["typestr"] = "<f8";
+			std::tuple<std::string, std::string> desc("", "<f8");
+			list_desc.append(desc);
+		}
+		ai["descr"] = list_desc;
+		ai["version"] = 3;
+	}
 public:
 
 	NVTabular() {
@@ -22,77 +62,50 @@ public:
 	}
 
 	~NVTabular() {
-		Py_DECREF(object);
 		py::finalize_interpreter();
 		LOG_MESSAGE(TRITONSERVER_LOG_INFO,
 				"Python interpreter is  finalized\n");
 	}
 
 	void Deserialize(std::string path) {
-		PyObject *module_name, *module, *dict, *python_class;
-		module_name = PyUnicode_DecodeFSDefault("nvt");
-
-		module = PyImport_Import(module_name);
-		if (module == nullptr) {
-			LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
-					"Fails to import the module nvt");
-			PyErr_Print();
-		}
-
-		dict = PyModule_GetDict(module);
-		if (dict == nullptr) {
-			LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
-					"Fails to get the dictionary for module nvt");
-			PyErr_Print();
-		}
-
-		python_class = PyDict_GetItemString(dict, "nvtabular");
-		if (python_class == nullptr) {
-			LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
-					"Fails to get the Python class nvtabular");
-			PyErr_Print();
-		}
-
-		if (PyCallable_Check(python_class)) {
-			object = PyObject_CallObject(python_class, nullptr);
-		} else {
-			LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
-					"Cannot instantiate the Python class");
-			PyErr_Print();
-		}
-
-		PyObject *res = PyObject_CallMethod(object, "deserialize", "(i)", 2);
-		if (!res) {
-			LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
-					"Cannot instantiate the Python class");
-			PyErr_Print();
-		}
-
-		Py_DECREF(module_name);
-		Py_DECREF(module);
-		Py_DECREF(dict);
-		Py_DECREF(python_class);
+		py::object nvtabular = py::module_::import("nvt").attr("nvt");
+		nt = nvtabular();
+		nt.attr("deserialize")(path.data());
 	}
 
-	void Transform(float* cont_in, int n_cont_in_rows, int n_cont_in_cols,
-			float* cont_out, std::string cat) {
+	void Transform(const void** input_buffers, const int64_t** input_shapes,
+			uint64_t* buffer_byte_sizes, TRITONSERVER_DataType* input_dtypes,
+			uint32_t input_count, void** output_buffers,
+			uint32_t output_count) {
 
-		PyObject *res = PyObject_CallMethod(object, "transform",
-				"{s:l,s:l,s:l,s:l}", "shape_x", (long) n_cont_in_rows,
-				"shape_y", (long) n_cont_in_cols, "data_in", (long) *(&cont_in),
-				"data_out", (long) *(&cont_out));
-
-		if (!res) {
-			LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
-								"Python transform method couldn't be called");
-			PyErr_Print();
-		} else {
-			LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Python transform method was called successfully");
+		py::list all_inputs;
+		for (uint32_t i = 0; i < input_count; ++i) {
+			py::dict ai_in;
+			std::tuple<long> shape_in((long) input_shapes[i][0]);
+			ai_in["shape"] = shape_in;
+			std::tuple<long, bool> data_in((long) *(&input_buffers[i]), false);
+			ai_in["data"] = data_in;
+			fill_array_interface(ai_in, input_dtypes[i]);
+			all_inputs.append(ai_in);
 		}
+
+		py::list all_outputs;
+		for (uint32_t i = 0; i < output_count; ++i) {
+			py::dict ai_out;
+			std::tuple<long> shape_out((long) input_shapes[i][0]);
+			ai_out["shape"] = shape_out;
+			std::tuple<long, bool> data_out((long) *(&output_buffers[i]),
+					false);
+			ai_out["data"] = data_out;
+			all_outputs.append(ai_out);
+		}
+
+		nt.attr("transform")(all_inputs, all_outputs);
+
 	}
 
 private:
-	PyObject *object;
+	py::object nt;
 };
 
 #endif /* NVTABULAR_H_ */

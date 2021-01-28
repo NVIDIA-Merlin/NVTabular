@@ -104,7 +104,7 @@ target_compile_features(triton-nvtabular-backend PRIVATE cxx_std_11)
 target_compile_options(
   triton-nvtabular-backend PRIVATE
   $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-    -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werror>
+    -Wall -Wextra -Wno-unused-parameter -Wno-type-limits >
 )
 
 target_link_libraries(
