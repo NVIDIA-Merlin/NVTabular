@@ -9,6 +9,7 @@
 #define NVTABULAR_H_
 
 #include <pybind11/embed.h>
+#include <pybind11/numpy.h>
 #include "triton/backend/backend_common.h"
 
 namespace py = pybind11;
@@ -73,12 +74,14 @@ public:
 		nt.attr("deserialize")(path.data());
 	}
 
-	void Transform(const void** input_buffers, const int64_t** input_shapes,
-			uint64_t* buffer_byte_sizes, TRITONSERVER_DataType* input_dtypes,
-			uint32_t input_count, void** output_buffers,
+	void Transform(const char** input_names, const void** input_buffers,
+			const int64_t** input_shapes, uint64_t* buffer_byte_sizes,
+			TRITONSERVER_DataType* input_dtypes, uint32_t input_count,
+			void** output_buffers, const char** output_names,
 			uint32_t output_count) {
 
 		py::list all_inputs;
+		py::list all_inputs_names;
 		for (uint32_t i = 0; i < input_count; ++i) {
 			py::dict ai_in;
 			std::tuple<long> shape_in((long) input_shapes[i][0]);
@@ -87,20 +90,15 @@ public:
 			ai_in["data"] = data_in;
 			fill_array_interface(ai_in, input_dtypes[i]);
 			all_inputs.append(ai_in);
+			all_inputs_names.append(input_names[i]);
 		}
 
-		py::list all_outputs;
+		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
+
 		for (uint32_t i = 0; i < output_count; ++i) {
-			py::dict ai_out;
-			std::tuple<long> shape_out((long) input_shapes[i][0]);
-			ai_out["shape"] = shape_out;
-			std::tuple<long, bool> data_out((long) *(&output_buffers[i]),
-					false);
-			ai_out["data"] = data_out;
-			all_outputs.append(ai_out);
+			py::array_t<float> a = (py::array_t<float>) output[output_names[i]];
+			std::cout << "** Col name: " << output_names[i] << ", Value: " << a.data()[0] << std::endl;
 		}
-
-		nt.attr("transform")(all_inputs, all_outputs);
 
 	}
 

@@ -632,7 +632,7 @@ TRITONBACKEND_ModelInstanceExecute(
     uint64_t input_byte_sizes[input_count];
     uint32_t input_buffer_counts[input_count];
 
-    for (uint32_t i = 0; i < input_count; ++i) {
+    for (uint32_t i = 0; i < input_count; i++) {
       GUARDED_RESPOND_IF_ERROR(
     	responses, r,
     	TRITONBACKEND_RequestInputName(request, i, &input_names[i]));
@@ -673,6 +673,7 @@ TRITONBACKEND_ModelInstanceExecute(
     	TRITONBACKEND_RequestOutputName(
     	  request, i, &output_names[i]));
 
+      std::cout << "Request output names: " << output_names[i] << std::endl;
       TRITONSERVER_DataType req_dtype = input_dtypes[i];
       if (req_dtype == TRITONSERVER_TYPE_BYTES) {
     	  req_dtype = TRITONSERVER_TYPE_INT64;
@@ -746,9 +747,9 @@ TRITONBACKEND_ModelInstanceExecute(
     	}
       }
 
-      instance_state->nvt.Transform(input_buffers, input_shapes,
+      instance_state->nvt.Transform(input_names, input_buffers, input_shapes,
     		  buffer_byte_sizes, input_dtypes,
-    		  input_count, output_buffers, requested_output_count);
+    		  input_count, output_buffers, output_names, requested_output_count);
 
       if (responses[r] == nullptr) {
         error = (std::string("request ") + std::to_string(r) +
