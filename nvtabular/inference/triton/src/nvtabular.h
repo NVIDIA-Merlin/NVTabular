@@ -55,6 +55,30 @@ private:
 		ai["descr"] = list_desc;
 		ai["version"] = 3;
 	}
+
+	const void* get_data(py::object data, TRITONSERVER_DataType dtype) {
+		if (dtype == TRITONSERVER_TYPE_BYTES) {
+
+		} else if (dtype == TRITONSERVER_TYPE_INT8) {
+
+		} else if (dtype == TRITONSERVER_TYPE_INT16) {
+
+		} else if (dtype == TRITONSERVER_TYPE_INT32) {
+			py::array_t<uint32_t> d = (py::array_t<uint32_t>) data;
+			return d.data();
+		} else if (dtype == TRITONSERVER_TYPE_INT64) {
+			py::array_t<uint64_t> d = (py::array_t<uint64_t>) data;
+			return d.data();
+		} else if (dtype == TRITONSERVER_TYPE_FP16) {
+
+		} else if (dtype == TRITONSERVER_TYPE_FP32) {
+			py::array_t<float> d = (py::array_t<float>) data;
+			return d.data();
+		} else if (dtype == TRITONSERVER_TYPE_FP64) {
+			py::array_t<double> d = (py::array_t<double>) data;
+			return d.data();
+		}
+	}
 public:
 
 	NVTabular() {
@@ -75,10 +99,11 @@ public:
 	}
 
 	void Transform(const char** input_names, const void** input_buffers,
-			const int64_t** input_shapes, uint64_t* buffer_byte_sizes,
-			TRITONSERVER_DataType* input_dtypes, uint32_t input_count,
-			void** output_buffers, const char** output_names,
-			uint32_t output_count) {
+			const int64_t** input_shapes, TRITONSERVER_DataType* input_dtypes,
+			uint32_t input_count, void** output_buffers,
+			uint64_t * output_byte_sizes, const char** output_names,
+			uint32_t output_count,
+			std::unordered_map<std::string, TRITONSERVER_DataType> &names_to_dtypes) {
 
 		py::list all_inputs;
 		py::list all_inputs_names;
@@ -96,8 +121,31 @@ public:
 		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
 
 		for (uint32_t i = 0; i < output_count; ++i) {
-			py::array_t<float> a = (py::array_t<float>) output[output_names[i]];
-			std::cout << "** Col name: " << output_names[i] << ", Value: " << a.data()[0] << std::endl;
+			std::string curr_name(output_names[i]);
+			TRITONSERVER_DataType dtype = names_to_dtypes[curr_name];
+			if (dtype == TRITONSERVER_TYPE_INT32) {
+				py::array_t<uint32_t> a = (py::array_t<uint32_t>) output[output_names[i]];
+				memcpy (output_buffers[i], a.data(), output_byte_sizes[i]);
+
+				std::cout << "** Col name: " << output_names[i] << ", Value: "
+						<< a.data()[0] << std::endl;
+			} else if (dtype == TRITONSERVER_TYPE_INT64) {
+				py::array_t<uint64_t> a =
+						(py::array_t<uint64_t>) output[output_names[i]];
+				memcpy (output_buffers[i], a.data(), output_byte_sizes[i]);
+				std::cout << "** Col name: " << output_names[i] << ", Value: "
+						<< a.data()[0] << std::endl;
+			} else if (dtype == TRITONSERVER_TYPE_FP16) {
+
+			} else if (dtype == TRITONSERVER_TYPE_FP32) {
+				py::array_t<float> a =
+						(py::array_t<float>) output[output_names[i]];
+				memcpy (output_buffers[i], a.data(), output_byte_sizes[i]);
+				std::cout << "** Col name: " << output_names[i] << ", Value: "
+						<< a.data()[0] << std::endl;
+			} else {
+				std::cout << "** None of them: " << output_names[i] << std::endl;
+			}
 		}
 
 	}

@@ -29,6 +29,7 @@
 #include "triton/backend/backend_common.h"
 #include "nvtabular.h"
 #include <dlfcn.h>
+#include <unordered_map>
 
 namespace triton { namespace backend { namespace nvtabular {
 
@@ -631,6 +632,7 @@ TRITONBACKEND_ModelInstanceExecute(
     uint32_t input_dims_counts[input_count];
     uint64_t input_byte_sizes[input_count];
     uint32_t input_buffer_counts[input_count];
+    std::unordered_map<std::string, TRITONSERVER_DataType> names_to_dtypes;
 
     for (uint32_t i = 0; i < input_count; i++) {
       GUARDED_RESPOND_IF_ERROR(
@@ -654,6 +656,9 @@ TRITONBACKEND_ModelInstanceExecute(
         continue;
       }
 
+      std::string curr_name(input_names[i]);
+      names_to_dtypes[curr_name] = input_dtypes[i];
+
       info = (std::string("\tinput ") + input_names[i] +
               ": datatype = " + TRITONSERVER_DataTypeString(input_dtypes[i]) +
               ", shape = " + backend::ShapeToString(input_shapes[i], input_dims_counts[i]) +
@@ -666,6 +671,7 @@ TRITONBACKEND_ModelInstanceExecute(
     const char* output_names[requested_output_count];
     TRITONBACKEND_Output* outputs[requested_output_count];
     void* output_buffers[requested_output_count];
+    uint64_t output_byte_sizes[requested_output_count];
 
     for (uint32_t i = 0; i < requested_output_count; ++i) {
       GUARDED_RESPOND_IF_ERROR(
@@ -673,11 +679,15 @@ TRITONBACKEND_ModelInstanceExecute(
     	TRITONBACKEND_RequestOutputName(
     	  request, i, &output_names[i]));
 
-      std::cout << "Request output names: " << output_names[i] << std::endl;
-      TRITONSERVER_DataType req_dtype = input_dtypes[i];
+      std::string curr_name(output_names[i]);
+      TRITONSERVER_DataType req_dtype = names_to_dtypes[curr_name];
+
       if (req_dtype == TRITONSERVER_TYPE_BYTES) {
     	  req_dtype = TRITONSERVER_TYPE_INT64;
       }
+
+      output_byte_sizes[i] = (int64_t)TRITONSERVER_DataTypeByteSize(req_dtype) *
+    		  input_shapes[i][0] * (int64_t)input_dims_counts[i];
 
       TRITONBACKEND_Response* response = responses[r];
       GUARDED_RESPOND_IF_ERROR(
@@ -694,15 +704,12 @@ TRITONBACKEND_ModelInstanceExecute(
         continue;
       }
 
-
-      //TODO: input_byte_sizes[i] should be recalculated if input dtype is BYTES.
-
       TRITONSERVER_MemoryType output_memory_type = TRITONSERVER_MEMORY_CPU;
       int64_t output_memory_type_id = 0;
       GUARDED_RESPOND_IF_ERROR(
         responses, r,
         TRITONBACKEND_OutputBuffer(
-          outputs[i], &output_buffers[i], input_byte_sizes[i], &output_memory_type,
+          outputs[i], &output_buffers[i], output_byte_sizes[i], &output_memory_type,
           &output_memory_type_id));
 
       if ((responses[r] == nullptr) || (output_memory_type == TRITONSERVER_MEMORY_GPU)) {
@@ -748,8 +755,9 @@ TRITONBACKEND_ModelInstanceExecute(
       }
 
       instance_state->nvt.Transform(input_names, input_buffers, input_shapes,
-    		  buffer_byte_sizes, input_dtypes,
-    		  input_count, output_buffers, output_names, requested_output_count);
+    		  input_dtypes, input_count, output_buffers,
+    		  output_byte_sizes, output_names, requested_output_count,
+    		  names_to_dtypes);
 
       if (responses[r] == nullptr) {
         error = (std::string("request ") + std::to_string(r) +
