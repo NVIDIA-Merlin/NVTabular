@@ -18,7 +18,6 @@ import json
 
 import fsspec
 import numpy as np
-import yaml
 
 from nvtabular.ops import DataStats
 from nvtabular.workflow import Workflow
@@ -70,15 +69,13 @@ class DatasetInspector:
         labels = columns_dict["labels"]
 
         # Create Dataset, Workflow, and get Stats
-        features = cats + conts + labels >> DataStats()
+        stats = DataStats()
+        features = cats + conts + labels >> stats
         workflow = Workflow(features, client=self.client)
         workflow.fit(dataset)
 
-        # Save stats in a file and read them back
-        stats_file = "stats_output.yaml"
-        workflow.save_stats(stats_file)
-        output = yaml.safe_load(open(stats_file))
-        output = output[1]["stats"]
+        # get statistics from the datastats op
+        output = stats.output
 
         # Dictionary to store collected information
         data = {}

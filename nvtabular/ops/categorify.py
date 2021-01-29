@@ -281,15 +281,13 @@ class Categorify(StatOperator):
         for col in categories:
             self.categories[col] = categories[col]
 
-    def save(self):
-        return [self.categories, self.mh_columns]
-
-    def load(self, data):
-        self.categories, self.mh_columns = data
-
     def clear(self):
         self.categories = {}
         self.mh_columns = []
+
+    def set_storage_path(self, new_path, copy=False):
+        self.categories = _copy_storage(self.categories, self.out_path, new_path, copy=copy)
+        self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
@@ -313,39 +311,42 @@ class Categorify(StatOperator):
 
         # Encode each column-group separately
         for name in cat_names:
-            # Use the column-group `list` directly (not the string name)
-            use_name = multi_col_group.get(name, name)
+            try:
+                # Use the column-group `list` directly (not the string name)
+                use_name = multi_col_group.get(name, name)
 
-            # Storage name may be different than group for case (2)
-            # Only use the "aliased" `storage_name` if we are dealing with
-            # a multi-column group, or if we are doing joint encoding
+                # Storage name may be different than group for case (2)
+                # Only use the "aliased" `storage_name` if we are dealing with
+                # a multi-column group, or if we are doing joint encoding
 
-            if use_name != name or self.encode_type == "joint":
-                storage_name = self.storage_name.get(name, name)
-            else:
-                storage_name = name
+                if use_name != name or self.encode_type == "joint":
+                    storage_name = self.storage_name.get(name, name)
+                else:
+                    storage_name = name
 
-            if isinstance(use_name, tuple):
-                use_name = list(use_name)
+                if isinstance(use_name, tuple):
+                    use_name = list(use_name)
 
-            path = self.categories[storage_name]
-            new_gdf[name] = _encode(
-                use_name,
-                storage_name,
-                path,
-                gdf,
-                self.cat_cache,
-                na_sentinel=self.na_sentinel,
-                freq_threshold=self.freq_threshold[name]
-                if isinstance(self.freq_threshold, dict)
-                else self.freq_threshold,
-                search_sorted=self.search_sorted,
-                buckets=self.num_buckets,
-                encode_type=self.encode_type,
-                cat_names=cat_names,
-            )
-            if self.dtype:
-                new_gdf[name] = new_gdf[name].astype(self.dtype, copy=False)
+                path = self.categories[storage_name]
+                new_gdf[name] = _encode(
+                    use_name,
+                    storage_name,
+                    path,
+                    gdf,
+                    self.cat_cache,
+                    na_sentinel=self.na_sentinel,
+                    freq_threshold=self.freq_threshold[name]
+                    if isinstance(self.freq_threshold, dict)
+                    else self.freq_threshold,
+                    search_sorted=self.search_sorted,
+                    buckets=self.num_buckets,
+                    encode_type=self.encode_type,
+                    cat_names=cat_names,
+                )
+                if self.dtype:
+                    new_gdf[name] = new_gdf[name].astype(self.dtype, copy=False)
+            except Exception as e:
+                raise RuntimeError(f"Failed to categorical encode column {name}") from e
 
         return new_gdf
 
@@ -985,3 +986,19 @@ def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
         val = val % nb
         encoded = val
     return encoded
+
+
+def _copy_storage(existing_stats, existing_path, new_path, copy):
+    """ helper function to copy files to a new storage location"""
+    from shutil import copyfile
+
+    new_locations = {}
+    for column, existing_file in existing_stats.items():
+        new_file = existing_file.replace(str(existing_path), str(new_path))
+        if copy and new_file != existing_file:
+            os.makedirs(os.path.dirname(new_file), exist_ok=True)
+            copyfile(existing_file, new_file)
+
+        new_locations[column] = new_file
+
+    return new_locations

@@ -93,12 +93,6 @@ class DataStats(StatOperator):
                     dask_stats[col]["cardinality"] = dask_stats[col]["cardinality"].item()
         self.output = dask_stats
 
-    def save(self):
-        return self.output
-
-    def load(self, data):
-        self.output = data
-
     def clear(self):
         self.output = {}
 
