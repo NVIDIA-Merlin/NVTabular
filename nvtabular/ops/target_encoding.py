@@ -215,12 +215,9 @@ class TargetEncoding(StatOperator):
 
         return ret
 
-    def save(self):
-        return {"stats": self.stats, "means": self.means}
-
-    def load(self, data):
-        self.stats = data["stats"]
-        self.means = data["means"]
+    def set_storage_path(self, new_path, copy=False):
+        self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)
+        self.out_path = new_path
 
     def clear(self):
         self.stats = {}
