@@ -22,8 +22,10 @@ import cudf
 import dask
 import dask_cudf
 import numpy as np
+import pandas as pd
 import pytest
 from dask.dataframe import assert_eq
+from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
@@ -92,7 +94,11 @@ def test_dask_dataset(datasets, engine, num_files):
         dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
         result = dataset.to_ddf(columns=mycols_csv)
 
-    assert_eq(ddf0, result)
+    # We do not preserve the index in NVTabular
+    if engine == "parquet":
+        assert_eq(ddf0, result, check_index=False)
+    else:
+        assert_eq(ddf0, result)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
@@ -114,31 +120,29 @@ def test_hugectr(
     ext = ""
     outdir = tmpdir + "/hugectr"
     os.mkdir(outdir)
+    outdir = str(outdir)
 
-    # process data
-    processor = nvt.Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_names
-    )
-    processor.add_feature(
-        [
-            ops.FillMissing(columns=op_columns),
-            ops.Clip(min_value=0, columns=op_columns),
-            ops.LogOp(),
-        ]
-    )
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
-    processor.finalize()
+    conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
+    cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
 
-    # apply the workflow and write out the dataset
-    processor.apply(
-        dataset,
-        output_path=outdir,
-        out_files_per_proc=nfiles,
-        output_format=output_format,
-        shuffle=None,
-        num_io_threads=num_io_threads,
-    )
+    workflow = nvt.Workflow(conts + cats + label_names)
+    transformed = workflow.fit_transform(dataset)
+
+    if output_format == "hugectr":
+        transformed.to_hugectr(
+            cats=cat_names,
+            conts=cont_names,
+            labels=label_names,
+            output_path=outdir,
+            out_files_per_proc=nfiles,
+            num_threads=num_io_threads,
+        )
+    else:
+        transformed.to_parquet(
+            output_path=outdir,
+            out_files_per_proc=nfiles,
+            num_threads=num_io_threads,
+        )
 
     # Check for _file_list.txt
     assert os.path.isfile(outdir + "/_file_list.txt")
@@ -232,25 +236,19 @@ def test_dataset_partition_shuffle(tmpdir):
 @pytest.mark.parametrize("engine", ["csv"])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
 @pytest.mark.parametrize("nfiles", [0, 1, 2])
-@pytest.mark.parametrize("shuffle", [True, False])
-def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
+def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
     columns = cat_names + cont_names + label_names
+    workflow = nvt.Workflow(nvt.ColumnGroup(columns))
 
     outdir = str(tmpdir.mkdir("out"))
-
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_names)
-    processor.finalize()
-    processor.apply(
-        nvt.Dataset(df),
-        output_format="parquet",
-        output_path=outdir,
-        out_files_per_proc=nfiles,
-        num_io_threads=num_io_threads,
-        shuffle=shuffle,
+    transformed = workflow.transform(nvt.Dataset(df))
+    transformed.to_parquet(
+        output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, out_files_per_proc=nfiles
     )
 
     # Check that our output data is exactly the same
@@ -261,3 +259,96 @@ def test_mulifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, s
         df[columns].sort_values(["x", "y"]),
         check_index=False,
     )
+
+
+@pytest.mark.parametrize("freq_threshold", [0, 1, 2])
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_PARTITION, None])
+@pytest.mark.parametrize("out_files_per_proc", [None, 2])
+def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+
+    input_dir = str(tmpdir.mkdir("input"))
+    output_dir = str(tmpdir.mkdir("output"))
+    filename = os.path.join(input_dir, "test.parquet")
+    df.to_parquet(filename)
+
+    cat_names = ["Authors", "Engaging User"]
+    cats = cat_names >> ops.Categorify(out_path=str(output_dir))
+    workflow = nvt.Workflow(cats + "Post")
+
+    transformed = workflow.fit_transform(nvt.Dataset(filename))
+    transformed.to_parquet(
+        output_path=output_dir,
+        shuffle=shuffle,
+        out_files_per_proc=out_files_per_proc,
+    )
+
+    out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
+    df_out = cudf.read_parquet(out_paths)
+    df_out = df_out.sort_values(by="Post", ascending=True)
+    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+
+
+@pytest.mark.parametrize("part_size", [None, "1KB"])
+@pytest.mark.parametrize("size", [100, 5000])
+@pytest.mark.parametrize("nfiles", [1, 2])
+def test_avro_basic(tmpdir, part_size, size, nfiles):
+
+    # Require uavro and fastavro library.
+    # Note that fastavro is only required to write
+    # avro files for testing, while uavro is actually
+    # used by AvroDatasetEngine.
+    fa = pytest.importorskip("fastavro")
+    pytest.importorskip("uavro")
+
+    # Define avro schema
+    schema = fa.parse_schema(
+        {
+            "name": "avro.example.User",
+            "type": "record",
+            "fields": [
+                {"name": "name", "type": "string"},
+                {"name": "age", "type": "int"},
+            ],
+        }
+    )
+
+    # Write avro dataset with two files.
+    # Collect block and record (row) count while writing.
+    nblocks = 0
+    nrecords = 0
+    paths = [os.path.join(str(tmpdir), f"test.{i}.avro") for i in range(nfiles)]
+    records = []
+    for path in paths:
+        names = np.random.choice(name_list, size)
+        ages = np.random.randint(18, 100, size)
+        data = [{"name": names[i], "age": ages[i]} for i in range(size)]
+        with open(path, "wb") as f:
+            fa.writer(f, schema, data)
+        with open(path, "rb") as fo:
+            avro_reader = fa.block_reader(fo)
+            for block in avro_reader:
+                nrecords += block.num_records
+                nblocks += 1
+                records += list(block)
+    if nfiles == 1:
+        paths = paths[0]
+
+    # Read back with dask.dataframe
+    df = nvt.Dataset(paths, part_size=part_size, engine="avro").to_ddf()
+
+    # Check basic length and partition count
+    if part_size == "1KB":
+        assert df.npartitions == nblocks
+    assert len(df) == nrecords
+
+    # Full comparison
+    expect = pd.DataFrame.from_records(records)
+    expect["age"] = expect["age"].astype("int32")
+    assert_eq(df.compute().reset_index(drop=True), expect)

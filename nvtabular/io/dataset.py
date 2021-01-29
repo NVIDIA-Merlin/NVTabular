@@ -27,10 +27,14 @@ from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
+from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
+
+from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
+from .dask import _ddf_to_dataset
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -38,8 +42,104 @@ LOG = logging.getLogger("nvtabular")
 
 
 class Dataset:
-    """ Dask-based Dataset Class
-        Converts a dataset into a dask_cudf DataFrame on demand
+    """Universal external-data wrapper for NVTabular
+
+    The NVTabular `Workflow` and `DataLoader`-related APIs require all
+    external data to be converted to the universal `Dataset` type.  The
+    main purpose of this class is to abstract away the raw format of the
+    data, and to allow other NVTabular classes to reliably materialize a
+    `dask_cudf.DataFrame` collection (and/or collection-based iterator)
+    on demand.
+
+    A new `Dataset` object can be initialized from a variety of different
+    raw-data formats. To initialize an object from a directory path or
+    file list, the `engine` argument should be used to specify either
+    "parquet" or "csv" format.  If the first argument contains a list
+    of files with a suffix of either "parquet" or "csv", the engine can
+    be inferred::
+
+        # Initialize Dataset with a parquet-dataset directory.
+        # must specify engine="parquet"
+        dataset = Dataset("/path/to/data_pq", engine="parquet")
+
+        # Initialize Dataset with list of csv files.
+        # engine="csv" argument is optional
+        dataset = Dataset(["file_0.csv", "file_1.csv"])
+
+    Since NVTabular leverages `fsspec` as a file-system interface,
+    the underlying data can be stored either locally, or in a remote/cloud
+    data store.  To read from remote storage, like gds or s3, the
+    appropriate protocol should be prepended to the `Dataset` path
+    argument(s), and any special backend parameters should be passed
+    in a `storage_options` dictionary::
+
+        # Initialize Dataset with s3 parquet data
+        dataset = Dataset(
+            "s3://bucket/path",
+            engine="parquet",
+            storage_options={'anon': True, 'use_ssl': False},
+        )
+
+    By default, both parquet and csv-based data will be converted to
+    a Dask-DataFrame collection with a maximum partition size of
+    roughly 12.5 percent of the total memory on a single device.  The
+    partition size can be changed to a different fraction of total
+    memory on a single device with the `part_mem_fraction` argument.
+    Alternatively, a specific byte size can be specified with the
+    `part_size` argument::
+
+        # Dataset partitions will be ~10% single-GPU memory (or smaller)
+        dataset = Dataset("bigfile.parquet", part_mem_fraction=0.1)
+
+        # Dataset partitions will be ~1GB (or smaller)
+        dataset = Dataset("bigfile.parquet", part_size="1GB")
+
+    Note that, if both the fractional and literal options are used
+    at the same time, `part_size` will take precedence.  Also, for
+    parquet-formatted data, the partitioning is done at the row-
+    group level, and the byte-size of the first row-group (after
+    CuDF conversion) is used to map all other partitions.
+    Therefore, if the distribution of row-group sizes is not
+    uniform, the partition sizes will not be balanced.
+
+    In addition to handling data stored on disk, a `Dataset` object
+    can also be initialized from an existing CuDF/Pandas DataFrame,
+    or from a Dask-DataFrame collection (e.g. `dask_cudf.DataFrame`).
+    For these in-memory formats, the size/number of partitions will
+    not be modified.  That is, a CuDF/Pandas DataFrame (or PyArrow
+    Table) will produce a single-partition collection, while the
+    number/size of a Dask-DataFrame collection will be preserved::
+
+        # Initialize from CuDF DataFrame (creates 1 partition)
+        gdf = cudf.DataFrame(...)
+        dataset = Dataset(gdf)
+
+        # Initialize from Dask-CuDF DataFrame (preserves partitions)
+        ddf = dask_cudf.read_parquet(...)
+        dataset = Dataset(ddf)
+
+    Since the `Dataset` API can both ingest and output a Dask
+    collection, it is straightforward to transform data either before
+    or after an NVTabular workflow is executed. This means that some
+    complex pre-processing operations, that are not yet supported
+    in NVTabular, can still be accomplished with the Dask-CuDF API::
+
+        # Sort input data before final Dataset initialization
+        # Warning: Global sorting requires significant device memory!
+        ddf = Dataset("/path/to/data_pq", engine="parquet").to_ddf()
+        ddf = ddf.sort_values("user_rank", ignore_index=True)
+        dataset = Dataset(ddf)
+
+    Dataset Optimization Tips (DOTs)
+    The NVTabular dataset should be created from Parquet files in order
+    to get the best possible performance, preferably with a row group size
+    of around 128MB.  While NVTabular also supports reading from CSV files,
+    reading CSV can be over twice as slow as reading from Parquet. Take a
+    look at this notebook_ for an example of transforming the original Criteo
+    CSV dataset into a new Parquet dataset optimized for use with NVTabular.
+
+    .. _notebook: https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb
+
 
     Parameters
     -----------
@@ -50,7 +150,7 @@ class Dataset:
         directories are not yet supported).
     engine : str or DatasetEngine
         DatasetEngine object or string identifier of engine. Current
-        string options include: ("parquet", "csv"). This argument
+        string options include: ("parquet", "csv", "avro"). This argument
         is ignored if path_or_source is a DataFrame type.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
@@ -77,9 +177,11 @@ class Dataset:
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
+        client=None,
         **kwargs,
     ):
         self.dtypes = dtypes
+        self.client = client
         if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
@@ -131,13 +233,24 @@ class Dataset:
                     self.engine = CSVDatasetEngine(
                         paths, part_size, storage_options=storage_options, **kwargs
                     )
+                elif engine == "avro":
+                    try:
+                        from .avro import AvroDatasetEngine
+                    except ImportError:
+                        raise RuntimeError(
+                            "Failed to import AvroDatasetEngine. Make sure uavro is installed."
+                        )
+
+                    self.engine = AvroDatasetEngine(
+                        paths, part_size, storage_options=storage_options, **kwargs
+                    )
                 else:
                     raise ValueError("Only parquet and csv supported (for now).")
             else:
                 self.engine = engine(paths, part_size, storage_options=storage_options)
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
-        """ Convert `Dataset` object to `dask_cudf.DataFrame`
+        """Convert `Dataset` object to `dask_cudf.DataFrame`
 
         Parameters
         -----------
@@ -184,14 +297,14 @@ class Dataset:
         return ddf
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
-        """ Convert `Dataset` object to a `cudf.DataFrame` iterator.
+        """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
         `dask_cudf.DataFrame`, and materialize a single partition for
         each iteration.
 
         Parameters
-        -----------
+        ----------
         columns : str or list(str); default None
             Columns to include in each `DataFrame`. If not specified,
             the outputs will contain all known columns in the Dataset.
@@ -214,6 +327,161 @@ class Dataset:
 
         return DataFrameIter(
             self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+        )
+
+    def to_parquet(
+        self,
+        output_path,
+        shuffle=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+        cats=None,
+        conts=None,
+        labels=None,
+    ):
+        """Writes out to a parquet dataset
+
+        Parameters
+        ----------
+        output_path : string
+            Path to write processed/shuffled output data
+        shuffle : nvt.io.Shuffle enum
+            How to shuffle the output dataset. Shuffling is only
+            performed if the data is written to disk. For all options,
+            other than `None` (which means no shuffling), the partitions
+            of the underlying dataset/ddf will be randomly ordered. If
+            `PER_PARTITION` is specified, each worker/process will also
+            shuffle the rows within each partition before splitting and
+            appending the data to a number (`out_files_per_proc`) of output
+            files. Output files are distinctly mapped to each worker process.
+            If `PER_WORKER` is specified, each worker will follow the same
+            procedure as `PER_PARTITION`, but will re-shuffle each file after
+            all data is persisted.  This results in a full shuffle of the
+            data processed by each worker.  To improve performace, this option
+            currently uses host-memory `BytesIO` objects for the intermediate
+            persist stage. The `FULL` option is not yet implemented.
+        out_files_per_proc : integer
+            Number of files to create (per process) after
+            shuffling the data
+        num_threads : integer
+            Number of IO threads to use for writing the output dataset.
+            For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
+        cats : list of str, optional
+            List of categorical columns
+        conts : list of str, optional
+            List of continuous columns
+        labels : list of str, optional
+            List of label columns
+        """
+        shuffle = _check_shuffle_arg(shuffle)
+        ddf = self.to_ddf(shuffle=shuffle)
+
+        if dtypes:
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
+
+        fs = get_fs_token_paths(output_path)[0]
+        fs.mkdirs(output_path, exist_ok=True)
+        if shuffle or out_files_per_proc or cats or conts or labels:
+            # Output dask_cudf DataFrame to dataset
+            _ddf_to_dataset(
+                ddf,
+                fs,
+                output_path,
+                shuffle,
+                out_files_per_proc,
+                cats or [],
+                conts or [],
+                labels or [],
+                "parquet",
+                self.client,
+                num_threads,
+            )
+            return
+
+        # Default (shuffle=None and out_files_per_proc=None)
+        # Just use `dask_cudf.to_parquet`
+        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
+        if self.client is None:
+            fut.compute(scheduler="synchronous")
+        else:
+            fut.compute()
+
+    def to_hugectr(
+        self,
+        output_path,
+        cats,
+        conts,
+        labels,
+        shuffle=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+    ):
+        """Writes out to a parquet dataset
+
+        Parameters
+        ----------
+        output_path : string
+            Path to write processed/shuffled output data
+        cats : list of str
+            List of categorical columns
+        conts : list of str
+            List of continuous columns
+        labels : list of str
+            List of label columns
+        shuffle : nvt.io.Shuffle, optional
+            How to shuffle the output dataset. Shuffling is only
+            performed if the data is written to disk. For all options,
+            other than `None` (which means no shuffling), the partitions
+            of the underlying dataset/ddf will be randomly ordered. If
+            `PER_PARTITION` is specified, each worker/process will also
+            shuffle the rows within each partition before splitting and
+            appending the data to a number (`out_files_per_proc`) of output
+            files. Output files are distinctly mapped to each worker process.
+            If `PER_WORKER` is specified, each worker will follow the same
+            procedure as `PER_PARTITION`, but will re-shuffle each file after
+            all data is persisted.  This results in a full shuffle of the
+            data processed by each worker.  To improve performace, this option
+            currently uses host-memory `BytesIO` objects for the intermediate
+            persist stage. The `FULL` option is not yet implemented.
+        out_files_per_proc : integer
+            Number of files to create (per process) after
+            shuffling the data
+        num_threads : integer
+            Number of IO threads to use for writing the output dataset.
+            For `0` (default), no dedicated IO threads will be used.
+        dtypes : dict
+            Dictionary containing desired datatypes for output columns.
+            Keys are column names, values are datatypes.
+        """
+        shuffle = _check_shuffle_arg(shuffle)
+        shuffle = _check_shuffle_arg(shuffle)
+        ddf = self.to_ddf(shuffle=shuffle)
+        if dtypes:
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
+
+        fs = get_fs_token_paths(output_path)[0]
+        fs.mkdirs(output_path, exist_ok=True)
+
+        # Output dask_cudf DataFrame to dataset,
+        _ddf_to_dataset(
+            ddf,
+            fs,
+            output_path,
+            shuffle,
+            out_files_per_proc,
+            cats,
+            conts,
+            labels,
+            "hugectr",
+            self.client,
+            num_threads,
         )
 
     @property

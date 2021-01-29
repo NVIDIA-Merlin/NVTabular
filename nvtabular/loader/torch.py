@@ -13,19 +13,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
-
-from nvtabular.ops import _get_embedding_order
 
 from .backend import DataLoader
 
 
+class IterDL(torch.utils.data.IterableDataset):
+    def __init__(self, file_paths, batch_size=1, shuffle=False):
+        self.file_paths = file_paths
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+    def __iter__(self):
+        for file_path in self.file_paths:
+            pdf = pd.read_parquet(file_path)
+            for start in range(0, pdf.shape[0], self.batch_size):
+                df = pdf[start : start + self.batch_size]
+                if self.shuffle:
+                    df = df.sample(frac=1).reset_index(drop=True)
+                yield df
+
+
 class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
-    """ This class, creates batches of, a user defined size, tensor
-    represenation of the data supplied. The data input requires an
-    NVTabular dataset. Handles spillover to ensure all batches are
-    the specified size until the final batch.
+    """This class creates batches of tensor. Each batch size is specified by the user.
+    The data input requires an NVTabular dataset. Handles spillover to ensure all
+    batches are the specified size until the final batch.
+
     Parameters
     -----------
     dataset : NVTabular dataset
@@ -39,9 +54,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         the size of each batch to supply to the model
     shuffle : bool
         enable/disable shuffling of dataset
-    parts_per_chunk: int
-        number of partitions from the iterator, an NVTabular Dataset,
-        to concatenate into a "chunk"
+    parts_per_chunk : int
+        number of partitions from the iterator, an NVTabular Dataset, to concatenate into a "chunk"
     devices : [int]
         list representing all available GPU IDs
     """
@@ -66,7 +80,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             batch_size,
             shuffle,
             parts_per_chunk=parts_per_chunk,
-            workflows=None,
             devices=devices,
         )
 
@@ -77,38 +90,31 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return torch.cuda.device("cuda:{}".format(dev))
 
     def _to_tensor(self, gdf, dtype=None):
-        if gdf.empty:
-            return
         dl_pack = gdf.to_dlpack()
-        tens = from_dlpack(dl_pack).type(dtype)
-        return tens
+        tensor = from_dlpack(dl_pack)
+        return tensor.type(dtype)
 
-    # TODO: do we need casting or can we replace this with
-    # parent class version?
-    def _create_tensors(self, gdf):
-        gdf_cats, gdf_conts, gdf_label = (
-            gdf[_get_embedding_order(self.cat_names)],
-            gdf[self.cont_names],
-            gdf[self.label_names],
-        )
-        del gdf
-        cats = self._to_tensor(gdf_cats, torch.long)
-        conts = self._to_tensor(gdf_conts, torch.float32)
-        label = self._to_tensor(gdf_label, torch.float32)
-        del gdf_cats, gdf_conts, gdf_label
-        return [cats, conts, label]
+    def _split_fn(self, tensor, idx, axis=0):
+        return torch.split(tensor, idx, dim=axis)
 
-    def _create_batch(self, tensor, num_samples):
-        if tensor is None:
-            return []
-        idx = self._get_segment_lengths(num_samples)
-        return torch.split(tensor, idx)
+    @property
+    def _LONG_DTYPE(self):
+        return torch.long
+
+    @property
+    def _FLOAT32_DTYPE(self):
+        return torch.float32
+
+    def _handle_tensors(self, cats, conts, labels):
+        if isinstance(conts, torch.Tensor):
+            conts = conts.clone()
+        return cats, conts, labels
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """
-        This class is an extension of the torch dataloader.
-        It is required, to support the FastAI framework.
+    This class is an extension of the torch dataloader.
+    It is required to support the FastAI framework.
     """
 
     def __len__(self):

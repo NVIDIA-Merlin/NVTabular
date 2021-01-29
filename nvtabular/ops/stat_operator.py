@@ -13,37 +13,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .operator import Operator
+from typing import Any
+
+import dask_cudf
+
+from .operator import ColumnNames, Operator
 
 
 class StatOperator(Operator):
     """
-    Base class for statistical operator classes.
+    Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
+    on top of the Operator class.
     """
 
-    def __init__(self, columns=None):
-        super(StatOperator, self).__init__(columns)
+    def __init__(self):
+        super(StatOperator, self).__init__()
 
-    def stat_logic(self, ddf, columns_ctx, input_cols, target_cols):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame) -> Any:
+        """Calculate statistics for this operator, and return a dask future
+        to these statistics, which will be computed by the workflow."""
+
         raise NotImplementedError(
             """The dask operations needed to return a dictionary of uncomputed statistics."""
         )
 
-    def finalize(self, dask_stats):
+    def fit_finalize(self, dask_stats):
+        """Finalize statistics calculation - the workflow calls this function with
+        the computed statistics from the 'fit' object'"""
+
         raise NotImplementedError(
             """Follow-up operations to convert dask statistics in to member variables"""
         )
 
-    def registered_stats(self):
-        raise NotImplementedError(
-            """Should return a list of statistics this operator will collect.
-                The list is comprised of simple string values."""
-        )
-
-    def stats_collected(self):
-        raise NotImplementedError(
-            """Should return a list of tuples of name and statistics operator."""
-        )
-
     def clear(self):
-        raise NotImplementedError("""zero and reinitialize all relevant statistical properties""")
+        """ zero and reinitialize all relevant statistical properties"""
+        raise NotImplementedError("clear isn't implemented for this op!")
+
+    def set_storage_path(self, path, copy=False):
+        """Certain stat operators need external storage - for instance Categorify writes out
+        parquet files containing the categorical mapping. When we save the operator, we
+        also want to save these files as part of the bundle. Implementing this method
+        lets statoperators bundle their dependant files into the new path that we're writing
+        out (note that this could happen after the operator is created)
+        """
+        pass

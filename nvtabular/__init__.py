@@ -15,14 +15,25 @@
 #
 import warnings
 
-from . import workflow
-from .io import dataset
+from . import column_group, io, workflow  # noqa
+from ._version import get_versions
 
+# suppress some warnings with cudf warning about column ordering with dlpack
+# and numba warning about deprecated environment variables
+warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+warnings.filterwarnings("ignore", module="numba.cuda.envvars")
+
+
+ColumnGroup = column_group.ColumnGroup
 Workflow = workflow.Workflow
-Dataset = dataset.Dataset
+Dataset = io.dataset.Dataset
 
 
-__all__ = ["Workflow", "Dataset"]
+__all__ = ["Workflow", "Dataset", "ColumnGroup"]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")
+
+
+__version__ = get_versions()["version"]
+del get_versions

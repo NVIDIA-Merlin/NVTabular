@@ -14,15 +14,15 @@
 # limitations under the License.
 #
 import cudf
-from cudf._lib.nvtx import annotate
+import dask_cudf
+from nvtx import annotate
 
-from .minmax import MinMax
-from .moments import Moments
-from .operator import CONT
-from .transform_operator import DFOperator
+from .moments import _custom_moments
+from .operator import ColumnNames, Operator
+from .stat_operator import StatOperator
 
 
-class Normalize(DFOperator):
+class Normalize(StatOperator):
     """
     Standardizing the features around 0 with a standard deviation
     of 1 is a common technique to compare measurements that have
@@ -31,75 +31,96 @@ class Normalize(DFOperator):
 
     It performs Normalization using the mean std method.
 
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    Example usage::
+
+        # Use Normalize to define a NVTabular workflow
+        cont_features = CONTINUOUS_COLUMNS >> ops.Normalize()
+        processor = nvtabular.Workflow(cont_features)
+
+    Parameters
+    ----------
+
     """
 
-    default_in = CONT
-    default_out = CONT
+    def __init__(self):
+        super().__init__()
+        self.means = {}
+        self.stds = {}
 
-    @property
-    def req_stats(self):
-        return [Moments(columns=self.columns)]
+    @annotate("Normalize_fit", color="green", domain="nvt_python")
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+        return _custom_moments(ddf[columns])
+
+    def fit_finalize(self, dask_stats):
+        for col in dask_stats.index:
+            self.means[col] = float(dask_stats["mean"].loc[col])
+            self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cont_names = target_columns
-        if not cont_names or not stats_context["stds"]:
-            return
-        gdf = self.apply_mean_std(gdf, stats_context, cont_names)
-        return gdf
-
-    def apply_mean_std(self, gdf, stats_context, cont_names):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         new_gdf = cudf.DataFrame()
-        for name in cont_names:
-            if stats_context["stds"][name] > 0:
-                new_col = f"{name}_{self._id}"
-                new_gdf[new_col] = (gdf[name] - stats_context["means"][name]) / (
-                    stats_context["stds"][name]
-                )
-                new_gdf[new_col] = new_gdf[new_col].astype("float32")
+        for name in columns:
+            if self.stds[name] > 0:
+                new_gdf[name] = (gdf[name] - self.means[name]) / (self.stds[name])
+                new_gdf[name] = new_gdf[name].astype("float32")
         return new_gdf
 
+    def clear(self):
+        self.means = {}
+        self.stds = {}
 
-class NormalizeMinMax(DFOperator):
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
+
+class NormalizeMinMax(StatOperator):
     """
-    Standardizing the features around 0 with a standard deviation
-    of 1 is a common technique to compare measurements that have
-    different units. This operation can be added to the workflow
-    to standardize the features.
+    This operator standardizes continuous features such that they are between 0 and 1.
 
-    It performs Normalization using the min max method.
-
-    Although you can directly call methods of this class to
-    transform your continuous features, it's typically used within a
-    Workflow class.
+    Example usage::
+        # Use NormalizeMinMax to define a NVTabular workflow
+        cont_features = CONTINUOUS_COLUMNS >> ops.NormalizeMinMax()
+        processor = nvtabular.Workflow(cont_features)
     """
 
-    default_in = CONT
-    default_out = CONT
-
-    @property
-    def req_stats(self):
-        return [MinMax(columns=self.columns)]
+    def __init__(self):
+        self.mins = {}
+        self.maxs = {}
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def op_logic(self, gdf: cudf.DataFrame, target_columns: list, stats_context=None):
-        cont_names = target_columns
-        if not cont_names or not stats_context["mins"]:
-            return
-        gdf = self.apply_min_max(gdf, stats_context, cont_names)
-        return gdf
-
-    def apply_min_max(self, gdf, stats_context, cont_names):
+    def transform(self, columns, gdf: cudf.DataFrame):
+        # TODO: should we clip values if they are out of bounds (below 0 or 1)
+        # (could happen in validation dataset if datapoint)
         new_gdf = cudf.DataFrame()
-        for name in cont_names:
-            dif = stats_context["maxs"][name] - stats_context["mins"][name]
-            new_col = f"{name}_{self._id}"
+        for name in columns:
+            dif = self.maxs[name] - self.mins[name]
             if dif > 0:
-                new_gdf[new_col] = (gdf[name] - stats_context["mins"][name]) / dif
+                new_gdf[name] = (gdf[name] - self.mins[name]) / dif
             elif dif == 0:
-                new_gdf[new_col] = gdf[name] / (2 * gdf[name])
-            new_gdf[new_col] = new_gdf[new_col].astype("float32")
+                new_gdf[name] = gdf[name] / (2 * gdf[name])
+            new_gdf[name] = new_gdf[name].astype("float32")
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__
+
+    @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
+    def fit(self, columns, ddf):
+        return {
+            "mins": ddf[columns].min(),
+            "maxs": ddf[columns].max(),
+        }
+
+    @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")
+    def fit_finalize(self, dask_stats):
+        for col in dask_stats["mins"].index.values_host:
+            self.mins[col] = dask_stats["mins"][col]
+            self.maxs[col] = dask_stats["maxs"][col]
+
+    def clear(self):
+        self.mins = {}
+        self.maxs = {}
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

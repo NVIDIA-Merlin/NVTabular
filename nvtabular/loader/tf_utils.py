@@ -1,3 +1,19 @@
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import os
 import warnings
 
@@ -5,7 +21,7 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
-from ..io import device_mem_size
+from ..utils import device_mem_size
 
 
 def configure_tensorflow(memory_allocation=None, device=None):
@@ -34,6 +50,15 @@ def configure_tensorflow(memory_allocation=None, device=None):
     except RuntimeError:
         warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
 
+    try:
+        tf.config.experimental.set_virtual_device_configuration(
+            tf_devices[device],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=memory_allocation)],
+        )
+    except RuntimeError as e:
+        # Virtual devices must be set before GPUs have been initialized
+        warnings.warn(e)
+
     # versions using TF earlier than 2.3.0 need to use extension
     # library for dlpack support to avoid memory leak issue
     __TF_DLPACK_STABLE_VERSION = "2.3.0"
@@ -52,11 +77,11 @@ def configure_tensorflow(memory_allocation=None, device=None):
 
 def _get_parents(column):
     """
-  recursive function for finding the feature columns
-  that supply inputs for a given `column`. If there are
-  none, returns the column. Uses sets so is not
-  deterministic.
-  """
+    recursive function for finding the feature columns
+    that supply inputs for a given `column`. If there are
+    none, returns the column. Uses sets so is not
+    deterministic.
+    """
     if isinstance(column.parents[0], str):
         return set([column])
     parents = set()

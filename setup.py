@@ -17,20 +17,23 @@
 
 from setuptools import find_packages, setup
 
+import versioneer
+
 setup(
     name="nvtabular",
-    version="0.1.1",
+    version=versioneer.get_version(),
     packages=find_packages(),
     url="https://github.com/NVIDIA/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
     long_description=open("README.md", encoding="utf8").read(),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Topic :: Software Development :: Libraries",
         "Topic :: Scientific/Engineering",
     ],
+    cmdclass=versioneer.get_cmdclass(),
 )

@@ -1,3 +1,19 @@
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import itertools
 import json
 import os
@@ -46,9 +62,20 @@ def test_rossman_example(tmpdir):
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
     notebook_path = os.path.join(
-        dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
+        dirname(TEST_PATH), "examples/rossmann/", "rossmann-store-sales-feature-engineering.ipynb"
     )
-    _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
+    _run_notebook(tmpdir, notebook_path)
+
+    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+
+    notebooks = [
+        "rossmann-store-sales-pytorch.ipynb",
+        "rossmann-store-sales-fastai.ipynb",
+        "rossmann-store-sales-tensorflow.ipynb",
+    ]
+    for notebook in notebooks:
+        notebook_path = os.path.join(dirname(TEST_PATH), "examples/rossmann/", notebook)
+        _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
 
 
 def test_multigpu_dask_example(tmpdir):

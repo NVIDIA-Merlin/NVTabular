@@ -18,17 +18,22 @@ import shutil
 import time
 
 import cudf
+import numba.cuda
 import pytest
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 from nvtabular import ops as ops
+from nvtabular.framework_utils.torch.models import Model
+from nvtabular.framework_utils.torch.utils import process_epoch
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
+
+GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -42,42 +47,63 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_empty_cols(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("cat_names", [["name-cat", "name-string"], []])
+@pytest.mark.parametrize("cont_names", [["x", "y", "id"], []])
+@pytest.mark.parametrize("label_name", [["label"], []])
+def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_name):
+
+    features = []
+    if cont_names:
+        features.append(cont_names >> ops.FillMedian() >> ops.Normalize())
+    if cat_names:
+        features.append(cat_names >> ops.Categorify())
+
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
-    # first with no continuous columns
-    no_conts = torch_dataloader.TorchAsyncItr(
-        dataset, cats=["id"], conts=[], labels=["label"], batch_size=1
+    graph = sum(features, nvt.ColumnGroup(label_name))
+    if not graph.columns:
+        # if we don't have conts/cats/labels we're done
+        return
+
+    processor = nvt.Workflow(sum(features, nvt.ColumnGroup(label_name)))
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    df_out = processor.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
+
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
     )
-    assert all(conts is None for _, conts, _ in no_conts)
 
-    # and with no categorical columns
-    no_cats = torch_dataloader.TorchAsyncItr(dataset, cats=[], conts=["x"], labels=["label"])
-    assert all(cats is None for cats, _, _ in no_cats)
+    for nvt_batch in data_itr:
+        cats, conts, labels = nvt_batch
+        if cat_names:
+            assert cats.shape[-1] == len(cat_names)
+        if cont_names:
+            assert conts.shape[-1] == len(cont_names)
+        if label_name:
+            assert labels.shape[-1] == len(label_name)
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.06])
+@pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("devices", [None, [0, 1]])
+@pytest.mark.parametrize("devices", [None, GPU_DEVICE_IDS[:2]])
 def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devices):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
 
-    processor.add_feature([ops.FillMedian()])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
+    processor = nvt.Workflow(conts + cats + label_name)
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
-    processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
+    processor.fit_transform(dataset).to_parquet(
         shuffle=nvt.io.Shuffle.PER_PARTITION,
         output_path=output_train,
         out_files_per_proc=2,
@@ -130,28 +156,25 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         shutil.rmtree(output_train)
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.000001, 0.1])
+@pytest.mark.parametrize("part_mem_fraction", [0.001, 0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = nvt.Workflow(cat_names=cat_names, cont_names=cont_names, label_name=label_name)
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
 
-    processor.add_feature([ops.FillMedian()])
-    processor.add_preprocess(ops.Normalize())
-    processor.add_preprocess(ops.Categorify())
+    processor = nvt.Workflow(conts + cats + label_name)
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
-    processor.apply(
-        dataset,
-        apply_offline=True,
-        record_stats=True,
+    processor.fit_transform(dataset).to_parquet(
         shuffle=nvt.io.Shuffle.PER_PARTITION,
         output_path=output_train,
+        out_files_per_proc=2,
     )
 
     tar_paths = [
@@ -191,3 +214,107 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
             "time",
             stop - start,
         )
+
+
+def test_mh_support(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Reviewers"]  # , "Engaging User"]
+    cont_names = []
+    label_name = ["Post"]
+
+    cats = cat_names >> ops.HashBucket(num_buckets=10)
+
+    processor = nvt.Workflow(cats + label_name)
+    df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+
+    # check to make sure that the same strings are hashed the same
+    authors = df_out["Authors"].to_arrow().to_pylist()
+    assert authors[0][0] == authors[1][0]  # 'User_A'
+    assert authors[2][1] == authors[3][0]  # 'User_C'
+
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name
+    )
+    idx = 0
+    for batch in data_itr:
+        idx = idx + 1
+        cats, conts, labels = batch
+        cats, mh = cats
+        # mh is a tuple of dictionaries {Column name: (values, offsets)}
+        assert len(mh) == len(cat_names)
+        assert not cats
+    assert idx > 0
+
+
+@pytest.mark.skip(reason="fails with cuda illegal memory access")
+def test_mh_model_support(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Null User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+            "Cont1": [0.3, 0.4, 0.5, 0.6],
+            "Cont2": [0.3, 0.4, 0.5, 0.6],
+            "Cat1": ["A", "B", "A", "C"],
+        }
+    )
+    cat_names = ["Cat1", "Null User", "Authors", "Reviewers"]  # , "Engaging User"]
+    cont_names = ["Cont1", "Cont2"]
+    label_name = ["Post"]
+    out_path = os.path.join(tmpdir, "train/")
+    os.mkdir(out_path)
+
+    cats = cat_names >> ops.Categorify()
+    conts = cont_names >> ops.Normalize()
+
+    processor = nvt.Workflow(cats + conts + label_name)
+    df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df_out),
+        cats=cat_names,
+        conts=cont_names,
+        labels=label_name,
+        batch_size=2,
+    )
+    emb_sizes = nvt.ops.get_embedding_sizes(processor)
+    EMBEDDING_DROPOUT_RATE = 0.04
+    DROPOUT_RATES = [0.001, 0.01]
+    HIDDEN_DIMS = [1000, 500]
+    LEARNING_RATE = 0.001
+    model = Model(
+        embedding_table_shapes=emb_sizes,
+        num_continuous=len(cont_names),
+        emb_dropout=EMBEDDING_DROPOUT_RATE,
+        layer_hidden_dims=HIDDEN_DIMS,
+        layer_dropout_rates=DROPOUT_RATES,
+    ).cuda()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    def rmspe_func(y_pred, y):
+        "Return y_pred and y to non-log space and compute RMSPE"
+        y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
+        pct_var = (y_pred - y) / y
+        return (pct_var ** 2).mean().pow(0.5)
+
+    train_loss, y_pred, y = process_epoch(
+        data_itr,
+        model,
+        train=True,
+        optimizer=optimizer,
+        # transform=batch_transform,
+        amp=False,
+    )
+    train_rmspe = None
+    train_rmspe = rmspe_func(y_pred, y)
+    assert train_rmspe is not None
+    assert len(y_pred) > 0
+    assert len(y) > 0

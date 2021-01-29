@@ -16,10 +16,10 @@
 import collections
 
 import dask
-from cudf._lib.nvtx import annotate
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
+from nvtx import annotate
 
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
@@ -136,6 +136,9 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
         general_md, special_md = _worker_finish(output_path)
 
     # Write metadata on client
+    if not isinstance(output_path, str):
+        output_path = str(output_path)
+
     wc, fs = _writer_cls_factory(output_format, output_path)
     wc.write_general_metadata(general_md, fs, output_path)
     wc.write_special_metadata(special_md, fs, output_path)
@@ -158,8 +161,8 @@ def _worker_finish(processed_path):
 
 
 def _merge_general_metadata(meta_list):
-    """ Combine list of "general" metadata dicts into
-        a single dict
+    """Combine list of "general" metadata dicts into
+    a single dict
     """
     if not meta_list:
         return {}

@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 
-from nvtabular import Dataset, Workflow
+from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular import ops as ops
 from nvtabular.io.shuffle import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
@@ -71,35 +71,32 @@ def test_dask_workflow_api_dlrm(
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    cats = cat_names >> ops.Categorify(
+        freq_threshold=freq_threshold, out_path=str(tmpdir), cat_cache=cat_cache, on_host=on_host
     )
 
-    processor.add_feature([ops.FillMissing(), ops.Clip(min_value=0), ops.LogOp()])
-    processor.add_preprocess(
-        ops.Categorify(
-            freq_threshold=freq_threshold,
-            out_path=str(tmpdir),
-            cat_cache=cat_cache,
-            on_host=on_host,
-        )
-    )
-    processor.finalize()
+    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+
+    workflow = Workflow(cats + conts + label_name, client=client)
 
     if engine in ("parquet", "csv"):
         dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
     else:
         dataset = Dataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
+
     output_path = os.path.join(tmpdir, "processed")
-    processor.apply(dataset, output_path=output_path, shuffle=shuffle)
+
+    transformed = workflow.fit_transform(dataset)
+    transformed.to_parquet(output_path=output_path, shuffle=shuffle)
 
     # Can still access the final ddf if we didn't shuffle
     if not shuffle:
-        result = processor.get_ddf().compute()
+        result = transformed.to_ddf().compute()
         assert len(df0) == len(result)
         assert result["x"].min() == 0.0
         assert result["x"].isna().sum() == 0
         assert result["y"].min() == 0.0
+
         assert result["y"].isna().sum() == 0
 
         # Check category counts
@@ -124,7 +121,6 @@ def test_dask_workflow_api_dlrm(
             assert_eq(result[col], df_disk[col])
 
     else:
-        # Read back from disk
         df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
         assert len(df0) == len(df_disk)
 
@@ -142,20 +138,13 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
+    features = cat_names >> ops.JoinGroupby(
+        cont_names=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
     )
-
-    processor.add_preprocess(
-        ops.JoinGroupby(
-            cont_names=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
-        )
-    )
-    processor.finalize()
 
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
-    processor.apply(dataset)
-    result = processor.get_ddf().compute(scheduler="synchronous")
+    workflow = Workflow(features + cat_names + cont_names + label_name, client=client)
+    result = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     # Validate result
     assert len(df0) == len(result)
@@ -199,109 +188,24 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
 @pytest.mark.parametrize("use_client", [True, False])
 def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use_client):
-
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
-    label_name = ["label"]
 
-    processor = Workflow(
-        client=client if use_client else None,
-        cat_names=cat_names,
-        cont_names=cont_names,
-        label_name=label_name,
+    cats = ColumnGroup(cat_names)
+    cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
+    groupby_features = cats >> ops.JoinGroupby(
+        cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
     )
 
-    processor.add_preprocess(ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True))
-
-    processor.add_cat_feature(
-        ops.JoinGroupby(cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir))
-    )
-
-    processor.finalize()
+    workflow = Workflow(cat_features + groupby_features, client=client)
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
-
-    processor.apply(dataset, output_path=str(tmpdir))
-    result = processor.get_ddf().compute()
+    result = workflow.fit_transform(dataset).to_ddf().compute()
 
     assert "name-cat_x_sum" in result.columns
     assert "name-string_x_sum" in result.columns
-
-
-@pytest.mark.parametrize("engine", ["parquet"])
-def test_dask_minmax_dummyop(client, tmpdir, datasets, engine):
-
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    cat_names = ["name-cat", "name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
-
-    class DummyOp(ops.DFOperator):
-
-        default_in, default_out = "continuous", "continuous"
-
-        @property
-        def req_stats(self):
-            return [ops.MinMax()]
-
-        def op_logic(self, *args, **kwargs):
-            return _dummy_op_logic(*args, _id=self._id, **kwargs)
-
-    processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
-    )
-    processor.add_preprocess(DummyOp())
-    processor.finalize()
-
-    dataset = Dataset(paths, engine)
-    processor.apply(dataset)
-    result = processor.get_ddf().compute()
-
-    assert math.isclose(result.x.min(), processor.stats["mins"]["x"], rel_tol=1e-3)
-    assert math.isclose(result.y.min(), processor.stats["mins"]["y"], rel_tol=1e-3)
-    assert math.isclose(result.id.min(), processor.stats["mins"]["id"], rel_tol=1e-3)
-    assert math.isclose(result.x.max(), processor.stats["maxs"]["x"], rel_tol=1e-3)
-    assert math.isclose(result.y.max(), processor.stats["maxs"]["y"], rel_tol=1e-3)
-    assert math.isclose(result.id.max(), processor.stats["maxs"]["id"], rel_tol=1e-3)
-
-
-@pytest.mark.parametrize("engine", ["parquet"])
-def test_dask_median_dummyop(client, tmpdir, datasets, engine):
-
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    cat_names = ["name-cat", "name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
-
-    class DummyOp(ops.DFOperator):
-
-        default_in, default_out = "continuous", "continuous"
-
-        @property
-        def req_stats(self):
-            return [ops.Median()]
-
-        def op_logic(self, *args, **kwargs):
-            return _dummy_op_logic(*args, _id=self._id, **kwargs)
-
-    processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
-    )
-    processor.add_preprocess(DummyOp())
-    processor.finalize()
-
-    dataset = Dataset(paths, engine)
-    processor.apply(dataset)
-    result = processor.get_ddf().compute()
-
-    # TODO: Improve the accuracy! "tidigest" with crick could help,
-    #       but current version seems to have cupy/numpy problems here
-    medians = result[cont_names].quantile(q=0.5)
-    assert math.isclose(medians["x"], processor.stats["medians"]["x"], abs_tol=1e-1)
-    assert math.isclose(medians["y"], processor.stats["medians"]["y"], abs_tol=1e-1)
-    assert math.isclose(medians["id"], processor.stats["medians"]["id"], rel_tol=1e-2)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -316,24 +220,19 @@ def test_dask_normalize(client, tmpdir, datasets, engine):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    processor = Workflow(
-        client=client, cat_names=cat_names, cont_names=cont_names, label_name=label_name
-    )
-    processor.add_preprocess(ops.Normalize())
-    processor.finalize()
+    normalize = ops.Normalize()
+    conts = cont_names >> ops.FillMissing() >> normalize
+    workflow = Workflow(conts + cat_names + label_name, client=client)
 
     dataset = Dataset(paths, engine)
-    processor.apply(dataset)
-    result = processor.get_ddf().compute()
+    result = workflow.fit_transform(dataset).to_ddf().compute()
 
     # Make sure we collected accurate statistics
     means = df0[cont_names].mean()
     stds = df0[cont_names].std()
-    counts = df0[cont_names].count()
     for name in cont_names:
-        assert math.isclose(means[name], processor.stats["means"][name], rel_tol=1e-3)
-        assert math.isclose(stds[name], processor.stats["stds"][name], rel_tol=1e-3)
-        assert math.isclose(counts[name], processor.stats["counts"][name], rel_tol=1e-3)
+        assert math.isclose(means[name], normalize.means[name], rel_tol=1e-3)
+        assert math.isclose(stds[name], normalize.stds[name], rel_tol=1e-3)
 
     # New (normalized) means should all be close to zero
     new_means = result[cont_names].mean()

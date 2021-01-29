@@ -13,6 +13,8 @@ Welcome to NVTabular's documentation!
    How it Works <HowItWorks>
    Examples <examples/index>
    API Documentation <api/index>
+   Github Repo <https://github.com/NVIDIA/NVTabular>
+   Resources <Resources>
 
 
 Indices and tables

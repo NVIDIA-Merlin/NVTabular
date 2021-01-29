@@ -4,6 +4,7 @@ Operators
 .. toctree::
    :maxdepth: 2
 
+   Bucketize <bucketize>
    Categorify <categorify>
    Clip <clip>
    ColumnSimilarity <columnsimilarity>
@@ -12,13 +13,16 @@ Operators
    FillMissing <fillmissing>
    FillMedian <fillmedian>
    Filter <filter>
-   GroupBy <groupby>
    HashBucket <hashbucket>
+   HashedCross <hashedcross>
+   JoinExternal <joinexternal>
    JoinGroupby <groupby>
    LambdaOp <lambdaop>
    LogOp <log>
-   Moments <moments>
-   Median <median>
-   MinMax <minmax>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
+   TargetEncoding <targetencoding>
+
+
+   Operator <operator>
+   StatOperator <stat_operator>

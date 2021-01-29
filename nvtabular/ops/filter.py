@@ -13,45 +13,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Callable, Union
+
 import cudf
-from cudf._lib.nvtx import annotate
+from nvtx import annotate
 
-from .operator import ALL
-from .transform_operator import TransformOperator
+from .operator import ColumnNames, Operator
 
 
-class Filter(TransformOperator):
+class Filter(Operator):
     """
     Filters rows from the dataset. This works by taking a callable that takes a dataframe,
     and returns a dataframe with unwanted rows filtered out.
 
+    For example to filter out all rows that have a negative value in the ``a`` column::
+
+        filtered = cont_names >> ops.Filter(f=lambda df: df["a"] >=0)
+        processor = nvtabular.Workflow(filtered)
+
     Parameters
     -----------
     f : callable
-        Defines a function that filter rows from a dataframe. Exp: ```lambda gdf: gdf[gdf.a >= 0]```
-        would filter out the rows with a negative value in the ```a``` column.
-    preprocessing : bool, default True
-        Sets if this is a pre-processing operation or not
+        Defines a function that takes a dataframe as an argument, and returns a new
+        dataframe with unwanted rows filtered out.
     """
 
-    default_in = ALL
-    default_out = ALL
-
-    def __init__(self, f, preprocessing=True, replace=True):
-        super().__init__(preprocessing=preprocessing, replace=replace)
+    def __init__(self, f: Callable[[cudf.DataFrame], Union[cudf.DataFrame, cudf.Series]]):
+        super().__init__()
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def apply_op(
-        self,
-        gdf: cudf.DataFrame,
-        columns_ctx: dict,
-        input_cols,
-        target_cols=["base"],
-        stats_context=None,
-    ):
-        new_gdf = self.f(gdf)
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+        filtered = self.f(gdf)
+        if isinstance(filtered, cudf.DataFrame):
+            new_gdf = filtered
+        elif isinstance(filtered, cudf.Series) and filtered.dtype == bool:
+            new_gdf = gdf[filtered]
+        else:
+            raise ValueError(f"Invalid output from filter op: f{filtered.__class__}")
+
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__

@@ -1,12 +1,32 @@
+#
+# Copyright (c) 2020, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import contextlib
 import glob
 import os
+import platform
 import random
+import socket
 
 import cudf
 import numpy as np
+import psutil
 import pytest
+from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
+from numba import cuda
 
 import nvtabular
 
@@ -42,16 +62,14 @@ mynames = [
     "Zelda",
 ]
 
-_CLIENT = None
 _CUDA_CLUSTER = None
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
-    global _CLIENT
-    if _CLIENT is None:
-        _CLIENT = Client(LocalCluster(n_workers=2))
-    return _CLIENT
+    client = Client(LocalCluster(n_workers=2))
+    yield client
+    client.close()
 
 
 @contextlib.contextmanager
@@ -160,11 +178,53 @@ def dataset(request, paths, engine):
     return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
 
 
-def get_cats(processor, col, stat_name="categories"):
-    if isinstance(processor, nvtabular.workflow.Workflow):
-        filename = processor.stats[stat_name][col]
-        gdf = cudf.read_parquet(filename)
-        gdf.reset_index(drop=True, inplace=True)
-        return gdf[col].values_host
-    else:
-        return processor.stats["encoders"][col].get_cats().values_host
+@pytest.fixture(scope="session")
+def asv_db():
+    # Create an interface to an ASV "database" to write the results to.
+    (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
+    # allows control of results location
+    db_dir = os.environ.get("ASVDB_DIR", "./benchmarks")
+    db = ASVDb(dbDir=db_dir, repo=repo, branches=[branch])
+
+    return db
+
+
+@pytest.fixture(scope="session")
+def bench_info():
+
+    # Create a BenchmarkInfo object describing the benchmarking environment.
+    # This can/should be reused when adding multiple results from the same environment.
+
+    uname = platform.uname()
+    (commitHash, commitTime) = utils.getCommitInfo()  # gets commit info from CWD by default
+    cuda_version = os.environ["CUDA_VERSION"]
+    # get GPU info from nvidia-smi
+
+    bInfo = BenchmarkInfo(
+        machineName=socket.gethostname(),
+        cudaVer=cuda_version,
+        osType="%s %s" % (uname.system, uname.release),
+        pythonVer=platform.python_version(),
+        commitHash=commitHash,
+        commitTime=commitTime,
+        gpuType=cuda.get_current_device().name.decode("utf-8"),
+        cpuType=uname.processor,
+        arch=uname.machine,
+        ram="%d" % psutil.virtual_memory().total,
+    )
+    return bInfo
+
+
+def get_cats(workflow, col, stat_name="categories"):
+    # figure out the categorify node from the workflow graph
+    cats = [
+        cg.op
+        for cg in nvtabular.column_group.iter_nodes([workflow.column_group])
+        if isinstance(cg.op, nvtabular.ops.Categorify)
+    ]
+    if len(cats) != 1:
+        raise RuntimeError("Found {} categorical ops, expected 1", len(cats))
+    filename = cats[0].categories[col]
+    gdf = cudf.read_parquet(filename)
+    gdf.reset_index(drop=True, inplace=True)
+    return gdf[col].values_host
