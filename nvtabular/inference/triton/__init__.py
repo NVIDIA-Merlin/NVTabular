@@ -3,7 +3,9 @@ import subprocess
 from shutil import copyfile
 
 import cudf
+import tritonclient.http as httpclient
 from google.protobuf import text_format
+from tritonclient.utils import np_to_triton_dtype
 
 # read in the triton ModelConfig proto object - generating it if it doesn't exist
 try:
@@ -38,7 +40,7 @@ def convert_df_to_triton_input(column_names, batch, input_class=httpclient.Infer
 
 
 def convert_triton_output_to_df(columns, response):
-    return cudf.DataFrame({col: response.as_numpy(col) for col in workflow.column_group.columns})
+    return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
 
 
 def _generate_model_config(workflow, name, output_path):
