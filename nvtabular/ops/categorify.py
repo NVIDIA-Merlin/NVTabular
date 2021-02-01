@@ -411,6 +411,8 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
+    if isinstance(buckets, int):
+        buckets = {name: buckets for name in cat_names}
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
