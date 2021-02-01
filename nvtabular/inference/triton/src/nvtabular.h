@@ -118,35 +118,47 @@ public:
 			all_inputs_names.append(input_names[i]);
 		}
 
-		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
+		auto transform_start = std::chrono::high_resolution_clock::now();
 
+		//py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
+		nt.attr("transform")(all_inputs_names, all_inputs);
+
+		auto transform_end = std::chrono::high_resolution_clock::now();
+		auto elapsed_transform = std::chrono::duration_cast<
+				std::chrono::nanoseconds>(transform_end - transform_start);
+		printf("Transform Only Time measured: %.3f seconds.\n",
+				elapsed_transform.count() * 1e-9);
+
+		/*
 		for (uint32_t i = 0; i < output_count; ++i) {
 			std::string curr_name(output_names[i]);
 			TRITONSERVER_DataType dtype = names_to_dtypes[curr_name];
 			if (dtype == TRITONSERVER_TYPE_INT32) {
-				py::array_t<uint32_t> a = (py::array_t<uint32_t>) output[output_names[i]];
-				memcpy (output_buffers[i], a.data(), output_byte_sizes[i]);
+				py::array_t<uint32_t> a =
+						(py::array_t<uint32_t>) output[output_names[i]];
+				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
 
-				std::cout << "** Col name: " << output_names[i] << ", Value: "
-						<< a.data()[0] << std::endl;
+				//std::cout << "** Col name: " << output_names[i] << ", Value: "
+				//		<< a.data()[0] << std::endl;
 			} else if (dtype == TRITONSERVER_TYPE_INT64) {
 				py::array_t<uint64_t> a =
 						(py::array_t<uint64_t>) output[output_names[i]];
-				memcpy (output_buffers[i], a.data(), output_byte_sizes[i]);
-				std::cout << "** Col name: " << output_names[i] << ", Value: "
-						<< a.data()[0] << std::endl;
+				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
+				//std::cout << "** Col name: " << output_names[i] << ", Value: "
+				//		<< a.data()[0] << std::endl;
 			} else if (dtype == TRITONSERVER_TYPE_FP16) {
 
 			} else if (dtype == TRITONSERVER_TYPE_FP32) {
 				py::array_t<float> a =
 						(py::array_t<float>) output[output_names[i]];
-				memcpy (output_buffers[i], a.data(), output_byte_sizes[i]);
-				std::cout << "** Col name: " << output_names[i] << ", Value: "
-						<< a.data()[0] << std::endl;
+				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
+				//std::cout << "** Col name: " << output_names[i] << ", Value: "
+				//		<< a.data()[0] << std::endl;
 			} else {
-				std::cout << "** None of them: " << output_names[i] << std::endl;
+				std::cout << "** None of them: " << output_names[i]
+						<< std::endl;
 			}
-		}
+		}*/
 
 	}
 

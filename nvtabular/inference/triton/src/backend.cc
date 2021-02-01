@@ -30,6 +30,7 @@
 #include "nvtabular.h"
 #include <dlfcn.h>
 #include <unordered_map>
+#include <chrono>
 
 namespace triton { namespace backend { namespace nvtabular {
 
@@ -555,6 +556,8 @@ TRITONBACKEND_ModelInstanceExecute(
     const uint32_t request_count)
 {
 
+  auto data_prep_begin = std::chrono::high_resolution_clock::now();
+
   ModelInstanceState* instance_state;
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceState(
 	instance, reinterpret_cast<void**>(&instance_state)));
@@ -618,12 +621,12 @@ TRITONBACKEND_ModelInstanceExecute(
       continue;
     }
 
-    info = (std::string("request ") + std::to_string(r) + ": id = \"" +
+    /*info = (std::string("request ") + std::to_string(r) + ": id = \"" +
             request_id + "\", correlation_id = " + std::to_string(correlation_id) +
             ", input_count = " + std::to_string(input_count) +
             ", requested_output_count = " + std::to_string(requested_output_count))
                .c_str();
-    LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());
+    LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());*/
 
     const char* input_names[input_count];
     TRITONBACKEND_Input* inputs[input_count];
@@ -659,13 +662,14 @@ TRITONBACKEND_ModelInstanceExecute(
       std::string curr_name(input_names[i]);
       names_to_dtypes[curr_name] = input_dtypes[i];
 
+      /*
       info = (std::string("\tinput ") + input_names[i] +
               ": datatype = " + TRITONSERVER_DataTypeString(input_dtypes[i]) +
               ", shape = " + backend::ShapeToString(input_shapes[i], input_dims_counts[i]) +
               ", byte_size = " + std::to_string(input_byte_sizes[i]) +
               ", buffer_count = " + std::to_string(input_buffer_counts[i]))
                  .c_str();
-      LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());
+      LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());*/
     }
 
     const char* output_names[requested_output_count];
@@ -727,6 +731,10 @@ TRITONBACKEND_ModelInstanceExecute(
       }
     }
 
+    auto data_prep_end = std::chrono::high_resolution_clock::now();
+    auto elapsed_prep = std::chrono::duration_cast<std::chrono::nanoseconds>(data_prep_end - data_prep_begin);
+    printf("Prep Time measured: %.3f seconds.\n", elapsed_prep.count() * 1e-9);
+
     for (uint32_t b = 0; b < input_buffer_counts[0]; ++b) {
       const void* input_buffers[input_count];
       uint64_t buffer_byte_sizes[input_count];
@@ -754,10 +762,16 @@ TRITONBACKEND_ModelInstanceExecute(
     	}
       }
 
+      auto transform_start = std::chrono::high_resolution_clock::now();
+
       instance_state->nvt.Transform(input_names, input_buffers, input_shapes,
     		  input_dtypes, input_count, output_buffers,
     		  output_byte_sizes, output_names, requested_output_count,
     		  names_to_dtypes);
+
+      auto transform_end = std::chrono::high_resolution_clock::now();
+      auto elapsed_transform = std::chrono::duration_cast<std::chrono::nanoseconds>(transform_end - transform_start);
+      printf("Transform Time measured: %.3f seconds.\n", elapsed_transform.count() * 1e-9);
 
       if (responses[r] == nullptr) {
         error = (std::string("request ") + std::to_string(r) +
@@ -827,7 +841,7 @@ TRITONBACKEND_ModelInstanceExecute(
         "failed releasing request");
   }
 
-  LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Request successfully completed");
+  //LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Request successfully completed");
   return nullptr;  // success
 }
 
