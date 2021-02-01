@@ -43,7 +43,7 @@ def test_criteo_notebook(asv_db, bench_info, tmpdir):
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-        gpu_id=7,
+        gpu_id=0,
         batch_size=100000,
     )
     bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
@@ -122,14 +122,14 @@ def _run_notebook(
     clean_up=True,
     transform=None,
 ):
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("GPU_TARGET_ID", gpu_id)
 
     if not os.path.exists(input_path):
         os.makedirs(input_path)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     if batch_size:
-        os.environ["BATCH_SIZE"] = str(batch_size)
+        os.environ["BATCH_SIZE"] = os.environ.get("BATCH_SIZE", batch_size)
 
     os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
