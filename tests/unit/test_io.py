@@ -16,7 +16,9 @@
 
 import glob
 import json
+import math
 import os
+from distutils.version import LooseVersion
 
 import cudf
 import dask
@@ -352,3 +354,86 @@ def test_avro_basic(tmpdir, part_size, size, nfiles):
     expect = pd.DataFrame.from_records(records)
     expect["age"] = expect["age"].astype("int32")
     assert_eq(df.compute().reset_index(drop=True), expect)
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet"])
+def test_validate_dataset(datasets, engine):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    if engine == "parquet":
+        dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine)
+
+        # Default file_min_size should result in failed validation
+        assert not dataset.validate_dataset()
+        assert dataset.validate_dataset(file_min_size=1, require_metadata_file=False)
+    else:
+        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
+
+        # CSV format should always fail validation
+        assert not dataset.validate_dataset()
+
+
+def test_validate_dataset_bad_schema(tmpdir):
+    if LooseVersion(dask.__version__) <= "2.30.0":
+        # Older versions of Dask will not handle schema mismatch
+        pytest.skip("Test requires newer version of Dask.")
+
+    path = str(tmpdir)
+    for (fn, df) in [
+        ("part.0.parquet", pd.DataFrame({"a": range(10), "b": range(10)})),
+        ("part.1.parquet", pd.DataFrame({"a": [None] * 10, "b": range(10)})),
+    ]:
+        df.to_parquet(os.path.join(path, fn))
+
+    # Initial dataset has mismatched schema and is missing a _metadata file.
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    # Schema issue should cause validation failure, even if _metadata is ignored
+    assert not dataset.validate_dataset(require_metadata_file=False)
+    # File size should cause validation error, even if _metadata is generated
+    assert not dataset.validate_dataset(add_metadata_file=True)
+    # Make sure the last call added a `_metadata` file
+    assert len(glob.glob(os.path.join(path, "_metadata")))
+
+    # New datset has a _metadata file, but the file size is still too small
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    assert not dataset.validate_dataset()
+    # Ignore file size to get validation success
+    assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
+
+
+def test_validate_and_regenerate_dataset(tmpdir):
+    if LooseVersion(dask.__version__) <= "2.30.0":
+        # `_gddf_to_ddf` requires newer version of Dask.
+        pytest.skip("Test requires newer version of Dask.")
+
+    # Initial timeseries dataset (in cpu memory)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-05",
+        freq="60s",
+        partition_freq="1d",
+        seed=42,
+    )
+    ds = nvt.Dataset(ddf)
+
+    # Regenerate dataset on disk
+    path = str(tmpdir)
+    ds.regenerate_dataset(path, part_size="50KiB", file_size="150KiB")
+
+    # Check that the regenerated dataset makes sense.
+    # Dataset is ~544KiB - Expect 4 data files
+    N = math.ceil(ddf.compute().memory_usage(deep=True).sum() / 150000)
+    file_list = glob.glob(os.path.join(path, "*"))
+    assert os.path.join(path, "_metadata") in file_list
+    assert os.path.join(path, "_file_list.txt") in file_list
+    assert os.path.join(path, "_metadata.json") in file_list
+    assert len(file_list) == N + 3  # N data files + 3 metadata files
+
+    # Check new dataset validation
+    ds2 = nvt.Dataset(path, engine="parquet", part_size="64KiB")
+    ds2.validate_dataset(file_min_size=1)
+
+    # Check that dataset content is correct
+    assert_eq(ddf, ds2.to_ddf().compute())
+
+    # Check cpu version of `to_ddf`
+    assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import dask.dataframe as dd
 import dask_cudf
 
 from .dataset_engine import DatasetEngine
@@ -35,9 +36,8 @@ class CSVDatasetEngine(DatasetEngine):
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
-    def to_ddf(self, columns=None):
+    def to_ddf(self, columns=None, cpu=False):
+        _lib = dd if cpu else dask_cudf
         if columns:
-            return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[
-                columns
-            ]
-        return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
+            return _lib.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
+        return _lib.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
