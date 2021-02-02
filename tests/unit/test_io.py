@@ -375,7 +375,6 @@ def test_validate_dataset(datasets, engine):
             assert not dataset.validate_dataset()
 
 
-
 def test_validate_dataset_bad_schema(tmpdir):
     if LooseVersion(dask.__version__) <= "2.30.0":
         # Older versions of Dask will not handle schema mismatch
