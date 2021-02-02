@@ -19,6 +19,7 @@ import json
 import math
 import os
 from distutils.version import LooseVersion
+import warnings
 
 import cudf
 import dask
@@ -358,18 +359,21 @@ def test_avro_basic(tmpdir, part_size, size, nfiles):
 
 @pytest.mark.parametrize("engine", ["csv", "parquet"])
 def test_validate_dataset(datasets, engine):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    if engine == "parquet":
-        dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+        if engine == "parquet":
+            dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine)
 
-        # Default file_min_size should result in failed validation
-        assert not dataset.validate_dataset()
-        assert dataset.validate_dataset(file_min_size=1, require_metadata_file=False)
-    else:
-        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
+            # Default file_min_size should result in failed validation
+            assert not dataset.validate_dataset()
+            assert dataset.validate_dataset(file_min_size=1, require_metadata_file=False)
+        else:
+            dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
 
-        # CSV format should always fail validation
-        assert not dataset.validate_dataset()
+            # CSV format should always fail validation
+            assert not dataset.validate_dataset()
+
 
 
 def test_validate_dataset_bad_schema(tmpdir):
