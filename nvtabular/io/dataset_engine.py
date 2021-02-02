@@ -30,9 +30,16 @@ class DatasetEngine:
         self.fs = fs
         self.fs_token = fs_token
 
-    def to_ddf(self, columns=None):
+    def to_ddf(self, columns=None, cpu=False):
         raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
 
     @property
     def num_rows(self):
         raise NotImplementedError(""" Returns the number of rows in the dataset """)
+
+    def validate_dataset(self, **kwargs):
+        raise NotImplementedError(""" Returns True if the raw data is efficient for NVTabular """)
+
+    @classmethod
+    def regenerate_dataset(cls, dataset, output_path, columns=None, **kwargs):
+        raise NotImplementedError(""" Regenerate a dataset with optimal properties """)

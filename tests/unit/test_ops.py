@@ -518,6 +518,30 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
                 )
 
 
+def test_categorify_hash_bucket():
+    df = cudf.DataFrame(
+        {
+            "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
+            "Engaging_User": ["User_B", "User_B", "User_A", "User_D", "User_D"],
+            "Post": [1, 2, 3, 4, 5],
+        }
+    )
+    cat_names = ["Authors", "Engaging_User"]
+    buckets = 10
+    dataset = nvt.Dataset(df)
+    hash_features = cat_names >> ops.Categorify(num_buckets=buckets)
+    processor = nvt.Workflow(hash_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    # check hashed values
+    assert new_gdf["Authors"].max() <= (buckets - 1)
+    assert new_gdf["Engaging_User"].max() <= (buckets - 1)
+    # check embedding size is equal to the num_buckets after hashing
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == buckets
+    assert nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] == buckets
+
+
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups):
 
