@@ -557,9 +557,9 @@ def test_transform_geolocation():
 
 def test_workflow_move_saved(tmpdir):
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
-    data = cudf.DataFrame({"geo_location": raw})
+    data = cudf.DataFrame({"geo": raw})
 
-    geo_location = ColumnGroup(["geo_location"])
+    geo_location = ColumnGroup(["geo"])
     state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
     country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
     geo_features = state + country + geo_location >> ops.Categorify()

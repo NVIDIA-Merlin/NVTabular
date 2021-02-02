@@ -18,7 +18,7 @@ import dask_cudf
 import numpy as np
 from nvtx import annotate
 
-from .operator import ColumnNames
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -100,6 +100,6 @@ class DataStats(StatOperator):
     def clear(self):
         self.output = {}
 
-    # transform.__doc__ = Operator.transform.__doc__
+    transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

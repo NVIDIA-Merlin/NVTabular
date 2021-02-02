@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import functools
+
 import cudf
 import cupy
 import pandas as pd
@@ -96,6 +98,7 @@ class JoinExternal(Operator):
             raise ValueError("kind_ext option not recognized.")
 
     @property
+    @functools.lru_cache(1)
     def _ext(self):
         # Define _ext, depending on `kind_ext`
         if self.kind_ext == "cudf":
