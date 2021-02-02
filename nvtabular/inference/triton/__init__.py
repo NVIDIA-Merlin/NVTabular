@@ -48,15 +48,13 @@ def _generate_model_config(workflow, name, output_path):
     and outputs to that workflow"""
     config = model_config.ModelConfig(name=name, backend="python")
 
-    input_dtypes = dict(zip(workflow.input_dtypes.index, workflow.input_dtypes))
-
     for column in workflow.column_group.input_column_names:
-        dtype = input_dtypes[column]
+        dtype = workflow.input_dtypes[column]
         config.input.append(
             model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
         )
 
-    for column, dtype in zip(workflow.output_dtypes.index, workflow.output_dtypes):
+    for column, dtype in workflow.output_dtypes.items():
         config.output.append(
             model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
         )
