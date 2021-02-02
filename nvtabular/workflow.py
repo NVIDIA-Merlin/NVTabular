@@ -150,8 +150,10 @@ class Workflow:
         # hack: store input/output dtypes here. We should have complete dtype
         # information for each operator (like we do for column names), but as
         # an interim solution this gets us what we need.
-        self.input_dtypes = dataset.to_ddf().dtypes
-        self.output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
+        input_dtypes = dataset.to_ddf().dtypes
+        self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
+        output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
+        self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
