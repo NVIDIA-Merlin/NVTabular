@@ -279,7 +279,7 @@ class DatasetGen:
 
     def get_batch(self, row_size):
         # grab max amount of gpu memory
-        gpu_mem = device_mem_size(kind="free") * self.gpu_frac
+        gpu_mem = device_mem_size(kind="total") * self.gpu_frac
         # find # of rows fit in gpu memory
         return gpu_mem // row_size
 
