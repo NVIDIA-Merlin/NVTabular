@@ -11,6 +11,7 @@
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
 #include "triton/backend/backend_common.h"
+#include <exception>
 
 namespace py = pybind11;
 
@@ -55,30 +56,6 @@ private:
 		ai["descr"] = list_desc;
 		ai["version"] = 3;
 	}
-
-	const void* get_data(py::object data, TRITONSERVER_DataType dtype) {
-		if (dtype == TRITONSERVER_TYPE_BYTES) {
-
-		} else if (dtype == TRITONSERVER_TYPE_INT8) {
-
-		} else if (dtype == TRITONSERVER_TYPE_INT16) {
-
-		} else if (dtype == TRITONSERVER_TYPE_INT32) {
-			py::array_t<uint32_t> d = (py::array_t<uint32_t>) data;
-			return d.data();
-		} else if (dtype == TRITONSERVER_TYPE_INT64) {
-			py::array_t<uint64_t> d = (py::array_t<uint64_t>) data;
-			return d.data();
-		} else if (dtype == TRITONSERVER_TYPE_FP16) {
-
-		} else if (dtype == TRITONSERVER_TYPE_FP32) {
-			py::array_t<float> d = (py::array_t<float>) data;
-			return d.data();
-		} else if (dtype == TRITONSERVER_TYPE_FP64) {
-			py::array_t<double> d = (py::array_t<double>) data;
-			return d.data();
-		}
-	}
 public:
 
 	NVTabular() {
@@ -120,8 +97,7 @@ public:
 
 		auto transform_start = std::chrono::high_resolution_clock::now();
 
-		//py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
-		nt.attr("transform")(all_inputs_names, all_inputs);
+		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
 
 		auto transform_end = std::chrono::high_resolution_clock::now();
 		auto elapsed_transform = std::chrono::duration_cast<
@@ -129,7 +105,6 @@ public:
 		printf("Transform Only Time measured: %.3f seconds.\n",
 				elapsed_transform.count() * 1e-9);
 
-		/*
 		for (uint32_t i = 0; i < output_count; ++i) {
 			std::string curr_name(output_names[i]);
 			TRITONSERVER_DataType dtype = names_to_dtypes[curr_name];
@@ -138,27 +113,21 @@ public:
 						(py::array_t<uint32_t>) output[output_names[i]];
 				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
 
-				//std::cout << "** Col name: " << output_names[i] << ", Value: "
-				//		<< a.data()[0] << std::endl;
 			} else if (dtype == TRITONSERVER_TYPE_INT64) {
 				py::array_t<uint64_t> a =
 						(py::array_t<uint64_t>) output[output_names[i]];
 				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
-				//std::cout << "** Col name: " << output_names[i] << ", Value: "
-				//		<< a.data()[0] << std::endl;
 			} else if (dtype == TRITONSERVER_TYPE_FP16) {
 
 			} else if (dtype == TRITONSERVER_TYPE_FP32) {
 				py::array_t<float> a =
 						(py::array_t<float>) output[output_names[i]];
 				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
-				//std::cout << "** Col name: " << output_names[i] << ", Value: "
-				//		<< a.data()[0] << std::endl;
 			} else {
 				std::cout << "** None of them: " << output_names[i]
 						<< std::endl;
 			}
-		}*/
+		}
 
 	}
 
