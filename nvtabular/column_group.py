@@ -240,7 +240,7 @@ def _merge_add_nodes(graph):
     # lets take a copy to avoid mutating the input
     import copy
 
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
 
     queue = [graph]
     while queue:

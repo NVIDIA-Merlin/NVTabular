@@ -302,12 +302,16 @@ def _transform_partition(root_gdf, column_groups):
         # collect dependencies recursively if we have parents
         if column_group.parents:
             gdf = None
+            columns = None
             for parent in column_group.parents:
                 parent_gdf = _transform_partition(root_gdf, [parent])
                 if not gdf:
                     gdf = parent_gdf[parent.flattened_columns]
+                    columns = set(parent.flattened_columns)
                 else:
-                    gdf = cudf.concat([gdf, parent_gdf[parent.flattened_columns]], axis=1)
+                    new_columns = set(parent.flattened_columns) - columns
+                    gdf = cudf.concat([gdf, parent_gdf[list(new_columns)]], axis=1)
+                    columns.update(new_columns)
         else:
             # otherwise select the input from the root gdf
             gdf = root_gdf[column_group.flattened_columns]
