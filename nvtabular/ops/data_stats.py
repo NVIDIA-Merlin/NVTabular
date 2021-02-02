@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import cudf
 import dask_cudf
 import numpy as np
 from nvtx import annotate
 
-from .operator import ColumnNames
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -28,6 +29,9 @@ class DataStats(StatOperator):
         self.col_types = []
         self.col_dtypes = []
         self.output = {}
+
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+        return gdf
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
@@ -96,6 +100,6 @@ class DataStats(StatOperator):
     def clear(self):
         self.output = {}
 
-    # transform.__doc__ = Operator.transform.__doc__
+    transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

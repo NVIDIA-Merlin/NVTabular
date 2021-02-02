@@ -70,6 +70,8 @@ class Workflow:
     def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
         self.column_group = column_group
         self.client = client
+        self.input_dtypes = None
+        self.output_dtypes = None
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the 'fit'
@@ -144,6 +146,14 @@ class Workflow:
                 stat_ops.pop(stat_op)
             for dependencies in stat_ops.values():
                 dependencies.difference_update(current_phase)
+
+        # hack: store input/output dtypes here. We should have complete dtype
+        # information for each operator (like we do for column names), but as
+        # an interim solution this gets us what we need.
+        input_dtypes = dataset.to_ddf().dtypes
+        self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
+        output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
+        self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
