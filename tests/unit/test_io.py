@@ -18,8 +18,8 @@ import glob
 import json
 import math
 import os
-from distutils.version import LooseVersion
 import warnings
+from distutils.version import LooseVersion
 
 import cudf
 import dask
