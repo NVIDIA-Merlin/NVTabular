@@ -85,16 +85,17 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
 @pytest.mark.parametrize("num_files", [1, 2])
-def test_dask_dataset(datasets, engine, num_files):
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_dataset(datasets, engine, num_files, cpu):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = paths[:num_files]
     if engine == "parquet":
         ddf0 = dask_cudf.read_parquet(paths)[mycols_pq]
-        dataset = nvtabular.io.Dataset(paths)
+        dataset = nvtabular.io.Dataset(paths, cpu=cpu)
         result = dataset.to_ddf(columns=mycols_pq)
     else:
-        ddf0 = dask_cudf.read_csv(paths, header=False, names=allcols_csv)[mycols_csv]
-        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
+        ddf0 = dask_cudf.read_csv(paths, header=None, names=allcols_csv)[mycols_csv]
+        dataset = nvtabular.io.Dataset(paths, cpu=cpu, header=None, names=allcols_csv)
         result = dataset.to_ddf(columns=mycols_csv)
 
     # We do not preserve the index in NVTabular
@@ -102,6 +103,12 @@ def test_dask_dataset(datasets, engine, num_files):
         assert_eq(ddf0, result, check_index=False)
     else:
         assert_eq(ddf0, result)
+
+    # Check that the cpu kwarg is working correctly
+    if cpu:
+        assert isinstance(result.compute(), pd.DataFrame)
+    else:
+        assert isinstance(result.compute(), cudf.DataFrame)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])

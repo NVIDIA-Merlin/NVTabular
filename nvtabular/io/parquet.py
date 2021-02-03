@@ -58,7 +58,7 @@ class ParquetDatasetEngine(DatasetEngine):
         batch_size=None,  # Ignored
         cpu=False,
     ):
-        super().__init__(paths, part_size, storage_options, cpu=cpu)
+        super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
             rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0, row_group=0))

@@ -156,13 +156,6 @@ class Dataset:
         DatasetEngine object or string identifier of engine. Current
         string options include: ("parquet", "csv", "avro"). This argument
         is ignored if path_or_source is a DataFrame type.
-    cpu : bool
-        Whether NVTabular should keep all data in cpu memory when
-        the Dataset is converted to an internal Dask collection. The
-        default value is False, unless ``cudf`` and ``dask_cudf``
-        are not installed (in which case the default is True). If
-        True, NVTabular will NOT use any available GPU devices for
-        down-stream processing.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
         If None, part_mem_fraction will be used to calculate the
@@ -180,18 +173,28 @@ class Dataset:
     storage_options: None or dict
         Further parameters to pass to the bytes backend. This argument
         is ignored if path_or_source is a DataFrame type.
+    cpu : bool
+        WARNING: Experimental Feature!
+        Whether NVTabular should keep all data in cpu memory when
+        the Dataset is converted to an internal Dask collection. The
+        default value is False, unless ``cudf`` and ``dask_cudf``
+        are not installed (in which case the default is True). In the
+        future, if True, NVTabular will NOT use any available GPU
+        devices for down-stream processing.
+        NOTE: Down-stream ops and output do not yet support a
+        Dataset generated with ``cpu=True``.
     """
 
     def __init__(
         self,
         path_or_source,
-        cpu=None,
         engine=None,
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
         client=None,
+        cpu=None,
         **kwargs,
     ):
         self.dtypes = dtypes
@@ -204,6 +207,13 @@ class Dataset:
             self.cpu = True
         else:
             self.cpu = cpu or False
+
+        # For now, lets warn the user that "cpu mode" is experimental
+        if self.cpu:
+            warnings.warn(
+                "Initializing an NVTabular Dataset in CPU mode."
+                "This is an experimental feature with extremely limited support!"
+            )
 
         if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame

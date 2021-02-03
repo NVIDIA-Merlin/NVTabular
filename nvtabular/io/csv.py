@@ -26,7 +26,7 @@ class CSVDatasetEngine(DatasetEngine):
     """
 
     def __init__(self, paths, part_size, storage_options=None, cpu=False, **kwargs):
-        super().__init__(paths, part_size, storage_options, cpu=cpu)
+        super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         self._meta = {}
         self.csv_kwargs = kwargs
         self.csv_kwargs["storage_options"] = storage_options
@@ -43,5 +43,5 @@ class CSVDatasetEngine(DatasetEngine):
         _lib = dd if cpu else dask_cudf
 
         if columns:
-            return _lib.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
-        return _lib.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
+            return _lib.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)[columns]
+        return _lib.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)

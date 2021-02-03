@@ -32,7 +32,7 @@ class DatasetEngine:
         self.cpu = cpu
 
     def to_ddf(self, columns=None, cpu=None):
-        raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
+        raise NotImplementedError(""" Return a dask.dataframe.DataFrame or dask_cudf.DataFrame""")
 
     @property
     def num_rows(self):
