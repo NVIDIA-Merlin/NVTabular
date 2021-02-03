@@ -348,6 +348,10 @@ class Dataset:
         return ddf
 
     def to_cpu(self):
+        warnings.warn(
+            "Changing an NVTabular Dataset to CPU mode."
+            "This is an experimental feature with extremely limited support!"
+        )
         self.cpu = True
         self.engine.to_cpu()
 
