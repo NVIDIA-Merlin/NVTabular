@@ -18,9 +18,13 @@ import logging
 import random
 import warnings
 
-import cudf
+try:
+    import cudf
+    import dask_cudf
+except ImportError:
+    cudf = None
+    dask_cudf = None
 import dask
-import dask_cudf
 import numpy as np
 import pandas as pd
 from dask.base import tokenize
@@ -152,6 +156,13 @@ class Dataset:
         DatasetEngine object or string identifier of engine. Current
         string options include: ("parquet", "csv", "avro"). This argument
         is ignored if path_or_source is a DataFrame type.
+    cpu : bool
+        Whether NVTabular should keep all data in cpu memory when
+        the Dataset is converted to an internal Dask collection. The
+        default value is False, unless ``cudf`` and ``dask_cudf``
+        are not installed (in which case the default is True). If
+        True, NVTabular will NOT use any available GPU devices for
+        down-stream processing.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
         If None, part_mem_fraction will be used to calculate the
@@ -163,7 +174,9 @@ class Dataset:
         to GPU memory capacity). Ignored if part_size is passed
         directly. Note that the underlying engine may allow other
         custom kwargs to override this argument. This argument
-        is ignored if path_or_source is a DataFrame type.
+        is ignored if path_or_source is a DataFrame type. If
+        ``cpu=True``, this value will be relative to the total
+        host memory detected by the client process.
     storage_options: None or dict
         Further parameters to pass to the bytes backend. This argument
         is ignored if path_or_source is a DataFrame type.
@@ -172,6 +185,7 @@ class Dataset:
     def __init__(
         self,
         path_or_source,
+        cpu=None,
         engine=None,
         part_size=None,
         part_mem_fraction=None,
@@ -182,22 +196,47 @@ class Dataset:
     ):
         self.dtypes = dtypes
         self.client = client
+
+        # Check if we are keeping data in cpu memory
+        if cudf is None:
+            if cpu is False:
+                raise ValueError("Cannot use cpu=False if cudf is not installed.")
+            self.cpu = True
+        else:
+            self.cpu = cpu or False
+
         if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
-            if isinstance(path_or_source, cudf.DataFrame):
-                path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
-            elif isinstance(path_or_source, pd.DataFrame):
-                path_or_source = dask_cudf.from_cudf(
-                    cudf.from_pandas(path_or_source), npartitions=1
-                )
-            elif not isinstance(path_or_source, dask_cudf.DataFrame):
-                path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
+            if self.cpu:
+                if isinstance(path_or_source, pd.DataFrame):
+                    # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
+                    path_or_source = dask.dataframe.from_pandas(path_or_source, npartitions=1)
+                elif cudf and isinstance(path_or_source, cudf.DataFrame):
+                    # Convert cudf DataFrame to pandas-backed dask.dataframe.DataFrame
+                    path_or_source = dask.dataframe.from_pandas(
+                        path_or_source.to_pandas(), npartitions=1
+                    )
+                elif dask_cudf and isinstance(path_or_source, dask_cudf.DataFrame):
+                    # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
+                    path_or_source = path_or_source.to_dask_dataframe()
+            else:
+                if isinstance(path_or_source, cudf.DataFrame):
+                    # Convert cudf DataFrame to dask_cudf.DataFrame
+                    path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
+                elif isinstance(path_or_source, pd.DataFrame):
+                    # Convert pandas DataFrame to dask_cudf.DataFrame
+                    path_or_source = dask_cudf.from_cudf(
+                        cudf.from_pandas(path_or_source), npartitions=1
+                    )
+                elif not isinstance(path_or_source, dask_cudf.DataFrame):
+                    # Convert dask.dataframe.DataFrame DataFrame to dask_cudf.DataFrame
+                    path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
                 warnings.warn("part_mem_fraction is ignored for DataFrame input.")
-            self.engine = DataFrameDatasetEngine(path_or_source)
+            self.engine = DataFrameDatasetEngine(path_or_source, cpu=self.cpu)
         else:
             if part_size:
                 # If a specific partition size is given, use it directly
@@ -227,11 +266,11 @@ class Dataset:
             if isinstance(engine, str):
                 if engine == "parquet":
                     self.engine = ParquetDatasetEngine(
-                        paths, part_size, storage_options=storage_options, **kwargs
+                        paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
                     )
                 elif engine == "csv":
                     self.engine = CSVDatasetEngine(
-                        paths, part_size, storage_options=storage_options, **kwargs
+                        paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
                     )
                 elif engine == "avro":
                     try:
@@ -242,12 +281,14 @@ class Dataset:
                         )
 
                     self.engine = AvroDatasetEngine(
-                        paths, part_size, storage_options=storage_options, **kwargs
+                        paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
                     )
                 else:
-                    raise ValueError("Only parquet and csv supported (for now).")
+                    raise ValueError("Only parquet, csv, and avro supported (for now).")
             else:
-                self.engine = engine(paths, part_size, storage_options=storage_options)
+                self.engine = engine(
+                    paths, part_size, cpu=self.cpu, storage_options=storage_options
+                )
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`

@@ -15,7 +15,15 @@
 #
 import warnings
 
-from numba import cuda
+try:
+    from numba import cuda
+except ImportError:
+    cuda = None
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 
 def _pynvml_mem_size(kind="total", index=0):
@@ -33,7 +41,19 @@ def _pynvml_mem_size(kind="total", index=0):
     return size
 
 
-def device_mem_size(kind="total"):
+def device_mem_size(kind="total", cpu=False):
+
+    # Use psutil (if available) for cpu mode
+    if cpu and psutil:
+        if kind == "total":
+            return psutil.virtual_memory().total
+        elif kind == "free":
+            return psutil.virtual_memory().free
+    elif cpu:
+        warnings.warn("Please install psutil for full cpu=True support.")
+        # Assume 1GB of memory
+        return int(1e9)
+
     if kind not in ["free", "total"]:
         raise ValueError("{0} not a supported option for device_mem_size.".format(kind))
     try:

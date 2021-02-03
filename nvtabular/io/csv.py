@@ -25,8 +25,8 @@ class CSVDatasetEngine(DatasetEngine):
     Thin wrapper around dask_cudf.read_csv.
     """
 
-    def __init__(self, paths, part_size, storage_options=None, **kwargs):
-        super().__init__(paths, part_size, storage_options)
+    def __init__(self, paths, part_size, storage_options=None, cpu=False, **kwargs):
+        super().__init__(paths, part_size, storage_options, cpu=cpu)
         self._meta = {}
         self.csv_kwargs = kwargs
         self.csv_kwargs["storage_options"] = storage_options
@@ -36,8 +36,12 @@ class CSVDatasetEngine(DatasetEngine):
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
-    def to_ddf(self, columns=None, cpu=False):
+    def to_ddf(self, columns=None, cpu=None):
+
+        # Check if we are using cpu
+        cpu = self.cpu if cpu is None else cpu
         _lib = dd if cpu else dask_cudf
+
         if columns:
             return _lib.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[columns]
         return _lib.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)

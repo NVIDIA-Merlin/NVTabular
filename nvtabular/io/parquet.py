@@ -56,8 +56,9 @@ class ParquetDatasetEngine(DatasetEngine):
         row_groups_per_part=None,
         legacy=False,
         batch_size=None,  # Ignored
+        cpu=False,
     ):
-        super().__init__(paths, part_size, storage_options)
+        super().__init__(paths, part_size, storage_options, cpu=cpu)
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
             rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0, row_group=0))
@@ -109,7 +110,11 @@ class ParquetDatasetEngine(DatasetEngine):
                 num_rows += piece.get_metadata().num_rows
             return num_rows
 
-    def to_ddf(self, columns=None, cpu=False):
+    def to_ddf(self, columns=None, cpu=None):
+
+        # Check if we are using cpu
+        cpu = self.cpu if cpu is None else cpu
+
         if cpu:
             # Return a Dask-Dataframe in CPU memory
             return dd.read_parquet(

@@ -56,11 +56,17 @@ class DataFrameDatasetEngine(DatasetEngine):
     in the same way as a dataset on disk.
     """
 
-    def __init__(self, ddf):
+    def __init__(self, ddf, cpu=False):
         self._ddf = ddf
+        self.cpu = cpu
 
-    def to_ddf(self, columns=None, cpu=False):
-        _ddf = _gddf_to_ddf(self._ddf, columns=columns) if cpu else self._ddf
+    def to_ddf(self, columns=None, cpu=None):
+        # Check if we are using cpu
+        cpu = self.cpu if cpu is None else cpu
+
+        # Move data from gpu to cpu if necessary
+        _ddf = _gddf_to_ddf(self._ddf, columns=columns) if (cpu and not self.cpu) else self._ddf
+
         if isinstance(columns, list):
             return _ddf[columns]
         elif isinstance(columns, str):
