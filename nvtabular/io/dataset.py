@@ -436,6 +436,12 @@ class Dataset:
         labels : list of str, optional
             List of label columns
         """
+
+        # For now, we must move to the GPU to
+        # write an output dataset.
+        # TODO: Support CPU-mode output
+        self.to_gpu()
+
         shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
 
@@ -518,6 +524,12 @@ class Dataset:
             Dictionary containing desired datatypes for output columns.
             Keys are column names, values are datatypes.
         """
+
+        # For now, we must move to the GPU to
+        # write an output dataset.
+        # TODO: Support CPU-mode output
+        self.to_gpu()
+
         shuffle = _check_shuffle_arg(shuffle)
         shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
