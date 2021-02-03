@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import cudf
+import cupy
 import dask_cudf
 from nvtx import annotate
 
@@ -52,18 +53,17 @@ class Normalize(StatOperator):
         return _custom_moments(ddf[columns])
 
     def fit_finalize(self, dask_stats):
-        for col in dask_stats.index:
-            self.means[col] = float(dask_stats["mean"].loc[col])
-            self.stds[col] = float(dask_stats["std"].loc[col])
+        self.means_cupy = cupy.array(dask_stats["mean"].values)
+        self.std_cupy = cupy.array(dask_stats["std"].values)
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        new_gdf = cudf.DataFrame()
-        for name in columns:
-            if self.stds[name] > 0:
-                new_gdf[name] = (gdf[name] - self.means[name]) / (self.stds[name])
-                new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
+        arr = cupy.fromDlpack(gdf[columns].astype("float32").to_dlpack())
+        arr -= self.means_cupy
+        arr /= self.std_cupy
+        ret = cudf.from_dlpack(arr.toDlpack())
+        ret.columns = columns
+        return ret
 
     def clear(self):
         self.means = {}
