@@ -111,6 +111,34 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
         assert isinstance(result.compute(), cudf.DataFrame)
 
 
+@pytest.mark.parametrize("origin", ["cudf", "dask_cudf", "pd", "dd"])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_dataset_from_dataframe(origin, cpu):
+
+    # Generate a DataFrame-based input
+    if origin in ("pd", "dd"):
+        df = pd.DataFrame({"a": range(100)})
+        if origin == "dd":
+            df = dask.dataframe.from_pandas(df, npartitions=4)
+    elif origin in ("cudf", "dask_cudf"):
+        df = cudf.DataFrame({"a": range(100)})
+        if origin == "dd":
+            df = dask_cudf.from_cudf(df, npartitions=4)
+
+    # Convert to an NVTabular Dataset and back to a ddf
+    dataset = nvtabular.io.Dataset(df, cpu=cpu)
+    result = dataset.to_ddf()
+
+    # Check resulting data
+    assert_eq(df, result)
+
+    # Check that the cpu kwarg is working correctly
+    if cpu:
+        assert isinstance(result.compute(), pd.DataFrame)
+    else:
+        assert isinstance(result.compute(), cudf.DataFrame)
+
+
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
