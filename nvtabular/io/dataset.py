@@ -347,6 +347,14 @@ class Dataset:
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
+    def to_cpu(self):
+        self.cpu = True
+        self.engine.to_cpu()
+
+    def to_gpu(self):
+        self.cpu = False
+        self.engine.to_gpu()
+
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 

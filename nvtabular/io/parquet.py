@@ -137,6 +137,12 @@ class ParquetDatasetEngine(DatasetEngine):
             storage_options=self.storage_options,
         )
 
+    def to_cpu(self):
+        self.cpu = True
+
+    def to_gpu(self):
+        self.cpu = False
+
     def validate_dataset(
         self,
         add_metadata_file=False,

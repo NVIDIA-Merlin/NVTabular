@@ -34,6 +34,12 @@ class DatasetEngine:
     def to_ddf(self, columns=None, cpu=None):
         raise NotImplementedError(""" Return a dask.dataframe.DataFrame or dask_cudf.DataFrame""")
 
+    def to_cpu(self):
+        raise NotImplementedError(""" Move data to CPU memory """)
+
+    def to_gpu(self):
+        raise NotImplementedError(""" Move data to GPU memory """)
+
     @property
     def num_rows(self):
         raise NotImplementedError(""" Returns the number of rows in the dataset """)

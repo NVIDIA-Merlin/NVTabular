@@ -107,8 +107,18 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
     # Check that the cpu kwarg is working correctly
     if cpu:
         assert isinstance(result.compute(), pd.DataFrame)
+
+        # Should still work if we move to the GPU
+        dataset.to_gpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), cudf.DataFrame)
     else:
         assert isinstance(result.compute(), cudf.DataFrame)
+
+        # Should still work if we move to the CPU
+        dataset.to_cpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), pd.DataFrame)
 
 
 @pytest.mark.parametrize("origin", ["cudf", "dask_cudf", "pd", "dd"])
@@ -135,8 +145,18 @@ def test_dask_dataset_from_dataframe(origin, cpu):
     # Check that the cpu kwarg is working correctly
     if cpu:
         assert isinstance(result.compute(), pd.DataFrame)
+
+        # Should still work if we move to the GPU
+        dataset.to_gpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), cudf.DataFrame)
     else:
         assert isinstance(result.compute(), cudf.DataFrame)
+
+        # Should still work if we move to the CPU
+        dataset.to_cpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), pd.DataFrame)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])

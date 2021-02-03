@@ -19,7 +19,7 @@ from dask.highlevelgraph import HighLevelGraph
 from .dataset_engine import DatasetEngine
 
 
-def _gddf_to_ddf(_gddf, columns=None):
+def _gddf_to_ddf(_gddf):
     # Generate a dask.dataframe.DataFrame from a dask_cudf.Frame
 
     # Check if our dask_cudf collection was just created from a
@@ -51,6 +51,12 @@ def _gddf_to_ddf(_gddf, columns=None):
             return _gddf.to_dask_dataframe()
 
 
+def _ddf_to_gddf(_ddf):
+    import dask_cudf
+
+    return dask_cudf.from_dask_dataframe(_ddf)
+
+
 class DataFrameDatasetEngine(DatasetEngine):
     """DataFrameDatasetEngine allows NVT to interact with a dask_cudf.DataFrame object
     in the same way as a dataset on disk.
@@ -65,13 +71,23 @@ class DataFrameDatasetEngine(DatasetEngine):
         cpu = self.cpu if cpu is None else cpu
 
         # Move data from gpu to cpu if necessary
-        _ddf = _gddf_to_ddf(self._ddf, columns=columns) if (cpu and not self.cpu) else self._ddf
+        _ddf = _gddf_to_ddf(self._ddf) if (cpu and not self.cpu) else self._ddf
 
         if isinstance(columns, list):
             return _ddf[columns]
         elif isinstance(columns, str):
             return _ddf[[columns]]
         return _ddf
+
+    def to_cpu(self):
+        if self.cpu:
+            return
+        self._ddf = _gddf_to_ddf(self._ddf)
+
+    def to_gpu(self):
+        if not self.cpu:
+            return
+        self._ddf = _ddf_to_gddf(self._ddf)
 
     @property
     def num_rows(self):

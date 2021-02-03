@@ -72,6 +72,12 @@ class AvroDatasetEngine(DatasetEngine):
         }
         return new_dd_object(dsk, read_avro_name, meta.iloc[:0], [None] * (len(pieces) + 1))
 
+    def to_cpu(self):
+        raise ValueError("cpu=True not supported for AvroDatasetEngine.")
+
+    def to_gpu(self):
+        self.cpu = False
+
     def process_metadata(self, columns=None):
 
         with open(self.paths[0], "rb") as fo:

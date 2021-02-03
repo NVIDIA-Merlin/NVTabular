@@ -45,3 +45,9 @@ class CSVDatasetEngine(DatasetEngine):
         if columns:
             return _lib.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)[columns]
         return _lib.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)
+
+    def to_cpu(self):
+        self.cpu = True
+
+    def to_gpu(self):
+        self.cpu = False
