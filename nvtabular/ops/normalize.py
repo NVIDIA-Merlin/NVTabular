@@ -47,6 +47,7 @@ class Normalize(StatOperator):
         super().__init__()
         self.means = {}
         self.stds = {}
+        self.means_cupy = self.stds_cupy = None
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
@@ -54,15 +55,22 @@ class Normalize(StatOperator):
 
     def fit_finalize(self, dask_stats):
         self.means_cupy = cupy.array(dask_stats["mean"].values)
-        self.std_cupy = cupy.array(dask_stats["std"].values)
+        self.stds_cupy = cupy.array(dask_stats["std"].values)
+
+        for col in dask_stats.index:
+            self.means[col] = float(dask_stats["mean"].loc[col])
+            self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         arr = cupy.fromDlpack(gdf[columns].astype("float32").to_dlpack())
         arr -= self.means_cupy
-        arr /= self.std_cupy
+        arr /= self.stds_cupy
         ret = cudf.from_dlpack(arr.toDlpack())
-        ret.columns = columns
+        if isinstance(ret, cudf.Series):
+            ret = cudf.DataFrame({columns[0]: ret})
+        else:
+            ret.columns = columns
         return ret
 
     def clear(self):
