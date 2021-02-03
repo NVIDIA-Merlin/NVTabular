@@ -26,7 +26,7 @@ import cudf
 import dask
 from dask.core import flatten
 
-from nvtabular.column_group import ColumnGroup, iter_nodes
+from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
@@ -68,7 +68,7 @@ class Workflow:
     """
 
     def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
-        self.column_group = column_group
+        self.column_group = _merge_add_nodes(column_group)
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
@@ -204,7 +204,7 @@ class Workflow:
 
         # dump out the full workflow (graph/stats/operators etc) using cloudpickle
         with open(os.path.join(path, "workflow.pkl"), "wb") as o:
-            cloudpickle.dump(self.column_group, o)
+            cloudpickle.dump(self, o)
 
     @classmethod
     def load(cls, path, client=None):
@@ -245,14 +245,19 @@ class Workflow:
         check_version(versions["python"], sys.version, "python")
 
         # load up the workflow object di
-        column_group = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
+        workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
+        workflow.client = client
 
         # we might have been copied since saving, update all the stat ops
         # with the new path to their storage locations
-        for stat in _get_stat_ops([column_group]):
+        for stat in _get_stat_ops([workflow.column_group]):
             stat.op.set_storage_path(path, copy=False)
 
-        return cls(column_group, client)
+        return workflow
+
+    def __getstate__(self):
+        # dask client objects aren't picklable - exclude from saved representation
+        return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
         for stat in _get_stat_ops([self.column_group]):
@@ -292,15 +297,21 @@ def _get_stat_ops(nodes):
 
 def _transform_partition(root_gdf, column_groups):
     """ Transforms a single partition by appyling all operators in a ColumnGroup """
-    output = cudf.DataFrame()
+    output = None
     for column_group in column_groups:
         # collect dependencies recursively if we have parents
         if column_group.parents:
-            gdf = cudf.DataFrame()
+            gdf = None
+            columns = None
             for parent in column_group.parents:
                 parent_gdf = _transform_partition(root_gdf, [parent])
-                for column in parent.flattened_columns:
-                    gdf[column] = parent_gdf[column]
+                if not gdf:
+                    gdf = parent_gdf[parent.flattened_columns]
+                    columns = set(parent.flattened_columns)
+                else:
+                    new_columns = set(parent.flattened_columns) - columns
+                    gdf = cudf.concat([gdf, parent_gdf[list(new_columns)]], axis=1)
+                    columns.update(new_columns)
         else:
             # otherwise select the input from the root gdf
             gdf = root_gdf[column_group.flattened_columns]
@@ -320,11 +331,9 @@ def _transform_partition(root_gdf, column_groups):
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
-        for column in column_group.flattened_columns:
-            if column not in gdf:
-                raise ValueError(
-                    f"Failed to find {column} in output of {column_group}, which"
-                    f" has columns {gdf.columns}"
-                )
-            output[column] = gdf[column]
+        if not output:
+            output = gdf[column_group.flattened_columns]
+        else:
+            output = cudf.concat([output, gdf[column_group.flattened_columns]], axis=1)
+
     return output

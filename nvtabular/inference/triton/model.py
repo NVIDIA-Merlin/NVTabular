@@ -62,7 +62,9 @@ class TritonPythonModel:
             )
 
             # use our NVTabular workflow to transform the dataframe
-            output_df = self.workflow.transform(nvtabular.Dataset(input_df)).to_ddf().compute()
+            output_df = nvtabular.workflow._transform_partition(
+                input_df, [self.workflow.column_group]
+            )
 
             # convert back to a triton response
             response = InferenceResponse(
