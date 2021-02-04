@@ -218,6 +218,9 @@ class Dataset:
         if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
+            moved_collection = (
+                False  # Whether a pd-backed collection was moved to cudf (or vice versa)
+            )
             if self.cpu:
                 if isinstance(path_or_source, pd.DataFrame):
                     # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
@@ -230,6 +233,7 @@ class Dataset:
                 elif dask_cudf and isinstance(path_or_source, dask_cudf.DataFrame):
                     # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
                     path_or_source = path_or_source.to_dask_dataframe()
+                    moved_collection = True
             else:
                 if isinstance(path_or_source, cudf.DataFrame):
                     # Convert cudf DataFrame to dask_cudf.DataFrame
@@ -242,11 +246,14 @@ class Dataset:
                 elif not isinstance(path_or_source, dask_cudf.DataFrame):
                     # Convert dask.dataframe.DataFrame DataFrame to dask_cudf.DataFrame
                     path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
+                    moved_collection = True
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
                 warnings.warn("part_mem_fraction is ignored for DataFrame input.")
-            self.engine = DataFrameDatasetEngine(path_or_source, cpu=self.cpu)
+            self.engine = DataFrameDatasetEngine(
+                path_or_source, cpu=self.cpu, moved_collection=moved_collection
+            )
         else:
             if part_size:
                 # If a specific partition size is given, use it directly

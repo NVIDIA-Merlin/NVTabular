@@ -109,6 +109,10 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
         assert isinstance(result.compute(), pd.DataFrame)
 
         # Should still work if we move to the GPU
+        # (test behavior after repetitive conversion)
+        dataset.to_gpu()
+        dataset.to_cpu()
+        dataset.to_cpu()
         dataset.to_gpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), cudf.DataFrame)
@@ -116,6 +120,10 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
         assert isinstance(result.compute(), cudf.DataFrame)
 
         # Should still work if we move to the CPU
+        # (test behavior after repetitive conversion)
+        dataset.to_cpu()
+        dataset.to_gpu()
+        dataset.to_gpu()
         dataset.to_cpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), pd.DataFrame)
