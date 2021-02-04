@@ -87,11 +87,6 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 @pytest.mark.parametrize("num_files", [1, 2])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_dataset(datasets, engine, num_files, cpu):
-
-    if cpu and LooseVersion(dask.__version__) <= "2.30.0":
-        # `"pyarrow-dataset"` engine requires newer version of Dask.
-        pytest.skip("Test requires newer version of Dask.")
-
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = paths[:num_files]
     if engine == "parquet":
@@ -130,7 +125,7 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_dataset_from_dataframe(origin, cpu):
 
-    if cpu and LooseVersion(dask.__version__) <= "2.30.0":
+    if not cpu and origin == "dd" and LooseVersion(dask.__version__) <= "2.30.0":
         # `_gddf_to_ddf` requires newer version of Dask.
         pytest.skip("Test requires newer version of Dask.")
 

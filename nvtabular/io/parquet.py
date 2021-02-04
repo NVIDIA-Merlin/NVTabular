@@ -117,15 +117,26 @@ class ParquetDatasetEngine(DatasetEngine):
 
         if cpu:
             # Return a Dask-Dataframe in CPU memory
-            return dd.read_parquet(
-                self.paths,
-                engine="pyarrow-dataset",
-                columns=columns,
-                index=None if columns is None else False,
-                gather_statistics=False,
-                split_row_groups=self.row_groups_per_part,
-                storage_options=self.storage_options,
-            )
+            try:
+                return dd.read_parquet(
+                    self.paths,
+                    engine="pyarrow-dataset",
+                    columns=columns,
+                    index=None if columns is None else False,
+                    gather_statistics=False,
+                    split_row_groups=self.row_groups_per_part,
+                    storage_options=self.storage_options,
+                )
+            except ValueError:
+                return dd.read_parquet(
+                    self.paths,
+                    engine="pyarrow",
+                    columns=columns,
+                    index=None if columns is None else False,
+                    gather_statistics=False,
+                    split_row_groups=self.row_groups_per_part,
+                    storage_options=self.storage_options,
+                )
 
         return dask_cudf.read_parquet(
             self.paths,
