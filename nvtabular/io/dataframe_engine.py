@@ -62,7 +62,7 @@ class DataFrameDatasetEngine(DatasetEngine):
         return len(self._ddf)
 
     def _move_ddf(self, destination):
-        """Move the collection between cpu and host memory."""
+        """Move the collection between cpu and gpu memory."""
         _ddf = self._ddf
         if (
             self.moved_collection
@@ -76,29 +76,33 @@ class DataFrameDatasetEngine(DatasetEngine):
             # "to_pandas-..." layer if the destination is "gpu".
             search_name = "from_pandas-" if destination == "cpu" else "to_pandas-"
 
-            from_pandas_layer = None
-            from_pandas_dep = None
+            pandas_conversion_layer = None
+            pandas_conversion_dep = None
             for k, v in _ddf.dask.dependents.items():
                 if k.startswith(search_name) and v == set():
-                    from_pandas_layer = k
+                    pandas_conversion_layer = k
                     break
-            if from_pandas_layer:
-                deps = [d for d in _ddf.dask.dependencies[from_pandas_layer]]
+            if pandas_conversion_layer:
+                deps = [d for d in _ddf.dask.dependencies[pandas_conversion_layer]]
                 if len(deps) == 1:
-                    from_pandas_dep = deps[0]
+                    pandas_conversion_dep = deps[0]
 
-            if from_pandas_layer and from_pandas_dep:
+            if pandas_conversion_layer and pandas_conversion_dep:
                 # We have met the criteria to remove the last "from/to_pandas-" layer
-                new_layers = {k: v for k, v in _ddf.dask.layers.items() if k != from_pandas_layer}
+                new_layers = {
+                    k: v for k, v in _ddf.dask.layers.items() if k != pandas_conversion_layer
+                }
                 new_deps = {
-                    k: v for k, v in _ddf.dask.dependencies.items() if k != from_pandas_layer
+                    k: v for k, v in _ddf.dask.dependencies.items() if k != pandas_conversion_layer
                 }
                 hlg = HighLevelGraph(
                     layers=new_layers,
                     dependencies=new_deps,
                     key_dependencies=_ddf.dask.key_dependencies,
                 )
-                return new_dd_object(hlg, from_pandas_dep, _ddf._meta.to_pandas(), _ddf.divisions)
+                return new_dd_object(
+                    hlg, pandas_conversion_dep, _ddf._meta.to_pandas(), _ddf.divisions
+                )
 
         if destination == "cpu":
             # Just extend the existing graph to move the collection to cpu
