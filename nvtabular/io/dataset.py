@@ -18,13 +18,9 @@ import logging
 import random
 import warnings
 
-try:
-    import cudf
-    import dask_cudf
-except ImportError:
-    cudf = None
-    dask_cudf = None
+import cudf
 import dask
+import dask_cudf
 import numpy as np
 import pandas as pd
 from dask.base import tokenize
@@ -201,12 +197,7 @@ class Dataset:
         self.client = client
 
         # Check if we are keeping data in cpu memory
-        if cudf is None:
-            if cpu is False:
-                raise ValueError("Cannot use cpu=False if cudf is not installed.")
-            self.cpu = True
-        else:
-            self.cpu = cpu or False
+        self.cpu = cpu or False
 
         # For now, lets warn the user that "cpu mode" is experimental
         if self.cpu:
@@ -225,12 +216,12 @@ class Dataset:
                 if isinstance(path_or_source, pd.DataFrame):
                     # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
                     path_or_source = dask.dataframe.from_pandas(path_or_source, npartitions=1)
-                elif cudf and isinstance(path_or_source, cudf.DataFrame):
+                elif isinstance(path_or_source, cudf.DataFrame):
                     # Convert cudf DataFrame to pandas-backed dask.dataframe.DataFrame
                     path_or_source = dask.dataframe.from_pandas(
                         path_or_source.to_pandas(), npartitions=1
                     )
-                elif dask_cudf and isinstance(path_or_source, dask_cudf.DataFrame):
+                elif isinstance(path_or_source, dask_cudf.DataFrame):
                     # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
                     path_or_source = path_or_source.to_dask_dataframe()
                     moved_collection = True

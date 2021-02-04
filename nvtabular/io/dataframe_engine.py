@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import dask_cudf
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
 
@@ -105,8 +106,6 @@ class DataFrameDatasetEngine(DatasetEngine):
 
         elif destination == "gpu":
             # Just extend the existing graph to move the collection to gpu
-            import dask_cudf
-
             return dask_cudf.from_dask_dataframe(_ddf)
 
         else:
