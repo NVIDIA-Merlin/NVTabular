@@ -125,10 +125,6 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_dataset_from_dataframe(origin, cpu):
 
-    if not cpu and origin == "dd" and LooseVersion(dask.__version__) <= "2.30.0":
-        # `_gddf_to_ddf` requires newer version of Dask.
-        pytest.skip("Test requires newer version of Dask.")
-
     # Generate a DataFrame-based input
     if origin in ("pd", "dd"):
         df = pd.DataFrame({"a": range(100)})
@@ -463,9 +459,6 @@ def test_validate_dataset_bad_schema(tmpdir):
 
 
 def test_validate_and_regenerate_dataset(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
-        # `_gddf_to_ddf` requires newer version of Dask.
-        pytest.skip("Test requires newer version of Dask.")
 
     # Initial timeseries dataset (in cpu memory)
     ddf = dask.datasets.timeseries(

@@ -25,7 +25,7 @@ def _gddf_to_ddf(_gddf):
     # Check if our dask_cudf collection was just created from a
     # dask.dataframe collection.  If so, we can just drop the
     # cpu -> gpu "from_pandas-..." layer in the graph
-    if isinstance(_gddf.dask, HighLevelGraph):
+    if isinstance(_gddf.dask, HighLevelGraph) and hasattr(_gddf.dask, "key_dependencies"):
         from_pandas_layer = None
         from_pandas_dep = None
         for k, v in _gddf.dask.dependents.items():
@@ -49,6 +49,9 @@ def _gddf_to_ddf(_gddf):
             return new_dd_object(hlg, from_pandas_dep, _gddf._meta.to_pandas(), _gddf.divisions)
         else:
             return _gddf.to_dask_dataframe()
+    else:
+        # Just extend the existing graph to move the collection to cpu
+        return _gddf.to_dask_dataframe()
 
 
 def _ddf_to_gddf(_ddf):
