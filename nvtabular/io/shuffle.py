@@ -17,6 +17,8 @@ import enum
 import warnings
 
 import cupy as cp
+import numpy as np
+import pandas as pd
 
 
 class Shuffle(enum.Enum):
@@ -45,6 +47,24 @@ def _check_shuffle_arg(shuffle):
     else:
         raise ValueError(f"`shuffle={shuffle}` not recognized.")
     return shuffle
+
+
+def _shuffle_df(df, size=None):
+    if isinstance(df, pd.DataFrame):
+        return _shuffle_df_pandas(df, df_size=size)
+    else:
+        return _shuffle_gdf(df, gdf_size=size)
+
+
+def _shuffle_df_pandas(df, df_size=None):
+    """Shuffles a pd dataframe, returning a new dataframe with randomly
+    ordered rows"""
+    df_size = df_size or len(df)
+    # NOTE: We can use np.arange for both gpu and cpu-backed
+    # dataframes once NEP-35 is fully accepted (`like` argument).
+    arr = np.arange(df_size)
+    np.random.shuffle(arr)
+    return df.iloc[arr]
 
 
 def _shuffle_gdf(gdf, gdf_size=None):

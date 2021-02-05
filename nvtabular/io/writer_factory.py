@@ -27,6 +27,7 @@ def writer_factory(
     use_guid=False,
     bytes_io=False,
     num_threads=0,
+    cpu=False,
 ):
     if output_format is None:
         return None
@@ -40,6 +41,7 @@ def writer_factory(
         use_guid=use_guid,
         bytes_io=bytes_io,
         num_threads=num_threads,
+        cpu=cpu,
     )
 
 

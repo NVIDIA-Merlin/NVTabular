@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import functools
+import itertools
 import logging
 import operator
 import os
@@ -28,7 +29,10 @@ import cudf
 import dask
 import dask.dataframe as dd
 import dask_cudf
-from cudf.io.parquet import ParquetWriter as pwriter
+import pandas as pd
+import pyarrow as pa
+import toolz as tlz
+from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
@@ -37,9 +41,10 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
+from pyarrow.parquet import ParquetWriter as pwriter_pyarrow
 
 from .dataset_engine import DatasetEngine
-from .shuffle import Shuffle, _shuffle_gdf
+from .shuffle import Shuffle, _shuffle_df
 from .writer import ThreadedWriter
 
 LOG = logging.getLogger("nvtabular")
@@ -594,7 +599,7 @@ def _write_data(data_list, output_path, fs, fn):
 
     # Initialize chunked writer
     path = fs.sep.join([output_path, fn])
-    writer = pwriter(path, compression=None)
+    writer = pwriter_cudf(path, compression=None)
     rows = 0
 
     # Loop over the data_list, convert to cudf,
@@ -613,7 +618,14 @@ class ParquetWriter(ThreadedWriter):
         self.data_paths = []
         self.data_writers = []
         self.data_bios = []
+        self.md_collectors = {}  # Only used by pyarrow
         self._lock = threading.RLock()
+        if self.cpu:
+            self.pwriter = pwriter_pyarrow
+            self.pwriter_kwargs = {"compression": None}
+        else:
+            self.pwriter = pwriter_cudf
+            self.pwriter_kwargs = {"compression": None, "index": False}
 
     def _get_filename(self, i):
         if self.use_guid:
@@ -623,21 +635,33 @@ class ParquetWriter(ThreadedWriter):
 
         return os.path.join(self.out_dir, fn)
 
-    def _get_or_create_writer(self, idx):
+    def _get_or_create_writer(self, idx, schema):
         # lazily initializes a writer for the given index
         with self._lock:
             while len(self.data_writers) <= idx:
                 path = self._get_filename(len(self.data_writers))
                 self.data_paths.append(path)
+
+                # Define "metadata collector" for pyarrow
+                _md_collector = []
+                _args = [schema] if schema else []
+                _kwargs = tlz.merge(
+                    self.pwriter_kwargs, {"metadata_collector": _md_collector} if self.cpu else {}
+                )
+
                 if self.bytes_io:
                     bio = BytesIO()
                     self.data_bios.append(bio)
 
                     # Passing index=False when creating ParquetWriter
                     # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
-                    self.data_writers.append(pwriter(bio, compression=None, index=False))
+                    self.data_writers.append(self.pwriter(bio, *_args, **_kwargs))
                 else:
-                    self.data_writers.append(pwriter(path, compression=None, index=False))
+                    self.data_writers.append(self.pwriter(path, *_args, **_kwargs))
+
+                # Keep track of "metadata collector" for pyarrow
+                if self.cpu:
+                    self.md_collectors[path] = _md_collector
 
             return self.data_writers[idx]
 
@@ -648,8 +672,13 @@ class ParquetWriter(ThreadedWriter):
             filename = self._get_filename(len(self.data_paths))
             data.to_parquet(filename)
             self.data_paths.append(filename)
+        elif self.cpu:
+            table = pa.Table.from_pandas(data)
+            schema = table.schema
+            writer = self._get_or_create_writer(idx, schema)
+            writer.write_table(table)
         else:
-            writer = self._get_or_create_writer(idx)
+            writer = self._get_or_create_writer(idx, None)
             writer.write_table(data)
 
     def _write_thread(self):
@@ -677,26 +706,53 @@ class ParquetWriter(ThreadedWriter):
         md_dict = {}
         for writer, path in zip(self.data_writers, self.data_paths):
             fn = path.split(self.fs.sep)[-1]
-            md_dict[fn] = writer.close(metadata_file_path=fn)
+            if self.cpu:
+                writer.close()
+                self.md_collectors[path][0].set_file_path(fn)
+            else:
+                md_dict[fn] = writer.close(metadata_file_path=fn)
+        if self.cpu:
+            return self.md_collectors
         return md_dict
 
     def _bytesio_to_disk(self):
+        read_parquet = pd.read_parquet if self.cpu else cudf.io.read_parquet
         for bio, path in zip(self.data_bios, self.data_paths):
-            gdf = cudf.io.read_parquet(bio, index=False)
+            df = read_parquet(bio, index=False)
             bio.close()
             if self.shuffle == Shuffle.PER_WORKER:
-                gdf = _shuffle_gdf(gdf)
-            gdf.to_parquet(path, compression=None, index=False)
+                df = _shuffle_df(df)
+            df.to_parquet(path, compression=None, index=False)
         return
 
 
 def _write_pq_metadata_file(md_list, fs, path):
     """ Converts list of parquet metadata objects into a single shared _metadata file. """
     if md_list:
+        if isinstance(md_list[0], list):
+            return _merge_and_write_metadata_file_pyarrow(md_list, fs, path)
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
         with fs.open(metadata_path, "wb") as fil:
             _meta.tofile(fil)
+    return
+
+
+def _merge_and_write_metadata_file_pyarrow(md_list, fs, path):
+    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    if md_list:
+        _meta = None
+        for md in itertools.chain(*md_list):
+            if _meta is None:
+                _meta = md
+            else:
+                _meta.append_row_groups(md)
+        metadata_path = fs.sep.join([path, "_metadata"])
+        import pdb
+
+        pdb.set_trace()
+        with fs.open(metadata_path, "wb") as fil:
+            _meta.write_metadata_file(fil)
     return
 
 

@@ -60,6 +60,7 @@ class ThreadedWriter(Writer):
         fs=None,
         use_guid=False,
         bytes_io=False,
+        cpu=False,
     ):
         # set variables
         self.out_dir = out_dir
@@ -81,6 +82,7 @@ class ThreadedWriter(Writer):
         self.need_cal_col_names = True
         self.use_guid = use_guid
         self.bytes_io = bytes_io
+        self.cpu = cpu
 
         # Resolve file system
         self.fs = fs or get_fs_token_paths(str(out_dir))[0]
@@ -127,25 +129,46 @@ class ThreadedWriter(Writer):
             self._write_table(0, gdf, True)
             return
 
-        # Generate `ind` array to map each row to an output file.
-        # This approach is certainly more optimized for shuffling
-        # than it is for non-shuffling, but using a single code
-        # path is probably worth the (possible) minor overhead.
-        nrows = gdf.shape[0]
-        typ = np.min_scalar_type(nrows * 2)
-        if self.shuffle:
-            ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
-        else:
-            ind = cp.arange(nrows, dtype=typ)
-            cp.floor_divide(ind, math.ceil(nrows / self.num_out_files), out=ind)
-        for x, group in enumerate(
-            gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
-        ):
-            self.num_samples[x] += len(group)
-            if self.num_threads > 1:
-                self.queue.put((x, group))
+        if hasattr(gdf, "scatter_by_map"):
+
+            # Generate `ind` array to map each row to an output file.
+            # This approach is certainly more optimized for shuffling
+            # than it is for non-shuffling, but using a single code
+            # path is probably worth the (possible) minor overhead.
+            nrows = gdf.shape[0]
+            typ = np.min_scalar_type(nrows * 2)
+            if self.shuffle:
+                ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
             else:
-                self._write_table(x, group)
+                ind = cp.arange(nrows, dtype=typ)
+                cp.floor_divide(ind, math.ceil(nrows / self.num_out_files), out=ind)
+            for x, group in enumerate(
+                gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
+            ):
+                self.num_samples[x] += len(group)
+                if self.num_threads > 1:
+                    self.queue.put((x, group))
+                else:
+                    self._write_table(x, group)
+
+        else:
+
+            # CPU version
+            int_slice_size = gdf.shape[0] // self.num_out_files
+            slice_size = (
+                int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
+            )
+            for x in range(self.num_out_files):
+                start = x * slice_size
+                end = start + slice_size
+                # check if end is over length
+                end = end if end <= gdf.shape[0] else gdf.shape[0]
+                to_write = gdf.iloc[start:end]
+                self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
+                if self.num_threads > 1:
+                    self.queue.put((x, to_write))
+                else:
+                    self._write_table(x, to_write)
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)

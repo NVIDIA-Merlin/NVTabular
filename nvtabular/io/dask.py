@@ -16,6 +16,7 @@
 import collections
 
 import dask
+import pandas as pd
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
@@ -39,6 +40,7 @@ def _write_output_partition(
     label_names,
     output_format,
     num_threads,
+    cpu,
 ):
     gdf_size = len(gdf)
     out_files_per_proc = out_files_per_proc or 1
@@ -55,6 +57,7 @@ def _write_output_partition(
                 use_guid=True,
                 bytes_io=(shuffle == Shuffle.PER_WORKER),
                 num_threads=num_threads,
+                cpu=cpu,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
             writer_cache[processed_path] = writer
@@ -83,6 +86,7 @@ def _ddf_to_dataset(
     write_name = name + tokenize(
         ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
     )
+    cpu = isinstance(ddf._meta, pd.DataFrame)
     task_list = []
     dsk = {}
     for idx in range(ddf.npartitions):
@@ -99,6 +103,7 @@ def _ddf_to_dataset(
             label_names,
             output_format,
             num_threads,
+            cpu,
         )
         task_list.append(key)
     dsk[name] = (lambda x: x, task_list)
