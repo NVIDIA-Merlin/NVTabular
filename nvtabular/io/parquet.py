@@ -56,8 +56,9 @@ class ParquetDatasetEngine(DatasetEngine):
         row_groups_per_part=None,
         legacy=False,
         batch_size=None,  # Ignored
+        cpu=False,
     ):
-        super().__init__(paths, part_size, storage_options)
+        super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
             rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0, row_group=0))
@@ -109,18 +110,30 @@ class ParquetDatasetEngine(DatasetEngine):
                 num_rows += piece.get_metadata().num_rows
             return num_rows
 
-    def to_ddf(self, columns=None, cpu=False):
+    def to_ddf(self, columns=None, cpu=None):
+
+        # Check if we are using cpu
+        cpu = self.cpu if cpu is None else cpu
+
         if cpu:
             # Return a Dask-Dataframe in CPU memory
-            return dd.read_parquet(
-                self.paths,
-                engine="pyarrow-dataset",
-                columns=columns,
-                index=None if columns is None else False,
-                gather_statistics=False,
-                split_row_groups=self.row_groups_per_part,
-                storage_options=self.storage_options,
-            )
+            for try_engine in ["pyarrow-dataset", "pyarrow"]:
+                # Try to use the "pyarrow-dataset" engine, if
+                # available, but fall back on vanilla "pyarrow"
+                # for older Dask versions.
+                try:
+                    return dd.read_parquet(
+                        self.paths,
+                        engine=try_engine,
+                        columns=columns,
+                        index=None if columns is None else False,
+                        gather_statistics=False,
+                        split_row_groups=self.row_groups_per_part,
+                        storage_options=self.storage_options,
+                    )
+                except ValueError:
+                    pass
+            raise RuntimeError("dask.dataframe.read_parquet failed.")
 
         return dask_cudf.read_parquet(
             self.paths,
@@ -131,6 +144,12 @@ class ParquetDatasetEngine(DatasetEngine):
             split_row_groups=self.row_groups_per_part,
             storage_options=self.storage_options,
         )
+
+    def to_cpu(self):
+        self.cpu = True
+
+    def to_gpu(self):
+        self.cpu = False
 
     def validate_dataset(
         self,

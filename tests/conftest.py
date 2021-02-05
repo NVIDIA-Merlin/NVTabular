@@ -67,9 +67,11 @@ _CUDA_CLUSTER = None
 
 @pytest.fixture(scope="module")
 def client():
-    client = Client(LocalCluster(n_workers=2))
+    cluster = LocalCluster(n_workers=2)
+    client = Client(cluster)
     yield client
     client.close()
+    cluster.close()
 
 
 @contextlib.contextmanager
