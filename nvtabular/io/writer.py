@@ -134,9 +134,9 @@ class ThreadedWriter(Writer):
         # Use different mechanism to decompose and write each df
         # partition, depending on the backend (pandas or cudf).
         if self.cpu:
-            self._add_data_scatter(df)
-        else:
             self._add_data_slice(df)
+        else:
+            self._add_data_scatter(df)
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)

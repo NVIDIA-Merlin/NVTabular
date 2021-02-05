@@ -450,11 +450,6 @@ class Dataset:
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc or cats or conts or labels:
 
-            # For now, we must move to the GPU to
-            # write an output dataset.
-            # TODO: Support CPU-mode output
-            self.to_gpu()
-
             # Output dask_cudf DataFrame to dataset
             _ddf_to_dataset(
                 ddf,

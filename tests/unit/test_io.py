@@ -131,7 +131,7 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
 
 @pytest.mark.parametrize("origin", ["cudf", "dask_cudf", "pd", "dd"])
 @pytest.mark.parametrize("cpu", [None, True])
-def test_dask_dataset_from_dataframe(origin, cpu):
+def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
 
     # Generate a DataFrame-based input
     if origin in ("pd", "dd"):
@@ -155,16 +155,32 @@ def test_dask_dataset_from_dataframe(origin, cpu):
         assert isinstance(result.compute(), pd.DataFrame)
 
         # Should still work if we move to the GPU
+        # (test behavior after repetitive conversion)
+        dataset.to_gpu()
+        dataset.to_cpu()
+        dataset.to_cpu()
         dataset.to_gpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), cudf.DataFrame)
+        dataset.to_cpu()
     else:
         assert isinstance(result.compute(), cudf.DataFrame)
 
         # Should still work if we move to the CPU
+        # (test behavior after repetitive conversion)
+        dataset.to_cpu()
+        dataset.to_gpu()
+        dataset.to_gpu()
         dataset.to_cpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), pd.DataFrame)
+        dataset.to_gpu()
+
+    # Write to disk
+    path = str(tmpdir)
+    dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
+    ddf_check = dask_cudf.read_parquet(path, index=False)
+    assert_eq(df, ddf_check.compute(), check_index=False)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
