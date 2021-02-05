@@ -85,16 +85,17 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
 @pytest.mark.parametrize("num_files", [1, 2])
-def test_dask_dataset(datasets, engine, num_files):
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_dataset(datasets, engine, num_files, cpu):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = paths[:num_files]
     if engine == "parquet":
         ddf0 = dask_cudf.read_parquet(paths)[mycols_pq]
-        dataset = nvtabular.io.Dataset(paths)
+        dataset = nvtabular.io.Dataset(paths, cpu=cpu)
         result = dataset.to_ddf(columns=mycols_pq)
     else:
-        ddf0 = dask_cudf.read_csv(paths, header=False, names=allcols_csv)[mycols_csv]
-        dataset = nvtabular.io.Dataset(paths, header=False, names=allcols_csv)
+        ddf0 = dask_cudf.read_csv(paths, header=None, names=allcols_csv)[mycols_csv]
+        dataset = nvtabular.io.Dataset(paths, cpu=cpu, header=None, names=allcols_csv)
         result = dataset.to_ddf(columns=mycols_csv)
 
     # We do not preserve the index in NVTabular
@@ -102,6 +103,68 @@ def test_dask_dataset(datasets, engine, num_files):
         assert_eq(ddf0, result, check_index=False)
     else:
         assert_eq(ddf0, result)
+
+    # Check that the cpu kwarg is working correctly
+    if cpu:
+        assert isinstance(result.compute(), pd.DataFrame)
+
+        # Should still work if we move to the GPU
+        # (test behavior after repetitive conversion)
+        dataset.to_gpu()
+        dataset.to_cpu()
+        dataset.to_cpu()
+        dataset.to_gpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), cudf.DataFrame)
+    else:
+        assert isinstance(result.compute(), cudf.DataFrame)
+
+        # Should still work if we move to the CPU
+        # (test behavior after repetitive conversion)
+        dataset.to_cpu()
+        dataset.to_gpu()
+        dataset.to_gpu()
+        dataset.to_cpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), pd.DataFrame)
+
+
+@pytest.mark.parametrize("origin", ["cudf", "dask_cudf", "pd", "dd"])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_dataset_from_dataframe(origin, cpu):
+
+    # Generate a DataFrame-based input
+    if origin in ("pd", "dd"):
+        df = pd.DataFrame({"a": range(100)})
+        if origin == "dd":
+            df = dask.dataframe.from_pandas(df, npartitions=4)
+    elif origin in ("cudf", "dask_cudf"):
+        df = cudf.DataFrame({"a": range(100)})
+        if origin == "dd":
+            df = dask_cudf.from_cudf(df, npartitions=4)
+
+    # Convert to an NVTabular Dataset and back to a ddf
+    dataset = nvtabular.io.Dataset(df, cpu=cpu)
+    result = dataset.to_ddf()
+
+    # Check resulting data
+    assert_eq(df, result)
+
+    # Check that the cpu kwarg is working correctly
+    if cpu:
+        assert isinstance(result.compute(), pd.DataFrame)
+
+        # Should still work if we move to the GPU
+        dataset.to_gpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), cudf.DataFrame)
+    else:
+        assert isinstance(result.compute(), cudf.DataFrame)
+
+        # Should still work if we move to the CPU
+        dataset.to_cpu()
+        result = dataset.to_ddf()
+        assert isinstance(result.compute(), pd.DataFrame)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
@@ -404,9 +467,6 @@ def test_validate_dataset_bad_schema(tmpdir):
 
 
 def test_validate_and_regenerate_dataset(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
-        # `_gddf_to_ddf` requires newer version of Dask.
-        pytest.skip("Test requires newer version of Dask.")
 
     # Initial timeseries dataset (in cpu memory)
     ddf = dask.datasets.timeseries(

@@ -21,7 +21,7 @@ from fsspec.core import get_fs_token_paths
 class DatasetEngine:
     """Base class for Dask-powered IO engines. Engines must provide a ``to_ddf`` method."""
 
-    def __init__(self, paths, part_size, storage_options=None):
+    def __init__(self, paths, part_size, cpu=False, storage_options=None):
         paths = sorted(paths, key=natural_sort_key)
         self.paths = paths
         self.part_size = part_size
@@ -29,9 +29,16 @@ class DatasetEngine:
         fs, fs_token, _ = get_fs_token_paths(paths, mode="rb", storage_options=self.storage_options)
         self.fs = fs
         self.fs_token = fs_token
+        self.cpu = cpu
 
-    def to_ddf(self, columns=None, cpu=False):
-        raise NotImplementedError(""" Return a dask_cudf.DataFrame """)
+    def to_ddf(self, columns=None, cpu=None):
+        raise NotImplementedError(""" Return a dask.dataframe.DataFrame or dask_cudf.DataFrame""")
+
+    def to_cpu(self):
+        raise NotImplementedError(""" Move data to CPU memory """)
+
+    def to_gpu(self):
+        raise NotImplementedError(""" Move data to GPU memory """)
 
     @property
     def num_rows(self):
