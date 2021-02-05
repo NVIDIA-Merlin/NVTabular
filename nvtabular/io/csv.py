@@ -41,15 +41,12 @@ class CSVDatasetEngine(DatasetEngine):
         # Check if we are using cpu
         cpu = self.cpu if cpu is None else cpu
         if cpu:
-            if columns:
-                return dd.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)[columns]
-            return dd.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)
+            ddf = dd.read_csv(self.paths, blocksize=self.part_size, **self.csv_kwargs)
         else:
-            if columns:
-                return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)[
-                    columns
-                ]
-            return dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
+            ddf = dask_cudf.read_csv(self.paths, chunksize=self.part_size, **self.csv_kwargs)
+        if columns:
+            ddf = ddf[columns]
+        return ddf
 
     def to_cpu(self):
         self.cpu = True
