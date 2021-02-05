@@ -50,27 +50,19 @@ def _check_shuffle_arg(shuffle):
 
 
 def _shuffle_df(df, size=None):
-    if isinstance(df, pd.DataFrame):
-        return _shuffle_df_pandas(df, df_size=size)
-    else:
-        return _shuffle_gdf(df, gdf_size=size)
-
-
-def _shuffle_df_pandas(df, df_size=None):
-    """Shuffles a pd dataframe, returning a new dataframe with randomly
+    """Shuffles a DataFrame, returning a new dataframe with randomly
     ordered rows"""
-    df_size = df_size or len(df)
+    size = size or len(df)
     # NOTE: We can use np.arange for both gpu and cpu-backed
     # dataframes once NEP-35 is fully accepted (`like` argument).
-    arr = np.arange(df_size)
-    np.random.shuffle(arr)
+    # This should be available in numpy>=1.20
+    if isinstance(df, pd.DataFrame):
+        arr = np.arange(size)
+        np.random.shuffle(arr)
+    else:
+        arr = cp.arange(size)
+        # Note that np.random.shuffle "should" Work for both gpu
+        # and cpu (via NEP-18), but it seems the cupy API is
+        # still needed here for correct behavior.
+        cp.random.shuffle(arr)
     return df.iloc[arr]
-
-
-def _shuffle_gdf(gdf, gdf_size=None):
-    """Shuffles a cudf dataframe, returning a new dataframe with randomly
-    ordered rows"""
-    gdf_size = gdf_size or len(gdf)
-    arr = cp.arange(gdf_size)
-    cp.random.shuffle(arr)
-    return gdf.iloc[arr]
