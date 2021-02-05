@@ -188,24 +188,11 @@ The `row_group_size` is the number of rows that are stored in each row group (in
 You can check the current row group size of your parquet files loading only the first row group, using cuDF, as follows:
 
 ```python
-def _memory_usage(df):
-    """this function is a workaround of a problem with getting memory usage of lists
-    in cudf0.16.  This can be deleted and just use `df.memory_usage(deep= True, index=True).sum()`
-    once we are using cudf 0.17 (fixed in https://github.com/rapidsai/cudf/pull/6549)"""
-    size = 0
-    for col in df._data.columns:
-        if cudf.utils.dtypes.is_list_dtype(col.dtype):
-            for child in col.base_children:
-                size += child.__sizeof__()
-        else:
-            size += col._memory_usage(deep=True)
-    size += df.index.memory_usage(deep=True)
-    return size
-
 import cudf
+
 first_row_group_df = cudf.read_parquet('/path/to/a/parquet/file', row_groups=0, row_group=0)
 num_rows = len(first_row_group_df)
-memory_size = _memory_usage(first_row_group_df)
+memory_size = first_row_group_df.memory_usage(deep=True).sum()
 ```
 
 You can set the row group size (number of rows) of your parquet files by using most Data Frame frameworks, like the following examples with Pandas and cuDF:

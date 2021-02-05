@@ -16,7 +16,7 @@
 from fsspec.core import get_fs_token_paths
 
 from .hugectr import HugeCTRWriter
-from .parquet import ParquetWriter
+from .parquet import CPUParquetWriter, GPUParquetWriter
 
 
 def writer_factory(
@@ -32,7 +32,7 @@ def writer_factory(
     if output_format is None:
         return None
 
-    writer_cls, fs = _writer_cls_factory(output_format, output_path)
+    writer_cls, fs = _writer_cls_factory(output_format, output_path, cpu=cpu)
     return writer_cls(
         output_path,
         num_out_files=out_files_per_proc,
@@ -45,9 +45,11 @@ def writer_factory(
     )
 
 
-def _writer_cls_factory(output_format, output_path):
-    if output_format == "parquet":
-        writer_cls = ParquetWriter
+def _writer_cls_factory(output_format, output_path, cpu=None):
+    if output_format == "parquet" and cpu:
+        writer_cls = CPUParquetWriter
+    elif output_format == "parquet":
+        writer_cls = GPUParquetWriter
     elif output_format == "hugectr":
         writer_cls = HugeCTRWriter
     else:

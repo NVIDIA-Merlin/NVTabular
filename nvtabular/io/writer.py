@@ -24,12 +24,14 @@ from cudf.utils.dtypes import is_list_dtype
 from fsspec.core import get_fs_token_paths
 from nvtx import annotate
 
+from .shuffle import _shuffle_df
+
 
 class Writer:
     def __init__(self):
         pass
 
-    def add_data(self, gdf):
+    def add_data(self, df):
         raise NotImplementedError()
 
     def package_general_metadata(self):
@@ -115,65 +117,82 @@ class ThreadedWriter(Writer):
         return
 
     @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
+    def add_data(self, df):
         # Populate columns idxs
         if not self.col_idx:
-            for i, x in enumerate(gdf.columns.values):
+            for i, x in enumerate(df.columns.values):
                 self.col_idx[str(x)] = i
 
         # list columns in cudf don't currently support chunked writing in parquet.
         # hack around this by just writing a single file with this partition
         # this restriction can be removed once cudf supports chunked writing
         # in parquet
-        if any(is_list_dtype(gdf[col].dtype) for col in gdf.columns):
-            self._write_table(0, gdf, True)
+        if any(is_list_dtype(df[col].dtype) for col in df.columns):
+            self._write_table(0, df, True)
             return
 
-        if hasattr(gdf, "scatter_by_map"):
-
-            # Generate `ind` array to map each row to an output file.
-            # This approach is certainly more optimized for shuffling
-            # than it is for non-shuffling, but using a single code
-            # path is probably worth the (possible) minor overhead.
-            nrows = gdf.shape[0]
-            typ = np.min_scalar_type(nrows * 2)
-            if self.shuffle:
-                ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
-            else:
-                ind = cp.arange(nrows, dtype=typ)
-                cp.floor_divide(ind, math.ceil(nrows / self.num_out_files), out=ind)
-            for x, group in enumerate(
-                gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
-            ):
-                self.num_samples[x] += len(group)
-                if self.num_threads > 1:
-                    self.queue.put((x, group))
-                else:
-                    self._write_table(x, group)
-
+        # Use different mechanism to decompose and write each df
+        # partition, depending on the backend (pandas or cudf).
+        if self.cpu:
+            self._add_data_scatter(df)
         else:
-
-            # CPU version
-            int_slice_size = gdf.shape[0] // self.num_out_files
-            slice_size = (
-                int_slice_size if gdf.shape[0] % int_slice_size == 0 else int_slice_size + 1
-            )
-            for x in range(self.num_out_files):
-                start = x * slice_size
-                end = start + slice_size
-                # check if end is over length
-                end = end if end <= gdf.shape[0] else gdf.shape[0]
-                to_write = gdf.iloc[start:end]
-                self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
-                if self.num_threads > 1:
-                    self.queue.put((x, to_write))
-                else:
-                    self._write_table(x, to_write)
+            self._add_data_slice(df)
 
         # wait for all writes to finish before exiting
         # (so that we aren't using memory)
         if self.num_threads > 1:
             self.queue.join()
+
+    def _add_data_scatter(self, gdf):
+        """Write scattered pieces.
+
+        This method is for cudf-backed data only.
+        """
+        assert not self.cpu
+
+        # Generate `ind` array to map each row to an output file.
+        # This approach is certainly more optimized for shuffling
+        # than it is for non-shuffling, but using a single code
+        # path is probably worth the (possible) minor overhead.
+        nrows = gdf.shape[0]
+        typ = np.min_scalar_type(nrows * 2)
+        if self.shuffle:
+            ind = cp.random.choice(cp.arange(self.num_out_files, dtype=typ), nrows)
+        else:
+            ind = cp.arange(nrows, dtype=typ)
+            cp.floor_divide(ind, math.ceil(nrows / self.num_out_files), out=ind)
+        for x, group in enumerate(
+            gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
+        ):
+            self.num_samples[x] += len(group)
+            if self.num_threads > 1:
+                self.queue.put((x, group))
+            else:
+                self._write_table(x, group)
+
+    def _add_data_slice(self, df):
+        """Write shuffled slices.
+
+        This method works for both pandas and cudf backends.
+        """
+        # Pandas does not support the `scatter_by_map` method
+        # used in `_add_data_scatter`. So, we manually shuffle
+        # the df and write out slices.
+        if self.shuffle:
+            df = _shuffle_df(df)
+        int_slice_size = df.shape[0] // self.num_out_files
+        slice_size = int_slice_size if df.shape[0] % int_slice_size == 0 else int_slice_size + 1
+        for x in range(self.num_out_files):
+            start = x * slice_size
+            end = start + slice_size
+            # check if end is over length
+            end = end if end <= df.shape[0] else df.shape[0]
+            to_write = df.iloc[start:end]
+            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
+            if self.num_threads > 1:
+                self.queue.put((x, to_write))
+            else:
+                self._write_table(x, to_write)
 
     def package_general_metadata(self):
         data = {}
