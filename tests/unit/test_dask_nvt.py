@@ -23,6 +23,7 @@ import dask_cudf
 import numpy as np
 import pytest
 from dask.dataframe import assert_eq
+from dask.dataframe import read_parquet as dd_read_parquet
 
 from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular import ops as ops
@@ -43,7 +44,7 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
     return new_gdf
 
 
-@pytest.mark.parametrize("part_mem_fraction", [0.01])
+@pytest.mark.parametrize("part_mem_fraction", [0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("freq_threshold", [0, 150])
 @pytest.mark.parametrize("cat_cache", ["device", None])
@@ -53,6 +54,7 @@ def test_dask_workflow_api_dlrm(
     client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
 ):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    paths = sorted(paths)
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
         df2 = cudf.read_parquet(paths[1])[mycols_pq]
@@ -238,3 +240,40 @@ def test_dask_normalize(client, tmpdir, datasets, engine):
     new_means = result[cont_names].mean()
     for name in cont_names:
         assert new_means[name] < 1e-3
+
+
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    if engine == "parquet":
+        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    elif engine == "csv":
+        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+    else:
+        df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
+        df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
+    df0 = cudf.concat([df1, df2], axis=0)
+
+    if engine in ("parquet", "csv"):
+        dataset = Dataset(paths, part_size="1MB", cpu=cpu)
+    else:
+        dataset = Dataset(paths, names=allcols_csv, part_size="1MB", cpu=cpu)
+
+    # TODO: Add transforms to this test as CPU-backed ops are enabled
+    transformed = dataset
+
+    # Write out dataset
+    output_path = os.path.join(tmpdir, "processed")
+    transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=4)
+
+    # Check the final result
+    df_disk = dd_read_parquet(output_path, engine="pyarrow", index=False).compute()
+    assert_eq(
+        df0.sort_values(["id", "x"]),
+        df_disk.sort_values(["id", "x"])[mycols_pq if engine == "parquet" else mycols_csv],
+        check_index=False,
+    )

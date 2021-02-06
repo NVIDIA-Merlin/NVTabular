@@ -261,7 +261,7 @@ class ThreadedWriter(Writer):
 
         # Move in-meomory file to disk
         if self.bytes_io:
-            self._bytesio_to_disk()
+            _special_meta = self._bytesio_to_disk()
 
         return _general_meta, _special_meta
 

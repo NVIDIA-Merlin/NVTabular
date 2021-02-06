@@ -80,13 +80,15 @@ def _ddf_to_dataset(
     output_format,
     client,
     num_threads,
+    cpu,
 ):
     # Construct graph for Dask-based dataset write
     name = "write-processed"
     write_name = name + tokenize(
         ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
     )
-    cpu = isinstance(ddf._meta, pd.DataFrame)
+    # Check that the data is in the correct place
+    assert isinstance(ddf._meta, pd.DataFrame) is cpu
     task_list = []
     dsk = {}
     for idx in range(ddf.npartitions):

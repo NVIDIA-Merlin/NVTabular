@@ -636,7 +636,7 @@ class BaseParquetWriter(ThreadedWriter):
         raise (NotImplementedError)
 
     def _to_parquet(self, df, sink):
-        """Write data to parquet"""
+        """Write data to parquet and return pq metadata"""
         raise (NotImplementedError)
 
     def _get_filename(self, i):
@@ -651,7 +651,7 @@ class BaseParquetWriter(ThreadedWriter):
         # Add additional args and kwargs
         _args = add_args or []
         _kwargs = tlz.merge(self.pwriter_kwargs, add_kwargs or {})
-        self.data_paths.append(path)
+
         if self.bytes_io:
             bio = BytesIO()
             self.data_bios.append(bio)
@@ -668,6 +668,7 @@ class BaseParquetWriter(ThreadedWriter):
             while len(self.data_writers) <= idx:
                 # Append writer
                 path = self._get_filename(len(self.data_writers))
+                self.data_paths.append(path)
                 self._append_writer(path, schema=schema)
             return self.data_writers[idx]
 
@@ -697,13 +698,14 @@ class BaseParquetWriter(ThreadedWriter):
         raise (NotImplementedError)
 
     def _bytesio_to_disk(self):
+        md = {}
         for bio, path in zip(self.data_bios, self.data_paths):
             df = self._read_parquet(bio)
             bio.close()
             if self.shuffle == Shuffle.PER_WORKER:
                 df = _shuffle_df(df)
-            self._to_parquet(df, path)
-        return
+            md[path] = self._to_parquet(df, path)
+        return md
 
 
 class GPUParquetWriter(BaseParquetWriter):
@@ -719,7 +721,8 @@ class GPUParquetWriter(BaseParquetWriter):
         return cudf.io.read_parquet(source, index=False)
 
     def _to_parquet(self, df, sink):
-        df.to_parquet(sink, compression=None, index=False)
+        fn = sink.split(self.fs.sep)[-1]
+        return df.to_parquet(sink, metadata_file_path=fn, compression=None, index=False)
 
     def _write_table(self, idx, data, has_list_column=False):
         if has_list_column:
@@ -729,7 +732,7 @@ class GPUParquetWriter(BaseParquetWriter):
             data.to_parquet(filename)
             self.data_paths.append(filename)
         else:
-            writer = self._get_or_create_writer(idx, schema=None)
+            writer = self._get_or_create_writer(idx)
             writer.write_table(data)
 
     @classmethod
@@ -760,10 +763,14 @@ class CPUParquetWriter(BaseParquetWriter):
         return pwriter_pyarrow
 
     def _read_parquet(self, source):
-        return pd.read_parquet(source, index=False)
+        return pd.read_parquet(source, use_pandas_metadata=False, engine="pyarrow")
 
     def _to_parquet(self, df, sink):
-        df.to_parquet(sink, compression=None, index=False)
+        md = []
+        df.to_parquet(sink, metadata_collector=md, compression=None, index=False)
+        fn = sink.split(self.fs.sep)[-1]
+        md[0].set_file_path(fn)
+        return md
 
     def _append_writer(self, path, schema=None):
 
@@ -787,8 +794,7 @@ class CPUParquetWriter(BaseParquetWriter):
             self.data_paths.append(filename)
         else:
             table = pa.Table.from_pandas(data)
-            schema = table.schema
-            writer = self._get_or_create_writer(idx, schema=schema)
+            writer = self._get_or_create_writer(idx, schema=table.schema)
             writer.write_table(table)
 
     @classmethod

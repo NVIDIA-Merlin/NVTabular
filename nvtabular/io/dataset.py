@@ -463,6 +463,7 @@ class Dataset:
                 "parquet",
                 self.client,
                 num_threads,
+                self.cpu,
             )
             return
 
@@ -551,6 +552,7 @@ class Dataset:
             "hugectr",
             self.client,
             num_threads,
+            self.cpu,
         )
 
     @property
