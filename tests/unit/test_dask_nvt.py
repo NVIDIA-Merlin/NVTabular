@@ -20,7 +20,6 @@ import os
 
 import cudf
 import dask_cudf
-import numpy as np
 import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import read_parquet as dd_read_parquet
@@ -91,39 +90,33 @@ def test_dask_workflow_api_dlrm(
     transformed = workflow.fit_transform(dataset)
     transformed.to_parquet(output_path=output_path, shuffle=shuffle)
 
-    # Can still access the final ddf if we didn't shuffle
+    result = transformed.to_ddf().compute()
+    assert len(df0) == len(result)
+    assert result["x"].min() == 0.0
+    assert result["x"].isna().sum() == 0
+    assert result["y"].min() == 0.0
+    assert result["y"].isna().sum() == 0
+
+    # Check categories.  Need to sort first to make sure we are comparing
+    # "apples to apples"
+    expect = df0.sort_values(["label", "x", "y", "id"]).reset_index(drop=True).reset_index()
+    got = result.sort_values(["label", "x", "y", "id"]).reset_index(drop=True).reset_index()
+    dfm = expect.merge(got, on="index", how="inner")[["name-string_x", "name-string_y"]]
+    dfm_gb = dfm.groupby(["name-string_x", "name-string_y"]).agg(
+        {"name-string_x": "count", "name-string_y": "count"}
+    )
+    if freq_threshold:
+        dfm_gb = dfm_gb[dfm_gb["name-string_x"] >= freq_threshold]
+    assert_eq(dfm_gb["name-string_x"], dfm_gb["name-string_y"], check_names=False)
+
+    # Read back from disk
+    df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+
+    # Can directly compare the final ddf to the result if we didn't shuffle
     if not shuffle:
-        result = transformed.to_ddf().compute()
-        assert len(df0) == len(result)
-        assert result["x"].min() == 0.0
-        assert result["x"].isna().sum() == 0
-        assert result["y"].min() == 0.0
-
-        assert result["y"].isna().sum() == 0
-
-        # Check category counts
-        cat_expect = df0.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
-        cat_result = (
-            result.groupby("name-string").agg({"name-string": "count"}).reset_index(drop=True)
-        )
-        if freq_threshold:
-            cat_expect = cat_expect[cat_expect["name-string"] >= freq_threshold]
-            # Note that we may need to skip the 0th element in result (null mapping)
-            assert_eq(
-                cat_expect,
-                cat_result.iloc[1:] if len(cat_result) > len(cat_expect) else cat_result,
-                check_index=False,
-            )
-        else:
-            assert_eq(cat_expect, cat_result)
-
-        # Read back from disk
-        df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
         for col in df_disk:
             assert_eq(result[col], df_disk[col])
-
     else:
-        df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
         assert len(df0) == len(df_disk)
 
 
@@ -155,36 +148,16 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     assert "name-string_x_std" in result.columns
     assert "name-string_x_var" not in result.columns
 
-    # Check "count"
-    assert_eq(
-        result[["name-cat", "name-cat_count"]]
-        .drop_duplicates()
-        .sort_values("name-cat")["name-cat_count"],
-        df0.groupby("name-cat").agg({"x": "count"})["x"].astype(np.int64),
-        check_index=False,
-        check_dtype=False,  # May get int64 vs int32
-        check_names=False,
-    )
-
-    # Check "min"
-    assert_eq(
-        result[["name-string", "name-string_x_min"]]
-        .drop_duplicates()
-        .sort_values("name-string")["name-string_x_min"],
-        df0.groupby("name-string").agg({"x": "min"})["x"],
-        check_index=False,
-        check_names=False,
-    )
-
-    # Check "std"
-    assert_eq(
-        result[["name-string", "name-string_x_std"]]
-        .drop_duplicates()
-        .sort_values("name-string")["name-string_x_std"],
-        df0.groupby("name-string").agg({"x": "std"})["x"],
-        check_index=False,
-        check_names=False,
-    )
+    # Check results.  Need to sort for direct comparison
+    expect = df0.sort_values(["label", "x", "y", "id"]).reset_index(drop=True).reset_index()
+    got = result.sort_values(["label", "x", "y", "id"]).reset_index(drop=True).reset_index()
+    gb_e = expect.groupby("name-cat").aggregate({"name-cat": "count", "x": ["sum", "min", "std"]})
+    gb_e.columns = ["count", "sum", "min", "std"]
+    df_check = got.merge(gb_e, left_on="name-cat", right_index=True, how="left")
+    assert_eq(df_check["name-cat_count"], df_check["count"].astype("int64"), check_names=False)
+    assert_eq(df_check["name-cat_x_sum"], df_check["sum"], check_names=False)
+    assert_eq(df_check["name-cat_x_min"], df_check["min"], check_names=False)
+    assert_eq(df_check["name-cat_x_std"], df_check["std"], check_names=False)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
