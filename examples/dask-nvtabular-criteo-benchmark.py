@@ -101,7 +101,7 @@ def main(args):
     """
 
     # Input
-    data_path = args.data_path
+    data_path = args.data_path[:-1] if args.data_path[-1] == "/" else args.data_path
     freq_limit = args.freq_limit
     out_files_per_proc = args.out_files_per_proc
     high_card_columns = args.high_cards.split(",")
@@ -111,7 +111,7 @@ def main(args):
         os.environ["UCX_TLS"] = UCX_TLS
 
     # Cleanup output directory
-    BASE_DIR = args.out_path
+    BASE_DIR = args.out_path[:-1] if args.out_path[-1] == "/" else args.out_path
     dask_workdir = os.path.join(BASE_DIR, "workdir")
     output_path = os.path.join(BASE_DIR, "output")
     stats_path = os.path.join(BASE_DIR, "stats")

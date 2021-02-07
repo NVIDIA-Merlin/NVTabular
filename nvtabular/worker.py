@@ -19,6 +19,7 @@ import threading
 from io import BytesIO
 
 import cudf
+import fsspec
 from dask.distributed import get_worker
 
 # Use global variable as the default
@@ -81,7 +82,7 @@ def fetch_table_data(
             if reader == cudf.io.read_parquet:
                 # If the file is already in parquet format,
                 # we can just move the same bytes to host memory
-                with open(path, "rb") as f:
+                with fsspec.open(path, "rb") as f:
                     table_cache[path] = BytesIO(f.read())
                 table = reader(table_cache[path], index=False, columns=columns, **kwargs)
             else:
