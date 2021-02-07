@@ -26,6 +26,10 @@ except ImportError:
     psutil = None
 
 
+import cudf
+import pandas as pd
+
+
 def _pynvml_mem_size(kind="total", index=0):
     import pynvml
 
@@ -71,3 +75,13 @@ def device_mem_size(kind="total", cpu=False):
 
 def get_rmm_size(size):
     return (size // 256) * 256
+
+
+def _concat_columns(args: list):
+    """Dispatch function to concatenate DataFrames with axis=1"""
+    if len(args) == 1:
+        return args[0]
+    else:
+        _lib = cudf if isinstance(args[0], cudf.DataFrame) else pd
+        return _lib.concat(args, axis=1)
+    return None

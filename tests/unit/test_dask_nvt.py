@@ -237,7 +237,16 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
         dataset = Dataset(paths, names=allcols_csv, part_size="1MB", cpu=cpu)
 
     # TODO: Add transforms to this test as CPU-backed ops are enabled
-    transformed = dataset
+    cat_names = ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    conts = cont_names >> ops.FillMissing() >> ops.Normalize()
+    workflow = Workflow(conts + cat_names + label_name, client=client)
+    transformed = workflow.fit_transform(dataset)
+
+    # if cpu:
+    #     import pdb; pdb.set_trace()
 
     # Write out dataset
     output_path = os.path.join(tmpdir, "processed")
@@ -246,7 +255,7 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     # Check the final result
     df_disk = dd_read_parquet(output_path, engine="pyarrow", index=False).compute()
     assert_eq(
-        df0.sort_values(["id", "x"]),
-        df_disk.sort_values(["id", "x"])[mycols_pq if engine == "parquet" else mycols_csv],
+        df0.sort_values(["id", "x"])[["name-string", "label"]],
+        df_disk.sort_values(["id", "x"])[["name-string", "label"]],
         check_index=False,
     )

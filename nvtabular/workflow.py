@@ -29,6 +29,7 @@ from dask.core import flatten
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
+from nvtabular.utils import _concat_columns
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -91,7 +92,7 @@ class Workflow:
         """
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client)
+        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client, cpu=dataset.cpu)
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
@@ -287,7 +288,7 @@ def _transform_ddf(ddf, column_groups):
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
-        meta=cudf.DataFrame({k: [] for k in columns}),
+        meta=type(ddf._meta)({k: [] for k in columns}),
     )
 
 
@@ -305,12 +306,12 @@ def _transform_partition(root_gdf, column_groups):
             columns = None
             for parent in column_group.parents:
                 parent_gdf = _transform_partition(root_gdf, [parent])
-                if not gdf:
+                if gdf is None or not len(gdf):
                     gdf = parent_gdf[parent.flattened_columns]
                     columns = set(parent.flattened_columns)
                 else:
                     new_columns = set(parent.flattened_columns) - columns
-                    gdf = cudf.concat([gdf, parent_gdf[list(new_columns)]], axis=1)
+                    gdf = _concat_columns([gdf, parent_gdf[list(new_columns)]])
                     columns.update(new_columns)
         else:
             # otherwise select the input from the root gdf
@@ -334,6 +335,6 @@ def _transform_partition(root_gdf, column_groups):
         if not output:
             output = gdf[column_group.flattened_columns]
         else:
-            output = cudf.concat([output, gdf[column_group.flattened_columns]], axis=1)
+            output = _concat_columns([output, gdf[column_group.flattened_columns]])
 
     return output
