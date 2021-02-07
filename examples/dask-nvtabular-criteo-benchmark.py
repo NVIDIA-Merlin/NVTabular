@@ -19,6 +19,7 @@ import os
 import shutil
 import time
 import warnings
+import fsspec
 
 import boto3
 import rmm
@@ -49,7 +50,7 @@ def setup_dirs(BASE_DIR, dask_workdir, output_path, stats_path):
         bucket = storage_client.bucket(bucket_name)
         # Delete all the objects within the directories
         for dir_path in (dask_workdir, output_path, stats_path):
-            blobs = bucket.list_blobs(prefix=dir_path.split(bucket_name)[1])
+            blobs = bucket.list_blobs(prefix=dir_path.split(bucket_name)[1][1:])
             for blob in blobs:
                 blob.delete()
 
@@ -61,7 +62,7 @@ def setup_dirs(BASE_DIR, dask_workdir, output_path, stats_path):
         bucket = s3.Bucket(bucket_name)
         # Delete all the objects within the directories
         for dir_path in (dask_workdir, output_path, stats_path):
-            bucket.objects.filter(Prefix=dir_path.split(bucket_name)[1]).delete()
+            bucket.objects.filter(Prefix=dir_path.split(bucket_name)[1][1:]).delete()
 
     # Local Storage
     else:
