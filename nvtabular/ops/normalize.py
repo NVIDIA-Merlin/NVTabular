@@ -13,18 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import Union
 
-import cudf
 import dask.dataframe as dd
-import pandas as pd
 from nvtx import annotate
 
+from ..dispatch import DataFrameType
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
-
-DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
 
 
 class Normalize(StatOperator):

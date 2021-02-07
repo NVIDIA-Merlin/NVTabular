@@ -27,9 +27,9 @@ import dask
 from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
+from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.utils import _concat_columns
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")

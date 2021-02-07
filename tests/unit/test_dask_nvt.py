@@ -245,9 +245,6 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     workflow = Workflow(conts + cat_names + label_name, client=client)
     transformed = workflow.fit_transform(dataset)
 
-    # if cpu:
-    #     import pdb; pdb.set_trace()
-
     # Write out dataset
     output_path = os.path.join(tmpdir, "processed")
     transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=4)
