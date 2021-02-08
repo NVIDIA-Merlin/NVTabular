@@ -244,7 +244,7 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=4)
 
     # Check the final result
-    df_disk = dd_read_parquet(output_path, engine="pyarrow", index=False).compute()
+    df_disk = dd_read_parquet(output_path, engine="pyarrow").compute()
     assert_eq(
         df0.sort_values(["id", "x"]),
         df_disk.sort_values(["id", "x"])[mycols_pq if engine == "parquet" else mycols_csv],

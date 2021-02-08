@@ -655,9 +655,6 @@ class BaseParquetWriter(ThreadedWriter):
         if self.bytes_io:
             bio = BytesIO()
             self.data_bios.append(bio)
-
-            # Passing index=False when creating ParquetWriter
-            # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
             self.data_writers.append(self.pwriter(bio, *_args, **_kwargs))
         else:
             self.data_writers.append(self.pwriter(path, *_args, **_kwargs))
@@ -711,6 +708,8 @@ class BaseParquetWriter(ThreadedWriter):
 class GPUParquetWriter(BaseParquetWriter):
     def __init__(self, out_dir, **kwargs):
         super().__init__(out_dir, **kwargs)
+        # Passing index=False when creating ParquetWriter
+        # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
         self.pwriter_kwargs = {"compression": None, "index": False}
 
     @property
@@ -718,7 +717,7 @@ class GPUParquetWriter(BaseParquetWriter):
         return pwriter_cudf
 
     def _read_parquet(self, source):
-        return cudf.io.read_parquet(source, index=False)
+        return cudf.io.read_parquet(source)
 
     def _to_parquet(self, df, sink):
         fn = sink.split(self.fs.sep)[-1]
@@ -763,7 +762,7 @@ class CPUParquetWriter(BaseParquetWriter):
         return pwriter_pyarrow
 
     def _read_parquet(self, source):
-        return pd.read_parquet(source, use_pandas_metadata=False, engine="pyarrow")
+        return pd.read_parquet(source, engine="pyarrow")
 
     def _to_parquet(self, df, sink):
         md = []
