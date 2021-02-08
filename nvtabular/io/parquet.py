@@ -28,6 +28,7 @@ import cudf
 import dask
 import dask.dataframe as dd
 import dask_cudf
+import fsspec
 from cudf.io.parquet import ParquetWriter as pwriter
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
@@ -608,6 +609,7 @@ class ParquetWriter(ThreadedWriter):
     def __init__(self, out_dir, **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = []
+        self.data_files = []
         self.data_writers = []
         self.data_bios = []
         self._lock = threading.RLock()
@@ -626,6 +628,7 @@ class ParquetWriter(ThreadedWriter):
             while len(self.data_writers) <= idx:
                 path = self._get_filename(len(self.data_writers))
                 self.data_paths.append(path)
+
                 if self.bytes_io:
                     bio = BytesIO()
                     self.data_bios.append(bio)
@@ -634,7 +637,9 @@ class ParquetWriter(ThreadedWriter):
                     # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
                     self.data_writers.append(pwriter(bio, compression=None, index=False))
                 else:
-                    self.data_writers.append(pwriter(path, compression=None, index=False))
+                    f = fsspec.open(path, mode="wb").open()
+                    self.data_files.append(f)
+                    self.data_writers.append(pwriter(f, compression=None, index=False))
 
             return self.data_writers[idx]
 
@@ -675,6 +680,8 @@ class ParquetWriter(ThreadedWriter):
         for writer, path in zip(self.data_writers, self.data_paths):
             fn = path.split(self.fs.sep)[-1]
             md_dict[fn] = writer.close(metadata_file_path=fn)
+        for f in self.data_files:
+            f.close()
         return md_dict
 
     def _bytesio_to_disk(self):
@@ -693,7 +700,8 @@ def _write_pq_metadata_file(md_list, fs, path):
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
         with fs.open(metadata_path, "wb") as fil:
-            _meta.tofile(fil)
+            for m in _meta:
+                fil.write(m)
     return
 
 

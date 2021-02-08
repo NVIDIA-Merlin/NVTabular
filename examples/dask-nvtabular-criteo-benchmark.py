@@ -19,7 +19,6 @@ import os
 import shutil
 import time
 import warnings
-import fsspec
 
 import boto3
 import rmm
