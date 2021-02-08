@@ -176,7 +176,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
         assert isinstance(result.compute(), pd.DataFrame)
         dataset.to_gpu()
 
-    # Write to disk
+    # Write to disk and read back
     path = str(tmpdir)
     dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
     ddf_check = dask_cudf.read_parquet(path)
