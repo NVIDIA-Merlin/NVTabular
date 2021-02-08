@@ -163,6 +163,9 @@ class ThreadedWriter(Writer):
             if self.num_threads > 1:
                 self.queue.put((x, group))
             else:
+                import warnings
+
+                warnings.warn(f"writing {group} for index {x} and self.cpu={self.cpu}")
                 self._write_table(x, group)
 
         # wait for all writes to finish before exiting
