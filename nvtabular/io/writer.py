@@ -17,6 +17,7 @@ import json
 import math
 import queue
 import threading
+import warnings
 
 import cupy as cp
 import numpy as np
@@ -138,11 +139,6 @@ class ThreadedWriter(Writer):
         else:
             self._add_data_scatter(df)
 
-        # wait for all writes to finish before exiting
-        # (so that we aren't using memory)
-        if self.num_threads > 1:
-            self.queue.join()
-
     def _add_data_scatter(self, gdf):
         """Write scattered pieces.
 
@@ -168,7 +164,13 @@ class ThreadedWriter(Writer):
             if self.num_threads > 1:
                 self.queue.put((x, group))
             else:
+                warnings.warn(f"writing {group} for index {x}")
                 self._write_table(x, group)
+
+        # wait for all writes to finish before exiting
+        # (so that we aren't using memory)
+        if self.num_threads > 1:
+            self.queue.join()
 
     def _add_data_slice(self, df):
         """Write shuffled slices.
@@ -193,6 +195,11 @@ class ThreadedWriter(Writer):
                 self.queue.put((x, to_write))
             else:
                 self._write_table(x, to_write)
+
+        # wait for all writes to finish before exiting
+        # (so that we aren't using memory)
+        if self.num_threads > 1:
+            self.queue.join()
 
     def package_general_metadata(self):
         data = {}

@@ -179,8 +179,12 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     # Write to disk and read back
     path = str(tmpdir)
     dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
-    ddf_check = dask.dataframe.read_parquet(path)
-    assert_eq(df, ddf_check.compute(), check_index=False)
+    ddf_check = dask_cudf.read_parquet(path).compute()
+    if origin in ("dd", "dask_cudf"):
+        # Multiple partitions are not guarenteed the same
+        # order in output file.
+        ddf_check = ddf_check.sort_values("a")
+    assert_eq(df, ddf_check, check_index=False)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
