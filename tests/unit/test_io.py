@@ -168,9 +168,9 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
 
         # Should still work if we move to the CPU
         # (test behavior after repetitive conversion)
-        dataset.to_cpu()
-        dataset.to_gpu()
-        dataset.to_gpu()
+        # dataset.to_cpu()
+        # dataset.to_gpu()
+        # dataset.to_gpu()
         dataset.to_cpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), pd.DataFrame)
@@ -179,7 +179,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     # Write to disk and read back
     path = str(tmpdir)
     dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
-    ddf_check = dask_cudf.read_parquet(glob.glob(path + "/*.parquet"))
+    ddf_check = dask_cudf.read_parquet(path)
     assert_eq(df, ddf_check.compute(), check_index=False)
 
 
