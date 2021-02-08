@@ -140,7 +140,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
             df = dask.dataframe.from_pandas(df, npartitions=4)
     elif origin in ("cudf", "dask_cudf"):
         df = cudf.DataFrame({"a": range(100)})
-        if origin == "dd":
+        if origin == "dask_cudf":
             df = dask_cudf.from_cudf(df, npartitions=4)
 
     # Convert to an NVTabular Dataset and back to a ddf
@@ -176,11 +176,15 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
         assert isinstance(result.compute(), pd.DataFrame)
         dataset.to_gpu()
 
-    # Write to disk
+    # Write to disk and read back
     path = str(tmpdir)
     dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
-    ddf_check = dask_cudf.read_parquet(path, index=False)
-    assert_eq(df, ddf_check.compute(), check_index=False)
+    ddf_check = dask_cudf.read_parquet(path).compute()
+    if origin in ("dd", "dask_cudf"):
+        # Multiple partitions are not guarenteed the same
+        # order in output file.
+        ddf_check = ddf_check.sort_values("a")
+    assert_eq(df, ddf_check, check_index=False)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
