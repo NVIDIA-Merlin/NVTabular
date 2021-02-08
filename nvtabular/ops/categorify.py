@@ -149,6 +149,7 @@ class Categorify(StatOperator):
         it will be used to specify explicit mappings from a column name to a number of buckets.
         In this case, only the columns specified in the keys of `num_buckets`
         will be transformed.
+    fix_emb_size : bool, default False
     """
 
     def __init__(
@@ -164,6 +165,7 @@ class Categorify(StatOperator):
         name_sep="_",
         search_sorted=False,
         num_buckets=None,
+        fix_emb_size=False,
     ):
 
         # We need to handle three types of encoding here:
@@ -216,6 +218,7 @@ class Categorify(StatOperator):
         self.search_sorted = search_sorted
         self.categories = {}
         self.mh_columns = []
+        self.fix_emb_size = fix_emb_size
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -269,6 +272,7 @@ class Categorify(StatOperator):
             self.on_host,
             concat_groups=self.encode_type == "joint",
             name_sep=self.name_sep,
+            fix_emb_size=self.fix_emb_size,
         )
         # TODO: we can't use the dtypes on the ddf here since they are incorrect
         # so we're loading from the partitions. fix.
@@ -508,7 +512,7 @@ def _top_level_groupby(
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
 def _mid_level_groupby(
-    dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep
+    dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep, fix_emb
 ):
     if isinstance(col_group, str):
         col_group = [col_group]
@@ -528,8 +532,11 @@ def _mid_level_groupby(
     gb.reset_index(drop=False, inplace=True)
 
     name_count = _make_name(*(col_group + ["count"]), sep=name_sep)
-    if freq_limit:
+    if freq_limit and not fix_emb:
         gb = gb[gb[name_count] >= freq_limit]
+
+    elif freq_limit and fix_emb:
+        gb = gb.nlargest(n=freq_limit, columns=name_count)
 
     required = col_group.copy()
     if "count" in agg_list:
@@ -686,6 +693,7 @@ def _groupby_to_disk(
     stat_name="categories",
     concat_groups=False,
     name_sep="_",
+    fix_emb=False,
 ):
     if not col_groups:
         return {}
@@ -763,6 +771,7 @@ def _groupby_to_disk(
                 on_host,
                 concat_groups,
                 name_sep,
+                fix_emb,
             )
 
         dsk[(level_3_name, c)] = (
@@ -796,6 +805,7 @@ def _category_stats(
     stat_name="categories",
     concat_groups=False,
     name_sep="_",
+    fix_emb_size=False,
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -813,6 +823,7 @@ def _category_stats(
             stat_name=stat_name,
             concat_groups=concat_groups,
             name_sep=name_sep,
+            fix_emb=fix_emb_size,
         )
 
     # Otherwise, getting category-statistics
@@ -887,6 +898,7 @@ def _encode(
             codes = cudf.DataFrame({"order": cp.arange(len(gdf))}, index=gdf.index)
             for c in selection_l:
                 codes[c] = gdf[c].copy()
+        # only do hashing
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(gdf, buckets, selection_l, encode_type=encode_type)
         # apply frequency hashing
