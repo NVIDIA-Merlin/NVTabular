@@ -131,12 +131,22 @@ class ThreadedWriter(Writer):
             self._write_table(0, df, True)
             return
 
-        # Use different mechanism to decompose and write each df
-        # partition, depending on the backend (pandas or cudf).
-        if self.cpu:
-            self._add_data_slice(df)
+        if self.num_out_files == 1:
+            # Only writing to a single file. No need to
+            # scatter or slice the data before writing
+            self._add_single_file(df)
         else:
-            self._add_data_scatter(df)
+            # Use different mechanism to decompose and write each df
+            # partition, depending on the backend (pandas or cudf).
+            if self.cpu:
+                self._add_data_slice(df)
+            else:
+                self._add_data_scatter(df)
+
+        # wait for all writes to finish before exiting
+        # (so that we aren't using memory)
+        if self.num_threads > 1:
+            self.queue.join()
 
     def _add_data_scatter(self, gdf):
         """Write scattered pieces.
@@ -163,15 +173,7 @@ class ThreadedWriter(Writer):
             if self.num_threads > 1:
                 self.queue.put((x, group))
             else:
-                import warnings
-
-                warnings.warn(f"writing {group} for index {x} and self.cpu={self.cpu}")
                 self._write_table(x, group)
-
-        # wait for all writes to finish before exiting
-        # (so that we aren't using memory)
-        if self.num_threads > 1:
-            self.queue.join()
 
     def _add_data_slice(self, df):
         """Write shuffled slices.
@@ -197,10 +199,17 @@ class ThreadedWriter(Writer):
             else:
                 self._write_table(x, to_write)
 
-        # wait for all writes to finish before exiting
-        # (so that we aren't using memory)
+    def _add_single_file(self, df):
+        """Write to single file.
+
+        This method works for both pandas and cudf backends.
+        """
+        df = _shuffle_df(df) if self.shuffle else df
+        self.num_samples[0] = self.num_samples[0] + df.shape[0]
         if self.num_threads > 1:
-            self.queue.join()
+            self.queue.put((0, df))
+        else:
+            self._write_table(0, df)
 
     def package_general_metadata(self):
         data = {}
