@@ -149,7 +149,13 @@ class Categorify(StatOperator):
         it will be used to specify explicit mappings from a column name to a number of buckets.
         In this case, only the columns specified in the keys of `num_buckets`
         will be transformed.
-    fix_emb_size : bool, default False
+    fix_emb_size : bool, default False.
+        If this param is set to True, freq_threshold should also be given. This will use
+        freq_threshold value as topK value for each categorical feature. For exp, if freq_threshold
+        is set to 1000, the first 1000 most frequent categoricals will be encoded, and the rest will
+        be mapped to a single bucket. To map the rest to a number of buckets, set num_buckets param
+        as indicated. Final embedding table size will be `freq_threshold + num_buckets + 1` for each
+        categorical feature, where num_buckets > 2.
     """
 
     def __init__(
@@ -535,9 +541,6 @@ def _mid_level_groupby(
     if freq_limit and not fix_emb:
         gb = gb[gb[name_count] >= freq_limit]
 
-    elif freq_limit and fix_emb:
-        gb = gb.nlargest(n=freq_limit, columns=name_count)
-
     required = col_group.copy()
     if "count" in agg_list:
         required.append(name_count)
@@ -638,7 +641,9 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
+def _write_uniques(
+    dfs, base_path, col_group, on_host, concat_groups, name_sep, freq_limit=None, fix_emb=False
+):
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
     if isinstance(col_group, str):
@@ -656,6 +661,9 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
         new_cols = {}
         nulls_missing = False
         for col in col_group:
+            name_count = col + "_count"
+            if freq_limit and fix_emb:
+                df = df.nlargest(n=freq_limit, columns=name_count)
             if not df[col]._column.has_nulls:
                 nulls_missing = True
                 new_cols[col] = _concat(
@@ -782,6 +790,8 @@ def _groupby_to_disk(
             on_host,
             concat_groups,
             name_sep,
+            freq_limit_val,
+            fix_emb,
         )
 
     dsk[finalize_labels_name] = (
