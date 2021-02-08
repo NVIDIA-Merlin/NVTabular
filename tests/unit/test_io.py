@@ -140,7 +140,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
             df = dask.dataframe.from_pandas(df, npartitions=4)
     elif origin in ("cudf", "dask_cudf"):
         df = cudf.DataFrame({"a": range(100)})
-        if origin == "dd":
+        if origin == "dask_cudf":
             df = dask_cudf.from_cudf(df, npartitions=4)
 
     # Convert to an NVTabular Dataset and back to a ddf

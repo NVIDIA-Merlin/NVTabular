@@ -17,7 +17,6 @@ import json
 import math
 import queue
 import threading
-import warnings
 
 import cupy as cp
 import numpy as np
@@ -164,7 +163,6 @@ class ThreadedWriter(Writer):
             if self.num_threads > 1:
                 self.queue.put((x, group))
             else:
-                warnings.warn(f"writing {group} for index {x} and self.cpu={self.cpu}")
                 self._write_table(x, group)
 
         # wait for all writes to finish before exiting
