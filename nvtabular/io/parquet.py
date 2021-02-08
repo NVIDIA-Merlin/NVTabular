@@ -16,6 +16,7 @@
 import functools
 import itertools
 import logging
+import math
 import operator
 import os
 import threading
@@ -764,9 +765,24 @@ class CPUParquetWriter(BaseParquetWriter):
     def _read_parquet(self, source):
         return pd.read_parquet(source, engine="pyarrow")
 
+    def _get_row_group_size(self, df):
+        # Make sure our `row_group_size` argument (which corresponds
+        # to the number of rows in each row-group) will produce
+        # row-groups ~128MB in size.
+        if not hasattr(self, "_row_group_size"):
+            row_size = df.memory_usage(deep=True).sum() / max(len(df), 1)
+            self._row_group_size = math.ceil(128_000_000 / row_size)
+        return self._row_group_size
+
     def _to_parquet(self, df, sink):
         md = []
-        df.to_parquet(sink, metadata_collector=md, compression=None, index=False)
+        df.to_parquet(
+            sink,
+            row_group_size=self._get_row_group_size(df),
+            metadata_collector=md,
+            compression=None,
+            index=False,
+        )
         fn = sink.split(self.fs.sep)[-1]
         md[0].set_file_path(fn)
         return md
@@ -794,7 +810,7 @@ class CPUParquetWriter(BaseParquetWriter):
         else:
             table = pa.Table.from_pandas(data)
             writer = self._get_or_create_writer(idx, schema=table.schema)
-            writer.write_table(table)
+            writer.write_table(table, row_group_size=self._get_row_group_size(data))
 
     @classmethod
     def write_special_metadata(cls, md, fs, out_dir):
