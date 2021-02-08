@@ -179,7 +179,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     # Write to disk and read back
     path = str(tmpdir)
     dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
-    ddf_check = dask_cudf.read_parquet(path)
+    ddf_check = dask_cudf.read_parquet(glob.glob(path + "/*.parquet"))
     assert_eq(df, ddf_check.compute(), check_index=False)
 
 
