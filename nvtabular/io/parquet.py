@@ -31,14 +31,10 @@ import dask
 import dask.dataframe as dd
 import dask_cudf
 import fsspec
-<<<<<<< HEAD
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
 from cudf.io.parquet import ParquetWriter as pwriter_cudf
-=======
-from cudf.io.parquet import ParquetWriter as pwriter
->>>>>>> 429cb2a9861617cbfc21199a0a0c3810eb27c208
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
@@ -675,23 +671,7 @@ class BaseParquetWriter(ThreadedWriter):
                 # Append writer
                 path = self._get_filename(len(self.data_writers))
                 self.data_paths.append(path)
-<<<<<<< HEAD
                 self._append_writer(path, schema=schema)
-=======
-
-                if self.bytes_io:
-                    bio = BytesIO()
-                    self.data_bios.append(bio)
-
-                    # Passing index=False when creating ParquetWriter
-                    # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
-                    self.data_writers.append(pwriter(bio, compression=None, index=False))
-                else:
-                    f = fsspec.open(path, mode="wb").open()
-                    self.data_files.append(f)
-                    self.data_writers.append(pwriter(f, compression=None, index=False))
-
->>>>>>> 429cb2a9861617cbfc21199a0a0c3810eb27c208
             return self.data_writers[idx]
 
     def _write_table(self, idx, data, has_list_column=False):
@@ -855,7 +835,6 @@ def _write_pq_metadata_file_cudf(md_list, fs, path):
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
         with fs.open(metadata_path, "wb") as fil:
             fil.write(bytes(_meta))
-<<<<<<< HEAD
     return
 
 
@@ -871,8 +850,6 @@ def _write_pq_metadata_file_pyarrow(md_list, fs, path):
                 _meta.append_row_groups(md)
         with fs.open(metadata_path, "wb") as fil:
             _meta.write_metadata_file(fil)
-=======
->>>>>>> 429cb2a9861617cbfc21199a0a0c3810eb27c208
     return
 
 
