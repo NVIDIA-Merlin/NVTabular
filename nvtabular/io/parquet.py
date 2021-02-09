@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 import functools
+import itertools
 import logging
+import math
 import operator
 import os
 import threading
@@ -28,7 +30,10 @@ import cudf
 import dask
 import dask.dataframe as dd
 import dask_cudf
-from cudf.io.parquet import ParquetWriter as pwriter
+import pandas as pd
+import pyarrow as pa
+import toolz as tlz
+from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
@@ -37,9 +42,10 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
+from pyarrow.parquet import ParquetWriter as pwriter_pyarrow
 
 from .dataset_engine import DatasetEngine
-from .shuffle import Shuffle, _shuffle_gdf
+from .shuffle import Shuffle, _shuffle_df
 from .writer import ThreadedWriter
 
 LOG = logging.getLogger("nvtabular")
@@ -61,7 +67,14 @@ class ParquetDatasetEngine(DatasetEngine):
         super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
-            rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0, row_group=0))
+            if cpu:
+                # Use pyarrow for CPU version.
+                # Pandas does not enable single-row-group access.
+                rg_byte_size_0 = _memory_usage(pq.ParquetFile(path0).read_row_group(0).to_pandas())
+            else:
+                rg_byte_size_0 = _memory_usage(
+                    cudf.io.read_parquet(path0, row_groups=0, row_group=0)
+                )
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -578,10 +591,10 @@ def _write_metadata_file(md_list, fs, output_path, gmd_base):
     gmd["file_stats"] = file_stats
 
     # Write general metadata file
-    ParquetWriter.write_general_metadata(gmd, fs, output_path)
+    GPUParquetWriter.write_general_metadata(gmd, fs, output_path)
 
     # Write specialized parquet metadata file
-    ParquetWriter.write_special_metadata(pmd, fs, output_path)
+    GPUParquetWriter.write_special_metadata(pmd, fs, output_path)
 
     # Return total file count (sanity check)
     return len(data_paths)
@@ -591,7 +604,7 @@ def _write_data(data_list, output_path, fs, fn):
 
     # Initialize chunked writer
     path = fs.sep.join([output_path, fn])
-    writer = pwriter(path, compression=None)
+    writer = pwriter_cudf(path, compression=None)
     rows = 0
 
     # Loop over the data_list, convert to cudf,
@@ -604,13 +617,28 @@ def _write_data(data_list, output_path, fs, fn):
     return {fn: {"md": writer.close(metadata_file_path=fn), "rows": rows}}
 
 
-class ParquetWriter(ThreadedWriter):
+class BaseParquetWriter(ThreadedWriter):
     def __init__(self, out_dir, **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = []
         self.data_writers = []
         self.data_bios = []
         self._lock = threading.RLock()
+        self.pwriter = self._pwriter
+        self.pwriter_kwargs = {}
+
+    @property
+    def _pwriter(self):
+        """Returns ParquetWriter Backend Class"""
+        raise (NotImplementedError)
+
+    def _read_parquet(self, source):
+        """Read parquet data from source"""
+        raise (NotImplementedError)
+
+    def _to_parquet(self, df, sink):
+        """Write data to parquet and return pq metadata"""
+        raise (NotImplementedError)
 
     def _get_filename(self, i):
         if self.use_guid:
@@ -620,23 +648,81 @@ class ParquetWriter(ThreadedWriter):
 
         return os.path.join(self.out_dir, fn)
 
-    def _get_or_create_writer(self, idx):
+    def _append_writer(self, path, schema=None, add_args=None, add_kwargs=None):
+        # Add additional args and kwargs
+        _args = add_args or []
+        _kwargs = tlz.merge(self.pwriter_kwargs, add_kwargs or {})
+
+        if self.bytes_io:
+            bio = BytesIO()
+            self.data_bios.append(bio)
+            self.data_writers.append(self.pwriter(bio, *_args, **_kwargs))
+        else:
+            self.data_writers.append(self.pwriter(path, *_args, **_kwargs))
+
+    def _get_or_create_writer(self, idx, schema=None):
         # lazily initializes a writer for the given index
         with self._lock:
             while len(self.data_writers) <= idx:
+                # Append writer
                 path = self._get_filename(len(self.data_writers))
                 self.data_paths.append(path)
-                if self.bytes_io:
-                    bio = BytesIO()
-                    self.data_bios.append(bio)
-
-                    # Passing index=False when creating ParquetWriter
-                    # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
-                    self.data_writers.append(pwriter(bio, compression=None, index=False))
-                else:
-                    self.data_writers.append(pwriter(path, compression=None, index=False))
-
+                self._append_writer(path, schema=schema)
             return self.data_writers[idx]
+
+    def _write_table(self, idx, data, has_list_column=False):
+        """Write data"""
+        raise (NotImplementedError)
+
+    def _write_thread(self):
+        while True:
+            item = self.queue.get()
+            try:
+                if item is self._eod:
+                    break
+                idx, data = item
+                with self.write_locks[idx]:
+                    self._write_table(idx, data, has_list_column=False)
+            finally:
+                self.queue.task_done()
+
+    @classmethod
+    def write_special_metadata(cls, md, fs, out_dir):
+        """Write global _metadata file"""
+        raise (NotImplementedError)
+
+    def _close_writers(self):
+        """Close writers and return extracted metadata"""
+        raise (NotImplementedError)
+
+    def _bytesio_to_disk(self):
+        md = {}
+        for bio, path in zip(self.data_bios, self.data_paths):
+            df = self._read_parquet(bio)
+            bio.close()
+            if self.shuffle == Shuffle.PER_WORKER:
+                df = _shuffle_df(df)
+            md[path] = self._to_parquet(df, path)
+        return md
+
+
+class GPUParquetWriter(BaseParquetWriter):
+    def __init__(self, out_dir, **kwargs):
+        super().__init__(out_dir, **kwargs)
+        # Passing index=False when creating ParquetWriter
+        # to avoid bug: https://github.com/rapidsai/cudf/issues/7011
+        self.pwriter_kwargs = {"compression": None, "index": False}
+
+    @property
+    def _pwriter(self):
+        return pwriter_cudf
+
+    def _read_parquet(self, source):
+        return cudf.io.read_parquet(source)
+
+    def _to_parquet(self, df, sink):
+        fn = sink.split(self.fs.sep)[-1]
+        return df.to_parquet(sink, metadata_file_path=fn, compression=None, index=False)
 
     def _write_table(self, idx, data, has_list_column=False):
         if has_list_column:
@@ -649,18 +735,6 @@ class ParquetWriter(ThreadedWriter):
             writer = self._get_or_create_writer(idx)
             writer.write_table(data)
 
-    def _write_thread(self):
-        while True:
-            item = self.queue.get()
-            try:
-                if item is self._eod:
-                    break
-                idx, data = item
-                with self.write_locks[idx]:
-                    self._write_table(idx, data, False)
-            finally:
-                self.queue.task_done()
-
     @classmethod
     def write_special_metadata(cls, md, fs, out_dir):
         # Sort metadata by file name and convert list of
@@ -668,7 +742,7 @@ class ParquetWriter(ThreadedWriter):
         md_list = [m[1] for m in sorted(list(md.items()), key=lambda x: natural_sort_key(x[0]))]
 
         # Aggregate metadata and write _metadata file
-        _write_pq_metadata_file(md_list, fs, out_dir)
+        _write_pq_metadata_file_cudf(md_list, fs, out_dir)
 
     def _close_writers(self):
         md_dict = {}
@@ -677,23 +751,99 @@ class ParquetWriter(ThreadedWriter):
             md_dict[fn] = writer.close(metadata_file_path=fn)
         return md_dict
 
-    def _bytesio_to_disk(self):
-        for bio, path in zip(self.data_bios, self.data_paths):
-            gdf = cudf.io.read_parquet(bio, index=False)
-            bio.close()
-            if self.shuffle == Shuffle.PER_WORKER:
-                gdf = _shuffle_gdf(gdf)
-            gdf.to_parquet(path, compression=None, index=False)
-        return
+
+class CPUParquetWriter(BaseParquetWriter):
+    def __init__(self, out_dir, **kwargs):
+        super().__init__(out_dir, **kwargs)
+        self.md_collectors = {}
+        self.pwriter_kwargs = {"compression": None}
+
+    @property
+    def _pwriter(self):
+        return pwriter_pyarrow
+
+    def _read_parquet(self, source):
+        return pd.read_parquet(source, engine="pyarrow")
+
+    def _get_row_group_size(self, df):
+        # Make sure our `row_group_size` argument (which corresponds
+        # to the number of rows in each row-group) will produce
+        # row-groups ~128MB in size.
+        if not hasattr(self, "_row_group_size"):
+            row_size = df.memory_usage(deep=True).sum() / max(len(df), 1)
+            self._row_group_size = math.ceil(128_000_000 / row_size)
+        return self._row_group_size
+
+    def _to_parquet(self, df, sink):
+        md = []
+        df.to_parquet(
+            sink,
+            row_group_size=self._get_row_group_size(df),
+            metadata_collector=md,
+            compression=None,
+            index=False,
+        )
+        fn = sink.split(self.fs.sep)[-1]
+        md[0].set_file_path(fn)
+        return md
+
+    def _append_writer(self, path, schema=None):
+
+        # Define "metadata collector" for pyarrow
+        _md_collector = []
+        _args = [schema]
+        _kwargs = {"metadata_collector": _md_collector}
+
+        # Use `BaseParquetWriter` logic
+        super()._append_writer(path, add_args=_args, add_kwargs=_kwargs)
+
+        # Keep track of "metadata collector" for pyarrow
+        self.md_collectors[path] = _md_collector
+
+    def _write_table(self, idx, data, has_list_column=False):
+        table = pa.Table.from_pandas(data)
+        writer = self._get_or_create_writer(idx, schema=table.schema)
+        writer.write_table(table, row_group_size=self._get_row_group_size(data))
+
+    @classmethod
+    def write_special_metadata(cls, md, fs, out_dir):
+        # Sort metadata by file name and convert list of
+        # tuples to a list of metadata byte-blobs
+        md_list = [m[1] for m in sorted(list(md.items()), key=lambda x: natural_sort_key(x[0]))]
+
+        # Aggregate metadata and write _metadata file
+        _write_pq_metadata_file_pyarrow(md_list, fs, out_dir)
+
+    def _close_writers(self):
+        for writer, path in zip(self.data_writers, self.data_paths):
+            fn = path.split(self.fs.sep)[-1]
+            writer.close()
+            self.md_collectors[path][0].set_file_path(fn)
+        return self.md_collectors
 
 
-def _write_pq_metadata_file(md_list, fs, path):
+def _write_pq_metadata_file_cudf(md_list, fs, path):
     """ Converts list of parquet metadata objects into a single shared _metadata file. """
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
         with fs.open(metadata_path, "wb") as fil:
-            _meta.tofile(fil)
+            fil.write(bytes(_meta))
+    return
+
+
+def _write_pq_metadata_file_pyarrow(md_list, fs, path):
+    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    if md_list:
+        metadata_path = fs.sep.join([path, "_metadata"])
+        _meta = None
+        for md in itertools.chain(*md_list):
+            if _meta is None:
+                _meta = md
+            else:
+                _meta.append_row_groups(md)
+        with fs.open(metadata_path, "wb") as fil:
+            _meta.write_metadata_file(fil)
     return
 
 
@@ -703,18 +853,8 @@ def guid():
 
 
 def _memory_usage(df):
-    """this function is a workaround of a problem with getting memory usage of lists
-    in cudf0.16.  This can be deleted and just use `df.memory_usage(deep= True, index=True).sum()`
-    once we are using cudf 0.17 (fixed in https://github.com/rapidsai/cudf/pull/6549)"""
-    size = 0
-    for col in df._data.columns:
-        if cudf.utils.dtypes.is_list_dtype(col.dtype):
-            for child in col.base_children:
-                size += child.__sizeof__()
-        else:
-            size += col._memory_usage(deep=True)
-    size += df.index.memory_usage(deep=True)
-    return size
+    """Return the total memory usage of a DataFrame"""
+    return df.memory_usage(deep=True).sum()
 
 
 def _append_row_groups(metadata, md, err_collector, path):

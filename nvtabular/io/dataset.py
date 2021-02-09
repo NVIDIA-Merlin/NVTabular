@@ -439,11 +439,6 @@ class Dataset:
             List of label columns
         """
 
-        # For now, we must move to the GPU to
-        # write an output dataset.
-        # TODO: Support CPU-mode output
-        self.to_gpu()
-
         shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
 
@@ -454,6 +449,7 @@ class Dataset:
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
         if shuffle or out_files_per_proc or cats or conts or labels:
+
             # Output dask_cudf DataFrame to dataset
             _ddf_to_dataset(
                 ddf,
@@ -467,6 +463,7 @@ class Dataset:
                 "parquet",
                 self.client,
                 num_threads,
+                self.cpu,
             )
             return
 
@@ -555,6 +552,7 @@ class Dataset:
             "hugectr",
             self.client,
             num_threads,
+            self.cpu,
         )
 
     @property
