@@ -184,7 +184,8 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dask_normalize(client, tmpdir, datasets, engine):
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     df1 = cudf.read_parquet(paths[0])[mycols_pq]
@@ -199,7 +200,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine):
     conts = cont_names >> ops.FillMissing() >> normalize
     workflow = Workflow(conts + cat_names + label_name, client=client)
 
-    dataset = Dataset(paths, engine)
+    dataset = Dataset(paths, engine=engine, cpu=cpu)
     result = workflow.fit_transform(dataset).to_ddf().compute()
 
     # Make sure we collected accurate statistics
@@ -236,8 +237,13 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     else:
         dataset = Dataset(paths, names=allcols_csv, part_size="1MB", cpu=cpu)
 
-    # TODO: Add transforms to this test as CPU-backed ops are enabled
-    transformed = dataset
+    # Simple transform (normalize)
+    cat_names = ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+    conts = cont_names >> ops.FillMissing() >> ops.Normalize()
+    workflow = Workflow(conts + cat_names + label_name, client=client)
+    transformed = workflow.fit_transform(dataset)
 
     # Write out dataset
     output_path = os.path.join(tmpdir, "processed")
@@ -246,7 +252,7 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     # Check the final result
     df_disk = dd_read_parquet(output_path, engine="pyarrow").compute()
     assert_eq(
-        df0.sort_values(["id", "x"]),
-        df_disk.sort_values(["id", "x"])[mycols_pq if engine == "parquet" else mycols_csv],
+        df0.sort_values(["id", "x"])[["name-string", "label"]],
+        df_disk.sort_values(["id", "x"])[["name-string", "label"]],
         check_index=False,
     )
