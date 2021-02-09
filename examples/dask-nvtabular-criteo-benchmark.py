@@ -20,11 +20,19 @@ import shutil
 import time
 import warnings
 
-import boto3
+try:
+    import boto3
+except ImportError:
+    boto3 = None
+
 import rmm
 from dask.distributed import Client, performance_report
 from dask_cuda import LocalCUDACluster
-from google.cloud import storage
+
+try:
+    from google.cloud import storage
+except ImportError:
+    storage = None
 
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
@@ -40,12 +48,15 @@ def setup_rmm_pool(client, pool_size):
     return None
 
 
-def setup_dirs(BASE_DIR, dask_workdir, output_path, stats_path):
+def setup_dirs(base_dir, dask_workdir, output_path, stats_path):
     # GCP Storage
-    if "gs://" in BASE_DIR:
+    if "gs://" in base_dir:
+        # Check module is imported
+        if storage is None:
+            raise ImportError("google.cloud is not imported")
         # Get client and bucket
         storage_client = storage.Client()
-        bucket_name = BASE_DIR.split("/")[2]
+        bucket_name = base_dir.split("/")[2]
         bucket = storage_client.bucket(bucket_name)
         # Delete all the objects within the directories
         for dir_path in (dask_workdir, output_path, stats_path):
@@ -54,10 +65,13 @@ def setup_dirs(BASE_DIR, dask_workdir, output_path, stats_path):
                 blob.delete()
 
     # AWS Storage
-    elif "s3://" in BASE_DIR:
+    elif "s3://" in base_dir:
+        # Check module is imported
+        if boto3 is None:
+            raise ImportError("boto3 is not imported")
         # Get client and bucket
         s3 = boto3.resource("s3")
-        bucket_name = BASE_DIR.split("/")[2]
+        bucket_name = base_dir.split("/")[2]
         bucket = s3.Bucket(bucket_name)
         # Delete all the objects within the directories
         for dir_path in (dask_workdir, output_path, stats_path):
@@ -65,8 +79,8 @@ def setup_dirs(BASE_DIR, dask_workdir, output_path, stats_path):
 
     # Local Storage
     else:
-        if not os.path.isdir(BASE_DIR):
-            os.mkdir(BASE_DIR)
+        if not os.path.isdir(base_dir):
+            os.mkdir(base_dir)
         for dir_path in (dask_workdir, output_path, stats_path):
             if os.path.isdir(dir_path):
                 shutil.rmtree(dir_path)
@@ -111,11 +125,11 @@ def main(args):
         os.environ["UCX_TLS"] = UCX_TLS
 
     # Cleanup output directory
-    BASE_DIR = args.out_path[:-1] if args.out_path[-1] == "/" else args.out_path
-    dask_workdir = os.path.join(BASE_DIR, "workdir")
-    output_path = os.path.join(BASE_DIR, "output")
-    stats_path = os.path.join(BASE_DIR, "stats")
-    setup_dirs(BASE_DIR, dask_workdir, output_path, stats_path)
+    base_dir = args.out_path[:-1] if args.out_path[-1] == "/" else args.out_path
+    dask_workdir = os.path.join(base_dir, "workdir")
+    output_path = os.path.join(base_dir, "output")
+    stats_path = os.path.join(base_dir, "stats")
+    setup_dirs(base_dir, dask_workdir, output_path, stats_path)
 
     # Use Criteo dataset by default (for now)
     cont_names = (
