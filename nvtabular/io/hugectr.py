@@ -38,7 +38,7 @@ class HugeCTRWriter(ThreadedWriter):
         for i, writer in enumerate(self.data_writers):
             writer.write(header.tobytes())
 
-    def _write_table(self, idx, data):
+    def _write_table(self, idx, data, has_list_columns=False):
         # Prepare data format
         np_label = data[self.labels].to_pandas().astype(np.single).to_numpy()
         np_conts = data[self.conts].to_pandas().astype(np.single).to_numpy()
