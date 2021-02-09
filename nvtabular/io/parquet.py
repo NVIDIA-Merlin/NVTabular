@@ -30,6 +30,7 @@ import cudf
 import dask
 import dask.dataframe as dd
 import dask_cudf
+import fsspec
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
@@ -621,6 +622,7 @@ class BaseParquetWriter(ThreadedWriter):
     def __init__(self, out_dir, **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = []
+        self.data_files = []
         self.data_writers = []
         self.data_bios = []
         self._lock = threading.RLock()
@@ -658,7 +660,9 @@ class BaseParquetWriter(ThreadedWriter):
             self.data_bios.append(bio)
             self.data_writers.append(self.pwriter(bio, *_args, **_kwargs))
         else:
-            self.data_writers.append(self.pwriter(path, *_args, **_kwargs))
+            f = fsspec.open(path, mode="wb").open()
+            self.data_files.append(f)
+            self.data_writers.append(self.pwriter(f, *_args, **_kwargs))
 
     def _get_or_create_writer(self, idx, schema=None):
         # lazily initializes a writer for the given index
@@ -749,6 +753,8 @@ class GPUParquetWriter(BaseParquetWriter):
         for writer, path in zip(self.data_writers, self.data_paths):
             fn = path.split(self.fs.sep)[-1]
             md_dict[fn] = writer.close(metadata_file_path=fn)
+        for f in self.data_files:
+            f.close()
         return md_dict
 
 
