@@ -63,6 +63,7 @@ def _shuffle_df(df, size=None):
         arr = cp.arange(size)
         # Note that np.random.shuffle "should" Work for both gpu
         # and cpu (via NEP-18), but it seems the cupy API is
-        # still needed here for correct behavior.
+        # still needed here for correct behavior.  (Probably related
+        # to https://github.com/cupy/cupy/issues/2824)
         cp.random.shuffle(arr)
     return df.iloc[arr]
