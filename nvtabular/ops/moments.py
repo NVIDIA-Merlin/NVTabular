@@ -15,7 +15,6 @@
 #
 import math
 
-import cudf
 import numpy as np
 import pandas as pd
 from dask.base import tokenize
@@ -63,7 +62,7 @@ def _custom_moments(ddf, split_every=32):
 
 
 def _chunkwise_moments(df):
-    df2 = cudf.DataFrame()
+    df2 = type(df)()
     for col in df.columns:
         df2[col] = df[col].astype("float64").pow(2)
     vals = {
@@ -87,9 +86,13 @@ def _tree_node_moments(inputs):
 
 
 def _finalize_moments(inp, ddof=1):
-    n = inp["df-count"].iloc[0].to_pandas()
-    x = inp["df-sum"].iloc[0].to_pandas()
-    x2 = inp["df2-sum"].iloc[0].to_pandas()
+    n = inp["df-count"].iloc[0]
+    x = inp["df-sum"].iloc[0]
+    x2 = inp["df2-sum"].iloc[0]
+    if hasattr(n, "to_pandas"):
+        n = n.to_pandas()
+        x = x.to_pandas()
+        x2 = x2.to_pandas()
 
     # Use sum-squared approach to get variance
     var = x2 - x ** 2 / n
