@@ -149,13 +149,13 @@ class Categorify(StatOperator):
         it will be used to specify explicit mappings from a column name to a number of buckets.
         In this case, only the columns specified in the keys of `num_buckets`
         will be transformed.
-    fix_emb_size : bool, default False.
-        If this param is set to True, freq_threshold should also be given. This will use
-        freq_threshold value as topK value for each categorical feature. For exp, if freq_threshold
+    max_size : int or dictionary:{column: max_size_value}, default 0
+        If this param is set, freq_threshold should not be given. This will use
+        max_size value as topK value for each categorical feature. For exp, if max_size
         is set to 1000, the first 1000 most frequent categoricals will be encoded, and the rest will
         be mapped to a single bucket. To map the rest to a number of buckets, set num_buckets param
-        as indicated. Final embedding table size will be `freq_threshold + num_buckets + 1` for each
-        categorical feature, where num_buckets > 2.
+        as indicated. Final embedding table size will be `max_size` for each categorical feature,
+        where num_buckets > 2.
     """
 
     def __init__(
@@ -171,7 +171,7 @@ class Categorify(StatOperator):
         name_sep="_",
         search_sorted=False,
         num_buckets=None,
-        fix_emb_size=False,
+        max_size=0,
     ):
 
         # We need to handle three types of encoding here:
@@ -224,7 +224,6 @@ class Categorify(StatOperator):
         self.search_sorted = search_sorted
         self.categories = {}
         self.mh_columns = []
-        self.fix_emb_size = fix_emb_size
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -242,6 +241,14 @@ class Categorify(StatOperator):
             raise ValueError(
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
+        if isinstance(max_size, dict):
+            self.max_size = max_size
+        elif isinstance(max_size, int) or max_size is None:
+            self.max_size = max_size
+        else:
+            raise ValueError("max_size must be dict or int, got type {}".format(type(max_size)))
+        if freq_threshold and max_size:
+            raise ValueError("cannot use freq_threshold together with max_size")
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
@@ -278,7 +285,8 @@ class Categorify(StatOperator):
             self.on_host,
             concat_groups=self.encode_type == "joint",
             name_sep=self.name_sep,
-            fix_emb_size=self.fix_emb_size,
+            max_size=self.max_size,
+            num_buckets=self.num_buckets,
         )
         # TODO: we can't use the dtypes on the ddf here since they are incorrect
         # so we're loading from the partitions. fix.
@@ -352,6 +360,7 @@ class Categorify(StatOperator):
                     buckets=self.num_buckets,
                     encode_type=self.encode_type,
                     cat_names=cat_names,
+                    max_size=self.max_size,
                 )
                 if self.dtype:
                     new_gdf[name] = new_gdf[name].astype(self.dtype, copy=False)
@@ -518,7 +527,7 @@ def _top_level_groupby(
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
 def _mid_level_groupby(
-    dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep, fix_emb
+    dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep, max_emb_size
 ):
     if isinstance(col_group, str):
         col_group = [col_group]
@@ -538,7 +547,7 @@ def _mid_level_groupby(
     gb.reset_index(drop=False, inplace=True)
 
     name_count = _make_name(*(col_group + ["count"]), sep=name_sep)
-    if freq_limit and not fix_emb:
+    if freq_limit and not max_emb_size:
         gb = gb[gb[name_count] >= freq_limit]
 
     required = col_group.copy()
@@ -642,7 +651,7 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
 
 @annotate("write_uniques", color="green", domain="nvt_python")
 def _write_uniques(
-    dfs, base_path, col_group, on_host, concat_groups, name_sep, freq_limit=None, fix_emb=False
+    dfs, base_path, col_group, on_host, concat_groups, name_sep, max_emb_size=None, nbuckets=None
 ):
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
@@ -662,8 +671,16 @@ def _write_uniques(
         nulls_missing = False
         for col in col_group:
             name_count = col + "_count"
-            if freq_limit and fix_emb:
-                df = df.nlargest(n=freq_limit, columns=name_count)
+            # apply fix emb size
+            if max_emb_size and max_emb_size[col] <= len(df):
+                if nbuckets:
+                    if isinstance(nbuckets, int):
+                        nlargest = max_emb_size[col] - nbuckets - 1
+                    else:
+                        nlargest = max_emb_size[col] - nbuckets[col] - 1
+                else:
+                    nlargest = max_emb_size[col] - 1
+                df = df.nlargest(n=nlargest, columns=name_count)
             if not df[col]._column.has_nulls:
                 nulls_missing = True
                 new_cols[col] = _concat(
@@ -701,7 +718,8 @@ def _groupby_to_disk(
     stat_name="categories",
     concat_groups=False,
     name_sep="_",
-    fix_emb=False,
+    max_size=None,
+    nbuckets=None,
 ):
     if not col_groups:
         return {}
@@ -779,7 +797,7 @@ def _groupby_to_disk(
                 on_host,
                 concat_groups,
                 name_sep,
-                fix_emb,
+                max_size,
             )
 
         dsk[(level_3_name, c)] = (
@@ -790,8 +808,8 @@ def _groupby_to_disk(
             on_host,
             concat_groups,
             name_sep,
-            freq_limit_val,
-            fix_emb,
+            max_size,
+            nbuckets,
         )
 
     dsk[finalize_labels_name] = (
@@ -815,7 +833,8 @@ def _category_stats(
     stat_name="categories",
     concat_groups=False,
     name_sep="_",
-    fix_emb_size=False,
+    max_size=None,
+    num_buckets=None,
 ):
     # Check if we only need categories
     if agg_cols == [] and agg_list == []:
@@ -833,7 +852,8 @@ def _category_stats(
             stat_name=stat_name,
             concat_groups=concat_groups,
             name_sep=name_sep,
-            fix_emb=fix_emb_size,
+            max_size=max_size,
+            nbuckets=num_buckets,
         )
 
     # Otherwise, getting category-statistics
@@ -854,6 +874,8 @@ def _category_stats(
         stat_name=stat_name,
         concat_groups=concat_groups,
         name_sep=name_sep,
+        max_size=max_size,
+        nbuckets=num_buckets,
     )
 
 
@@ -869,10 +891,12 @@ def _encode(
     buckets=None,
     encode_type="joint",
     cat_names=None,
+    max_size=0,
 ):
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
-
+    if max_size:
+        freq_threshold = 1
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
