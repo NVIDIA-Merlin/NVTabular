@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import cudf
 import dask_cudf
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -100,9 +101,11 @@ class DataFrameDatasetEngine(DatasetEngine):
                     dependencies=new_deps,
                     key_dependencies=_ddf.dask.key_dependencies,
                 )
-                return new_dd_object(
-                    hlg, pandas_conversion_dep, _ddf._meta.to_pandas(), _ddf.divisions
+
+                _meta = (
+                    _ddf._meta.to_pandas() if destination == "cpu" else cudf.from_pandas(_ddf._meta)
                 )
+                return new_dd_object(hlg, pandas_conversion_dep, _meta, _ddf.divisions)
 
         if destination == "cpu":
             # Just extend the existing graph to move the collection to cpu

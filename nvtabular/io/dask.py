@@ -16,6 +16,7 @@
 import collections
 
 import dask
+import pandas as pd
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
@@ -39,6 +40,7 @@ def _write_output_partition(
     label_names,
     output_format,
     num_threads,
+    cpu,
 ):
     gdf_size = len(gdf)
     out_files_per_proc = out_files_per_proc or 1
@@ -55,6 +57,7 @@ def _write_output_partition(
                 use_guid=True,
                 bytes_io=(shuffle == Shuffle.PER_WORKER),
                 num_threads=num_threads,
+                cpu=cpu,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
             writer_cache[processed_path] = writer
@@ -77,12 +80,15 @@ def _ddf_to_dataset(
     output_format,
     client,
     num_threads,
+    cpu,
 ):
     # Construct graph for Dask-based dataset write
     name = "write-processed"
     write_name = name + tokenize(
         ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
     )
+    # Check that the data is in the correct place
+    assert isinstance(ddf._meta, pd.DataFrame) is cpu
     task_list = []
     dsk = {}
     for idx in range(ddf.npartitions):
@@ -99,6 +105,7 @@ def _ddf_to_dataset(
             label_names,
             output_format,
             num_threads,
+            cpu,
         )
         task_list.append(key)
     dsk[name] = (lambda x: x, task_list)
@@ -112,10 +119,10 @@ def _ddf_to_dataset(
         out = dask.compute(out, scheduler="synchronous")[0]
 
     # Follow-up Shuffling and _metadata creation
-    _finish_dataset(client, ddf, output_path, fs, output_format)
+    _finish_dataset(client, ddf, output_path, fs, output_format, cpu)
 
 
-def _finish_dataset(client, ddf, output_path, fs, output_format):
+def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
     # Finish data writing
     if client:
         client.cancel(ddf)
@@ -139,7 +146,7 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
     if not isinstance(output_path, str):
         output_path = str(output_path)
 
-    wc, fs = _writer_cls_factory(output_format, output_path)
+    wc, fs = _writer_cls_factory(output_format, output_path, cpu)
     wc.write_general_metadata(general_md, fs, output_path)
     wc.write_special_metadata(special_md, fs, output_path)
 
