@@ -700,8 +700,7 @@ def _write_pq_metadata_file(md_list, fs, path):
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
         with fs.open(metadata_path, "wb") as fil:
-            for m in _meta:
-                fil.write(m)
+            fil.write(bytes(_meta))
     return
 
 
