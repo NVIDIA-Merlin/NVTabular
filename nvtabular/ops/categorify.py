@@ -152,10 +152,13 @@ class Categorify(StatOperator):
     max_size : int or dictionary:{column: max_size_value}, default 0
         If this param is set, freq_threshold should not be given. This will use
         max_size value as topK value for each categorical feature. For exp, if max_size
-        is set to 1000, the first 1000 most frequent categoricals will be encoded, and the rest will
-        be mapped to a single bucket. To map the rest to a number of buckets, set num_buckets param
-        as indicated. Final embedding table size will be `max_size` for each categorical feature,
-        where num_buckets > 2.
+        is set to 1000, the first 1000 most frequent categoricals will be encoded, and the rest
+        will be mapped to a single bucket. To map the rest to a number of buckets, set
+        num_buckets param as indicated, i.e., num_buckets > 1. In that case, topK value
+        will be `max_size - num_buckets -1`. Note that num_buckets value should be smaller than the
+        max_size value. Final embedding table size will be `max_size` for each categorical feature.
+        If max_size is set as bigger than the number of unique features in a column, then each
+        feature's cardinality is considered for embedding table size.
     """
 
     def __init__(
@@ -248,7 +251,7 @@ class Categorify(StatOperator):
         else:
             raise ValueError("max_size must be dict or int, got type {}".format(type(max_size)))
         if freq_threshold and max_size:
-            raise ValueError("cannot use freq_threshold together with max_size")
+            raise ValueError("cannot use freq_threshold param together with max_size param")
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
@@ -376,7 +379,9 @@ class Categorify(StatOperator):
         return list(flatten(columns, container=tuple))
 
     def get_embedding_sizes(self, columns):
-        return _get_embeddings_dask(self.categories, columns, self.num_buckets, self.freq_threshold)
+        return _get_embeddings_dask(
+            self.categories, columns, self.num_buckets, self.freq_threshold, self.max_size
+        )
 
     def get_multihot_columns(self):
         return self.mh_columns
@@ -426,19 +431,25 @@ def get_embedding_sizes(workflow):
     return single_hots, multi_hots
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
+def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0, max_size=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
+    if isinstance(max_size, int):
+        max_size = {name: max_size for name in cat_names}
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
         if buckets and col in buckets and freq_limit[col] > 1:
             num_rows += buckets.get(col, 0)
-        if buckets and col in buckets and not freq_limit[col]:
+        if buckets and col in buckets and not freq_limit[col] and not max_size[col]:
             num_rows = buckets.get(col, 0)
+        if num_rows > max_size[col]:
+            num_rows = num_rows
+        elif buckets and col in buckets and max_size[col] > 1:
+            num_rows += buckets.get(col, 0)
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -672,7 +683,7 @@ def _write_uniques(
         for col in col_group:
             name_count = col + "_count"
             # apply fix emb size
-            if max_emb_size and max_emb_size[col] <= len(df):
+            if max_emb_size and max_emb_size[col] < len(df):
                 if nbuckets:
                     if isinstance(nbuckets, int):
                         nlargest = max_emb_size[col] - nbuckets - 1
@@ -680,6 +691,8 @@ def _write_uniques(
                         nlargest = max_emb_size[col] - nbuckets[col] - 1
                 else:
                     nlargest = max_emb_size[col] - 1
+                if nlargest <= 0:
+                    raise ValueError("`nlargest` cannot be 0 or negative")
                 df = df.nlargest(n=nlargest, columns=name_count)
             if not df[col]._column.has_nulls:
                 nulls_missing = True
@@ -895,6 +908,7 @@ def _encode(
 ):
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
+    # this is to apply freq_hashing logic
     if max_size:
         freq_threshold = 1
     value = None
