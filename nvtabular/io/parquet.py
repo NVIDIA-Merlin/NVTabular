@@ -682,7 +682,7 @@ class BaseParquetWriter(ThreadedWriter):
                     break
                 idx, data = item
                 with self.write_locks[idx]:
-                    self._write_table(idx, data, False)
+                    self._write_table(idx, data, has_list_column=False)
             finally:
                 self.queue.task_done()
 
@@ -801,16 +801,9 @@ class CPUParquetWriter(BaseParquetWriter):
         self.md_collectors[path] = _md_collector
 
     def _write_table(self, idx, data, has_list_column=False):
-        if has_list_column:
-            # Need to check if pandas supports chunked parquet writing
-            # with list columns.
-            filename = self._get_filename(len(self.data_paths))
-            data.to_parquet(filename)
-            self.data_paths.append(filename)
-        else:
-            table = pa.Table.from_pandas(data)
-            writer = self._get_or_create_writer(idx, schema=table.schema)
-            writer.write_table(table, row_group_size=self._get_row_group_size(data))
+        table = pa.Table.from_pandas(data)
+        writer = self._get_or_create_writer(idx, schema=table.schema)
+        writer.write_table(table, row_group_size=self._get_row_group_size(data))
 
     @classmethod
     def write_special_metadata(cls, md, fs, out_dir):
@@ -835,7 +828,7 @@ def _write_pq_metadata_file_cudf(md_list, fs, path):
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
         with fs.open(metadata_path, "wb") as fil:
-            _meta.tofile(fil)
+            fil.write(bytes(_meta))
     return
 
 
