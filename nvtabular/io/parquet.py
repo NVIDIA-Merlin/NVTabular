@@ -820,9 +820,7 @@ def _write_pq_metadata_file_cudf(md_list, fs, path):
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
-        # import pdb; pdb.set_trace()
         with fs.open(metadata_path, "wb") as fil:
-            # _meta.tofile(fil)
             fil.write(bytes(_meta))
     return
 
