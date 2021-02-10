@@ -1,6 +1,8 @@
 import os
-import cudf
 import shutil
+
+import cudf
+
 import nvtabular as nvt
 from nvtabular.ops import get_embedding_sizes
 

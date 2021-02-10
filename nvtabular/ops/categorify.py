@@ -442,14 +442,14 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0, max_size=
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
-        if buckets and col in buckets and freq_limit[col] > 1:
-            num_rows += buckets.get(col, 0)
-        if buckets and col in buckets and not freq_limit[col] and not max_size[col]:
-            num_rows = buckets.get(col, 0)
-        if num_rows > max_size[col]:
-            num_rows = num_rows
-        elif buckets and col in buckets and max_size[col] > 1:
-            num_rows += buckets.get(col, 0)
+
+        bucket_size = buckets.get(col, 0)
+        if bucket_size and not freq_limit[col] and not max_size[col]:
+            # pure hashing (no categorical lookup)
+            num_rows = bucket_size
+        else:
+            num_rows += bucket_size
+
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -682,8 +682,7 @@ def _write_uniques(
         nulls_missing = False
         for col in col_group:
             name_count = col + "_count"
-            # apply fix emb size
-            if max_emb_size and max_emb_size[col] < len(df):
+            if max_emb_size:
                 if nbuckets:
                     if isinstance(nbuckets, int):
                         nlargest = max_emb_size[col] - nbuckets - 1
@@ -691,9 +690,12 @@ def _write_uniques(
                         nlargest = max_emb_size[col] - nbuckets[col] - 1
                 else:
                     nlargest = max_emb_size[col] - 1
+
                 if nlargest <= 0:
                     raise ValueError("`nlargest` cannot be 0 or negative")
-                df = df.nlargest(n=nlargest, columns=name_count)
+
+                if nlargest < len(df):
+                    df = df.nlargest(n=nlargest, columns=name_count)
             if not df[col]._column.has_nulls:
                 nulls_missing = True
                 new_cols[col] = _concat(
