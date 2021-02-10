@@ -561,7 +561,8 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
                 )
 
 
-def test_categorify_hash_bucket():
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_hash_bucket(cpu):
     df = cudf.DataFrame(
         {
             "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
@@ -571,7 +572,7 @@ def test_categorify_hash_bucket():
     )
     cat_names = ["Authors", "Engaging_User"]
     buckets = 10
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     hash_features = cat_names >> ops.Categorify(num_buckets=buckets)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
