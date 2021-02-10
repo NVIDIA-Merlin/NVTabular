@@ -542,6 +542,60 @@ def test_categorify_hash_bucket():
     assert nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] == buckets
 
 
+@pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
+def test_categorify_max_size(max_emb_size):
+    df = cudf.DataFrame(
+        {
+            "Author": [
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_D",
+                "User_F",
+                "User_F",
+            ],
+            "Engaging_User": [
+                "User_B",
+                "User_B",
+                "User_A",
+                "User_D",
+                "User_B",
+                "User_M",
+                "User_A",
+                "User_D",
+                "User_N",
+                "User_F",
+                "User_E",
+            ],
+        }
+    )
+
+    cat_names = ["Author", "Engaging_User"]
+    buckets = 3
+    dataset = nvt.Dataset(df)
+    cat_features = cat_names >> ops.Categorify(max_size=max_emb_size, num_buckets=buckets)
+    processor = nvt.Workflow(cat_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    if isinstance(max_emb_size, int):
+        max_emb_size = {name: max_emb_size for name in cat_names}
+
+    # check encoded values after freq_hashing with fix emb size
+    assert new_gdf["Author"].max() <= max_emb_size["Author"]
+    assert new_gdf["Engaging_User"].max() <= max_emb_size["Engaging_User"]
+    # check embedding size is less than max_size after hashing with fix emb size.
+    assert nvt.ops.get_embedding_sizes(processor)["Author"][0] <= max_emb_size["Author"]
+    assert (
+        nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] <= max_emb_size["Engaging_User"]
+    )
+
+
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups):
 
