@@ -38,15 +38,29 @@ class FillMissing(Operator):
         The constant value to replace missing values with.
     """
 
-    def __init__(self, fill_val=0):
+    def __init__(self, fill_val=0, add_binary_cols=False):
         super().__init__()
         self.fill_val = fill_val
+        self.add_binary_cols = add_binary_cols
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        return gdf[columns].fillna(self.fill_val)
+        if self.add_binary_cols:
+            for col in columns:
+                gdf[f"{col}_filled"] = gdf[col].isna()
+                gdf[col] = gdf[col].fillna(self.fill_val)
+        else:
+            gdf[columns] = gdf[columns].fillna(self.fill_val)
+
+        return gdf
 
     transform.__doc__ = Operator.transform.__doc__
+
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+        output_cols = columns[:]
+        if self.add_binary_cols:
+            output_cols.extend([f"{col}_filled" for col in columns])
+        return output_cols
 
 
 class FillMedian(StatOperator):
@@ -66,8 +80,9 @@ class FillMedian(StatOperator):
         proc.add_cont_feature(nvt.ops.FillMedian())
     """
 
-    def __init__(self):
+    def __init__(self, add_binary_cols=False):
         super().__init__()
+        self.add_binary_cols = add_binary_cols
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
@@ -76,6 +91,8 @@ class FillMedian(StatOperator):
             raise RuntimeError("need to call 'fit' before running transform")
 
         for col in columns:
+            if self.add_binary_cols:
+                gdf[f"{col}_filled"] = gdf[col].isna()
             gdf[col] = gdf[col].fillna(self.medians[col])
         return gdf
 
@@ -96,3 +113,9 @@ class FillMedian(StatOperator):
 
     def clear(self):
         self.medians = {}
+
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+        output_cols = columns[:]
+        if self.add_binary_cols:
+            output_cols.extend([f"{col}_filled" for col in columns])
+        return output_cols
