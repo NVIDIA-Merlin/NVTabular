@@ -268,9 +268,11 @@ class Categorify(StatOperator):
         # undrlying ddf is already a pandas-backed collection
         if isinstance(ddf._meta, pd.DataFrame):
             self.on_host = False
-            # self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
-            self.cat_cache = "disk"  # TODO: Allow "host" (without parquet logic)
+            # Cannot use "device" caching if the data is pandas-backed
+            self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
             if self.search_sorted:
+                # Pandas' search_sorted only works with Series.
+                # For now, it is safest to disallow this option.
                 self.search_sorted = False
                 warnings.warn("Cannot use `search_sorted=True` for pandas-backed data.")
 

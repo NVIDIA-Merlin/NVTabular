@@ -263,17 +263,6 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_preproc_cpu_categorify(client, tmpdir, datasets, engine, shuffle, cpu):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    # if engine == "parquet":
-    #     df1 = cudf.read_parquet(paths[0])[mycols_pq]
-    #     df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    # elif engine == "csv":
-    #     df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
-    #     df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
-    # else:
-    #     df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
-    #     df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
-    # df0 = cudf.concat([df1, df2], axis=0)
-
     if engine in ("parquet", "csv"):
         dataset = Dataset(paths, part_size="1MB", cpu=cpu)
     else:

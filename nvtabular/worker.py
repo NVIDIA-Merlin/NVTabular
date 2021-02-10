@@ -76,25 +76,29 @@ def fetch_table_data(
         df.reset_index(drop=False, inplace=True)
         return df
 
+    cache_df = cache == "device"
     if table is None:
         if cache in ("device", "disk"):
             table = reader(path, columns=columns, **kwargs)
         elif cache == "host":
             if reader == cudf.io.read_parquet:
-                # If the file is already in parquet format,
+                # Using cudf-backed data with "host" caching.
+                # Use BytesIO to cache data on host.
+
+                # Since the file is already in parquet format,
                 # we can just move the same bytes to host memory
                 with fsspec.open(path, "rb") as f:
                     table_cache[path] = BytesIO(f.read())
                 table = reader(table_cache[path], columns=columns, **kwargs)
             else:
-                # Otherwise, we should convert the format to parquet
+                # Using pandas-backed data with "host" caching.
+                # Just read in data and cache as a pandas DataFrame.
                 table = reader(path, columns=columns, **kwargs)
-                table_cache[path] = BytesIO()
-                table.to_parquet(table_cache[path])
+                cache_df = True
         if cats_only:
             table.index.name = "labels"
             table.reset_index(drop=False, inplace=True)
-        if cache == "device":
+        if cache_df:
             table_cache[path] = table.copy(deep=False)
     return table
 
