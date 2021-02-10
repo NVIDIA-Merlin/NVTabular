@@ -256,3 +256,41 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
         df_disk.sort_values(["id", "x"])[["name-string", "label"]],
         check_index=False,
     )
+
+
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_preproc_cpu_categorify(client, tmpdir, datasets, engine, shuffle, cpu):
+    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    # if engine == "parquet":
+    #     df1 = cudf.read_parquet(paths[0])[mycols_pq]
+    #     df2 = cudf.read_parquet(paths[1])[mycols_pq]
+    # elif engine == "csv":
+    #     df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
+    #     df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+    # else:
+    #     df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
+    #     df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
+    # df0 = cudf.concat([df1, df2], axis=0)
+
+    if engine in ("parquet", "csv"):
+        dataset = Dataset(paths, part_size="1MB", cpu=cpu)
+    else:
+        dataset = Dataset(paths, names=allcols_csv, part_size="1MB", cpu=cpu)
+
+    # Simple transform (categorify)
+    cat_names = ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+    cats = ColumnGroup(cat_names)
+    cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
+    workflow = Workflow(cont_names + cat_features + label_name, client=client)
+    transformed = workflow.fit_transform(dataset)
+
+    # Write out dataset
+    output_path = os.path.join(tmpdir, "processed")
+    transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=4)
+
+    # Check the final result
+    dd_read_parquet(output_path, engine="pyarrow").compute()

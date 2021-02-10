@@ -14,25 +14,33 @@
 #
 
 import os
+import warnings
 from operator import getitem
 
 import cudf
-import cupy as cp
-import dask_cudf
+import dask.dataframe as dd
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 from cudf.core.column import as_column, build_column
-from cudf.io.parquet import ParquetWriter
 from cudf.utils.dtypes import is_list_dtype
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
+from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 from nvtx import annotate
 from pyarrow import parquet as pq
 
+from nvtabular.dispatch import (
+    DataFrameType,
+    _arange,
+    _parquet_writer_dispatch,
+    _read_parquet_dispatch,
+    _series_has_nulls,
+)
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnNames, Operator
@@ -235,7 +243,7 @@ class Categorify(StatOperator):
             )
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
@@ -255,6 +263,16 @@ class Categorify(StatOperator):
                 name = _make_name(*group, sep=self.name_sep)
                 for col in group:
                     self.storage_name[col] = name
+
+        # Check metadata type to reset on_host and cat_cache if the
+        # undrlying ddf is already a pandas-backed collection
+        if isinstance(ddf._meta, pd.DataFrame):
+            self.on_host = False
+            # self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
+            self.cat_cache = "disk"  # TODO: Allow "host" (without parquet logic)
+            if self.search_sorted:
+                self.search_sorted = False
+                warnings.warn("Cannot use `search_sorted=True` for pandas-backed data.")
 
         # convert tuples to lists
         columns = [list(c) if isinstance(c, tuple) else c for c in columns]
@@ -290,7 +308,7 @@ class Categorify(StatOperator):
         self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
         new_gdf = gdf.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in columns)
@@ -415,7 +433,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0):
         buckets = {name: buckets for name in cat_names}
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
-        num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
+        num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
         if buckets and col in buckets and freq_limit[col] > 1:
             num_rows += buckets.get(col, 0)
         if buckets and col in buckets and not freq_limit[col]:
@@ -454,7 +472,7 @@ def _top_level_groupby(
         if concat_groups and len(cat_col_group) > 1:
             # Concatenate columns and replace cat_col_group
             # with the single name
-            df_gb = cudf.DataFrame()
+            df_gb = type(gdf)()
             ignore_index = True
             df_gb[cat_col_group_str] = _concat([gdf[col] for col in cat_col_group], ignore_index)
             cat_col_group = [cat_col_group_str]
@@ -478,11 +496,12 @@ def _top_level_groupby(
                 agg_dict[col].append("max")
 
         # Perform groupby and flatten column index
-        # (flattening provides better cudf support)
+        # (flattening provides better cudf/pd support)
         if _is_list_col(cat_col_group, df_gb):
             # handle list columns by encoding the list values
-            df_gb = cudf.DataFrame({cat_col_group[0]: df_gb[cat_col_group[0]].list.leaves})
+            df_gb = type(gdf)({cat_col_group[0]: df_gb[cat_col_group[0]].list.leaves})
 
+        # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
         gb.columns = [
             _make_name(*(tuple(cat_col_group) + name[1:]), sep=name_sep)
@@ -494,9 +513,10 @@ def _top_level_groupby(
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        for j, split in enumerate(
-            gb.partition_by_hash(cat_col_group, tree_width[cat_col_group_str], keep_index=False)
-        ):
+        nsplits = tree_width[cat_col_group_str]
+        for j, split in shuffle_group(
+            gb, cat_col_group, 0, nsplits, nsplits, True, nsplits
+        ).items():
             if on_host:
                 output[k] = split.to_arrow(preserve_index=False)
             else:
@@ -519,6 +539,8 @@ def _mid_level_groupby(
         col_group = [_make_name(*col_group, sep=name_sep)]
 
     if on_host:
+        # Construct gpu DataFrame from pyarrow data.
+        # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
         df = cudf.DataFrame.from_arrow(df)
     else:
@@ -599,8 +621,8 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
-    if not on_host:
-        pwriter = ParquetWriter(path, compression=None)
+    if not on_host and len(dfs):
+        pwriter = _parquet_writer_dispatch(dfs[0])(path, compression=None)
 
     # Loop over dfs and append to file
     # TODO: For high-cardinality columns, should support
@@ -625,7 +647,8 @@ def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep)
         raise RuntimeError("GroupbyStatistics result is empty.")
 
     # Close writer and return path
-    pwriter.close()
+    if pwriter is not None:
+        pwriter.close()
 
     return path
 
@@ -637,6 +660,8 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
     if isinstance(col_group, str):
         col_group = [col_group]
     if on_host:
+        # Construct gpu DataFrame from pyarrow data.
+        # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
         df = cudf.DataFrame.from_arrow(df)
     else:
@@ -649,22 +674,22 @@ def _write_uniques(dfs, base_path, col_group, on_host, concat_groups, name_sep):
         new_cols = {}
         nulls_missing = False
         for col in col_group:
-            if not df[col]._column.has_nulls:
+            if not _series_has_nulls(df[col]):
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [cudf.Series([None], dtype=df[col].dtype), df[col]],
+                    [df._constructor_sliced([None], dtype=df[col].dtype), df[col]],
                     ignore_index=True,
                 )
             else:
                 new_cols[col] = df[col].copy(deep=False)
         if nulls_missing:
-            df = cudf.DataFrame(new_cols)
-        df.to_parquet(path, write_index=False, compression=None)
+            df = type(df)(new_cols)
+        df.to_parquet(path, index=False, compression=None)
     else:
-        df_null = cudf.DataFrame({c: [None] for c in col_group})
+        df_null = type(df)({c: [None] for c in col_group})
         for c in col_group:
             df_null[c] = df_null[c].astype(df[c].dtype)
-        df_null.to_parquet(path, write_index=False, compression=None)
+        df_null.to_parquet(path, index=False, compression=None)
     del df
     return path
 
@@ -857,6 +882,7 @@ def _encode(
     selection_r = name if isinstance(name, list) else [storage_name]
     list_col = _is_list_col(selection_l, gdf)
     if path:
+        read_pq_func = _read_parquet_dispatch(gdf)
         if cat_cache is not None:
             cat_cache = (
                 cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
@@ -864,27 +890,32 @@ def _encode(
             if len(gdf):
                 with get_worker_cache("cats") as cache:
                     value = fetch_table_data(
-                        cache, path, columns=selection_r, cache=cat_cache, cats_only=True
+                        cache,
+                        path,
+                        columns=selection_r,
+                        cache=cat_cache,
+                        cats_only=True,
+                        reader=read_pq_func,
                     )
         else:
-            value = cudf.io.read_parquet(path, index=False, columns=selection_r)
+            value = read_pq_func(path, columns=selection_r)
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
     if value is None:
-        value = cudf.DataFrame()
+        value = type(gdf)()
         for c in selection_r:
             typ = gdf[selection_l[0]].dtype if len(selection_l) == 1 else gdf[c].dtype
-            value[c] = cudf.Series([None], dtype=typ)
+            value[c] = gdf._constructor_sliced([None], dtype=typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
     if not search_sorted:
         if list_col:
-            codes = cudf.DataFrame({selection_l[0]: gdf[selection_l[0]].list.leaves})
-            codes["order"] = cp.arange(len(codes))
+            codes = type(gdf)({selection_l[0]: gdf[selection_l[0]].list.leaves})
+            codes["order"] = _arange(len(codes), like_df=gdf)
         else:
-            codes = cudf.DataFrame({"order": cp.arange(len(gdf))}, index=gdf.index)
+            codes = type(gdf)({"order": _arange(len(gdf), like_df=gdf)}, index=gdf.index)
             for c in selection_l:
                 codes[c] = gdf[c].copy()
         if buckets and storage_name in buckets:
@@ -896,7 +927,9 @@ def _encode(
             ).sort_values("order")
             merged_df.reset_index(drop=True, inplace=True)
             max_id = merged_df["labels"].max()
-            merged_df["labels"].fillna(cudf.Series(na_sentinel + max_id + 1), inplace=True)
+            merged_df["labels"].fillna(
+                gdf._constructor_sliced(na_sentinel + max_id + 1), inplace=True
+            )
             labels = merged_df["labels"].values
         # only do hashing
         elif buckets and storage_name in buckets:
@@ -922,18 +955,20 @@ def _encode(
         labels[labels >= len(value[selection_r])] = na_sentinel
 
     if list_col:
+        if isinstance(gdf, pd.DataFrame):
+            raise TypeError("List encoding not yet supported for cpu.")
         labels = _encode_list_column(gdf[selection_l[0]], labels)
 
     return labels
 
 
-def _read_groupby_stat_df(path, name, cat_cache):
+def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
     if cat_cache is not None:
         cat_cache = cat_cache if isinstance(cat_cache, str) else cat_cache.get(name, "disk")
         with get_worker_cache("stats") as cache:
             if cache:
-                return fetch_table_data(cache, path, cache=cat_cache)
-    return cudf.io.read_parquet(path, index=False)
+                return fetch_table_data(cache, path, cache=cat_cache, reader=read_pq_func)
+    return read_pq_func(path, index=False)
 
 
 def _get_multicolumn_names(column_groups, gdf_columns, name_sep):

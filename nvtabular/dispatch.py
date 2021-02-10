@@ -16,9 +16,26 @@
 from typing import Union
 
 import cudf
+import cupy as cp
+import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+
+
+def _arange(size, like_df=None):
+    if isinstance(like_df, pd.DataFrame):
+        return np.arange(size)
+    else:
+        return cp.arange(size)
+
+
+def _series_has_nulls(s):
+    if isinstance(s, pd.Series):
+        return s.isnull().values.any()
+    else:
+        return s._column.has_nulls
 
 
 def _concat_columns(args: list):
@@ -29,3 +46,23 @@ def _concat_columns(args: list):
         _lib = cudf if isinstance(args[0], cudf.DataFrame) else pd
         return _lib.concat(args, axis=1)
     return None
+
+
+def _read_parquet_dispatch(df: DataFrameType):
+    """Return the necessary read_parquet function to generate
+    data of a specified type.
+    """
+    if isinstance(df, pd.DataFrame):
+        return pd.read_parquet
+    else:
+        return cudf.io.read_parquet
+
+
+def _parquet_writer_dispatch(df: DataFrameType):
+    """Return the necessary ParquetWriter class to write
+    data of a specified type.
+    """
+    if isinstance(df, pd.DataFrame):
+        return pq.ParquetWriter
+    else:
+        return cudf.io.parquet.ParquetWriter
