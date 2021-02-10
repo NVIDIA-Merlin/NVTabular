@@ -447,7 +447,8 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
         assert compare_engaging == [2, 2, 1, 3]
 
 
-def test_categorify_multi_combo(tmpdir):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_multi_combo(tmpdir, cpu):
     cat_names = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
     df = pd.DataFrame(
@@ -461,12 +462,23 @@ def test_categorify_multi_combo(tmpdir):
     label_name = ["Post"]
     cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
     workflow = nvt.Workflow(cats + label_name)
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    df_out = (
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+    )
 
     # Column combinations are encoded
-    assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
-    assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
-    assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+    compare_a = df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+    compare_e = (
+        df_out["Engaging User"].to_list() if cpu else df_out["Engaging User"].to_arrow().to_pylist()
+    )
+    compare_ae = (
+        df_out["Author_Engaging User"].to_list()
+        if cpu
+        else df_out["Author_Engaging User"].to_arrow().to_pylist()
+    )
+    assert compare_a == [1, 4, 2, 3]
+    assert compare_e == [2, 2, 1, 3]
+    assert compare_ae == [1, 4, 2, 3]
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])

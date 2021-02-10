@@ -225,7 +225,6 @@ class Categorify(StatOperator):
         self.search_sorted = search_sorted
         self.categories = {}
         self.mh_columns = []
-        self._cpu = None
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -270,7 +269,6 @@ class Categorify(StatOperator):
         # undrlying ddf is already a pandas-backed collection
         if isinstance(ddf._meta, pd.DataFrame):
             self.on_host = False
-            self._cpu = True
             # Cannot use "device" caching if the data is pandas-backed
             self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
             if self.search_sorted:
@@ -278,8 +276,6 @@ class Categorify(StatOperator):
                 # For now, it is safest to disallow this option.
                 self.search_sorted = False
                 warnings.warn("Cannot use `search_sorted=True` for pandas-backed data.")
-        else:
-            self._cpu = False
 
         # convert tuples to lists
         columns = [list(c) if isinstance(c, tuple) else c for c in columns]
