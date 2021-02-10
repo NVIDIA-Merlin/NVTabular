@@ -49,8 +49,18 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("cat_cache", ["device", None])
 @pytest.mark.parametrize("on_host", [True, False])
 @pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
+@pytest.mark.parametrize("cpu", [True, False])
 def test_dask_workflow_api_dlrm(
-    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
+    client,
+    tmpdir,
+    datasets,
+    freq_threshold,
+    part_mem_fraction,
+    engine,
+    cat_cache,
+    on_host,
+    shuffle,
+    cpu,
 ):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = sorted(paths)
@@ -64,6 +74,7 @@ def test_dask_workflow_api_dlrm(
         df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
         df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
     df0 = cudf.concat([df1, df2], axis=0)
+    df0 = df0.to_pandas() if cpu else df0
 
     if engine == "parquet":
         cat_names = ["name-cat", "name-string"]
@@ -81,14 +92,14 @@ def test_dask_workflow_api_dlrm(
     workflow = Workflow(cats + conts + label_name, client=client)
 
     if engine in ("parquet", "csv"):
-        dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, cpu=cpu, part_mem_fraction=part_mem_fraction)
     else:
-        dataset = Dataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, cpu=cpu, names=allcols_csv, part_mem_fraction=part_mem_fraction)
 
     output_path = os.path.join(tmpdir, "processed")
 
     transformed = workflow.fit_transform(dataset)
-    transformed.to_parquet(output_path=output_path, shuffle=shuffle)
+    transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=1)
 
     result = transformed.to_ddf().compute()
     assert len(df0) == len(result)
@@ -110,14 +121,16 @@ def test_dask_workflow_api_dlrm(
     assert_eq(dfm_gb["name-string_x"], dfm_gb["name-string_y"], check_names=False)
 
     # Read back from disk
-    df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
-
-    # Can directly compare the final ddf to the result if we didn't shuffle
-    if not shuffle:
-        for col in df_disk:
-            assert_eq(result[col], df_disk[col])
+    if cpu:
+        df_disk = dd_read_parquet(output_path).compute()
     else:
-        assert len(df0) == len(df_disk)
+        df_disk = dask_cudf.read_parquet(output_path).compute()
+
+    # Sort and compare
+    sort_cols = label_name + cont_names + cat_names
+    sorted_df_disk = df_disk.sort_values(sort_cols)
+    sorted_result = result.sort_values(sort_cols)
+    assert_eq(sorted_result, sorted_df_disk, check_index=False)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
@@ -256,30 +269,3 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
         df_disk.sort_values(["id", "x"])[["name-string", "label"]],
         check_index=False,
     )
-
-
-@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-@pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
-@pytest.mark.parametrize("cpu", [None, True])
-def test_dask_preproc_cpu_categorify(client, tmpdir, datasets, engine, shuffle, cpu):
-    paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    if engine in ("parquet", "csv"):
-        dataset = Dataset(paths, part_size="1MB", cpu=cpu)
-    else:
-        dataset = Dataset(paths, names=allcols_csv, part_size="1MB", cpu=cpu)
-
-    # Simple transform (categorify)
-    cat_names = ["name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
-    cats = ColumnGroup(cat_names)
-    cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
-    workflow = Workflow(cont_names + cat_features + label_name, client=client)
-    transformed = workflow.fit_transform(dataset)
-
-    # Write out dataset
-    output_path = os.path.join(tmpdir, "processed")
-    transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=4)
-
-    # Check the final result
-    dd_read_parquet(output_path, engine="pyarrow").compute()

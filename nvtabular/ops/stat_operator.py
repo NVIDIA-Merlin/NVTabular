@@ -15,7 +15,7 @@
 #
 from typing import Any
 
-import dask_cudf
+import dask.dataframe as dd
 
 from .operator import ColumnNames, Operator
 
@@ -29,7 +29,7 @@ class StatOperator(Operator):
     def __init__(self):
         super(StatOperator, self).__init__()
 
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame) -> Any:
+    def fit(self, columns: ColumnNames, ddf: dd) -> Any:
         """Calculate statistics for this operator, and return a dask future
         to these statistics, which will be computed by the workflow."""
 
