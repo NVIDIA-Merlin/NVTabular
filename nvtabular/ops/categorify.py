@@ -225,6 +225,7 @@ class Categorify(StatOperator):
         self.search_sorted = search_sorted
         self.categories = {}
         self.mh_columns = []
+        self._cpu = None
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -269,6 +270,7 @@ class Categorify(StatOperator):
         # undrlying ddf is already a pandas-backed collection
         if isinstance(ddf._meta, pd.DataFrame):
             self.on_host = False
+            self._cpu = True
             # Cannot use "device" caching if the data is pandas-backed
             self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
             if self.search_sorted:
@@ -276,6 +278,8 @@ class Categorify(StatOperator):
                 # For now, it is safest to disallow this option.
                 self.search_sorted = False
                 warnings.warn("Cannot use `search_sorted=True` for pandas-backed data.")
+        else:
+            self._cpu = False
 
         # convert tuples to lists
         columns = [list(c) if isinstance(c, tuple) else c for c in columns]
@@ -291,16 +295,19 @@ class Categorify(StatOperator):
             concat_groups=self.encode_type == "joint",
             name_sep=self.name_sep,
         )
-        # TODO: we can't use the dtypes on the ddf here since they are incorrect
-        # so we're loading from the partitions. fix.
-        return Delayed(key, dsk), ddf.map_partitions(lambda gdf: gdf.dtypes)
+        # TODO: we can't check the dtypes on the ddf here since they are incorrect
+        # for cudf's list type. So, we're checking the partitions. fix.
+        return Delayed(key, dsk), ddf.map_partitions(lambda gdf: _is_list_dtype(gdf))
 
     def fit_finalize(self, dask_stats):
-        dtypes = dask_stats[1]
-        self.mh_columns = [col for col, dtype in zip(dtypes.index, dtypes) if _is_list_dtype(dtype)]
+        _col_is_list = dask_stats[1]
+        self.mh_columns = [
+            col for col, _is_list in zip(_col_is_list.index, _col_is_list) if _is_list
+        ]
         categories = dask_stats[0]
         for col in categories:
             self.categories[col] = categories[col]
+        pass
 
     def clear(self):
         self.categories = {}
@@ -1019,7 +1026,7 @@ def _encode_list_column(original, encoded):
 def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
         nb = num_buckets[col[0]]
-        if _is_list_dtype(gdf[col[0]].dtype):
+        if _is_list_dtype(gdf[col[0]]):
             encoded = gdf[col[0]].list.leaves.hash_values() % nb
         else:
             encoded = gdf[col[0]].hash_values() % nb

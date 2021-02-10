@@ -392,7 +392,8 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu):
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
-def test_categorify_multi(tmpdir, cat_names, kind):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_multi(tmpdir, cat_names, kind, cpu):
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_E", "User_B", "User_C"],
@@ -407,20 +408,43 @@ def test_categorify_multi(tmpdir, cat_names, kind):
 
     workflow = nvt.Workflow(cats + label_name)
 
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    df_out = (
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+    )
 
     if len(cat_names) == 1:
         if kind == "joint":
             # Columns are encoded jointly
-            assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
-            assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 4]
+            compare_authors = (
+                df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+            )
+            compare_engaging = (
+                df_out["Engaging User"].to_list()
+                if cpu
+                else df_out["Engaging User"].to_arrow().to_pylist()
+            )
+            assert compare_authors == [1, 5, 2, 3]
+            assert compare_engaging == [2, 2, 1, 4]
         else:
             # Column combinations are encoded
-            assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+            compare_engaging = (
+                df_out["Author_Engaging User"].to_list()
+                if cpu
+                else df_out["Author_Engaging User"].to_arrow().to_pylist()
+            )
+            assert compare_engaging == [1, 4, 2, 3]
     else:
         # Columns are encoded independently
-        assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
-        assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
+        compare_authors = (
+            df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+        )
+        compare_engaging = (
+            df_out["Engaging User"].to_list()
+            if cpu
+            else df_out["Engaging User"].to_arrow().to_pylist()
+        )
+        assert compare_authors == [1, 4, 2, 3]
+        assert compare_engaging == [2, 2, 1, 3]
 
 
 def test_categorify_multi_combo(tmpdir):

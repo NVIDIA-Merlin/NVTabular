@@ -42,7 +42,9 @@ def _series_has_nulls(s):
 
 def _is_list_dtype(s):
     if isinstance(s, pd.Series):
-        return pd.api.types.is_list_like(s)
+        if not len(s):
+            return False
+        return pd.api.types.is_list_like(s.values[0])
     else:
         return is_list_dtype(s)
 

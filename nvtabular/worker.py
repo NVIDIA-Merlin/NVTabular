@@ -68,7 +68,7 @@ def fetch_table_data(
     """
     reader = reader or cudf.io.read_parquet
     table = table_cache.get(path, None)
-    if table and not isinstance(table, (cudf.DataFrame, pd.DataFrame)):
+    if table is not None and not isinstance(table, (cudf.DataFrame, pd.DataFrame)):
         if not cats_only:
             return reader(table)
         df = reader(table, columns=columns)
