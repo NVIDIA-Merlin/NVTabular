@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from cudf.core.column import as_column, build_column
-from cudf.utils.dtypes import is_list_dtype
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -37,6 +36,8 @@ from pyarrow import parquet as pq
 from nvtabular.dispatch import (
     DataFrameType,
     _arange,
+    _flatten_list_column,
+    _is_list_dtype,
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
@@ -296,7 +297,7 @@ class Categorify(StatOperator):
 
     def fit_finalize(self, dask_stats):
         dtypes = dask_stats[1]
-        self.mh_columns = [col for col, dtype in zip(dtypes.index, dtypes) if is_list_dtype(dtype)]
+        self.mh_columns = [col for col, dtype in zip(dtypes.index, dtypes) if _is_list_dtype(dtype)]
         categories = dask_stats[0]
         for col in categories:
             self.categories[col] = categories[col]
@@ -501,7 +502,7 @@ def _top_level_groupby(
         # (flattening provides better cudf/pd support)
         if _is_list_col(cat_col_group, df_gb):
             # handle list columns by encoding the list values
-            df_gb = type(gdf)({cat_col_group[0]: df_gb[cat_col_group[0]].list.leaves})
+            df_gb = _flatten_list_column(df_gb[cat_col_group[0]])
 
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
@@ -914,7 +915,7 @@ def _encode(
 
     if not search_sorted:
         if list_col:
-            codes = type(gdf)({selection_l[0]: gdf[selection_l[0]].list.leaves})
+            codes = _flatten_list_column(gdf[selection_l[0]])
             codes["order"] = _arange(len(codes), like_df=gdf)
         else:
             codes = type(gdf)({"order": _arange(len(gdf), like_df=gdf)}, index=gdf.index)
@@ -957,8 +958,6 @@ def _encode(
         labels[labels >= len(value[selection_r])] = na_sentinel
 
     if list_col:
-        if isinstance(gdf, pd.DataFrame):
-            raise TypeError("List encoding not yet supported for cpu.")
         labels = _encode_list_column(gdf[selection_l[0]], labels)
 
     return labels
@@ -990,26 +989,37 @@ def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
 
 
 def _is_list_col(column_group, df):
-    has_lists = any(is_list_dtype(df[col]) for col in column_group)
+    has_lists = any(_is_list_dtype(df[col]) for col in column_group)
     if has_lists and len(column_group) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
 
 
 def _encode_list_column(original, encoded):
-    encoded = as_column(encoded)
-    return build_column(
-        None,
-        dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
-        size=original.size,
-        children=(original._column.offsets, encoded),
-    )
+    if isinstance(original, pd.Series):
+        # Pandas version (not very efficient)
+        offset = 0
+        new_data = []
+        for val in original.values:
+            size = len(val)
+            new_data.append(list(encoded[offset : offset + size]))
+            offset += size
+        return pd.Series(new_data)
+    else:
+        # CuDF version
+        encoded = as_column(encoded)
+        return build_column(
+            None,
+            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
+            size=original.size,
+            children=(original._column.offsets, encoded),
+        )
 
 
 def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
         nb = num_buckets[col[0]]
-        if is_list_dtype(gdf[col[0]].dtype):
+        if _is_list_dtype(gdf[col[0]].dtype):
             encoded = gdf[col[0]].list.leaves.hash_values() % nb
         else:
             encoded = gdf[col[0]].hash_values() % nb

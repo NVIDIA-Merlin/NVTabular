@@ -365,7 +365,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
-def test_categorify_lists(tmpdir, freq_threshold):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_lists(tmpdir, freq_threshold, cpu):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -379,13 +380,14 @@ def test_categorify_lists(tmpdir, freq_threshold):
     cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold)
 
     workflow = nvt.Workflow(cat_features + label_name)
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     # Columns are encoded independently
+    compare = df_out["Authors"].to_list() if cpu else df_out["Authors"].to_arrow().to_pylist()
     if freq_threshold < 2:
-        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+        assert compare == [[1], [1, 4], [2, 3], [3]]
     else:
-        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 0], [0, 2], [2]]
+        assert compare == [[1], [1, 0], [0, 2], [2]]
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])

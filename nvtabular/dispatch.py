@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import itertools
 from typing import Union
 
 import cudf
@@ -20,6 +21,7 @@ import cupy as cp
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+from cudf.utils.dtypes import is_list_dtype
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
 
@@ -36,6 +38,20 @@ def _series_has_nulls(s):
         return s.isnull().values.any()
     else:
         return s._column.has_nulls
+
+
+def _is_list_dtype(s):
+    if isinstance(s, pd.Series):
+        return pd.api.types.is_list_like(s)
+    else:
+        return is_list_dtype(s)
+
+
+def _flatten_list_column(s):
+    if isinstance(s, pd.Series):
+        return pd.DataFrame({s.name: itertools.chain(*s)})
+    else:
+        return cudf.DataFrame({s.name: s.list.leaves})
 
 
 def _concat_columns(args: list):
