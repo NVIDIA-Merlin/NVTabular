@@ -88,7 +88,7 @@ def test_dask_workflow_api_dlrm(
     output_path = os.path.join(tmpdir, "processed")
 
     transformed = workflow.fit_transform(dataset)
-    transformed.to_parquet(output_path=output_path, shuffle=shuffle)
+    transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=1)
 
     result = transformed.to_ddf().compute()
     assert len(df0) == len(result)
