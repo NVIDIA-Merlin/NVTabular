@@ -623,7 +623,9 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_group, on_host, concat_groups, name_sep):
+def _write_gb_stats(
+    dfs, base_path, col_group, on_host, concat_groups, name_sep, max_emb_size=None, nbuckets=None
+):
     if concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=name_sep)]
     if isinstance(col_group, str):
@@ -686,6 +688,8 @@ def _write_uniques(
         for col in col_group:
             name_count = col + "_count"
             if max_emb_size:
+                if isinstance(max_emb_size, int):
+                    max_emb_size = {col: max_emb_size}
                 if nbuckets:
                     if isinstance(nbuckets, int):
                         nlargest = max_emb_size[col] - nbuckets - 1
