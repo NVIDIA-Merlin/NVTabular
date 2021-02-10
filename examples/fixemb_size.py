@@ -90,7 +90,7 @@ CONTINUOUS_COLUMNS = ["price"]
 LABEL_COLUMNS = ["platform"]
 
 cat_features = cat_names >> nvt.ops.Categorify(
-    max_size={"author": 8, "engaging_user": 10}, num_buckets=5
+    max_size={"author": 12, "engaging_user": 8}, num_buckets=5
 )
 workflow = nvt.Workflow(cat_features)
 
