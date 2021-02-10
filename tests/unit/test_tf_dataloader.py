@@ -230,9 +230,9 @@ def test_mh_support(tmpdir, batch_size):
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_validater(tmpdir, batch_size):
     n_samples = 9
-    gdf = cudf.DataFrame(
-        {"a": np.random.randn(n_samples), "label": np.random.randint(2, size=n_samples)}
-    )
+    rand = np.random.RandomState(0)
+
+    gdf = cudf.DataFrame({"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)})
 
     dataloader = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(gdf),
