@@ -267,7 +267,7 @@ class Categorify(StatOperator):
                     self.storage_name[col] = name
 
         # Check metadata type to reset on_host and cat_cache if the
-        # undrlying ddf is already a pandas-backed collection
+        # underlying ddf is already a pandas-backed collection
         if isinstance(ddf._meta, pd.DataFrame):
             self.on_host = False
             # Cannot use "device" caching if the data is pandas-backed
@@ -304,7 +304,6 @@ class Categorify(StatOperator):
         categories = dask_stats[0]
         for col in categories:
             self.categories[col] = categories[col]
-        pass
 
     def clear(self):
         self.categories = {}
