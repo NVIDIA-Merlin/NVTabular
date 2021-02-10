@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 from cudf.utils.dtypes import is_list_dtype
+from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
 
@@ -31,6 +32,16 @@ def _arange(size, like_df=None):
         return np.arange(size)
     else:
         return cp.arange(size)
+
+
+def _hash_series(s):
+    if isinstance(s, pd.Series):
+        return hash_object_dispatch(s).values
+    else:
+        if _is_list_dtype(s):
+            return s.list.leaves.hash_values()
+        else:
+            return s.hash_values()
 
 
 def _series_has_nulls(s):

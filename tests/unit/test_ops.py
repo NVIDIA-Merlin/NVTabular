@@ -484,7 +484,8 @@ def test_categorify_multi_combo(tmpdir, cpu):
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
 @pytest.mark.parametrize("buckets", [None, 10, {"Author": 10, "Engaging User": 20}])
 @pytest.mark.parametrize("search_sort", [True, False])
-def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
     df = cudf.DataFrame(
         {
             "Author": [
@@ -527,7 +528,11 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
         )
 
         workflow = nvt.Workflow(cats)
-        df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+        df_out = (
+            workflow.fit_transform(nvt.Dataset(df, cpu=cpu))
+            .to_ddf()
+            .compute(scheduler="synchronous")
+        )
 
         if freq_limit and not buckets:
             # Column combinations are encoded

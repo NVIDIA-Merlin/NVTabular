@@ -37,6 +37,7 @@ from nvtabular.dispatch import (
     DataFrameType,
     _arange,
     _flatten_list_column,
+    _hash_series,
     _is_list_dtype,
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
@@ -1022,10 +1023,7 @@ def _encode_list_column(original, encoded):
 def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
         nb = num_buckets[col[0]]
-        if _is_list_dtype(gdf[col[0]]):
-            encoded = gdf[col[0]].list.leaves.hash_values() % nb
-        else:
-            encoded = gdf[col[0]].hash_values() % nb
+        encoded = _hash_series(gdf[col[0]]) % nb
     elif encode_type == "combo":
         if len(col) > 1:
             name = _make_name(*tuple(col), sep="_")
@@ -1034,7 +1032,7 @@ def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
         nb = num_buckets[name]
         val = 0
         for column in col:
-            val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+            val ^= _hash_series(gdf[column])  # or however we want to do this aggregation
         val = val % nb
         encoded = val
     return encoded
