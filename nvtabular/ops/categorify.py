@@ -431,7 +431,7 @@ def get_embedding_sizes(workflow):
     return single_hots, multi_hots
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0, max_size=0):
+def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
@@ -443,7 +443,10 @@ def _get_embeddings_dask(paths, cat_names, buckets=None, freq_limit=0, max_size=
         path = paths.get(col)
         num_rows = cudf.io.read_parquet_metadata(path)[0] if path else 0
 
-        bucket_size = buckets.get(col, 0)
+        if not buckets:
+            bucket_size = 0
+        else:
+            bucket_size = buckets.get(col, 0)
         if bucket_size and not freq_limit[col] and not max_size[col]:
             # pure hashing (no categorical lookup)
             num_rows = bucket_size
