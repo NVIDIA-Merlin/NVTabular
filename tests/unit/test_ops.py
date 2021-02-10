@@ -134,16 +134,21 @@ def test_target_encode_multi(tmpdir, npartitions):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     cont_features = op_columns >> nvt.ops.FillMedian()
     processor = nvt.Workflow(cont_features)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    new_gdf.index = df.index  # Make sure index is aligned for checks
+
+    ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
+    df0 = df.to_pandas() if cpu else df
+
+    processor.fit(ds)
+    new_df = processor.transform(ds).to_ddf().compute()
+    new_df.index = df0.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(col_median, processor.column_group.op.medians[col], rel_tol=1e1)
-        assert np.all((df[col].fillna(col_median) - new_gdf[col]).abs().values <= 1e-2)
+        assert np.all((df0[col].fillna(col_median) - new_df[col]).abs().values <= 1e-2)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

@@ -22,7 +22,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from cudf.core.column import as_column, build_column
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -36,6 +35,7 @@ from pyarrow import parquet as pq
 from nvtabular.dispatch import (
     DataFrameType,
     _arange,
+    _encode_list_column,
     _flatten_list_column,
     _hash_series,
     _is_list_dtype,
@@ -294,7 +294,7 @@ class Categorify(StatOperator):
         )
         # TODO: we can't check the dtypes on the ddf here since they are incorrect
         # for cudf's list type. So, we're checking the partitions. fix.
-        return Delayed(key, dsk), ddf.map_partitions(lambda gdf: _is_list_dtype(gdf))
+        return Delayed(key, dsk), ddf.map_partitions(lambda df: _is_list_dtype(df))
 
     def fit_finalize(self, dask_stats):
         _col_is_list = dask_stats[1]
@@ -315,8 +315,8 @@ class Categorify(StatOperator):
         self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
-        new_gdf = gdf.copy(deep=False)
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = df.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in columns)
 
@@ -328,7 +328,7 @@ class Categorify(StatOperator):
             #            multi-column groups only, and use `cat_names` to store the
             #            string representation of both single- and multi-column groups.
             #
-            cat_names, multi_col_group = _get_multicolumn_names(columns, gdf.columns, self.name_sep)
+            cat_names, multi_col_group = _get_multicolumn_names(columns, df.columns, self.name_sep)
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
@@ -353,11 +353,11 @@ class Categorify(StatOperator):
                     use_name = list(use_name)
 
                 path = self.categories[storage_name]
-                new_gdf[name] = _encode(
+                new_df[name] = _encode(
                     use_name,
                     storage_name,
                     path,
-                    gdf,
+                    df,
                     self.cat_cache,
                     na_sentinel=self.na_sentinel,
                     freq_threshold=self.freq_threshold[name]
@@ -369,11 +369,11 @@ class Categorify(StatOperator):
                     cat_names=cat_names,
                 )
                 if self.dtype:
-                    new_gdf[name] = new_gdf[name].astype(self.dtype, copy=False)
+                    new_df[name] = new_df[name].astype(self.dtype, copy=False)
             except Exception as e:
                 raise RuntimeError(f"Failed to categorical encode column {name}") from e
 
-        return new_gdf
+        return new_df
 
     def output_column_names(self, columns: ColumnNames) -> ColumnNames:
         if self.encode_type == "combo":
@@ -459,7 +459,7 @@ def _make_name(*args, sep="_"):
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
 def _top_level_groupby(
-    gdf, cat_col_groups, tree_width, cont_cols, agg_list, on_host, concat_groups, name_sep
+    df, cat_col_groups, tree_width, cont_cols, agg_list, on_host, concat_groups, name_sep
 ):
     sum_sq = "std" in agg_list or "var" in agg_list
     calculate_min = "min" in agg_list
@@ -479,14 +479,14 @@ def _top_level_groupby(
         if concat_groups and len(cat_col_group) > 1:
             # Concatenate columns and replace cat_col_group
             # with the single name
-            df_gb = type(gdf)()
+            df_gb = type(df)()
             ignore_index = True
-            df_gb[cat_col_group_str] = _concat([gdf[col] for col in cat_col_group], ignore_index)
+            df_gb[cat_col_group_str] = _concat([df[col] for col in cat_col_group], ignore_index)
             cat_col_group = [cat_col_group_str]
         else:
             # Compile aggregation dictionary and add "squared-sum"
             # column(s) (necessary when `cont_cols` is non-empty)
-            df_gb = gdf[cat_col_group + cont_cols].copy(deep=False)
+            df_gb = df[cat_col_group + cont_cols].copy(deep=False)
 
         agg_dict = {}
         agg_dict[cat_col_group[0]] = ["count"]
@@ -872,7 +872,7 @@ def _encode(
     name,
     storage_name,
     path,
-    gdf,
+    df,
     cat_cache,
     na_sentinel=-1,
     freq_threshold=0,
@@ -887,14 +887,14 @@ def _encode(
     value = None
     selection_l = name if isinstance(name, list) else [name]
     selection_r = name if isinstance(name, list) else [storage_name]
-    list_col = _is_list_col(selection_l, gdf)
+    list_col = _is_list_col(selection_l, df)
     if path:
-        read_pq_func = _read_parquet_dispatch(gdf)
+        read_pq_func = _read_parquet_dispatch(df)
         if cat_cache is not None:
             cat_cache = (
                 cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
             )
-            if len(gdf):
+            if len(df):
                 with get_worker_cache("cats") as cache:
                     value = fetch_table_data(
                         cache,
@@ -910,23 +910,23 @@ def _encode(
             value.reset_index(drop=False, inplace=True)
 
     if value is None:
-        value = type(gdf)()
+        value = type(df)()
         for c in selection_r:
-            typ = gdf[selection_l[0]].dtype if len(selection_l) == 1 else gdf[c].dtype
-            value[c] = gdf._constructor_sliced([None], dtype=typ)
+            typ = df[selection_l[0]].dtype if len(selection_l) == 1 else df[c].dtype
+            value[c] = df._constructor_sliced([None], dtype=typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
     if not search_sorted:
         if list_col:
-            codes = _flatten_list_column(gdf[selection_l[0]])
-            codes["order"] = _arange(len(codes), like_df=gdf)
+            codes = _flatten_list_column(df[selection_l[0]])
+            codes["order"] = _arange(len(codes), like_df=df)
         else:
-            codes = type(gdf)({"order": _arange(len(gdf), like_df=gdf)}, index=gdf.index)
+            codes = type(df)({"order": _arange(len(df), like_df=df)}, index=df.index)
             for c in selection_l:
-                codes[c] = gdf[c].copy()
+                codes[c] = df[c].copy()
         if buckets and storage_name in buckets:
-            na_sentinel = _hash_bucket(gdf, buckets, selection_l, encode_type=encode_type)
+            na_sentinel = _hash_bucket(df, buckets, selection_l, encode_type=encode_type)
         # apply frequency hashing
         if freq_threshold and buckets and storage_name in buckets:
             merged_df = codes.merge(
@@ -935,7 +935,7 @@ def _encode(
             merged_df.reset_index(drop=True, inplace=True)
             max_id = merged_df["labels"].max()
             merged_df["labels"].fillna(
-                gdf._constructor_sliced(na_sentinel + max_id + 1), inplace=True
+                df._constructor_sliced(na_sentinel + max_id + 1), inplace=True
             )
             labels = merged_df["labels"].values
         # only do hashing
@@ -953,16 +953,16 @@ def _encode(
         # Use `searchsorted` if we are using a "full" encoding
         if list_col:
             labels = value[selection_r].searchsorted(
-                gdf[selection_l[0]].list.leaves, side="left", na_position="first"
+                df[selection_l[0]].list.leaves, side="left", na_position="first"
             )
         else:
             labels = value[selection_r].searchsorted(
-                gdf[selection_l], side="left", na_position="first"
+                df[selection_l], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r])] = na_sentinel
 
     if list_col:
-        labels = _encode_list_column(gdf[selection_l[0]], labels)
+        labels = _encode_list_column(df[selection_l[0]], labels)
 
     return labels
 
@@ -976,7 +976,7 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
     return read_pq_func(path, index=False)
 
 
-def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
+def _get_multicolumn_names(column_groups, df_columns, name_sep):
     cat_names = []
     multi_col_group = {}
     for col_group in column_groups:
@@ -985,9 +985,9 @@ def _get_multicolumn_names(column_groups, gdf_columns, name_sep):
             if name not in cat_names:
                 cat_names.append(name)
                 # TODO: Perhaps we should check that all columns from the group
-                #       are in gdf here?
+                #       are in df here?
                 multi_col_group[name] = col_group
-        elif col_group in gdf_columns:
+        elif col_group in df_columns:
             cat_names.append(col_group)
     return cat_names, multi_col_group
 
@@ -999,31 +999,10 @@ def _is_list_col(column_group, df):
     return has_lists
 
 
-def _encode_list_column(original, encoded):
-    if isinstance(original, pd.Series):
-        # Pandas version (not very efficient)
-        offset = 0
-        new_data = []
-        for val in original.values:
-            size = len(val)
-            new_data.append(list(encoded[offset : offset + size]))
-            offset += size
-        return pd.Series(new_data)
-    else:
-        # CuDF version
-        encoded = as_column(encoded)
-        return build_column(
-            None,
-            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
-            size=original.size,
-            children=(original._column.offsets, encoded),
-        )
-
-
-def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
+def _hash_bucket(df, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
         nb = num_buckets[col[0]]
-        encoded = _hash_series(gdf[col[0]]) % nb
+        encoded = _hash_series(df[col[0]]) % nb
     elif encode_type == "combo":
         if len(col) > 1:
             name = _make_name(*tuple(col), sep="_")
@@ -1032,7 +1011,7 @@ def _hash_bucket(gdf, num_buckets, col, encode_type="joint"):
         nb = num_buckets[name]
         val = 0
         for column in col:
-            val ^= _hash_series(gdf[column])  # or however we want to do this aggregation
+            val ^= _hash_series(df[column])  # or however we want to do this aggregation
         val = val % nb
         encoded = val
     return encoded

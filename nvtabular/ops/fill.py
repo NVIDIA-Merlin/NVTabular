@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import dask_cudf
+import dask.dataframe as dd
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
@@ -43,8 +44,8 @@ class FillMissing(Operator):
         self.fill_val = fill_val
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        return gdf[columns].fillna(self.fill_val)
+    def transform(self, columns, df: DataFrameType) -> DataFrameType:
+        return df[columns].fillna(self.fill_val)
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -71,23 +72,25 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
         for col in columns:
-            gdf[col] = gdf[col].fillna(self.medians[col])
-        return gdf
+            df[col] = df[col].fillna(self.medians[col])
+        return df
 
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         # TODO: Use `method="tidigest"` when crick supports device
         dask_stats = ddf[columns].quantile(q=0.5, method="dask")
         return dask_stats
 
     @annotate("FillMedian_finalize", color="green", domain="nvt_python")
     def fit_finalize(self, dask_stats):
-        for col in dask_stats.index.values_host:
+        index = dask_stats.index
+        vals = index.values_host if hasattr(index, "values_host") else index.values
+        for col in vals:
             self.medians[col] = float(dask_stats[col])
 
     transform.__doc__ = Operator.transform.__doc__

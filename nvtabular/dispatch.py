@@ -21,6 +21,7 @@ import cupy as cp
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+from cudf.core.column import as_column, build_column
 from cudf.utils.dtypes import is_list_dtype
 from dask.dataframe.utils import hash_object_dispatch
 
@@ -28,6 +29,7 @@ DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
 
 
 def _arange(size, like_df=None):
+    """Dispatch for numpy.arange"""
     if isinstance(like_df, pd.DataFrame):
         return np.arange(size)
     else:
@@ -35,6 +37,7 @@ def _arange(size, like_df=None):
 
 
 def _hash_series(s):
+    """Row-wise Series hash"""
     if isinstance(s, pd.Series):
         return hash_object_dispatch(s).values
     else:
@@ -45,6 +48,7 @@ def _hash_series(s):
 
 
 def _series_has_nulls(s):
+    """Check if Series contains any null values"""
     if isinstance(s, pd.Series):
         return s.isnull().values.any()
     else:
@@ -52,6 +56,7 @@ def _series_has_nulls(s):
 
 
 def _is_list_dtype(s):
+    """Check if Series contains list elements"""
     if isinstance(s, pd.Series):
         if not len(s):
             return False
@@ -61,6 +66,7 @@ def _is_list_dtype(s):
 
 
 def _flatten_list_column(s):
+    """Flatten elements of a list-based column"""
     if isinstance(s, pd.Series):
         return pd.DataFrame({s.name: itertools.chain(*s)})
     else:
@@ -95,3 +101,27 @@ def _parquet_writer_dispatch(df: DataFrameType):
         return pq.ParquetWriter
     else:
         return cudf.io.parquet.ParquetWriter
+
+
+def _encode_list_column(original, encoded):
+    """Convert `encoded` to be a list column with the
+    same offsets as `original`
+    """
+    if isinstance(original, pd.Series):
+        # Pandas version (not very efficient)
+        offset = 0
+        new_data = []
+        for val in original.values:
+            size = len(val)
+            new_data.append(list(encoded[offset : offset + size]))
+            offset += size
+        return pd.Series(new_data)
+    else:
+        # CuDF version
+        encoded = as_column(encoded)
+        return build_column(
+            None,
+            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
+            size=original.size,
+            children=(original._column.offsets, encoded),
+        )
