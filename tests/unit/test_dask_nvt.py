@@ -121,7 +121,10 @@ def test_dask_workflow_api_dlrm(
     assert_eq(dfm_gb["name-string_x"], dfm_gb["name-string_y"], check_names=False)
 
     # Read back from disk
-    df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+    if cpu:
+        df_disk = dd_read_parquet(output_path).compute()
+    else:
+        df_disk = dask_cudf.read_parquet(output_path).compute()
 
     # we don't have a deterministic ordering here, especially when using
     # a dask client with multiple workers - so we need to sort the values here
