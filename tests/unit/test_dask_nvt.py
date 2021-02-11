@@ -121,16 +121,14 @@ def test_dask_workflow_api_dlrm(
     assert_eq(dfm_gb["name-string_x"], dfm_gb["name-string_y"], check_names=False)
 
     # Read back from disk
-    if cpu:
-        df_disk = dd_read_parquet(output_path).compute()
-    else:
-        df_disk = dask_cudf.read_parquet(output_path).compute()
+    df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
 
-    # Sort and compare
-    sort_cols = label_name + cont_names + cat_names
-    sorted_df_disk = df_disk.sort_values(sort_cols)
-    sorted_result = result.sort_values(sort_cols)
-    assert_eq(sorted_result, sorted_df_disk, check_index=False)
+    # we don't have a deterministic ordering here, especially when using
+    # a dask client with multiple workers - so we need to sort the values here
+    columns = ["label", "x", "y", "id"] + cat_names
+    got = result.sort_values(columns).reset_index(drop=True)
+    expect = df_disk.sort_values(columns).reset_index(drop=True)
+    assert_eq(got, expect)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])

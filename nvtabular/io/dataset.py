@@ -448,32 +448,22 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        if shuffle or out_files_per_proc or cats or conts or labels:
 
-            # Output dask_cudf DataFrame to dataset
-            _ddf_to_dataset(
-                ddf,
-                fs,
-                output_path,
-                shuffle,
-                out_files_per_proc,
-                cats or [],
-                conts or [],
-                labels or [],
-                "parquet",
-                self.client,
-                num_threads,
-                self.cpu,
-            )
-            return
-
-        # Default (shuffle=None and out_files_per_proc=None)
-        # Just use `dask_cudf.to_parquet`
-        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
-        if self.client is None:
-            fut.compute(scheduler="synchronous")
-        else:
-            fut.compute()
+        # Output dask_cudf DataFrame to dataset
+        _ddf_to_dataset(
+            ddf,
+            fs,
+            output_path,
+            shuffle,
+            out_files_per_proc,
+            cats or [],
+            conts or [],
+            labels or [],
+            "parquet",
+            self.client,
+            num_threads,
+            self.cpu,
+        )
 
     def to_hugectr(
         self,
