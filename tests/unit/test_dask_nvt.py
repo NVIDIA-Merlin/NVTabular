@@ -49,8 +49,18 @@ def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
 @pytest.mark.parametrize("cat_cache", ["device", None])
 @pytest.mark.parametrize("on_host", [True, False])
 @pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
+@pytest.mark.parametrize("cpu", [True, False])
 def test_dask_workflow_api_dlrm(
-    client, tmpdir, datasets, freq_threshold, part_mem_fraction, engine, cat_cache, on_host, shuffle
+    client,
+    tmpdir,
+    datasets,
+    freq_threshold,
+    part_mem_fraction,
+    engine,
+    cat_cache,
+    on_host,
+    shuffle,
+    cpu,
 ):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = sorted(paths)
@@ -64,6 +74,7 @@ def test_dask_workflow_api_dlrm(
         df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
         df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
     df0 = cudf.concat([df1, df2], axis=0)
+    df0 = df0.to_pandas() if cpu else df0
 
     if engine == "parquet":
         cat_names = ["name-cat", "name-string"]
@@ -81,9 +92,9 @@ def test_dask_workflow_api_dlrm(
     workflow = Workflow(cats + conts + label_name, client=client)
 
     if engine in ("parquet", "csv"):
-        dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, cpu=cpu, part_mem_fraction=part_mem_fraction)
     else:
-        dataset = Dataset(paths, names=allcols_csv, part_mem_fraction=part_mem_fraction)
+        dataset = Dataset(paths, cpu=cpu, names=allcols_csv, part_mem_fraction=part_mem_fraction)
 
     output_path = os.path.join(tmpdir, "processed")
 
@@ -110,7 +121,10 @@ def test_dask_workflow_api_dlrm(
     assert_eq(dfm_gb["name-string_x"], dfm_gb["name-string_y"], check_names=False)
 
     # Read back from disk
-    df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
+    if cpu:
+        df_disk = dd_read_parquet(output_path).compute()
+    else:
+        df_disk = dask_cudf.read_parquet(output_path).compute()
 
     # we don't have a deterministic ordering here, especially when using
     # a dask client with multiple workers - so we need to sort the values here

@@ -30,7 +30,7 @@ from .writer_factory import _writer_cls_factory, writer_factory
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
 def _write_output_partition(
-    gdf,
+    df,
     processed_path,
     shuffle,
     out_files_per_proc,
@@ -42,7 +42,7 @@ def _write_output_partition(
     num_threads,
     cpu,
 ):
-    gdf_size = len(gdf)
+    df_size = len(df)
     out_files_per_proc = out_files_per_proc or 1
 
     # Get cached writer (or create/cache a new one)
@@ -63,9 +63,9 @@ def _write_output_partition(
             writer_cache[processed_path] = writer
 
         # Add data
-        writer.add_data(gdf)
+        writer.add_data(df)
 
-    return gdf_size
+    return df_size
 
 
 def _ddf_to_dataset(
