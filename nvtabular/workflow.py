@@ -298,11 +298,7 @@ def _get_stat_ops(nodes):
 
 def _get_unique(cols):
     # Need to preserve order in unique-column list
-    unique_cols = []
-    for c in cols:
-        if c not in unique_cols:
-            unique_cols.append(c)
-    return unique_cols
+    return list({x: x for x in cols}.keys())
 
 
 def _transform_partition(root_df, column_groups):
