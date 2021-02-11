@@ -29,7 +29,7 @@ class StatOperator(Operator):
     def __init__(self):
         super(StatOperator, self).__init__()
 
-    def fit(self, columns: ColumnNames, ddf: dd) -> Any:
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame) -> Any:
         """Calculate statistics for this operator, and return a dask future
         to these statistics, which will be computed by the workflow."""
 
