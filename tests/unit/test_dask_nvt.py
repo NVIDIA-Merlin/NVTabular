@@ -88,7 +88,7 @@ def test_dask_workflow_api_dlrm(
     output_path = os.path.join(tmpdir, "processed")
 
     transformed = workflow.fit_transform(dataset)
-    transformed.to_parquet(output_path=output_path, shuffle=shuffle)
+    transformed.to_parquet(output_path=output_path, shuffle=shuffle, out_files_per_proc=1)
 
     result = transformed.to_ddf().compute()
     assert len(df0) == len(result)
@@ -112,12 +112,12 @@ def test_dask_workflow_api_dlrm(
     # Read back from disk
     df_disk = dask_cudf.read_parquet(output_path, index=False).compute()
 
-    # Can directly compare the final ddf to the result if we didn't shuffle
-    if not shuffle:
-        for col in df_disk:
-            assert_eq(result[col], df_disk[col])
-    else:
-        assert len(df0) == len(df_disk)
+    # we don't have a deterministic ordering here, especially when using
+    # a dask client with multiple workers - so we need to sort the values here
+    columns = ["label", "x", "y", "id"] + cat_names
+    got = result.sort_values(columns).reset_index(drop=True)
+    expect = df_disk.sort_values(columns).reset_index(drop=True)
+    assert_eq(got, expect)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
