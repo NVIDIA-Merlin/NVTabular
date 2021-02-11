@@ -1,6 +1,6 @@
 ## [NVTabular](https://github.com/NVIDIA/NVTabular) | NVTabular Inference API documentation
 
-NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As important part of this pipeline, model deployment of ML/DL models is the process of making production ready models available in production environments, where they can provide predictions for new streaming data.
+NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As critical step of this pipeline, model deployment of ML/DL models is the process of making production ready models available in production environments, where they can provide predictions for new streaming data.
 
 Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able to do model deployment. The goal of [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server without having to write any C++ code.
 
@@ -12,19 +12,62 @@ In order to use Merlin Inference API, there are two containers that the user nee
 
 ## 1. Pulling the NVTabular Docker Container:
 
-We start with pulling NVTabular container. This is to do preprocessing, feature engineering on our dataset, and then to train a DL model with PyT, TF or HugeCTR frameworks.
+We start with pulling NVTabular container. This is to do preprocessing, feature engineering on our datasets, and then to train a DL model with PyT, TF or HugeCTR frameworks with processed datasets.
 
-For instructions how pull and launch NVTabular docker container, we refer the user to the [Getting Started](https://github.com/NVIDIA/NVTabular/blob/main/README.md#getting-started) guide of NVTabular README document).
+Before starting docker continer, first create a `models` directory on your host machine:
 
-## 2. Build and Run the Triton Inference Server container:
-
-1) Create a models directory on your host machine
 ```
-mkdir -p models
+mkdir models
+cd models
+```
+We will mount this directory into the NVTabular docker container.
+
+NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
+
+The beta (0.4) container is currently available. You can pull the container by running the following command:
+
+```
+docker run --gpus=all -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.4 /bin/bash
+```
+The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
+
+```
+root@2efa5b50b909:
+```
+
+Activate the rapids conda environment by running the following command:
+```
+root@2efa5b50b909: source activate rapids
+```
+You should receive the following response, indicating that he environment has been activated:
+
+```
+(rapids)root@2efa5b50b909:
+```
+
+Start the jupyter-lab server by running the following command:
+```
+jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
+```
+
+Open any browser to access the jupyter-lab server using `https://<host IP-Address>:8888`.
+
+## 2. Run example notebook:
+
+Now you can open the example notebook `movielens_inference_example`. In this notebook you will learn how to:
+
+- do preprocessing with NVTabular
+- save (serialize) a worklfow to load later to transform new dataset
+- train a TF MLP model and save it to `/models` directory.
+
+## 3. Build and Run the Triton Inference Server container:
+
+1) Navigate to the `models` directory that you saved NVTabular workflow and DL model on your host machine.
+```
 cd models
 ```
 
-3) Run the Triton Inference Server container.
+2) Run the Triton Inference Server container.
 
 docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}/models:/models merlin/nvtabular:triton 
 
@@ -32,5 +75,5 @@ The container will open a shell when the run command execution is completed. You
 ```
 root@02d56ff0738f:/opt/tritonserver# 
 ```
-4 ) Navigate to the models directory inside the container:
+4 ) Navigate to the `models` working directory inside the triton server container:
 cd /models
