@@ -17,6 +17,8 @@ import math
 import string
 
 import cudf
+import cupy as cp
+import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import pandas as pd
@@ -378,6 +380,37 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
 
     assert is_integer_dtype(new_gdf["name-cat"].dtype)
     assert np.sum(new_gdf["name-cat"] < 100) == 0
+
+
+@pytest.mark.parametrize("cpu", [False, True])
+def test_lambdaop_misalign(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size),
+        }
+    )
+
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+
+    cont_names = ColumnGroup(["a"])
+    cat_names = ColumnGroup(["b"])
+    label = ColumnGroup(["c"])
+    if cpu:
+        label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
+    else:
+        label_feature = label >> (lambda col: cp.where(col == 4, 0, 1))
+    workflow = nvt.Workflow(cat_names + cont_names + label_feature)
+
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+    transformed = workflow.transform(dataset)
+    assert_eq_dd(
+        df0[["a", "b"]],
+        transformed.to_ddf().compute()[["a", "b"]],
+        check_index=False,
+    )
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])

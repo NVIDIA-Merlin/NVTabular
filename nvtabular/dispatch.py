@@ -92,8 +92,10 @@ def _concat_columns(args: list):
         return args[0]
     else:
         _lib = cudf if isinstance(args[0], cudf.DataFrame) else pd
-        # import pdb; pdb.set_trace()
-        return _lib.concat([a.reset_index(drop=True) for a in args], axis=1)
+        return _lib.concat(
+            [a.reset_index(drop=True) for a in args],
+            axis=1,
+        )
     return None
 
 
