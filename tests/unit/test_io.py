@@ -33,7 +33,7 @@ from dask.dataframe.io.demo import names as name_list
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ops as ops
-from nvtabular.io.parquet import ParquetWriter
+from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -45,7 +45,7 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
     else:
         df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = ParquetWriter(tmpdir, num_out_files=num_files, shuffle=nvt.io.Shuffle.PER_PARTITION)
+    shuf = GPUParquetWriter(tmpdir, num_out_files=num_files, shuffle=nvt.io.Shuffle.PER_PARTITION)
     shuf.add_data(df1)
     writer_files = shuf.data_paths
     shuf.close()
@@ -131,7 +131,7 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
 
 @pytest.mark.parametrize("origin", ["cudf", "dask_cudf", "pd", "dd"])
 @pytest.mark.parametrize("cpu", [None, True])
-def test_dask_dataset_from_dataframe(origin, cpu):
+def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
 
     # Generate a DataFrame-based input
     if origin in ("pd", "dd"):
@@ -140,7 +140,7 @@ def test_dask_dataset_from_dataframe(origin, cpu):
             df = dask.dataframe.from_pandas(df, npartitions=4)
     elif origin in ("cudf", "dask_cudf"):
         df = cudf.DataFrame({"a": range(100)})
-        if origin == "dd":
+        if origin == "dask_cudf":
             df = dask_cudf.from_cudf(df, npartitions=4)
 
     # Convert to an NVTabular Dataset and back to a ddf
@@ -155,16 +155,36 @@ def test_dask_dataset_from_dataframe(origin, cpu):
         assert isinstance(result.compute(), pd.DataFrame)
 
         # Should still work if we move to the GPU
+        # (test behavior after repetitive conversion)
+        dataset.to_gpu()
+        dataset.to_cpu()
+        dataset.to_cpu()
         dataset.to_gpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), cudf.DataFrame)
+        dataset.to_cpu()
     else:
         assert isinstance(result.compute(), cudf.DataFrame)
 
         # Should still work if we move to the CPU
+        # (test behavior after repetitive conversion)
+        dataset.to_cpu()
+        dataset.to_gpu()
+        dataset.to_gpu()
         dataset.to_cpu()
         result = dataset.to_ddf()
         assert isinstance(result.compute(), pd.DataFrame)
+        dataset.to_gpu()
+
+    # Write to disk and read back
+    path = str(tmpdir)
+    dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
+    ddf_check = dask_cudf.read_parquet(path).compute()
+    if origin in ("dd", "dask_cudf"):
+        # Multiple partitions are not guarenteed the same
+        # order in output file.
+        ddf_check = ddf_check.sort_values("a")
+    assert_eq(df, ddf_check, check_index=False)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])

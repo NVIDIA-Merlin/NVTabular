@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Union
 
-from . import dataset, shuffle
+import cudf
+import pandas as pd
 
-Dataset = dataset.Dataset
-Shuffle = shuffle.Shuffle
-_shuffle_df = shuffle._shuffle_df
+DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+
+
+def _concat_columns(args: list):
+    """Dispatch function to concatenate DataFrames with axis=1"""
+    if len(args) == 1:
+        return args[0]
+    else:
+        _lib = cudf if isinstance(args[0], cudf.DataFrame) else pd
+        return _lib.concat(args, axis=1)
+    return None
