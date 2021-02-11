@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Union
 
-import cudf
+from nvtabular.dispatch import DataFrameType
 
 if TYPE_CHECKING:
     # avoid circular references
@@ -31,15 +31,15 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
         -----------
         columns: list of str or list of list of str
             The columns to apply this operator to
-        gdf: Dataframe
-            A cudf dataframe that this operator will work on
+        df: Dataframe
+            A pandas or cudf dataframe that this operator will work on
 
         Returns
         -------
