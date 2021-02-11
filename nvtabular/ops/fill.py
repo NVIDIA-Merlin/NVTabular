@@ -36,6 +36,8 @@ class FillMissing(Operator):
     -----------
     fill_val : float, default 0
         The constant value to replace missing values with.
+    add_binary_cols : boolean, default False
+        When True, adds binary columns that indicate whether cells in each column were filled
     """
 
     def __init__(self, fill_val=0, add_binary_cols=False):
@@ -78,6 +80,11 @@ class FillMedian(StatOperator):
 
         # Add FillMedian to the workflow for continuous columns
         proc.add_cont_feature(nvt.ops.FillMedian())
+
+    Parameters
+    -----------
+    add_binary_cols : boolean, default False
+        When True, adds binary columns that indicate whether cells in each column were filled
     """
 
     def __init__(self, add_binary_cols=False):
