@@ -37,17 +37,33 @@ class FillMissing(Operator):
     -----------
     fill_val : float, default 0
         The constant value to replace missing values with.
+    add_binary_cols : boolean, default False
+        When True, adds binary columns that indicate whether cells in each column were filled
     """
 
-    def __init__(self, fill_val=0):
+    def __init__(self, fill_val=0, add_binary_cols=False):
         super().__init__()
         self.fill_val = fill_val
+        self.add_binary_cols = add_binary_cols
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, df: DataFrameType) -> DataFrameType:
-        return df[columns].fillna(self.fill_val)
+        if self.add_binary_cols:
+            for col in columns:
+                df[f"{col}_filled"] = df[col].isna()
+                df[col] = df[col].fillna(self.fill_val)
+        else:
+            df[columns] = df[columns].fillna(self.fill_val)
+
+        return df
 
     transform.__doc__ = Operator.transform.__doc__
+
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+        output_cols = columns[:]
+        if self.add_binary_cols:
+            output_cols.extend([f"{col}_filled" for col in columns])
+        return output_cols
 
 
 class FillMedian(StatOperator):
@@ -65,10 +81,16 @@ class FillMedian(StatOperator):
 
         # Add FillMedian to the workflow for continuous columns
         proc.add_cont_feature(nvt.ops.FillMedian())
+
+    Parameters
+    -----------
+    add_binary_cols : boolean, default False
+        When True, adds binary columns that indicate whether cells in each column were filled
     """
 
-    def __init__(self):
+    def __init__(self, add_binary_cols=False):
         super().__init__()
+        self.add_binary_cols = add_binary_cols
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
@@ -77,6 +99,8 @@ class FillMedian(StatOperator):
             raise RuntimeError("need to call 'fit' before running transform")
 
         for col in columns:
+            if self.add_binary_cols:
+                df[f"{col}_filled"] = df[col].isna()
             df[col] = df[col].fillna(self.medians[col])
         return df
 
@@ -99,3 +123,9 @@ class FillMedian(StatOperator):
 
     def clear(self):
         self.medians = {}
+
+    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+        output_cols = columns[:]
+        if self.add_binary_cols:
+            output_cols.extend([f"{col}_filled" for col in columns])
+        return output_cols

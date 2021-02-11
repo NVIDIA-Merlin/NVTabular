@@ -134,9 +134,12 @@ def test_target_encode_multi(tmpdir, npartitions):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
+@pytest.mark.parametrize("add_binary_cols", [True, False])
 @pytest.mark.parametrize("cpu", [True, False])
-def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
-    cont_features = op_columns >> nvt.ops.FillMedian()
+def test_fill_median(
+    tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, add_binary_cols, cpu
+):
+    cont_features = op_columns >> nvt.ops.FillMedian(add_binary_cols=add_binary_cols)
     processor = nvt.Workflow(cont_features)
 
     ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
@@ -149,6 +152,9 @@ def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, c
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(col_median, processor.column_group.op.medians[col], rel_tol=1e1)
         assert np.all((df0[col].fillna(col_median) - new_df[col]).abs().values <= 1e-2)
+        assert (f"{col}_filled" in new_df.keys()) == add_binary_cols
+        if add_binary_cols:
+            assert df0[col].isna().sum() == new_df[f"{col}_filled"].sum()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -212,9 +218,10 @@ def test_hash_bucket_lists(tmpdir):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_fill_missing(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("add_binary_cols", [True, False])
+def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
     cont_names = ["x", "y"]
-    cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42)
+    cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42, add_binary_cols=add_binary_cols)
 
     for col in cont_names:
         idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
@@ -225,9 +232,13 @@ def test_fill_missing(tmpdir, df, dataset, engine):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+
     for col in cont_names:
         assert np.all((df[col].fillna(42) - new_gdf[col]).abs().values <= 1e-2)
         assert new_gdf[col].isna().sum() == 0
+        assert (f"{col}_filled" in new_gdf.keys()) == add_binary_cols
+        if add_binary_cols:
+            assert df[col].isna().sum() == new_gdf[f"{col}_filled"].sum()
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
