@@ -244,6 +244,14 @@ class Categorify(StatOperator):
                 "`num_buckets` must be dict or int, got type {}".format(type(num_buckets))
             )
 
+        if self.num_buckets is not None:
+            # See: nvtabular.dispatch._hash_series
+            warnings.warn(
+                "Performing a hash-based transformation. Do not "
+                "expect Categorify to be consistent on GPU and CPU "
+                "with this num_buckets setting!"
+            )
+
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         # User passed in a list of column groups. We need to figure out

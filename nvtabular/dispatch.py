@@ -39,6 +39,11 @@ def _arange(size, like_df=None):
 def _hash_series(s):
     """Row-wise Series hash"""
     if isinstance(s, pd.Series):
+        # Using pandas hashing, which does not produce the
+        # same result as cudf.Series.hash_values().  Do not
+        # expect hash-based data transformations to be the
+        # same on CPU and CPU.  TODO: Fix this (maybe use
+        # murmurhash3 manually on CPU).
         return hash_object_dispatch(s).values
     else:
         if _is_list_dtype(s):
