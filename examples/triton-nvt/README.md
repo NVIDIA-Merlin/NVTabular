@@ -53,11 +53,15 @@ Open any browser to access the jupyter-lab server using `https://<host IP-Addres
 
 ## 2. Run example notebook:
 
-Now you can open the example notebook `movielens_inference_example`. In this notebook you will learn how to:
-
+There are two example notebooks that should be run in orders. The first one shows how to
 - do preprocessing with NVTabular
-- save (serialize) a worklfow to load later to transform new dataset
+- serialize and save a workflow to load later to transform new dataset
+- send request to Trition IS for transformation of new data with NVTabular
 - train a TF MLP model and save it in the `/models` directory.
+
+The following notebook shows `movielens_deployment_example` how to send request to Triton IS to generate prediction results for new dataset.
+
+Now you can open the example notebooks `movielens_serialization_example` and `movielens_deployment_example`.
 
 ## 3. Build and Run the Triton Inference Server container:
 
@@ -68,17 +72,18 @@ cd models
 
 2) Run the Triton Inference Server container.
 
-docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}/models:/models merlin/nvtabular:triton 
+docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -p 9999:8888 -v ${PWD}/models:/models merlin/nvtabular:triton 
 
-The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
+The container will open a shell when the run command execution is completed. It should look similar to this:
 ```
 root@02d56ff0738f:/opt/tritonserver# 
 ```
-3 ) Your saved model should be in the `/models` directory. Navigate to the `models` working directory inside the triton server container to check the saved model:
+3) Your saved model should be in the `/models` directory. Navigate to the `models` working directory inside the triton server container to check the saved model:
 ```
 cd /models
 ```
-4) Start the triton server:
+4) Start the triton server and run Triton with the example model repository you just created. 
 ```
-tritonserver --model-repository `pwd`/models
+tritonserver --model-repository `pwd`/models &
 ```
+5) You'll have to start the jupyter lab on the Docker container to 
