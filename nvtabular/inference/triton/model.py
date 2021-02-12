@@ -26,6 +26,7 @@
 
 import os
 from typing import List
+import json
 
 import cudf
 from triton_python_backend_utils import (
@@ -33,6 +34,8 @@ from triton_python_backend_utils import (
     InferenceResponse,
     Tensor,
     get_input_tensor_by_name,
+    get_output_config_by_name,
+    triton_string_to_numpy,
 )
 
 import nvtabular
@@ -46,6 +49,12 @@ class TritonPythonModel:
             args["model_repository"], str(args["model_version"]), "workflow"
         )
         self.workflow = nvtabular.Workflow.load(workflow_path)
+        self.model_config = model_config = json.loads(args['model_config'])
+
+        self.output_dtypes = dict()
+        for name in self.workflow.column_group.input_column_names:
+            conf = get_output_config_by_name(self.model_config, name)
+            self.output_dtypes[name] = triton_string_to_numpy(conf['data_type'])
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -67,18 +76,21 @@ class TritonPythonModel:
             )
 
             # convert back to a triton response
-            response = InferenceResponse(
-                output_tensors=[
-                    Tensor(col, output_df[col].values_host) for col in output_df.columns
-                ]
-            )
-            responses.append(response)
+            output_tensors = []
+            for col in output_df.columns:
+                d = output_df[col].values_host.astype(self.output_dtypes[col])
+                d = d.reshape(len(d),1)
+                output_tensors.append(Tensor(col, d))
+            
+            responses.append(InferenceResponse(output_tensors))
 
         return responses
 
 
 def _convert_tensor(t):
     out = t.as_numpy()
+    if len(out.shape) == 2:
+        out = out[:,0]
     # cudf doesn't seem to handle dtypes like |S15
     if out.dtype.kind == "S" and out.dtype.str.startswith("|S"):
         out = out.astype("str")
