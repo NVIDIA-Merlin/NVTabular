@@ -151,11 +151,12 @@ class Categorify(StatOperator):
         will be transformed.
     max_size : int or dictionary:{column: max_size_value}, default 0
         This parameter allows you to set the maximum size for an embedding table for each column.
-        For example, if max_size is set to 1000 only the first 999 most frequent values for each column
-        will be be encoded, and the rest will be mapped to a single value (0). To map the rest to a number
-        of buckets,  you can set the num_buckets parameter > 1. In that case, topK value will be
-        `max_size - num_buckets -1`.  Setting the max_size param means that freq_threshold should not 
-        be given.  If the num_buckets parameter is set,  it must be smaller than the max_size value.
+        For example, if max_size is set to 1000 only the first 999 most frequent values for each
+        column will be be encoded, and the rest will be mapped to a single value (0). To map the
+        rest to a number of buckets,  you can set the num_buckets parameter > 1. In that case, topK
+        value will be `max_size - num_buckets -1`.  Setting the max_size param means that
+        freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
+        smaller than the max_size value.
     """
 
     def __init__(
