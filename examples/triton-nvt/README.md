@@ -18,7 +18,6 @@ Before starting docker continer, first create a `models` directory on your host 
 
 ```
 mkdir models
-cd models
 ```
 We will mount this directory into the NVTabular docker container.
 
@@ -27,7 +26,7 @@ NVTabular is available in the NVIDIA container repository at the following locat
 The beta (0.4) container is currently available. You can pull the container by running the following command:
 
 ```
-docker run --gpus=all -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.4 /bin/bash
+docker run --gpus=all -it -v ${PWD}/models:/models -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.4 /bin/bash
 ```
 The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
 
@@ -58,7 +57,7 @@ Now you can open the example notebook `movielens_inference_example`. In this not
 
 - do preprocessing with NVTabular
 - save (serialize) a worklfow to load later to transform new dataset
-- train a TF MLP model and save it to `/models` directory.
+- train a TF MLP model and save it in the `/models` directory.
 
 ## 3. Build and Run the Triton Inference Server container:
 
@@ -75,5 +74,11 @@ The container will open a shell when the run command execution is completed. You
 ```
 root@02d56ff0738f:/opt/tritonserver# 
 ```
-4 ) Navigate to the `models` working directory inside the triton server container:
+3 ) Your saved model should be in the `/models` directory. Navigate to the `models` working directory inside the triton server container to check the saved model:
+```
 cd /models
+```
+4) Start the triton server:
+```
+tritonserver --model-repository `pwd`/models
+```
