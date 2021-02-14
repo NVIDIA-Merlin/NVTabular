@@ -35,15 +35,35 @@ class ColumnGroup:
     """
 
     def __init__(self, columns):
-        if isinstance(columns, str):
-            self.columns = [columns]
-        else:
-            self.columns = [_convert_col(col) for col in columns]
         self.parents = []
         self.children = []
         self.op = None
         self.kind = None
         self.dependencies = None
+
+        if isinstance(columns, str):
+            columns = [columns]
+
+        # if any of the values we're passed are a columngroup
+        # we have to ourselves as a childnode in the graph.
+        if any(isinstance(col, ColumnGroup) for col in columns):
+            self.columns = []
+            self.kind = "[...]"
+            for col in columns:
+                if not isinstance(col, ColumnGroup):
+                    col = ColumnGroup(col)
+                else:
+                    # we can't handle nesting arbitrarily deep here
+                    # only accept non-nested (str) columns here
+                    if any(not isinstance(c, str) for c in col.columns):
+                        raise ValueError("Can't handle more than 1 level of nested columns")
+
+                col.children.append(self)
+                self.parents.append(col)
+                self.columns.append(tuple(col.columns))
+
+        else:
+            self.columns = [_convert_col(col) for col in columns]
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
@@ -220,7 +240,7 @@ def _merge_add_nodes(graph):
     # lets take a copy to avoid mutating the input
     import copy
 
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
 
     queue = [graph]
     while queue:

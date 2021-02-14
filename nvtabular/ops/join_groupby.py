@@ -15,9 +15,13 @@
 #
 import cudf
 import cupy
+import dask_cudf
 from dask.delayed import Delayed
 
+from nvtabular.dispatch import _read_parquet_dispatch
+
 from . import categorify as nvt_cat
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -97,7 +101,7 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         if isinstance(columns, list):
             for group in columns:
                 if isinstance(group, (list, tuple)) and len(group) > 1:
@@ -123,7 +127,7 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"  # Temporary column for sorting
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
@@ -132,6 +136,7 @@ class JoinGroupby(StatOperator):
             columns, gdf.columns, self.name_sep
         )
 
+        _read_pq_func = _read_parquet_dispatch(gdf)
         for name in cat_names:
             storage_name = self.storage_name.get(name, name)
             name = multi_col_group.get(name, name)
@@ -139,7 +144,9 @@ class JoinGroupby(StatOperator):
             selection_l = list(name) if isinstance(name, tuple) else [name]
             selection_r = list(name) if isinstance(name, tuple) else [storage_name]
 
-            stat_gdf = nvt_cat._read_groupby_stat_df(path, storage_name, self.cat_cache)
+            stat_gdf = nvt_cat._read_groupby_stat_df(
+                path, storage_name, self.cat_cache, _read_pq_func
+            )
             tran_gdf = gdf[selection_l + [tmp]].merge(
                 stat_gdf, left_on=selection_l, right_on=selection_r, how="left"
             )
@@ -168,12 +175,14 @@ class JoinGroupby(StatOperator):
                         output.append(f"{name}_{cont}_{stat}")
         return output
 
-    def save(self):
-        return [self.categories, self.storage_name]
-
-    def load(self, stats):
-        self.categories, self.storage_name = stats
+    def set_storage_path(self, new_path, copy=False):
+        self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
+        self.out_path = new_path
 
     def clear(self):
         self.categories = {}
         self.storage_name = {}
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

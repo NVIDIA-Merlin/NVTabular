@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
+
+import dask.dataframe as dd
 from nvtx import annotate
 
+from ..dispatch import DataFrameType
 from .moments import _custom_moments
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -46,7 +49,7 @@ class Normalize(StatOperator):
         self.stds = {}
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         return _custom_moments(ddf[columns])
 
     def fit_finalize(self, dask_stats):
@@ -55,44 +58,31 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
-        new_gdf = cudf.DataFrame()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = type(df)()
         for name in columns:
             if self.stds[name] > 0:
-                new_gdf[name] = (gdf[name] - self.means[name]) / (self.stds[name])
-                new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
-
-    def save(self):
-        return {"means": self.means, "stds": self.stds}
-
-    def load(self, data):
-        self.means = data["means"]
-        self.stds = data["stds"]
+                new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
+                new_df[name] = new_df[name].astype("float32")
+        return new_df
 
     def clear(self):
         self.means = {}
         self.stds = {}
 
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
 
 class NormalizeMinMax(StatOperator):
     """
-    Standardizing the features around 0 with a standard deviation
-    of 1 is a common technique to compare measurements that have
-    different units. This operation can be added to the workflow
-    to standardize the features.
-
-    It performs Normalization using the min max method.
+    This operator standardizes continuous features such that they are between 0 and 1.
 
     Example usage::
-
         # Use NormalizeMinMax to define a NVTabular workflow
         cont_features = CONTINUOUS_COLUMNS >> ops.NormalizeMinMax()
         processor = nvtabular.Workflow(cont_features)
-
-    Parameters
-    ----------
-
     """
 
     def __init__(self):
@@ -100,37 +90,40 @@ class NormalizeMinMax(StatOperator):
         self.maxs = {}
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
-        new_gdf = cudf.DataFrame()
+    def transform(self, columns, df: DataFrameType):
+        # TODO: should we clip values if they are out of bounds (below 0 or 1)
+        # (could happen in validation dataset if datapoint)
+        new_df = type(df)()
         for name in columns:
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
-                new_gdf[name] = (gdf[name] - self.mins[name]) / dif
+                new_df[name] = (df[name] - self.mins[name]) / dif
             elif dif == 0:
-                new_gdf[name] = gdf[name] / (2 * gdf[name])
-            new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
+                new_df[name] = df[name] / (2 * df[name])
+            new_df[name] = new_df[name].astype("float32")
+        return new_df
 
-    @annotate("MinMax_op", color="green", domain="nvt_python")
+    transform.__doc__ = Operator.transform.__doc__
+
+    @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
     def fit(self, columns, ddf):
         return {
             "mins": ddf[columns].min(),
             "maxs": ddf[columns].max(),
         }
 
-    @annotate("MinMax_finalize", color="green", domain="nvt_python")
+    @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")
     def fit_finalize(self, dask_stats):
-        for col in dask_stats["mins"].index.values_host:
+        index = dask_stats["mins"].index
+        cols = index.values_host if hasattr(index, "values_host") else index.values
+        for col in cols:
             self.mins[col] = dask_stats["mins"][col]
             self.maxs[col] = dask_stats["maxs"][col]
-
-    def save(self):
-        return {"mins": self.mins, "maxs": self.maxs}
-
-    def load(self, data):
-        self.mins = data["mins"]
-        self.maxs = data["maxs"]
 
     def clear(self):
         self.mins = {}
         self.maxs = {}
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

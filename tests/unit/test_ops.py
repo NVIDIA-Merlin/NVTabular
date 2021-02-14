@@ -17,11 +17,14 @@ import math
 import string
 
 import cudf
+import cupy as cp
+import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
 from cudf.tests.utils import assert_eq
+from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
@@ -41,6 +44,7 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_min = df[col].min()
         assert col_min == pytest.approx(processor.column_group.op.mins[col], 1e-2)
@@ -132,15 +136,27 @@ def test_target_encode_multi(tmpdir, npartitions):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-def test_fill_median(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
-    cont_features = op_columns >> nvt.ops.FillMedian()
+@pytest.mark.parametrize("add_binary_cols", [True, False])
+@pytest.mark.parametrize("cpu", [True, False])
+def test_fill_median(
+    tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, add_binary_cols, cpu
+):
+    cont_features = op_columns >> nvt.ops.FillMedian(add_binary_cols=add_binary_cols)
     processor = nvt.Workflow(cont_features)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
+    df0 = df.to_pandas() if cpu else df
+
+    processor.fit(ds)
+    new_df = processor.transform(ds).to_ddf().compute()
+    new_df.index = df0.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
         assert math.isclose(col_median, processor.column_group.op.medians[col], rel_tol=1e1)
-        assert np.all((df[col].fillna(col_median) - new_gdf[col]).abs().values <= 1e-2)
+        assert np.all((df0[col].fillna(col_median) - new_df[col]).abs().values <= 1e-2)
+        assert (f"{col}_filled" in new_df.keys()) == add_binary_cols
+        if add_binary_cols:
+            assert df0[col].isna().sum() == new_df[f"{col}_filled"].sum()
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -151,6 +167,7 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     assert new_gdf[op_columns] == np.log(df[op_columns].astype(np.float32))
 
 
@@ -203,9 +220,10 @@ def test_hash_bucket_lists(tmpdir):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_fill_missing(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("add_binary_cols", [True, False])
+def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
     cont_names = ["x", "y"]
-    cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42)
+    cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42, add_binary_cols=add_binary_cols)
 
     for col in cont_names:
         idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
@@ -216,9 +234,13 @@ def test_fill_missing(tmpdir, df, dataset, engine):
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+
     for col in cont_names:
         assert np.all((df[col].fillna(42) - new_gdf[col]).abs().values <= 1e-2)
         assert new_gdf[col].isna().sum() == 0
+        assert (f"{col}_filled" in new_gdf.keys()) == add_binary_cols
+        if add_binary_cols:
+            assert df[col].isna().sum() == new_gdf[f"{col}_filled"].sum()
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -242,6 +264,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     processor.fit(dataset)
 
     new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         assert math.isclose(df[col].mean(), processor.column_group.op.means[col], rel_tol=1e-4)
         assert math.isclose(df[col].std(), processor.column_group.op.stds[col], rel_tol=1e-4)
@@ -287,8 +310,8 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.slice(1, 3))
-    assert new_gdf["name-string"].equals(df_copy["name-string"].str.slice(1, 3))
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"].str.slice(1, 3), check_index=False)
+    assert_eq_dd(new_gdf["name-string"], df_copy["name-string"].str.slice(1, 3), check_index=False)
 
     # No Replacement from old API (skipped for other examples)
     substring = (
@@ -300,10 +323,20 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat_slice"].equals(df_copy["name-cat"].str.slice(1, 3))
-    assert new_gdf["name-string_slice"].equals(df_copy["name-string"].str.slice(1, 3))
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"])
-    assert new_gdf["name-string"].equals(df_copy["name-string"])
+    assert_eq_dd(
+        new_gdf["name-cat_slice"],
+        df_copy["name-cat"].str.slice(1, 3),
+        check_index=False,
+        check_names=False,
+    )
+    assert_eq_dd(
+        new_gdf["name-string_slice"],
+        df_copy["name-string"].str.slice(1, 3),
+        check_index=False,
+        check_names=False,
+    )
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"], check_index=False)
+    assert_eq_dd(new_gdf["name-string"], df_copy["name-string"], check_index=False)
 
     # Replace
     # Replacement
@@ -312,8 +345,10 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["name-cat"].equals(df_copy["name-cat"].str.replace("e", "XX"))
-    assert new_gdf["name-string"].equals(df_copy["name-string"].str.replace("e", "XX"))
+    assert_eq_dd(new_gdf["name-cat"], df_copy["name-cat"].str.replace("e", "XX"), check_index=False)
+    assert_eq_dd(
+        new_gdf["name-string"], df_copy["name-string"].str.replace("e", "XX"), check_index=False
+    )
 
     # astype
     # Replacement
@@ -347,8 +382,40 @@ def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
     assert np.sum(new_gdf["name-cat"] < 100) == 0
 
 
+@pytest.mark.parametrize("cpu", [False, True])
+def test_lambdaop_misalign(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size),
+        }
+    )
+
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+
+    cont_names = ColumnGroup(["a"])
+    cat_names = ColumnGroup(["b"])
+    label = ColumnGroup(["c"])
+    if cpu:
+        label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
+    else:
+        label_feature = label >> (lambda col: cp.where(col == 4, 0, 1))
+    workflow = nvt.Workflow(cat_names + cont_names + label_feature)
+
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+    transformed = workflow.transform(dataset)
+    assert_eq_dd(
+        df0[["a", "b"]],
+        transformed.to_ddf().compute()[["a", "b"]],
+        check_index=False,
+    )
+
+
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
-def test_categorify_lists(tmpdir, freq_threshold):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_lists(tmpdir, freq_threshold, cpu):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -362,18 +429,20 @@ def test_categorify_lists(tmpdir, freq_threshold):
     cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold)
 
     workflow = nvt.Workflow(cat_features + label_name)
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     # Columns are encoded independently
+    compare = df_out["Authors"].to_list() if cpu else df_out["Authors"].to_arrow().to_pylist()
     if freq_threshold < 2:
-        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+        assert compare == [[1], [1, 4], [2, 3], [3]]
     else:
-        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 0], [0, 2], [2]]
+        assert compare == [[1], [1, 0], [0, 2], [2]]
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
-def test_categorify_multi(tmpdir, cat_names, kind):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_multi(tmpdir, cat_names, kind, cpu):
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_E", "User_B", "User_C"],
@@ -388,23 +457,47 @@ def test_categorify_multi(tmpdir, cat_names, kind):
 
     workflow = nvt.Workflow(cats + label_name)
 
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    df_out = (
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+    )
 
     if len(cat_names) == 1:
         if kind == "joint":
             # Columns are encoded jointly
-            assert df_out["Author"].to_arrow().to_pylist() == [1, 5, 2, 3]
-            assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 4]
+            compare_authors = (
+                df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+            )
+            compare_engaging = (
+                df_out["Engaging User"].to_list()
+                if cpu
+                else df_out["Engaging User"].to_arrow().to_pylist()
+            )
+            assert compare_authors == [1, 5, 2, 3]
+            assert compare_engaging == [2, 2, 1, 4]
         else:
             # Column combinations are encoded
-            assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+            compare_engaging = (
+                df_out["Author_Engaging User"].to_list()
+                if cpu
+                else df_out["Author_Engaging User"].to_arrow().to_pylist()
+            )
+            assert compare_engaging == [1, 4, 2, 3]
     else:
         # Columns are encoded independently
-        assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
-        assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
+        compare_authors = (
+            df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+        )
+        compare_engaging = (
+            df_out["Engaging User"].to_list()
+            if cpu
+            else df_out["Engaging User"].to_arrow().to_pylist()
+        )
+        assert compare_authors == [1, 4, 2, 3]
+        assert compare_engaging == [2, 2, 1, 3]
 
 
-def test_categorify_multi_combo(tmpdir):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_multi_combo(tmpdir, cpu):
     cat_names = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
     df = pd.DataFrame(
@@ -418,18 +511,30 @@ def test_categorify_multi_combo(tmpdir):
     label_name = ["Post"]
     cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
     workflow = nvt.Workflow(cats + label_name)
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    df_out = (
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+    )
 
     # Column combinations are encoded
-    assert df_out["Author"].to_arrow().to_pylist() == [1, 4, 2, 3]
-    assert df_out["Engaging User"].to_arrow().to_pylist() == [2, 2, 1, 3]
-    assert df_out["Author_Engaging User"].to_arrow().to_pylist() == [1, 4, 2, 3]
+    compare_a = df_out["Author"].to_list() if cpu else df_out["Author"].to_arrow().to_pylist()
+    compare_e = (
+        df_out["Engaging User"].to_list() if cpu else df_out["Engaging User"].to_arrow().to_pylist()
+    )
+    compare_ae = (
+        df_out["Author_Engaging User"].to_list()
+        if cpu
+        else df_out["Author_Engaging User"].to_arrow().to_pylist()
+    )
+    assert compare_a == [1, 4, 2, 3]
+    assert compare_e == [2, 2, 1, 3]
+    assert compare_ae == [1, 4, 2, 3]
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
 @pytest.mark.parametrize("buckets", [None, 10, {"Author": 10, "Engaging User": 20}])
 @pytest.mark.parametrize("search_sort", [True, False])
-def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
     df = cudf.DataFrame(
         {
             "Author": [
@@ -472,7 +577,11 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
         )
 
         workflow = nvt.Workflow(cats)
-        df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+        df_out = (
+            workflow.fit_transform(nvt.Dataset(df, cpu=cpu))
+            .to_ddf()
+            .compute(scheduler="synchronous")
+        )
 
         if freq_limit and not buckets:
             # Column combinations are encoded
@@ -499,6 +608,85 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort):
                     df_out["Engaging User"].max()
                     <= (df["Engaging User"].hash_values() % buckets["Engaging User"]).max() + 1 + 1
                 )
+
+
+@pytest.mark.parametrize("cpu", [False, True])
+def test_categorify_hash_bucket(cpu):
+    df = cudf.DataFrame(
+        {
+            "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
+            "Engaging_User": ["User_B", "User_B", "User_A", "User_D", "User_D"],
+            "Post": [1, 2, 3, 4, 5],
+        }
+    )
+    cat_names = ["Authors", "Engaging_User"]
+    buckets = 10
+    dataset = nvt.Dataset(df, cpu=cpu)
+    hash_features = cat_names >> ops.Categorify(num_buckets=buckets)
+    processor = nvt.Workflow(hash_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    # check hashed values
+    assert new_gdf["Authors"].max() <= (buckets - 1)
+    assert new_gdf["Engaging_User"].max() <= (buckets - 1)
+    # check embedding size is equal to the num_buckets after hashing
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == buckets
+    assert nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] == buckets
+
+
+@pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
+def test_categorify_max_size(max_emb_size):
+    df = cudf.DataFrame(
+        {
+            "Author": [
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_A",
+                "User_E",
+                "User_B",
+                "User_C",
+                "User_D",
+                "User_F",
+                "User_F",
+            ],
+            "Engaging_User": [
+                "User_B",
+                "User_B",
+                "User_A",
+                "User_D",
+                "User_B",
+                "User_M",
+                "User_A",
+                "User_D",
+                "User_N",
+                "User_F",
+                "User_E",
+            ],
+        }
+    )
+
+    cat_names = ["Author", "Engaging_User"]
+    buckets = 3
+    dataset = nvt.Dataset(df)
+    cat_features = cat_names >> ops.Categorify(max_size=max_emb_size, num_buckets=buckets)
+    processor = nvt.Workflow(cat_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    if isinstance(max_emb_size, int):
+        max_emb_size = {name: max_emb_size for name in cat_names}
+
+    # check encoded values after freq_hashing with fix emb size
+    assert new_gdf["Author"].max() <= max_emb_size["Author"]
+    assert new_gdf["Engaging_User"].max() <= max_emb_size["Engaging_User"]
+    # check embedding size is less than max_size after hashing with fix emb size.
+    assert nvt.ops.get_embedding_sizes(processor)["Author"][0] <= max_emb_size["Author"]
+    assert (
+        nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] <= max_emb_size["Engaging_User"]
+    )
 
 
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
@@ -640,16 +828,16 @@ def test_difference_lag():
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["timestamp_difference_lag_1"][0] is None
+    assert new_gdf["timestamp_difference_lag_1"][0] is (cudf.NA if hasattr(cudf, "NA") else None)
     assert new_gdf["timestamp_difference_lag_1"][1] == 5
     assert new_gdf["timestamp_difference_lag_1"][2] == 95
-    assert new_gdf["timestamp_difference_lag_1"][3] is None
+    assert new_gdf["timestamp_difference_lag_1"][3] is (cudf.NA if hasattr(cudf, "NA") else None)
 
     assert new_gdf["timestamp_difference_lag_-1"][0] == -5
     assert new_gdf["timestamp_difference_lag_-1"][1] == -95
-    assert new_gdf["timestamp_difference_lag_-1"][2] is None
+    assert new_gdf["timestamp_difference_lag_-1"][2] is (cudf.NA if hasattr(cudf, "NA") else None)
     assert new_gdf["timestamp_difference_lag_-1"][3] == -1
-    assert new_gdf["timestamp_difference_lag_-1"][5] is None
+    assert new_gdf["timestamp_difference_lag_-1"][5] is (cudf.NA if hasattr(cudf, "NA") else None)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -692,3 +880,64 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
         assert np.all(new_gdf[col].values <= len(bs))
         # TODO: add checks for correctness here that don't just
         # repeat the existing logic
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_data_stats(tmpdir, df, datasets, engine):
+    # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y"]
+    label_name = ["label"]
+    all_cols = cat_names + cont_names + label_name
+
+    dataset = nvtabular.Dataset(df, engine=engine)
+
+    data_stats = ops.DataStats()
+
+    features = all_cols >> data_stats
+    workflow = nvtabular.Workflow(features)
+    workflow.fit(dataset)
+
+    # get the output from the data_stats op
+    output = data_stats.output
+
+    # Check Output
+    ddf = dask_cudf.from_cudf(df, 2)
+    ddf_dtypes = ddf.head(1)
+    for col in all_cols:
+        # Check dtype
+        dtype = ddf_dtypes[col].dtype
+        assert output[col]["dtype"] == str(dtype)
+
+        # Identify column type
+        if np.issubdtype(dtype, np.floating):
+            col_type = "cont"
+        else:
+            col_type = "cat"
+
+        # Get cardinality for cats
+        if col_type == "cat":
+            assert output[col]["cardinality"] == ddf[col].nunique().compute()
+
+        # if string, replace string for their lengths for the rest of the computations
+        if dtype == "object":
+            ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
+            ddf[col].compute()
+        # Add list support when cudf supports it:
+        # https://github.com/rapidsai/cudf/issues/7157
+        # elif col_type == "cat_mh":
+        #    ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
+
+        # Get min,max, and mean
+        assert output[col]["min"] == pytest.approx(ddf[col].min().compute())
+        assert output[col]["max"] == pytest.approx(ddf[col].max().compute())
+        assert output[col]["mean"] == pytest.approx(ddf[col].mean().compute())
+
+        # Get std only for conts
+        if col_type == "cont":
+            assert output[col]["std"] == pytest.approx(ddf[col].std().compute())
+
+        # Get Percentage of NaNs for all
+        assert output[col]["per_nan"] == pytest.approx(
+            100 * (1 - ddf[col].count().compute() / len(ddf[col]))
+        )

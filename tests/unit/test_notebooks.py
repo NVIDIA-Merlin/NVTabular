@@ -61,8 +61,14 @@ def test_rossman_example(tmpdir):
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
+    notebook_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann/", "rossmann-store-sales-feature-engineering.ipynb"
+    )
+    _run_notebook(tmpdir, notebook_path)
+
+    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+
     notebooks = [
-        "rossmann-store-sales-feature-engineering.ipynb",
         "rossmann-store-sales-pytorch.ipynb",
         "rossmann-store-sales-fastai.ipynb",
         "rossmann-store-sales-tensorflow.ipynb",

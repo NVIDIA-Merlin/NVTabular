@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Dict, Union
+
 import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from .categorify import _emb_sz_rule, _encode_list_column, _get_embedding_order
-from .operator import Operator
+from ..dispatch import _encode_list_column
+from .categorify import _emb_sz_rule, _get_embedding_order
+from .operator import ColumnNames, Operator
 
 
 class HashBucket(Operator):
@@ -62,7 +65,7 @@ class HashBucket(Operator):
         will be transformed.
     """
 
-    def __init__(self, num_buckets):
+    def __init__(self, num_buckets: Union[int, Dict[str, int]]):
         if isinstance(num_buckets, dict):
             self.num_buckets = num_buckets
         elif isinstance(num_buckets, int):
@@ -76,7 +79,7 @@ class HashBucket(Operator):
         super(HashBucket, self).__init__()
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         if isinstance(self.num_buckets, int):
             num_buckets = {name: self.num_buckets for name in columns}
         else:
@@ -88,6 +91,8 @@ class HashBucket(Operator):
             else:
                 gdf[col] = gdf[col].hash_values() % nb
         return gdf
+
+    transform.__doc__ = Operator.transform.__doc__
 
     def get_embedding_sizes(self, columns):
         columns = _get_embedding_order(columns)

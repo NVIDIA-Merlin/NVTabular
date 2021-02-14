@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Callable, Union
+
 import cudf
 from nvtx import annotate
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class Filter(Operator):
@@ -36,18 +38,14 @@ class Filter(Operator):
         dataframe with unwanted rows filtered out.
     """
 
-    def __init__(self, f):
+    def __init__(self, f: Callable[[cudf.DataFrame], Union[cudf.DataFrame, cudf.Series]]):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def transform(
-        self,
-        columns,
-        gdf: cudf.DataFrame,
-    ):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         filtered = self.f(gdf)
         if isinstance(filtered, cudf.DataFrame):
             new_gdf = filtered
@@ -58,3 +56,5 @@ class Filter(Operator):
 
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__

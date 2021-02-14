@@ -17,6 +17,7 @@
 import glob
 import math
 import os
+import shutil
 
 import cudf
 import numpy as np
@@ -51,11 +52,11 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
     workflow.fit(dataset)
 
     if dump:
-        # TODO: load/save stats
-        config_file = tmpdir + "/temp.yaml"
-        workflow.save_stats(config_file)
-        workflow.clear_stats()
-        workflow.load_stats(config_file)
+        workflow_dir = os.path.join(tmpdir, "workflow")
+        workflow.save(workflow_dir)
+        workflow = None
+
+        workflow = Workflow.load(workflow_dir, client=client if use_client else None)
 
     def get_norms(tar: cudf.Series):
         gdf = tar.fillna(0)
@@ -128,7 +129,7 @@ def test_spec_set(tmpdir, client):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
-def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump):
+def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -140,11 +141,11 @@ def test_gpu_workflow(tmpdir, client, df, dataset, gpu_memory_frac, engine, dump
 
     workflow.fit(dataset)
     if dump:
-        # TODO: serialization
-        config_file = tmpdir + "/temp.yaml"
-        workflow.save_stats(config_file)
-        workflow.clear_stats()
-        workflow.load_stats(config_file)
+        workflow_dir = os.path.join(tmpdir, "workflow")
+        workflow.save(workflow_dir)
+        workflow = None
+
+        workflow = Workflow.load(workflow_dir)
 
     def get_norms(tar: cudf.Series):
         gdf = tar.fillna(0)
@@ -211,10 +212,11 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     workflow.fit(dataset)
 
     if dump:
-        config_file = tmpdir + "/temp.yaml"
-        workflow.save_stats(config_file)
-        workflow.clear_stats()
-        workflow.load_stats(config_file)
+        workflow_dir = os.path.join(tmpdir, "workflow")
+        workflow.save(workflow_dir)
+        workflow = None
+
+        workflow = Workflow.load(workflow_dir, client=client)
 
     def get_norms(tar: cudf.Series):
         ser_median = tar.dropna().quantile(0.5, interpolation="linear")
@@ -520,6 +522,19 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
     workflow.transform(dataset).to_parquet(out_path)
 
 
+def test_fit_simple():
+    data = cudf.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
+    dataset = Dataset(data)
+
+    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
+
+    workflow.fit(dataset)
+    transformed = workflow.transform(dataset).to_ddf().compute()
+
+    expected = cudf.DataFrame({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
+    assert_eq(expected, transformed)
+
+
 def test_transform_geolocation():
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
     data = cudf.DataFrame({"geo_location": raw})
@@ -540,14 +555,28 @@ def test_transform_geolocation():
     assert_eq(expected, transformed)
 
 
-def test_fit_simple():
-    data = cudf.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
-    dataset = Dataset(data)
+def test_workflow_move_saved(tmpdir):
+    raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
+    data = cudf.DataFrame({"geo": raw})
 
-    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
+    geo_location = ColumnGroup(["geo"])
+    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
+    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    geo_features = state + country + geo_location >> ops.Categorify()
 
-    workflow.fit(dataset)
-    transformed = workflow.transform(dataset).to_ddf().compute()
+    # create the workflow and transform the input
+    workflow = Workflow(geo_features)
+    expected = workflow.fit_transform(Dataset(data)).to_ddf().compute()
 
-    expected = cudf.DataFrame({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
+    # save the workflow (including categorical mapping parquet files)
+    # and then verify we can load the saved workflow after moving the directory
+    out_path = os.path.join(tmpdir, "output", "workflow")
+    workflow.save(out_path)
+
+    moved_path = os.path.join(tmpdir, "output", "workflow2")
+    shutil.move(out_path, moved_path)
+    workflow2 = Workflow.load(moved_path)
+
+    # also check that when transforming our input we get the same results after loading
+    transformed = workflow2.transform(Dataset(data)).to_ddf().compute()
     assert_eq(expected, transformed)

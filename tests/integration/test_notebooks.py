@@ -23,17 +23,20 @@ import sys
 from os.path import dirname, realpath
 
 import pytest
+from benchmark_parsers import send_results
+from criteo_parsers import CriteoBenchFastAI
+from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
-DATA_START = os.environ.get("DATASET_DIR", "/raid/data")
+DATA_START = os.environ.get("DATASET_DIR", "/raid/criteo")
 
 
-def test_criteo_notebook(tmpdir):
-    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
-    output_path = os.path.join(DATA_START, "criteo/crit_test")
+def test_criteo_notebook(asv_db, bench_info, tmpdir):
+    input_path = os.path.join(DATA_START, "tests/crit_int_pq")
+    output_path = os.path.join(DATA_START, "tests/crit_test")
     os.environ["PARTS_PER_CHUNK"] = "1"
 
-    _run_notebook(
+    out = _run_notebook(
         tmpdir,
         os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
         input_path,
@@ -43,9 +46,13 @@ def test_criteo_notebook(tmpdir):
         gpu_id=0,
         batch_size=100000,
     )
+    bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
+    bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
+    send_results(asv_db, bench_info, bench_results)
 
 
-def test_criteohugectr_notebook(tmpdir):
+@pytest.mark.skip(reason="Criteo-hugectr notebook needs to be updated.")
+def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
     input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
     output_path = os.path.join(DATA_START, "criteo/crit_test")
     os.environ["PARTS_PER_CHUNK"] = "1"
@@ -62,38 +69,47 @@ def test_criteohugectr_notebook(tmpdir):
     )
 
 
-def test_optimize_criteo(tmpdir):
-    input_path = os.path.join(DATA_START, "criteo/crit_orig")
-    output_path = os.path.join(DATA_START, "criteo/crit_test_opt")
-
-    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
-    _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=2)
-
-
-def test_rossman_example(tmpdir):
+def test_rossman_example(asv_db, bench_info, tmpdir):
     pytest.importorskip("tensorflow")
     data_path = os.path.join(DATA_START, "rossman/data")
     input_path = os.path.join(DATA_START, "rossman/input")
     output_path = os.path.join(DATA_START, "rossman/output")
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples", "rossmann-store-sales-preproc.ipynb"
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-preproc.ipynb"
     )
 
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=1, clean_up=False)
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
+
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-feature-engineering.ipynb"
+    )
+
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
 
     notebookex_path = os.path.join(
-        dirname(TEST_PATH), "examples", "rossmann-store-sales-example.ipynb"
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-fastai.ipynb"
     )
-    _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=1)
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
+    bench_results = RossBenchFastAI().get_epochs(out.splitlines())
+    bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
+    send_results(asv_db, bench_info, bench_results)
 
+    notebookex_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-pytorch.ipynb"
+    )
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
+    bench_results = RossBenchPytorch().get_epochs(out.splitlines())
+    bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
+    send_results(asv_db, bench_info, bench_results)
 
-def test_gpu_benchmark(tmpdir):
-    input_path = os.path.join(DATA_START, "outbrains/input")
-    output_path = os.path.join(DATA_START, "outbrains/output")
-
-    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "gpu_benchmark.ipynb")
-    _run_notebook(tmpdir, notebook_path, input_path, output_path, gpu_id=0, batch_size=100000)
+    notebookex_path = os.path.join(
+        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-tensorflow.ipynb"
+    )
+    out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
+    bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
+    bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
+    send_results(asv_db, bench_info, bench_results)
 
 
 def _run_notebook(
@@ -106,14 +122,14 @@ def _run_notebook(
     clean_up=True,
     transform=None,
 ):
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("GPU_TARGET_ID", gpu_id)
 
     if not os.path.exists(input_path):
         os.makedirs(input_path)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     if batch_size:
-        os.environ["BATCH_SIZE"] = str(batch_size)
+        os.environ["BATCH_SIZE"] = os.environ.get("BATCH_SIZE", batch_size)
 
     os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
@@ -133,8 +149,15 @@ def _run_notebook(
     script_path = os.path.join(tmpdir, "notebook.py")
     with open(script_path, "w") as script:
         script.write("\n".join(lines))
-    subprocess.check_output([sys.executable, script_path])
-
+    output = subprocess.check_output([sys.executable, script_path])
+    # save location will default to run location
+    output = output.decode("utf-8")
+    _, note_name = os.path.split(notebook_path)
+    note_name = note_name.split(".")[0]
+    if output:
+        with open(f"test_res_{note_name}", "w+") as w_file:
+            w_file.write(output)
     # clear out products
     if clean_up:
         shutil.rmtree(output_path)
+    return output

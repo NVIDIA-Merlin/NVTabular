@@ -15,11 +15,15 @@
 #
 import cudf
 import cupy
+import dask_cudf
 import numpy as np
 from dask.delayed import Delayed
 
+from nvtabular.dispatch import _read_parquet_dispatch
+
 from . import categorify as nvt_cat
 from .moments import _custom_moments
+from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
@@ -153,7 +157,7 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns, ddf):
+    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
@@ -213,12 +217,9 @@ class TargetEncoding(StatOperator):
 
         return ret
 
-    def save(self):
-        return {"stats": self.stats, "means": self.means}
-
-    def load(self, data):
-        self.stats = data["stats"]
-        self.means = data["means"]
+    def set_storage_path(self, new_path, copy=False):
+        self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)
+        self.out_path = new_path
 
     def clear(self):
         self.stats = {}
@@ -242,6 +243,7 @@ class TargetEncoding(StatOperator):
             out_col = self._make_te_name(cat_group)
 
         # Initialize new data
+        _read_pq_func = _read_parquet_dispatch(gdf)
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"
 
@@ -251,7 +253,7 @@ class TargetEncoding(StatOperator):
             storage_name_folds = nvt_cat._make_name(*cols, sep=self.name_sep)
             path_folds = self.stats[storage_name_folds]
             agg_each_fold = nvt_cat._read_groupby_stat_df(
-                path_folds, storage_name_folds, self.cat_cache
+                path_folds, storage_name_folds, self.cat_cache, _read_pq_func
             )
             agg_each_fold.columns = cols + ["count_y"] + [x + "_sum_y" for x in self.target]
         else:
@@ -260,7 +262,9 @@ class TargetEncoding(StatOperator):
         # Groupby Aggregation for all data
         storage_name_all = nvt_cat._make_name(*cat_group, sep=self.name_sep)
         path_all = self.stats[storage_name_all]
-        agg_all = nvt_cat._read_groupby_stat_df(path_all, storage_name_all, self.cat_cache)
+        agg_all = nvt_cat._read_groupby_stat_df(
+            path_all, storage_name_all, self.cat_cache, _read_pq_func
+        )
         agg_all.columns = cat_group + ["count_y_all"] + [x + "_sum_y_all" for x in self.target]
 
         if fit_folds:
@@ -310,7 +314,7 @@ class TargetEncoding(StatOperator):
         new_gdf.index = gdf.index
         return new_gdf
 
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         # Add temporary column for sorting
         tmp = "__tmp__"
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
@@ -343,6 +347,10 @@ class TargetEncoding(StatOperator):
         if fit_folds and not self.drop_folds:
             new_gdf[self.fold_name] = gdf[self.fold_name]
         return new_gdf
+
+    transform.__doc__ = Operator.transform.__doc__
+    fit.__doc__ = StatOperator.fit.__doc__
+    fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
 
 def _add_fold(s, kfold, fold_seed=None):

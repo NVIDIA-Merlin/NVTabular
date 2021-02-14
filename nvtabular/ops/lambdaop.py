@@ -15,10 +15,10 @@
 #
 from inspect import signature
 
-import cudf
 from nvtx import annotate
 
-from .operator import Operator
+from ..dispatch import DataFrameType
+from .operator import ColumnNames, Operator
 
 
 class LambdaOp(Operator):
@@ -66,17 +66,19 @@ class LambdaOp(Operator):
         self.dependency = dependency
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
-        new_gdf = cudf.DataFrame()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = type(df)()
         for col in columns:
             if self._param_count == 2:
-                new_gdf[col] = self.f(gdf[col], gdf)
+                new_df[col] = self.f(df[col], df)
             elif self._param_count == 1:
-                new_gdf[col] = self.f(gdf[col])
+                new_df[col] = self.f(df[col])
             else:
                 # shouldn't ever happen,
                 raise RuntimeError(f"unhandled lambda param count {self._param_count}")
-        return new_gdf
+        return new_df
+
+    transform.__doc__ = Operator.transform.__doc__
 
     def dependencies(self):
         return self.dependency
