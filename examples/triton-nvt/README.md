@@ -76,12 +76,12 @@ Now you can open `movielens_example` and `movielens_deployment_example` notebook
 
 ## 3. Build and Run the Triton Inference Server container:
 
-1) Navigate to the `nvt_triton` directory that you saved NVTabular workflow and DL model on your host machine.
+1) Navigate to the `nvt_triton` directory that you saved NVTabular workflow and Tensorflow model.
 ```
 cd <path to nvt_triton>
 ```
 
-2) Run the Triton Inference Server container.
+2) Launch Merlin Triton Inference Server container:
 
 docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/working_dir/ merlin/nvtabular:triton 
 
@@ -95,6 +95,6 @@ cd /models
 ```
 4) Start the triton server and run Triton with the example model repository you just created. 
 ```
-tritonserver --model-repository `pwd`/models &
+tritonserver --model-repository `pwd`/models
 ```
 Once the models are successfully loaded, you can run the `movielens_deployment_example` notebook to send requests to the Triton IS.
