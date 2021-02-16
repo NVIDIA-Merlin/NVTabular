@@ -14,13 +14,14 @@ In order to use Merlin Inference API, there are two containers that the user nee
 
 We start with pulling NVTabular container. This is to do preprocessing, feature engineering on our datasets, and then to train a DL model with PyT, TF or HugeCTR frameworks with processed datasets.
 
-Before starting docker continer, first create a `nvt_triton` directory and `models` subdirectory on your host machine:
+Before starting docker continer, first create a `nvt_triton` directory and `models` and `data` subdirectories on your host machine:
 
 ```
 mkdir -p nvt_triton/models/
+mkdir -p nvt_triton/data/
 cd /nvt_triton
 ```
-We will mount this directory into the NVTabular docker container.
+We will mount `nvt_triton` directory into the NVTabular docker container.
 
 NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
@@ -72,7 +73,7 @@ The following notebook shows `movielens_deployment_example` how to send request 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
-Now you can open `movielens_example` and `movielens_deployment_example` notebooks. Note that you need to save your workflow and DL model in the `models` directory before launching the `tritonserver` as defined below. Then you can run the `movielens_deployment_example` notebook.
+Now you can open `movielens_TF` and `movielens_deployment` notebooks. Note that you need to save your workflow and DL model in the `models` directory before launching the `tritonserver` as defined below. Then you can run the `movielens_deployment` notebook once the server is started.
 
 ## 3. Build and Run the Triton Inference Server container:
 
@@ -82,9 +83,9 @@ cd <path to nvt_triton>
 ```
 
 2) Launch Merlin Triton Inference Server container:
-
+```
 docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/working_dir/ merlin/nvtabular:triton 
-
+```
 The container will open a shell when the run command execution is completed. It should look similar to this:
 ```
 root@02d56ff0738f:/opt/tritonserver# 
@@ -93,8 +94,29 @@ root@02d56ff0738f:/opt/tritonserver#
 ```
 cd /models
 ```
-4) Start the triton server and run Triton with the example model repository you just created. 
+4) Start the triton server and run Triton with the example model repository you just created. Note that you need to provide correct path for the models directory.
 ```
-tritonserver --model-repository `pwd`/models
+tritonserver --model-repository /working_dir/models/
 ```
-Once the models are successfully loaded, you can run the `movielens_deployment_example` notebook to send requests to the Triton IS.
+
+After you start Triton you will see output on the console showing the server starting up and loading the model. When you see output like the following, Triton is ready to accept inference requests.
+
+```
++---------------+---------+--------+
+| Model         | Version | Status |
++---------------+---------+--------+
+| movielens     | 1       | READY  |
+| movielens_nvt | 1       | READY  |
+| movielens_tf  | 1       | READY  |
++---------------+---------+--------+
+...
+...
+
+I0216 15:28:24.026506 71 grpc_server.cc:3979] Started GRPCInferenceService at 0.0.0.0:8001
+I0216 15:28:24.027067 71 http_server.cc:2717] Started HTTPService at 0.0.0.0:8000
+I0216 15:28:24.068597 71 http_server.cc:2736] Started Metrics Service at 0.0.0.0:8002
+```
+
+All the models should show "READY" status to indicate that they loaded correctly. If a model fails to load the status will report the failure and a reason for the failure. If your model is not displayed in the table check the path to the model repository and your CUDA drivers.
+
+Once the models are successfully loaded, you can run the `movielens_deployment` notebook to send requests to the Triton IS.
