@@ -5,18 +5,7 @@ Architecture
 
 The NVTabular engine uses the [RAPIDS](http://www.rapids.ai) [Dask-cuDF library](https://github.com/rapidsai/dask-cuda), which provides the bulk of the functionality for accelerating dataframe operations on the GPU and scaling across multiple GPUs. NVTabular provides functionality commonly found in deep learning recommendation workflows, allowing you to focus on what you want to do with your data, and not how you need to do it. NVTabular also provides a template for our core compute mechanism, which is referred to as Operations (ops), allowing you to build your own custom ops from cuDF and other libraries.
 
-Once NVTabular is installed, you can set up a workflow as follows:
-
-```python
-import nvtabular as nvt
-workflow = nvt.Workflow(
-    cat_names=["user_id", "item_id", "city"],
-    cont_names=["age", "time_of_day", "item_num_views"],
-    label_name=["label"]
-)
-```
-
-For additional information about installing NVTabular, see https://nvidia.github.io/NVTabular/main/Introduction.html#installation. With the workflow in place, we can now explore the library in detail.
+Once NVTabular is installed, the next step is to define the preprocessing and feature engineering pipeline by applying the ops that you need. For additional information about installing NVTabular, see https://nvidia.github.io/NVTabular/main/Introduction.html#installation.
 
 ## Operations
 
@@ -28,46 +17,60 @@ Operations are a reflection of the way in which compute happens on the GPU acros
 Operations split the compute into two phases:
 
 * Statistics Gathering is the first phase where operations that cross the row boundary can occur. An example of this would be in the Normalize op that relies on two statistics: mean and standard deviation. To normalize a row, we must first have these two values calculated using a Dask-cudf graph.
-* Apply is the second phase that uses the statistics, which were created earlier, to modify the dataset and transform the data. NVTabular allows for the application of transforms and not only during the modification of the dataset, but also during dataloading. The same transforms can also be applied with Inference.
+* Transform is the second phase that uses the statistics, which were created earlier, to modify the dataset and transform the data. NVTabular allows for the application of transforms, which doesn't only take place during the modification of the dataset but also during dataloading. The same transforms can also be applied with Inference.
+
+NVTabular's preprocessing and feature engineering workflows are directed graphs of operators, which are applied to user defined groups of columns. Defining this graph is decoupled from the Workflow class, and lets users easily define complicated graphs of operations on their own custom defined sets of columns. The NVTabular workflow uses an API similar to the one noted on [scikit-learn](https://scikit-learn.org/stable/data_transforms.html) for dataset transformations. Statistics are calculated using a 'fit' method and applied with a 'transform' method. The NVTabular Dataset object can handle both the input and output for datasets using the ‘transform’ method of the workflow, taking an input dataset and returning it as output in the form of a transformed dataset.
+
+An operator can be applied to a ColumnGroup from an overloaded operator (>>), which returns a new ColumnGroup so that more operators can be applied to it as shown in the example below. A ColumnGroup is a list of column name strings. The operators work on every column in the ColumnGroup. In the example below, CONT_COLUMNS represents a group of columns for continuous features. We can apply multiple operators by chaining them to CONT_COLUMNS to obtain transformed continuous features.
 
 ```python
-# by default, the op will be applied to _all_
-# columns of the associated variable type
-workflow.add_cont_preprocess(nvt.ops.Normalize())
-
-dataset = nvt.Dataset("/path/to/data.parquet")
-
-# record stats, transform the dataset, and export
-# the transformed data to a parquet file
-proc.apply(dataset, shuffle=nvt.io.Shuffle.PER_WORKER, output_path="/path/to/export/dir")
+CONT_COLUMNS = ['col1 name', 'col2 name', ...]
+cont_features = CONT_COLUMNS >> <op1> >> <op2> >> ...
 ```
-
-Dask-cuDF does the scheduling to help optimize the task graph by providing an optimal solution to whatever GPUs you have configured.
 
 ## A Higher Level of Abstraction
 
-The NVTabular code is targeted at the operator level and not the dataframe level, which provides a method for specifying the operation you want to perform, as well as the columns or type of data that you want to perform it on. There's an explicit distinction between feature engineering ops and preprocessing ops. Feature engineering ops create new variables and preprocessing ops transform data more directly to make it ready for the model to which it’s feeding. While the type of computation involved in these two stages is often similar, we want to allow for the creation of new features that will then be preprocessed in the same way as other input variables.
+The NVTabular code is targeted at the operator level and not the dataframe level, which provides a method for specifying the operation that you want to perform, as well as the columns or type of data that you want to perform it on. There are two types of operators:
+* Base Operator: It transforms columns using a transform method that processes the cudf dataframe object and a list of columns and returns the transformed cudf dataframe object. It also declares the columns that are produced using the ‘output_columns_names’ method and additional column groups using the ‘dependencies’ method.
+* StatOperator: A subclass that uses a 'fit' method to calculate statistics on a dataframe, a 'finalize' method to combine different statistics from various dask workers, and save/load methods to handle serialization.
 
-Two main data types are currently supported: categorical variables and continuous variables. Feature engineering ops explicitly take one or more continuous or categorical columns as input and produce one or more columns of a specific type. By default, the input columns used to create the new feature are also included in the output. However, this can be overridden with the [replace] keyword in the operator. This is extended to multi-hot categoricals, as well as high cardinality categoricals, which must be treated differently due to memory constraints.
+A flexible method is used for defining the operators in the workflow, which is treated as a directed acyclic graph of operators on a set of columns. Operators take in identical types of column sets and perform the operation across each column in which the output is transformed during the final operation into a long tensor for categorical variables or float tensor for continuous variables. Operators can be chained to allow for more complex feature engineering or preprocessing. Chaining operators to the ColumnGroup defines the graph, which is necessary to produce the output dataset. The chained operators replace the chained columns by transforming the columns while retaining the same column names. 
 
-Preprocessing operators take in a set of columns of the same type and perform the operation across each column, transforming the output during the final operation into a long tensor in the case of categorical variables or a float tensor in the case of continuous variables. Preprocessing operations replace the column values with their new representation by default, but this can be overriden.
+Here's a holistic processing workflow example:
 
 ```python
-# same example as before, but now only apply normalization
-# to `age` and `item_num_views` columns, which will create
-# new columns `age_normalize` and `item_num_views_normalize`
-workflow.add_cont_preprocess(nvt.ops.Normalize(columns=["age", "item_num_views"], replace=False))
+import nvtabular as nvt
+from nvtabular import ops
+
+# define set of columns
+cat_columns = ["user_id", "item_id", "city"],
+cont_columns = ["age", "time_of_day", "item_num_views"],
+label_column = ["label"]
+
+# by default, the op will be applied to all
+# columns of the each ColumnGroup
+cat_features = cat_columns >> ops.Categorify()
+cont_features = cont_columns >> ops.FillMissing() >> ops.Normalize()
+label_feature = label_column >> ops.LogOp()
+
+# A NVTabular workflow orchastrates the pipelines
+# We create the NVTabular workflow with the output ColumnGroups
+proc = nvt.Workflow(cat_features + cont_features + label_feature)
 
 dataset = nvt.Dataset("/path/to/data.parquet")
-proc.apply(dataset, shuffle=nvt.io.Shuffle.PER_WORKER, output_path="/path/to/export/dir")
+# Calculate statistics on the training set
+proc.fit(dataset)
+
+# record stats, transform the dataset, and export
+# the transformed data to a parquet file
+proc.transform(dataset).to_parquet(output_path="/path/to/export/dir", shuffle=nvt.io.Shuffle.PER_WORKER)
 ```
 
-Operators may also be chained to allow for more complex feature engineering or preprocessing. The chaining of operators is done by creating a list of operators. By default, only the final operator in a chain that includes preprocessing will be included in the output with all other intermediate steps implicitly dropped.
+We can easily convert this workflow definition into a graph, and visualize the full workflow by concatenating the output ColumnGroups.
 
-```python
-# Replace negative and missing values with 0 and then take log(1+x)
-workflow.add_cont_feature([FillMissing(), Clip(min_value=0), LogOp()])
-
-# then normalize
-workflow.add_cont_preprocess(Normalize())
 ```
+(cat_features+cont_features+label_feature).graph
+```
+![NVTabular Workflow Graph](./images/nvt_workflow_graph.png)
+
+The Rename operator can be used to change the names of columns. This operator provides several different options for renaming columns such as applying a user defined function to get new column names, as well as appending a suffix to each column. You can see the [Outbrain](https://github.com/NVIDIA/NVTabular/tree/new_api/examples/wnd_outbrain) example for usage of the Rename operator.
