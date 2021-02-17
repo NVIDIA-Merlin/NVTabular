@@ -30,7 +30,7 @@ NVTabular supports the following core features:
 To install NVTabular, ensure that you meet the following prerequisites:
 * CUDA version 10.0+
 * Python version 3.7+
-* Pascal architecture or better (Compute Capability version 6.0) 
+* Pascal architecture or later GPU (Compute Capability version 6.0) 
 
 **NOTE**: NVTabular will only run on Linux. Other operating systems are not currently supported.
 
