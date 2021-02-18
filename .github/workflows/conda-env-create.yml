@@ -23,10 +23,10 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Create Conda environment with CUDA 10.1
       run: |
-        conda env create --file environment.yml --name nvtabular_dev_10.1
+        conda env create --file conda/environments/nvtabular_dev_cuda10.1.yml --name nvtabular_dev_10.1
     - name: Create Conda environment with CUDA 10.2
       run: |
-        conda env create --file environment.yml --name nvtabular_dev_10.2
+        conda env create --file conda/environments/nvtabular_dev_cuda10.2.yml --name nvtabular_dev_10.2
     - name: Create Conda environment with CUDA 11.0
       run: |
-        conda env create --file environment.yml --name nvtabular_dev_11.0
+        conda env create --file conda/environments/nvtabular_dev_cuda11.0.yml --name nvtabular_dev_11.0
