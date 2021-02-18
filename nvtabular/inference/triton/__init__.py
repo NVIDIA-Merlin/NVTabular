@@ -21,7 +21,7 @@ except ImportError:
     import nvtabular.inference.triton.model_config_pb2 as model_config
 
 
-def export_tensorflow_ensemble(model, workflow, name, model_path, version=1):
+def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns, version=1):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a tensorflow savedmodel
 
@@ -35,7 +35,14 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, version=1):
         The base name of the various triton models
     model_path:
         The root path to write out files to
+    label_columns:
+        Labels in the dataset (will be removed f
     """
+    # ughh this is such a massive hack
+    for label in label_columns:
+        del workflow.input_dtypes[label]
+        del workflow.output_dtypes[label]
+
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
     nvt_config = generate_triton_model(workflow, name + "_nvt", preprocessing_path)
@@ -49,6 +56,7 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, version=1):
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
     os.makedirs(ensemble_path, exist_ok=True)
+    os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
     _generate_ensemble_config(model, workflow, name, ensemble_path, nvt_config, tf_config)
 
 
@@ -131,8 +139,7 @@ def _generate_model_config(workflow, name, output_path):
     and outputs to that workflow"""
     config = model_config.ModelConfig(name=name, backend="python")
 
-    for column in workflow.column_group.input_column_names:
-        dtype = workflow.input_dtypes[column]
+    for column, dtype in workflow.input_dtypes.items():
         config.input.append(
             model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
         )
