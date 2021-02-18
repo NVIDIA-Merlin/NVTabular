@@ -30,6 +30,7 @@ TEST_PATH = dirname(dirname(realpath(__file__)))
 
 
 def test_criteo_notebook(tmpdir):
+    tor = pytest.importorskip('fastai')
     # create a toy dataset in tmpdir, and point environment variables so the notebook
     # will read from it
     for i in range(24):
@@ -68,11 +69,20 @@ def test_rossman_example(tmpdir):
 
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
 
-    notebooks = [
-        "rossmann-store-sales-pytorch.ipynb",
-        "rossmann-store-sales-fastai.ipynb",
-        "rossmann-store-sales-tensorflow.ipynb",
-    ]
+    notebooks = []
+    try:
+        import torch
+        notebooks.append("rossmann-store-sales-pytorch.ipynb")
+        import fastai
+        notebooks.append("rossmann-store-sales-fastai.ipynb")
+    except Exception:
+        pass
+    try:
+        import nvtabular.loader.tensorflow
+        notebooks.append("rossmann-store-sales-tensorflow.ipynb")
+    except Exception:
+        pass
+ 
     for notebook in notebooks:
         notebook_path = os.path.join(dirname(TEST_PATH), "examples/rossmann/", notebook)
         _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
