@@ -30,7 +30,7 @@ TEST_PATH = dirname(dirname(realpath(__file__)))
 
 
 def test_criteo_notebook(tmpdir):
-    tor = pytest.importorskip('fastai')
+    tor = pytest.importorskip("fastai") # noqa
     # create a toy dataset in tmpdir, and point environment variables so the notebook
     # will read from it
     for i in range(24):
@@ -57,7 +57,6 @@ def test_optimize_criteo(tmpdir):
 
 
 def test_rossman_example(tmpdir):
-    pytest.importorskip("nvtabular.loader.tensorflow")
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
@@ -71,18 +70,21 @@ def test_rossman_example(tmpdir):
 
     notebooks = []
     try:
-        import torch
+        import torch # noqa
+
         notebooks.append("rossmann-store-sales-pytorch.ipynb")
-        import fastai
+        import fastai # noqa
+
         notebooks.append("rossmann-store-sales-fastai.ipynb")
     except Exception:
         pass
     try:
-        import nvtabular.loader.tensorflow
+        import nvtabular.loader.tensorflow # noqa
+
         notebooks.append("rossmann-store-sales-tensorflow.ipynb")
     except Exception:
         pass
- 
+
     for notebook in notebooks:
         notebook_path = os.path.join(dirname(TEST_PATH), "examples/rossmann/", notebook)
         _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
