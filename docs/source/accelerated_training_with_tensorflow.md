@@ -13,7 +13,7 @@ When training pipelines with TensorFlow, the dataloader cannot prepare sequentia
 When `KerasSequenceLoader` accelerates training with TensorFlow, the following happens:
 
 1. The required libraries are imported.
-   The dataloader loads and prepares batches directly in the GPU and requires some of the GPU memory. Before initializing TensorFlow, the amount of memory that is allocated to      TensorFlow needs to be controlled as well as the remaining memory allocation that is allocated to the dataloader. The environment variable 'TF_MEMORY_ALLOCATION' can be used    to control the TensorFlow memory allocation..
+   The dataloader loads and prepares batches directly in the GPU and requires some of the GPU memory. Before initializing TensorFlow, the amount of memory that is allocated to      TensorFlow needs to be controlled as well as the remaining memory allocation that is allocated to the dataloader. The environment variable 'TF_MEMORY_ALLOCATION' can be used    to control the TensorFlow memory allocation.
    
    ```python
    import tensorflow as tf
