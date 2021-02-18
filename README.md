@@ -1,36 +1,36 @@
 ## [NVTabular](https://github.com/NVIDIA/NVTabular) | [API documentation](https://nvidia.github.io/NVTabular/main/index.html)
 
-[NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to quickly and easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library.
-
-NVTabular is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that we have developed as extensions of native framework code. NVTabular provides the option to shuffle data during preprocessing, allowing the dataloader to load large contiguous chunks from files rather than individual elements. This allows us to do individual epoch shuffles orders faster than a full shuffle of the datasent. Loading tabular data is almost always a training bottleneck. In our benchmarking, we've seen 10x improvements in training time on the GPU relative to the native dataloaders.
+[NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to quickly and easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library. NVTabular is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that we have developed as extensions of native framework code. In our experiments, we were able to speed up existing TensorFlow pipelines by 9 times and existing PyTorch pipelines by 5 times with our highly optimized dataloaders.
 
 NVTabular is a component of [**NVIDIA Merlin Open Beta**](https://developer.nvidia.com/nvidia-merlin). NVIDIA Merlin is used for building large-scale deep learning recommender systems, which require massive datasets to train, particularly for deep learning based solutions. With NVTabular being a part of the Merlin ecosystem, it also works with the other Merlin components including [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server) to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s Triton Inference Server, the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.
 
 ## Benefits 
 
-Our ultimate goal is faster iteration on massive tabular datasets, both for experimentation during training, and also for production model responsiveness. NVTabular is designed to support data scientists and machine learning (ML) engineers train (deep learning) recommender systems and resolve tabular data problems by allowing them to:
+Our ultimate goal is faster iteration on massive tabular datasets, both for experimentation during training, and also production model responsiveness. NVTabular is designed to support data scientists and machine learning (ML) engineers train (deep learning) recommender systems and resolve tabular data problems by allowing them to:
 
 * prepare datasets quickly and easily for experimentation so that more models can be trained.
-* work with datasets that exceed GPU and CPU memory without having to worry about scale.
-* focus on what to do with the data, and not how to do it, using our abstraction at the operation level.
+* process datasets that exceed GPU and CPU memory without having to worry about scale.
+* use optimized dataloaders to accelerate training with TensorFlow and PyTorch.
+* focus on what to do with the data and not how to do it by using abstraction at the operation level.
 
 NVTabular also helps ML/Ops engineers with deploying models into production by providing faster dataset transformation. This makes it easy for production models to be trained more frequently and kept up to date, helping improve responsiveness and model performance.
 
 ## Core Features
 
 NVTabular supports the following core features:
-* [Framework Interoperability](../docs/source/core_features.md#framework-interoperability)
+* [TensorFlow and PyTorch Interoperability](../docs/source/core_features.md#tensorflow-and-pytorch-interoperability)
+* [HugeCTR Interoperability](../docs/source/core_features.md#hugectr-interoperability)
 * [Multi-GPU Support](../docs/source/core_features.md#multi-gpu-support)
 * [Multi-Node Support](../docs/source/core_features.md#multi-node-support)
 * [Multi-Hot Encoding and Pre-existing Embeddings](../docs/source/core_features.md#multi-hot-encoding-and-pre-existing-embeddings)
-* [CPU Support](../docs/source/core_features.md#cpu-support)
+* [Shuffling Datasets](../docs/source/core_features.md#shuffling-datasets)
 
 ## Installation
 
 To install NVTabular, ensure that you meet the following prerequisites:
 * CUDA version 10.0+
 * Python version 3.7+
-* Pascal architecture or later GPU (Compute Capability version 6.0) 
+* NVIDIA Pascal GPU or later
 
 **NOTE**: NVTabular will only run on Linux. Other operating systems are not currently supported.
 
@@ -83,7 +83,7 @@ root@2efa5b50b909:
 
 ## Examples and Tutorials
 
-The following use cases can be found in our [API documentation examples section](https://nvidia.github.io/NVTabular/main/examples/index.html).
+The following use cases can be found in our [API documentation examples section](https://nvidia.github.io/NVTabular/main/examples/index.html):
 * Preprocessing
 * Feature engineering
 * Dataloading in Tensorflow, PyTorch, and HugeCTR
