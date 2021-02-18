@@ -42,7 +42,7 @@ def test_criteo_notebook(tmpdir):
         tmpdir,
         os.path.join(
             dirname(TEST_PATH),
-            "examples/03-scaling-to-larger-than-memory-datasets-criteo/",
+            "examples/scaling-criteo/",
             "02-03b-ETL-with-NVTabular-Training-with-PyTorch.ipynb",
         ),
         # disable rmm.reinitialize, seems to be causing issues
@@ -57,10 +57,33 @@ def test_optimize_criteo(tmpdir):
 
     notebook_path = os.path.join(
         dirname(TEST_PATH),
-        "examples/03-scaling-to-larger-than-memory-datasets-criteo/",
+        "examples/scaling-criteo/",
         "01-Download-Convert.ipynb",
     )
     _run_notebook(tmpdir, notebook_path)
+
+
+def test_movielens_example(tmpdir):
+    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
+    notebooks = [
+        "01-Download-Convert.ipynb",
+        "02-ETL-with-NVTabular.ipynb",
+        "03a-Training-with-TF.ipynb",
+        "03b-Training-with-PyTorch.ipynb",
+    ]
+    for notebook in notebooks:
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/getting-started-movielens/",
+            notebook,
+        )
+        _run_notebook(
+            tmpdir,
+            notebook_path,
+            lambda line: line.replace(
+                "BASE_DIR = '/raid/data/ml/'", "BASE_DIR = '" + str(tmpdir) + "/'"
+            ),
+        )
 
 
 def test_rossman_example(tmpdir):
@@ -71,7 +94,7 @@ def test_rossman_example(tmpdir):
 
     notebook_path = os.path.join(
         dirname(TEST_PATH),
-        "examples/99-applying-to-other-tabular-data-problems-rossmann/",
+        "examples/tabular-data-rossmann/",
         "02-ETL-with-NVTabular.ipynb",
     )
     _run_notebook(tmpdir, notebook_path)
@@ -86,7 +109,7 @@ def test_rossman_example(tmpdir):
     for notebook in notebooks:
         notebook_path = os.path.join(
             dirname(TEST_PATH),
-            "examples/99-applying-to-other-tabular-data-problems-rossmann/",
+            "examples/tabular-data-rossmann/",
             notebook,
         )
         _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
@@ -110,7 +133,7 @@ def test_multigpu_dask_example(tmpdir):
             return line
 
         notebook_path = os.path.join(
-            dirname(TEST_PATH), "examples/98-multi-gpu-toy-example/", "multi-gpu_dask.ipynb"
+            dirname(TEST_PATH), "examples/multi-gpu-toy-example/", "multi-gpu_dask.ipynb"
         )
         _run_notebook(tmpdir, notebook_path, _nb_modify)
 
