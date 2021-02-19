@@ -1,6 +1,7 @@
 import os
 import subprocess
 from shutil import copyfile
+import json
 
 import cudf
 import tritonclient.http as httpclient
@@ -21,15 +22,38 @@ except ImportError:
     import nvtabular.inference.triton.model_config_pb2 as model_config
 
 
-def generate_triton_model(workflow, name, output_path, version=1):
+def generate_triton_model(workflow, name, output_path, version=1, output_model=None, cats=None, conts=None, max_batch_size=None):
     """ converts a workflow to a triton mode """
     workflow.save(os.path.join(output_path, str(version), "workflow"))
-    _generate_model_config(workflow, name, output_path)
-    copyfile(
-        os.path.join(os.path.dirname(__file__), "model.py"),
-        os.path.join(output_path, str(version), "model.py"),
-    )
+    _generate_model_config(workflow, name, output_path, output_model, max_batch_size, cats, conts)
 
+    if output_model is None:
+        copyfile(
+            os.path.join(os.path.dirname(__file__), "model.py"),
+            os.path.join(output_path, str(version), "model.py"),
+        )
+    elif output_model == "hugectr":
+        _generate_column_types(os.path.join(output_path, str(version), "workflow"), cats, conts)
+        copyfile(
+            os.path.join(os.path.dirname(__file__), "model_hugectr.py"),
+            os.path.join(output_path, str(version), "model.py"),
+        )
+
+def _generate_column_types(output_path, cats=None, conts=None):
+    if cats is None and conts is None:
+        raise ValueError('Either cats or conts has to have a value.')
+
+    if cats or conts:
+        with open(os.path.join(output_path, "column_types.json"), "w") as o:
+           cats_conts_json = dict()
+           if cats:
+               cats_conts_json["cats"] = [name for i, name in enumerate(cats)]
+           if conts:
+               cats_conts_json["conts"] = [name for i, name in enumerate(conts)]
+           json.dump(cats_conts_json, o)
+
+def get_column_types(path):
+    return json.load(open(os.path.join(path, "column_types.json")))
 
 def convert_df_to_triton_input(column_names, batch, input_class=httpclient.InferInput):
     columns = [(col, batch[col]) for col in column_names]
@@ -43,21 +67,46 @@ def convert_triton_output_to_df(columns, response):
     return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
 
 
-def _generate_model_config(workflow, name, output_path):
+def _generate_model_config(workflow, name, output_path, output_model=None, max_batch_size=None, cats=None, conts=None):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
-    config = model_config.ModelConfig(name=name, backend="python")
+    if max_batch_size is None:
+        config = model_config.ModelConfig(name=name, backend="python")
+    else:
+        config = model_config.ModelConfig(name=name, backend="python", max_batch_size=max_batch_size)
 
-    for column in workflow.column_group.input_column_names:
-        dtype = workflow.input_dtypes[column]
-        config.input.append(
-            model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
-        )
+    if output_model is None:
+        for column in workflow.column_group.input_column_names:
+            dtype = workflow.input_dtypes[column]
+            config.input.append(
+                model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
+            )
 
-    for column, dtype in workflow.output_dtypes.items():
+        for column, dtype in workflow.output_dtypes.items():
+            config.output.append(
+                model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
+            )
+    elif output_model == "hugectr":
+        for column in workflow.column_group.input_column_names:
+            dtype = workflow.input_dtypes[column]
+            config.input.append(
+                model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
+            )
+
+        if conts:
+            config.output.append(
+                model_config.ModelOutput(name="DES", data_type=model_config.TYPE_FP32, dims=[-1])
+            )
+
+        if cats:
+            config.output.append(
+                model_config.ModelOutput(name="CATCOLUMN", data_type=model_config.TYPE_UINT32, dims=[-1])
+            )
+
         config.output.append(
-            model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
+            model_config.ModelOutput(name="ROWINDEX", data_type=model_config.TYPE_INT32, dims=[-1])
         )
+
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
