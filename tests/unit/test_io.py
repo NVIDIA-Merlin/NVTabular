@@ -356,7 +356,7 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     # to run this test frequently, whereas it works with later versions of cudf.
     # skip if we are running this specific version of cudf (and lets remove this
     # check entirely after we've upgraded the CI container)
-    if cudf.__version__.startswith("0+untagged.1.ga6296e3"):
+    if cudf.__version__.startswith("0+untagged"):
         pytest.skip("parquet lists support is flakey here without cudf0.18")
 
     df = cudf.DataFrame(
