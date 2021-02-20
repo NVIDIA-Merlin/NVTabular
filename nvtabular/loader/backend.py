@@ -21,7 +21,7 @@ import cudf
 import cupy as cp
 from cudf.utils.dtypes import is_list_dtype
 
-from nvtabular.io.shuffle import _shuffle_gdf
+from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
 
 
@@ -113,7 +113,7 @@ class ChunkQueue:
                     chunks.reset_index(drop=True, inplace=True)
                     chunks, spill = self.get_batch_div_chunk(chunks, dataloader.batch_size)
                     if self.shuffle:
-                        _shuffle_gdf(chunks)
+                        _shuffle_df(chunks)
 
                     if len(chunks) > 0:
                         chunks = dataloader.make_tensors(chunks, dataloader._use_nnz)

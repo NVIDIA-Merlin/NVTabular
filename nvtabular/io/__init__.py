@@ -18,4 +18,4 @@ from . import dataset, shuffle
 
 Dataset = dataset.Dataset
 Shuffle = shuffle.Shuffle
-_shuffle_gdf = shuffle._shuffle_gdf
+_shuffle_df = shuffle._shuffle_df

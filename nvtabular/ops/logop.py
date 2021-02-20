@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 import numpy as np
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType, _natural_log
 
 from .operator import ColumnNames, Operator
 
@@ -34,7 +35,7 @@ class LogOp(Operator):
     """
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> ColumnNames:
-        return (gdf[columns].astype(np.float32) + 1).log()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        return _natural_log(df[columns].astype(np.float32) + 1)
 
     transform.__doc__ = Operator.transform.__doc__

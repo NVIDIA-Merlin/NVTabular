@@ -19,6 +19,8 @@ import dask_cudf
 import numpy as np
 from dask.delayed import Delayed
 
+from nvtabular.dispatch import _read_parquet_dispatch
+
 from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
@@ -241,6 +243,7 @@ class TargetEncoding(StatOperator):
             out_col = self._make_te_name(cat_group)
 
         # Initialize new data
+        _read_pq_func = _read_parquet_dispatch(gdf)
         new_gdf = cudf.DataFrame()
         tmp = "__tmp__"
 
@@ -250,7 +253,7 @@ class TargetEncoding(StatOperator):
             storage_name_folds = nvt_cat._make_name(*cols, sep=self.name_sep)
             path_folds = self.stats[storage_name_folds]
             agg_each_fold = nvt_cat._read_groupby_stat_df(
-                path_folds, storage_name_folds, self.cat_cache
+                path_folds, storage_name_folds, self.cat_cache, _read_pq_func
             )
             agg_each_fold.columns = cols + ["count_y"] + [x + "_sum_y" for x in self.target]
         else:
@@ -259,7 +262,9 @@ class TargetEncoding(StatOperator):
         # Groupby Aggregation for all data
         storage_name_all = nvt_cat._make_name(*cat_group, sep=self.name_sep)
         path_all = self.stats[storage_name_all]
-        agg_all = nvt_cat._read_groupby_stat_df(path_all, storage_name_all, self.cat_cache)
+        agg_all = nvt_cat._read_groupby_stat_df(
+            path_all, storage_name_all, self.cat_cache, _read_pq_func
+        )
         agg_all.columns = cat_group + ["count_y_all"] + [x + "_sum_y_all" for x in self.target]
 
         if fit_folds:

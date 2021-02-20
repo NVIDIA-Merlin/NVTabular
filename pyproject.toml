@@ -1,3 +1,32 @@
+[tool.poetry]
+name = "nvtabular"
+version = ""
+description = ""
+
+[tool.poetry.dependencies]
+python = "^3.7"
+cudf = ">=0.16"
+dask-cudf = ">=0.16"
+dask-cuda = ">=0.16"
+PyYAML = ">=5.3"
+cupy = ">=7"
+dask = ">=2.12.0"
+distributed = ">=2.12.0"
+
+[tool.poetry.dev-dependencies]
+dask = ">=19"
+flake8 = ">=3.7"
+nbsphinx = ">=0.6"
+pytest = ">=5"
+recommonmark = ">=0.6"
+Sphinx = ">=3"
+sphinx_markdown_tables = "*"
+sphinx-multiversion = "*"
+moto = "*"
+boto3 = "*"
+s3fs = "*"
+asvdb = { git = "git+https://github.com/rapidsai/asvdb.git" }
+
 [tool.black]
 line-length = 100
 

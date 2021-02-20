@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import dask_cudf
+
+import dask.dataframe as dd
 from nvtx import annotate
 
+from ..dispatch import DataFrameType
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
@@ -48,7 +49,7 @@ class Normalize(StatOperator):
         self.stds = {}
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         return _custom_moments(ddf[columns])
 
     def fit_finalize(self, dask_stats):
@@ -57,13 +58,13 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        new_gdf = cudf.DataFrame()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = type(df)()
         for name in columns:
             if self.stds[name] > 0:
-                new_gdf[name] = (gdf[name] - self.means[name]) / (self.stds[name])
-                new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
+                new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
+                new_df[name] = new_df[name].astype("float32")
+        return new_df
 
     def clear(self):
         self.means = {}
@@ -89,18 +90,18 @@ class NormalizeMinMax(StatOperator):
         self.maxs = {}
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: cudf.DataFrame):
+    def transform(self, columns, df: DataFrameType):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
-        new_gdf = cudf.DataFrame()
+        new_df = type(df)()
         for name in columns:
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
-                new_gdf[name] = (gdf[name] - self.mins[name]) / dif
+                new_df[name] = (df[name] - self.mins[name]) / dif
             elif dif == 0:
-                new_gdf[name] = gdf[name] / (2 * gdf[name])
-            new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
+                new_df[name] = df[name] / (2 * df[name])
+            new_df[name] = new_df[name].astype("float32")
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -113,7 +114,9 @@ class NormalizeMinMax(StatOperator):
 
     @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")
     def fit_finalize(self, dask_stats):
-        for col in dask_stats["mins"].index.values_host:
+        index = dask_stats["mins"].index
+        cols = index.values_host if hasattr(index, "values_host") else index.values
+        for col in cols:
             self.mins[col] = dask_stats["mins"][col]
             self.maxs[col] = dask_stats["maxs"][col]
 

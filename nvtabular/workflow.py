@@ -26,7 +26,8 @@ import cudf
 import dask
 from dask.core import flatten
 
-from nvtabular.column_group import ColumnGroup, iter_nodes
+from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
+from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
@@ -68,8 +69,10 @@ class Workflow:
     """
 
     def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
-        self.column_group = column_group
+        self.column_group = _merge_add_nodes(column_group)
         self.client = client
+        self.input_dtypes = None
+        self.output_dtypes = None
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the 'fit'
@@ -89,7 +92,7 @@ class Workflow:
         """
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client)
+        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client, cpu=dataset.cpu)
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
@@ -145,6 +148,14 @@ class Workflow:
             for dependencies in stat_ops.values():
                 dependencies.difference_update(current_phase)
 
+        # hack: store input/output dtypes here. We should have complete dtype
+        # information for each operator (like we do for column names), but as
+        # an interim solution this gets us what we need.
+        input_dtypes = dataset.to_ddf().dtypes
+        self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
+        output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
+        self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
+
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
         call. Equivalent to calling workflow.fit(dataset) followed by workflow.transform(dataset)
@@ -194,7 +205,7 @@ class Workflow:
 
         # dump out the full workflow (graph/stats/operators etc) using cloudpickle
         with open(os.path.join(path, "workflow.pkl"), "wb") as o:
-            cloudpickle.dump(self.column_group, o)
+            cloudpickle.dump(self, o)
 
     @classmethod
     def load(cls, path, client=None):
@@ -235,14 +246,19 @@ class Workflow:
         check_version(versions["python"], sys.version, "python")
 
         # load up the workflow object di
-        column_group = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
+        workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
+        workflow.client = client
 
         # we might have been copied since saving, update all the stat ops
         # with the new path to their storage locations
-        for stat in _get_stat_ops([column_group]):
+        for stat in _get_stat_ops([workflow.column_group]):
             stat.op.set_storage_path(path, copy=False)
 
-        return cls(column_group, client)
+        return workflow
+
+    def __getstate__(self):
+        # dask client objects aren't picklable - exclude from saved representation
+        return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
         for stat in _get_stat_ops([self.column_group]):
@@ -272,7 +288,7 @@ def _transform_ddf(ddf, column_groups):
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
-        meta=cudf.DataFrame({k: [] for k in columns}),
+        meta=type(ddf._meta)({k: [] for k in columns}),
     )
 
 
@@ -280,29 +296,42 @@ def _get_stat_ops(nodes):
     return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
 
 
-def _transform_partition(root_gdf, column_groups):
+def _get_unique(cols):
+    # Need to preserve order in unique-column list
+    return list({x: x for x in cols}.keys())
+
+
+def _transform_partition(root_df, column_groups):
     """ Transforms a single partition by appyling all operators in a ColumnGroup """
-    output = cudf.DataFrame()
+    output = None
     for column_group in column_groups:
+        unique_flattened_cols = _get_unique(column_group.flattened_columns)
         # collect dependencies recursively if we have parents
         if column_group.parents:
-            gdf = cudf.DataFrame()
+            df = None
+            columns = None
             for parent in column_group.parents:
-                parent_gdf = _transform_partition(root_gdf, [parent])
-                for column in parent.flattened_columns:
-                    gdf[column] = parent_gdf[column]
+                unique_flattened_cols_parent = _get_unique(parent.flattened_columns)
+                parent_df = _transform_partition(root_df, [parent])
+                if df is None or not len(df):
+                    df = parent_df[unique_flattened_cols_parent]
+                    columns = set(unique_flattened_cols_parent)
+                else:
+                    new_columns = set(unique_flattened_cols_parent) - columns
+                    df = _concat_columns([df, parent_df[list(new_columns)]])
+                    columns.update(new_columns)
         else:
-            # otherwise select the input from the root gdf
-            gdf = root_gdf[column_group.flattened_columns]
+            # otherwise select the input from the root df
+            df = root_df[unique_flattened_cols]
 
         # apply the operator if necessary
         if column_group.op:
             try:
-                gdf = column_group.op.transform(column_group.input_column_names, gdf)
+                df = column_group.op.transform(column_group.input_column_names, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
-            if gdf is None:
+            if df is None:
                 raise RuntimeError(
                     "Operator %s didn't return a value during transform" % column_group.op
                 )
@@ -310,11 +339,9 @@ def _transform_partition(root_gdf, column_groups):
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
-        for column in column_group.flattened_columns:
-            if column not in gdf:
-                raise ValueError(
-                    f"Failed to find {column} in output of {column_group}, which"
-                    f" has columns {gdf.columns}"
-                )
-            output[column] = gdf[column]
+        if not output:
+            output = df[unique_flattened_cols]
+        else:
+            output = _concat_columns([output, df[unique_flattened_cols]])
+
     return output
