@@ -64,6 +64,7 @@ def test_optimize_criteo(tmpdir):
     _run_notebook(tmpdir, notebook_path)
 
 
+@pytest.mark.skip(reason="Need to install pydot / use mock data on this")
 def test_movielens_example(tmpdir):
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
     notebooks = [
