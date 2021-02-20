@@ -1,3 +1,4 @@
+import copy
 import os
 import subprocess
 from shutil import copyfile
@@ -38,10 +39,8 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     label_columns:
         Labels in the dataset (will be removed f
     """
-    # ughh this is such a massive hack
-    for label in label_columns:
-        del workflow.input_dtypes[label]
-        del workflow.output_dtypes[label]
+
+    workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
@@ -60,6 +59,25 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     _generate_ensemble_config(model, workflow, name, ensemble_path, nvt_config, tf_config)
 
 
+def _remove_columns(workflow, to_remove):
+    workflow = copy.deepcopy(workflow)
+
+    workflow.column_group = _remove_columns_from_column_group(workflow.column_group, to_remove)
+
+    for label in to_remove:
+        del workflow.input_dtypes[label]
+        del workflow.output_dtypes[label]
+
+    return workflow
+
+
+def _remove_columns_from_column_group(cg, to_remove):
+    cg.columns = [col for col in cg.columns if col not in to_remove]
+    parents = [_remove_columns_from_column_group(parent, to_remove) for parent in cg.parents]
+    cg.parents = [p for p in parents if p.columns]
+    return cg
+
+
 def _generate_ensemble_config(model, workflow, name, output_path, nvt_config, tf_config):
     config = model_config.ModelConfig(name=name, platform="ensemble")
     config.input.extend(nvt_config.input)
@@ -69,11 +87,11 @@ def _generate_ensemble_config(model, workflow, name, output_path, nvt_config, tf
     for input_col in nvt_config.input:
         nvt_step.input_map[input_col.name] = input_col.name
     for output_col in nvt_config.output:
-        nvt_step.output_map[output_col.name] = output_col.name
+        nvt_step.output_map[output_col.name] = output_col.name + "_nvt"
 
     tf_step = model_config.ModelEnsembling.Step(model_name=name + "_tf", model_version=-1)
     for input_col in tf_config.input:
-        tf_step.input_map[input_col.name] = input_col.name
+        tf_step.input_map[input_col.name] = input_col.name + "_nvt"
     for output_col in tf_config.output:
         tf_step.output_map[output_col.name] = output_col.name
 
