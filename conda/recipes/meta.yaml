@@ -31,8 +31,8 @@ requirements:
     - cudf 0.16.*
     - dask-cudf 0.16.*
     - cupy>=7.2.0,<9.0.0a
-    - dask>=2.12.0
-    - distributed>=2.12.0
+    - dask>=2.22.0
+    - distributed>=2.22.0
     - PyYAML>=5.3
     - nvtx>=0.2.1
 

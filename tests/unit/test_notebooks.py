@@ -30,6 +30,7 @@ TEST_PATH = dirname(dirname(realpath(__file__)))
 
 
 def test_criteo_notebook(tmpdir):
+    tor = pytest.importorskip("fastai")  # noqa
     # create a toy dataset in tmpdir, and point environment variables so the notebook
     # will read from it
     for i in range(24):
@@ -87,7 +88,6 @@ def test_movielens_example(tmpdir):
 
 
 def test_rossman_example(tmpdir):
-    pytest.importorskip("nvtabular.loader.tensorflow")
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "train.csv"))
     _get_random_rossmann_data(1000).to_csv(os.path.join(tmpdir, "valid.csv"))
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
@@ -101,11 +101,23 @@ def test_rossman_example(tmpdir):
 
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
 
-    notebooks = [
-        "03b-Training-with-PyTorch.ipynb",
-        "04-Training-with-FastAI.ipynb",
-        "03a-Training-with-TF.ipynb",
-    ]
+    notebooks = []
+    try:
+        import torch  # noqa
+
+        notebooks.append("03b-Training-with-PyTorch.ipynb")
+        import fastai  # noqa
+
+        notebooks.append("04-Training-with-FastAI.ipynb")
+    except Exception:
+        pass
+    try:
+        import nvtabular.loader.tensorflow  # noqa
+
+        notebooks.append("03a-Training-with-TF.ipynb")
+    except Exception:
+        pass
+
     for notebook in notebooks:
         notebook_path = os.path.join(
             dirname(TEST_PATH),

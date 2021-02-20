@@ -24,14 +24,14 @@ from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 from nvtabular import ops as ops
-from nvtabular.framework_utils.torch.models import Model
-from nvtabular.framework_utils.torch.utils import process_epoch
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
+from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
+from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
