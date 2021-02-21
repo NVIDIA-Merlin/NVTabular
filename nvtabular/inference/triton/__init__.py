@@ -1,3 +1,4 @@
+import copy
 import os
 import subprocess
 from shutil import copyfile
@@ -21,14 +22,122 @@ except ImportError:
     import nvtabular.inference.triton.model_config_pb2 as model_config
 
 
+def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns, version=1):
+    """Creates an ensemble triton server model, with the first model being a nvtabular
+    preprocessing, and the second by a tensorflow savedmodel
+
+    Parameters
+    ----------
+    model:
+        The tensorflow model that should be served
+    workflow:
+        The nvtabular workflow used in preprocessing
+    name:
+        The base name of the various triton models
+    model_path:
+        The root path to write out files to
+    label_columns:
+        Labels in the dataset (will be removed f
+    """
+
+    workflow = _remove_columns(workflow, label_columns)
+
+    # generate the nvtabular triton model
+    preprocessing_path = os.path.join(model_path, name + "_nvt")
+    nvt_config = generate_triton_model(workflow, name + "_nvt", preprocessing_path)
+
+    # generate the TF saved model
+    tf_path = os.path.join(model_path, name + "_tf")
+    tf_model_path = os.path.join(tf_path, str(version), "model.savedmodel")
+    model.save(tf_model_path)
+    tf_config = _generate_tensorflow_config(model, name + "_tf", tf_path)
+
+    # generate the triton ensemble
+    ensemble_path = os.path.join(model_path, name)
+    os.makedirs(ensemble_path, exist_ok=True)
+    os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
+    _generate_ensemble_config(model, workflow, name, ensemble_path, nvt_config, tf_config)
+
+
+def _remove_columns(workflow, to_remove):
+    workflow = copy.deepcopy(workflow)
+
+    workflow.column_group = _remove_columns_from_column_group(workflow.column_group, to_remove)
+
+    for label in to_remove:
+        del workflow.input_dtypes[label]
+        del workflow.output_dtypes[label]
+
+    return workflow
+
+
+def _remove_columns_from_column_group(cg, to_remove):
+    cg.columns = [col for col in cg.columns if col not in to_remove]
+    parents = [_remove_columns_from_column_group(parent, to_remove) for parent in cg.parents]
+    cg.parents = [p for p in parents if p.columns]
+    return cg
+
+
+def _generate_ensemble_config(model, workflow, name, output_path, nvt_config, tf_config):
+    config = model_config.ModelConfig(name=name, platform="ensemble")
+    config.input.extend(nvt_config.input)
+    config.output.extend(tf_config.output)
+
+    nvt_step = model_config.ModelEnsembling.Step(model_name=name + "_nvt", model_version=-1)
+    for input_col in nvt_config.input:
+        nvt_step.input_map[input_col.name] = input_col.name
+    for output_col in nvt_config.output:
+        nvt_step.output_map[output_col.name] = output_col.name + "_nvt"
+
+    tf_step = model_config.ModelEnsembling.Step(model_name=name + "_tf", model_version=-1)
+    for input_col in tf_config.input:
+        tf_step.input_map[input_col.name] = input_col.name + "_nvt"
+    for output_col in tf_config.output:
+        tf_step.output_map[output_col.name] = output_col.name
+
+    config.ensemble_scheduling.step.append(nvt_step)
+    config.ensemble_scheduling.step.append(tf_step)
+
+    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+        text_format.PrintMessage(config, o)
+    return config
+
+
+def _generate_tensorflow_config(model, name, output_path):
+    """given a workflow generates the trton modelconfig proto object describing the inputs
+    and outputs to that workflow"""
+    config = model_config.ModelConfig(
+        name=name, backend="tensorflow", platform="tensorflow_savedmodel"
+    )
+
+    for col in model.inputs:
+        config.input.append(
+            model_config.ModelInput(
+                name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+            )
+        )
+
+    for col in model.outputs:
+        config.output.append(
+            model_config.ModelOutput(
+                name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+            )
+        )
+
+    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+        text_format.PrintMessage(config, o)
+    return config
+
+
 def generate_triton_model(workflow, name, output_path, version=1):
     """ converts a workflow to a triton mode """
     workflow.save(os.path.join(output_path, str(version), "workflow"))
-    _generate_model_config(workflow, name, output_path)
+    config = _generate_model_config(workflow, name, output_path)
     copyfile(
         os.path.join(os.path.dirname(__file__), "model.py"),
         os.path.join(output_path, str(version), "model.py"),
     )
+    return config
 
 
 def convert_df_to_triton_input(column_names, batch, input_class=httpclient.InferInput):
@@ -48,19 +157,19 @@ def _generate_model_config(workflow, name, output_path):
     and outputs to that workflow"""
     config = model_config.ModelConfig(name=name, backend="python")
 
-    for column in workflow.column_group.input_column_names:
-        dtype = workflow.input_dtypes[column]
+    for column, dtype in workflow.input_dtypes.items():
         config.input.append(
-            model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
+            model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
         )
 
     for column, dtype in workflow.output_dtypes.items():
         config.output.append(
-            model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
+            model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
         )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
+    return config
 
 
 def _convert_dtype(dtype):
