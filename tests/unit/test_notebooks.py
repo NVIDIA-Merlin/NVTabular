@@ -41,7 +41,11 @@ def test_criteo_notebook(tmpdir):
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
+        os.path.join(
+            dirname(TEST_PATH),
+            "examples/scaling-criteo/",
+            "02-03b-ETL-with-NVTabular-Training-with-PyTorch.ipynb",
+        ),
         # disable rmm.reinitialize, seems to be causing issues
         transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
     )
@@ -52,8 +56,36 @@ def test_optimize_criteo(tmpdir):
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
-    notebook_path = os.path.join(dirname(TEST_PATH), "examples", "optimize_criteo.ipynb")
+    notebook_path = os.path.join(
+        dirname(TEST_PATH),
+        "examples/scaling-criteo/",
+        "01-Download-Convert.ipynb",
+    )
     _run_notebook(tmpdir, notebook_path)
+
+
+@pytest.mark.skip(reason="Need to install pydot / use mock data on this")
+def test_movielens_example(tmpdir):
+    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
+    notebooks = [
+        "01-Download-Convert.ipynb",
+        "02-ETL-with-NVTabular.ipynb",
+        "03a-Training-with-TF.ipynb",
+        "03b-Training-with-PyTorch.ipynb",
+    ]
+    for notebook in notebooks:
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/getting-started-movielens/",
+            notebook,
+        )
+        _run_notebook(
+            tmpdir,
+            notebook_path,
+            lambda line: line.replace(
+                "BASE_DIR = '/raid/data/ml/'", "BASE_DIR = '" + str(tmpdir) + "/'"
+            ),
+        )
 
 
 def test_rossman_example(tmpdir):
@@ -62,7 +94,9 @@ def test_rossman_example(tmpdir):
     os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
 
     notebook_path = os.path.join(
-        dirname(TEST_PATH), "examples/rossmann/", "rossmann-store-sales-feature-engineering.ipynb"
+        dirname(TEST_PATH),
+        "examples/tabular-data-rossmann/",
+        "02-ETL-with-NVTabular.ipynb",
     )
     _run_notebook(tmpdir, notebook_path)
 
@@ -72,21 +106,25 @@ def test_rossman_example(tmpdir):
     try:
         import torch  # noqa
 
-        notebooks.append("rossmann-store-sales-pytorch.ipynb")
+        notebooks.append("03b-Training-with-PyTorch.ipynb")
         import fastai  # noqa
 
-        notebooks.append("rossmann-store-sales-fastai.ipynb")
+        notebooks.append("04-Training-with-FastAI.ipynb")
     except Exception:
         pass
     try:
         import nvtabular.loader.tensorflow  # noqa
 
-        notebooks.append("rossmann-store-sales-tensorflow.ipynb")
+        notebooks.append("03a-Training-with-TF.ipynb")
     except Exception:
         pass
 
     for notebook in notebooks:
-        notebook_path = os.path.join(dirname(TEST_PATH), "examples/rossmann/", notebook)
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/tabular-data-rossmann/",
+            notebook,
+        )
         _run_notebook(tmpdir, notebook_path, lambda line: line.replace("EPOCHS = 25", "EPOCHS = 1"))
 
 
@@ -107,7 +145,9 @@ def test_multigpu_dask_example(tmpdir):
             line = line.replace("out_files_per_proc=8", "out_files_per_proc=1")
             return line
 
-        notebook_path = os.path.join(dirname(TEST_PATH), "examples", "multi-gpu_dask.ipynb")
+        notebook_path = os.path.join(
+            dirname(TEST_PATH), "examples/multi-gpu-toy-example/", "multi-gpu_dask.ipynb"
+        )
         _run_notebook(tmpdir, notebook_path, _nb_modify)
 
 
