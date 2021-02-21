@@ -4,7 +4,7 @@
 
 NVTabular is a component of [**NVIDIA Merlin Open Beta**](https://developer.nvidia.com/nvidia-merlin). NVIDIA Merlin is used for building large-scale deep learning recommender systems, which require massive datasets to train, particularly for deep learning based solutions. With NVTabular being a part of the Merlin ecosystem, it also works with the other Merlin components including [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server) to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s Triton Inference Server, the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.
 
-## Benefits 
+### Benefits 
 
 Our ultimate goal is faster iteration on massive tabular datasets, both for experimentation during training, and also production model responsiveness. NVTabular is designed to support data scientists and machine learning (ML) engineers train (deep learning) recommender systems and resolve tabular data problems by allowing them to:
 
@@ -15,7 +15,7 @@ Our ultimate goal is faster iteration on massive tabular datasets, both for expe
 
 NVTabular also helps ML/Ops engineers with deploying models into production by providing faster dataset transformation. This makes it easy for production models to be trained more frequently and kept up to date, helping improve responsiveness and model performance.
 
-## Core Features
+### Core Features
 
 NVTabular supports the following core features:
 * [TensorFlow and PyTorch Interoperability](../docs/source/core_features.md#tensorflow-and-pytorch-interoperability)
@@ -25,7 +25,7 @@ NVTabular supports the following core features:
 * [Multi-Hot Encoding and Pre-existing Embeddings](../docs/source/core_features.md#multi-hot-encoding-and-pre-existing-embeddings)
 * [Shuffling Datasets](../docs/source/core_features.md#shuffling-datasets)
 
-## Installation
+### Installation
 
 To install NVTabular, ensure that you meet the following prerequisites:
 * CUDA version 10.0+
@@ -34,7 +34,7 @@ To install NVTabular, ensure that you meet the following prerequisites:
 
 **NOTE**: NVTabular will only run on Linux. Other operating systems are not currently supported.
 
-### Installing NVTabular Using Conda
+#### Installing NVTabular Using Conda
 
 NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 
@@ -42,7 +42,7 @@ NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
-### Installing NVTabular with the Docker Container
+#### Installing NVTabular with the Docker Container
 
 NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular. You can pull the container by running the following command:
 
@@ -81,7 +81,7 @@ root@2efa5b50b909:
    /nvtabular/
    ```
 
-## Examples and Tutorials
+### Examples and Tutorials
 
 The following use cases can be found in our [API documentation examples section](https://nvidia.github.io/NVTabular/main/examples/index.html):
 * Preprocessing
@@ -94,7 +94,7 @@ With NVTabular running on a single V100 32GB GPU, we were able to complete ETL i
 
 We also have a [simple tutorial](examples/rossmann/) that demonstrates similar functionality on a much smaller dataset. A pipeline for the [Rossman store sales dataset](https://www.kaggle.com/c/rossmann-store-sales) that feeds into a [fast.ai tabular data model](https://docs.fast.ai/tabular.learner.html) is provided.
 
-## Feedback and Support
+### Feedback and Support
 
 If you'd like to contribute to the library directly, please see [Contributing.md](./CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline using this [this survey](https://developer.nvidia.com/merlin-devzone-survey).
 
