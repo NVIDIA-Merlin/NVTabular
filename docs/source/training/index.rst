@@ -7,4 +7,12 @@ Recommendation system datasets can be terra-bytes in size with billions of examp
 
 The base dataloader in PYTorch and TensorFlow randomly sample each item from the dataset, which is very slow. The window dataloader in TensorFlow isn’t any faster.  In our experiments, we were able to speed up existing TensorFlow pipelines by 9 times and existing PyTorch pipelines by 5 times with our highly optimized dataloaders. HugeCTR, our dedicated deep learning framework for recommender systems can achieve speed-ups up to 13 times. In addition, HugeCTR supports model parallel scaling for embedding tables that require a lot of memory. HugeCTR can distribute an embedding table over multiple GPUs or multiple nodes. 
 
-For additional information, see our latest [blog post](https://medium.com/nvidia-merlin/why-isnt-your-recommender-system-training-faster-on-gpu-and-what-can-you-do-about-it-6cb44a711ad4).
+For additional information, see our latest `blog post
+<https://medium.com/nvidia-merlin/why-isnt-your-recommender-system-training-faster-on-gpu-and-what-can-you-do-about-it-6cb44a711ad4>`_.
+
+.. toctree::
+   :maxdepth: 2
+
+   Tensorflow <tensorflow>
+   PyTorch <pytorch>
+   HugeCTR <hugectr>

@@ -7,7 +7,7 @@ NVTabular supports the following core features:
 * [Multi-GPU Support](multi-gpu-support)
 * [Multi-Node Support](multi-node-support)
 * [Multi-Hot Encoding and Pre-Existing Embeddings](multi-hot-encoding-and-pre-existing-embeddings)
-* [Shuffling Datasets](shuffling Datasets)
+* [Shuffling Datasets](shuffling-datasets)
 
 ## TensorFlow and PyTorch Interoperability
 
