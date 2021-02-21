@@ -58,13 +58,13 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
-        new_gdf = type(gdf)()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = type(df)()
         for name in columns:
             if self.stds[name] > 0:
-                new_gdf[name] = (gdf[name] - self.means[name]) / (self.stds[name])
-                new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
+                new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
+                new_df[name] = new_df[name].astype("float32")
+        return new_df
 
     def clear(self):
         self.means = {}
@@ -90,18 +90,18 @@ class NormalizeMinMax(StatOperator):
         self.maxs = {}
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, gdf: DataFrameType):
+    def transform(self, columns, df: DataFrameType):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
-        new_gdf = type(gdf)()
+        new_df = type(df)()
         for name in columns:
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
-                new_gdf[name] = (gdf[name] - self.mins[name]) / dif
+                new_df[name] = (df[name] - self.mins[name]) / dif
             elif dif == 0:
-                new_gdf[name] = gdf[name] / (2 * gdf[name])
-            new_gdf[name] = new_gdf[name].astype("float32")
-        return new_gdf
+                new_df[name] = df[name] / (2 * df[name])
+            new_df[name] = new_df[name].astype("float32")
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 

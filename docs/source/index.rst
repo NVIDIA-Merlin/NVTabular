@@ -10,11 +10,11 @@ Welcome to NVTabular's documentation!
    :maxdepth: 3
 
    Introduction <Introduction>
-   How it Works <HowItWorks>
+   Core Features <core_features>
+   ETL <ETL>
+   Accelerated Training <training/index>
    Examples <examples/index>
-   API Documentation <api/index>
-   Github Repo <https://github.com/NVIDIA/NVTabular>
-   Resources <Resources>
+   Resources <resources/index>
 
 
 Indices and tables

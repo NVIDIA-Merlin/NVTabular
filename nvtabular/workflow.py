@@ -296,35 +296,42 @@ def _get_stat_ops(nodes):
     return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
 
 
-def _transform_partition(root_gdf, column_groups):
+def _get_unique(cols):
+    # Need to preserve order in unique-column list
+    return list({x: x for x in cols}.keys())
+
+
+def _transform_partition(root_df, column_groups):
     """ Transforms a single partition by appyling all operators in a ColumnGroup """
     output = None
     for column_group in column_groups:
+        unique_flattened_cols = _get_unique(column_group.flattened_columns)
         # collect dependencies recursively if we have parents
         if column_group.parents:
-            gdf = None
+            df = None
             columns = None
             for parent in column_group.parents:
-                parent_gdf = _transform_partition(root_gdf, [parent])
-                if gdf is None or not len(gdf):
-                    gdf = parent_gdf[parent.flattened_columns]
-                    columns = set(parent.flattened_columns)
+                unique_flattened_cols_parent = _get_unique(parent.flattened_columns)
+                parent_df = _transform_partition(root_df, [parent])
+                if df is None or not len(df):
+                    df = parent_df[unique_flattened_cols_parent]
+                    columns = set(unique_flattened_cols_parent)
                 else:
-                    new_columns = set(parent.flattened_columns) - columns
-                    gdf = _concat_columns([gdf, parent_gdf[list(new_columns)]])
+                    new_columns = set(unique_flattened_cols_parent) - columns
+                    df = _concat_columns([df, parent_df[list(new_columns)]])
                     columns.update(new_columns)
         else:
-            # otherwise select the input from the root gdf
-            gdf = root_gdf[column_group.flattened_columns]
+            # otherwise select the input from the root df
+            df = root_df[unique_flattened_cols]
 
         # apply the operator if necessary
         if column_group.op:
             try:
-                gdf = column_group.op.transform(column_group.input_column_names, gdf)
+                df = column_group.op.transform(column_group.input_column_names, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
-            if gdf is None:
+            if df is None:
                 raise RuntimeError(
                     "Operator %s didn't return a value during transform" % column_group.op
                 )
@@ -333,8 +340,8 @@ def _transform_partition(root_gdf, column_groups):
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
         if not output:
-            output = gdf[column_group.flattened_columns]
+            output = df[unique_flattened_cols]
         else:
-            output = _concat_columns([output, gdf[column_group.flattened_columns]])
+            output = _concat_columns([output, df[unique_flattened_cols]])
 
     return output

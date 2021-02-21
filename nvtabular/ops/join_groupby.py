@@ -18,6 +18,8 @@ import cupy
 import dask_cudf
 from dask.delayed import Delayed
 
+from nvtabular.dispatch import _read_parquet_dispatch
+
 from . import categorify as nvt_cat
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
@@ -134,6 +136,7 @@ class JoinGroupby(StatOperator):
             columns, gdf.columns, self.name_sep
         )
 
+        _read_pq_func = _read_parquet_dispatch(gdf)
         for name in cat_names:
             storage_name = self.storage_name.get(name, name)
             name = multi_col_group.get(name, name)
@@ -141,7 +144,9 @@ class JoinGroupby(StatOperator):
             selection_l = list(name) if isinstance(name, tuple) else [name]
             selection_r = list(name) if isinstance(name, tuple) else [storage_name]
 
-            stat_gdf = nvt_cat._read_groupby_stat_df(path, storage_name, self.cat_cache)
+            stat_gdf = nvt_cat._read_groupby_stat_df(
+                path, storage_name, self.cat_cache, _read_pq_func
+            )
             tran_gdf = gdf[selection_l + [tmp]].merge(
                 stat_gdf, left_on=selection_l, right_on=selection_r, how="left"
             )

@@ -25,6 +25,7 @@ sphinx-multiversion = "*"
 moto = "*"
 boto3 = "*"
 s3fs = "*"
+sphinx_rtd_theme = "*"
 asvdb = { git = "git+https://github.com/rapidsai/asvdb.git" }
 
 [tool.black]
