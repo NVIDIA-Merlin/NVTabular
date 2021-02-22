@@ -13,3 +13,4 @@ moto
 boto3
 s3fs
 git+https://github.com/rapidsai/asvdb.git
+sphinx_rtd_theme
