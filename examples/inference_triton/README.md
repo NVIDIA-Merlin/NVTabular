@@ -56,6 +56,7 @@ pip install geventhttpclient
 Additionally, you might need to install `unzip` and graphviz packages if they are missing. You can do that with the following commands:
 
 ```
+apt-get update
 apt-get install -y unzip
 pip install graphviz 
 ```
