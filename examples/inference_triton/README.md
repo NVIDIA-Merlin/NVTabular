@@ -4,7 +4,7 @@ NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As cr
 
 Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server without having to write any C++ code.
 
-We provide two example notebooks, [movielens_TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens-TF.ipynb) and [movielens_inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_deployment.ipynb), and explain the steps to do inference with Merlin Inference API.
+We provide two example notebooks, [movielens_TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens-TF.ipynb) and [movielens_inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_inference.ipynb), and explain the steps to do inference with Merlin Inference API.
 
 # Getting Started 
 
@@ -46,7 +46,7 @@ You should receive the following response, indicating that the environment has b
 ```
 1) Install Triton Python Client Library:
 
-You need to install tritonclient library to be able to run `movielens_deployment` notebook, and send request to the triton server. 
+You need to install tritonclient library to be able to run `movielens_inference` notebook, and send request to the triton server. 
 
 ```
 pip install nvidia-pyindex
@@ -75,7 +75,7 @@ There are two example notebooks that should be run in orders. The first one [mov
 - serialize and save a workflow to load later to transform new dataset
 - train a TF MLP model and save it in the `/models` directory.
 
-The following notebook [movielens_inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_deployment.ipynb) shows how to send request to Triton IS 
+The following notebook [movielens_inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_inference.ipynb) shows how to send request to Triton IS 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
