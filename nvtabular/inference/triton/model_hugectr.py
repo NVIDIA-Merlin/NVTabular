@@ -27,20 +27,18 @@
 import json
 import os
 from typing import List
-import numpy as np
 
 import cudf
+import numpy as np
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
     Tensor,
     get_input_tensor_by_name,
-    get_output_config_by_name,
-    triton_string_to_numpy,
 )
 
-from nvtabular.inference.triton import get_column_types
 import nvtabular
+from nvtabular.inference.triton import get_column_types
 
 
 class TritonPythonModel:
@@ -75,12 +73,22 @@ class TritonPythonModel:
 
             output_tensors = []
             if "conts" in self.column_types:
-                output_tensors.append(Tensor("DES", _convert_cudf2numpy(output_df[self.column_types["conts"]], np.float32)))
+                output_tensors.append(
+                    Tensor(
+                        "DES",
+                        _convert_cudf2numpy(output_df[self.column_types["conts"]], np.float32),
+                    )
+                )
             else:
                 output_tensors.append(Tensor("DES", np.array([0])))
 
             if "cats" in self.column_types:
-                output_tensors.append(Tensor("CATCOLUMN", _convert_cudf2numpy(output_df[self.column_types["cats"]], np.uint32)))
+                output_tensors.append(
+                    Tensor(
+                        "CATCOLUMN",
+                        _convert_cudf2numpy(output_df[self.column_types["cats"]], np.uint32),
+                    )
+                )
             else:
                 output_tensors.append(Tensor("CATCOLUMN", np.array([0])))
 
@@ -92,12 +100,14 @@ class TritonPythonModel:
 
         return responses
 
+
 def _convert_cudf2numpy(df, dtype):
     d = np.empty(df.shape)
     for i, name in enumerate(df.columns):
-        d[:,i] = df[name].values_host.astype(dtype)
-    
+        d[:, i] = df[name].values_host.astype(dtype)
+
     return d
+
 
 def _convert_tensor(t):
     out = t.as_numpy()
