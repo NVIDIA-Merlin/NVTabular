@@ -4,7 +4,7 @@ NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As cr
 
 Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server without having to write any C++ code.
 
-We provide two example notebooks, [movielens_TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens-TF.ipynb) and [movielens_deployment](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_deployment.ipynb), and explain the steps to do inference with Merlin Inference API.
+We provide two example notebooks, [movielens_TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens-TF.ipynb) and [movielens_inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_deployment.ipynb), and explain the steps to do inference with Merlin Inference API.
 
 # Getting Started 
 
@@ -53,11 +53,11 @@ pip install nvidia-pyindex
 pip install tritonclient
 pip install geventhttpclient
 ```
-Additionally, you might need to install `unzip` and graphviz packages if they are missing. You can do that with the following commands:
+Additionally, you might need to install `unzip` and `graphviz` packages if they are missing. You can do that with the following commands:
 
 ```
 apt-get update
-apt-get install -y unzip
+apt-get install unzip
 pip install graphviz 
 ```
 
@@ -75,11 +75,11 @@ There are two example notebooks that should be run in orders. The first one [mov
 - serialize and save a workflow to load later to transform new dataset
 - train a TF MLP model and save it in the `/models` directory.
 
-The following notebook [movielens_deployment](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_deployment.ipynb) shows how to send request to Triton IS 
+The following notebook [movielens_inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens_deployment.ipynb) shows how to send request to Triton IS 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
-Now you can open `movielens_TF` and `movielens_deployment` notebooks. Note that you need to save your workflow and DL model in the `models` directory before launching the `tritonserver` as defined below. Then you can run the `movielens_deployment` notebook once the server is started.
+Now you can start `movielens_TF` and `movielens_inference` notebooks. Note that you need to save your workflow and DL model in the `models` directory before launching the `tritonserver` as defined below. Then you can run the `movielens_inference` example notebook once the server is started.
 
 ## 3. Build and Run the Triton Inference Server container:
 
@@ -130,4 +130,4 @@ I0216 15:28:24.068597 71 http_server.cc:2736] Started Metrics Service at 0.0.0.0
 
 All the models should show "READY" status to indicate that they loaded correctly. If a model fails to load the status will report the failure and a reason for the failure. If your model is not displayed in the table check the path to the model repository and your CUDA drivers.
 
-Once the models are successfully loaded, you can run the `movielens_deployment` notebook to send requests to the Triton IS.
+Once the models are successfully loaded, you can run the `movielens_inference` notebook to send requests to the Triton IS.
