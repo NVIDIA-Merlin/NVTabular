@@ -52,7 +52,7 @@ class TritonPythonModel:
         self.model_config = json.loads(args["model_config"])
 
         self.output_dtypes = dict()
-        for name in self.workflow.column_group.input_column_names:
+        for name in self.workflow.input_dtypes:
             conf = get_output_config_by_name(self.model_config, name)
             self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
 
@@ -66,7 +66,7 @@ class TritonPythonModel:
             input_df = cudf.DataFrame(
                 {
                     name: _convert_tensor(get_input_tensor_by_name(request, name))
-                    for name in self.workflow.column_group.input_column_names
+                    for name in self.workflow.input_dtypes
                 }
             )
 
