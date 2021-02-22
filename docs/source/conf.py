@@ -47,7 +47,12 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
+    "autoapi.extension",
 ]
+
+autoapi_type = "python"
+autoapi_dirs = ["../../nvtabular/"]
+autoapi_ignore = ["*worker*", "*migrations*"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
