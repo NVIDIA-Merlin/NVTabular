@@ -4,7 +4,7 @@ NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As cr
 
 Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able to do model deployment. The goal of [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server without having to write any C++ code.
 
-We provide an example notebook, `movielens_inference_example`, and explain the steps to do inference with Merlin Inference API.
+We provide two example notebooks, `movielens_TF` and `movielens_deployment`, and explain the steps to do inference with Merlin Inference API.
 
 # Getting Started 
 
@@ -69,7 +69,7 @@ There are two example notebooks that should be run in orders. The first one show
 - serialize and save a workflow to load later to transform new dataset
 - train a TF MLP model and save it in the `/models` directory.
 
-The following notebook shows `movielens_deployment_example` how to send request to Triton IS 
+The following notebook shows `movielens_deployment` how to send request to Triton IS 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
