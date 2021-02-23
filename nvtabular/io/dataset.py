@@ -592,7 +592,9 @@ class Dataset:
     def regenerate_dataset(
         self, output_path, columns=None, output_format="parquet", compute=True, **kwargs
     ):
-        """Regenerate an NVTabular Dataset for efficient processing.
+        """Regenerate an NVTabular Dataset for efficient processing by writing
+        out new Parquet files. (This method preserves the original ordering,
+        while ``to_parquet`` does not.)
 
         Example Usage::
 
