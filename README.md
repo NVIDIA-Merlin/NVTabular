@@ -83,7 +83,7 @@ root@2efa5b50b909:
 
 ### Examples and Tutorials
 
-We provide a [collection of examples, use cases and tutorials](https://github.com/NVIDIA/NVTabular/tree/main/examples) as juptyer notebooks in our repository. The notebooks are based on 5 differet, well-known datasets: 
+We provide a [collection of examples, use cases and tutorials](https://github.com/NVIDIA/NVTabular/tree/main/examples) as Juptyer notebooks in our repository. The notebooks are based on 5 different, well-known datasets: 
 - MovieLens
 - Outbrain Click Prediction
 - Criteo Click Ads Prediction
@@ -95,8 +95,12 @@ A short overview of features, which are covered:
 - More advanced workflows with NVTabular
 - Accelerated dataloaders for TensorFlow and PyTorch
 - Scaling to multi-GPU and multi nodes systems
-- End-2-End pipelines with NVTabular and HugeCTR
+- Integrating NVTabular with HugeCTR
 - Deployment to for inference with Triton
+
+Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NVTabular library. The original ETL script provided in Numpy took over five days to complete. Combined with CPU training, the total iteration time is over one week. By optimizing the ETL code in spark and running on a DGX-1 equivalent cluster, we were able to bring that time down to three hours for ETL and one hour for training.
+
+With NVTabular running on a single V100 32GB GPU, we were able to complete ETL in 13 minutes. With a DGX-1 cluster of eight V100 GPUs, we can accelerate ETL to 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/), we can process the dataset and train the full model in only 6 minutes. This fast iteration is the goal of NVTabular and the [Merlin application framework](https://developer.nvidia.com/nvidia-merlin). We're working on A100 benchmarks and will share them as soon as they are available.    
 
 More information can be found [here](https://github.com/NVIDIA/NVTabular/tree/main/examples)   
     
