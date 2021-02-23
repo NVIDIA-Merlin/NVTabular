@@ -3,7 +3,12 @@ Troubleshooting
 
 ## Checking the Schema of the Parquet File
 
-NVTabular expects that all input parquet files have the same schema, which includes column types and the nullable (not null) option. If you encounter the ```RuntimeError: Schemas are inconsistent, try using to_parquet(..., schema="infer"), or pass an explicit pyarrow schema. Such as to_parquet(..., schema={"column1": pa.string()})``` error when you load the dataset as shown below, one of your parquet files might have a different schema:
+NVTabular expects that all input parquet files have the same schema, which includes column types and the nullable (not null) option. If you encounter the error
+```
+RuntimeError: Schemas are inconsistent, try using to_parquet(..., schema="infer"),
+or pass an explicit pyarrow schema. Such as to_parquet(..., schema={"column1": pa.string()})
+```
+when you load the dataset as shown below, one of your parquet files might have a different schema:
 
 ```python
 ds = nvt.Dataset(PATH, engine="parquet", part_size="1000MB")
