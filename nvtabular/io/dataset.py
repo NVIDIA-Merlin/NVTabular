@@ -130,7 +130,8 @@ class Dataset:
         ddf = ddf.sort_values("user_rank", ignore_index=True)
         dataset = Dataset(ddf)
 
-    Dataset Optimization Tips (DOTs)
+    `Dataset Optimization Tips (DOTs)`
+
     The NVTabular dataset should be created from Parquet files in order
     to get the best possible performance, preferably with a row group size
     of around 128MB.  While NVTabular also supports reading from CSV files,
