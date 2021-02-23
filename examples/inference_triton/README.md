@@ -1,4 +1,4 @@
-## [NVTabular](https://github.com/NVIDIA/NVTabular) | NVTabular Inference API documentation
+## Merlin Inference API
 
 NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As critical step of this pipeline, model deployment of machine learning (ML)/deep learning (DL) models is the process of making production ready models available in production environments, where they can provide predictions for new data.
 
@@ -26,12 +26,12 @@ cd nvt_triton
 ```
 We will mount `nvt_triton` directory into the NVTabular docker container.
 
-NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
+Merlin containers are available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
-The beta (0.4) container is currently available. You can pull the container by running the following command:
+You can pull the `Merlin-Tensorflow-Training` container by running the following command:
 
 ```
-docker run --gpus=all -it -v ${PWD}:/working_dir/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.4 /bin/bash
+docker run --gpus=all -it -v ${PWD}:/working_dir/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/merlin_tf_training /bin/bash
 ```
 The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
 
@@ -50,7 +50,7 @@ You should receive the following response, indicating that the environment has b
 ```
 1) Install Triton Python Client Library:
 
-You need to install tritonclient library to be able to run `movielens_inference` notebook, and send request to the triton server. 
+You need the Triton Python Client library to be able to run `movielens_inference` notebook, and send request to the triton server. In case triton client library is missing, you can install with the following commands:
 
 ```
 pip install nvidia-pyindex
@@ -87,14 +87,14 @@ Now you can start `movielens_TF` and `movielens_inference` notebooks. Note that 
 
 ## 3. Build and Run the Triton Inference Server container:
 
-1) Navigate to the `nvt_triton` directory that you saved NVTabular workflow and Tensorflow model.
+1) Navigate to the `nvt_triton` directory that you saved NVTabular workflow, Tensorflow model and the ensemble model.
 ```
 cd <path to nvt_triton>
 ```
 
 2) Launch Merlin Triton Inference Server container:
 ```
-docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/working_dir/ merlin/nvt:triton 
+docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/working_dir/ nvcr.io/nvidia/merlin_inference
 ```
 The container will open a shell when the run command execution is completed. It should look similar to this:
 ```
@@ -132,6 +132,6 @@ I0216 15:28:24.027067 71 http_server.cc:2717] Started HTTPService at 0.0.0.0:800
 I0216 15:28:24.068597 71 http_server.cc:2736] Started Metrics Service at 0.0.0.0:8002
 ```
 
-All the models should show "READY" status to indicate that they loaded correctly. If a model fails to load the status will report the failure and a reason for the failure. If your model is not displayed in the table check the path to the model repository and your CUDA drivers.
+All the models should show "READY" status to indicate that they are loaded correctly. If a model fails to load the status will report the failure and a reason for the failure. If your model is not displayed in the table, check the path to the model repository and your CUDA drivers.
 
 Once the models are successfully loaded, you can run the `movielens_inference` notebook to send requests to the Triton IS.
