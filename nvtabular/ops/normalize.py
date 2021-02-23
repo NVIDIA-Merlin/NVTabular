@@ -38,9 +38,6 @@ class Normalize(StatOperator):
         cont_features = CONTINUOUS_COLUMNS >> ops.Normalize()
         processor = nvtabular.Workflow(cont_features)
 
-    Parameters
-    ----------
-
     """
 
     def __init__(self):
@@ -80,9 +77,11 @@ class NormalizeMinMax(StatOperator):
     This operator standardizes continuous features such that they are between 0 and 1.
 
     Example usage::
+
         # Use NormalizeMinMax to define a NVTabular workflow
         cont_features = CONTINUOUS_COLUMNS >> ops.NormalizeMinMax()
         processor = nvtabular.Workflow(cont_features)
+
     """
 
     def __init__(self):
