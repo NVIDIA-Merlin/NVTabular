@@ -158,7 +158,8 @@ class Workflow:
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
-        call. Equivalent to calling ``workflow.fit(dataset)`` followed by ``workflow.transform(dataset)``
+        call. Equivalent to calling ``workflow.fit(dataset)`` followed by
+        ``workflow.transform(dataset)``
 
         Parameters
         -----------
