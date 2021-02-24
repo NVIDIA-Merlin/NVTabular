@@ -26,7 +26,7 @@ import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
-from dask.utils import parse_bytes, natural_sort_key
+from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
@@ -347,8 +347,8 @@ class Dataset:
         return ddf
 
     @property
-    def path_partition_map(self):
-        return self.engine._path_partition_map
+    def file_partition_map(self):
+        return self.engine._file_partition_map
 
     def to_cpu(self):
         warnings.warn(
@@ -399,7 +399,7 @@ class Dataset:
         self,
         output_path,
         shuffle=None,
-        path_partition_map=None,
+        file_partition_map=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
@@ -428,6 +428,12 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        file_partition_map : dict
+            Dictionary mapping of output file names to partition indices
+            that should be written to that file name.  If this argument
+            is passed, only the partitions included in the dictionary
+            will be written to disk, and the `output_files_per_proc` argument
+            will be ignored.
         out_files_per_proc : integer
             Number of files to create (per process) after
             shuffling the data
@@ -461,7 +467,7 @@ class Dataset:
             fs,
             output_path,
             shuffle,
-            path_partition_map,
+            file_partition_map,
             out_files_per_proc,
             cats or [],
             conts or [],
@@ -479,6 +485,7 @@ class Dataset:
         conts,
         labels,
         shuffle=None,
+        file_partition_map=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
@@ -510,6 +517,12 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        file_partition_map : dict
+            Dictionary mapping of output file names to partition indices
+            that should be written to that file name.  If this argument
+            is passed, only the partitions included in the dictionary
+            will be written to disk, and the `output_files_per_proc` argument
+            will be ignored.
         out_files_per_proc : integer
             Number of files to create (per process) after
             shuffling the data
@@ -527,7 +540,6 @@ class Dataset:
         self.to_gpu()
 
         shuffle = _check_shuffle_arg(shuffle)
-        shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
         if dtypes:
             _meta = _set_dtypes(ddf._meta, dtypes)
@@ -542,6 +554,7 @@ class Dataset:
             fs,
             output_path,
             shuffle,
+            file_partition_map,
             out_files_per_proc,
             cats,
             conts,
@@ -655,7 +668,6 @@ class Dataset:
 
 
 def _set_dtypes(chunk, dtypes):
-
     def _pd_convert_hex(x):
         if pd.isnull(x):
             return pd.NA

@@ -31,10 +31,10 @@ import dask
 import dask.dataframe as dd
 import dask_cudf
 import fsspec
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
-import numpy as np
 from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
@@ -111,7 +111,7 @@ class ParquetDatasetEngine(DatasetEngine):
 
     @property
     @functools.lru_cache(1)
-    def _path_partition_map(self):
+    def _file_partition_map(self):
         dataset = self._dataset
         if dataset.metadata:
             # We have a metadata file.
@@ -124,24 +124,24 @@ class ParquetDatasetEngine(DatasetEngine):
             # Convert the per-file row-group count to the
             # file-to-partition mapping
             ind = 0
-            _path_partition_map = defaultdict(list)
+            _pp_map = defaultdict(list)
             for fn, num_row_groups in _path_row_groups.items():
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
-                _path_partition_map[fn] = ind
+                _pp_map[fn] = np.arange(ind, ind + part_count)
                 ind += part_count
 
         else:
             # No metadata file. Construct file-to-partition map manually
             ind = 0
-            _path_partition_map = {}
+            _pp_map = {}
             for piece in dataset.pieces:
                 num_row_groups = piece.get_metadata().num_row_groups
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 fn = piece.path.split(self.fs.sep)[-1]
-                _path_partition_map[fn] = ind
+                _pp_map[fn] = np.arange(ind, ind + part_count)
                 ind += part_count
 
-        return pd.Series(_path_partition_map)
+        return _pp_map
 
     @property
     @functools.lru_cache(1)
@@ -837,7 +837,7 @@ class CPUParquetWriter(BaseParquetWriter):
         self.md_collectors[path] = _md_collector
 
     def _write_table(self, idx, data):
-        table = pa.Table.from_pandas(data)
+        table = pa.Table.from_pandas(data, preserve_index=False)
         writer = self._get_or_create_writer(idx, schema=table.schema)
         writer.write_table(table, row_group_size=self._get_row_group_size(data))
 

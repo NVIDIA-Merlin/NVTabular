@@ -20,6 +20,7 @@ import cudf
 import cupy as cp
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf.core.column import as_column, build_column
 from cudf.utils.dtypes import is_list_dtype
@@ -141,3 +142,11 @@ def _encode_list_column(original, encoded):
             size=original.size,
             children=(original._column.offsets, encoded),
         )
+
+
+def _to_arrow(x):
+    """Move data to arrow format"""
+    if isinstance(x, cudf.DataFrame):
+        return x.to_arrow()
+    else:
+        return pa.Table.from_pandas(x, preserve_index=False)

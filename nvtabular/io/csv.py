@@ -17,12 +17,11 @@ import functools
 
 import dask.dataframe as dd
 import dask_cudf
+import numpy as np
 from dask.bytes import read_bytes
 from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import infer_compression
-import numpy as np
-import pandas as pd
 
 from .dataset_engine import DatasetEngine
 
@@ -58,9 +57,9 @@ class CSVDatasetEngine(DatasetEngine):
 
     @property
     @functools.lru_cache(1)
-    def _path_partition_map(self):
+    def _file_partition_map(self):
         ind = 0
-        _path_partition_map = {}
+        _pp_map = {}
         for path, blocks in zip(
             *_byte_block_counts(
                 self.paths,
@@ -68,9 +67,9 @@ class CSVDatasetEngine(DatasetEngine):
                 self.csv_kwargs,
             )
         ):
-            _path_partition_map[path.split(self.fs.sep)[-1]] = ind
+            _pp_map[path.split(self.fs.sep)[-1]] = np.arange(ind, ind + blocks)
             ind += blocks
-        return pd.Series(_path_partition_map)
+        return _pp_map
 
     def to_cpu(self):
         self.cpu = True
@@ -97,19 +96,8 @@ def _byte_block_counts(
     else:
         lineterminator = "\n"
 
-    if isinstance(kwargs.get("skiprows"), int):
-        skiprows = lastskiprow = firstrow = kwargs.get("skiprows")
-    elif kwargs.get("skiprows") is None:
-        skiprows = lastskiprow = firstrow = 0
-    else:
-        skiprows = set(kwargs.get("skiprows"))
-        lastskiprow = max(skiprows)
-        firstrow = min(set(range(len(skiprows) + 1)) - set(skiprows))
-
     if compression == "infer":
-        paths = get_fs_token_paths(urlpath, mode="rb", storage_options=storage_options)[
-            2
-        ]
+        paths = get_fs_token_paths(urlpath, mode="rb", storage_options=storage_options)[2]
         compression = infer_compression(paths[0])
 
     if isinstance(blocksize, str):

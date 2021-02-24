@@ -16,15 +16,15 @@
 import collections
 
 import cudf
-
 import dask
-import pyarrow as pa
 import pandas as pd
+import pyarrow as pa
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from nvtx import annotate
 
+from nvtabular.dispatch import _to_arrow
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
 from .shuffle import Shuffle
@@ -85,39 +85,52 @@ def _write_table_list(
     num_threads,
     cpu,
 ):
+
+    writer = writer_factory(
+        output_format,
+        output_path,
+        1,
+        shuffle,
+        bytes_io=(shuffle == Shuffle.PER_WORKER),
+        num_threads=num_threads,
+        cpu=cpu,
+        fns=[fn],
+    )
+    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+
+    # Add data
     num_rows = 0
-
-    # Get cached writer (or create/cache a new one)
-    with get_worker_cache("writer") as writer_cache:
-        writer = writer_cache.get(output_path, None)
-        if writer is None:
-            writer = writer_factory(
-                output_format,
-                output_path,
-                1,
-                shuffle,
-                use_guid=True,
-                bytes_io=False,
-                num_threads=num_threads,
-                cpu=cpu,
-                fns=[fn],
-            )
-            writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
-            writer_cache[output_path] = writer
-
-        # Add data
-        for table in tables:
-            if isinstance(table, pa.Table):
-                if cpu:
-                    writer.add_data(table.to_pandas())
-                else:
-                    writer.add_data(cudf.DataFrame.from_arrow(table))
+    for table in tables:
+        if isinstance(table, pa.Table):
+            if cpu:
+                writer.add_data(table.to_pandas())
             else:
-                writer.add_data(table)
-            num_rows += len(table)
+                writer.add_data(cudf.DataFrame.from_arrow(table))
+        else:
+            writer.add_data(table)
+        num_rows += len(table)
 
-    return num_rows
+    # Return metadata and row-count in dict
+    return writer.close()
 
+
+def _write_metadata_files(md_list, output_path, output_format, cpu):
+
+    # Separate and merge metadata
+    general_md = []
+    special_md = []
+    for md in md_list:
+        general_md.append(md[0])
+        special_md.append(md[1])
+    general_md = _merge_general_metadata(general_md)
+    special_md = dict(collections.ChainMap(*special_md))
+
+    # Write metadata files
+    if not isinstance(output_path, str):
+        output_path = str(output_path)
+    wc, fs = _writer_cls_factory(output_format, output_path, cpu)
+    wc.write_general_metadata(general_md, fs, output_path)
+    wc.write_special_metadata(special_md, fs, output_path)
 
 
 def _ddf_to_dataset(
@@ -125,7 +138,7 @@ def _ddf_to_dataset(
     fs,
     output_path,
     shuffle,
-    path_partition_map,
+    file_partition_map,
     out_files_per_proc,
     cat_names,
     cont_names,
@@ -137,44 +150,28 @@ def _ddf_to_dataset(
 ):
 
     # Construct graph for Dask-based dataset write
-    token = tokenize(
-        ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
-    )
+    token = tokenize(ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names)
     name = "write-processed-" + token
     write_name = name + "-partition" + token
 
     # Check that the data is in the correct place
     assert isinstance(ddf._meta, pd.DataFrame) is cpu
 
-    if path_partition_map is not None:
+    dsk = {}
+    task_list = []
+    if file_partition_map is not None:
         # Use specified mapping of data to output files
-
-        # TODO: Check shuffle
-
-        def _to_arrow(x):
-            if isinstance(x, cudf.DataFrame):
-                return x.to_arrow()
-            else:
-                return pa.Table.from_pandas(x)
-
-        if len(path_partition_map) < ddf.npartitions:
+        cached_writers = False
+        ddf2 = ddf
+        if not cpu and len(file_partition_map) < ddf.npartitions:
+            # Aggregate partitions in arrow format (in host memory)
             ddf2 = ddf.map_partitions(_to_arrow, meta=ddf._meta)
-        else:
-            ddf2 = ddf
 
-        dsk = {}
-        task_list = []
-        for i, fn in enumerate(path_partition_map.index):
-            start = path_partition_map.iloc[i]
-            if i == len(path_partition_map) - 1:
-                stop = ddf2.npartitions
-            else:
-                stop = path_partition_map.iloc[i+1]
-
+        for fn, parts in file_partition_map.items():
             task_list.append((write_name, fn))
             dsk[task_list[-1]] = (
                 _write_table_list,
-                [(ddf2._name, idx) for idx in range(start, stop)],
+                [(ddf2._name, part) for part in parts],
                 fn,
                 output_path,
                 shuffle,
@@ -186,14 +183,16 @@ def _ddf_to_dataset(
                 num_threads,
                 cpu,
             )
-        dsk[name] = (lambda x: x, task_list)
-        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf2])
-        out = Delayed(name, graph)
-    
-
+        dsk[name] = (
+            _write_metadata_files,
+            task_list,
+            output_path,
+            output_format,
+            cpu,
+        )
     else:
-        task_list = []
-        dsk = {}
+        cached_writers = True
+        ddf2 = ddf
         for idx in range(ddf.npartitions):
             key = (write_name, idx)
             dsk[key] = (
@@ -212,8 +211,9 @@ def _ddf_to_dataset(
             )
             task_list.append(key)
         dsk[name] = (lambda x: x, task_list)
-        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
-        out = Delayed(name, graph)
+
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf2])
+    out = Delayed(name, graph)
 
     # Trigger write execution
     if client:
@@ -221,8 +221,9 @@ def _ddf_to_dataset(
     else:
         out = dask.compute(out, scheduler="synchronous")[0]
 
-    # Follow-up Shuffling and _metadata creation
-    _finish_dataset(client, ddf, output_path, fs, output_format, cpu)
+    if cached_writers:
+        # Follow-up Shuffling and _metadata creation
+        _finish_dataset(client, ddf, output_path, fs, output_format, cpu)
 
 
 def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
