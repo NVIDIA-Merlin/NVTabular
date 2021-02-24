@@ -180,12 +180,7 @@ def _generate_model_config(
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
 
-    if max_batch_size is None:
-        config = model_config.ModelConfig(name=name, backend="python")
-    else:
-        config = model_config.ModelConfig(
-            name=name, backend="python", max_batch_size=max_batch_size
-        )
+    config = model_config.ModelConfig(name=name, backend="python", max_batch_size=max_batch_size)
 
     if output_model == "hugectr":
         for column in workflow.column_group.input_column_names:
