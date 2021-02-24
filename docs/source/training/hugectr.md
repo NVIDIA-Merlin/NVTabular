@@ -3,7 +3,7 @@ Accelerated Training with HugeCTR
 
 A real-world production model serves hundreds of millions of users, which contains embedding tables that can exceed the memory of a single GPU with up to 100GB-1TB in size. Large embedding tables in deep learning recommender system models can be challenging.
 
-To combat that challenge, we’ve developed HugeCTR, which is an open source deep learning framework that is a highly optimized library written in CUDA C++, specifically for recommender systems. It supports an optimized dataloader and is able to scale embedding tables using multiple GPUs and nodes. As a result, there’s no embedding table size limitation. We’ve been able to scale deep learning recommender systems up to XXX GPUs. HugeCTR also offers the following:
+To combat that challenge, we’ve developed HugeCTR, which is an open source deep learning framework that is a highly optimized library written in CUDA C++, specifically for recommender systems. It supports an optimized dataloader and is able to scale embedding tables using multiple GPUs and nodes. As a result, there’s no embedding table size limitation. HugeCTR also offers the following:
 
 * Proficiency in oversubscribing models to train embedding tables with single nodes that don’t fit within the GPU or CPU memory (only required embeddings are prefetched from a parameter server per batch).
 * Asynchronous and multithreaded data pipelines.
