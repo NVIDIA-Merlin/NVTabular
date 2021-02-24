@@ -173,7 +173,7 @@ def _generate_model_config(workflow, name, output_path):
 
 
 def _convert_dtype(dtype):
-    """ converts a dtype to the appropiate triton proto type """
+    """ converts a dtype to the appropriate triton proto type """
     if dtype == "float64":
         return model_config.TYPE_FP64
     if dtype == "float32":

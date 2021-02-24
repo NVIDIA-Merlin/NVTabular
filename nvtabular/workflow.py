@@ -43,8 +43,8 @@ class Workflow:
     """
     The Workflow class applies a graph of operations onto a dataset, letting you transform
     datasets to do feature engineering and preprocessing operations. This class follows an API
-    similar to Transformers in sklearn: we first 'fit' the workflow by calculating statistics
-    on the dataset, and then once fit we can 'transform' datasets by applying these statistics.
+    similar to Transformers in sklearn: we first ``fit`` the workflow by calculating statistics
+    on the dataset, and then once fit we can ``transform`` datasets by applying these statistics.
 
     Example usage::
 
@@ -75,7 +75,7 @@ class Workflow:
         self.output_dtypes = None
 
     def transform(self, dataset: Dataset) -> Dataset:
-        """Transforms the dataset by applying the graph of operators to it. Requires the 'fit'
+        """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
 
         This method returns a Dataset object, with the transformations lazily loaded. None
@@ -159,7 +159,8 @@ class Workflow:
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
-        call. Equivalent to calling workflow.fit(dataset) followed by workflow.transform(dataset)
+        call. Equivalent to calling ``workflow.fit(dataset)`` followed by
+        ``workflow.transform(dataset)``
 
         Parameters
         -----------
