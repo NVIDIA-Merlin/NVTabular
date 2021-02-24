@@ -15,6 +15,7 @@
 #
 
 import logging
+import math
 import random
 import warnings
 
@@ -399,7 +400,7 @@ class Dataset:
         self,
         output_path,
         shuffle=None,
-        file_partition_map=None,
+        output_files=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
@@ -428,15 +429,19 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
-        file_partition_map : dict
-            Dictionary mapping of output file names to partition indices
-            that should be written to that file name.  If this argument
-            is passed, only the partitions included in the dictionary
-            will be written to disk, and the `output_files_per_proc` argument
-            will be ignored.
+        output_files : dict, list or int
+            Dictionary mapping of output file names to partition indices.
+            If a list of file names is specified, a contiguous range of
+            output partitions will be mapped to each file. The same procedure
+            is used if an integer is specified, but the file names will be
+            written as "part_*". If anything is specified for `output_files`,
+            the `output_files_per_proc` argument will be ignored.  Also, if
+            a dictionary is specified, excluded partition indices will not
+            be written to disk.
         out_files_per_proc : integer
-            Number of files to create (per process) after
-            shuffling the data
+            Number of files to create (per process) after shuffling the
+            data. This option will be ignored if `output_files`
+            is specified.
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
@@ -461,13 +466,29 @@ class Dataset:
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
 
+        # Convert `output_files` argument to a dict mapping
+        if output_files is not None:
+
+            if isinstance(output_files, int):
+                output_files = [f"part_{i}" for i in range(output_files)]
+            if isinstance(output_files, list):
+                new = {}
+                split = math.ceil(ddf.npartitions / len(output_files))
+                for i, fn in enumerate(output_files):
+                    start = i * split
+                    stop = min(start + split, ddf.npartitions)
+                    new[fn] = np.arange(start, stop)
+                output_files = new
+            if not isinstance(output_files, dict):
+                raise TypeError(f"{type(output_files)} not a supported type for `output_files`.")
+
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
             ddf,
             fs,
             output_path,
             shuffle,
-            file_partition_map,
+            output_files,
             out_files_per_proc,
             cats or [],
             conts or [],
