@@ -15,7 +15,10 @@
 #
 import collections
 
+import cudf
+
 import dask
+import pyarrow as pa
 import pandas as pd
 from dask.base import tokenize
 from dask.delayed import Delayed
@@ -68,11 +71,61 @@ def _write_output_partition(
     return df_size
 
 
+@annotate("write_table_list", color="green", domain="nvt_python")
+def _write_table_list(
+    tables,
+    fn,
+    output_path,
+    shuffle,
+    fs,
+    cat_names,
+    cont_names,
+    label_names,
+    output_format,
+    num_threads,
+    cpu,
+):
+    num_rows = 0
+
+    # Get cached writer (or create/cache a new one)
+    with get_worker_cache("writer") as writer_cache:
+        writer = writer_cache.get(output_path, None)
+        if writer is None:
+            writer = writer_factory(
+                output_format,
+                output_path,
+                1,
+                shuffle,
+                use_guid=True,
+                bytes_io=False,
+                num_threads=num_threads,
+                cpu=cpu,
+                fns=[fn],
+            )
+            writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+            writer_cache[output_path] = writer
+
+        # Add data
+        for table in tables:
+            if isinstance(table, pa.Table):
+                if cpu:
+                    writer.add_data(table.to_pandas())
+                else:
+                    writer.add_data(cudf.DataFrame.from_arrow(table))
+            else:
+                writer.add_data(table)
+            num_rows += len(table)
+
+    return num_rows
+
+
+
 def _ddf_to_dataset(
     ddf,
     fs,
     output_path,
     shuffle,
+    path_partition_map,
     out_files_per_proc,
     cat_names,
     cont_names,
@@ -82,35 +135,85 @@ def _ddf_to_dataset(
     num_threads,
     cpu,
 ):
+
     # Construct graph for Dask-based dataset write
-    name = "write-processed"
-    write_name = name + tokenize(
+    token = tokenize(
         ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
     )
+    name = "write-processed-" + token
+    write_name = name + "-partition" + token
+
     # Check that the data is in the correct place
     assert isinstance(ddf._meta, pd.DataFrame) is cpu
-    task_list = []
-    dsk = {}
-    for idx in range(ddf.npartitions):
-        key = (write_name, idx)
-        dsk[key] = (
-            _write_output_partition,
-            (ddf._name, idx),
-            output_path,
-            shuffle,
-            out_files_per_proc,
-            fs,
-            cat_names,
-            cont_names,
-            label_names,
-            output_format,
-            num_threads,
-            cpu,
-        )
-        task_list.append(key)
-    dsk[name] = (lambda x: x, task_list)
-    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
-    out = Delayed(name, graph)
+
+    if path_partition_map is not None:
+        # Use specified mapping of data to output files
+
+        # TODO: Check shuffle
+
+        def _to_arrow(x):
+            if isinstance(x, cudf.DataFrame):
+                return x.to_arrow()
+            else:
+                return pa.Table.from_pandas(x)
+
+        if len(path_partition_map) < ddf.npartitions:
+            ddf2 = ddf.map_partitions(_to_arrow, meta=ddf._meta)
+        else:
+            ddf2 = ddf
+
+        dsk = {}
+        task_list = []
+        for i, fn in enumerate(path_partition_map.index):
+            start = path_partition_map.iloc[i]
+            if i == len(path_partition_map) - 1:
+                stop = ddf2.npartitions
+            else:
+                stop = path_partition_map.iloc[i+1]
+
+            task_list.append((write_name, fn))
+            dsk[task_list[-1]] = (
+                _write_table_list,
+                [(ddf2._name, idx) for idx in range(start, stop)],
+                fn,
+                output_path,
+                shuffle,
+                fs,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+                num_threads,
+                cpu,
+            )
+        dsk[name] = (lambda x: x, task_list)
+        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf2])
+        out = Delayed(name, graph)
+    
+
+    else:
+        task_list = []
+        dsk = {}
+        for idx in range(ddf.npartitions):
+            key = (write_name, idx)
+            dsk[key] = (
+                _write_output_partition,
+                (ddf._name, idx),
+                output_path,
+                shuffle,
+                out_files_per_proc,
+                fs,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+                num_threads,
+                cpu,
+            )
+            task_list.append(key)
+        dsk[name] = (lambda x: x, task_list)
+        graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+        out = Delayed(name, graph)
 
     # Trigger write execution
     if client:

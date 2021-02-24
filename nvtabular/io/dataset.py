@@ -26,7 +26,7 @@ import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
-from dask.utils import parse_bytes
+from dask.utils import parse_bytes, natural_sort_key
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
@@ -266,6 +266,7 @@ class Dataset:
                 paths = stringify_path(paths)
             if isinstance(paths, str):
                 paths = [paths]
+            paths = sorted(paths, key=natural_sort_key)
 
             storage_options = storage_options or {}
             # If engine is not provided, try to infer from end of paths[0]
@@ -345,6 +346,10 @@ class Dataset:
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
+    @property
+    def path_partition_map(self):
+        return self.engine._path_partition_map
+
     def to_cpu(self):
         warnings.warn(
             "Changing an NVTabular Dataset to CPU mode."
@@ -394,6 +399,7 @@ class Dataset:
         self,
         output_path,
         shuffle=None,
+        path_partition_map=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
@@ -455,6 +461,7 @@ class Dataset:
             fs,
             output_path,
             shuffle,
+            path_partition_map,
             out_files_per_proc,
             cats or [],
             conts or [],
@@ -589,7 +596,13 @@ class Dataset:
         return self.engine.validate_dataset(**kwargs)
 
     def regenerate_dataset(
-        self, output_path, columns=None, output_format="parquet", compute=True, **kwargs
+        self,
+        output_path,
+        columns=None,
+        output_format="parquet",
+        preserve_files=False,
+        compute=True,
+        **kwargs,
     ):
         """Regenerate an NVTabular Dataset for efficient processing.
 
@@ -642,11 +655,22 @@ class Dataset:
 
 
 def _set_dtypes(chunk, dtypes):
+
+    def _pd_convert_hex(x):
+        if pd.isnull(x):
+            return pd.NA
+        return int(x, 16)
+
     for col, dtype in dtypes.items():
-        if type(dtype) is str:
-            if "hex" in dtype and chunk[col].dtype == "object":
+        if (type(dtype) is str) and ("hex" in dtype) and chunk[col].dtype == "object":
+            if hasattr(chunk[col].str, "htoi"):
+                # CuDF Version
                 chunk[col] = chunk[col].str.htoi()
                 chunk[col] = chunk[col].astype(np.int32)
+            else:
+                # Pandas Version
+                chunk[col] = chunk[col].apply(_pd_convert_hex)
+                chunk[col] = chunk[col].astype("Int64").astype("Int32")
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk

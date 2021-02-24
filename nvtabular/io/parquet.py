@@ -34,6 +34,7 @@ import fsspec
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
+import numpy as np
 from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
@@ -107,6 +108,40 @@ class ParquetDatasetEngine(DatasetEngine):
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
         return dataset
+
+    @property
+    @functools.lru_cache(1)
+    def _path_partition_map(self):
+        dataset = self._dataset
+        if dataset.metadata:
+            # We have a metadata file.
+            # Determing the row-group count per file.
+            _path_row_groups = defaultdict(int)
+            for rg in range(dataset.metadata.num_row_groups):
+                fn = dataset.metadata.row_group(rg).column(0).file_path
+                _path_row_groups[fn] += 1
+
+            # Convert the per-file row-group count to the
+            # file-to-partition mapping
+            ind = 0
+            _path_partition_map = defaultdict(list)
+            for fn, num_row_groups in _path_row_groups.items():
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                _path_partition_map[fn] = ind
+                ind += part_count
+
+        else:
+            # No metadata file. Construct file-to-partition map manually
+            ind = 0
+            _path_partition_map = {}
+            for piece in dataset.pieces:
+                num_row_groups = piece.get_metadata().num_row_groups
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                fn = piece.path.split(self.fs.sep)[-1]
+                _path_partition_map[fn] = ind
+                ind += part_count
+
+        return pd.Series(_path_partition_map)
 
     @property
     @functools.lru_cache(1)
@@ -643,7 +678,9 @@ class BaseParquetWriter(ThreadedWriter):
         raise (NotImplementedError)
 
     def _get_filename(self, i):
-        if self.use_guid:
+        if self.fns:
+            fn = self.fns[i]
+        elif self.use_guid:
             fn = f"{i}.{guid()}.parquet"
         else:
             fn = f"{i}.parquet"
