@@ -467,7 +467,7 @@ class Dataset:
         fs.mkdirs(output_path, exist_ok=True)
 
         # Convert `output_files` argument to a dict mapping
-        if output_files is not None:
+        if output_files:
 
             if isinstance(output_files, int):
                 output_files = [f"part_{i}" for i in range(output_files)]
@@ -622,7 +622,7 @@ class Dataset:
         if not isinstance(self.engine, ParquetDatasetEngine):
             msg = (
                 "NVTabular is optimized for the parquet format. Please use "
-                "the regenerate_dataset method to convert your dataset."
+                "the to_parquet method to convert your dataset."
             )
             warnings.warn(msg)
             return False  # Early return
@@ -634,7 +634,6 @@ class Dataset:
         output_path,
         columns=None,
         output_format="parquet",
-        preserve_files=False,
         compute=True,
         **kwargs,
     ):
