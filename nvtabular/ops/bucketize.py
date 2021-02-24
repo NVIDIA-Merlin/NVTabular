@@ -20,8 +20,8 @@ from .operator import ColumnNames, Operator
 
 
 class Bucketize(Operator):
-    """This operation transforms continuous features into categorical features.
-    The outputs are bins based on the boundaries
+    """This operation transforms continuous features into categorical features
+    with bins based on the provided bin boundaries.
 
     Example usage::
 

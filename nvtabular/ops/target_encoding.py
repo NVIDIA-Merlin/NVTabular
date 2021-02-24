@@ -46,13 +46,14 @@ class TargetEncoding(StatOperator):
         2. Smoothing: To prevent overfitting for low cardinality categories,
         the means are smoothed with the overall mean of the target variable.
 
-    Function:
-    TE = ((mean_cat*count_cat)+(mean_global*p_smooth)) / (count_cat+p_smooth)
+    Target Encoding Function::
 
-    count_cat := count of the categorical value
-    mean_cat := mean of target value for the categorical value
-    mean_global := mean of the target value in the dataset
-    p_smooth := smoothing factor
+        TE = ((mean_cat*count_cat)+(mean_global*p_smooth)) / (count_cat+p_smooth)
+
+        count_cat := count of the categorical value
+        mean_cat := mean target value of the categorical value
+        mean_global := mean target value of the whole dataset
+        p_smooth := smoothing factor
 
     Example usage::
 

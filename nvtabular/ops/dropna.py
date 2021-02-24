@@ -21,7 +21,7 @@ from .operator import ColumnNames, Operator
 
 class Dropna(Operator):
     """
-    This operation detects missing values, and filters out rows with null values.
+    This operation detects and filters out rows with missing values.
 
     Example usage::
 
