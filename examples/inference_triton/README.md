@@ -134,4 +134,4 @@ I0216 15:28:24.068597 71 http_server.cc:2736] Started Metrics Service at 0.0.0.0
 
 All the models should show "READY" status to indicate that they are loaded correctly. If a model fails to load the status will report the failure and a reason for the failure. If your model is not displayed in the table, check the path to the model repository and your CUDA drivers.
 
-Once the models are successfully loaded, you can run the `movielens_inference` notebook to send requests to the Triton IS.
+Once the models are successfully loaded, you can run the `movielens_inference` notebook to send requests to the Triton IS. Note that, by default Triton will not start if models are not loaded successfully.
