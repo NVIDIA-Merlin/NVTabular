@@ -27,6 +27,8 @@ boto3 = "*"
 s3fs = "*"
 sphinx_rtd_theme = "*"
 asvdb = { git = "git+https://github.com/rapidsai/asvdb.git" }
+scikit-learn = "*"
+graphviz = "*"
 
 [tool.black]
 line-length = 100
