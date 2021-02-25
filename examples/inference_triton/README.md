@@ -74,7 +74,7 @@ Open any browser to access the jupyter-lab server using `https://<host IP-Addres
 
 ## 2. Run example notebooks:
 
-There are two example notebooks that should be run in orders. The first one [movilens_TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens-TF.ipynb) shows how to
+There are two example notebooks that should be run in order. The first one [movielens_TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/movielens-TF.ipynb) shows how to
 - do preprocessing with NVTabular
 - serialize and save a workflow to load later to transform new dataset
 - train a TF MLP model and save it in the `/models` directory.
