@@ -9,6 +9,8 @@ dependencies:
   - clang-tools=8.0.1
   - cupy>=7.2.0,<9.0.0a
   - cudf>=0.16.*
+  - dask-cudf>=0.16.*
+  - dask-cuda>=0.16.*
   - rmm>=0.16.*
   - cmake>=3.12
   - cmake_setuptools>=0.1.3
@@ -21,6 +23,7 @@ dependencies:
   - nvtx>=0.2.1
   - cython>=0.29,<0.30
   - fsspec>=0.6.0
+  - scikit-learn
   - pytest
   - sphinx
   - sphinx_rtd_theme
@@ -48,6 +51,7 @@ dependencies:
   - flatbuffers
   - hypothesis
   - pip:
+      - graphviz
       - sphinx-markdown-tables
       - git+https://github.com/dask/dask.git
       - git+https://github.com/dask/distributed.git
