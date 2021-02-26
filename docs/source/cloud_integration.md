@@ -1,11 +1,11 @@
-ETL
-===
+Cloud Integration
+=================
 
 You can run NVTabular on the cloud using: 
-* [Amazon Web Services (AWS)](amazon-web-services)
-* [Google Cloud Platform (GCP)](google-cloud-platform)
+* [Amazon Web Services (AWS)](#amazon-web-services)
+* [Google Cloud Platform (GCP)](#google-cloud-platform)
 
-## Amazon Web Services
+## Amazon Web Services ##
 
 Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x, or 8x GPU instances (or multi-node setup). We're using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Please check out the $/h for this instance type and adjust the type. 
 
@@ -22,7 +22,7 @@ To run NVTabular on the cloud using AWS, do the following:
     
 3. Create a RAID volume by running the following command:
 
-   Depending on the EC2 instance, the machine may include local disk storage. We can optimize the performance by creating a [RAID volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html). Based on our experience, two NVME volumes yield the best performance.
+   Depending on the EC2 instance, the machine may include local disk storage. We can optimize the performance by creating a [RAID volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html). Based on our experience, two NVMe volumes yield the best performance.
 
    ```
    sudo mdadm --create --verbose /dev/md0 --level=0 --name=MY_RAID --raid-devices=2 /dev/nvme1n1 /dev/nvme2n1
@@ -37,7 +37,7 @@ To run NVTabular on the cloud using AWS, do the following:
    cp -r data/ /mnt/raid/data/
    ```
 
-4. Launch the NVTabular docker container by running the 
+4. Launch the NVTabular docker container by running the following command:
 
    ```
    docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
@@ -49,7 +49,7 @@ To run NVTabular on the cloud using AWS, do the following:
    jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
    ```
 
-## Google Cloud Platform
+## Google Cloud Platform ##
 
 The Google Cloud Platform offers [Compute Engine instances with NVIDIA GPU support](https://cloud.google.com/compute/docs/gpus). We're using a VM with 8x NVIDIA A100 GPUs and eight local SSD-NVMe devices configured as RAID 0 to demonstrate the steps below.
 
