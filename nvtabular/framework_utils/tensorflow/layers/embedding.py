@@ -286,10 +286,10 @@ class LinearFeatures(tf.keras.layers.Layer):
     and scalar numeric features. Based on the "wide" branch of the Wide & Deep
     network architecture.
 
-    Uses TensorFlow `feature_column`s to represent inputs to the layer, but
+    Uses TensorFlow ``feature_column``s to represent inputs to the layer, but
     does not perform any preprocessing associated with those columns. As such,
-    it should only be passed `numeric_column` and
-    `categorical_column_with_identity`. Preprocessing functionality should
+    it should only be passed ``numeric_column`` and
+    ``categorical_column_with_identity``. Preprocessing functionality should
     be moved to NVTabular.
 
     Also note that, unlike ScalarDenseFeatures, categorical columns should

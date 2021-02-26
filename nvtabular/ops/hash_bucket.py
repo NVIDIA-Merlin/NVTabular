@@ -26,9 +26,8 @@ from .operator import ColumnNames, Operator
 
 class HashBucket(Operator):
     """
-    This op maps categorical columns to a contiguous integer range
-    by first hashing the column then modulating by the number of
-    buckets as indicated by `num_buckets`.
+    This op maps categorical columns to a contiguous integer range by first
+    hashing the column, then reducing modulo the number of buckets.
 
     Example usage::
 
