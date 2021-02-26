@@ -41,6 +41,17 @@ NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
+If you'd like to create a full conda environment to run the example notebooks, you can use the [provided environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) for CUDA Toolkit 10.1, 10.2, or 11.0. Clone the NVTabular repo and from the root directory, run:
+
+```
+conda env create -f=conda/environments/nvtabular_dev_cuda10.1.yml
+conda activate nvtabular_dev_10.1
+python -m ipykernel install --user --name=nvt
+pip install -e .
+jupyter notebook
+```
+Then open a notebook and select `nvt` from the `Kernel->Change Kernel` menu.
+
 #### Installing NVTabular with the Docker Container
 
 To use the NVTabular Docker Container, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU visibility to containers. NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular. You can pull the container by running the following command:
