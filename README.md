@@ -43,7 +43,7 @@ conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7
 
 #### Installing NVTabular with the Docker Container
 
-NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular. You can pull the container by running the following command:
+To use the NVTabular Docker Container, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU visibility to containers. NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular. You can pull the container by running the following command:
 
 ```
 docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.4 /bin/bash
