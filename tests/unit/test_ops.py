@@ -535,6 +535,10 @@ def test_categorify_multi_combo(tmpdir, cpu):
 @pytest.mark.parametrize("search_sort", [True, False])
 @pytest.mark.parametrize("cpu", [False, True])
 def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
+    if search_sort and cpu:
+        # invalid combination - don't test
+        return
+
     df = cudf.DataFrame(
         {
             "Author": [
