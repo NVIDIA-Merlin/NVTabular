@@ -1,11 +1,11 @@
-ETL
-===
+Cloud Integration
+=================
 
 You can run NVTabular on the cloud using: 
-* [Amazon Web Services (AWS)](amazon-web-services)
-* [Google Cloud Platform (GCP)](google-cloud-platform)
+* [Amazon Web Services (AWS)](#amazon-web-services)
+* [Google Cloud Platform (GCP)](#google-cloud-platform)
 
-## Amazon Web Services
+## Amazon Web Services ##
 
 Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x, or 8x GPU instances (or multi-node setup). We're using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Please check out the $/h for this instance type and adjust the type. 
 
@@ -37,10 +37,10 @@ To run NVTabular on the cloud using AWS, do the following:
    cp -r data/ /mnt/raid/data/
    ```
 
-4. Launch the NVTabular docker container by running the 
+4. Launch the NVTabular docker container by running the following command:
 
    ```
-   docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
+   docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.4 /bin/bash
    ```
 
 5. Start the jupyter-lab server by running the following command:
@@ -49,16 +49,16 @@ To run NVTabular on the cloud using AWS, do the following:
    jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
    ```
 
-## Google Cloud Platform
+## Google Cloud Platform ##
 
-The Google Cloud Platform offers [Compute Engine instances with NVIDIA GPU support](https://cloud.google.com/compute/docs/gpus). We're using a VM with 8x NVIDIA A100 GPUs and eight local SSD-NVMe devices configured as RAID 0 to demonstrate the steps below.
+The Google Cloud Platform offers [Compute Engine instances with NVIDIA GPU support](https://cloud.google.com/compute/docs/gpus). We're using a VM with 8x NVIDIA A100 GPUs and eight local SSD-NVME devices configured as RAID 0 to demonstrate the steps below.
 
 To run NVTabular on the cloud using GCP, do the following:
 
 1. Configure and create the VM.
     * **GPU**: 8xA100 (a2-highgpu-8g)
     * **Boot Disk**: Ubuntu version 18.04
-    * **Storage**: Local 8xSSD-NVMe
+    * **Storage**: Local 8xSSD-NVME
 
 2. [Install the appropriate NVIDIA drivers and CUDA](https://cloud.google.com/compute/docs/gpus/install-drivers-gpu#ubuntu-driver-steps).
    ```
@@ -96,5 +96,5 @@ To run NVTabular on the cloud using GCP, do the following:
 
 5. Run the container using the following command:
    ```
-   docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.3 /bin/bash
+   docker run --gpus all --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE -v /mnt/raid:/raid nvcr.io/nvidia/nvtabular:0.4 /bin/bash
    ```
