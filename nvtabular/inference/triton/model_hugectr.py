@@ -93,8 +93,7 @@ class TritonPythonModel:
             else:
                 output_tensors.append(Tensor("CATCOLUMN", np.array([0])))
 
-            row_index = [i for i in range(len(cats_np))]
-            row_index = np.array(row_index).astype(np.int32)
+            row_index = np.arange(len(cats_np), dtype=np.int32)
             output_tensors.append(Tensor("ROWINDEX", row_index))
 
             responses.append(InferenceResponse(output_tensors))
