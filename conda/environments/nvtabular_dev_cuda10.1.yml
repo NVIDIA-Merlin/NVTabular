@@ -1,7 +1,9 @@
-name: nvtabular_dev
+name: nvtabular_dev_10.1
 channels:
   - rapidsai
   - nvidia
+  - fastai
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -50,7 +52,10 @@ dependencies:
   - rapidjson
   - flatbuffers
   - hypothesis
+  - pytorch
+  - fastai
   - pip:
+      - tensorflow-gpu
       - graphviz
       - sphinx-markdown-tables
       - git+https://github.com/dask/dask.git
