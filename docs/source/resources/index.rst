@@ -1,4 +1,4 @@
-Addtional Resources
+Additional Resources
 ===================
 
 .. toctree::
