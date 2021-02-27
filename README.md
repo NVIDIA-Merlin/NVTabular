@@ -1,4 +1,4 @@
-## [NVTabular](https://github.com/NVIDIA/NVTabular) | [API documentation](https://nvidia.github.io/NVTabular/main/index.html)
+## [NVTabular](https://github.com/NVIDIA/NVTabular) | [API documentation](https://nvidia.github.io/NVTabular/main/Introduction.html)
 
 [NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to quickly and easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides a high level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library. NVTabular is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that we have developed as extensions of native framework code. In our experiments, we were able to speed up existing TensorFlow pipelines by 9 times and existing PyTorch pipelines by 5 times with our highly optimized dataloaders.
 
@@ -40,6 +40,17 @@ NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 ```
 conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
+
+If you'd like to create a full conda environment to run the example notebooks, you can use the [provided environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) for CUDA Toolkit 10.1, 10.2, or 11.0. Clone the NVTabular repo and from the root directory, run:
+
+```
+conda env create -f=conda/environments/nvtabular_dev_cuda10.1.yml
+conda activate nvtabular_dev_10.1
+python -m ipykernel install --user --name=nvt
+pip install -e .
+jupyter notebook
+```
+Then open a notebook and select `nvt` from the `Kernel->Change Kernel` menu.
 
 #### Installing NVTabular with the Docker Container
 
