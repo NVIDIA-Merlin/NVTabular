@@ -1,8 +1,15 @@
 Examples
 ========
 
+
+We created a collection of Jupyter notebooks based on different datasets. The examples cover how
+to use NVTabular in combination with TensorFlow, PyTorch and `HugeCTR https://github.com/NVIDIA/HugeCTR`_
+Each example explains some features of NVTabular in detail. We provide an order to go through the notebooks 
+as the later ones expect some prior knowledge.
+
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
     
    Getting Started - MovieLens <getting-started-movielens/index>
    Advanced Operators - Outbrain <advanced-ops-outbrain/index>
