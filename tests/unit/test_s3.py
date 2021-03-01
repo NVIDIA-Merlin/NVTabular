@@ -15,121 +15,22 @@
 #
 
 import os
-import shlex
-import subprocess
-import time
-from contextlib import contextmanager
 from io import BytesIO
 
 import cudf
 import pytest
 from cudf.tests.utils import assert_eq
 from dask.dataframe.io.parquet.core import create_metadata_file
+from dask_cudf.io.tests import test_s3
 
 import nvtabular as nvt
 from nvtabular import ops as ops
 from tests.conftest import mycols_csv, mycols_pq
 
-boto3 = pytest.importorskip("boto3")
-s3fs = pytest.importorskip("s3fs")
-moto = pytest.importorskip("moto")
-requests = pytest.importorskip("requests")
-
-
-@contextmanager
-def ensure_safe_environment_variables():
-    """
-    Get a context manager to safely set environment variables
-    All changes will be undone on close, hence environment variables set
-    within this contextmanager will neither persist nor change global state.
-
-    This function was copied from https://github.com/rapidsai/cudf
-    (see cudf/python/dask_cudf/dask_cudf/io/tests/test_s3.py)
-    """
-    saved_environ = dict(os.environ)
-    try:
-        yield
-    finally:
-        os.environ.clear()
-        os.environ.update(saved_environ)
-
-
-@pytest.fixture(scope="session")
-def s3_base(worker_id):
-    """
-    Fixture to set up moto server in separate process
-
-    This fixture was copied from https://github.com/rapidsai/cudf
-    (see cudf/python/dask_cudf/dask_cudf/io/tests/test_s3.py)
-    """
-    with ensure_safe_environment_variables():
-        # Fake aws credentials exported to prevent botocore looking for
-        # system aws credentials, https://github.com/spulec/moto/issues/1793
-        os.environ.setdefault("AWS_ACCESS_KEY_ID", "foobar_key")
-        os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "foobar_secret")
-
-        # Launching moto in server mode, i.e., as a separate process
-        # with an S3 endpoint on localhost
-
-        endpoint_port = 5000 if worker_id == "master" else 5550 + int(worker_id.lstrip("gw"))
-        endpoint_uri = f"http://127.0.0.1:{endpoint_port}/"
-
-        proc = subprocess.Popen(
-            shlex.split(f"moto_server s3 -p {endpoint_port}"),
-        )
-
-        timeout = 5
-        while timeout > 0:
-            try:
-                # OK to go once server is accepting connections
-                r = requests.get(endpoint_uri)
-                if r.ok:
-                    break
-            except Exception:
-                pass
-            timeout -= 0.1
-            time.sleep(0.1)
-        yield endpoint_uri
-
-        proc.terminate()
-        proc.wait()
-
-
-@pytest.fixture()
-def s3so(worker_id):
-    """
-    Returns s3 storage options to pass to fsspec
-
-    This fixture was copied from https://github.com/rapidsai/cudf
-    (see cudf/python/dask_cudf/dask_cudf/io/tests/test_s3.py)
-    """
-    endpoint_port = 5000 if worker_id == "master" else 5550 + int(worker_id.lstrip("gw"))
-    endpoint_uri = f"http://127.0.0.1:{endpoint_port}/"
-
-    return {"client_kwargs": {"endpoint_url": endpoint_uri}}
-
-
-@contextmanager
-def s3_context(s3_base, bucket, files=None):
-    """
-    This function was copied from https://github.com/rapidsai/cudf
-    (see cudf/python/dask_cudf/dask_cudf/io/tests/test_s3.py)
-    """
-    if files is None:
-        files = {}
-    with ensure_safe_environment_variables():
-        client = boto3.client("s3", endpoint_url=s3_base)
-        client.create_bucket(Bucket=bucket, ACL="public-read-write")
-        for f, data in files.items():
-            client.put_object(Bucket=bucket, Key=f, Body=data)
-
-        yield s3fs.S3FileSystem(client_kwargs={"endpoint_url": s3_base})
-
-        for f, data in files.items():
-            try:
-                client.delete_object(Bucket=bucket, Key=f)
-            except Exception:
-                pass
+# Import fixtures and context managers from dask_cudf
+s3_base = test_s3.s3_base
+s3_context = test_s3.s3_context
+s3so = test_s3.s3so
 
 
 @pytest.mark.parametrize("engine", ["parquet", "csv"])
