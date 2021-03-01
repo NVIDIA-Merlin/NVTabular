@@ -1,5 +1,5 @@
-Advanced Operators - Outbrain
-=============================
+Advanced Ops with Outbrain
+==========================
 
 `Outbrain dataset <https://www.kaggle.com/c/outbrain-click-prediction>`_ is based on a Kaggle Competition in which Kagglers were challenged to predict on which ads and other forms of sponsored content its global users would click. We will teach to use more of the available NVTabular operators:
 
