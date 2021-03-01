@@ -16,13 +16,13 @@ Our ultimate goal is faster iteration on massive tabular datasets, both for expe
 NVTabular also helps ML/Ops engineers with deploying models into production by providing faster dataset transformation. This makes it easy for production models to be trained more frequently and kept up to date, helping improve responsiveness and model performance.
 
 To learn more about NVTabular's core features, see the following:
-* [TensorFlow and PyTorch Interoperability](docs/source/core_features.md#tensorflow-and-pytorch-interoperability)
-* [HugeCTR Interoperability](docs/source/core_features.md#hugectr-interoperability)
-* [Multi-GPU Support](docs/source/core_features.md#multi-gpu-support)
-* [Multi-Node Support](docs/source/core_features.md#multi-node-support)
-* [Multi-Hot Encoding and Pre-existing Embeddings](docs/source/core_features.md#multi-hot-encoding-and-pre-existing-embeddings)
-* [Shuffling Datasets](docs/source/core_features.md#shuffling-datasets)
-* [Cloud Integration](docs/source/core_features.md#cloud-integration)
+* [TensorFlow and PyTorch Interoperability](https://nvidia.github.io/NVTabular/main/core_features.html#tensorflow-and-pytorch-interoperability)
+* [HugeCTR Interoperability](https://nvidia.github.io/NVTabular/main/core_features.html#hugectr-interoperability)
+* [Multi-GPU Support](https://nvidia.github.io/NVTabular/main/core_features.html#multi-gpu-support)
+* [Multi-Node Support](https://nvidia.github.io/NVTabular/main/core_features.html#multi-node-support)
+* [Multi-Hot Encoding and Pre-existing Embeddings](https://nvidia.github.io/NVTabular/main/core_features.html#multi-hot-encoding-and-pre-existing-embeddings)
+* [Shuffling Datasets](https://nvidia.github.io/NVTabular/main/core_features.html#shuffling-datasets)
+* [Cloud Integration](https://nvidia.github.io/NVTabular/main/core_features.html#cloud-integration)
 
 ### Installation
 
@@ -41,7 +41,7 @@ NVTabular can be installed with Anaconda from the ```nvidia``` channel:
 conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
 ```
 
-If you'd like to create a full conda environment to run the example notebooks, you can use the [provided environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) for CUDA Toolkit 10.1, 10.2, or 11.0. Clone the NVTabular repo and from the root directory, run:
+If you'd like to create a full conda environment to run the example notebooks, you can use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) for CUDA Toolkit 10.1, 10.2, or 11.0. Clone the NVTabular repo and from the root directory, run:
 
 ```
 conda env create -f=conda/environments/nvtabular_dev_cuda10.1.yml
@@ -118,4 +118,4 @@ With NVTabular running on a single V100 32GB GPU, we were able to complete ETL i
 
 If you'd like to contribute to the library directly, please see the [Contributing.md](./CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline using this [this survey](https://developer.nvidia.com/merlin-devzone-survey).
 
-If you're interested in learning more about how NVTabular works under the hood, see [Architecture](/docs/source/resources/architecture.md). We also have [API documentation](https://nvidia.github.io/NVTabular/main/resources/api/index.html) that outlines the specifics of the available calls within the library.
+If you're interested in learning more about how NVTabular works under the hood, see [Architecture](https://nvidia.github.io/NVTabular/main/resources/architecture.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/resources/api/index.html) that outlines the specifics of the available calls within the library.
