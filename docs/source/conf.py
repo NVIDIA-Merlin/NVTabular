@@ -175,7 +175,7 @@ def to_uri(app, docname, anchor=None):
     uri = ""
     smv_current_version = app.config.smv_current_version
     if smv_current_version:
-        uri = "/{}".format(smv_current_version)
+        uri = "/NVTabular/{}".format(smv_current_version)
 
     uri += "/{}.html".format(docname)
     if anchor:
