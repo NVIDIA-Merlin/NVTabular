@@ -71,4 +71,4 @@ NVTabular makes it possible to shuffle during dataset creation. This creates a u
 
 ## Cloud Integration ##
 
-NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Cloud Platform (GCP), giving you the ability to build, train, and deploy models on the cloud using datasets. For additional information, see [Amazon Web Services](/docs/source/resources/cloud_integration.md#amazon-web-services) and [Google Cloud Platform](/docs/source/resources/cloud_integration.md#google-cloud-platform).
+NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Cloud Platform (GCP), giving you the ability to build, train, and deploy models on the cloud using datasets. For additional information, see [Amazon Web Services](./resources/cloud_integration.md#amazon-web-services) and [Google Cloud Platform](./resources/cloud_integration.md#google-cloud-platform).

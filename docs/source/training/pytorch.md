@@ -61,4 +61,5 @@ When `TorchAsyncItr` accelerates training with PyTorch, the following happens:
 
 5. The `TorchAsyncItr` dataloader can be initialized for the validation dataset using the same structure.  
 
-You can find additional examples in our repository such as [MovieLens](../examples/movielens_multihot_example.ipynb) and [Criteo](../examples/criteo-example.ipynb).
+You can find additional examples in our repository such as [MovieLens](../examples/getting-started-movielens/) and [Criteo](
+../examples/scaling-criteo/).
