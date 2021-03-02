@@ -52,5 +52,7 @@ filterwarnings = [
 		'ignore:General-metadata information not detected:UserWarning',
 		'ignore:Changing an NVTabular Dataset to CPU mode:UserWarning',
 		'ignore:Initializing an NVTabular Dataset in CPU mode:UserWarning',
-		'ignore:Performing a hash-based transformation:UserWarning'
+		'ignore:Performing a hash-based transformation:UserWarning',
+    		'ignore:WARNING..cuDF.to_dlpack',
+    		'ignore:::numba.cuda.envvar:',
 	]
