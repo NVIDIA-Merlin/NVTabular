@@ -15,63 +15,70 @@
 #
 
 import os
+from io import BytesIO
 
 import cudf
-import fsspec
 import pytest
 from cudf.tests.utils import assert_eq
+from dask.dataframe.io.parquet.core import create_metadata_file
+from dask_cudf.io.tests import test_s3
 
 import nvtabular as nvt
 from nvtabular import ops as ops
 from tests.conftest import mycols_csv, mycols_pq
 
-boto3 = pytest.importorskip("boto3")
-s3fs = pytest.importorskip("s3fs")
-moto = pytest.importorskip("moto")
-
-
-@pytest.fixture(scope="function")
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-
-
-@pytest.fixture(scope="function")
-def s3(aws_credentials):
-    with moto.mock_s3():
-        yield boto3.client("s3", region_name="us-east-1")
+# Import fixtures and context managers from dask_cudf
+s3_base = test_s3.s3_base
+s3_context = test_s3.s3_context
+s3so = test_s3.s3so
 
 
 @pytest.mark.parametrize("engine", ["parquet", "csv"])
-def test_s3_dataset(s3, paths, engine, df):
-    # create a mocked out bucket here
-    bucket = "testbucket"
-    s3.create_bucket(Bucket=bucket)
+def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df):
 
-    s3_paths = []
-    for path in paths:
-        s3_path = f"s3://{bucket}/{path}"
-        with fsspec.open(s3_path, "wb") as f:
-            f.write(open(path, "rb").read())
-        s3_paths.append(s3_path)
+    # Copy files to mock s3 bucket
+    files = {}
+    for i, path in enumerate(paths):
+        with open(path, "rb") as f:
+            fbytes = f.read()
+        fn = path.split(os.path.sep)[-1]
+        files[fn] = BytesIO()
+        files[fn].write(fbytes)
+        files[fn].seek(0)
 
-    # create a basic s3 dataset
-    dataset = nvt.Dataset(s3_paths)
+    if engine == "parquet":
+        # Workaround for nvt#539. In order to avoid the
+        # bug in Dask's `create_metadata_file`, we need
+        # to manually generate a "_metadata" file here.
+        # This can be removed after dask#7295 is merged
+        # (see https://github.com/dask/dask/pull/7295)
+        fn = "_metadata"
+        files[fn] = BytesIO()
+        meta = create_metadata_file(
+            paths,
+            engine="pyarrow",
+            out_dir=False,
+        )
+        meta.write_metadata_file(files[fn])
+        files[fn].seek(0)
 
-    # make sure the iteration API works
-    columns = mycols_pq if engine == "parquet" else mycols_csv
-    gdf = cudf.concat(list(dataset.to_iter()))[columns]
-    assert_eq(gdf.reset_index(drop=True), df.reset_index(drop=True))
+    with s3_context(s3_base=s3_base, bucket=engine, files=files):
 
-    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
+        # Create nvt.Dataset from mock s3 paths
+        url = f"s3://{engine}" if engine == "parquet" else f"s3://{engine}/*"
+        dataset = nvt.Dataset(url, engine=engine, storage_options=s3so)
 
-    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
-    cats = cat_names >> ops.Categorify(cat_cache="host")
+        # Check that the iteration API works
+        columns = mycols_pq if engine == "parquet" else mycols_csv
+        gdf = cudf.concat(list(dataset.to_iter()))[columns]
+        assert_eq(gdf.reset_index(drop=True), df.reset_index(drop=True))
 
-    processor = nvt.Workflow(conts + cats + label_name)
-    processor.fit(dataset)
+        cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+        cont_names = ["x", "y", "id"]
+        label_name = ["label"]
+
+        conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+        cats = cat_names >> ops.Categorify(cat_cache="host")
+
+        processor = nvt.Workflow(conts + cats + label_name)
+        processor.fit(dataset)
