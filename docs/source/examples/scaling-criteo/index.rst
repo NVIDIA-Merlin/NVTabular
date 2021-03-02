@@ -1,5 +1,5 @@
-Scaling - Criteo
-================
+Scaling to Large Datasets with Criteo
+=====================================
 
 `Criteo <https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/>`_ provides the largest publicly available dataset for recommender systems, having a size of 1TB uncompressed click logs of 4 billion examples. We will teach to scale NVTabular:
 
