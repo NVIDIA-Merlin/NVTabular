@@ -5,7 +5,7 @@ import subprocess
 from shutil import copyfile
 
 import cudf
-import tritonclient.http as httpclient
+import tritonclient.grpc as httpclient
 from google.protobuf import text_format
 from tritonclient.utils import np_to_triton_dtype
 
