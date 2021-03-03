@@ -5,7 +5,7 @@ import subprocess
 from shutil import copyfile
 
 import cudf
-import tritonclient.http as httpclient
+import tritonclient.grpc as grpcclient
 from google.protobuf import text_format
 from tritonclient.utils import np_to_triton_dtype
 
@@ -162,7 +162,7 @@ def generate_triton_model(
     return config
 
 
-def convert_df_to_triton_input(column_names, batch, input_class=httpclient.InferInput):
+def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.InferInput):
     columns = [(col, batch[col]) for col in column_names]
     inputs = [input_class(name, col.shape, np_to_triton_dtype(col.dtype)) for name, col in columns]
     for i, (name, col) in enumerate(columns):
