@@ -83,7 +83,7 @@ class TritonPythonModel:
                 output_tensors.append(Tensor("DES", np.array([])))
 
             if "cats" in self.column_types:
-                cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.uint32)
+                cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.int64)
                 output_tensors.append(
                     Tensor(
                         "CATCOLUMN",
