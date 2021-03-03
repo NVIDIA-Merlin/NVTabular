@@ -58,7 +58,7 @@ class TritonPythonModel:
         """
         responses = []
         for request in requests:
-            # create a cudf DataFrame from the triton request
+            # create a cudf DataFrame from the triton request           
             input_df = cudf.DataFrame(
                 {
                     name: _convert_tensor(get_input_tensor_by_name(request, name))
@@ -93,7 +93,7 @@ class TritonPythonModel:
             else:
                 output_tensors.append(Tensor("CATCOLUMN", np.array([])))
 
-            row_index = np.arange(len(cats_np) + 1, dtype=np.int32)
+            row_index = np.arange(len(cats_np) + 1, dtype=np.int32).reshape(1, len(cats_np) + 1)
             output_tensors.append(Tensor("ROWINDEX", row_index))
 
             responses.append(InferenceResponse(output_tensors))
@@ -106,7 +106,7 @@ def _convert_cudf2numpy(df, dtype):
     for i, name in enumerate(df.columns):
         d[:, i] = df[name].values_host.astype(dtype)
 
-    return d.reshape(df.shape[0] * df.shape[1], 1)
+    return d.reshape(1, df.shape[0] * df.shape[1])
 
 
 def _convert_tensor(t):
