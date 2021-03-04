@@ -80,7 +80,7 @@ class TritonPythonModel:
                     )
                 )
             else:
-                output_tensors.append(Tensor("DES", np.array([])))
+                output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
             if "cats" in self.column_types:
                 cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.int64)
@@ -91,7 +91,7 @@ class TritonPythonModel:
                     )
                 )
             else:
-                output_tensors.append(Tensor("CATCOLUMN", np.array([])))
+                output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
 
             len_cats_np = cats_np.shape[1]
             row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(
@@ -107,9 +107,9 @@ class TritonPythonModel:
 def _convert_cudf2numpy(df, dtype):
     d = np.empty(df.shape)
     for i, name in enumerate(df.columns):
-        d[:, i] = df[name].values_host.astype(dtype)
+        d[:, i] = df[name].values_host
 
-    return d.reshape(1, df.shape[0] * df.shape[1])
+    return d.reshape(1, df.shape[0] * df.shape[1]).astype(dtype)
 
 
 def _convert_tensor(t):
