@@ -94,9 +94,7 @@ class TritonPythonModel:
                 output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
 
             len_cats_np = cats_np.shape[1]
-            row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(
-                1, len_cats_np + 1
-            )
+            row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
             output_tensors.append(Tensor("ROWINDEX", row_index))
 
             responses.append(InferenceResponse(output_tensors))
