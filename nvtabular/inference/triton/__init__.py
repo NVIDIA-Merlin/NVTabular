@@ -183,7 +183,7 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
     return inputs
 
 
-def _convert_column_to_triton_input(col, name, input_class=httpclient.InferInput):
+def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput):
     col = col.reshape(len(col), 1)
     input_tensor = input_class(name, col.shape, np_to_triton_dtype(col.dtype))
     input_tensor.set_data_from_numpy(col)
