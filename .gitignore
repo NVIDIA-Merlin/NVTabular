@@ -1,5 +1,5 @@
 nvtabular/inference/triton/model_config_pb2.py
-*/.ipynb_checkpoints/*
+**/.ipynb_checkpoints/*
 /.*_checkpoints/
 .ipynb_checkpoints/*
 */.jupyter/*
