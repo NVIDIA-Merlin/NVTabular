@@ -81,8 +81,11 @@ def _remove_columns(workflow, to_remove):
     workflow.column_group = _remove_columns_from_column_group(workflow.column_group, to_remove)
 
     for label in to_remove:
-        del workflow.input_dtypes[label]
-        del workflow.output_dtypes[label]
+        if label in workflow.input_dtypes:
+            del workflow.input_dtypes[label]
+
+        if label in workflow.output_dtypes:
+            del workflow.output_dtypes[label]
 
     return workflow
 
