@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -80,20 +80,21 @@ class TritonPythonModel:
                     )
                 )
             else:
-                output_tensors.append(Tensor("DES", np.array([0])))
+                output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
             if "cats" in self.column_types:
+                cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.int64)
                 output_tensors.append(
                     Tensor(
                         "CATCOLUMN",
-                        _convert_cudf2numpy(output_df[self.column_types["cats"]], np.uint32),
+                        cats_np,
                     )
                 )
             else:
-                output_tensors.append(Tensor("CATCOLUMN", np.array([0])))
+                output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
 
-            row_index = [i for i in range(len(self.workflow.column_group.input_column_names))]
-            row_index = np.array(row_index).astype(np.int32)
+            len_cats_np = cats_np.shape[1]
+            row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
             output_tensors.append(Tensor("ROWINDEX", row_index))
 
             responses.append(InferenceResponse(output_tensors))
@@ -104,9 +105,9 @@ class TritonPythonModel:
 def _convert_cudf2numpy(df, dtype):
     d = np.empty(df.shape)
     for i, name in enumerate(df.columns):
-        d[:, i] = df[name].values_host.astype(dtype)
+        d[:, i] = df[name].values_host
 
-    return d
+    return d.reshape(1, df.shape[0] * df.shape[1]).astype(dtype)
 
 
 def _convert_tensor(t):

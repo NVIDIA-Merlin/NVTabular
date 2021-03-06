@@ -27,11 +27,11 @@ docs_dir = os.path.dirname(__file__)
 # -- Project information -----------------------------------------------------
 
 project = "NVTabular"
-copyright = "2020, NVIDIA"
+copyright = "2021, NVIDIA"
 author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags
-release = "2020"
+release = "2021"
 
 # -- General configuration ---------------------------------------------------
 
