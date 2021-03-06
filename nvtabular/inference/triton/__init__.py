@@ -119,10 +119,13 @@ def export_hugectr_ensemble(
     )
 
     # generate the HugeCTR saved model
-    hugectr_config = generate_hugectr_model(trained_model_path=hugectr_model_path, 
-                                            name=name + "_hugectr", output_path=output_path, 
-                                            version=version, 
-                                            max_batch_size=max_batch_size)
+    hugectr_config = generate_hugectr_model(
+        trained_model_path=hugectr_model_path,
+        name=name + "_hugectr",
+        output_path=output_path,
+        version=version,
+        max_batch_size=max_batch_size,
+    )
 
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name)
@@ -184,6 +187,7 @@ def generate_hugectr_model(
         )
 
     return config
+
 
 def _generate_nvtabular_config(
     workflow, name, output_path, output_model=None, max_batch_size=None, cats=None, conts=None
@@ -306,18 +310,14 @@ def _generate_tensorflow_config(model, name, output_path):
 
 
 def _generate_hugectr_config(name, output_path, max_batch_size=None):
-    config = model_config.ModelConfig(
-        name=name, backend="hugectr", max_batch_size=max_batch_size
-    )
+    config = model_config.ModelConfig(name=name, backend="hugectr", max_batch_size=max_batch_size)
 
     config.input.append(
         model_config.ModelInput(name="DES", data_type=model_config.TYPE_FP32, dims=[-1])
     )
 
     config.input.append(
-        model_config.ModelInput(
-            name="CATCOLUMN", data_type=model_config.TYPE_INT64, dims=[-1]
-        )
+        model_config.ModelInput(name="CATCOLUMN", data_type=model_config.TYPE_INT64, dims=[-1])
     )
 
     config.input.append(
@@ -325,9 +325,7 @@ def _generate_hugectr_config(name, output_path, max_batch_size=None):
     )
 
     config.output.append(
-        model_config.ModelOutput(
-            name="OUTPUT0", data_type=model_config.TYPE_FP32, dims=[-1]
-        )
+        model_config.ModelOutput(name="OUTPUT0", data_type=model_config.TYPE_FP32, dims=[-1])
     )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
@@ -367,6 +365,7 @@ def _remove_columns_from_column_group(cg, to_remove):
     parents = [_remove_columns_from_column_group(parent, to_remove) for parent in cg.parents]
     cg.parents = [p for p in parents if p.columns]
     return cg
+
 
 def _generate_column_types(output_path, cats=None, conts=None):
     if cats is None and conts is None:
