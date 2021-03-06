@@ -1,3 +1,18 @@
+# Copyright (c) 2021, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import copy
 import json
 import os
@@ -67,8 +82,11 @@ def _remove_columns(workflow, to_remove):
     workflow.column_group = _remove_columns_from_column_group(workflow.column_group, to_remove)
 
     for label in to_remove:
-        del workflow.input_dtypes[label]
-        del workflow.output_dtypes[label]
+        if label in workflow.input_dtypes:
+            del workflow.input_dtypes[label]
+
+        if label in workflow.output_dtypes:
+            del workflow.output_dtypes[label]
 
     return workflow
 
@@ -214,9 +232,7 @@ def _generate_model_config(
         )
 
         config.output.append(
-            model_config.ModelOutput(
-                name="CATCOLUMN", data_type=model_config.TYPE_UINT32, dims=[-1]
-            )
+            model_config.ModelOutput(name="CATCOLUMN", data_type=model_config.TYPE_INT64, dims=[-1])
         )
 
         config.output.append(
