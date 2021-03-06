@@ -62,12 +62,17 @@ class TritonPythonModel:
             col: dtype for col, dtype in self.workflow.input_dtypes.items() if is_list_dtype(dtype)
         }
 
-        # is this actually necessary? Can we just use self.workflow.output_dtypes here?
         self.output_dtypes = dict()
         for name, dtype in self.workflow.output_dtypes.items():
             if not is_list_dtype(dtype):
-                conf = get_output_config_by_name(self.model_config, name)
-                self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
+                self._set_output_dtype(name)
+            else:
+                self._set_output_dtype(name + "__nnzs")
+                self._set_output_dtype(name + "__values")
+
+    def _set_output_dtype(self, name):
+        conf = get_output_config_by_name(self.model_config, name)
+        self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -105,11 +110,16 @@ class TritonPythonModel:
                 col = output_df[name]
                 if is_list_dtype(col.dtype):
                     # convert list values to match TF dataloader
-                    values = col.list.leaves.values_host
+                    values = col.list.leaves.values_host.astype(
+                        self.output_dtypes[name + "__values"]
+                    )
                     values = values.reshape(len(values), 1)
                     output_tensors.append(Tensor(name + "__values", values))
 
-                    nnzs = col._column.offsets.values_host
+                    offsets = col._column.offsets.values_host.astype(
+                        self.output_dtypes[name + "__nnzs"]
+                    )
+                    nnzs = offsets[1:] - offsets[:1]
                     nnzs = nnzs.reshape(len(nnzs), 1)
                     output_tensors.append(Tensor(name + "__nnzs", nnzs))
                 else:

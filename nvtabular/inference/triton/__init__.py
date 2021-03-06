@@ -170,12 +170,12 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
         if is_list_dtype(col):
             inputs.append(
                 _convert_column_to_triton_input(
-                    col._column.offsets.values_host, name + "__nnzs", input_class
+                    col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
                 )
             )
             inputs.append(
                 _convert_column_to_triton_input(
-                    col.list.leaves.values_host, name + "__values", input_class
+                    col.list.leaves.values_host.astype("int64"), name + "__values", input_class
                 )
             )
         else:
@@ -242,7 +242,7 @@ def _add_model_param(column, dtype, paramclass, params):
             )
         )
         params.append(
-            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT32, dims=[-1, 1])
+            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT64, dims=[-1, 1])
         )
     else:
         params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1]))
