@@ -78,6 +78,7 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
 def export_hugectr_ensemble(
     workflow,
     hugectr_model_path,
+    hugectr_params,
     name,
     output_path,
     label_columns,
@@ -118,9 +119,21 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
+    hugectr_params["label_dim"] = len(label_columns) 
+    if conts is None:
+        hugectr_params["des_feature_num"] = 0
+    else:
+        hugectr_params["des_feature_num"] = len(conts)
+
+    if cats is None:
+        hugectr_params["cat_feature_num"] = 0
+    else:
+        hugectr_params["cat_feature_num"] = len(cats)
+
     # generate the HugeCTR saved model
     hugectr_config = generate_hugectr_model(
         trained_model_path=hugectr_model_path,
+        hugectr_params = hugectr_params,
         name=name + "_hugectr",
         output_path=output_path,
         version=version,
@@ -168,6 +181,7 @@ def generate_nvtabular_model(
 
 def generate_hugectr_model(
     trained_model_path,
+    hugectr_params,
     name,
     output_path,
     version=1,
@@ -178,7 +192,7 @@ def generate_hugectr_model(
     out_path_version = os.path.join(out_path, str(version))
     os.makedirs(out_path_version, exist_ok=True)
 
-    config = _generate_hugectr_config(name, out_path, max_batch_size=max_batch_size)
+    config = _generate_hugectr_config(name, out_path, hugectr_params, max_batch_size=max_batch_size)
 
     for fname in os.listdir(trained_model_path):
         copyfile(
@@ -234,7 +248,7 @@ def _generate_nvtabular_config(
 
 
 def _generate_ensemble_config(name, output_path, nvt_config, nn_config, nn_name="_tf"):
-    config = model_config.ModelConfig(name=name, platform="ensemble")
+    config = model_config.ModelConfig(name=name, platform="ensemble", max_batch_size=nvt_config.max_batch_size)
     config.input.extend(nvt_config.input)
     config.output.extend(nn_config.output)
 
@@ -309,7 +323,7 @@ def _generate_tensorflow_config(model, name, output_path):
     return config
 
 
-def _generate_hugectr_config(name, output_path, max_batch_size=None):
+def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=None):
     config = model_config.ModelConfig(name=name, backend="hugectr", max_batch_size=max_batch_size)
 
     config.input.append(
@@ -324,10 +338,57 @@ def _generate_hugectr_config(name, output_path, max_batch_size=None):
         model_config.ModelInput(name="ROWINDEX", data_type=model_config.TYPE_INT32, dims=[-1])
     )
 
-    config.output.append(
-        model_config.ModelOutput(name="OUTPUT0", data_type=model_config.TYPE_FP32, dims=[-1])
-    )
+    for i in range(hugectr_params["n_outputs"]):
+        config.output.append(
+            model_config.ModelOutput(name="OUTPUT" + str(i), data_type=model_config.TYPE_FP32, dims=[-1])
+        )
 
+    config.instance_group.append(
+        model_config.ModelInstanceGroup(gpus=[0], count=1, kind=1)
+    )
+    
+    config_hugectr = model_config.ModelParameter(string_value=hugectr_params["config"])
+    config.parameters["config"].CopyFrom(config_hugectr)
+
+    gpucache_val = "true"
+    if "gpucache" in hugectr_params.keys():
+        gpucache_val = hugectr_params["gpucache"]
+    
+    gpucache = model_config.ModelParameter(string_value=gpucache_val)
+    config.parameters["gpucache"].CopyFrom(gpucache)
+
+    gpucacheper_val = "0.5"
+    if "gpucacheper" in hugectr_params.keys():
+        gpucacheper_val = str(hugectr_params["gpucacheper_val"])
+
+    gpucacheper = model_config.ModelParameter(string_value=gpucacheper_val)
+    config.parameters["gpucacheper"].CopyFrom(gpucacheper)
+
+    label_dim = model_config.ModelParameter(string_value=str(hugectr_params["label_dim"]))
+    config.parameters["label_dim"].CopyFrom(label_dim)
+
+    slots = model_config.ModelParameter(string_value=str(hugectr_params["slots"]))
+    config.parameters["slots"].CopyFrom(slots)
+
+    des_feature_num = model_config.ModelParameter(string_value=str(hugectr_params["des_feature_num"]))
+    config.parameters["des_feature_num"].CopyFrom(des_feature_num)
+
+    cat_feature_num = model_config.ModelParameter(string_value=str(hugectr_params["cat_feature_num"]))
+    config.parameters["cat_feature_num"].CopyFrom(cat_feature_num)
+
+    max_nnz = model_config.ModelParameter(string_value=str(hugectr_params["max_nnz"]))
+    config.parameters["max_nnz"].CopyFrom(max_nnz)
+
+    embedding_vector_size = model_config.ModelParameter(string_value=str(hugectr_params["embedding_vector_size"]))
+    config.parameters["embedding_vector_size"].CopyFrom(embedding_vector_size)
+
+    embeddingkey_long_type_val = "true"
+    if "embeddingkey_long_type" in hugectr_params.keys():
+        embeddingkey_long_type_val = hugectr_params["embeddingkey_long_type"]
+
+    embeddingkey_long_type = model_config.ModelParameter(string_value=embeddingkey_long_type_val)
+    config.parameters["embeddingkey_long_type"].CopyFrom(embeddingkey_long_type)
+        
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
     return config
