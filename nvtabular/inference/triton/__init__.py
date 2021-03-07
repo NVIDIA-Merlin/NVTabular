@@ -223,9 +223,7 @@ def _generate_nvtabular_config(
         )
 
         config.output.append(
-            model_config.ModelOutput(
-                name="CATCOLUMN", data_type=model_config.TYPE_UINT32, dims=[-1]
-            )
+            model_config.ModelOutput(name="CATCOLUMN", data_type=model_config.TYPE_INT64, dims=[-1])
         )
 
         config.output.append(
