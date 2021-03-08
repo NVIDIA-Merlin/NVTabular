@@ -390,9 +390,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     config_hugectr = model_config.ModelParameter(string_value=hugectr_params["config"])
     config.parameters["config"].CopyFrom(config_hugectr)
 
-    gpucache_val = "true"
-    if "gpucache" in hugectr_params.keys():
-        gpucache_val = hugectr_params["gpucache"]
+    gpucache_val = hugectr_params.get("gpucache", "true")
 
     gpucache = model_config.ModelParameter(string_value=gpucache_val)
     config.parameters["gpucache"].CopyFrom(gpucache)
