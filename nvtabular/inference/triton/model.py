@@ -119,7 +119,7 @@ class TritonPythonModel:
                     offsets = col._column.offsets.values_host.astype(
                         self.output_dtypes[name + "__nnzs"]
                     )
-                    nnzs = offsets[1:] - offsets[:1]
+                    nnzs = offsets[1:] - offsets[:-1]
                     nnzs = nnzs.reshape(len(nnzs), 1)
                     output_tensors.append(Tensor(name + "__nnzs", nnzs))
                 else:
