@@ -1,12 +1,12 @@
 ## Inference with Tensorflow Model
 
-Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server (IS) without having to write any C++ code. 
+Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a Tensorflow (TF) model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server (IS) without having to write any C++ code. 
 
 We provide four example notebooks, [movielens-TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-TF.ipynb), [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens_inference.ipynb), [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb) and [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb), and explain the steps to do inference with Merlin Inference API. 
 
 # Getting Started 
 
-In order to use Merlin Inference API, there are two containers that the user needs to build and launch. The first one is for preprocessing with NVTabular and training a model with Tensorflow (TF). The other one is for serving/inference. 
+In order to use Merlin Inference API, there are two containers that the user needs to build and launch. The first one is for preprocessing with NVTabular and training a model with TF. The other one is for serving/inference. 
 
 ## 1. Pulling the NVTabular Docker Container:
 
