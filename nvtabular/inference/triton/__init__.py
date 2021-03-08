@@ -70,7 +70,7 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     tf_config = _generate_tensorflow_config(model, name + "_tf", tf_path)
 
     # generate the triton ensemble
-    ensemble_path = os.path.join(model_path, name + "_ens")
+    ensemble_path = os.path.join(model_path, name)
     os.makedirs(ensemble_path, exist_ok=True)
     os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
     _generate_ensemble_config(name, ensemble_path, nvt_config, tf_config)
@@ -107,9 +107,9 @@ def export_hugectr_ensemble(
         Labels in the dataset (will be removed from the workflow)
     version:
         The version of the mode
-    cats: 
+    cats:
         Names of the categorical columns
-    conts: 
+    conts:
         Names of the continous columns
     max_batch_size:
         Max batch size that Triton can receive
@@ -156,7 +156,7 @@ def export_hugectr_ensemble(
     ensemble_path = os.path.join(output_path, name + "_ens")
     os.makedirs(ensemble_path, exist_ok=True)
     os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
-    _generate_ensemble_config(name, ensemble_path, nvt_config, hugectr_config)
+    _generate_ensemble_config(name, ensemble_path, nvt_config, hugectr_config, "_ens")
 
 
 def generate_nvtabular_model(
@@ -285,9 +285,9 @@ def _generate_nvtabular_config(
     return config
 
 
-def _generate_ensemble_config(name, output_path, nvt_config, nn_config):
+def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext=""):
     config = model_config.ModelConfig(
-        name=name + "_ens", platform="ensemble", max_batch_size=nvt_config.max_batch_size
+        name=name + name_ext, platform="ensemble", max_batch_size=nvt_config.max_batch_size
     )
     config.input.extend(nvt_config.input)
     config.output.extend(nn_config.output)
