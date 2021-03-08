@@ -424,9 +424,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     )
     config.parameters["embedding_vector_size"].CopyFrom(embedding_vector_size)
 
-    embeddingkey_long_type_val = "true"
-    if "embeddingkey_long_type" in hugectr_params.keys():
-        embeddingkey_long_type_val = hugectr_params["embeddingkey_long_type"]
+    embeddingkey_long_type_val = hugectr_params.get("embeddingkey_long_type",  "true")
 
     embeddingkey_long_type = model_config.ModelParameter(string_value=embeddingkey_long_type_val)
     config.parameters["embeddingkey_long_type"].CopyFrom(embeddingkey_long_type)
