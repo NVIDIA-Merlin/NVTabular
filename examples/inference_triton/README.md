@@ -4,20 +4,18 @@ NVIDIA Merlin framework accelerates the recommendation pipeline end-2-end. As cr
 
 ![Merlin Framework](../../images/merlin_framework.png)
 
-Merlin Inference API is designed for a seamless integration between NVTabular and Triton IS, where Triton simplifies the deployment of AI models at scale in
-production. This integration makes online data transformation and generation of the query results for new data pretty easy. Users use `NVTabular` to preprocess training data and collect statistics (in our example for categorical features) at the training phase on training data. After this transformation and fit process, NVTabular’s workflow object is serialized to be loaded at inference phase to transform the new dataset with the collected statistics. By deserializing the saved NVTabular workflow, these statistics are applied to transform the new dataset at inference phase: whenever a new query is received by the inference server, the data is first fed into NVTabular to call the transform of the NVTabular workflow object. The output is then passed to the ML/DL model (a Tensorflow model in our example) and prediction results for the query are generated accordingly.
-
-Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server (IS) without having to write any C++ code. 
+Merlin Inference API is designed for a seamless integration between NVTabular and Triton Inference Server (IS), where Triton simplifies the deployment of AI models at scale in production. This integration makes online data transformation and generation of the query results for new data pretty easy. Users use `NVTabular` to preprocess training data and collect statistics (in our example for categorical features) at the training phase on training data. After this transformation and fit process, NVTabular’s workflow object is serialized to be loaded at inference phase to transform the new dataset with the collected statistics. By deserializing the saved NVTabular workflow, these statistics are applied to transform the new dataset at inference phase: whenever a new query is received by the inference server, the data is first fed into NVTabular to call the transform of the NVTabular workflow object. The output is then passed to the ML/DL model (a Tensorflow model in our example) and prediction results for the query are generated accordingly.
 
 # Getting Started 
 
 Under this directory, we provide six example notebooks: 
-- [movielens-TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-TF.ipynb)  
-- [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens_inference.ipynb)
-- [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb)  
-- [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb)
-- [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR.ipynb)
-- [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR-inference.ipynb) 
+
+- [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb)  
+- [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens_inference.ipynb)
+- [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb)  
+- [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb)
+- [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR.ipynb)
+- [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR-inference.ipynb) 
 
 ## Pulling the NVTabular Docker Containers:
 
