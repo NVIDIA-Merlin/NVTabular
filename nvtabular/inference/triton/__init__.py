@@ -21,6 +21,7 @@ from shutil import copyfile
 
 import cudf
 import tritonclient.grpc as grpcclient
+from cudf.utils.dtypes import is_list_dtype
 from google.protobuf import text_format
 from tritonclient.utils import np_to_triton_dtype
 
@@ -92,16 +93,27 @@ def export_hugectr_ensemble(
 
     Parameters
     ----------
-    model:
-        The tensorflow model that should be served
     workflow:
         The nvtabular workflow used in preprocessing
+    hugectr_model_path:
+        The path of the trained model files
+    hugectr_params:
+        HugeCTR specific parameters
     name:
         The base name of the various triton models
-    model_path:
-        The root path to write out files to
+    output_path:
+        The path where the models will be served
     label_columns:
-        Labels in the dataset (will be removed f
+        Labels in the dataset (will be removed from the workflow)
+    version:
+        The version of the mode
+    cats: 
+        Names of the categorical columns
+    conts: 
+        Names of the continous columns
+    max_batch_size:
+        Max batch size that Triton can receive
+
     """
 
     workflow = _remove_columns(workflow, label_columns)
@@ -187,13 +199,14 @@ def generate_hugectr_model(
     version=1,
     max_batch_size=None,
 ):
+    """ converts a trained HugeCTR model to a triton mode """
+
     out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, name), exist_ok=True)
     out_path_version = os.path.join(out_path, str(version))
     os.makedirs(out_path_version, exist_ok=True)
 
     config = _generate_hugectr_config(name, out_path, hugectr_params, max_batch_size=max_batch_size)
-
     for fname in os.listdir(trained_model_path):
         copyfile(
             os.path.join(trained_model_path, fname),
@@ -201,6 +214,37 @@ def generate_hugectr_model(
         )
 
     return config
+
+
+def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.InferInput):
+    columns = [(col, batch[col]) for col in column_names]
+    inputs = []
+    for i, (name, col) in enumerate(columns):
+        if is_list_dtype(col):
+            inputs.append(
+                _convert_column_to_triton_input(
+                    col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
+                )
+            )
+            inputs.append(
+                _convert_column_to_triton_input(
+                    col.list.leaves.values_host.astype("int64"), name + "__values", input_class
+                )
+            )
+        else:
+            inputs.append(_convert_column_to_triton_input(col.values_host, name, input_class))
+    return inputs
+
+
+def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput):
+    col = col.reshape(len(col), 1)
+    input_tensor = input_class(name, col.shape, np_to_triton_dtype(col.dtype))
+    input_tensor.set_data_from_numpy(col)
+    return input_tensor
+
+
+def convert_triton_output_to_df(columns, response):
+    return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
 
 
 def _generate_nvtabular_config(
@@ -231,14 +275,10 @@ def _generate_nvtabular_config(
         )
     else:
         for column, dtype in workflow.input_dtypes.items():
-            config.input.append(
-                model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
-            )
+            _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
         for column, dtype in workflow.output_dtypes.items():
-            config.output.append(
-                model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
-            )
+            _add_model_param(column, dtype, model_config.ModelOutput, config.output)
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
@@ -400,18 +440,6 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     return config
 
 
-def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.InferInput):
-    columns = [(col, batch[col]) for col in column_names]
-    inputs = [input_class(name, col.shape, np_to_triton_dtype(col.dtype)) for name, col in columns]
-    for i, (name, col) in enumerate(columns):
-        inputs[i].set_data_from_numpy(col.values_host)
-    return inputs
-
-
-def convert_triton_output_to_df(columns, response):
-    return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
-
-
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
@@ -432,6 +460,20 @@ def _remove_columns_from_column_group(cg, to_remove):
     parents = [_remove_columns_from_column_group(parent, to_remove) for parent in cg.parents]
     cg.parents = [p for p in parents if p.columns]
     return cg
+
+
+def _add_model_param(column, dtype, paramclass, params):
+    if is_list_dtype(dtype):
+        params.append(
+            paramclass(
+                name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=[-1, 1]
+            )
+        )
+        params.append(
+            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT64, dims=[-1, 1])
+        )
+    else:
+        params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1]))
 
 
 def _generate_column_types(output_path, cats=None, conts=None):
