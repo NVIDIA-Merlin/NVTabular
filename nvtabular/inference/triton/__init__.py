@@ -21,6 +21,7 @@ from shutil import copyfile
 
 import cudf
 import tritonclient.grpc as grpcclient
+from cudf.utils.dtypes import is_list_dtype
 from google.protobuf import text_format
 from tritonclient.utils import np_to_triton_dtype
 
@@ -182,10 +183,29 @@ def generate_triton_model(
 
 def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.InferInput):
     columns = [(col, batch[col]) for col in column_names]
-    inputs = [input_class(name, col.shape, np_to_triton_dtype(col.dtype)) for name, col in columns]
+    inputs = []
     for i, (name, col) in enumerate(columns):
-        inputs[i].set_data_from_numpy(col.values_host)
+        if is_list_dtype(col):
+            inputs.append(
+                _convert_column_to_triton_input(
+                    col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
+                )
+            )
+            inputs.append(
+                _convert_column_to_triton_input(
+                    col.list.leaves.values_host.astype("int64"), name + "__values", input_class
+                )
+            )
+        else:
+            inputs.append(_convert_column_to_triton_input(col.values_host, name, input_class))
     return inputs
+
+
+def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput):
+    col = col.reshape(len(col), 1)
+    input_tensor = input_class(name, col.shape, np_to_triton_dtype(col.dtype))
+    input_tensor.set_data_from_numpy(col)
+    return input_tensor
 
 
 def convert_triton_output_to_df(columns, response):
@@ -220,18 +240,28 @@ def _generate_model_config(
         )
     else:
         for column, dtype in workflow.input_dtypes.items():
-            config.input.append(
-                model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
-            )
+            _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
         for column, dtype in workflow.output_dtypes.items():
-            config.output.append(
-                model_config.ModelOutput(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1])
-            )
+            _add_model_param(column, dtype, model_config.ModelOutput, config.output)
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
     return config
+
+
+def _add_model_param(column, dtype, paramclass, params):
+    if is_list_dtype(dtype):
+        params.append(
+            paramclass(
+                name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=[-1, 1]
+            )
+        )
+        params.append(
+            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT64, dims=[-1, 1])
+        )
+    else:
+        params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1]))
 
 
 def _generate_column_types(output_path, cats=None, conts=None):
