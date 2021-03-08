@@ -106,7 +106,7 @@ def export_hugectr_ensemble(
     label_columns:
         Labels in the dataset (will be removed from the workflow)
     version:
-        The version of the mode
+        The version of the model
     cats:
         Names of the categorical columns
     conts:
