@@ -312,31 +312,6 @@ def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext
     return config
 
 
-def _generate_hugectr_ensemble_config(name, output_path, nvt_config, hugectr_config):
-    config = model_config.ModelConfig(name=name, platform="ensemble")
-    config.input.extend(nvt_config.input)
-    config.output.extend(hugectr_config.output)
-
-    nvt_step = model_config.ModelEnsembling.Step(model_name=name + "_nvt", model_version=-1)
-    for input_col in nvt_config.input:
-        nvt_step.input_map[input_col.name] = input_col.name
-    for output_col in nvt_config.output:
-        nvt_step.output_map[output_col.name] = output_col.name + "_nvt"
-
-    hugectr_step = model_config.ModelEnsembling.Step(model_name=name + "hctr", model_version=-1)
-    for input_col in hugectr_config.input:
-        hugectr_step.input_map[input_col.name] = input_col.name + "_nvt"
-    for output_col in hugectr_config.output:
-        hugectr_step.output_map[output_col.name] = output_col.name
-
-    config.ensemble_scheduling.step.append(nvt_step)
-    config.ensemble_scheduling.step.append(hugectr_step)
-
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
-        text_format.PrintMessage(config, o)
-    return config
-
-
 def _generate_tensorflow_config(model, name, output_path):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
@@ -424,7 +399,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     )
     config.parameters["embedding_vector_size"].CopyFrom(embedding_vector_size)
 
-    embeddingkey_long_type_val = hugectr_params.get("embeddingkey_long_type",  "true")
+    embeddingkey_long_type_val = hugectr_params.get("embeddingkey_long_type", "true")
 
     embeddingkey_long_type = model_config.ModelParameter(string_value=embeddingkey_long_type_val)
     config.parameters["embeddingkey_long_type"].CopyFrom(embeddingkey_long_type)
