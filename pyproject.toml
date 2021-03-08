@@ -5,9 +5,9 @@ description = ""
 
 [tool.poetry.dependencies]
 python = "^3.7"
-cudf = ">=0.16"
-dask-cudf = ">=0.16"
-dask-cuda = ">=0.16"
+cudf = ">=0.18"
+dask-cudf = ">=0.18"
+dask-cuda = ">=0.18"
 PyYAML = ">=5.3"
 cupy = ">=7"
 dask = ">=2.12.0"
