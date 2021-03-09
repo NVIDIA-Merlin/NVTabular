@@ -2,15 +2,15 @@
 
 In this folder, we provide two example notebooks, [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCR.ipynb) and [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-inference.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
 
-# Getting Started 
+## Getting Started 
 
-In order to use Merlin Inference API, there are two containers that the user needs to build and launch. The first one is for preprocessing with NVTabular and training a model with HugeCTR framework. The other one is for serving/inference. 
+There are two containers that are needed in order to use the Merlin Inference API. The first one is for preprocessing with NVTabular and training a model with HugeCTR framework. The other one is for serving/inference. 
 
-## 1. Pulling the NVTabular Docker Container:
+## 1. Pulling the Merlin Training Docker Container:
 
-We start with pulling NVTabular container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with HugeCTR framework with processed datasets.
+We start with pulling the `Merlin-Training` container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with HugeCTR framework with processed datasets.
 
-Before starting docker continer, first create a `nvt_triton` directory and `data` subdirectory on your host machine:
+Before starting docker container, first create a `nvt_triton` directory and `data` subdirectory on your host machine:
 
 ```
 mkdir -p nvt_triton/data/
@@ -23,9 +23,9 @@ Merlin containers are available in the NVIDIA container repository at the follow
 You can pull the `Merlin-Training` container by running the following command:
 
 ```
-docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvstaging/merlin/merlin-training:0.4 /bin/bash
+docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.4 /bin/bash
 ```
-The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
+The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the docker container. It should look similar to this:
 
 ```
 root@2efa5b50b909:
@@ -87,7 +87,7 @@ cd <path to nvt_triton>
 
 2) Launch Merlin Triton Inference Server container:
 ```
-docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvstaging/merlin/merlin-inference:0.4
+docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.4
 ```
 The container will open a shell when the run command execution is completed. It should look similar to this:
 ```

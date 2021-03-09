@@ -1,5 +1,21 @@
 
-# NVTabular v0.3.0 (Unreleased)
+# NVTabular v0.4.0 (9 March 2021)
+
+## Breaking Changes
+
+* The API for NVTabular has been signficantly refactored, and existing code targetting the 0.3 API will need to be updated.
+Workflows are now represented as graphs of operations, and applied using a sklearn 'transformers' style api. Read more by
+checking out the [examples](https://nvidia.github.io/NVTabular/v0.4.0/examples/index.html)
+
+## Improvements
+
+* Triton integration support for NVTabular with TensorFlow and HugeCTR models
+* Recommended cloud configuration and support for AWS and GCP
+* Reorganized examples and documentation
+* Unified Docker containers for Merlin components (NVTabular, HugeCTR and Triton)
+* Dataset analysis and generation tools
+
+# NVTabular v0.3.0 (23 November 2020)
 
 ## Improvements
 
