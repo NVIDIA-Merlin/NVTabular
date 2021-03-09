@@ -4,7 +4,7 @@
 
 NVTabular is a component of [NVIDIA Merlin Open Beta](https://developer.nvidia.com/nvidia-merlin). NVIDIA Merlin is used for building large-scale recommender systems, which require massive datasets to train, particularly for deep learning based solutions. With NVTabular being a part of the Merlin ecosystem, it also works with the other Merlin components including [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server) to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s Triton Inference Server, the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.
 
-### Benefits 
+### Benefits
 
 Our ultimate goal is faster iteration on massive tabular datasets, both for experimentation during training, and also production model responsiveness. NVTabular is designed to support data scientists and machine learning (ML) engineers train (deep learning) recommender systems and resolve tabular data problems by allowing them to:
 
@@ -52,44 +52,20 @@ jupyter notebook
 ```
 Then open a notebook and select `nvt` from the `Kernel->Change Kernel` menu.
 
-#### Installing NVTabular with the Docker Container
+#### Installing NVTabular with Docker
 
-To use the NVTabular Docker Container, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU visibility to containers. NVTabular is available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular. You can pull the container by running the following command:
+Docker containers with NVTabular are available at the [NVIDIA Merlin container repository](https://ngc.nvidia.com/catalog/containers/nvidia:merlin). There are four different containers, each providing different functionality:
 
-```
-docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE nvcr.io/nvidia/nvtabular:0.4 /bin/bash
-```
 
-**NOTE**: If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
+| Container Name             | Container Location | Functionality |
+| -------------------------- | ------------------ | ------------- |
+| merlin-training            | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-training            | NVTabular and HugeCTR                                         |
+| merlin-tensorflow-training | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-tensorflow-training | NVTabular, TensorFlow and HugeCTR Tensorflow Embedding plugin |
+| merlin-pytorch-training    | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-pytorch-training    | NVTabular and PyTorch                                         |
+| merlin-inference           | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-inference           | NVTabular, HugeCTR and Triton Inference                       |
 
-The container will open a shell when the run command execution is completed. You'll have to start jupyter lab on the Docker container. It should look similar to this:
-```
-root@2efa5b50b909:
-```
-
-1. Activate the ```rapids``` conda environment by running the following command:
-   ```
-   root@2efa5b50b909: source activate rapids
-   ```
-
-   You should receive the following response, indicating that the environment has been activated:
-   ```
-   (rapids)root@2efa5b50b909:
-   ```
-
-2. Start the jupyter-lab server by running the following command:
-   ```
-   jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
-   ```
-
-3. Open any browser to access the jupyter-lab server using <MachineIP>:8888.
-
-4. Once in the server, navigate to the ```/nvtabular/``` directory and explore the code base or try out some of the examples.
-
-   The container contains the codebase along with all of our dependencies, particularly [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) and a range of [examples](./examples/). The easiest way to get started is to simply launch the container and explore the examples within it. The code base and related examples can be found at the following directory location within the container:
-   ```
-   /nvtabular/
-   ```
+To use these Docker Containers, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU support to docker.
+There are more details on launching and running these containers on the NGC links above.
 
 ### Examples and Tutorials
 
@@ -112,8 +88,8 @@ Each Jupyter notebook covers the following:
 
 Performance of the Criteo DRLM workflow demonstrates the effectiveness of the NVTabular library. The original ETL script provided in Numpy took over five days to complete. Combined with CPU training, the total iteration time is over one week. By optimizing the ETL code in Spark and running on a DGX-1 equivalent cluster, we were able to bring that time down to three hours for ETL and one hour for training.
 
-With NVTabular running on a single V100 32GB GPU, we were able to complete ETL in 13 minutes. With a DGX-1 cluster of eight V100 GPUs, we can accelerate ETL to 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/), we can process the dataset and train the full model in only 6 minutes. This fast iteration is the goal of NVTabular and the [Merlin application framework](https://developer.nvidia.com/nvidia-merlin). Additional information can be found [here](https://github.com/NVIDIA/NVTabular/tree/main/examples).   
-    
+With NVTabular running on a single V100 32GB GPU, we were able to complete ETL in 13 minutes. With a DGX-1 cluster of eight V100 GPUs, we can accelerate ETL to 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/), we can process the dataset and train the full model in only 6 minutes. This fast iteration is the goal of NVTabular and the [Merlin application framework](https://developer.nvidia.com/nvidia-merlin). Additional information can be found [here](https://github.com/NVIDIA/NVTabular/tree/main/examples).
+
 ### Feedback and Support
 
 If you'd like to contribute to the library directly, please see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline using this [this survey](https://developer.nvidia.com/merlin-devzone-survey).
