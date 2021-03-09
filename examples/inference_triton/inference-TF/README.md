@@ -25,7 +25,7 @@ Merlin containers are available in the NVIDIA container repository at the follow
 You can pull the `Merlin-Tensorflow-Training` container by running the following command:
 
 ```
-docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvstaging/merlin/merlin-tensorflow-training:0.4 /bin/bash
+docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-tensorflow-training:0.4 /bin/bash
 ```
 The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the docker container. It should look similar to this:
 
