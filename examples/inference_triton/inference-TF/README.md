@@ -2,15 +2,15 @@
 
 Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a Tensorflow (TF) model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server (IS) without having to write any C++ code. 
 
-We provide four example notebooks, [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb), [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens_inference.ipynb), [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb) and [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb), and explain the steps to do inference with Merlin Inference API. 
+We provide four example notebooks, [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb), [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-inference.ipynb), [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb) and [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb), and explain the steps to do inference with Merlin Inference API. 
 
 ## Getting Started 
 
 In order to use Merlin Inference API with TF framework, there are two containers that the user needs to build and launch. The first one is for preprocessing with NVTabular and training a model with TF. The other one is for serving/inference. 
 
-## 1. Pulling the NVTabular Docker Container:
+## 1. Pulling the Merlin Tensorflow Training Docker Container:
 
-We start with pulling NVTabular container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with TF framework with processed datasets.
+We start with pulling `Merlin-Tensorflow-Training` container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with TF framework with processed datasets.
 
 Before starting docker container, first create a `nvt_triton` directory and `data` subdirectory on your host machine:
 
@@ -18,7 +18,7 @@ Before starting docker container, first create a `nvt_triton` directory and `dat
 mkdir -p nvt_triton/data/
 cd nvt_triton
 ```
-We will mount `nvt_triton` directory into the NVTabular docker container.
+We will mount `nvt_triton` directory into the docker container.
 
 Merlin containers are available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
@@ -27,7 +27,7 @@ You can pull the `Merlin-Tensorflow-Training` container by running the following
 ```
 docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvstaging/merlin/merlin-tensorflow-training:0.4 /bin/bash
 ```
-The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
+The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the docker container. It should look similar to this:
 
 ```
 root@2efa5b50b909:
@@ -74,7 +74,7 @@ There are two example notebooks that should be run in order. The first one [movi
 - serialize and save a workflow to load later to transform new dataset
 - train a TF MLP model and save it in the `/models` directory.
 
-The following notebook [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens_inference.ipynb) shows how to send request to Triton IS 
+The following notebook [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-inference.ipynb) shows how to send request to Triton IS 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
