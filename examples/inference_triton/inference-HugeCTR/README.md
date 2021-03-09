@@ -2,7 +2,7 @@
 
 In this folder, we provide two example notebooks, [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCR.ipynb) and [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-inference.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
 
-# Getting Started 
+## Getting Started 
 
 In order to use Merlin Inference API, there are two containers that the user needs to build and launch. The first one is for preprocessing with NVTabular and training a model with HugeCTR framework. The other one is for serving/inference. 
 
