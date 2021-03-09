@@ -17,7 +17,7 @@ Under this directory, we provide six example notebooks:
 - [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR.ipynb)
 - [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR-inference.ipynb) 
 
-## Pulling the NVTabular Docker Containers:
+## Pulling the Merlin Docker Containers:
 
 In order to run the example notebooks above with Merlin Inference API, there are three containers that the user needs to build and launch:
 
