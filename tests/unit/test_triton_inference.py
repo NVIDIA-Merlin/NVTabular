@@ -27,7 +27,7 @@ def test_generate_triton_multihot(tmpdir):
 
     # save workflow to triton / verify we see some expected output
     repo = os.path.join(tmpdir, "models")
-    triton.generate_triton_model(workflow, "model", repo)
+    triton.generate_nvtabular_model(workflow, "model", repo)
     workflow = None
 
     assert os.path.exists(os.path.join(repo, "config.pbtxt"))
@@ -49,7 +49,7 @@ def test_generate_triton_model(tmpdir, engine, df):
 
     # save workflow to triton / verify we see some expected output
     repo = os.path.join(tmpdir, "models")
-    triton.generate_triton_model(workflow, "model", repo)
+    triton.generate_nvtabular_model(workflow, "model", repo)
     workflow = None
 
     assert os.path.exists(os.path.join(repo, "config.pbtxt"))
