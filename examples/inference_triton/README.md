@@ -19,10 +19,10 @@ Under this directory, we provide six example notebooks:
 
 ## Pulling the Merlin Docker Containers:
 
-In order to run the example notebooks above with Merlin Inference API, there are three containers that the user needs to build and launch:
+In order to run the example notebooks above with Merlin Inference API, there are three containers that the user needs:
 
-- [Merlin-Tensorflow-Training](https://ngc.nvidia.com/containers/nvstaging:merlin:merlin-tensorflow-training): This is for preprocessing with NVTabular and training a model with Tensorflow framework. 
-- [Merlin-Training](https://ngc.nvidia.com/containers/nvstaging:merlin:merlin-training): This is for preprocessing with NVTabular and training a model with HugeCTR framework. 
+- [Merlin-Tensorflow-Training](https://ngc.nvidia.com/containers/nvidia:merlin:merlin-tensorflow-training): This is for preprocessing with NVTabular and training a model with Tensorflow framework. 
+- [Merlin-Training](https://ngc.nvidia.com/containers/nvidia:merlin:merlin-training): This is for preprocessing with NVTabular and training a model with HugeCTR framework. 
 - [Merlin-Inference](https://ngc.nvidia.com/containers/nvstaging:merlin:merlin-inference): This is to launch Triton Inference Server and perform inference.
 
 All the details about building and launching the containers are given in the README files under the `inference-TF` and `inference-HugeCTR` folders.
