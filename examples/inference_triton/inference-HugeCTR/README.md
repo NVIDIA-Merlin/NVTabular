@@ -6,7 +6,7 @@ In this folder, we provide two example notebooks, [movielens-HugeCTR](https://gi
 
 There are two containers that are needed in order to use the Merlin Inference API. The first one is for preprocessing with NVTabular and training a model with HugeCTR framework. The other one is for serving/inference. 
 
-## 1. Pulling the Merlin Training Docker Container:
+## 1. Pull the Merlin Training Docker Container:
 
 We start with pulling the `Merlin-Training` container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with HugeCTR framework with processed datasets.
 
