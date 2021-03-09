@@ -54,7 +54,7 @@ Then open a notebook and select `nvt` from the `Kernel->Change Kernel` menu.
 
 #### Installing NVTabular with Docker
 
-Docker containers with NVTabular are available at the [NVIDIA Merlin container repository](https://ngc.nvidia.com/containers/merlin). There are four different containers, each providing different functionality:
+Docker containers with NVTabular are available at the [NVIDIA Merlin container repository](https://ngc.nvidia.com/catalog/containers/nvidia:merlin). There are four different containers, each providing different functionality:
 
 
 | Container Name             | Container Location | Functionality |
