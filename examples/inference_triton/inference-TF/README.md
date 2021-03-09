@@ -8,7 +8,7 @@ We provide four example notebooks, [movielens-TF](https://github.com/NVIDIA/NVTa
 
 In order to use Merlin Inference API with TF framework, there are two containers that the user needs to build and launch. The first one is for preprocessing with NVTabular and training a model with TF. The other one is for serving/inference. 
 
-## 1. Pulling the Merlin Tensorflow Training Docker Container:
+## 1. Pull the Merlin Tensorflow Training Docker Container:
 
 We start with pulling `Merlin-Tensorflow-Training` container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with TF framework with processed datasets.
 
