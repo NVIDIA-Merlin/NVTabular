@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 
 # Usage:
 #   conda build . -c defaults -c conda-forge -c numba -c rapidsai
@@ -25,11 +25,11 @@ requirements:
   build:
     - python x.x
     - setuptools
-    - cudf 0.16.*
+    - cudf>=0.18.0
   run:
     - python>=3.7.0
-    - cudf 0.16.*
-    - dask-cudf 0.16.*
+    - cudf>=0.18.0
+    - dask-cudf>=0.18.0
     - cupy>=7.2.0,<9.0.0a
     - dask>=2.22.0
     - distributed>=2.22.0

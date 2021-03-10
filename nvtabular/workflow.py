@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ class Workflow:
     """
     The Workflow class applies a graph of operations onto a dataset, letting you transform
     datasets to do feature engineering and preprocessing operations. This class follows an API
-    similar to Transformers in sklearn: we first 'fit' the workflow by calculating statistics
-    on the dataset, and then once fit we can 'transform' datasets by applying these statistics.
+    similar to Transformers in sklearn: we first ``fit`` the workflow by calculating statistics
+    on the dataset, and then once fit we can ``transform`` datasets by applying these statistics.
 
     Example usage::
 
@@ -75,7 +75,7 @@ class Workflow:
         self.output_dtypes = None
 
     def transform(self, dataset: Dataset) -> Dataset:
-        """Transforms the dataset by applying the graph of operators to it. Requires the 'fit'
+        """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
 
         This method returns a Dataset object, with the transformations lazily loaded. None
@@ -151,14 +151,15 @@ class Workflow:
         # hack: store input/output dtypes here. We should have complete dtype
         # information for each operator (like we do for column names), but as
         # an interim solution this gets us what we need.
-        input_dtypes = dataset.to_ddf().dtypes
+        input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
         self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
-        call. Equivalent to calling workflow.fit(dataset) followed by workflow.transform(dataset)
+        call. Equivalent to calling ``workflow.fit(dataset)`` followed by
+        ``workflow.transform(dataset)``
 
         Parameters
         -----------

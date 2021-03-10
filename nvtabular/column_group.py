@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -173,7 +173,7 @@ class ColumnGroup:
 
     @property
     def input_column_names(self):
-        """ returns the names of columns in the main chain """
+        """ Returns the names of columns in the main chain """
         dependencies = self.dependencies or set()
         return [
             col for parent in self.parents for col in parent.columns if parent not in dependencies
@@ -213,7 +213,7 @@ def iter_nodes(nodes):
 
 
 def _to_graphviz(column_group):
-    """ converts a columngroup to a GraphViz DiGraph object useful for display in notebooks """
+    """ Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks """
     from graphviz import Digraph
 
     column_group = _merge_add_nodes(column_group)
@@ -236,7 +236,7 @@ def _to_graphviz(column_group):
 
 
 def _merge_add_nodes(graph):
-    """ merges repeat '+' nodes, leading to nicer looking outputs """
+    """ Merges repeat '+' nodes, leading to nicer looking outputs """
     # lets take a copy to avoid mutating the input
     import copy
 

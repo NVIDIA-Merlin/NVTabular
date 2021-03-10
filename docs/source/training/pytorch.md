@@ -1,7 +1,7 @@
 Accelerated Training with PyTorch
 =================================
 
-When training pipelines with PyTorch, the dataloader cannot prepare sequential batches fast enough, so the GPU is not fully utilized. To combat this issue, we’ve developed a highly customized tabular dataloader, `TorchAsyncItr`, to accelerate existing pipelines in PyTorch. In our experiments, we were able to achieve a speed-up 5 times as fast as the same training workflow with a NVTabular dataloader. The NVTabular dataloader is capable of:
+When training pipelines with PyTorch, the dataloader cannot prepare sequential batches fast enough, so the GPU is not fully utilized. To combat this issue, we’ve developed a highly customized tabular dataloader, `TorchAsyncItr`, to accelerate existing pipelines in PyTorch. The NVTabular dataloader is capable of:
 
 * removing bottlenecks from dataloading by processing large chunks of data at a time instead of item by item
 * processing datasets that don’t fit within the GPU or CPU memory by streaming from the disk
@@ -61,4 +61,5 @@ When `TorchAsyncItr` accelerates training with PyTorch, the following happens:
 
 5. The `TorchAsyncItr` dataloader can be initialized for the validation dataset using the same structure.  
 
-You can find additional examples in our repository such as [MovieLens](../examples/movielens_multihot_example.ipynb) and [Criteo](../examples/criteo-example.ipynb).
+You can find additional examples in our repository such as [MovieLens](../examples/getting-started-movielens/) and [Criteo](
+../examples/scaling-criteo/).

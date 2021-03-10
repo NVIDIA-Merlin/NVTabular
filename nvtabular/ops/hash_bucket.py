@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,9 +26,8 @@ from .operator import ColumnNames, Operator
 
 class HashBucket(Operator):
     """
-    This op maps categorical columns to a contiguous integer range
-    by first hashing the column then modulating by the number of
-    buckets as indicated by `num_buckets`.
+    This op maps categorical columns to a contiguous integer range by first
+    hashing the column, then reducing modulo the number of buckets.
 
     Example usage::
 

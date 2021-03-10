@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ from .operator import ColumnNames, Operator
 
 class Dropna(Operator):
     """
-    This operation detects missing values, and filters out rows with null values.
+    This operation detects and filters out rows with missing values.
 
     Example usage::
 

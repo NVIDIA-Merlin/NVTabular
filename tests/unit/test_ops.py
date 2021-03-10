@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -535,6 +535,10 @@ def test_categorify_multi_combo(tmpdir, cpu):
 @pytest.mark.parametrize("search_sort", [True, False])
 @pytest.mark.parametrize("cpu", [False, True])
 def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
+    if search_sort and cpu:
+        # invalid combination - don't test
+        return
+
     df = cudf.DataFrame(
         {
             "Author": [

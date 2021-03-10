@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -580,3 +580,14 @@ def test_workflow_move_saved(tmpdir):
     # also check that when transforming our input we get the same results after loading
     transformed = workflow2.transform(Dataset(data)).to_ddf().compute()
     assert_eq(expected, transformed)
+
+
+def test_workflow_input_output_dtypes():
+    df = cudf.DataFrame({"genre": ["drama", "comedy"], "user": ["a", "b"], "unneeded": [1, 2]})
+    features = [["genre", "user"], "genre"] >> ops.Categorify(encode_type="combo")
+    workflow = Workflow(features)
+    workflow.fit(Dataset(df))
+
+    assert "unneeded" not in workflow.input_dtypes
+    assert set(workflow.input_dtypes.keys()) == {"genre", "user"}
+    assert set(workflow.output_dtypes.keys()) == {"genre_user", "genre"}

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -131,7 +131,8 @@ class Dataset:
         ddf = ddf.sort_values("user_rank", ignore_index=True)
         dataset = Dataset(ddf)
 
-    Dataset Optimization Tips (DOTs)
+    `Dataset Optimization Tips (DOTs)`
+
     The NVTabular dataset should be created from Parquet files in order
     to get the best possible performance, preferably with a row group size
     of around 128MB.  While NVTabular also supports reading from CSV files,
@@ -637,7 +638,10 @@ class Dataset:
         compute=True,
         **kwargs,
     ):
-        """EXPERIMENTAL: Regenerate an NVTabular Dataset for efficient processing.
+        """EXPERIMENTAL:
+        Regenerate an NVTabular Dataset for efficient processing by writing
+        out new Parquet files. In contrast to default ``to_parquet`` behavior,
+        this method preserves the original ordering.
 
         Example Usage::
 

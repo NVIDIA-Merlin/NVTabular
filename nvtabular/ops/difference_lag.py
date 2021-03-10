@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ class DifferenceLag(Operator):
         # create a new nvtabular dataset on the partitioned/sorted values
         dataset = nvtabular.Dataset(ddf)
 
-    Once passed an appropiate dataset, this operator can be used to create a workflow to
+    Once passed an appropriate dataset, this operator can be used to create a workflow to
     compute the lagged difference within a partition::
 
         # compute the delta in timestamp for each users session
