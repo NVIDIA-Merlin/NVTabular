@@ -182,6 +182,10 @@ class Dataset:
         devices for down-stream processing.
         NOTE: Down-stream ops and output do not yet support a
         Dataset generated with ``cpu=True``.
+    base_dataset : Dataset
+        Optional reference to the original "base" Dataset object used
+        to construct the current Dataset instance.  This object is
+        used to preserve file-partition mapping information.
     """
 
     def __init__(
@@ -194,6 +198,7 @@ class Dataset:
         dtypes=None,
         client=None,
         cpu=None,
+        base_dataset=None,
         **kwargs,
     ):
         self.dtypes = dtypes
@@ -201,6 +206,9 @@ class Dataset:
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu or False
+
+        # Keep track of base dataset (optional)
+        self.base_dataset = base_dataset or self
 
         # For now, lets warn the user that "cpu mode" is experimental
         if self.cpu:
@@ -402,6 +410,7 @@ class Dataset:
         self,
         output_path,
         shuffle=None,
+        preserve_files=False,
         output_files=None,
         out_files_per_proc=None,
         num_threads=0,
@@ -431,6 +440,12 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        preserve_files : bool
+            Whether to preserve the original file-to-partition mapping of
+            the base dataset. This option is only avilable if the base
+            dataset is known, and if it corresponds to csv or parquet format.
+            If True, the `out_files_per_proc` option will be ignored, but the
+            `output_files` option will take precedence. Default is False.
         output_files : dict, list or int
             Dictionary mapping of output file names to partition indices.
             If a list of file names is specified, a contiguous range of
@@ -483,6 +498,18 @@ class Dataset:
                 output_files = new
             if not isinstance(output_files, dict):
                 raise TypeError(f"{type(output_files)} not a supported type for `output_files`.")
+
+        # If we are preserving files, use the stored dictionary,
+        # or use file_partition_map to extract the mapping
+        elif preserve_files:
+            try:
+                output_files = self.base_dataset.file_partition_map
+            except (AttributeError):
+                raise AttributeError(
+                    f"`to_parquet(..., preserve_files=True)` is not currently supported "
+                    f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
+                    f"that `dataset.base_dataset` is backed by csv or parquet files."
+                )
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(

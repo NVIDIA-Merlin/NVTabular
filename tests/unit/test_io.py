@@ -586,13 +586,11 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
         names=["C0", "I0", "F0"],
     )
 
-    # Convert csv dataset to parquet
-    if preserve_files:
-        output_files = ds.file_partition_map
-    else:
-        output_files = None
+    # Convert csv dataset to parquet.
+    # Adding extra ds -> ds2 step to test `base_dataset` usage.
     pq_path = os.path.join(str(tmpdir), "pq_dataset")
-    ds.to_parquet(pq_path, output_files=output_files)
+    ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds)
+    ds2.to_parquet(pq_path, preserve_files=preserve_files)
 
     # Check output.
     # Note that we are converting the inital hex strings to int32.
