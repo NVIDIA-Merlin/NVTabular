@@ -637,7 +637,7 @@ class Dataset:
         compute=True,
         **kwargs,
     ):
-        """Regenerate an NVTabular Dataset for efficient processing.
+        """EXPERIMENTAL: Regenerate an NVTabular Dataset for efficient processing.
 
         Example Usage::
 
