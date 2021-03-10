@@ -11,7 +11,7 @@ Merlin Inference API is designed for a seamless integration between NVTabular an
 Under this directory, we provide six example notebooks: 
 
 - [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb)  
-- [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-inference.ipynb)
+- [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-inference.ipynb)
 - [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb)  
 - [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb)
 - [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR.ipynb)
