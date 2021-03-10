@@ -29,6 +29,24 @@ from dask.dataframe.utils import hash_object_dispatch
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
 
 
+def _hex_to_int(s, dtype=None):
+    def _pd_convert_hex(x):
+        if pd.isnull(x):
+            return pd.NA
+        return int(x, 16)
+
+    if isinstance(s, cudf.Series):
+        # CuDF Version
+        if s.dtype == "object":
+            s = s.str.htoi()
+        return s.astype(dtype or np.int32)
+    else:
+        # Pandas Version
+        if s.dtype == "object":
+            s = s.apply(_pd_convert_hex)
+        return s.astype("Int64").astype(dtype or "Int32")
+
+
 def _arange(size, like_df=None):
     """Dispatch for numpy.arange"""
     if isinstance(like_df, pd.DataFrame):

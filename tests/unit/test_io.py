@@ -23,6 +23,7 @@ from distutils.version import LooseVersion
 
 import cudf
 import dask
+import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import pandas as pd
@@ -541,3 +542,60 @@ def test_validate_and_regenerate_dataset(tmpdir):
 
     # Check cpu version of `to_ddf`
     assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
+
+
+@pytest.mark.parametrize("preserve_files", [True, False])
+@pytest.mark.parametrize("cpu", [True, False])
+def test_dataset_conversion(tmpdir, cpu, preserve_files):
+
+    # Generate toy dataset.
+    # Include "hex" strings to mimic Criteo.
+    size = 100
+    npartitions = 4
+    hex_vals = [
+        "62770d79",
+        "e21f5d58",
+        "afea442f",
+        "945c7fcf",
+        "38b02748",
+        "6fcd6dcb",
+        "3580aa21",
+        "46dedfa6",
+    ]
+    df = pd.DataFrame(
+        {
+            "C0": np.random.choice(hex_vals, size),
+            "I0": np.random.randint(1_000_000_000, high=10_000_000_000, size=size),
+            "F0": np.random.uniform(size=size),
+        }
+    )
+    ddf = dd.from_pandas(df, npartitions=npartitions)
+
+    # Write to csv dataset
+    csv_path = os.path.join(str(tmpdir), "csv_dataset")
+    ddf.to_csv(csv_path, header=False, sep="\t", index=False)
+
+    # Create NVT Dataset
+    dtypes = {"F0": np.float64, "I0": np.int64, "C0": "hex"}
+    ds = nvt.Dataset(
+        csv_path,
+        cpu=cpu,
+        engine="csv",
+        dtypes=dtypes,
+        sep="\t",
+        names=["C0", "I0", "F0"],
+    )
+
+    # Convert csv dataset to parquet
+    if preserve_files:
+        output_files = ds.file_partition_map
+    else:
+        output_files = None
+    pq_path = os.path.join(str(tmpdir), "pq_dataset")
+    ds.to_parquet(pq_path, output_files=output_files)
+
+    # Check output.
+    # Note that we are converting the inital hex strings to int32.
+    ds_check = nvt.Dataset(pq_path, engine="parquet")
+    df["C0"] = df["C0"].apply(int, base=16).astype("int32")
+    assert_eq(ds_check.to_ddf().compute(), df, check_index=False)

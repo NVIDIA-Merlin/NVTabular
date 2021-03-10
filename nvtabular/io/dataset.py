@@ -31,6 +31,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+from nvtabular.dispatch import _hex_to_int
 from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
@@ -692,21 +693,9 @@ class Dataset:
 
 
 def _set_dtypes(chunk, dtypes):
-    def _pd_convert_hex(x):
-        if pd.isnull(x):
-            return pd.NA
-        return int(x, 16)
-
     for col, dtype in dtypes.items():
-        if (type(dtype) is str) and ("hex" in dtype) and chunk[col].dtype == "object":
-            if hasattr(chunk[col].str, "htoi"):
-                # CuDF Version
-                chunk[col] = chunk[col].str.htoi()
-                chunk[col] = chunk[col].astype(np.int32)
-            else:
-                # Pandas Version
-                chunk[col] = chunk[col].apply(_pd_convert_hex)
-                chunk[col] = chunk[col].astype("Int64").astype("Int32")
+        if (type(dtype) is str) and ("hex" in dtype):
+            chunk[col] = _hex_to_int(chunk[col])
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk

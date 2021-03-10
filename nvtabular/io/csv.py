@@ -64,7 +64,7 @@ class CSVDatasetEngine(DatasetEngine):
             *_byte_block_counts(
                 self.paths,
                 self.part_size,
-                self.csv_kwargs,
+                **self.csv_kwargs,
             )
         ):
             _pp_map[path.split(self.fs.sep)[-1]] = np.arange(ind, ind + blocks)
