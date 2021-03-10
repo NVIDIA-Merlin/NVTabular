@@ -2,7 +2,7 @@
 
 Here, we describe how to run the [Triton Inference Server](https://github.com/triton-inference-server/server) backend for Python to be able deploy a Tensorflow (TF) model. The goal of the [Python backend](https://github.com/triton-inference-server/python_backend) is to let you serve models written in Python by Triton Inference Server (IS) without having to write any C++ code. 
 
-We provide four example notebooks, [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb), [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-inference.ipynb), [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb) and [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb), and explain the steps to do inference with Merlin Inference API. 
+We provide four example notebooks, [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb), [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-inference.ipynb), [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb) and [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb), and explain the steps to do inference with Merlin Inference API. 
 
 ## Getting Started 
 
@@ -10,7 +10,7 @@ In order to use Merlin Inference API with TF framework, there are two containers
 
 ## 1. Pull the Merlin Tensorflow Training Docker Container:
 
-We start with pulling `Merlin-Tensorflow-Training` container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with TF framework with processed datasets.
+We start with pulling NVTabular container. This is to do preprocessing, feature engineering on our datasets using NVTabular, and then to train a DL model with TF framework with processed datasets.
 
 Before starting docker container, first create a `nvt_triton` directory and `data` subdirectory on your host machine:
 
@@ -18,9 +18,8 @@ Before starting docker container, first create a `nvt_triton` directory and `dat
 mkdir -p nvt_triton/data/
 cd nvt_triton
 ```
-We will mount `nvt_triton` directory into the docker container.
 
-Merlin containers are available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
+We will mount `nvt_triton` directory into the `Merlin-Tensorflow-Training` docker container. Merlin containers are available in the NVIDIA container repository at the following location: http://ngc.nvidia.com/catalog/containers/nvidia:nvtabular.
 
 You can pull the `Merlin-Tensorflow-Training` container by running the following command:
 
@@ -74,7 +73,8 @@ There are two example notebooks that should be run in order. The first one [movi
 - serialize and save a workflow to load later to transform new dataset
 - train a TF MLP model and save it in the `/models` directory.
 
-The following notebook [movielens-inference](https://github.com/NVIDIA/NVTabular/blob/main/examples/inference_triton/inference-TF/movielens-inference.ipynb) shows how to send request to Triton IS 
+
+The following notebook [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-inference.ipynb) shows how to send request to Triton IS 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
@@ -101,6 +101,7 @@ cd <path to nvt_triton>
 ```
 
 2) Launch Merlin Triton Inference Server container:
+
 ```
 docker run -it --name tritonserver --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.4
 ```

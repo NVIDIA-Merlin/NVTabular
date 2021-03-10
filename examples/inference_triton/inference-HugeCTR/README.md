@@ -25,7 +25,9 @@ You can pull the `Merlin-Training` container by running the following command:
 ```
 docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.4 /bin/bash
 ```
-The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the docker container. It should look similar to this:
+
+The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
+
 
 ```
 root@2efa5b50b909:
@@ -40,9 +42,17 @@ You should receive the following response, indicating that the environment has b
 ```
 (rapids)root@2efa5b50b909:
 ```
-1) Install Required Packages:
 
-You might need to install `unzip`, `graphviz`, `curl` packages if they are missing. You can do that with the following commands:
+1) Install Triton Python Client Library:
+
+You need the Triton Python Client library to be able to run `movielens-HugeCTR-inference` notebook, and send request to the triton server. In case triton client library is missing, you can install with the following commands:
+
+```
+pip install nvidia-pyindex
+pip install tritonclient
+pip install geventhttpclient
+```
+Additionally, you might need to install `unzip`, `graphviz`, and `curl` packages if they are missing. You can do that with the following commands:
 
 ```
 apt-get update
