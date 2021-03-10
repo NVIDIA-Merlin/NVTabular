@@ -43,16 +43,9 @@ You should receive the following response, indicating that the environment has b
 (rapids)root@2efa5b50b909:
 ```
 
-1) Install Triton Python Client Library:
+1) Install Required Libraries:
 
-You need the Triton Python Client library to be able to run `movielens-HugeCTR-inference` notebook, and send request to the triton server. In case triton client library is missing, you can install with the following commands:
-
-```
-pip install nvidia-pyindex
-pip install tritonclient
-pip install geventhttpclient
-```
-Additionally, you might need to install `unzip`, `graphviz`, and `curl` packages if they are missing. You can do that with the following commands:
+You might need to install `unzip`, `graphviz`, and `curl` packages if they are missing. You can do that with the following commands:
 
 ```
 apt-get update
