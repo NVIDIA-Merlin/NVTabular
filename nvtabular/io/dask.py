@@ -16,7 +16,6 @@
 import collections
 import copy
 
-import cloudpickle
 import dask
 import pandas as pd
 from dask.base import tokenize
@@ -28,6 +27,27 @@ from nvtabular.worker import clean_worker_cache, get_worker_cache
 
 from .shuffle import Shuffle
 from .writer_factory import _writer_cls_factory, writer_factory
+
+
+class DaskSubgraph:
+    """Simple containter for a Dask subgraph
+
+    Parameters
+    ----------
+    full_graph: dask.HighLevelGraph
+        Full graph for some DataFrame collection.
+    keys: set
+        Subset of collection keys required for this subgraph.
+        This set will be used to cull all unrelated tasks from
+        the full graph during initialization.
+    """
+
+    def __init__(self, full_graph, keys):
+        self.keys = keys
+        self.subgraph = full_graph.cull(copy.copy(keys))
+
+    def __getitem__(self, key):
+        return self.subgraph.cull({key})
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
@@ -73,7 +93,6 @@ def _write_output_partition(
 @annotate("write_subgraph", color="green", domain="nvt_python")
 def _write_subgraph(
     subgraph,
-    keys,
     fn,
     output_path,
     shuffle,
@@ -100,10 +119,8 @@ def _write_subgraph(
 
     # Add data
     num_rows = 0
-    subgraph = cloudpickle.loads(subgraph)
-    for key in keys:
-        dsk = subgraph.cull({key})
-        table = dask.get(dsk, key)
+    for key in subgraph.keys:
+        table = dask.get(subgraph[key], key)
         writer.add_data(table)
         num_rows += len(table)
         del table
@@ -162,14 +179,13 @@ def _ddf_to_dataset(
         cached_writers = False
         full_graph = ddf.dask
         for fn, parts in file_partition_map.items():
-            # Get keys and subgraph
+            # Isolate subgraph for this output file
             keys = {(ddf._name, part) for part in parts}
-            subgraph = full_graph.cull(copy.copy(keys))
+            subgraph = DaskSubgraph(full_graph, keys)
             task_list.append((write_name, fn))
             dsk[task_list[-1]] = (
                 _write_subgraph,
-                cloudpickle.dumps(subgraph),
-                keys,
+                subgraph,
                 fn,
                 output_path,
                 shuffle,
