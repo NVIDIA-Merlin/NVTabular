@@ -11,7 +11,7 @@ Merlin Inference API is designed for a seamless integration between NVTabular an
 Under this directory, we provide six example notebooks: 
 
 - [movielens-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-TF.ipynb)  
-- [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens_inference.ipynb)
+- [movielens-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-inference.ipynb)
 - [movielens-multihot-TF](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-TF.ipynb)  
 - [movielens-multihot-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-TF/movielens-multihot-inference.ipynb)
 - [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCTR.ipynb)
@@ -23,6 +23,6 @@ In order to run the example notebooks above with Merlin Inference API, there are
 
 - [Merlin-Tensorflow-Training](https://ngc.nvidia.com/containers/nvidia:merlin:merlin-tensorflow-training): This is for preprocessing with NVTabular and training a model with Tensorflow framework. 
 - [Merlin-Training](https://ngc.nvidia.com/containers/nvidia:merlin:merlin-training): This is for preprocessing with NVTabular and training a model with HugeCTR framework. 
-- [Merlin-Inference](https://ngc.nvidia.com/containers/nvstaging:merlin:merlin-inference): This is to launch Triton Inference Server and perform inference.
+- [Merlin-Inference](https://ngc.nvidia.com/containers/nvidia:merlin:merlin-inference): This is to launch Triton Inference Server and perform inference.
 
 All the details about building and launching the containers are given in the README files under the `inference-TF` and `inference-HugeCTR` folders.
