@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import collections
-import copy
 
 import dask
 import pandas as pd
@@ -42,12 +41,15 @@ class DaskSubgraph:
         the full graph during initialization.
     """
 
-    def __init__(self, full_graph, keys):
-        self.keys = keys
-        self.subgraph = full_graph.cull(copy.copy(keys))
+    def __init__(self, full_graph, name, parts):
+        self.name = name
+        self.parts = parts
+        self.subgraph = full_graph.cull({(self.name, part) for part in self.parts})
 
-    def __getitem__(self, key):
-        return self.subgraph.cull({key})
+    def __getitem__(self, part):
+        key = (self.name, part)
+        dsk = self.subgraph.cull({key})
+        return dask.get(dsk, key)
 
 
 @annotate("write_output_partition", color="green", domain="nvt_python")
@@ -119,8 +121,8 @@ def _write_subgraph(
 
     # Add data
     num_rows = 0
-    for key in subgraph.keys:
-        table = dask.get(subgraph[key], key)
+    for part in subgraph.parts:
+        table = subgraph[part]
         writer.add_data(table)
         num_rows += len(table)
         del table
@@ -180,8 +182,7 @@ def _ddf_to_dataset(
         full_graph = ddf.dask
         for fn, parts in file_partition_map.items():
             # Isolate subgraph for this output file
-            keys = {(ddf._name, part) for part in parts}
-            subgraph = DaskSubgraph(full_graph, keys)
+            subgraph = DaskSubgraph(full_graph, ddf._name, parts)
             task_list.append((write_name, fn))
             dsk[task_list[-1]] = (
                 _write_subgraph,
