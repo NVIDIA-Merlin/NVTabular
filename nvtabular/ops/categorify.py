@@ -320,7 +320,7 @@ class Categorify(StatOperator):
             num_buckets=self.num_buckets,
         )
         # TODO: we can't check the dtypes on the ddf here since they are incorrect
-        # for cudf's list type. So, we're checking the frist partition. fix.
+        # for cudf's list type. So, we're checking the first partition. fix.
         return Delayed(key, dsk), ddf.partitions[0].map_partitions(lambda df: _is_list_dtype(df))
 
     def fit_finalize(self, dask_stats):
