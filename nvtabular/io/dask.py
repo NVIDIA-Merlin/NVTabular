@@ -14,17 +14,16 @@
 # limitations under the License.
 #
 import collections
+import copy
 
-import cudf
+import cloudpickle
 import dask
 import pandas as pd
-import pyarrow as pa
 from dask.base import tokenize
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from nvtx import annotate
 
-from nvtabular.dispatch import _to_arrow
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
 from .shuffle import Shuffle
@@ -71,9 +70,10 @@ def _write_output_partition(
     return df_size
 
 
-@annotate("write_table_list", color="green", domain="nvt_python")
-def _write_table_list(
-    tables,
+@annotate("write_subgraph", color="green", domain="nvt_python")
+def _write_subgraph(
+    subgraph,
+    keys,
     fn,
     output_path,
     shuffle,
@@ -100,15 +100,13 @@ def _write_table_list(
 
     # Add data
     num_rows = 0
-    for table in tables:
-        if isinstance(table, pa.Table):
-            if cpu:
-                writer.add_data(table.to_pandas())
-            else:
-                writer.add_data(cudf.DataFrame.from_arrow(table))
-        else:
-            writer.add_data(table)
+    subgraph = cloudpickle.loads(subgraph)
+    for key in keys:
+        dsk = subgraph.cull({key})
+        table = dask.get(dsk, key)
+        writer.add_data(table)
         num_rows += len(table)
+        del table
 
     # Return metadata and row-count in dict
     return writer.close()
@@ -162,16 +160,16 @@ def _ddf_to_dataset(
     if file_partition_map is not None:
         # Use specified mapping of data to output files
         cached_writers = False
-        ddf2 = ddf
-        if not cpu and len(file_partition_map) < ddf.npartitions:
-            # Aggregate partitions in arrow format (in host memory)
-            ddf2 = ddf.map_partitions(_to_arrow, meta=ddf._meta)
-
+        full_graph = ddf.dask
         for fn, parts in file_partition_map.items():
+            # Get keys and subgraph
+            keys = {(ddf._name, part) for part in parts}
+            subgraph = full_graph.cull(copy.copy(keys))
             task_list.append((write_name, fn))
             dsk[task_list[-1]] = (
-                _write_table_list,
-                [(ddf2._name, part) for part in parts],
+                _write_subgraph,
+                cloudpickle.dumps(subgraph),
+                keys,
                 fn,
                 output_path,
                 shuffle,
@@ -192,7 +190,6 @@ def _ddf_to_dataset(
         )
     else:
         cached_writers = True
-        ddf2 = ddf
         for idx in range(ddf.npartitions):
             key = (write_name, idx)
             dsk[key] = (
@@ -212,7 +209,7 @@ def _ddf_to_dataset(
             task_list.append(key)
         dsk[name] = (lambda x: x, task_list)
 
-    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf2])
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
     out = Delayed(name, graph)
 
     # Trigger write execution
