@@ -442,7 +442,7 @@ class Dataset:
             persist stage. The `FULL` option is not yet implemented.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
-            the base dataset. This option is only avilable if the base
+            the base dataset. This option is only available if the base
             dataset is known, and if it corresponds to csv or parquet format.
             If True, the `out_files_per_proc` option will be ignored, but the
             `output_files` option will take precedence. Default is False.

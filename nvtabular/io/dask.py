@@ -29,7 +29,7 @@ from .writer_factory import _writer_cls_factory, writer_factory
 
 
 class DaskSubgraph:
-    """Simple containter for a Dask subgraph
+    """Simple container for a Dask subgraph
 
     Parameters
     ----------
