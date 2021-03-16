@@ -1,0 +1,56 @@
+name: horovod
+
+channels:
+  - rapidsai
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  # General
+  - pip
+  - python>=3.7
+
+  # Horovod
+  - ccache
+  - cmake # for building Gloo library extensions
+  - cudnn>=8.0 # required for TF 2.4+ (from requirements.txt)
+  - cupti
+  - cxx-compiler
+  - mpi
+  - mpi4py # installs cuda-aware mpi
+  - nccl
+  - nvcc_linux-64 # configures environment to be "cuda-aware"
+  - openmpi
+
+  # NVTabular
+  - arrow-cpp=1.0.1
+  - boost-cpp
+  - clang-tools=8.0.1
+  - clang=8.0.1
+  - cmake_setuptools>=0.1.3
+  - cmake>=3.12
+  - cudatoolkit=10.1
+  - cudf>=0.18.*
+  - cupy>=7.2.0,<9.0.0a
+  - cython>=0.29,<0.30
+  - dask-cuda>=0.18.*
+  - dask-cudf>=0.18.*
+  - dask>=2.22.0
+  - distributed>=2.22.0
+  - dlpack
+  - double-conversion
+  - fastavro>=0.22.9
+  - flatbuffers
+  - fsspec>=0.6.0
+  - numba>=0.49.0,!=0.51.0
+  - nvtx>=0.2.1
+  - partd
+  - pyarrow=1.0.1
+  - rapidjson
+  - rmm>=0.18.*
+  - streamz
+
+  # Pip dependencies
+  - pip:
+    - -r file:requirements.txt
