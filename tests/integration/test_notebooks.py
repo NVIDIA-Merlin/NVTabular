@@ -76,27 +76,27 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
     output_path = os.path.join(DATA_START, "rossman/output")
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-preproc.ipynb"
+        dirname(TEST_PATH), "examples/tabular-data-rossmann", "01-Download-Convert.ipynb"
     )
 
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-feature-engineering.ipynb"
+        dirname(TEST_PATH), "examples/tabular-data-rossmann", "02-ETL-with-NVTabular.ipynb"
     )
 
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
-
+    
     notebookex_path = os.path.join(
-        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-fastai.ipynb"
+        dirname(TEST_PATH), "examples/tabular-data-rossmann", "04-Training-with-FastAI.ipynb"
     )
     out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
     bench_results = RossBenchFastAI().get_epochs(out.splitlines())
     bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
     send_results(asv_db, bench_info, bench_results)
-
+    
     notebookex_path = os.path.join(
-        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-pytorch.ipynb"
+        dirname(TEST_PATH), "examples/tabular-data-rossmann", "03b-Training-with-PyTorch.ipynb"
     )
     out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
     bench_results = RossBenchPytorch().get_epochs(out.splitlines())
@@ -104,7 +104,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
     send_results(asv_db, bench_info, bench_results)
 
     notebookex_path = os.path.join(
-        dirname(TEST_PATH), "examples/rossmann", "rossmann-store-sales-tensorflow.ipynb"
+        dirname(TEST_PATH), "examples/tabular-data-rossmann", "03a-Training-with-TF.ipynb"
     )
     out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id=4)
     bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
@@ -112,6 +112,43 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
     send_results(asv_db, bench_info, bench_results)
 
 
+def test_tf_inference_examples(asv_db, bench_info, tmpdir):
+    
+    data_path = os.path.join(DATA_START, "inference/data/")
+    input_path = os.path.join(DATA_START, "inference/input/")
+
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-TF.ipynb"
+    )
+
+    os.environ["BASE_DIR"] = DATA_START
+    os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
+    os.environ["MODEL_NAME_TF"] = "movielens_tf"
+    os.environ["MODEL_NAME_ENSEMBLE"] = "movielens"
+    os.environ["MODEL_PATH"] = os.path.join(DATA_START, "models")
+    
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+
+    '''
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-inference.ipynb"
+    )
+
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=0, clean_up=False)
+
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-TF.ipynb"
+    )
+
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=0, clean_up=False)
+
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-inference.ipynb"
+    )
+
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=0, clean_up=False)
+    '''
+    
 def _run_notebook(
     tmpdir,
     notebook_path,
