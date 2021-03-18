@@ -92,7 +92,12 @@ class Workflow:
         """
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client, cpu=dataset.cpu)
+        return Dataset(
+            _transform_ddf(ddf, self.column_group),
+            client=self.client,
+            cpu=dataset.cpu,
+            base_dataset=dataset.base_dataset,
+        )
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset

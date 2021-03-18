@@ -31,6 +31,7 @@ import dask
 import dask.dataframe as dd
 import dask_cudf
 import fsspec
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
@@ -108,6 +109,40 @@ class ParquetDatasetEngine(DatasetEngine):
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
         return dataset
+
+    @property
+    @functools.lru_cache(1)
+    def _file_partition_map(self):
+        dataset = self._dataset
+        if dataset.metadata:
+            # We have a metadata file.
+            # Determing the row-group count per file.
+            _path_row_groups = defaultdict(int)
+            for rg in range(dataset.metadata.num_row_groups):
+                fn = dataset.metadata.row_group(rg).column(0).file_path
+                _path_row_groups[fn] += 1
+
+            # Convert the per-file row-group count to the
+            # file-to-partition mapping
+            ind = 0
+            _pp_map = defaultdict(list)
+            for fn, num_row_groups in _path_row_groups.items():
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                _pp_map[fn] = np.arange(ind, ind + part_count)
+                ind += part_count
+
+        else:
+            # No metadata file. Construct file-to-partition map manually
+            ind = 0
+            _pp_map = {}
+            for piece in dataset.pieces:
+                num_row_groups = piece.get_metadata().num_row_groups
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                fn = piece.path.split(self.fs.sep)[-1]
+                _pp_map[fn] = np.arange(ind, ind + part_count)
+                ind += part_count
+
+        return _pp_map
 
     @property
     @functools.lru_cache(1)
@@ -644,7 +679,9 @@ class BaseParquetWriter(ThreadedWriter):
         raise (NotImplementedError)
 
     def _get_filename(self, i):
-        if self.use_guid:
+        if self.fns:
+            fn = self.fns[i]
+        elif self.use_guid:
             fn = f"{i}.{guid()}.parquet"
         else:
             fn = f"{i}.parquet"
@@ -801,7 +838,7 @@ class CPUParquetWriter(BaseParquetWriter):
         self.md_collectors[path] = _md_collector
 
     def _write_table(self, idx, data):
-        table = pa.Table.from_pandas(data)
+        table = pa.Table.from_pandas(data, preserve_index=False)
         writer = self._get_or_create_writer(idx, schema=table.schema)
         writer.write_table(table, row_group_size=self._get_row_group_size(data))
 
