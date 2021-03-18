@@ -442,7 +442,7 @@ class Dataset:
             persist stage. The `FULL` option is not yet implemented.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
-            the base dataset. This option is only avilable if the base
+            the base dataset. This option is only available if the base
             dataset is known, and if it corresponds to csv or parquet format.
             If True, the `out_files_per_proc` option will be ignored, but the
             `output_files` option will take precedence. Default is False.
@@ -474,14 +474,13 @@ class Dataset:
         """
 
         shuffle = _check_shuffle_arg(shuffle)
-        ddf = self.to_ddf(shuffle=shuffle)
 
-        if dtypes:
-            _meta = _set_dtypes(ddf._meta, dtypes)
-            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
-
-        fs = get_fs_token_paths(output_path)[0]
-        fs.mkdirs(output_path, exist_ok=True)
+        if isinstance(output_files, dict) or (not output_files and preserve_files):
+            # Do not shuffle partitions if we are preserving files or
+            # if a specific file-partition mapping is already specified
+            ddf = self.to_ddf()
+        else:
+            ddf = self.to_ddf(shuffle=shuffle)
 
         # Convert `output_files` argument to a dict mapping
         if output_files:
@@ -510,6 +509,13 @@ class Dataset:
                     f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
                     f"that `dataset.base_dataset` is backed by csv or parquet files."
                 )
+
+        if dtypes:
+            _meta = _set_dtypes(ddf._meta, dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, dtypes, meta=_meta)
+
+        fs = get_fs_token_paths(output_path)[0]
+        fs.mkdirs(output_path, exist_ok=True)
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
