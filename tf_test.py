@@ -5,6 +5,7 @@ from os import path
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
+os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("OMPI_COMM_WORLD_LOCAL_RANK")
 # TF will have claimed all free GPU memory
 os.environ['TF_MEMORY_ALLOCATION'] = "0.3" # fraction of free memory
 import tensorflow as tf
@@ -31,7 +32,7 @@ gpus = tf.config.experimental.list_physical_devices('GPU')
 #     tf.config.experimental.set_memory_growth(gpu, True)
 #time.sleep(20)
 dev_dev = hvd.local_rank() if hvd.local_rank() == 1 else 0
-cupy.cuda.Device(dev_dev).use()
+#cupy.cuda.Device(dev_dev).use()
 #os.environ["CUDA_VISIBLE_DEVICES"]=str(dev_dev)
 import nvtabular as nvt
 from nvtabular.framework_utils.tensorflow import layers
@@ -40,8 +41,8 @@ from nvtabular.loader.tensorflow import (KerasSequenceLoader,
 proc = nvt.Workflow.load(BASE_DIR + 'workflow')
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
 
-if gpus:
-    tf.config.experimental.set_visible_devices(gpus, 'GPU')
+#if gpus:
+#    tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], 'GPU')
 #dev_dev = hvd.local_rank() if hvd.local_rank() == 1 else 2
 #cupy.cuda.Device(dev_dev).use()
 train_dataset_tf = KerasSequenceLoader(
@@ -53,8 +54,8 @@ train_dataset_tf = KerasSequenceLoader(
     engine='parquet',
     shuffle=False,
     buffer_size=0.06, # how many batches to load at once
-    parts_per_chunk=1,
-    devices=[dev_dev]
+    parts_per_chunk=1
+
 )
 inputs = {}     # tf.keras.Input placeholders for each feature to be used
 emb_layers = [] # output of all embedding layers, which will be concatenated
@@ -117,9 +118,9 @@ def training_step(examples, labels, first_batch):
     #
     # Note: broadcast should be done after the first gradient step to ensure optimizer
     # initialization.
-    if first_batch:
-        hvd.broadcast_variables(model.variables, root_rank=0)
-        hvd.broadcast_variables(opt.variables(), root_rank=0)
+    #if first_batch:
+    #    hvd.broadcast_variables(model.variables, root_rank=0)
+    #    hvd.broadcast_variables(opt.variables(), root_rank=0)
     return loss_value
 # Horovod: adjust number of steps based on number of GPUs.
 for batch, (examples, labels) in enumerate(train_dataset_tf):
