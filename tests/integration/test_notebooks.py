@@ -28,7 +28,7 @@ from criteo_parsers import CriteoBenchFastAI
 from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
-DATA_START = os.environ.get("DATASET_DIR", "/raid/criteo")
+DATA_START = os.environ.get("DATASET_DIR", "/raid/criteo/")
 
 
 def test_criteo_notebook(asv_db, bench_info, tmpdir):
@@ -86,7 +86,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
     )
 
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=4, clean_up=False)
-    
+
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/tabular-data-rossmann", "04-Training-with-FastAI.ipynb"
     )
@@ -94,7 +94,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
     bench_results = RossBenchFastAI().get_epochs(out.splitlines())
     bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
     send_results(asv_db, bench_info, bench_results)
-    
+
     notebookex_path = os.path.join(
         dirname(TEST_PATH), "examples/tabular-data-rossmann", "03b-Training-with-PyTorch.ipynb"
     )
@@ -112,10 +112,10 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
     send_results(asv_db, bench_info, bench_results)
 
 
-def test_tf_inference_examples(asv_db, bench_info, tmpdir):
-    
-    data_path = os.path.join(DATA_START, "inference/data/")
-    input_path = os.path.join(DATA_START, "inference/input/")
+def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
+
+    data_path = DATA_START  # os.path.join(DATA_START, "inference/data/")
+    input_path = DATA_START  # os.path.join(DATA_START, "inference/input/")
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-TF.ipynb"
@@ -126,29 +126,45 @@ def test_tf_inference_examples(asv_db, bench_info, tmpdir):
     os.environ["MODEL_NAME_TF"] = "movielens_tf"
     os.environ["MODEL_NAME_ENSEMBLE"] = "movielens"
     os.environ["MODEL_PATH"] = os.path.join(DATA_START, "models")
-    
+
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
-
-    '''
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-inference.ipynb"
-    )
-
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=0, clean_up=False)
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-TF.ipynb"
     )
 
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=0, clean_up=False)
+    os.environ["MODEL_NAME_NVT"] = "movielens_nvt_mh"
+    os.environ["MODEL_NAME_TF"] = "movielens_tf_mh"
+    os.environ["MODEL_NAME_ENSEMBLE"] = "movielens_mh"
+    os.environ["MODEL_PATH"] = os.path.join(DATA_START, "models_multihot")
+
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+
+
+def test_tf_inference_examples(asv_db, bench_info, tmpdir):
+
+    data_path = DATA_START  # os.path.join(DATA_START, "inference/data/")
+    input_path = DATA_START  # os.path.join(DATA_START, "inference/input/")
+
+    os.environ["MODEL_BASE_DIR"] = "/model/models/"
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-inference.ipynb"
+        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-inference.ipynb"
     )
 
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id=0, clean_up=False)
-    '''
-    
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+
+    os.environ["MODEL_BASE_DIR"] = "/model/models_multihot/"
+
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH),
+        "examples/inference_triton/inference-TF",
+        "movielens-multihot-inference.ipynb",
+    )
+
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+
+
 def _run_notebook(
     tmpdir,
     notebook_path,
