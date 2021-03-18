@@ -62,6 +62,7 @@ class ThreadedWriter(Writer):
         use_guid=False,
         bytes_io=False,
         cpu=False,
+        fns=None,
     ):
         # set variables
         self.out_dir = out_dir
@@ -76,7 +77,13 @@ class ThreadedWriter(Writer):
         self.col_idx = {}
 
         self.num_threads = num_threads
-        self.num_out_files = num_out_files
+        self.fns = [fns] if isinstance(fns, str) else fns
+        if self.fns:
+            # If sepecific file names were specified,
+            # ignore `num_out_files` argument
+            self.num_out_files = len(self.fns)
+        else:
+            self.num_out_files = num_out_files
         self.num_samples = [0] * num_out_files
 
         self.data_paths = None
