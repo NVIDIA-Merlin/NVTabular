@@ -14,7 +14,7 @@ from tensorflow.python.feature_column import feature_column_v2 as fc
 import cupy
 import time
 BASE_DIR = '/raid/criteo/tests/jp_movie/'
-BATCH_SIZE = 1024                               # Batch Size
+BATCH_SIZE = 16384                              # Batch Size
 CATEGORICAL_COLUMNS = ['movieId', 'userId']     # Single-hot
 CATEGORICAL_MH_COLUMNS = ['genres']             # Multi-hot
 NUMERIC_COLUMNS = []
@@ -54,7 +54,9 @@ train_dataset_tf = KerasSequenceLoader(
     engine='parquet',
     shuffle=False,
     buffer_size=0.06, # how many batches to load at once
-    parts_per_chunk=1
+    parts_per_chunk=1,
+    global_size=hvd.size(),
+    global_rank=hvd.rank()
 
 )
 inputs = {}     # tf.keras.Input placeholders for each feature to be used

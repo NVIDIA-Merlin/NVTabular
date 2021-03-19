@@ -202,6 +202,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         devices=None,
         parts_per_chunk=1,
         reader_kwargs=None,
+        global_size=None,
+        global_rank=None,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -225,6 +227,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             shuffle,
             parts_per_chunk=parts_per_chunk,
             devices=devices,
+            global_size=global_size,
+            global_rank=global_rank
         )
 
     def __len__(self):

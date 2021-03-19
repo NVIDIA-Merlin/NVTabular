@@ -169,11 +169,17 @@ class DataLoader:
         shuffle,
         parts_per_chunk=1,
         devices=None,
+        global_size=None,
+        global_rank=None,
+        indices=None,
     ):
         self.data = dataset
-        self.indices = cp.arange(dataset.to_ddf().npartitions)
+        self.indices = indices or cp.arange(dataset.to_ddf().npartitions)
 
         devices = devices or [0]
+
+        self.global_size = global_size or 1
+        self.global_rank = global_rank or 0
 
         self.cat_names = cat_names or []
         self.cont_names = cont_names or []
@@ -208,9 +214,12 @@ class DataLoader:
         self._batch_itr = None
 
     def _gather_indices_for_dev(self, dev):
-        per_worker = _num_steps(len(self.indices), len(self.devices))
-        worker_id = self.devices.index(dev)
-        start = worker_id * per_worker
+        # this should be self.indices divided by total processes, global set
+        per_worker = _num_steps(len(self.indices), self.global_size)
+        # identify process rank out of all processes (not local rank)
+        #worker_id = self.devices.index(dev)
+        start = self.global_rank * per_worker
+        print(self.global_rank, self.indices[start : start + per_worker].tolist(), self.indices.tolist())
         return self.indices[start : start + per_worker].tolist()
 
     def __iter__(self):
