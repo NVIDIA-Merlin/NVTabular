@@ -228,7 +228,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             parts_per_chunk=parts_per_chunk,
             devices=devices,
             global_size=global_size,
-            global_rank=global_rank
+            global_rank=global_rank,
         )
 
     def __len__(self):
@@ -268,8 +268,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # commenting out since device statements cause
         # RuntimeErrors when exiting if two dataloaders
         # are running at once (e.g. train and validation)
-        yield tf.device('/GPU:' + str(dev))
-        #yield dev
+        yield tf.device("/GPU:" + str(dev))
+        # yield dev
 
     def _split_fn(self, tensor, idx, axis=0):
         return tf.split(tensor, idx, axis=axis)

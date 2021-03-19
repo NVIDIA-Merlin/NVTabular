@@ -217,9 +217,8 @@ class DataLoader:
         # this should be self.indices divided by total processes, global set
         per_worker = _num_steps(len(self.indices), self.global_size)
         # identify process rank out of all processes (not local rank)
-        #worker_id = self.devices.index(dev)
+        # worker_id = self.devices.index(dev)
         start = self.global_rank * per_worker
-        print(self.global_rank, self.indices[start : start + per_worker].tolist(), self.indices.tolist())
         return self.indices[start : start + per_worker].tolist()
 
     def __iter__(self):
