@@ -13,8 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import functools
+
 import dask.dataframe as dd
 import dask_cudf
+import numpy as np
+from dask.bytes import read_bytes
+from dask.utils import parse_bytes
+from fsspec.core import get_fs_token_paths
+from fsspec.utils import infer_compression
 
 from .dataset_engine import DatasetEngine
 
@@ -48,8 +55,68 @@ class CSVDatasetEngine(DatasetEngine):
             ddf = ddf[columns]
         return ddf
 
+    @property
+    @functools.lru_cache(1)
+    def _file_partition_map(self):
+        ind = 0
+        _pp_map = {}
+        for path, blocks in zip(
+            *_byte_block_counts(
+                self.paths,
+                self.part_size,
+                **self.csv_kwargs,
+            )
+        ):
+            _pp_map[path.split(self.fs.sep)[-1]] = np.arange(ind, ind + blocks)
+            ind += blocks
+        return _pp_map
+
     def to_cpu(self):
         self.cpu = True
 
     def to_gpu(self):
         self.cpu = False
+
+
+def _byte_block_counts(
+    urlpath,
+    blocksize,
+    lineterminator=None,
+    compression="infer",
+    storage_options=None,
+    **kwargs,
+):
+    """Return a list of paths and block counts.
+
+    Logic copied from dask.bytes.read_bytes
+    """
+
+    if lineterminator is not None and len(lineterminator) == 1:
+        kwargs["lineterminator"] = lineterminator
+    else:
+        lineterminator = "\n"
+
+    if compression == "infer":
+        paths = get_fs_token_paths(urlpath, mode="rb", storage_options=storage_options)[2]
+        compression = infer_compression(paths[0])
+
+    if isinstance(blocksize, str):
+        blocksize = parse_bytes(blocksize)
+    if blocksize and compression:
+        blocksize = None
+
+    b_out = read_bytes(
+        urlpath,
+        delimiter=lineterminator.encode(),
+        blocksize=blocksize,
+        sample=False,
+        compression=compression,
+        include_path=True,
+        **(storage_options or {}),
+    )
+    _, values, paths = b_out
+
+    if not isinstance(values[0], (tuple, list)):
+        values = [values]
+
+    return paths, [len(v) for v in values]
