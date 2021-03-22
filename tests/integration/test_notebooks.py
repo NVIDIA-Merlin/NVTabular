@@ -28,7 +28,7 @@ from criteo_parsers import CriteoBenchFastAI
 from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
-DATA_START = os.environ.get("DATASET_DIR", "/raid/criteo/")
+DATA_START = os.environ.get("DATASET_DIR", "/raid/data/")
 
 
 def test_criteo_notebook(asv_db, bench_info, tmpdir):
@@ -153,6 +153,12 @@ def test_tf_inference_examples(asv_db, bench_info, tmpdir):
     )
 
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+
+
+def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
+
+    data_path = DATA_START  # os.path.join(DATA_START, "inference/data/")
+    input_path = DATA_START  # os.path.join(DATA_START, "inference/input/")
 
     os.environ["MODEL_BASE_DIR"] = "/model/models_multihot/"
 
