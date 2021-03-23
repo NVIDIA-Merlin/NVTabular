@@ -70,6 +70,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         shuffle=False,
         parts_per_chunk=1,
         devices=None,
+        global_size=None,
+        global_rank=None,
     ):
         DataLoader.__init__(
             self,
@@ -81,6 +83,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             shuffle,
             parts_per_chunk=parts_per_chunk,
             devices=devices,
+            global_size=global_size,
+            global_rank=global_rank,
         )
 
     def __iter__(self):

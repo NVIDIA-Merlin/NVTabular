@@ -46,6 +46,8 @@ train_dataset = TorchAsyncItr(
     conts=NUMERIC_COLUMNS,
     labels=["rating"],
     devices=[gpu_to_use],
+    global_size=hvd.size(),
+    global_rank=hvd.rank(),
 )
 train_loader = DLDataLoader(
     train_dataset, batch_size=None, collate_fn=collate_fn, pin_memory=False, num_workers=0
