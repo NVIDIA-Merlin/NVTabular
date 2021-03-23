@@ -1,7 +1,8 @@
 # External dependencies
+import argparse
 import glob
 import os
-import argparse 
+
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
