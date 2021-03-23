@@ -64,7 +64,7 @@ for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
             tf.feature_column.categorical_column_with_identity(
                 col, EMBEDDING_TABLE_SHAPES[col][0]  # Input dimension (vocab size)
             ),
-            EMBEDDING_TABLE_SHAPES[col][1],                     # Embedding output dimension
+            EMBEDDING_TABLE_SHAPES[col][1],  # Embedding output dimension
         )
     )
 emb_layer = layers.DenseFeatures(emb_layers)
