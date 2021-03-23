@@ -5,8 +5,6 @@ import os
 
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
-os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
-# os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("OMPI_COMM_WORLD_LOCAL_RANK")
 # TF will have claimed all free GPU memory
 os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
 
@@ -27,24 +25,18 @@ parser.add_argument("--labels", default=None, help="continuous columns")
 args = parser.parse_args()
 
 
-BASE_DIR = args.dir_in or "/raid/criteo/tests/jp_movie/"
+BASE_DIR = args.dir_in or "/path/to/files/"
 BATCH_SIZE = args.b_size or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
 TRAIN_PATHS = sorted(glob.glob(BASE_DIR + "*.parquet"))  # Output from ETL-with-NVTabular
-print(TRAIN_PATHS, BASE_DIR)
 hvd.init()
 
-print("U GOT WHAT I NEED: " + str(hvd.local_rank()))
 
 proc = nvt.Workflow.load(BASE_DIR + "workflow/")
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
 
-# if gpus:
-#    tf.config.experimental.set_visible_devices(gpus[hvd.local_rank()], 'GPU')
-# dev_dev = hvd.local_rank() if hvd.local_rank() == 1 else 2
-# cupy.cuda.Device(dev_dev).use()
 train_dataset_tf = KerasSequenceLoader(
     TRAIN_PATHS,  # you could also use a glob pattern
     batch_size=BATCH_SIZE,
@@ -72,8 +64,7 @@ for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
             tf.feature_column.categorical_column_with_identity(
                 col, EMBEDDING_TABLE_SHAPES[col][0]  # Input dimension (vocab size)
             ),
-            # EMBEDDING_TABLE_SHAPES[col][1]                     # Embedding output dimension
-            16,
+            EMBEDDING_TABLE_SHAPES[col][1],                     # Embedding output dimension
         )
     )
 emb_layer = layers.DenseFeatures(emb_layers)
@@ -92,16 +83,13 @@ checkpoint = tf.train.Checkpoint(model=model, optimizer=opt)
 
 @tf.function(experimental_relax_shapes=True)
 def training_step(examples, labels, first_batch):
-    print("U GOT LOOP: " + str(hvd.local_rank()))
     with tf.GradientTape() as tape:
         probs = model(examples, training=True)
         loss_value = loss(labels, probs)
     # Horovod: add Horovod Distributed GradientTape.
-    print("U GOT TAPE: " + str(hvd.local_rank()))
     tape = hvd.DistributedGradientTape(tape)
     grads = tape.gradient(loss_value, model.trainable_variables)
     opt.apply_gradients(zip(grads, model.trainable_variables))
-    print("U GOT GRAD: " + str(hvd.local_rank()))
     # Horovod: broadcast initial variable states from rank 0 to all other processes.
     # This is necessary to ensure consistent initialization of all workers when
     # training is started with random weights or restored from a checkpoint.
