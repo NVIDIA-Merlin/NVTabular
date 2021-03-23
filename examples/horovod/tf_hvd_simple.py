@@ -5,9 +5,11 @@ import os
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
-#os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("OMPI_COMM_WORLD_LOCAL_RANK")
+# os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("OMPI_COMM_WORLD_LOCAL_RANK")
 # TF will have claimed all free GPU memory
 os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
+import argparse
+
 import horovod.tensorflow as hvd  # noqa: E402
 import tensorflow as tf  # noqa: E402
 
@@ -15,15 +17,13 @@ import nvtabular as nvt  # noqa: E402
 from nvtabular.framework_utils.tensorflow import layers  # noqa: E402
 from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402
 
-import argparse
-
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('--dir_in', default=None, help='Input directory')
-parser.add_argument('--b_size', default=None, help='batch size')
-parser.add_argument('--cats', default=None, help='categorical columns')
-parser.add_argument('--cats_mh', default=None, help='categorical multihot columns')
-parser.add_argument('--conts', default=None, help='continuous columns')
-parser.add_argument('--labels', default=None, help='continuous columns')
+parser = argparse.ArgumentParser(description="Process some integers.")
+parser.add_argument("--dir_in", default=None, help="Input directory")
+parser.add_argument("--b_size", default=None, help="batch size")
+parser.add_argument("--cats", default=None, help="categorical columns")
+parser.add_argument("--cats_mh", default=None, help="categorical multihot columns")
+parser.add_argument("--conts", default=None, help="continuous columns")
+parser.add_argument("--labels", default=None, help="continuous columns")
 args = parser.parse_args()
 
 
