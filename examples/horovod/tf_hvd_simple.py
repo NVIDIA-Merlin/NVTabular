@@ -2,12 +2,11 @@
 import argparse
 import glob
 import os
-
+import cupy
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 # TF will have claimed all free GPU memory
 os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
-
 import horovod.tensorflow as hvd  # noqa: E402
 import tensorflow as tf  # noqa: E402
 
@@ -30,9 +29,14 @@ BATCH_SIZE = args.b_size or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
-TRAIN_PATHS = sorted(glob.glob(BASE_DIR + "*.parquet"))  # Output from ETL-with-NVTabular
+TRAIN_PATHS = sorted(glob.glob(BASE_DIR + "train/*.parquet"))  # Output from ETL-with-NVTabular
 hvd.init()
 
+cupy.random.seed(None)
+seed_fragment = cupy.random.randint(0, 1000)
+seed_tensor = tf.convert_to_tensor(seed_fragment.get())
+reduced_seed = hvd.allreduce(seed_tensor)
+cupy.random.seed(reduced_seed)
 
 proc = nvt.Workflow.load(BASE_DIR + "workflow/")
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
@@ -44,7 +48,7 @@ train_dataset_tf = KerasSequenceLoader(
     cat_names=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
     cont_names=NUMERIC_COLUMNS,
     engine="parquet",
-    shuffle=False,
+    shuffle=True,
     buffer_size=0.06,  # how many batches to load at once
     parts_per_chunk=1,
     global_size=hvd.size(),
@@ -107,6 +111,7 @@ for batch, (examples, labels) in enumerate(train_dataset_tf):
     loss_value = training_step(examples, labels, batch == 0)
     if batch % 10 == 0 and hvd.local_rank() == 0:
         print("Step #%d\tLoss: %.6f" % (batch, loss_value))
+# hvd.join()
 # Horovod: save checkpoints only on worker 0 to prevent other workers from
 # corrupting it.
 if hvd.rank() == 0:
