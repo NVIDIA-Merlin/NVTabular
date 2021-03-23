@@ -409,7 +409,7 @@ def test_chaining_3():
     )
 
     platform_features = ["platform"] >> ops.Dropna()
-    joined = ["ad_id"] >> ops.JoinGroupby(cont_names=["clicked"], stats=["sum", "count"])
+    joined = ["ad_id"] >> ops.JoinGroupby(cont_cols=["clicked"], stats=["sum", "count"])
     joined_lambda = (
         joined
         >> ops.LambdaOp(f=lambda col, gdf: col / gdf["ad_id_count"])
