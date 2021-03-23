@@ -92,10 +92,11 @@ hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
 
 for epoch in range(1):
-    print(f"Starting epoch on worker {gpu_to_use}")
     start = time()
     train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
+    hvd.join(gpu_to_use)
     valid_loss, y_pred, y = process_epoch(valid_loader, model, train=False)
+    hvd.join(gpu_to_use)
     print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Valid loss: {valid_loss:.4f}.")
     t_final = time() - start
     total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed
