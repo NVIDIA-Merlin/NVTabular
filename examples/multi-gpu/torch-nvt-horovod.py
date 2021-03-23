@@ -60,6 +60,8 @@ valid_dataset = TorchAsyncItr(
     conts=NUMERIC_COLUMNS,
     labels=["rating"],
     devices=[gpu_to_use],
+    global_size=hvd.size(),
+    global_rank=hvd.rank(),
 )
 valid_loader = DLDataLoader(
     valid_dataset, batch_size=None, collate_fn=collate_fn, pin_memory=False, num_workers=0
@@ -95,6 +97,7 @@ for epoch in range(1):
     start = time()
     train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
     hvd.join(gpu_to_use)
+    hvd.broadcast_parameters(model.state_dict(), root_rank=0)
     valid_loss, y_pred, y = process_epoch(valid_loader, model, train=False)
     hvd.join(gpu_to_use)
     print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Valid loss: {valid_loss:.4f}.")
