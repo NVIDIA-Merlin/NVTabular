@@ -15,27 +15,30 @@ import nvtabular as nvt  # noqa: E402
 from nvtabular.framework_utils.tensorflow import layers  # noqa: E402
 from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402
 
-BASE_DIR = "/raid/criteo/tests/jp_movie/"
-BATCH_SIZE = 16384  # Batch Size
-CATEGORICAL_COLUMNS = ["movieId", "userId"]  # Single-hot
-CATEGORICAL_MH_COLUMNS = ["genres"]  # Multi-hot
-NUMERIC_COLUMNS = []
-TRAIN_PATHS = sorted(glob.glob(BASE_DIR + "train/*.parquet"))  # Output from ETL-with-NVTabular
-VALID_PATHS = sorted(glob.glob(BASE_DIR + "valid/*.parquet"))  # Output from ETL-with-NVTabular
-# proc = nvt.Workflow.load(BASE_DIR + 'workflow')
-# EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
-hvd.init()
-print("U GOT WHAT I NEED: " + str(hvd.local_rank()))
-# Horovod: pin GPU to be used to process local rank (one GPU per process)
-# TODO: Resolve issue where memory growth can't be set on virtual devices,
-# and importing KSL/KSV from NVT forces the use of virtual devices
-# for gpu in gpus:
-#     tf.config.experimental.set_memory_growth(gpu, True)
-# time.sleep(20)
-# cupy.cuda.Device(dev_dev).use()
-# os.environ["CUDA_VISIBLE_DEVICES"]=str(dev_dev)
+import argparse
 
-proc = nvt.Workflow.load(BASE_DIR + "workflow")
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('--dir_in', default=None, help='Input directory')
+parser.add_argument('--b_size', default=None, help='batch size')
+parser.add_argument('--cats', default=None, help='categorical columns')
+parser.add_argument('--cats_mh', default=None, help='categorical multihot columns')
+parser.add_argument('--conts', default=None, help='continuous columns')
+parser.add_argument('--labels', default=None, help='continuous columns')
+args = parser.parse_args()
+
+
+BASE_DIR = args.dir_in or "/raid/criteo/tests/jp_movie/"
+BATCH_SIZE = args.b_size or 16384  # Batch Size
+CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
+CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
+NUMERIC_COLUMNS = args.conts or []
+TRAIN_PATHS = sorted(glob.glob(BASE_DIR + "*.parquet"))  # Output from ETL-with-NVTabular
+print(TRAIN_PATHS, BASE_DIR)
+hvd.init()
+
+print("U GOT WHAT I NEED: " + str(hvd.local_rank()))
+
+proc = nvt.Workflow.load(BASE_DIR + "workflow/")
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
 
 # if gpus:
