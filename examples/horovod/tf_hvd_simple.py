@@ -1,14 +1,13 @@
 # External dependencies
 import glob
 import os
-
+import argparse 
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
 # os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("OMPI_COMM_WORLD_LOCAL_RANK")
 # TF will have claimed all free GPU memory
 os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
-import argparse
 
 import horovod.tensorflow as hvd  # noqa: E402
 import tensorflow as tf  # noqa: E402
