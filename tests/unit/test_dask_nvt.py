@@ -148,7 +148,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     label_name = ["label"]
 
     features = cat_names >> ops.JoinGroupby(
-        cont_names=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
+        cont_cols=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
     )
 
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
@@ -186,7 +186,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     cats = ColumnGroup(cat_names)
     cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
     groupby_features = cats >> ops.JoinGroupby(
-        cont_names=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
+        cont_cols=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
     )
 
     workflow = Workflow(cat_features + groupby_features, client=client)
