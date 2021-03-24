@@ -29,9 +29,11 @@ from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorF
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/data/")
-INFERENCE_BASE_DIR = "/model/Integration_Tests/"
-INFERENCE_ONE_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
-INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models_multihot/")
+
+INFERENCE_ONE_HOT_BASE_DIR = "/model/Tests_One_Hot/"
+INFERENCE_ONE_HOT = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "models/")
+INFERENCE_MULTI_HOT_BASE_DIR = "/model/Tests_Multi_Hot/"
+INFERENCE_MULTI_HOT = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "models_multihot/")
 
 
 def test_criteo_notebook(asv_db, bench_info, tmpdir):
@@ -117,37 +119,41 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
 
 def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
 
-    data_path = INFERENCE_BASE_DIR
-    input_path = INFERENCE_BASE_DIR
+    data_path = INFERENCE_ONE_HOT_BASE_DIR
+    input_path = INFERENCE_ONE_HOT_BASE_DIR
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-TF.ipynb"
     )
 
-    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
+    os.environ["BASE_DIR"] = INFERENCE_ONE_HOT_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
     os.environ["MODEL_NAME_TF"] = "movielens_tf"
     os.environ["MODEL_NAME_ENSEMBLE"] = "movielens"
-    os.environ["MODEL_PATH"] = os.path.join(DATA_START, "models")
+    os.environ["MODEL_PATH"] = INFERENCE_ONE_HOT
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+
+    data_path = INFERENCE_MULTI_HOT_BASE_DIR
+    input_path = INFERENCE_MULTI_HOT_BASE_DIR
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-TF.ipynb"
     )
 
+    os.environ["BASE_DIR"] = INFERENCE_MULTI_HOT_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt_mh"
     os.environ["MODEL_NAME_TF"] = "movielens_tf_mh"
     os.environ["MODEL_NAME_ENSEMBLE"] = "movielens_mh"
-    os.environ["MODEL_PATH"] = os.path.join(DATA_START, "models_multihot")
+    os.environ["MODEL_PATH"] = INFERENCE_MULTI_HOT
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
 
 
 def test_tf_inference_examples(asv_db, bench_info, tmpdir):
 
-    data_path = INFERENCE_BASE_DIR
-    input_path = INFERENCE_BASE_DIR
+    data_path = INFERENCE_ONE_HOT_BASE_DIR
+    input_path = INFERENCE_ONE_HOT_BASE_DIR
 
     os.environ["MODEL_BASE_DIR"] = INFERENCE_ONE_HOT
 
@@ -155,13 +161,13 @@ def test_tf_inference_examples(asv_db, bench_info, tmpdir):
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-inference.ipynb"
     )
 
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=True)
 
 
 def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
 
-    data_path = INFERENCE_BASE_DIR
-    input_path = INFERENCE_BASE_DIR
+    data_path = INFERENCE_MULTI_HOT_BASE_DIR
+    input_path = INFERENCE_MULTI_HOT_BASE_DIR
 
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
 
@@ -171,7 +177,7 @@ def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
         "movielens-multihot-inference.ipynb",
     )
 
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=True)
 
 
 def _run_notebook(
