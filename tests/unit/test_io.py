@@ -590,10 +590,14 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
     # Adding extra ds -> ds2 step to test `base_dataset` usage.
     pq_path = os.path.join(str(tmpdir), "pq_dataset")
     ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds)
-    ds2.to_parquet(pq_path, preserve_files=preserve_files)
+    ds2.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
 
     # Check output.
     # Note that we are converting the inital hex strings to int32.
     ds_check = nvt.Dataset(pq_path, engine="parquet")
     df["C0"] = df["C0"].apply(int, base=16).astype("int32")
     assert_eq(ds_check.to_ddf().compute(), df, check_index=False)
+
+    # Check that the `suffix=".pq"` argument was successful
+    assert glob.glob(os.path.join(pq_path, "*.part.pq"))
+    assert not glob.glob(os.path.join(pq_path, "*.parquet"))

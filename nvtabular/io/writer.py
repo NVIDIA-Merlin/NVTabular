@@ -63,6 +63,7 @@ class ThreadedWriter(Writer):
         bytes_io=False,
         cpu=False,
         fns=None,
+        suffix=None,
     ):
         # set variables
         self.out_dir = out_dir
@@ -91,6 +92,7 @@ class ThreadedWriter(Writer):
         self.use_guid = use_guid
         self.bytes_io = bytes_io
         self.cpu = cpu
+        self.suffix = suffix
 
         # Resolve file system
         self.fs = fs or get_fs_token_paths(str(out_dir))[0]
