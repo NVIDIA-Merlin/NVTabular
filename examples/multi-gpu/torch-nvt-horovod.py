@@ -2,6 +2,7 @@ import glob
 import os
 from time import time
 
+import cupy
 import torch
 
 import nvtabular as nvt
@@ -39,6 +40,22 @@ def collate_fn(x):
     return x
 
 
+# Reseed each worker's dataloader each epoch to get fresh a shuffle
+# that's consistent across workers
+def seed_fn():
+    max_rand = torch.iinfo(torch.int).max // hvd.size()
+
+    # Use system randomness to generate a seed fragment
+    cupy.random.seed(None)
+    seed_fragment = cupy.random.randint(0, max_rand)
+    seed_tensor = torch.tensor(seed_fragment)
+
+    # Aggregate seed fragments from all Horovod workers
+    reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum) % max_rand
+
+    return reduced_seed
+
+
 train_dataset = TorchAsyncItr(
     nvt.Dataset(TRAIN_PATHS),
     batch_size=BATCH_SIZE,
@@ -48,6 +65,8 @@ train_dataset = TorchAsyncItr(
     devices=[gpu_to_use],
     global_size=hvd.size(),
     global_rank=hvd.rank(),
+    shuffle=True,
+    seed_fn=seed_fn,
 )
 train_loader = DLDataLoader(
     train_dataset, batch_size=None, collate_fn=collate_fn, pin_memory=False, num_workers=0
@@ -93,14 +112,15 @@ hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 
 optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
 
-for epoch in range(1):
+for epoch in range(10):
     start = time()
+    print(f"Training epoch {epoch}")
     train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
     hvd.join(gpu_to_use)
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
     valid_loss, y_pred, y = process_epoch(valid_loader, model, train=False)
-    hvd.join(gpu_to_use)
     print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Valid loss: {valid_loss:.4f}.")
+    hvd.join(gpu_to_use)
     t_final = time() - start
     total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed
     print(
