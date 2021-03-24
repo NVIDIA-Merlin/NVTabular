@@ -1,3 +1,4 @@
+import argparse
 import glob
 import os
 from time import time
@@ -10,7 +11,18 @@ from nvtabular.framework_utils.torch.models import Model
 from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import DLDataLoader, TorchAsyncItr
 
+# Horovod must be the last import to avoid conflicts
 import horovod.torch as hvd  # noqa: isort
+
+parser = argparse.ArgumentParser(description="Train a multi-gpu model with Torch and Horovod")
+parser.add_argument("--dir_in", default=None, help="Input directory")
+parser.add_argument("--batch_size", default=None, help="Batch size")
+parser.add_argument("--cats", default=None, help="Categorical columns")
+parser.add_argument("--cats_mh", default=None, help="Categorical multihot columns")
+parser.add_argument("--conts", default=None, help="Continuous columns")
+parser.add_argument("--labels", default=None, help="Label columns")
+parser.add_argument("--epochs", default=1, help="Training epochs")
+args = parser.parse_args()
 
 hvd.init()
 
@@ -19,12 +31,12 @@ gpu_to_use = hvd.local_rank()
 if torch.cuda.is_available():
     torch.cuda.set_device(gpu_to_use)
 
-BASE_DIR = os.path.expanduser("./data/")
 
-BATCH_SIZE = 1024 * 32  # Batch Size
-CATEGORICAL_COLUMNS = ["movieId", "userId"]  # Single-hot
-CATEGORICAL_MH_COLUMNS = ["genres"]  # Multi-hot
-NUMERIC_COLUMNS = []
+BASE_DIR = os.path.expanduser(args.dir_in or "./data/")
+BATCH_SIZE = args.batch_size or 16384  # Batch Size
+CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
+CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
+NUMERIC_COLUMNS = args.conts or []
 
 # Output from ETL-with-NVTabular
 TRAIN_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "train", "*.parquet")))
@@ -120,7 +132,7 @@ hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 
 optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
 
-for epoch in range(10):
+for epoch in range(args.epochs):
     start = time()
     print(f"Training epoch {epoch}")
     train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
