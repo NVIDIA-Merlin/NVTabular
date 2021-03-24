@@ -655,7 +655,7 @@ def _write_data(data_list, output_path, fs, fn):
 
 
 class BaseParquetWriter(ThreadedWriter):
-    def __init__(self, out_dir, **kwargs):
+    def __init__(self, out_dir, suffix=".parquet", **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = []
         self.data_files = []
@@ -664,6 +664,7 @@ class BaseParquetWriter(ThreadedWriter):
         self._lock = threading.RLock()
         self.pwriter = self._pwriter
         self.pwriter_kwargs = {}
+        self.suffix = suffix
 
     @property
     def _pwriter(self):
@@ -682,9 +683,9 @@ class BaseParquetWriter(ThreadedWriter):
         if self.fns:
             fn = self.fns[i]
         elif self.use_guid:
-            fn = f"{i}.{guid()}.parquet"
+            fn = f"{i}.{guid()}{self.suffix}"
         else:
-            fn = f"{i}.parquet"
+            fn = f"{i}{self.suffix}"
 
         return os.path.join(self.out_dir, fn)
 
