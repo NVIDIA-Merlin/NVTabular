@@ -693,6 +693,24 @@ def test_categorify_max_size(max_emb_size):
     )
 
 
+def test_joingroupby_dependency(tmpdir):
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_A", "User_A", "User_B", "User_B"],
+            "Cost": [100.0, 200.0, 300.0, 400.0, 400.0],
+        }
+    )
+
+    normalized_cost = ["Cost"] >> nvt.ops.NormalizeMinMax() >> nvt.ops.Rename(postfix="_normalized")
+    groupby_features = ["Author"] >> ops.JoinGroupby(
+        out_path=str(tmpdir), stats=["sum"], cont_cols=normalized_cost
+    )
+    workflow = nvt.Workflow(groupby_features)
+
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    assert df_out["Author_Cost_normalized_sum"].to_arrow().to_pylist() == [1.0, 1.0, 1.0, 2.0, 2.0]
+
+
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups):
 
@@ -706,7 +724,7 @@ def test_joingroupby_multi(tmpdir, groups):
     )
 
     groupby_features = groups >> ops.JoinGroupby(
-        out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"]
+        out_path=str(tmpdir), stats=["sum"], cont_cols=["Cost"]
     )
     workflow = nvt.Workflow(groupby_features + "Post")
 
