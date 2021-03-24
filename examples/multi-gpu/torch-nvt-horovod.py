@@ -12,7 +12,7 @@ from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import DLDataLoader, TorchAsyncItr
 
 # Horovod must be the last import to avoid conflicts
-import horovod.torch as hvd  # noqa: isort
+import horovod.torch as hvd  # noqa: E402
 
 parser = argparse.ArgumentParser(description="Train a multi-gpu model with Torch and Horovod")
 parser.add_argument("--dir_in", default=None, help="Input directory")
