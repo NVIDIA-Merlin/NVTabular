@@ -599,5 +599,5 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
     assert_eq(ds_check.to_ddf().compute(), df, check_index=False)
 
     # Check that the `suffix=".pq"` argument was successful
-    assert glob.glob(os.path.join(pq_path, "*.part.pq"))
+    assert glob.glob(os.path.join(pq_path, "*.pq"))
     assert not glob.glob(os.path.join(pq_path, "*.parquet"))
