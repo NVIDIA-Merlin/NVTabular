@@ -40,17 +40,25 @@ def collate_fn(x):
     return x
 
 
-# Reseed each worker's dataloader each epoch to get fresh a shuffle
-# that's consistent across workers
+# Seed with system randomness (or a static seed)
+cupy.random.seed(None)
+
+
 def seed_fn():
+    """
+    Generate consistent dataloader shuffle seeds across workers
+
+    Reseeds each worker's dataloader each epoch to get fresh a shuffle
+    that's consistent across workers.
+    """
+
     max_rand = torch.iinfo(torch.int).max // hvd.size()
 
-    # Use system randomness to generate a seed fragment
-    cupy.random.seed(None)
+    # Generate a seed fragment
     seed_fragment = cupy.random.randint(0, max_rand)
-    seed_tensor = torch.tensor(seed_fragment)
 
     # Aggregate seed fragments from all Horovod workers
+    seed_tensor = torch.tensor(seed_fragment)
     reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum) % max_rand
 
     return reduced_seed

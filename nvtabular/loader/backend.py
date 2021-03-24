@@ -179,9 +179,6 @@ class DataLoader:
 
         devices = devices or [0]
 
-        def default_seed_fn():
-            return None
-
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
@@ -190,7 +187,7 @@ class DataLoader:
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.seed_fn = seed_fn or default_seed_fn
+        self.seed_fn = seed_fn
         self.devices = devices
         self.num_rows_processed = 0
 
@@ -235,8 +232,9 @@ class DataLoader:
         # shuffle partition indices to bring disparate
         # parts of the dataset "close" to one another
         if self.shuffle:
-            new_seed = self.seed_fn()
-            cp.random.seed(new_seed)
+            if self.seed_fn:
+                new_seed = self.seed_fn()
+                cp.random.seed(new_seed)
             cp.random.shuffle(self.indices)
 
         # build and start new threads for loading and
