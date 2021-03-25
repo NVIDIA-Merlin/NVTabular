@@ -41,6 +41,10 @@ class DatasetEngine:
         raise NotImplementedError(""" Move data to GPU memory """)
 
     @property
+    def _path_partition_map(self):
+        return None
+
+    @property
     def num_rows(self):
         raise NotImplementedError(""" Returns the number of rows in the dataset """)
 

@@ -28,6 +28,8 @@ def writer_factory(
     bytes_io=False,
     num_threads=0,
     cpu=False,
+    fns=None,
+    suffix=None,
 ):
     if output_format is None:
         return None
@@ -42,6 +44,8 @@ def writer_factory(
         bytes_io=bytes_io,
         num_threads=num_threads,
         cpu=cpu,
+        fns=fns,
+        suffix=suffix,
     )
 
 
