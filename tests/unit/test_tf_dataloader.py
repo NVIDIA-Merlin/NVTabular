@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import importlib
 import os
 import subprocess
 
@@ -302,8 +303,8 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
 hvd = pytest.importorskip("horovod")
 
 
+@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 def test_hvd(tmpdir):
-    pytest.importorskip("horovod")
     json_sample = {
         "conts": {},
         "cats": {
