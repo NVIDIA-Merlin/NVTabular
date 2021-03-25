@@ -418,6 +418,7 @@ class Dataset:
         cats=None,
         conts=None,
         labels=None,
+        suffix=".parquet",
     ):
         """Writes out to a parquet dataset
 
@@ -465,6 +466,13 @@ class Dataset:
         dtypes : dict
             Dictionary containing desired datatypes for output columns.
             Keys are column names, values are datatypes.
+        suffix : str or False
+            File-name extension to use for all output files. This argument
+            is ignored if a specific list of file names is specified using
+            the ``output_files`` option. If ``preserve_files=True``, this
+            suffix will be appended to the original name of each file,
+            unless the original extension is ".csv", ".parquet", ".avro",
+            or ".orc" (in which case the old extension will be replaced).
         cats : list of str, optional
             List of categorical columns
         conts : list of str, optional
@@ -482,11 +490,14 @@ class Dataset:
         else:
             ddf = self.to_ddf(shuffle=shuffle)
 
+        # Replace None/False suffix argument with ""
+        suffix = suffix or ""
+
         # Convert `output_files` argument to a dict mapping
         if output_files:
 
             if isinstance(output_files, int):
-                output_files = [f"part_{i}" for i in range(output_files)]
+                output_files = [f"part_{i}" + suffix for i in range(output_files)]
             if isinstance(output_files, list):
                 new = {}
                 split = math.ceil(ddf.npartitions / len(output_files))
@@ -495,6 +506,7 @@ class Dataset:
                     stop = min(start + split, ddf.npartitions)
                     new[fn] = np.arange(start, stop)
                 output_files = new
+                suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
                 raise TypeError(f"{type(output_files)} not a supported type for `output_files`.")
 
@@ -502,13 +514,24 @@ class Dataset:
         # or use file_partition_map to extract the mapping
         elif preserve_files:
             try:
-                output_files = self.base_dataset.file_partition_map
+                _output_files = self.base_dataset.file_partition_map
             except (AttributeError):
                 raise AttributeError(
                     f"`to_parquet(..., preserve_files=True)` is not currently supported "
                     f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
                     f"that `dataset.base_dataset` is backed by csv or parquet files."
                 )
+            if suffix == "":
+                output_files = _output_files
+            else:
+                output_files = {}
+                for fn, rgs in _output_files.items():
+                    split_fn = fn.split(".")
+                    if split_fn[-1] in ("parquet", "avro", "orc", "csv"):
+                        output_files[".".join(split_fn[:-1]) + suffix] = rgs
+                    else:
+                        output_files[fn + suffix] = rgs
+            suffix = ""  # Don't add a suffix later - Names already include it
 
         if dtypes:
             _meta = _set_dtypes(ddf._meta, dtypes)
@@ -532,6 +555,7 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            suffix=suffix,
         )
 
     def to_hugectr(
