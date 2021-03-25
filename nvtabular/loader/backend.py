@@ -15,8 +15,9 @@
 #
 import queue
 import threading
-from collections import OrderedDict
 import warnings
+from collections import OrderedDict
+
 import cudf
 import cupy as cp
 from cudf.utils.dtypes import is_list_dtype
@@ -26,7 +27,7 @@ from nvtabular.ops import _get_embedding_order
 
 
 def _num_steps(num_samples, step_size):
-    #if (num_samples - 1) % step_size == 0 and num_samples != step_size:
+    # if (num_samples - 1) % step_size == 0 and num_samples != step_size:
     #    return (num_samples - 1) // step_size
     return (num_samples - 1) // step_size + 1
 
@@ -177,7 +178,7 @@ class DataLoader:
         parts_per_chunk=1,
         devices=None,
         global_size=None,
-        global_rank=None
+        global_rank=None,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
@@ -221,9 +222,9 @@ class DataLoader:
 
     def _gather_indices_for_dev(self, dev):
         # this should be self.indices divided by total processes, global set
-        if len(self.indices) < self.global_size:            
+        if len(self.indices) < self.global_size:
             warnings.warn(
-                f"""You have more processes({self.global_size}) than dataset 
+                f"""You have more processes({self.global_size}) than dataset
                     partitions({len(self.indices)}), reduce the number of processes."""
             )
             raise IndexError

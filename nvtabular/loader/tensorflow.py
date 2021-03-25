@@ -255,7 +255,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             # for many users. That said, blind reinitialization
             # is probably irresponsible, so worth thinking
             # of something better here
-            # raise StopIteration
+            # return StopIteration
             DataLoader.__iter__(self)
             return DataLoader.__next__(self)
 
