@@ -23,6 +23,7 @@ from distutils.version import LooseVersion
 
 import cudf
 import dask
+import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import pandas as pd
@@ -323,7 +324,8 @@ def test_dataset_partition_shuffle(tmpdir):
 @pytest.mark.parametrize("num_io_threads", [0, 2])
 @pytest.mark.parametrize("nfiles", [0, 1, 2])
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
-def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
+@pytest.mark.parametrize("file_map", [True, False])
+def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle, file_map):
 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
@@ -332,13 +334,23 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     workflow = nvt.Workflow(nvt.ColumnGroup(columns))
 
     outdir = str(tmpdir.mkdir("out"))
-    transformed = workflow.transform(nvt.Dataset(df))
-    transformed.to_parquet(
-        output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, out_files_per_proc=nfiles
-    )
+    transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
+    if file_map and nfiles:
+        transformed.to_parquet(
+            output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, output_files=nfiles
+        )
+        out_paths = glob.glob(os.path.join(outdir, "part_*"))
+        assert len(out_paths) == nfiles
+    else:
+        transformed.to_parquet(
+            output_path=outdir,
+            num_threads=num_io_threads,
+            shuffle=shuffle,
+            out_files_per_proc=nfiles,
+        )
+        out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
 
     # Check that our output data is exactly the same
-    out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
     df_check = cudf.read_parquet(out_paths)
     assert_eq(
         df_check[columns].sort_values(["x", "y"]),
@@ -530,3 +542,62 @@ def test_validate_and_regenerate_dataset(tmpdir):
 
     # Check cpu version of `to_ddf`
     assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
+
+
+@pytest.mark.parametrize("preserve_files", [True, False])
+@pytest.mark.parametrize("cpu", [True, False])
+def test_dataset_conversion(tmpdir, cpu, preserve_files):
+
+    # Generate toy dataset.
+    # Include "hex" strings to mimic Criteo.
+    size = 100
+    npartitions = 4
+    hex_vals = [
+        "62770d79",
+        "e21f5d58",
+        "afea442f",
+        "945c7fcf",
+        "38b02748",
+        "6fcd6dcb",
+        "3580aa21",
+        "46dedfa6",
+    ]
+    df = pd.DataFrame(
+        {
+            "C0": np.random.choice(hex_vals, size),
+            "I0": np.random.randint(1_000_000_000, high=10_000_000_000, size=size),
+            "F0": np.random.uniform(size=size),
+        }
+    )
+    ddf = dd.from_pandas(df, npartitions=npartitions)
+
+    # Write to csv dataset
+    csv_path = os.path.join(str(tmpdir), "csv_dataset")
+    ddf.to_csv(csv_path, header=False, sep="\t", index=False)
+
+    # Create NVT Dataset
+    dtypes = {"F0": np.float64, "I0": np.int64, "C0": "hex"}
+    ds = nvt.Dataset(
+        csv_path,
+        cpu=cpu,
+        engine="csv",
+        dtypes=dtypes,
+        sep="\t",
+        names=["C0", "I0", "F0"],
+    )
+
+    # Convert csv dataset to parquet.
+    # Adding extra ds -> ds2 step to test `base_dataset` usage.
+    pq_path = os.path.join(str(tmpdir), "pq_dataset")
+    ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds)
+    ds2.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
+
+    # Check output.
+    # Note that we are converting the inital hex strings to int32.
+    ds_check = nvt.Dataset(pq_path, engine="parquet")
+    df["C0"] = df["C0"].apply(int, base=16).astype("int32")
+    assert_eq(ds_check.to_ddf().compute(), df, check_index=False)
+
+    # Check that the `suffix=".pq"` argument was successful
+    assert glob.glob(os.path.join(pq_path, "*.pq"))
+    assert not glob.glob(os.path.join(pq_path, "*.parquet"))

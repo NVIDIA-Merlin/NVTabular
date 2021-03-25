@@ -72,15 +72,9 @@ class FillMedian(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add FillMedian to the workflow for continuous columns
-        proc.add_cont_feature(nvt.ops.FillMedian())
+        # Use FillMedian in a workflow for continuous columns
+        cont_features = ['cont1', 'cont2', 'cont3'] >> ops.FillMedian()
+        processor = nvtabular.Workflow(cont_features)
 
     Parameters
     -----------
