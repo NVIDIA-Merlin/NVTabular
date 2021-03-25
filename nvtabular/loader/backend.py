@@ -16,7 +16,7 @@
 import queue
 import threading
 from collections import OrderedDict
-
+import warnings
 import cudf
 import cupy as cp
 from cudf.utils.dtypes import is_list_dtype
@@ -26,6 +26,8 @@ from nvtabular.ops import _get_embedding_order
 
 
 def _num_steps(num_samples, step_size):
+    #if (num_samples - 1) % step_size == 0 and num_samples != step_size:
+    #    return (num_samples - 1) // step_size
     return (num_samples - 1) // step_size + 1
 
 
@@ -102,10 +104,8 @@ class ChunkQueue:
                 yield current
                 current = []
 
-    def load_chunks(self, dev, dataloader):
+    def load_chunks(self, dev):
         try:
-            # indices = dataloader._gather_indices_for_dev(dev)
-            # itr = iter(dataloader.data.to_iter(indices=indices))
             itr = iter(self.itr)
             with self.dataloader._get_device_ctx(dev):
                 spill = None
@@ -118,12 +118,12 @@ class ChunkQueue:
 
                     chunks = cudf.core.reshape.concat(chunks)
                     chunks.reset_index(drop=True, inplace=True)
-                    chunks, spill = self.get_batch_div_chunk(chunks, dataloader.batch_size)
+                    chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
                     if self.shuffle:
                         _shuffle_df(chunks)
 
                     if len(chunks) > 0:
-                        chunks = self.dataloader.make_tensors(chunks, dataloader._use_nnz)
+                        chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from
                         # freezing on a put on a full queue
@@ -133,7 +133,7 @@ class ChunkQueue:
 
                 # takes care final batch, which is less than batch size
                 if spill is not None and not spill.empty:
-                    spill = self.dataloader.make_tensors(spill, dataloader._use_nnz)
+                    spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
             self.put(e)
@@ -177,11 +177,10 @@ class DataLoader:
         parts_per_chunk=1,
         devices=None,
         global_size=None,
-        global_rank=None,
-        indices=None,
+        global_rank=None
     ):
         self.data = dataset
-        self.indices = indices or cp.arange(dataset.to_ddf().npartitions)
+        self.indices = cp.arange(dataset.to_ddf().npartitions)
 
         devices = devices or [0]
 
@@ -201,7 +200,6 @@ class DataLoader:
         self._workers = None
 
     def __len__(self):
-        # return _num_steps(self.data.num_rows, self.batch_size)
         return _num_steps(len(self._buff), self.batch_size)
 
     @property
@@ -223,6 +221,12 @@ class DataLoader:
 
     def _gather_indices_for_dev(self, dev):
         # this should be self.indices divided by total processes, global set
+        if len(self.indices) < self.global_size:            
+            warnings.warn(
+                f"""You have more processes({self.global_size}) than dataset 
+                    partitions({len(self.indices)}), reduce the number of processes."""
+            )
+            raise IndexError
         per_worker = _num_steps(len(self.indices), self.global_size)
         # identify process rank out of all processes (not local rank)
         # worker_id = self.devices.index(dev)
@@ -244,7 +248,7 @@ class DataLoader:
         # concatenating data
         self._workers = []
         for dev in self.devices:
-            t = threading.Thread(target=self._buff.load_chunks, args=(dev, self))
+            t = threading.Thread(target=self._buff.load_chunks, args=(dev,))
             t.daemon = True
             t.start()
             self._workers.append(t)
