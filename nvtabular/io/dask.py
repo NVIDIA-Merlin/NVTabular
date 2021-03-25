@@ -18,6 +18,7 @@ import collections
 import dask
 import pandas as pd
 from dask.base import tokenize
+from dask.dataframe.core import _concat, new_dd_object
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from nvtx import annotate
@@ -151,6 +152,23 @@ def _write_metadata_files(md_list, output_path, output_format, cpu):
     wc, fs = _writer_cls_factory(output_format, output_path, cpu)
     wc.write_general_metadata(general_md, fs, output_path)
     wc.write_special_metadata(special_md, fs, output_path)
+
+
+def _simple_shuffle(ddf, plan):
+
+    # Construct graph for a simple shuffle
+    token = tokenize(ddf, plan)
+    name = ddf._name + "-shuffled-" + token
+    final_tasks = collections.defaultdict(list)
+    ignore_index = True
+    for i, p in enumerate(plan):
+        final_tasks[(name, p)].append((ddf._name, i))
+    dsk = {k: (_concat, v, ignore_index) for k, v in final_tasks.items()}
+
+    # Conver to a DataFrame collection
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    divisions = [None] * (len(dsk) + 1)
+    return new_dd_object(graph, name, ddf._meta, divisions)
 
 
 def _ddf_to_dataset(

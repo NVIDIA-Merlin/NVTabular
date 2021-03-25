@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import collections
 import logging
 import math
 import random
@@ -36,7 +37,7 @@ from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
-from .dask import _ddf_to_dataset
+from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -372,6 +373,83 @@ class Dataset:
     def to_gpu(self):
         self.cpu = False
         self.engine.to_gpu()
+
+    def shuffle_by_keys(self, keys, hive_data=None):
+        """Shuffle the in-memory Dataset so that all unique-key
+        combinations are moved to the same partition.
+
+        Parameters
+        ----------
+        keys : list(str)
+            Column names to shuffle by.
+        hive_data : bool; default None
+            Whether the dataset is backed by a hive-partitioned
+            dataset (with the keys encoded in the directory structure).
+            By default, the Dataset's `file_partition_map` property will
+            be inspected to infer this setting. When `hive_data` is True,
+            the number of output partitions will correspond to the number
+            of unique key combinations in the dataset.
+        """
+
+        # Make sure we are dealing with a list
+        keys = [keys] if not isinstance(keys, (list, tuple)) else keys
+
+        # Start with default ddf
+        ddf = self.to_ddf()
+
+        if hive_data is not False:
+            # The keys may be encoded in the directory names.
+            # Let's use the file_partition_map to extract this info.
+            try:
+                _mapping = self.file_partition_map
+            except (AttributeError):
+                _mapping = None
+                if hive_data:
+                    raise RuntimeError("Failed to extract hive-partition mapping!")
+
+            # If we have a `_mapping` available, check if the
+            # file names include information about all our keys
+            hive_mapping = collections.defaultdict(list)
+            if _mapping:
+                for k, v in _mapping.items():
+                    for part in k.split(self.engine.fs.sep)[:-1]:
+                        try:
+                            _key, _val = part.split("=")
+                        except ValueError:
+                            continue
+                        if _key in keys:
+                            hive_mapping[_key].append(_val)
+
+            if set(hive_mapping.keys()) == set(keys):
+
+                # Generate hive-mapping DataFrame summary
+                hive_mapping = type(ddf._meta)(hive_mapping)
+                cols = list(hive_mapping.columns)
+                for c in keys:
+                    typ = ddf._meta[c].dtype
+                    if c in cols:
+                        hive_mapping[c] = hive_mapping[c].astype(typ)
+
+                # Generate simple-shuffle plan
+                target_mapping = hive_mapping.drop_duplicates()
+                target_mapping.index.name = "_partition"
+                hive_mapping.index.name = "_sort"
+                target_mapping.reset_index(drop=False, inplace=True)
+                plan = (
+                    hive_mapping.reset_index()
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
+                )
+
+                if hasattr(plan, "to_arrow"):
+                    plan = plan.to_arrow().to_pylist()
+                else:
+                    plan = plan.to_list()
+
+                return Dataset(_simple_shuffle(ddf, plan))
+
+        # Fall back to dask.dataframe algorithm
+        return Dataset(ddf.shuffle(keys))
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
