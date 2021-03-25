@@ -52,16 +52,26 @@ def test_criteo_notebook(tmpdir):
 
 
 def test_optimize_criteo(tmpdir):
-    _get_random_criteo_data(1000).to_csv(os.path.join(tmpdir, "day_0"), sep="\t", header=False)
-    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
-    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
+    input_path = str(tmpdir.mkdir("input"))
+    _get_random_criteo_data(1000).to_csv(os.path.join(input_path, "day_0"), sep="\t", header=False)
+    os.environ["INPUT_DATA_DIR"] = input_path
+    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir.mkdir("output"))
+    with get_cuda_cluster() as cuda_cluster:
+        scheduler_port = cuda_cluster.scheduler_address
 
-    notebook_path = os.path.join(
-        dirname(TEST_PATH),
-        "examples/scaling-criteo/",
-        "01-Download-Convert.ipynb",
-    )
-    _run_notebook(tmpdir, notebook_path)
+        def _nb_modify(line):
+            # Use cuda_cluster "fixture" port rather than allowing notebook
+            # to deploy a LocalCUDACluster within the subprocess
+            line = line.replace("download_criteo = True", "download_criteo = False")
+            line = line.replace("cluster = None", f"cluster = '{scheduler_port}'")
+            return line
+
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/scaling-criteo/",
+            "01-Download-Convert.ipynb",
+        )
+        _run_notebook(tmpdir, notebook_path, _nb_modify)
 
 
 @pytest.mark.skip(reason="Need to install pydot / use mock data on this")
