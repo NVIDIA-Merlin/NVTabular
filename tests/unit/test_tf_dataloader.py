@@ -352,7 +352,7 @@ def test_hvd(tmpdir):
             "2",
             "-H",
             "localhost:2",
-            "./hvd_wrapper.sh",
+            "./examples/horovod/hvd_wrapper.sh",
             "python",
             "examples/horovod/tf_hvd_simple.py",
             "--dir_in",
