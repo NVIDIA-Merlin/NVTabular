@@ -48,12 +48,18 @@ class ChunkQueue:
         before checking for errors and trying again
     """
 
-    def __init__(self, qsize, num_parts=1, shuffle=False, put_wait=1e-6):
+    def __init__(self, dataloader, qsize, num_parts=1, shuffle=False, put_wait=1e-6):
         self.num_parts = num_parts
         self.shuffle = shuffle
         self.put_wait = put_wait
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
+        indices = dataloader._gather_indices_for_dev(0)
+        self.itr = dataloader.data.to_iter(indices=indices)
+        self.dataloader = dataloader
+
+    def __len__(self):
+        return len(self.itr)
 
     @property
     def stopped(self):
@@ -98,9 +104,10 @@ class ChunkQueue:
 
     def load_chunks(self, dev, dataloader):
         try:
-            indices = dataloader._gather_indices_for_dev(dev)
-            itr = iter(dataloader.data.to_iter(indices=indices))
-            with dataloader._get_device_ctx(dev):
+            # indices = dataloader._gather_indices_for_dev(dev)
+            # itr = iter(dataloader.data.to_iter(indices=indices))
+            itr = iter(self.itr)
+            with self.dataloader._get_device_ctx(dev):
                 spill = None
                 for chunks in self.batch(itr):
                     if self.stopped:
@@ -116,7 +123,7 @@ class ChunkQueue:
                         _shuffle_df(chunks)
 
                     if len(chunks) > 0:
-                        chunks = dataloader.make_tensors(chunks, dataloader._use_nnz)
+                        chunks = self.dataloader.make_tensors(chunks, dataloader._use_nnz)
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from
                         # freezing on a put on a full queue
@@ -126,7 +133,7 @@ class ChunkQueue:
 
                 # takes care final batch, which is less than batch size
                 if spill is not None and not spill.empty:
-                    spill = dataloader.make_tensors(spill, dataloader._use_nnz)
+                    spill = self.dataloader.make_tensors(spill, dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
             self.put(e)
@@ -189,12 +196,13 @@ class DataLoader:
         self.devices = devices
         self.num_rows_processed = 0
 
-        self._buff = ChunkQueue(len(devices), num_parts=parts_per_chunk, shuffle=shuffle)
+        self._buff = ChunkQueue(self, len(devices), num_parts=parts_per_chunk, shuffle=shuffle)
         self._batch_itr = None
         self._workers = None
 
     def __len__(self):
-        return _num_steps(self.data.num_rows, self.batch_size)
+        # return _num_steps(self.data.num_rows, self.batch_size)
+        return _num_steps(len(self._buff), self.batch_size)
 
     @property
     def _working(self):

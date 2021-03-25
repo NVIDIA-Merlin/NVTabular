@@ -2,7 +2,9 @@
 import argparse
 import glob
 import os
+
 import cupy
+
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 # TF will have claimed all free GPU memory
@@ -29,7 +31,9 @@ BATCH_SIZE = args.b_size or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
-TRAIN_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "train/*.parquet")))  # Output from ETL-with-NVTabular
+TRAIN_PATHS = sorted(
+    glob.glob(os.path.join(BASE_DIR, "train/*.parquet"))
+)  # Output from ETL-with-NVTabular
 hvd.init()
 
 cupy.random.seed(None)
@@ -91,7 +95,7 @@ def training_step(examples, labels, first_batch):
         probs = model(examples, training=True)
         loss_value = loss(labels, probs)
     # Horovod: add Horovod Distributed GradientTape.
-    tape = hvd.DistributedGradientTape(tape)
+    tape = hvd.DistributedGradientTape(tape, sparse_as_dense=True)
     grads = tape.gradient(loss_value, model.trainable_variables)
     opt.apply_gradients(zip(grads, model.trainable_variables))
     # Horovod: broadcast initial variable states from rank 0 to all other processes.
@@ -111,7 +115,7 @@ for batch, (examples, labels) in enumerate(train_dataset_tf):
     loss_value = training_step(examples, labels, batch == 0)
     if batch % 10 == 0 and hvd.local_rank() == 0:
         print("Step #%d\tLoss: %.6f" % (batch, loss_value))
-# hvd.join()
+hvd.join()
 # Horovod: save checkpoints only on worker 0 to prevent other workers from
 # corrupting it.
 if hvd.rank() == 0:

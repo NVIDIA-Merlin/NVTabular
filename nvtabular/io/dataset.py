@@ -662,7 +662,7 @@ class DataFrameIter:
         self.columns = columns
 
     def __len__(self):
-        return len(self.indices)
+        return len(self._ddf.partitions[self.indices])
 
     def __iter__(self):
         for i in self.indices:
@@ -671,4 +671,4 @@ class DataFrameIter:
                 yield part[self.columns].compute(scheduler="synchronous")
             else:
                 yield part.compute(scheduler="synchronous")
-            part = None
+        part = None
