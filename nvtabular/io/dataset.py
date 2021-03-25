@@ -374,7 +374,7 @@ class Dataset:
         self.cpu = False
         self.engine.to_gpu()
 
-    def shuffle_by_keys(self, keys, hive_data=None):
+    def shuffle_by_keys(self, keys, hive_data=None, npartitions=None):
         """Shuffle the in-memory Dataset so that all unique-key
         combinations are moved to the same partition.
 
@@ -389,6 +389,13 @@ class Dataset:
             be inspected to infer this setting. When `hive_data` is True,
             the number of output partitions will correspond to the number
             of unique key combinations in the dataset.
+        npartitions : int; default None
+            Number of partitions in the output Dataset. For hive-partitioned
+            data, this value should be <= the number of unique key
+            combinations (the default), otherwise it will be ignored. For
+            data that is not hive-partitioned, the ``npartitions`` input
+            should be <= the orginal partition count, otherwise it will be
+            ignored.
         """
 
         # Make sure we are dealing with a list
@@ -396,6 +403,8 @@ class Dataset:
 
         # Start with default ddf
         ddf = self.to_ddf()
+        if npartitions:
+            npartitions = min(ddf.npartitions, npartitions)
 
         if hive_data is not False:
             # The keys may be encoded in the directory names.
@@ -441,15 +450,28 @@ class Dataset:
                     .sort_values("_sort")["_partition"]
                 )
 
-                if hasattr(plan, "to_arrow"):
-                    plan = plan.to_arrow().to_pylist()
+                if hasattr(plan, "to_pandas"):
+                    plan = plan.to_pandas()
+
+                # Deal with repartitioning
+                if npartitions and npartitions < len(target_mapping):
+                    q = np.linspace(0.0, 1.0, num=npartitions + 1)
+                    divs = plan.quantile(q)
+                    partitions = divs.searchsorted(plan, side="right") - 1
+                    partitions[(plan >= divs.iloc[-1]).values] = len(divs) - 2
+                    plan = partitions.tolist()
                 else:
                     plan = plan.to_list()
 
+                # TODO: We should avoid shuffling the original ddf and
+                # instead construct a new (more-efficent) graph to read
+                # multiple files from each partition directory at once.
+                # Generally speaking, we can optimize this code path
+                # much further.
                 return Dataset(_simple_shuffle(ddf, plan))
 
         # Fall back to dask.dataframe algorithm
-        return Dataset(ddf.shuffle(keys))
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.

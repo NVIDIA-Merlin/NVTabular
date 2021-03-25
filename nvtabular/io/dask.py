@@ -158,7 +158,7 @@ def _simple_shuffle(ddf, plan):
 
     # Construct graph for a simple shuffle
     token = tokenize(ddf, plan)
-    name = ddf._name + "-shuffled-" + token
+    name = "shuffled-" + token
     final_tasks = collections.defaultdict(list)
     ignore_index = True
     for i, p in enumerate(plan):
