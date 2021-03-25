@@ -303,7 +303,7 @@ hvd = pytest.importorskip("horovod")
 
 
 def test_hvd(tmpdir):
-
+    hvd = pytest.importorskip("horovod")
     json_sample = {
         "conts": {},
         "cats": {
