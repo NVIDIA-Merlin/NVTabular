@@ -29,7 +29,7 @@ BATCH_SIZE = args.b_size or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
-TRAIN_PATHS = sorted(glob.glob(BASE_DIR + "train/*.parquet"))  # Output from ETL-with-NVTabular
+TRAIN_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "train/*.parquet")))  # Output from ETL-with-NVTabular
 hvd.init()
 
 cupy.random.seed(None)
@@ -38,7 +38,7 @@ seed_tensor = tf.convert_to_tensor(seed_fragment.get())
 reduced_seed = hvd.allreduce(seed_tensor)
 cupy.random.seed(reduced_seed)
 
-proc = nvt.Workflow.load(BASE_DIR + "workflow/")
+proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
 
 train_dataset_tf = KerasSequenceLoader(

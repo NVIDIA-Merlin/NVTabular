@@ -342,7 +342,7 @@ def test_hvd(tmpdir):
     os.mkdir(target_path_train)
     proc.transform(train_iter).to_parquet(output_path=target_path_train, out_files_per_proc=5)
     # add new location
-    target_path = os.path.join(target_path_train, "workflow/")
+    target_path = os.path.join(tmpdir, "workflow/")
     os.mkdir(target_path)
     proc.save(target_path)
     process = subprocess.Popen(
@@ -356,7 +356,7 @@ def test_hvd(tmpdir):
             "python",
             "examples/horovod/tf_hvd_simple.py",
             "--dir_in",
-            f"{target_path_train}",
+            f"{tmpdir}",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
