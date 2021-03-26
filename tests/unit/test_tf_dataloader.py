@@ -343,6 +343,10 @@ def test_hvd(tmpdir):
     target_path = os.path.join(tmpdir, "workflow/")
     os.mkdir(target_path)
     proc.save(target_path)
+    curr_path = os.path.abspath(__file__)
+    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
+    hvd_wrap_path = os.path.join(repo_root, "examples/horovod/hvd_wrapper.sh")
+    hvd_exam_path = os.path.join(repo_root, "examples/horovod/tf_hvd_simple.py")
     process = subprocess.Popen(
         [
             "horovodrun",
@@ -350,9 +354,9 @@ def test_hvd(tmpdir):
             "2",
             "-H",
             "localhost:2",
-            "./examples/horovod/hvd_wrapper.sh",
+            f"{hvd_wrap_path}",
             "python",
-            "examples/horovod/tf_hvd_simple.py",
+            hvd_exam_path,
             "--dir_in",
             f"{tmpdir}",
         ],
@@ -361,4 +365,5 @@ def test_hvd(tmpdir):
     )
     process.wait()
     stdout, stderr = process.communicate()
+    print(stdout, stderr)
     assert "Loss:" in str(stdout)
