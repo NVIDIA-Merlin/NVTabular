@@ -27,8 +27,6 @@ from nvtabular.ops import _get_embedding_order
 
 
 def _num_steps(num_samples, step_size):
-    # if (num_samples - 1) % step_size == 0 and num_samples != step_size:
-    #    return (num_samples - 1) // step_size
     return (num_samples - 1) // step_size + 1
 
 
@@ -230,7 +228,6 @@ class DataLoader:
             raise IndexError
         per_worker = _num_steps(len(self.indices), self.global_size)
         # identify process rank out of all processes (not local rank)
-        # worker_id = self.devices.index(dev)
         start = self.global_rank * per_worker
         return self.indices[start : start + per_worker].tolist()
 
