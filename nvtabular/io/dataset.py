@@ -440,7 +440,7 @@ class Dataset:
                         hive_mapping[c] = hive_mapping[c].astype(typ)
 
                 # Generate simple-shuffle plan
-                target_mapping = hive_mapping.drop_duplicates()
+                target_mapping = hive_mapping.drop_duplicates().reset_index(drop=True)
                 target_mapping.index.name = "_partition"
                 hive_mapping.index.name = "_sort"
                 target_mapping.reset_index(drop=False, inplace=True)
