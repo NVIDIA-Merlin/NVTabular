@@ -30,9 +30,9 @@ from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorF
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/data/")
 
-INFERENCE_ONE_HOT_BASE_DIR = "/model/Tests_One_Hot/"
+INFERENCE_ONE_HOT_BASE_DIR = "/model/Test_One_Hot/"
 INFERENCE_ONE_HOT = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "models/")
-INFERENCE_MULTI_HOT_BASE_DIR = "/model/Tests_Multi_Hot/"
+INFERENCE_MULTI_HOT_BASE_DIR = "/model/Test_Multi_Hot/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "models_multihot/")
 
 
@@ -119,8 +119,8 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
 
 def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
 
-    data_path = INFERENCE_ONE_HOT_BASE_DIR
-    input_path = INFERENCE_ONE_HOT_BASE_DIR
+    data_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
+    input_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-TF.ipynb"
@@ -134,8 +134,9 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
 
-    data_path = INFERENCE_MULTI_HOT_BASE_DIR
-    input_path = INFERENCE_MULTI_HOT_BASE_DIR
+
+    data_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
+    input_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-TF.ipynb"
@@ -152,8 +153,8 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
 
 def test_tf_inference_examples(asv_db, bench_info, tmpdir):
 
-    data_path = INFERENCE_ONE_HOT_BASE_DIR
-    input_path = INFERENCE_ONE_HOT_BASE_DIR
+    data_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
+    input_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
 
     os.environ["MODEL_BASE_DIR"] = INFERENCE_ONE_HOT
 
@@ -166,8 +167,8 @@ def test_tf_inference_examples(asv_db, bench_info, tmpdir):
 
 def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
 
-    data_path = INFERENCE_MULTI_HOT_BASE_DIR
-    input_path = INFERENCE_MULTI_HOT_BASE_DIR
+    data_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
+    input_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
 
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
 
