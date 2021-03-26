@@ -354,7 +354,7 @@ def test_hvd(tmpdir):
             "2",
             "-H",
             "localhost:2",
-            f"{hvd_wrap_path}",
+            hvd_wrap_path,
             "python",
             hvd_exam_path,
             "--dir_in",
