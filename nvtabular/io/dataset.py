@@ -519,6 +519,7 @@ class Dataset:
         conts=None,
         labels=None,
         suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -527,8 +528,7 @@ class Dataset:
         output_path : string
             Path to write processed/shuffled output data
         shuffle : nvt.io.Shuffle enum
-            How to shuffle the output dataset. Shuffling is only
-            performed if the data is written to disk. For all options,
+            How to shuffle the output dataset. For all options,
             other than `None` (which means no shuffling), the partitions
             of the underlying dataset/ddf will be randomly ordered. If
             `PER_PARTITION` is specified, each worker/process will also
@@ -541,6 +541,11 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        partition_on : str or list(str)
+            Columns to use for hive-partitioning.  If this option is used,
+            `preserve_files`, `output_files`, and `out_files_per_proc` will
+            all be ignored.  Also, the `PER_WORKER` shuffle will not be
+            supported.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
             the base dataset. This option is only available if the base
@@ -656,6 +661,7 @@ class Dataset:
             num_threads,
             self.cpu,
             suffix=suffix,
+            partition_on=partition_on,
         )
 
     def to_hugectr(
