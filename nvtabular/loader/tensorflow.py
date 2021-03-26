@@ -202,6 +202,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         devices=None,
         parts_per_chunk=1,
         reader_kwargs=None,
+        global_size=None,
+        global_rank=None,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -225,6 +227,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             shuffle,
             parts_per_chunk=parts_per_chunk,
             devices=devices,
+            global_size=global_size,
+            global_rank=global_rank,
         )
 
     def __len__(self):
@@ -251,6 +255,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             # for many users. That said, blind reinitialization
             # is probably irresponsible, so worth thinking
             # of something better here
+            # return StopIteration
             DataLoader.__iter__(self)
             return DataLoader.__next__(self)
 
@@ -264,7 +269,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # commenting out since device statements cause
         # RuntimeErrors when exiting if two dataloaders
         # are running at once (e.g. train and validation)
-        yield dev
+        yield tf.device("/GPU:" + str(dev))
 
     def _split_fn(self, tensor, idx, axis=0):
         return tf.split(tensor, idx, axis=axis)
