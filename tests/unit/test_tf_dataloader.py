@@ -365,5 +365,4 @@ def test_hvd(tmpdir):
     )
     process.wait()
     stdout, stderr = process.communicate()
-    print(stdout, stderr)
     assert "Loss:" in str(stdout)
