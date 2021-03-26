@@ -85,6 +85,7 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
         if label_name:
             assert labels.shape[-1] == len(label_name)
 
+
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
 @pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -122,11 +123,11 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
         device=device,
     )
     len_dl = len(data_itr) - 1
-    
-    first_chunk=0
+
+    first_chunk = 0
     for idx, chunk in enumerate(data_itr):
         if idx == 0:
-            first_chunk=len(chunk[0])
+            first_chunk = len(chunk[0])
         last_chk = len(chunk[0])
         print(last_chk)
         if idx == 1:
@@ -138,7 +139,7 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
     first_chunk_2 = 0
     for idx, chunk in enumerate(data_itr):
         if idx == 0:
-            first_chunk_2=len(chunk[0])
+            first_chunk_2 = len(chunk[0])
         del chunk
     assert idx == len_dl
 
