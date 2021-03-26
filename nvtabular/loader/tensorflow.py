@@ -270,7 +270,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # RuntimeErrors when exiting if two dataloaders
         # are running at once (e.g. train and validation)
         yield tf.device("/GPU:" + str(dev))
-        # yield dev
 
     def _split_fn(self, tensor, idx, axis=0):
         return tf.split(tensor, idx, axis=axis)
