@@ -134,7 +134,6 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
 
-
     data_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
     input_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
 
