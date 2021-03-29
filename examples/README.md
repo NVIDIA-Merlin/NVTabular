@@ -35,6 +35,9 @@ The MovieLens25M is a popular dataset for recommender systems and is used in aca
 [Criteo](https://ailab.criteo.com/download-criteo-1tb-click-logs-dataset/) provides the largest publicly available dataset for recommender systems, having a size of 1TB uncompressed click logs of 4 billion examples. We will teach to **scale NVTabular**:
 - Using **multiple GPUs and multiple nodes** with NVTabular for ETL
 - Training recommender system model with NVTabular dataloader for PyTorch
+- Training recommender system model with NVTabular dataloader for TensorFlow
+- Training recommender system model with HugeCTR using multi GPU
+- Inference with Triton Inference Server for TensorFlow or HugeCTR
 
 ### 4. [Winning Solution of the RecSys2020 Competition](https://github.com/NVIDIA/NVTabular/tree/main/examples/winning-solution-recsys2020-twitter)
 
