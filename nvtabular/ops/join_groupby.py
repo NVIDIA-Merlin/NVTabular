@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import cupy
 import dask_cudf
 from dask.delayed import Delayed
 
+import nvtabular as nvt
 from nvtabular.dispatch import _read_parquet_dispatch
 
 from . import categorify as nvt_cat
@@ -39,14 +40,14 @@ class JoinGroupby(StatOperator):
 
         # Use JoinGroupby to define a NVTabular workflow
         groupby_features = ['cat1', 'cat2', 'cat3'] >> ops.JoinGroupby(
-            out_path=str(tmpdir), stats=['sum','count'], cont_names=['num1']
+            out_path=str(tmpdir), stats=['sum','count'], cont_cols=['num1']
         )
         processor = nvtabular.Workflow(groupby_features)
 
     Parameters
     -----------
-    cont_names : list of str
-        The continuous column names to calculate statistics for
+    cont_cols : list of str or ColumnGroup
+        The continuous columns to calculate statistics for
         (for each unique group in each column in `columns`).
     stats : list of str, default []
         List of statistics to calculate for each unique group. Note
@@ -76,7 +77,7 @@ class JoinGroupby(StatOperator):
 
     def __init__(
         self,
-        cont_names=None,
+        cont_cols=None,
         stats=["count"],
         tree_width=None,
         cat_cache="host",
@@ -88,7 +89,10 @@ class JoinGroupby(StatOperator):
 
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_names = cont_names
+        self.cont_cols = (
+            cont_cols if isinstance(cont_cols, nvt.ColumnGroup) else nvt.ColumnGroup(cont_cols)
+        )
+        self.cont_names = self.cont_cols.columns
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"
@@ -158,7 +162,7 @@ class JoinGroupby(StatOperator):
         return new_gdf
 
     def dependencies(self):
-        return self.cont_names
+        return self.cont_cols
 
     def output_column_names(self, columns):
         # TODO: the names here are defined in categorify/mid_level_groupby

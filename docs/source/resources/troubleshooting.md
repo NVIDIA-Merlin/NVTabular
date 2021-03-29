@@ -3,7 +3,12 @@ Troubleshooting
 
 ## Checking the Schema of the Parquet File
 
-NVTabular expects that all input parquet files have the same schema, which includes column types and the nullable (not null) option. If you encounter the ```RuntimeError: Schemas are inconsistent, try using to_parquet(..., schema="infer"), or pass an explicit pyarrow schema. Such as to_parquet(..., schema={"column1": pa.string()})``` error when you load the dataset as shown below, one of your parquet files might have a different schema:
+NVTabular expects that all input parquet files have the same schema, which includes column types and the nullable (not null) option. If you encounter the error
+```
+RuntimeError: Schemas are inconsistent, try using to_parquet(..., schema="infer"),
+or pass an explicit pyarrow schema. Such as to_parquet(..., schema={"column1": pa.string()})
+```
+when you load the dataset as shown below, one of your parquet files might have a different schema:
 
 ```python
 ds = nvt.Dataset(PATH, engine="parquet", part_size="1000MB")
@@ -16,7 +21,10 @@ If you want to identify which parquet files contain columns with different schem
 * [PyArrow](https://github.com/dask/dask/issues/6504#issuecomment-675465645)
 * [cudf=0.17](https://github.com/rapidsai/cudf/pull/6796#issue-522934284)
 
-These scripts check for schema consistency and generate only the ```_metadata``` file instead of converting all the parquet files. If the schema is inconsistent across all files, the script will raise an exception. For additional information, see https://github.com/NVIDIA/NVTabular/issues/429.
+These scripts check for schema consistency and generate only the ```_metadata``` file instead of
+converting all the parquet files. If the schema is inconsistent across all files, the script will
+raise an exception. For additional information, see [this
+issue](https://github.com/NVIDIA/NVTabular/issues/429).
 
 ## Setting the Row Group Size for the Parquet Files
 
@@ -28,7 +36,9 @@ pandas_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
 cudf_df.to_parquet("/file/path", engine="pyarrow", row_group_size=10000)
 ```
 
-The row group **memory** size of the parquet files should be smaller than the **part_size** that you set for the NVTabular dataset such as ```nvt.Dataset(TRAIN_DIR, engine="parquet", part_size="1000MB"```. To determine how much memory a row group will hold, you can slice your dataframe to a specific number of rows and use the following function to get the memory usage in bytes. You can then set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size that is close to 128MB is recommended.
+The row group **memory** size of the parquet files should be smaller than the **part_size** that
+you set for the NVTabular dataset such as ```nvt.Dataset(TRAIN_DIR, engine="parquet",
+part_size="1000MB")```. To determine how much memory a row group will hold, you can slice your dataframe to a specific number of rows and use the following function to get the memory usage in bytes. You can then set the row_group_size (number of rows) accordingly when you save the parquet file. A row group memory size that is close to 128MB is recommended.
 
 ```python
 def _memory_usage(df):

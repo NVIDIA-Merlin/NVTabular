@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import dask
 import dask.dataframe as dd
 import dask_cudf
 import fsspec
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
@@ -68,14 +69,15 @@ class ParquetDatasetEngine(DatasetEngine):
         super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
-            if cpu:
-                # Use pyarrow for CPU version.
-                # Pandas does not enable single-row-group access.
-                rg_byte_size_0 = _memory_usage(pq.ParquetFile(path0).read_row_group(0).to_pandas())
-            else:
-                rg_byte_size_0 = _memory_usage(
-                    cudf.io.read_parquet(path0, row_groups=0, row_group=0)
-                )
+            with self.fs.open(path0, "rb") as f0:
+                if cpu:
+                    # Use pyarrow for CPU version.
+                    # Pandas does not enable single-row-group access.
+                    rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+                else:
+                    rg_byte_size_0 = _memory_usage(
+                        cudf.io.read_parquet(f0, row_groups=0, row_group=0)
+                    )
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -107,6 +109,40 @@ class ParquetDatasetEngine(DatasetEngine):
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
         return dataset
+
+    @property
+    @functools.lru_cache(1)
+    def _file_partition_map(self):
+        dataset = self._dataset
+        if dataset.metadata:
+            # We have a metadata file.
+            # Determing the row-group count per file.
+            _path_row_groups = defaultdict(int)
+            for rg in range(dataset.metadata.num_row_groups):
+                fn = dataset.metadata.row_group(rg).column(0).file_path
+                _path_row_groups[fn] += 1
+
+            # Convert the per-file row-group count to the
+            # file-to-partition mapping
+            ind = 0
+            _pp_map = defaultdict(list)
+            for fn, num_row_groups in _path_row_groups.items():
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                _pp_map[fn] = np.arange(ind, ind + part_count)
+                ind += part_count
+
+        else:
+            # No metadata file. Construct file-to-partition map manually
+            ind = 0
+            _pp_map = {}
+            for piece in dataset.pieces:
+                num_row_groups = piece.get_metadata().num_row_groups
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                fn = piece.path.split(self.fs.sep)[-1]
+                _pp_map[fn] = np.arange(ind, ind + part_count)
+                ind += part_count
+
+        return _pp_map
 
     @property
     @functools.lru_cache(1)
@@ -619,7 +655,7 @@ def _write_data(data_list, output_path, fs, fn):
 
 
 class BaseParquetWriter(ThreadedWriter):
-    def __init__(self, out_dir, **kwargs):
+    def __init__(self, out_dir, suffix=".parquet", **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = []
         self.data_files = []
@@ -628,6 +664,7 @@ class BaseParquetWriter(ThreadedWriter):
         self._lock = threading.RLock()
         self.pwriter = self._pwriter
         self.pwriter_kwargs = {}
+        self.suffix = suffix
 
     @property
     def _pwriter(self):
@@ -643,10 +680,12 @@ class BaseParquetWriter(ThreadedWriter):
         raise (NotImplementedError)
 
     def _get_filename(self, i):
-        if self.use_guid:
-            fn = f"{i}.{guid()}.parquet"
+        if self.fns:
+            fn = self.fns[i]
+        elif self.use_guid:
+            fn = f"{i}.{guid()}{self.suffix}"
         else:
-            fn = f"{i}.parquet"
+            fn = f"{i}{self.suffix}"
 
         return os.path.join(self.out_dir, fn)
 
@@ -800,7 +839,7 @@ class CPUParquetWriter(BaseParquetWriter):
         self.md_collectors[path] = _md_collector
 
     def _write_table(self, idx, data):
-        table = pa.Table.from_pandas(data)
+        table = pa.Table.from_pandas(data, preserve_index=False)
         writer = self._get_or_create_writer(idx, schema=table.schema)
         writer.write_table(table, row_group_size=self._get_row_group_size(data))
 

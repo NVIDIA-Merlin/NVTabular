@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -72,15 +72,9 @@ class FillMedian(StatOperator):
 
     Example usage::
 
-        # Initialize the workflow
-        proc = nvt.Workflow(
-            cat_names=CATEGORICAL_COLUMNS,
-            cont_names=CONTINUOUS_COLUMNS,
-            label_name=LABEL_COLUMNS
-        )
-
-        # Add FillMedian to the workflow for continuous columns
-        proc.add_cont_feature(nvt.ops.FillMedian())
+        # Use FillMedian in a workflow for continuous columns
+        cont_features = ['cont1', 'cont2', 'cont3'] >> ops.FillMedian()
+        processor = nvtabular.Workflow(cont_features)
 
     Parameters
     -----------

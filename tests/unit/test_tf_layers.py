@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -226,7 +226,7 @@ def test_linear_embedding_layer():
     )[:, 0]
     bias = embedding_layer.bias.numpy()[0]
 
-    rtol = 1e-6
+    rtol = 1e-5
     numeric = np.concatenate([scalar[:, None], vector], axis=1)
     expected_y_hat = (numeric @ numeric_weight)[:, 0] + one_hot_weights + multi_hot_weights + bias
     assert np.isclose(y_hat, expected_y_hat, rtol=rtol).all()

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,6 +29,8 @@ import os
 from typing import List
 
 import cudf
+from cudf.core.column import as_column, build_column
+from cudf.utils.dtypes import is_list_dtype
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
@@ -51,10 +53,26 @@ class TritonPythonModel:
         self.workflow = nvtabular.Workflow.load(workflow_path)
         self.model_config = json.loads(args["model_config"])
 
+        self.input_dtypes = {
+            col: dtype
+            for col, dtype in self.workflow.input_dtypes.items()
+            if not is_list_dtype(dtype)
+        }
+        self.input_multihots = {
+            col: dtype for col, dtype in self.workflow.input_dtypes.items() if is_list_dtype(dtype)
+        }
+
         self.output_dtypes = dict()
-        for name in self.workflow.input_dtypes:
-            conf = get_output_config_by_name(self.model_config, name)
-            self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
+        for name, dtype in self.workflow.output_dtypes.items():
+            if not is_list_dtype(dtype):
+                self._set_output_dtype(name)
+            else:
+                self._set_output_dtype(name + "__nnzs")
+                self._set_output_dtype(name + "__values")
+
+    def _set_output_dtype(self, name):
+        conf = get_output_config_by_name(self.model_config, name)
+        self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -66,9 +84,20 @@ class TritonPythonModel:
             input_df = cudf.DataFrame(
                 {
                     name: _convert_tensor(get_input_tensor_by_name(request, name))
-                    for name in self.workflow.input_dtypes
+                    for name in self.input_dtypes
                 }
             )
+
+            for name, dtype in self.input_multihots.items():
+                values = as_column(
+                    _convert_tensor(get_input_tensor_by_name(request, name + "__values"))
+                )
+                nnzs = as_column(
+                    _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
+                )
+                input_df[name] = build_column(
+                    None, dtype=dtype, size=nnzs.size - 1, children=(nnzs, values)
+                )
 
             # use our NVTabular workflow to transform the dataframe
             output_df = nvtabular.workflow._transform_partition(
@@ -77,10 +106,26 @@ class TritonPythonModel:
 
             # convert back to a triton response
             output_tensors = []
-            for col in output_df.columns:
-                d = output_df[col].values_host.astype(self.output_dtypes[col])
-                d = d.reshape(len(d), 1)
-                output_tensors.append(Tensor(col, d))
+            for name in output_df.columns:
+                col = output_df[name]
+                if is_list_dtype(col.dtype):
+                    # convert list values to match TF dataloader
+                    values = col.list.leaves.values_host.astype(
+                        self.output_dtypes[name + "__values"]
+                    )
+                    values = values.reshape(len(values), 1)
+                    output_tensors.append(Tensor(name + "__values", values))
+
+                    offsets = col._column.offsets.values_host.astype(
+                        self.output_dtypes[name + "__nnzs"]
+                    )
+                    nnzs = offsets[1:] - offsets[:-1]
+                    nnzs = nnzs.reshape(len(nnzs), 1)
+                    output_tensors.append(Tensor(name + "__nnzs", nnzs))
+                else:
+                    d = col.values_host.astype(self.output_dtypes[name])
+                    d = d.reshape(len(d), 1)
+                    output_tensors.append(Tensor(name, d))
 
             responses.append(InferenceResponse(output_tensors))
 

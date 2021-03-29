@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,9 +37,6 @@ class Normalize(StatOperator):
         # Use Normalize to define a NVTabular workflow
         cont_features = CONTINUOUS_COLUMNS >> ops.Normalize()
         processor = nvtabular.Workflow(cont_features)
-
-    Parameters
-    ----------
 
     """
 
@@ -80,9 +77,11 @@ class NormalizeMinMax(StatOperator):
     This operator standardizes continuous features such that they are between 0 and 1.
 
     Example usage::
+
         # Use NormalizeMinMax to define a NVTabular workflow
         cont_features = CONTINUOUS_COLUMNS >> ops.NormalizeMinMax()
         processor = nvtabular.Workflow(cont_features)
+
     """
 
     def __init__(self):

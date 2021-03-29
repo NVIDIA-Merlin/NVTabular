@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -320,8 +320,8 @@ class Categorify(StatOperator):
             num_buckets=self.num_buckets,
         )
         # TODO: we can't check the dtypes on the ddf here since they are incorrect
-        # for cudf's list type. So, we're checking the partitions. fix.
-        return Delayed(key, dsk), ddf.map_partitions(lambda df: _is_list_dtype(df))
+        # for cudf's list type. So, we're checking the first partition. fix.
+        return Delayed(key, dsk), ddf.partitions[0].map_partitions(lambda df: _is_list_dtype(df))
 
     def fit_finalize(self, dask_stats):
         _col_is_list = dask_stats[1]

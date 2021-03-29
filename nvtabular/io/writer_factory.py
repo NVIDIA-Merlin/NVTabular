@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ def writer_factory(
     bytes_io=False,
     num_threads=0,
     cpu=False,
+    fns=None,
+    suffix=None,
 ):
     if output_format is None:
         return None
@@ -42,6 +44,8 @@ def writer_factory(
         bytes_io=bytes_io,
         num_threads=num_threads,
         cpu=cpu,
+        fns=fns,
+        suffix=suffix,
     )
 
 

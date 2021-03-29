@@ -86,4 +86,4 @@ When `KerasSequenceLoader` accelerates training with TensorFlow, the following h
    history = model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=5)
    ```
 
-You can find additional examples in our repository such as [MovieLens](../examples/movielens_multihot_example.ipynb) and [Outbrain](../examples/wnd_outbrain/Outbrain.ipynb).
+You can find additional examples in our repository such as [MovieLens](../examples/getting-started-movielens/) and [Outbrain](../examples/advanced-ops-outbrain/).
