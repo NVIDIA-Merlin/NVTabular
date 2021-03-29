@@ -65,6 +65,7 @@ def _write_output_partition(
     output_format,
     num_threads,
     cpu,
+    suffix,
 ):
     df_size = len(df)
     out_files_per_proc = out_files_per_proc or 1
@@ -82,6 +83,7 @@ def _write_output_partition(
                 bytes_io=(shuffle == Shuffle.PER_WORKER),
                 num_threads=num_threads,
                 cpu=cpu,
+                suffix=suffix,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
             writer_cache[processed_path] = writer
@@ -105,6 +107,7 @@ def _write_subgraph(
     output_format,
     num_threads,
     cpu,
+    suffix,
 ):
 
     writer = writer_factory(
@@ -115,7 +118,7 @@ def _write_subgraph(
         bytes_io=(shuffle == Shuffle.PER_WORKER),
         num_threads=num_threads,
         cpu=cpu,
-        fns=[fn],
+        fns=[fn + suffix],
     )
     writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
 
@@ -164,6 +167,7 @@ def _ddf_to_dataset(
     client,
     num_threads,
     cpu,
+    suffix="",
 ):
 
     # Construct graph for Dask-based dataset write
@@ -197,6 +201,7 @@ def _ddf_to_dataset(
                 output_format,
                 num_threads,
                 cpu,
+                suffix,
             )
         dsk[name] = (
             _write_metadata_files,
@@ -222,6 +227,7 @@ def _ddf_to_dataset(
                 output_format,
                 num_threads,
                 cpu,
+                suffix,
             )
             task_list.append(key)
         dsk[name] = (lambda x: x, task_list)
