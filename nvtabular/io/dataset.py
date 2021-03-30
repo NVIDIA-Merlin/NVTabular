@@ -460,8 +460,12 @@ class Dataset:
                     partitions = divs.searchsorted(plan, side="right") - 1
                     partitions[(plan >= divs.iloc[-1]).values] = len(divs) - 2
                     plan = partitions.tolist()
-                else:
+                elif len(plan) != len(plan.unique()):
                     plan = plan.to_list()
+                else:
+                    # Plan is a unique 1:1 ddf partition mapping.
+                    # We already have shuffled data.
+                    return self
 
                 # TODO: We should avoid shuffling the original ddf and
                 # instead construct a new (more-efficent) graph to read
