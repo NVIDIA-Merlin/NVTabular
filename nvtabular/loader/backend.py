@@ -173,6 +173,7 @@ class DataLoader:
         label_names,
         batch_size,
         shuffle,
+        seed_fn=None,
         parts_per_chunk=1,
         device=None,
         global_size=None,
@@ -191,6 +192,8 @@ class DataLoader:
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.seed_fn = seed_fn
+
         self.num_rows_processed = 0
 
         # we set size of chunk queue to 1 we only want one chunk in queue at a time.
@@ -240,6 +243,9 @@ class DataLoader:
         # shuffle partition indices to bring disparate
         # parts of the dataset "close" to one another
         if self.shuffle:
+            if self.seed_fn:
+                new_seed = self.seed_fn()
+                cp.random.seed(new_seed)
             cp.random.shuffle(self.indices)
 
         # build and start new threads for loading and
@@ -479,6 +485,3 @@ class DataLoader:
 
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels
-
-
-#
