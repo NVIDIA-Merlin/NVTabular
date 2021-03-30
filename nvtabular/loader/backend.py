@@ -172,10 +172,9 @@ class DataLoader:
         devices=None,
         global_size=None,
         global_rank=None,
-        indices=None,
     ):
         self.data = dataset
-        self.indices = indices or cp.arange(dataset.to_ddf().npartitions)
+        self.indices = cp.arange(dataset.to_ddf().npartitions)
 
         devices = devices or [0]
 
