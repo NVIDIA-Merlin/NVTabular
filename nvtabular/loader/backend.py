@@ -193,7 +193,6 @@ class DataLoader:
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed_fn = seed_fn
-        self.device = device
 
         self.num_rows_processed = 0
 
@@ -486,6 +485,3 @@ class DataLoader:
 
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels
-
-
-#
