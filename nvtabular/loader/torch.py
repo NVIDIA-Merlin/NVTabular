@@ -70,7 +70,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         shuffle=False,
         seed_fn=None,
         parts_per_chunk=1,
-        devices=None,
+        device=None,
         global_size=None,
         global_rank=None,
     ):
@@ -84,7 +84,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             shuffle,
             seed_fn=seed_fn,
             parts_per_chunk=parts_per_chunk,
-            devices=devices,
+            device=device,
             global_size=global_size,
             global_rank=global_rank,
         )
