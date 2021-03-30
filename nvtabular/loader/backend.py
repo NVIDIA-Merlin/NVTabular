@@ -193,7 +193,7 @@ class DataLoader:
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed_fn = seed_fn
-        self.devices = devices
+        self.device = device
 
         self.num_rows_processed = 0
 
