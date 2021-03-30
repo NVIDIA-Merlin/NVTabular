@@ -174,14 +174,14 @@ class DataLoader:
         batch_size,
         shuffle,
         parts_per_chunk=1,
-        devices=None,
+        device=None,
         global_size=None,
         global_rank=None,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
 
-        devices = devices or [0]
+        self.device = device or 0
 
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
@@ -191,10 +191,10 @@ class DataLoader:
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.devices = devices
         self.num_rows_processed = 0
 
-        self._buff = ChunkQueue(self, len(devices), num_parts=parts_per_chunk, shuffle=shuffle)
+        # we set size of chunk queue to 1 we only want one chunk in queue at a time.
+        self._buff = ChunkQueue(self, 1, num_parts=parts_per_chunk, shuffle=shuffle)
         self._batch_itr = None
         self._workers = None
 
@@ -210,7 +210,7 @@ class DataLoader:
     def stop(self):
         # TODO: raise warning or even error if condition
         # isn't met?
-        if self._workers is not None and self._working:
+        if self._workers is not None:
             if not self._buff.stopped:
                 self._buff.stop()
             for t in self._workers:
@@ -245,11 +245,10 @@ class DataLoader:
         # build and start new threads for loading and
         # concatenating data
         self._workers = []
-        for dev in self.devices:
-            t = threading.Thread(target=self._buff.load_chunks, args=(dev,))
-            t.daemon = True
-            t.start()
-            self._workers.append(t)
+        t = threading.Thread(target=self._buff.load_chunks, args=(self.device,))
+        t.daemon = True
+        t.start()
+        self._workers.append(t)
         return self
 
     def __next__(self):
@@ -480,3 +479,6 @@ class DataLoader:
 
     def _handle_tensors(self, cats, conts, labels):
         return cats, conts, labels
+
+
+#
