@@ -40,9 +40,8 @@ NUMERIC_COLUMNS = args.conts or []
 
 # Output from ETL-with-NVTabular
 TRAIN_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "train", "*.parquet")))
-VALID_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "valid", "*.parquet")))
 
-proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow"))
+proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
 
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
 
@@ -92,20 +91,6 @@ train_loader = DLDataLoader(
     train_dataset, batch_size=None, collate_fn=collate_fn, pin_memory=False, num_workers=0
 )
 
-valid_dataset = TorchAsyncItr(
-    nvt.Dataset(VALID_PATHS),
-    batch_size=BATCH_SIZE,
-    cats=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
-    conts=NUMERIC_COLUMNS,
-    labels=["rating"],
-    devices=[gpu_to_use],
-    global_size=hvd.size(),
-    global_rank=hvd.rank(),
-)
-valid_loader = DLDataLoader(
-    valid_dataset, batch_size=None, collate_fn=collate_fn, pin_memory=False, num_workers=0
-)
-
 
 EMBEDDING_TABLE_SHAPES_TUPLE = (
     {
@@ -138,12 +123,16 @@ for epoch in range(args.epochs):
     train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
     hvd.join(gpu_to_use)
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
-    valid_loss, y_pred, y = process_epoch(valid_loader, model, train=False)
-    print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}. Valid loss: {valid_loss:.4f}.")
+    print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}.")
     hvd.join(gpu_to_use)
     t_final = time() - start
-    total_rows = train_dataset.num_rows_processed + valid_dataset.num_rows_processed
+    total_rows = train_dataset.num_rows_processed
     print(
         f"run_time: {t_final} - rows: {total_rows} - "
         f"epochs: {epoch} - dl_thru: {total_rows / t_final}"
     )
+
+
+hvd.join(gpu_to_use)
+if hvd.local_rank() == 0:
+    print("Training complete")

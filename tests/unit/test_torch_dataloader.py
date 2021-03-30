@@ -370,13 +370,13 @@ def test_horovod_multigpu(tmpdir):
     proc.transform(train_iter).to_parquet(output_path=target_path_train, out_files_per_proc=5)
 
     # add new location
-    target_path = os.path.join(target_path_train, "workflow/")
+    target_path = os.path.join(tmpdir, "workflow/")
     os.mkdir(target_path)
     proc.save(target_path)
 
     curr_path = os.path.abspath(__file__)
     repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
-    hvd_example_path = os.path.join(repo_root, "examples/multi-gpu/torch-nvt-horovod.py")
+    hvd_example_path = os.path.join(repo_root, "examples/horovod/torch-nvt-horovod.py")
 
     process = subprocess.Popen(
         [
@@ -388,7 +388,7 @@ def test_horovod_multigpu(tmpdir):
             "python",
             hvd_example_path,
             "--dir_in",
-            f"{target_path_train}",
+            f"{tmpdir}",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -398,4 +398,4 @@ def test_horovod_multigpu(tmpdir):
 
     print(str(stdout))
     print(str(stderr))
-    assert "run_time:" in str(stdout)
+    assert "Training complete" in str(stdout)
