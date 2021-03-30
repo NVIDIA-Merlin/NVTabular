@@ -87,10 +87,10 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
-@pytest.mark.parametrize("batch_size", [1, 10, 100])
+@pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("devices", [None, GPU_DEVICE_IDS[:2]])
-def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devices):
+@pytest.mark.parametrize("device", [None, 0])
+def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, device):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -120,7 +120,67 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         cats=cat_names,
         conts=cont_names,
         labels=["label"],
-        devices=devices,
+        device=device,
+    )
+    len_dl = len(data_itr) - 1
+
+    first_chunk = 0
+    for idx, chunk in enumerate(data_itr):
+        if idx == 0:
+            first_chunk = len(chunk[0])
+        last_chk = len(chunk[0])
+        print(last_chk)
+        if idx == 1:
+            break
+        del chunk
+
+    assert idx < len_dl
+
+    first_chunk_2 = 0
+    for idx, chunk in enumerate(data_itr):
+        if idx == 0:
+            first_chunk_2 = len(chunk[0])
+        del chunk
+    assert idx == len_dl
+
+    assert first_chunk == first_chunk_2
+
+
+@pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
+@pytest.mark.parametrize("batch_size", [1000])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("device", [None, 0])
+def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, device):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
+
+    processor = nvt.Workflow(conts + cats + label_name)
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    processor.fit_transform(dataset).to_parquet(
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
+        output_path=output_train,
+        out_files_per_proc=2,
+    )
+
+    tar_paths = [
+        os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
+    ]
+
+    nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt_data,
+        batch_size=batch_size,
+        cats=cat_names,
+        conts=cont_names,
+        labels=["label"],
+        device=device,
     )
 
     columns = mycols_pq
@@ -131,10 +191,11 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     # works with iterator alone, needs to test inside torch dataloader
 
     for idx, chunk in enumerate(data_itr):
-        if devices is None:
+        if device is None:
             assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
         del chunk
+
     # accounts for incomplete batches at the end of chunks
     # that dont necesssarily have the full batch_size
     assert rows == num_rows
@@ -148,7 +209,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     )
     rows = 0
     for idx, chunk in enumerate(t_dl):
-        if devices is None:
+        if device is None:
             assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
         rows += len(chunk[0])
 

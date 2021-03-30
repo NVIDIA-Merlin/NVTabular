@@ -175,8 +175,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         the last chunk in a dataset, which will, in general, be smaller).
         Larger chunk sizes will lead to more efficieny and randomness,
         but require more memory.
-    - devices: None
-        Which GPU devices to load from. Ignored for now
+    - device: None
+        Which GPU device to load from. Ignored for now
     - parts_per_chunk: int
         Number of dataset partitions with size dictated by `buffer_size`
         to load and concatenate asynchronously. More partitions leads to
@@ -199,7 +199,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         engine=None,
         shuffle=True,
         buffer_size=0.1,
-        devices=None,
+        device=None,
         parts_per_chunk=1,
         reader_kwargs=None,
         global_size=None,
@@ -215,8 +215,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         cat_names = _get_embedding_order(cat_names)
         cont_names = _get_embedding_order(cont_names)
 
-        assert devices is None or len(devices) == 1  # TODO: figure out multi-gpu support
-        devices = devices or [0]
+        device = device or 0
         DataLoader.__init__(
             self,
             dataset,
@@ -226,7 +225,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             batch_size,
             shuffle,
             parts_per_chunk=parts_per_chunk,
-            devices=devices,
+            device=device,
             global_size=global_size,
             global_rank=global_rank,
         )
