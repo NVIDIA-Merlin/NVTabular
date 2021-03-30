@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import importlib
 import os
 import shutil
 import subprocess
@@ -322,10 +323,8 @@ def test_mh_model_support(tmpdir):
     assert len(y) > 0
 
 
-hvd = pytest.importorskip("horovod")
-
-
-def test_horovod(tmpdir):
+@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
+def test_horovod_multigpu(tmpdir):
 
     json_sample = {
         "conts": {},
@@ -375,6 +374,10 @@ def test_horovod(tmpdir):
     os.mkdir(target_path)
     proc.save(target_path)
 
+    curr_path = os.path.abspath(__file__)
+    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
+    hvd_example_path = os.path.join(repo_root, "examples/multi-gpu/torch-nvt-horovod.py")
+
     process = subprocess.Popen(
         [
             "horovodrun",
@@ -383,7 +386,7 @@ def test_horovod(tmpdir):
             "-H",
             "localhost:2",
             "python",
-            "examples/multi-gpu/torch-nvt-horovod.py",
+            hvd_example_path,
             "--dir_in",
             f"{target_path_train}",
         ],
