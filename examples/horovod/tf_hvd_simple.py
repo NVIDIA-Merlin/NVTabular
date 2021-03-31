@@ -8,7 +8,7 @@ import cupy
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 # TF will have claimed all free GPU memory
-os.environ["TF_MEMORY_ALLOCATION"] = "0.5"  # fraction of free memory
+os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
 
 import tensorflow as tf  # noqa: E402
 
