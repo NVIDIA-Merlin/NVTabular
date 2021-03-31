@@ -8,13 +8,15 @@ import cupy
 # we can control how much memory to give tensorflow with this environment variable
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 # TF will have claimed all free GPU memory
-os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
-import horovod.tensorflow as hvd  # noqa: E402
+os.environ["TF_MEMORY_ALLOCATION"] = "0.5"  # fraction of free memory
+
 import tensorflow as tf  # noqa: E402
 
 import nvtabular as nvt  # noqa: E402
 from nvtabular.framework_utils.tensorflow import layers  # noqa: E402
 from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402
+
+import horovod.tensorflow as hvd  # noqa: E402
 
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument("--dir_in", default=None, help="Input directory")
@@ -26,7 +28,7 @@ parser.add_argument("--labels", default=None, help="continuous columns")
 args = parser.parse_args()
 
 
-BASE_DIR = args.dir_in or "/path/to/files/"
+BASE_DIR = args.dir_in or "./data/"
 BATCH_SIZE = args.b_size or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
@@ -36,11 +38,29 @@ TRAIN_PATHS = sorted(
 )  # Output from ETL-with-NVTabular
 hvd.init()
 
+# Seed with system randomness (or a static seed)
 cupy.random.seed(None)
-seed_fragment = cupy.random.randint(0, 1000)
-seed_tensor = tf.convert_to_tensor(seed_fragment.get())
-reduced_seed = hvd.allreduce(seed_tensor)
-cupy.random.seed(reduced_seed)
+
+
+def seed_fn():
+    """
+    Generate consistent dataloader shuffle seeds across workers
+
+    Reseeds each worker's dataloader each epoch to get fresh a shuffle
+    that's consistent across workers.
+    """
+    min_int, max_int = tf.int32.limits
+    max_rand = max_int // hvd.size()
+
+    # Generate a seed fragment
+    seed_fragment = cupy.random.randint(0, max_rand).get()
+
+    # Aggregate seed fragments from all Horovod workers
+    seed_tensor = tf.constant(seed_fragment)
+    reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum) % max_rand
+
+    return reduced_seed
+
 
 proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
@@ -53,6 +73,7 @@ train_dataset_tf = KerasSequenceLoader(
     cont_names=NUMERIC_COLUMNS,
     engine="parquet",
     shuffle=True,
+    seed_fn=seed_fn,
     buffer_size=0.06,  # how many batches to load at once
     parts_per_chunk=1,
     global_size=hvd.size(),
