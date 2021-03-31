@@ -963,3 +963,34 @@ def test_data_stats(tmpdir, df, datasets, engine):
         assert output[col]["per_nan"] == pytest.approx(
             100 * (1 - ddf[col].count().compute() / len(ddf[col]))
         )
+
+
+@pytest.mark.parametrize("keys", [["name"], ["id"], ["name", "id"]])
+def test_groupby_op(keys):
+
+    # Initial timeseries dataset
+    size = 60
+    df1 = pd.DataFrame(
+        {
+            "name": np.random.choice(["Dave", "Zelda"], size=size),
+            "id": np.random.choice([0, 1], size=size),
+            "ts": np.arange(size),
+            "x": np.random.uniform(low=0.0, high=10.0, size=size),
+            "y": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
+    dataset = nvt.Dataset(ddf1)
+
+    groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
+        groupby_cols=keys,
+        sort_cols=["ts"],
+        aggs={
+            "x": ["list", "sum"],
+            "y": ["first", "last"],
+        },
+    )
+    processor = nvtabular.Workflow(groupby_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+    assert len(new_gdf)
