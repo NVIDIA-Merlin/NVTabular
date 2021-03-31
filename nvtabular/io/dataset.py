@@ -765,7 +765,9 @@ class DataFrameIter:
         self.columns = columns
 
     def __len__(self):
-        return len(self._ddf.partitions[self.indices])
+        if len(self.indices) < self._ddf.npartitions:
+            return len(self._ddf.partitions[self.indices])
+        return len(self._ddf)
 
     def __iter__(self):
         for i in self.indices:
