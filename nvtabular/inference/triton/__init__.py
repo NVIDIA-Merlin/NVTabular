@@ -17,6 +17,7 @@ import copy
 import json
 import os
 import subprocess
+import tempfile
 from shutil import copyfile
 
 import cudf
@@ -54,7 +55,7 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     model_path:
         The root path to write out files to
     label_columns:
-        Labels in the dataset (will be removed f
+        Labels in the dataset (will be removed from workflow)
     """
 
     workflow = _remove_columns(workflow, label_columns)
@@ -66,7 +67,7 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
     tf_model_path = os.path.join(tf_path, str(version), "model.savedmodel")
-    model.save(tf_model_path)
+    model.save(tf_model_path, include_optimizer=False)
     tf_config = _generate_tensorflow_config(model, name + "_tf", tf_path)
 
     # generate the triton ensemble
@@ -319,14 +320,32 @@ def _generate_tensorflow_config(model, name, output_path):
         name=name, backend="tensorflow", platform="tensorflow_savedmodel"
     )
 
-    for col in model.inputs:
+    inputs, outputs = model.inputs, model.outputs
+
+    if not inputs or not outputs:
+        signatures = model.signatures or {}
+        default_signature = signatures.get("serving_default")
+        if not default_signature:
+            with tempfile.TemporaryDirectory() as tmp:
+                # roundtrip saved model to disk to generate signature if it doesn't exist
+                path = os.path.join(tmp, "model.savedmodel")
+                model.save(path)
+                import tensorflow as tf
+
+                reloaded = tf.keras.models.load_model(path)
+                default_signature = reloaded.signatures["serving_default"]
+
+        inputs = list(default_signature.structured_input_signature[1].values())
+        outputs = list(default_signature.structured_outputs.values())
+
+    for col in inputs:
         config.input.append(
             model_config.ModelInput(
                 name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
             )
         )
 
-    for col in model.outputs:
+    for col in outputs:
         config.output.append(
             model_config.ModelOutput(
                 name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
