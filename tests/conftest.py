@@ -114,8 +114,6 @@ def datasets(tmpdir_factory):
                 # dont want null in median
                 rand_idx += 1
             df[col].iloc[rand_idx] = None
-    
-
 
     datadir = tmpdir_factory.mktemp("data_test")
     datadir = {
