@@ -22,7 +22,40 @@ from .operator import ColumnNames, Operator
 
 
 class Groupby(Operator):
-    """Local (Partition-wise) Groupby Transformation"""
+    """Local Groupby Transformation
+
+    WARNING: This transformation does NOT transfer data between
+    partitions. Please make sure that the target Dataset object is
+    already shuffled by the desired groupby keys, otherwise the
+    output of this transformation may be incorrect.
+
+    See: ``Dataset.shuffle_by_keys``.
+
+    Example usage::
+
+        groupby_features = [
+            'user_id', 'session_id', 'month', 'prod_id',
+        ] >> ops.Groupby(
+            groupby_cols=['user_id', 'session_id'],
+            sort_cols=['month'],
+            aggs={
+                'prod_id': 'list',
+                'month': ['first', 'last'],
+            },
+        )
+        processor = nvtabular.Workflow(groupby_features)
+
+    Parameters
+    -----------
+    groupby_cols : str or list of str
+        The column names to be used as groupby keys.
+    sort_cols : str or list of str
+        Columns to be used to sort each partition before
+        groupby aggregation is performed. If this argument
+        is not specified, the results will not be sorted.
+    aggs : dict, list or str
+        Groupby aggregations to perform.
+    """
 
     def __init__(self, groupby_cols=None, sort_cols=None, aggs="list"):
         self.groupby_cols = groupby_cols
