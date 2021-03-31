@@ -26,7 +26,11 @@ class Groupby(Operator):
 
     def __init__(self, groupby_cols=None, sort_cols=None, aggs="list"):
         self.groupby_cols = groupby_cols
-        self.sort_cols = sort_cols
+        self.sort_cols = sort_cols or []
+        if isinstance(self.groupby_cols, str):
+            self.groupby_cols = [self.groupby_cols]
+        if isinstance(self.sort_cols, str):
+            self.sort_cols = [self.sort_cols]
 
         # Split aggregations into "conventional" aggregations
         # and "list-based" aggregations.  After this block,
@@ -89,11 +93,23 @@ class Groupby(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        # Get the exoected column names after transformation
+        # Get the expected column names after transformation
         _list_aggs, _conv_aggs = _get_agg_dicts(
             self.groupby_cols, self.list_aggs, self.conv_aggs, columns
         )
+        _list_aggs = _columns_out_from_aggs(_list_aggs)
+        _conv_aggs = _columns_out_from_aggs(_conv_aggs)
+
         return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
+
+
+def _columns_out_from_aggs(aggs):
+    # Helper function for `output_column_names`
+    _agg_cols = []
+    for k, v in aggs.items():
+        for _v in v:
+            _agg_cols.append("_".join([k, _v]))
+    return _agg_cols
 
 
 def _apply_conventional_aggs(_df, groupby_cols, _conv_aggs):
@@ -132,12 +148,13 @@ def _get_agg_dicts(groupby_cols, list_aggs, conv_aggs, columns):
     # to specific columns, and remove elements that are not
     # in `columns`.
     _allowed_cols = [c for c in columns if c not in groupby_cols]
-    _list_aggs = _check_agg_dict(list_aggs, _allowed_cols)
-    _conv_aggs = _check_agg_dict(conv_aggs, _allowed_cols)
+    _list_aggs = _ensure_agg_dict(list_aggs, _allowed_cols)
+    _conv_aggs = _ensure_agg_dict(conv_aggs, _allowed_cols)
     return _list_aggs, _conv_aggs
 
 
-def _check_agg_dict(_aggs, _allowed_cols):
+def _ensure_agg_dict(_aggs, _allowed_cols):
+    # Make sure aggregation dict has legal keys
     if "__all__" in _aggs:
         return {col: _aggs["__all__"] for col in _allowed_cols}
     else:
@@ -145,20 +162,26 @@ def _check_agg_dict(_aggs, _allowed_cols):
 
 
 def _is_list_agg(agg):
+    # check if `agg` is a supported list aggregation
     return agg in ("list", "first", "last")
 
 
 def _first_or_last(x, kind):
+    # Redirect to _first or _last
     return _first(x) if kind == "first" else _last(x)
 
 
 def _first(x):
+    # Convert each element of a list column to be the first
+    # item in the list
     offsets = x.list._column.offsets
     elements = x.list._column.elements
     return [elements[offsets[i]] for i in range(0, len(offsets) - 1)]
 
 
 def _last(x):
+    # Convert each element of a list column to be the last
+    # item in the list
     offsets = x.list._column.offsets
     elements = x.list._column.elements
     return [elements[offsets[i] - 1] for i in range(1, len(offsets))]
