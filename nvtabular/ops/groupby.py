@@ -54,10 +54,15 @@ class Groupby(Operator):
         groupby aggregation is performed. If this argument
         is not specified, the results will not be sorted.
     aggs : dict, list or str
-        Groupby aggregations to perform.
+        Groupby aggregations to perform. Supported list-based
+        aggregations include "list", "first" & "last". Most
+        conventional aggregations supported by Pandas/cuDF are
+        also allowed (e.g. "sum", "count", "max", "mean", etc.).
+    name_sep : str
+        String separator to use for new column names.
     """
 
-    def __init__(self, groupby_cols=None, sort_cols=None, aggs="list"):
+    def __init__(self, groupby_cols=None, sort_cols=None, aggs="list", name_sep="_"):
         self.groupby_cols = groupby_cols
         self.sort_cols = sort_cols or []
         if isinstance(self.groupby_cols, str):
@@ -84,6 +89,7 @@ class Groupby(Operator):
                 else:
                     self.conv_aggs[col].append(_agg)
 
+        self.name_sep = name_sep
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
@@ -104,10 +110,10 @@ class Groupby(Operator):
         )
 
         # Get list-aggregation result
-        df_la = _apply_list_aggs(_df, self.groupby_cols, _list_aggs)
+        df_la = _apply_list_aggs(_df, self.groupby_cols, _list_aggs, name_sep=self.name_sep)
 
         # Get conventional-aggregation result
-        df_cv = _apply_conventional_aggs(_df, self.groupby_cols, _conv_aggs)
+        df_cv = _apply_conventional_aggs(_df, self.groupby_cols, _conv_aggs, name_sep=self.name_sep)
 
         if df_cv is None:
             # Only using list aggregations
@@ -130,49 +136,51 @@ class Groupby(Operator):
         _list_aggs, _conv_aggs = _get_agg_dicts(
             self.groupby_cols, self.list_aggs, self.conv_aggs, columns
         )
-        _list_aggs = _columns_out_from_aggs(_list_aggs)
-        _conv_aggs = _columns_out_from_aggs(_conv_aggs)
+        _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
+        _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
 
         return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
 
 
-def _columns_out_from_aggs(aggs):
+def _columns_out_from_aggs(aggs, name_sep="_"):
     # Helper function for `output_column_names`
     _agg_cols = []
     for k, v in aggs.items():
         for _v in v:
-            _agg_cols.append("_".join([k, _v]))
+            _agg_cols.append(name_sep.join([k, _v]))
     return _agg_cols
 
 
-def _apply_conventional_aggs(_df, groupby_cols, _conv_aggs):
+def _apply_conventional_aggs(_df, groupby_cols, _conv_aggs, name_sep="_"):
     df_cv = None  # Default return
     if _conv_aggs:
         _columns = list(set(groupby_cols) | set(_conv_aggs))
         df_cv = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
         df_cv.columns = [
-            "_".join([n for n in name if n != ""]) for name in df_cv.columns.to_flat_index()
+            name_sep.join([n for n in name if n != ""]) for name in df_cv.columns.to_flat_index()
         ]
     return df_cv
 
 
-def _apply_list_aggs(_df, groupby_cols, _list_aggs):
+def _apply_list_aggs(_df, groupby_cols, _list_aggs, name_sep="_"):
     df_la = None  # Default return
     if _list_aggs:
 
         # Perform initial "collect" aggregation
         _columns = list(set(groupby_cols) | set(_list_aggs))
         df_la = _df[_columns].groupby(groupby_cols).collect().reset_index()
-        columns = [c + "_list" if c in _list_aggs else c for c in df_la.columns]
+        columns = [c + f"{name_sep}list" if c in _list_aggs else c for c in df_la.columns]
         df_la.columns = columns
 
         # Handle "first" and "last" aggregations
         for col, aggs in _list_aggs.items():
             for _agg in aggs:
                 if _agg in ("first", "last"):
-                    df_la[f"{col}_{_agg}"] = _first_or_last(df_la[f"{col}_list"], _agg)
+                    df_la[f"{col}{name_sep}{_agg}"] = _first_or_last(
+                        df_la[f"{col}{name_sep}list"], _agg
+                    )
             if "list" not in aggs:
-                df_la.drop(columns=[col + "_list"], inplace=True)
+                df_la.drop(columns=[col + f"{name_sep}list"], inplace=True)
     return df_la
 
 

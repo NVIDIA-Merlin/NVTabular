@@ -994,13 +994,14 @@ def test_groupby_op(keys):
             "x": ["list", "sum"],
             "y": ["first", "last"],
         },
+        name_sep="-",
     )
     processor = nvtabular.Workflow(groupby_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     # Check list-aggregation ordering
-    x = new_gdf["x_list"]
+    x = new_gdf["x-list"]
     x = x.to_pandas() if hasattr(x, "to_pandas") else x
     sums = []
     for el in x.values:
@@ -1009,9 +1010,9 @@ def test_groupby_op(keys):
         assert _el.is_monotonic_increasing
 
     # Check that list sums match sum aggregation
-    x = new_gdf["x_sum"]
+    x = new_gdf["x-sum"]
     x = x.to_pandas() if hasattr(x, "to_pandas") else x
     assert list(x) == sums
 
     # Check basic behavior or "y" column
-    assert (new_gdf["y_first"] < new_gdf["y_last"]).all()
+    assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
