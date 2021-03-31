@@ -22,14 +22,15 @@ from .operator import ColumnNames, Operator
 
 
 class Groupby(Operator):
-    """Local Groupby Transformation
+    """Groupby Transformation
 
-    WARNING: This transformation does NOT transfer data between
-    partitions. Please make sure that the target Dataset object is
-    already shuffled by the desired groupby keys, otherwise the
-    output of this transformation may be incorrect.
+    Locally transform each partition of a Dataset with one or
+    more groupby aggregations.
 
-    See: ``Dataset.shuffle_by_keys``.
+    WARNING: This transformation does NOT move data between
+    partitions. Please make sure that the target Dataset object
+    is already shuffled by ``groupby_cols``, otherwise the
+    output may be incorrect. See: ``Dataset.shuffle_by_keys``.
 
     Example usage::
 
