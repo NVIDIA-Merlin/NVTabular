@@ -48,14 +48,15 @@ class FillMissing(Operator):
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, df: DataFrameType) -> DataFrameType:
+        _df = type(df)()
         if self.add_binary_cols:
             for col in columns:
-                df[f"{col}_filled"] = df[col].isna()
-                df[col] = df[col].fillna(self.fill_val)
+                _df[f"{col}_filled"] = df[col].isna()
+                _df[col] = df[col].fillna(self.fill_val)
         else:
-            df[columns] = df[columns].fillna(self.fill_val)
+            _df[columns] = df[columns].fillna(self.fill_val)
 
-        return df
+        return _df
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -92,7 +93,7 @@ class FillMedian(StatOperator):
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
-        _df = df.copy()
+        _df = type(df)()
         for col in columns:
             if self.add_binary_cols:
                 _df[f"{col}_filled"] = df[col].isna()
