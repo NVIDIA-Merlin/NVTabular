@@ -292,8 +292,7 @@ def _transform_ddf(ddf, column_groups):
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
     # IO function.
-    if all((c.op is None and not c.parents) for c in column_groups):
-        return _ddf_column_selection(ddf, column_groups)
+    return ddf[columns]
 
     # TODO: constructing meta like this loses dtype information on the ddf
     # sets it all to 'float64'. We should propogate dtype information along
@@ -312,22 +311,6 @@ def _get_stat_ops(nodes):
 def _get_unique(cols):
     # Need to preserve order in unique-column list
     return list({x: x for x in cols}.keys())
-
-
-def _ddf_column_selection(ddf, column_groups):
-    """Perform column selection for op/parent-Free column groups"""
-    output = None
-    for column_group in column_groups:
-        unique_flattened_cols = _get_unique(column_group.flattened_columns)
-        if column_group.parents or column_group.op:
-            raise ValueError("Passing a complex column group to _ddf_column_selection")
-        df = ddf[unique_flattened_cols]
-        if output is None:
-            output = df[unique_flattened_cols]
-        else:
-            for col in unique_flattened_cols:
-                output[col] = df[col]
-    return output
 
 
 def _transform_partition(root_df, column_groups):
