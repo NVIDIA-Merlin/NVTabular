@@ -322,10 +322,11 @@ def _ddf_column_selection(ddf, column_groups):
         if column_group.parents or column_group.op:
             raise ValueError("Passing a complex column group to _ddf_column_selection")
         df = ddf[unique_flattened_cols]
-        if not output:
+        if output is None:
             output = df[unique_flattened_cols]
         else:
-            output = _concat_columns([output, df[unique_flattened_cols]])
+            for col in unique_flattened_cols:
+                output[col] = df[col]
     return output
 
 
