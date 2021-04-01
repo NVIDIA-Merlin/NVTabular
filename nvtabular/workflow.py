@@ -132,7 +132,7 @@ class Workflow:
                 try:
                     stat = op.fit(column_group.input_column_names, transformed_ddf)
                     if self.client:
-                        computed = self.client.compute(stat).result()
+                        computed = [r.result() for r in self.client.compute([stat])][0]
                     else:
                         computed = dask.compute(stat, scheduler="synchronous")[0]
                 except Exception:
