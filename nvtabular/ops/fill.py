@@ -92,11 +92,12 @@ class FillMedian(StatOperator):
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
+        _df = type(df)()
         for col in columns:
             if self.add_binary_cols:
-                df[f"{col}_filled"] = df[col].isna()
-            df[col] = df[col].fillna(self.medians[col])
-        return df
+                _df[f"{col}_filled"] = df[col].isna()
+            _df[col] = df[col].fillna(self.medians[col])
+        return _df
 
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
