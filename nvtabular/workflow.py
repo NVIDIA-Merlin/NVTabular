@@ -292,7 +292,8 @@ def _transform_ddf(ddf, column_groups):
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
     # IO function.
-    return ddf[columns]
+    if all((c.op is None and not c.parents) for c in column_groups):
+        return ddf[columns]
 
     # TODO: constructing meta like this loses dtype information on the ddf
     # sets it all to 'float64'. We should propogate dtype information along
