@@ -124,27 +124,21 @@ class Workflow:
                 # this shouldn't happen, but lets not infinite loop just in case
                 raise RuntimeError("failed to find dependency-free StatOperator to fit")
 
-            stats, ops = [], []
             for column_group in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
                 transformed_ddf = _transform_ddf(ddf, column_group.parents)
-
                 op = column_group.op
                 try:
-                    stats.append(op.fit(column_group.input_column_names, transformed_ddf))
-                    ops.append(op)
+                    stat = op.fit(column_group.input_column_names, transformed_ddf)
+                    if self.client:
+                        computed = self.client.compute(stat).result()
+                    else:
+                        computed = dask.compute(stat, scheduler="synchronous")[0]
                 except Exception:
                     LOG.exception("Failed to fit operator %s", column_group.op)
                     raise
-
-            if self.client:
-                results = [r.result() for r in self.client.compute(stats)]
-            else:
-                results = dask.compute(stats, scheduler="synchronous")[0]
-
-            for computed_stats, op in zip(results, ops):
-                op.fit_finalize(computed_stats)
+                op.fit_finalize(computed)
 
             # Remove all the operators we processed in this phase, and remove
             # from the dependencies of other ops too
