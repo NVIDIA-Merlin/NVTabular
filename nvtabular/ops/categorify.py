@@ -342,7 +342,7 @@ class Categorify(StatOperator):
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        new_df = df.copy(deep=False)
+        new_df = df.copy()
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in columns)
 
