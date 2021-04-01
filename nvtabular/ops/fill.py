@@ -92,7 +92,7 @@ class FillMedian(StatOperator):
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
-        _df = type(df)()
+        _df = df.copy()
         for col in columns:
             if self.add_binary_cols:
                 _df[f"{col}_filled"] = df[col].isna()
