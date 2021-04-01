@@ -218,7 +218,7 @@ def _first(x):
     # item in the list
     offsets = x.list._column.offsets
     elements = x.list._column.elements
-    return [elements[offsets[i]] for i in range(0, len(offsets) - 1)]
+    return elements[offsets[:-1]]
 
 
 def _last(x):
@@ -226,4 +226,4 @@ def _last(x):
     # item in the list
     offsets = x.list._column.offsets
     elements = x.list._column.elements
-    return [elements[offsets[i] - 1] for i in range(1, len(offsets))]
+    return elements[offsets[1:].values - 1]
