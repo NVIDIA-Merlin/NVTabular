@@ -218,6 +218,8 @@ class DataLoader:
                 self._buff.stop()
             for t in self._workers:
                 t.join()
+            # remove joined threads from list
+            self._workers = None
             self._buff.q_out.queue.clear()
         self._batch_itr = None
 

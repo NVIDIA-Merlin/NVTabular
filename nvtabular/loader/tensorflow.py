@@ -238,6 +238,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         # TODO: what's a better way to do this inheritance
         # of the appropriate methods? A Metaclass?
+        DataLoader.stop(self)
         return DataLoader.__len__(self)
 
     def __getitem__(self, idx):
@@ -246,19 +247,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         with Keras model.fit. Does not leverage
         passed idx in any way
         """
-        try:
-            return DataLoader.__next__(self)
-        except StopIteration:
-            # TODO: I would like to do a check for idx == 0
-            # here, but that requires that tf.keras.Model.fit
-            # be called with shuffle=False, and that seems
-            # small enough that it would be too easy to miss
-            # for many users. That said, blind reinitialization
-            # is probably irresponsible, so worth thinking
-            # of something better here
-            # return StopIteration
-            DataLoader.__iter__(self)
-            return DataLoader.__next__(self)
+        return DataLoader.__next__(self)
+
 
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
