@@ -131,7 +131,7 @@ class ChunkQueue:
                     chunks = None
 
                 # takes care final batch, which is less than batch size
-                if spill is not None and not spill.empty:
+                if spill is not None and not spill.empty and not self.dataloader.drop_last:
                     spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
@@ -178,10 +178,11 @@ class DataLoader:
         device=None,
         global_size=None,
         global_rank=None,
+        drop_last=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
-
+        self.drop_last = drop_last
         self.device = device or 0
 
         self.global_size = global_size or 1

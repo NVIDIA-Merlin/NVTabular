@@ -205,6 +205,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         reader_kwargs=None,
         global_size=None,
         global_rank=None,
+        drop_last=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -230,6 +231,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             device=device,
             global_size=global_size,
             global_rank=global_rank,
+            drop_last=drop_last
         )
 
     def __len__(self):
