@@ -249,7 +249,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         return DataLoader.__next__(self)
 
-
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
         # with tf.device("/device:GPU:{}".format(dev)) as tf_device:
