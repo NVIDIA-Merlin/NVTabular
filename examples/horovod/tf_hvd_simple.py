@@ -18,7 +18,7 @@ from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402
 
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument("--dir_in", default=None, help="Input directory")
-parser.add_argument("--b_size", default=None, help="batch size")
+parser.add_argument("--batch_size", default=None, help="batch size")
 parser.add_argument("--cats", default=None, help="categorical columns")
 parser.add_argument("--cats_mh", default=None, help="categorical multihot columns")
 parser.add_argument("--conts", default=None, help="continuous columns")
@@ -27,7 +27,7 @@ args = parser.parse_args()
 
 
 BASE_DIR = args.dir_in or "./data/"
-BATCH_SIZE = args.b_size or 16384  # Batch Size
+BATCH_SIZE = int(args.batch_size) or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
