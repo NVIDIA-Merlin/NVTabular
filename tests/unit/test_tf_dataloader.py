@@ -64,7 +64,7 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         drop_last=drop_last,
     )
 
-    all_len = len(data_itr)
+    all_len = len(data_itr) if drop_last else len(data_itr) - 1
     all_rows = 0
     for idx, (X, y) in enumerate(data_itr):
         all_rows += len(X["cat1"])

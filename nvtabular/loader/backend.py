@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
 import queue
 import threading
 import warnings
@@ -27,7 +28,7 @@ from nvtabular.ops import _get_embedding_order
 
 
 def _num_steps(num_samples, step_size):
-    return (num_samples - 1) // step_size + 1
+    return math.ceil(num_samples / step_size)
 
 
 class ChunkQueue:
@@ -203,7 +204,10 @@ class DataLoader:
         self._workers = None
 
     def __len__(self):
-        return _num_steps(len(self._buff), self.batch_size)
+        batches = _num_steps(len(self._buff), self.batch_size)
+        if self.drop_last and len(self._buff) % self.batch_size > 0:
+            batches = batches - 1
+        return batches
 
     @property
     def _working(self):
