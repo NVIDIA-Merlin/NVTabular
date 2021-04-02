@@ -36,7 +36,7 @@ tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 @pytest.mark.parametrize("batch_size", [10, 9, 8])
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
-def test_tf_catname_ordering(tmpdir, batch_size, drop_last, num_rows):
+def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
     df = cudf.DataFrame(
         {
             "cat1": [1] * num_rows,
