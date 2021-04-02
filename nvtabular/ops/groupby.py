@@ -197,14 +197,24 @@ def _first_or_last(x, kind):
 def _first(x):
     # Convert each element of a list column to be the first
     # item in the list
-    offsets = x.list._column.offsets
-    elements = x.list._column.elements
-    return elements[offsets[:-1]]
+    if hasattr(x, "list"):
+        # cuDF-specific behavior
+        offsets = x.list._column.offsets
+        elements = x.list._column.elements
+        return elements[offsets[:-1]]
+    else:
+        # cpu/pandas
+        return x.apply(lambda y: y[0])
 
 
 def _last(x):
     # Convert each element of a list column to be the last
     # item in the list
-    offsets = x.list._column.offsets
-    elements = x.list._column.elements
-    return elements[offsets[1:].values - 1]
+    if hasattr(x, "list"):
+        # cuDF-specific behavior
+        offsets = x.list._column.offsets
+        elements = x.list._column.elements
+        return elements[offsets[1:].values - 1]
+    else:
+        # cpu/pandas
+        return x.apply(lambda y: y[-1])
