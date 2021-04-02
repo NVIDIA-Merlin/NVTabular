@@ -34,7 +34,7 @@ if torch.cuda.is_available():
 
 
 BASE_DIR = os.path.expanduser(args.dir_in or "./data/")
-BATCH_SIZE = args.batch_size or 16384  # Batch Size
+BATCH_SIZE = int(args.batch_size) or 16384  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
