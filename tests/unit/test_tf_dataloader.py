@@ -54,7 +54,6 @@ def test_tf_catname_ordering(tmpdir, batch_size, drop_last, num_rows):
     cont_names = ["cont3", "cont2", "cont1"]
     label_name = ["label"]
 
-
     data_itr = tf_dataloader.KerasSequenceLoader(
         [path],
         cat_names=cat_names,
@@ -62,11 +61,11 @@ def test_tf_catname_ordering(tmpdir, batch_size, drop_last, num_rows):
         batch_size=batch_size,
         label_names=label_name,
         shuffle=False,
-        drop_last=drop_last
+        drop_last=drop_last,
     )
 
     all_len = len(data_itr)
-    all_rows=0
+    all_rows = 0
     for idx, (X, y) in enumerate(data_itr):
         all_rows += len(X["cat1"])
         if idx < all_len:

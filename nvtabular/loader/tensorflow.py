@@ -231,7 +231,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             device=device,
             global_size=global_size,
             global_rank=global_rank,
-            drop_last=drop_last
+            drop_last=drop_last,
         )
 
     def __len__(self):
