@@ -78,6 +78,13 @@ def test_movielens_example(tmpdir):
     )
     _run_notebook(tmpdir, notebook_path)
 
+    def _modify_tf_nb(line):
+        return line.replace(
+            # don't require grqphviz/pydot
+            "tf.keras.utils.plot_model(model)",
+            "# tf.keras.utils.plot_model(model)",
+        )
+
     notebooks = []
     try:
         import torch  # noqa
@@ -98,7 +105,10 @@ def test_movielens_example(tmpdir):
             "examples/getting-started-movielens/",
             notebook,
         )
-        _run_notebook(tmpdir, notebook_path)
+        if notebook == "03a-Training-with-TF.ipynb":
+            _run_notebook(tmpdir, notebook_path, transform=_modify_tf_nb)
+        else:
+            _run_notebook(tmpdir, notebook_path)
 
 
 def test_rossman_example(tmpdir):
@@ -341,10 +351,10 @@ def _get_random_movielens_data(tmpdir, rows, dataset="movie", valid=None):
     df_gen.full_df_create(rows, cols, output=target_path)
 
     if dataset == "movie":
-        os.rename(
-            os.path.join(tmpdir, "dataset_0.parquet"),
-            os.path.join(tmpdir, "movies_converted.parquet"),
-        )
+        movies_converted = cudf.read_parquet(os.path.join(tmpdir, "dataset_0.parquet"))
+        movies_converted = movies_converted.drop_duplicates(["movieId"], keep="first")
+        movies_converted.to_parquet(os.path.join(tmpdir, "movies_converted.parquet"))
+
     elif dataset == "ratings" and not valid:
         os.rename(os.path.join(tmpdir, "dataset_0.parquet"), os.path.join(tmpdir, "train.parquet"))
     else:
