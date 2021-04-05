@@ -132,7 +132,7 @@ class ChunkQueue:
                     chunks = None
 
                 # takes care final batch, which is less than batch size
-                if spill is not None and not spill.empty and not self.dataloader.drop_last:
+                if not self.dataloader.drop_last and spill is not None and not spill.empty:
                     spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
@@ -200,12 +200,14 @@ class DataLoader:
 
         # we set size of chunk queue to 1 we only want one chunk in queue at a time.
         self._buff = ChunkQueue(self, 1, num_parts=parts_per_chunk, shuffle=shuffle)
+        # run once instead of everytime len called
+        self._buff_len = len(self._buff)
         self._batch_itr = None
         self._workers = None
 
     def __len__(self):
-        batches = _num_steps(len(self._buff), self.batch_size)
-        if self.drop_last and len(self._buff) % self.batch_size > 0:
+        batches = _num_steps(self._buff_len), self.batch_size)
+        if self.drop_last and self._buff_len % self.batch_size > 0:
             batches = batches - 1
         return batches
 
