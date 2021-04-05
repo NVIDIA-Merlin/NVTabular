@@ -20,6 +20,7 @@ import subprocess
 from shutil import copyfile
 
 import cudf
+import torch
 import tritonclient.grpc as grpcclient
 from cudf.utils.dtypes import is_list_dtype
 from google.protobuf import text_format
@@ -74,6 +75,43 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     os.makedirs(ensemble_path, exist_ok=True)
     os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
     _generate_ensemble_config(name, ensemble_path, nvt_config, tf_config)
+
+
+def export_pytorch_ensemble(model, workflow, name, model_path, input_names, label_names, version=1):
+    """Creates an ensemble triton server model, with the first model being a nvtabular
+    preprocessing, and the second by a pytorch saved model
+
+    Parameters
+    ----------
+    model:
+        The pytorch model that should be served
+    workflow:
+        The nvtabular workflow used in preprocessing
+    name:
+        The base name of the various triton models
+    model_path:
+        The root path to write out files to
+    label_columns:
+        Labels in the dataset (will be removed f
+    """
+
+    workflow = _remove_columns(workflow, label_names)
+
+    # generate the nvtabular triton model
+    preprocessing_path = os.path.join(model_path, name + "_nvt")
+    nvt_config = generate_nvtabular_model(workflow, name + "_nvt", preprocessing_path)
+
+    # generate the PT saved model
+    pt_path = os.path.join(model_path, name + "_pt")
+    pt_model_path = os.path.join(pt_path, str(version), "model.pt")
+    torch.save(model, pt_model_path)
+    pt_config = _generate_pytorch_config(model, name + "_pt", pt_path, input_names, label_names)
+
+    # generate the triton ensemble
+    ensemble_path = os.path.join(model_path, name)
+    os.makedirs(ensemble_path, exist_ok=True)
+    os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
+    _generate_ensemble_config(name, ensemble_path, nvt_config, pt_config)
 
 
 def export_hugectr_ensemble(
@@ -330,6 +368,32 @@ def _generate_tensorflow_config(model, name, output_path):
         config.output.append(
             model_config.ModelOutput(
                 name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+            )
+        )
+
+    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+        text_format.PrintMessage(config, o)
+    return config
+
+
+def _generate_pytorch_config(
+    model, name, output_path, input_names, label_names, max_batch_size=None
+):
+    """given a workflow generates the trton modelconfig proto object describing the inputs
+    and outputs to that workflow"""
+    config = model_config.ModelConfig(
+        name=name, platform="pytorch_libtorch", max_batch_size=max_batch_size
+    )
+
+    for col in input_names:
+        config.input.append(
+            model_config.ModelInput(name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1])
+        )
+
+    for col in label_names:
+        config.output.append(
+            model_config.ModelOutput(
+                name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1]
             )
         )
 
