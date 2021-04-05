@@ -355,6 +355,10 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
             for metric in self.model.metrics:
                 metric.update_state(y_true, y_pred)
 
+        set_logs = {}
         for metric in self.model.metrics:
-            logs["val_" + metric.name] = metric.result().numpy()
+            name = "val_" + metric.name
+            set_logs[f"val_{metric.name}"] = metric.result().numpy()
+        logs.update(set_logs)
+        print(set_logs)
         return logs
