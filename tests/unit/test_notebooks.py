@@ -51,9 +51,6 @@ def test_criteo_tf_notebook(tmpdir):
         line = line.replace("NUM_GPUS = [0,1,2,3,4,5,6,7]", "NUM_GPUS = [0]")
         line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
 
-        line = line.replace(
-            "tf.keras.utils.plot_model(model)", "# tf.keras.utils.plot_model(model)"
-        )
         return line
 
     _run_notebook(
@@ -67,6 +64,13 @@ def test_criteo_tf_notebook(tmpdir):
         transform=_nb_modify,
     )
 
+    def _modify_tf_nb(line):
+        return line.replace(
+            # don't require grqphviz/pydot
+            "tf.keras.utils.plot_model(model)",
+            "# tf.keras.utils.plot_model(model)",
+        )
+
     _run_notebook(
         tmpdir,
         os.path.join(
@@ -74,6 +78,7 @@ def test_criteo_tf_notebook(tmpdir):
             "examples/scaling-criteo/",
             "03a-Training-with-TF.ipynb",
         ),
+        transform=_modify_tf_nb,
     )
 
 
