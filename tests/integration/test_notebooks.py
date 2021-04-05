@@ -37,13 +37,15 @@ INFERENCE_MULTI_HOT = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "models_multiho
 
 
 def test_criteo_notebook(asv_db, bench_info, tmpdir):
+    # PyTorch required to run this test
+    pytest.importorskip("torch")
     input_path = os.path.join(DATA_START, "tests/crit_int_pq")
     output_path = os.path.join(DATA_START, "tests/crit_test")
     os.environ["PARTS_PER_CHUNK"] = "1"
 
     out = _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "criteo-example.ipynb"),
+        os.path.join(dirname(TEST_PATH), "examples/scaling-criteo", "02-03b-ETL-with-NVTabular-Training-with-PyTorch.ipynb"),
         input_path,
         output_path,
         # disable rmm.reinitialize, seems to be causing issues
@@ -56,25 +58,24 @@ def test_criteo_notebook(asv_db, bench_info, tmpdir):
     send_results(asv_db, bench_info, bench_results)
 
 
-@pytest.mark.skip(reason="Criteo-hugectr notebook needs to be updated.")
 def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
-    input_path = os.path.join(DATA_START, "criteo/crit_int_pq")
-    output_path = os.path.join(DATA_START, "criteo/crit_test")
+    # HugeCTR required to run this test
+    pytest.importorskip("hugectr")
+    input_path = os.path.join(DATA_START, "tests/crit_int_pq")
+    output_path = os.path.join(DATA_START, "tests/crit_test")
     os.environ["PARTS_PER_CHUNK"] = "1"
 
     _run_notebook(
         tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples", "hugectr", "criteo-hugectr.ipynb"),
+        os.path.join(dirname(TEST_PATH), "examples/scaling-criteo", "02-03c-ETL-with-NVTabular-HugeCTR.ipynb"),
         input_path,
         output_path,
-        # disable rmm.reinitialize, seems to be causing issues
-        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
         gpu_id="0,1",
-        batch_size=100000,
     )
 
 
 def test_rossman_example(asv_db, bench_info, tmpdir):
+    # Tensorflow required to run this test
     pytest.importorskip("tensorflow")
     data_path = os.path.join(DATA_START, "rossman/data")
     input_path = os.path.join(DATA_START, "rossman/input")
@@ -118,7 +119,8 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
 
 
 def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
-
+    # Tensorflow required to run this test
+    pytest.importorskip("tensorflow")
     data_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
     input_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
 
@@ -151,7 +153,8 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
 
 
 def test_tf_inference_examples(asv_db, bench_info, tmpdir):
-
+    # Tritonclient required for this test
+    pytest.importorskip("tritonclient")
     data_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
     input_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
 
@@ -165,6 +168,8 @@ def test_tf_inference_examples(asv_db, bench_info, tmpdir):
 
 
 def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
+    # Tritonclient required for this test
+    pytest.importorskip("tritonclient")
 
     data_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
     input_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
