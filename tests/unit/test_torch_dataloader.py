@@ -71,15 +71,13 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
     all_len = len(data_itr) if drop_last else len(data_itr) - 1
     all_rows = 0
-    for idx, (X, y) in enumerate(data_itr):
-        all_rows += len(X["cat1"])
+    for idx, chunk in enumerate(data_itr):
+        all_rows += len(chunk[0])
         if idx < all_len:
-            assert list(X["cat1"].numpy()) == [1] * batch_size
-            assert list(X["cat2"].numpy()) == [2] * batch_size
-            assert list(X["cat3"].numpy()) == [3] * batch_size
-            assert list(X["cont1"].numpy()) == [1.0] * batch_size
-            assert list(X["cont2"].numpy()) == [2.0] * batch_size
-            assert list(X["cont3"].numpy()) == [3.0] * batch_size
+            for sub in batch:
+                assert list(sub[0].numpy()) == [1.0] * batch_size
+                assert list(sub[1].numpy()) == [2.0] * batch_size
+                assert list(sub[2].numpy()) == [3.0] * batch_size
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
