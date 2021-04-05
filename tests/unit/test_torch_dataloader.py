@@ -76,9 +76,9 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         if idx < all_len:
             for sub in chunk:
                 sub = sub.cpu()
-                assert list(sub[0].numpy()) == [1.0] * batch_size
-                assert list(sub[1].numpy()) == [2.0] * batch_size
-                assert list(sub[2].numpy()) == [3.0] * batch_size
+                assert list(sub[:,0].numpy()) == [1.0] * batch_size
+                assert list(sub[:,1].numpy()) == [2.0] * batch_size
+                assert list(sub[:,2].numpy()) == [3.0] * batch_size
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
