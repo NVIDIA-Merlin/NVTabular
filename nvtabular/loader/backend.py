@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
 import queue
 import threading
 import warnings
@@ -27,7 +28,7 @@ from nvtabular.ops import _get_embedding_order
 
 
 def _num_steps(num_samples, step_size):
-    return (num_samples - 1) // step_size + 1
+    return math.ceil(num_samples / step_size)
 
 
 class ChunkQueue:
@@ -131,7 +132,7 @@ class ChunkQueue:
                     chunks = None
 
                 # takes care final batch, which is less than batch size
-                if spill is not None and not spill.empty:
+                if not self.dataloader.drop_last and spill is not None and not spill.empty:
                     spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
@@ -178,10 +179,11 @@ class DataLoader:
         device=None,
         global_size=None,
         global_rank=None,
+        drop_last=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
-
+        self.drop_last = drop_last
         self.device = device or 0
 
         self.global_size = global_size or 1
@@ -198,11 +200,16 @@ class DataLoader:
 
         # we set size of chunk queue to 1 we only want one chunk in queue at a time.
         self._buff = ChunkQueue(self, 1, num_parts=parts_per_chunk, shuffle=shuffle)
+        # run once instead of everytime len called
+        self._buff_len = len(self._buff)
         self._batch_itr = None
         self._workers = None
 
     def __len__(self):
-        return _num_steps(len(self._buff), self.batch_size)
+        batches = _num_steps(self._buff_len, self.batch_size)
+        if self.drop_last and self._buff_len % self.batch_size > 0:
+            batches = batches - 1
+        return batches
 
     @property
     def _working(self):
@@ -218,6 +225,8 @@ class DataLoader:
                 self._buff.stop()
             for t in self._workers:
                 t.join()
+            # remove joined threads from list
+            self._workers = None
             self._buff.q_out.queue.clear()
         self._batch_itr = None
 
