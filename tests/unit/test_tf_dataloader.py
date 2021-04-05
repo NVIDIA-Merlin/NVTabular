@@ -350,7 +350,7 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
 
 
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
-def test_hvd(tmpdir):
+def test_horovod_multigpu(tmpdir):
     json_sample = {
         "conts": {},
         "cats": {
@@ -408,6 +408,8 @@ def test_hvd(tmpdir):
             hvd_exam_path,
             "--dir_in",
             f"{tmpdir}",
+            "--batch_size",
+            "1024",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
