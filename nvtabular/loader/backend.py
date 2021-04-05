@@ -206,7 +206,7 @@ class DataLoader:
         self._workers = None
 
     def __len__(self):
-        batches = _num_steps(self._buff_len), self.batch_size)
+        batches = _num_steps(self._buff_len, self.batch_size)
         if self.drop_last and self._buff_len % self.batch_size > 0:
             batches = batches - 1
         return batches
