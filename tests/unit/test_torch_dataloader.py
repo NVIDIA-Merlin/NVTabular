@@ -42,7 +42,7 @@ GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 @pytest.mark.parametrize("batch_size", [10, 9, 8])
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
-def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
+def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
     df = cudf.DataFrame(
         {
             "cat1": [1] * num_rows,
@@ -74,11 +74,11 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
     for idx, chunk in enumerate(data_itr):
         all_rows += len(chunk[0])
         if idx < all_len:
-            for sub in chunk:
+            for sub in chunk[:2]:
                 sub = sub.cpu()
-                assert list(sub[:, 0].numpy()) == [1.0] * batch_size
-                assert list(sub[:, 1].numpy()) == [2.0] * batch_size
-                assert list(sub[:, 2].numpy()) == [3.0] * batch_size
+                assert list(sub[:, 0].numpy()) == [1] * batch_size
+                assert list(sub[:, 1].numpy()) == [2] * batch_size
+                assert list(sub[:, 2].numpy()) == [3] * batch_size
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
