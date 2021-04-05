@@ -450,6 +450,8 @@ def test_horovod_multigpu(tmpdir):
             hvd_example_path,
             "--dir_in",
             f"{tmpdir}",
+            "--batch_size",
+            "1024",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
