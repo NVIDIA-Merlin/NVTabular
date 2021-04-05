@@ -13,6 +13,7 @@ Operators
    FillMissing <fillmissing>
    FillMedian <fillmedian>
    Filter <filter>
+   Groupby <groupby>
    HashBucket <hashbucket>
    HashedCross <hashedcross>
    JoinExternal <joinexternal>
@@ -22,7 +23,6 @@ Operators
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
    TargetEncoding <targetencoding>
-
 
    Operator <operator>
    StatOperator <stat_operator>
