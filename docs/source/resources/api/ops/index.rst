@@ -17,7 +17,7 @@ Operators
    HashBucket <hashbucket>
    HashedCross <hashedcross>
    JoinExternal <joinexternal>
-   JoinGroupby <groupby>
+   JoinGroupby <joingroupby>
    LambdaOp <lambdaop>
    LogOp <log>
    Normalize <normalize>
