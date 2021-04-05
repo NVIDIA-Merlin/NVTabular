@@ -67,8 +67,8 @@ def test_optimize_criteo(tmpdir):
 
 def test_movielens_example(tmpdir):
     _get_random_movielens_data(tmpdir, 10000, dataset="movie")
-    _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
     _get_random_movielens_data(tmpdir, 10000, dataset="ratings")
+    _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
 
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
     notebook_path = os.path.join(
