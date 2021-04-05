@@ -73,6 +73,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         device=None,
         global_size=None,
         global_rank=None,
+        drop_last=False,
     ):
         DataLoader.__init__(
             self,
@@ -87,6 +88,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             device=device,
             global_size=global_size,
             global_rank=global_rank,
+            drop_last=drop_last,
         )
 
     def __iter__(self):
