@@ -24,6 +24,7 @@ from os.path import dirname, realpath
 import cudf
 import pytest
 
+import nvtabular.tools.data_gen as datagen
 from tests.conftest import get_cuda_cluster
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
@@ -64,28 +65,40 @@ def test_optimize_criteo(tmpdir):
     _run_notebook(tmpdir, notebook_path)
 
 
-@pytest.mark.skip(reason="Need to install pydot / use mock data on this")
 def test_movielens_example(tmpdir):
-    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
-    notebooks = [
-        "01-Download-Convert.ipynb",
+    _get_random_movielens_data(tmpdir, 10000, dataset="movie")
+    _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
+    _get_random_movielens_data(tmpdir, 10000, dataset="ratings")
+
+    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+    notebook_path = os.path.join(
+        dirname(TEST_PATH),
+        "examples/getting-started-movielens/",
         "02-ETL-with-NVTabular.ipynb",
-        "03a-Training-with-TF.ipynb",
-        "03b-Training-with-PyTorch.ipynb",
-    ]
+    )
+    _run_notebook(tmpdir, notebook_path)
+
+    notebooks = []
+    try:
+        import torch  # noqa
+
+        notebooks.append("03b-Training-with-PyTorch.ipynb")
+    except Exception:
+        pass
+    try:
+        import nvtabular.loader.tensorflow  # noqa
+
+        notebooks.append("03a-Training-with-TF.ipynb")
+    except Exception:
+        pass
+
     for notebook in notebooks:
         notebook_path = os.path.join(
             dirname(TEST_PATH),
             "examples/getting-started-movielens/",
             notebook,
         )
-        _run_notebook(
-            tmpdir,
-            notebook_path,
-            lambda line: line.replace(
-                "BASE_DIR = '/raid/data/ml/'", "BASE_DIR = '" + str(tmpdir) + "/'"
-            ),
-        )
+        _run_notebook(tmpdir, notebook_path)
 
 
 def test_rossman_example(tmpdir):
@@ -277,3 +290,62 @@ def _get_random_rossmann_data(rows):
     )  # noqa
     dtypes["StateHoliday"] = bool
     return cudf.datasets.randomdata(rows, dtypes=dtypes)
+
+
+def _get_random_movielens_data(tmpdir, rows, dataset="movie", valid=None):
+    if dataset == "movie":
+        json_sample_movie = {
+            "conts": {},
+            "cats": {
+                "genres": {
+                    "dtype": None,
+                    "cardinality": 50,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                    "multi_min": 2,
+                    "multi_max": 4,
+                    "multi_avg": 3,
+                },
+                "movieId": {
+                    "dtype": None,
+                    "cardinality": 500,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                },
+            },
+        }
+        cols = datagen._get_cols_from_schema(json_sample_movie)
+    if dataset == "ratings":
+        json_sample_ratings = {
+            "conts": {},
+            "cats": {
+                "movieId": {
+                    "dtype": None,
+                    "cardinality": 500,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                },
+                "userId": {
+                    "dtype": None,
+                    "cardinality": 500,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                },
+            },
+            "labels": {"rating": {"dtype": None, "cardinality": 5}},
+        }
+        cols = datagen._get_cols_from_schema(json_sample_ratings)
+
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.1)
+    target_path = tmpdir
+    df_gen.full_df_create(rows, cols, output=target_path)
+
+    if dataset == "movie":
+        os.rename(
+            os.path.join(tmpdir, "dataset_0.parquet"),
+            os.path.join(tmpdir, "movies_converted.parquet"),
+        )
+    elif dataset == "ratings" and not valid:
+        os.rename(os.path.join(tmpdir, "dataset_0.parquet"), os.path.join(tmpdir, "train.parquet"))
+    else:
+        os.rename(os.path.join(tmpdir, "dataset_0.parquet"), os.path.join(tmpdir, "valid.parquet"))
