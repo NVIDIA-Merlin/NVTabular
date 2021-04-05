@@ -38,6 +38,7 @@ from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:sk
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
+
 @pytest.mark.parametrize("batch_size", [10, 9, 8])
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
@@ -74,52 +75,6 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         all_rows += len(chunk[0])
         if idx < all_len:
             for sub in chunk:
-                assert list(sub[0].numpy()) == [1.0] * batch_size
-                assert list(sub[1].numpy()) == [2.0] * batch_size
-                assert list(sub[2].numpy()) == [3.0] * batch_size
-
-    if drop_last and num_rows % batch_size > 0:
-        assert num_rows > all_rows
-    else:
-        assert num_rows == all_rows
-
-
-@pytest.mark.parametrize("batch_size", [10, 9, 8])
-@pytest.mark.parametrize("drop_last", [True, False])
-@pytest.mark.parametrize("num_rows", [100])
-def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = cudf.DataFrame(
-        {
-            "cat1": [1] * num_rows,
-            "cat2": [2] * num_rows,
-            "cat3": [3] * num_rows,
-            "label": [0] * num_rows,
-            "cont3": [3.0] * num_rows,
-            "cont2": [2.0] * num_rows,
-            "cont1": [1.0] * num_rows,
-        }
-    )
-    path = os.path.join(tmpdir, "dataset.parquet")
-    df.to_parquet(path)
-    cat_names = ["cat3", "cat2", "cat1"]
-    cont_names = ["cont3", "cont2", "cont1"]
-    label_name = ["label"]
-
-    data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset([path]),
-        cats=cat_names,
-        conts=cont_names,
-        labels=label_name,
-        batch_size=batch_size,
-        drop_last=drop_last,
-    )
-
-    all_len = len(data_itr) if drop_last else len(data_itr) - 1
-    all_rows = 0
-    for idx, chunk in enumerate(data_itr):
-        all_rows += len(chunk[0])
-        if idx < all_len:
-            for sub in batch:
                 assert list(sub[0].numpy()) == [1.0] * batch_size
                 assert list(sub[1].numpy()) == [2.0] * batch_size
                 assert list(sub[2].numpy()) == [3.0] * batch_size
