@@ -1,5 +1,5 @@
-JonGroupby
-=======
+JoinGroupby
+===========
 
 .. autoclass:: nvtabular.ops.JoinGroupby
    :members:
