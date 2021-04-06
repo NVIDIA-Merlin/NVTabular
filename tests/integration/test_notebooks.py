@@ -24,7 +24,7 @@ from os.path import dirname, realpath
 
 import pytest
 from benchmark_parsers import send_results
-from criteo_parsers import CriteoBenchFastAI
+from criteo_parsers import CriteoBenchFastAI, CriteoBenchHugeCTR
 from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
@@ -35,44 +35,35 @@ INFERENCE_ONE_HOT = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "models/")
 INFERENCE_MULTI_HOT_BASE_DIR = "/model/Test_Multi_Hot/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "models_multihot/")
 
-
-def test_criteo_notebook(asv_db, bench_info, tmpdir):
-    # PyTorch required to run this test
-    pytest.importorskip("torch")
+def test_criteo_example(asv_db, bench_info, tmpdir):
     input_path = os.path.join(DATA_START, "tests/crit_int_pq")
     output_path = os.path.join(DATA_START, "tests/crit_test")
-    os.environ["PARTS_PER_CHUNK"] = "1"
 
-    out = _run_notebook(
-        tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples/scaling-criteo", "02-03b-ETL-with-NVTabular-Training-with-PyTorch.ipynb"),
-        input_path,
-        output_path,
-        # disable rmm.reinitialize, seems to be causing issues
-        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
-        gpu_id=0,
-        batch_size=100000,
+    notebook_etl = os.path.join(
+        dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
     )
+    
+    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id=0, clean_up=False)
+    
+    notebook_pytorch = os.path.join(
+        dirname(TEST_PATH), "examples/scaling-criteo", "03d-Training-with-FastAI.ipynb"
+    )
+    
+    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id=0, clean_up=False)
+    
     bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
     bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
     send_results(asv_db, bench_info, bench_results)
-
-
-def test_criteohugectr_notebook(asv_db, bench_info, tmpdir):
-    # HugeCTR required to run this test
-    pytest.importorskip("hugectr")
-    input_path = os.path.join(DATA_START, "tests/crit_int_pq")
-    output_path = os.path.join(DATA_START, "tests/crit_test")
-    os.environ["PARTS_PER_CHUNK"] = "1"
-
-    _run_notebook(
-        tmpdir,
-        os.path.join(dirname(TEST_PATH), "examples/scaling-criteo", "02-03c-ETL-with-NVTabular-HugeCTR.ipynb"),
-        input_path,
-        output_path,
-        gpu_id="0,1",
+    
+    notebook_hugectr = os.path.join(
+        dirname(TEST_PATH), "examples/scaling-criteo", "03c-Training-with-HugeCTR.ipynb"
     )
-
+    
+    out = _run_notebook(tmpdir, notebook_hugectr, input_path, output_path, gpu_id=0, clean_up=False)
+    
+    bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
+    bench_results += CriteoBenchHugeCTR().get_dl_timing(out.splitlines())
+    send_results(asv_db, bench_info, bench_results)
 
 def test_rossman_example(asv_db, bench_info, tmpdir):
     # Tensorflow required to run this test
