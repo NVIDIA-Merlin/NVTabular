@@ -965,8 +965,9 @@ def test_data_stats(tmpdir, df, datasets, engine):
         )
 
 
+@pytest.mark.parametrize("cpu", [False, True])
 @pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
-def test_groupby_op(keys):
+def test_groupby_op(keys, cpu):
 
     # Initial timeseries dataset
     size = 60
@@ -984,7 +985,7 @@ def test_groupby_op(keys):
 
     # Create a ddf, and be sure to shuffle by the groupby keys
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
-    dataset = nvt.Dataset(ddf1)
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
 
     # Define Groupby Workflow
     groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
