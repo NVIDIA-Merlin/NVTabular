@@ -42,28 +42,37 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
     notebook_etl = os.path.join(
         dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
     )
+    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False)
     
-    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id=0, clean_up=False)
-    
-    notebook_pytorch = os.path.join(
-        dirname(TEST_PATH), "examples/scaling-criteo", "03d-Training-with-FastAI.ipynb"
-    )
-    
-    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id=0, clean_up=False)
-    
-    bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
-    bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
-    send_results(asv_db, bench_info, bench_results)
-    
-    notebook_hugectr = os.path.join(
-        dirname(TEST_PATH), "examples/scaling-criteo", "03c-Training-with-HugeCTR.ipynb"
-    )
-    
-    out = _run_notebook(tmpdir, notebook_hugectr, input_path, output_path, gpu_id=0, clean_up=False)
-    
-    bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
-    bench_results += CriteoBenchHugeCTR().get_dl_timing(out.splitlines())
-    send_results(asv_db, bench_info, bench_results)
+    # Only run if PyTorch installed
+    try:
+        import torch
+        notebook_pytorch = os.path.join(
+            dirname(TEST_PATH), "examples/scaling-criteo", "03d-Training-with-FastAI.ipynb"
+        )
+
+        out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False)
+
+        bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
+        bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
+        send_results(asv_db, bench_info, bench_results)
+    except:
+        print("Pytorch not installed in this container, skipping 03d-Training-with-FastAI.ipynb")
+
+    # Only run if HugeCTR installed
+    try:
+        import hugectr
+        notebook_hugectr = os.path.join(
+            dirname(TEST_PATH), "examples/scaling-criteo", "03c-Training-with-HugeCTR.ipynb"
+        )
+
+        out = _run_notebook(tmpdir, notebook_hugectr, input_path, output_path, gpu_id="0", clean_up=False)
+
+        bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
+        bench_results += CriteoBenchHugeCTR().get_dl_timing(out.splitlines())
+        send_results(asv_db, bench_info, bench_results)
+    except:
+        print("HugeCTR not installed in this container, skipping 03c-Training-with-HugeCTR.ipynb")
 
 def test_rossman_example(asv_db, bench_info, tmpdir):
     # Tensorflow required to run this test
