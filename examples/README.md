@@ -70,14 +70,14 @@ The container will open a shell when the run command execution is completed. You
 root@2efa5b50b909:
 ```
 
-1. Activate the ```rapids``` conda environment by running the following command:
+1. Activate the ```merlin``` conda environment by running the following command:
    ```
-   root@2efa5b50b909: source activate rapids
+   root@2efa5b50b909: source activate merlin
    ```
 
    You should receive the following response, indicating that the environment has been activated:
    ```
-   (rapids)root@2efa5b50b909:
+   (merlin)root@2efa5b50b909:
    ```
 2. Install jupyter-lab with `conda` or `pip`: [Installation Guide](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html)
 
