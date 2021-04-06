@@ -12,11 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from collections import defaultdict
 
-import cudf
 from dask.dataframe.utils import meta_nonempty
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnNames, Operator
 
@@ -76,59 +76,49 @@ class Groupby(Operator):
         # we will have a dictionary for each of these cases.
         # We use the "__all__" key to specify aggregations
         # that will be performed on all (non-key) columns.
-        self.list_aggs = defaultdict(list)
-        self.conv_aggs = defaultdict(list)
+        self.list_aggs, self.conv_aggs = {}, {}
         if isinstance(aggs, str):
             aggs = {"__all__": [aggs]}
         elif isinstance(aggs, list):
             aggs = {"__all__": aggs}
         for col, v in aggs.items():
             _aggs = v if isinstance(v, list) else [v]
+            _conv_aggs, _list_aggs = set(), set()
             for _agg in _aggs:
                 if _is_list_agg(_agg):
-                    self.list_aggs[col].append(_agg)
+                    _list_aggs.add("list" if _agg == list else _agg)
+                    _conv_aggs.add(list)
                 else:
-                    self.conv_aggs[col].append(_agg)
+                    _conv_aggs.add(_agg)
+            self.conv_aggs[col] = list(_conv_aggs)
+            self.list_aggs[col] = list(_list_aggs)
 
         self.name_sep = name_sep
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
 
         # Sort if necessary
         if self.sort_cols:
-            gdf = gdf.sort_values(self.sort_cols, ignore_index=True)
+            df = df.sort_values(self.sort_cols, ignore_index=True)
 
         # List aggregations do not work with empty data.
         # Use synthetic metadata to predict output columns.
-        empty_df = not len(gdf)
-        _df = meta_nonempty(gdf) if empty_df else gdf
+        empty_df = not len(df)
+        _df = meta_nonempty(df) if empty_df else df
 
         # Get "complete" aggregation dicts
         _list_aggs, _conv_aggs = _get_agg_dicts(
             self.groupby_cols, self.list_aggs, self.conv_aggs, columns
         )
 
-        # Get list-aggregation result
-        df_la = _apply_list_aggs(_df, self.groupby_cols, _list_aggs, name_sep=self.name_sep)
-
-        # Get conventional-aggregation result
-        df_cv = _apply_conventional_aggs(_df, self.groupby_cols, _conv_aggs, name_sep=self.name_sep)
-
-        if df_cv is None:
-            # Only using list aggregations
-            new_gdf = df_la
-        elif df_la is None:
-            # Only using conventional aggregations
-            new_gdf = df_cv
-        else:
-            # Using both aggregations, merge results
-            new_gdf = df_cv.merge(df_la, self.groupby_cols, how="outer")
+        # Apply aggregations
+        new_df = _apply_aggs(_df, self.groupby_cols, _list_aggs, _conv_aggs, name_sep=self.name_sep)
 
         if empty_df:
-            return new_gdf.iloc[:0]
-        return new_gdf
+            return new_df.iloc[:0]
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -148,41 +138,29 @@ def _columns_out_from_aggs(aggs, name_sep="_"):
     _agg_cols = []
     for k, v in aggs.items():
         for _v in v:
-            _agg_cols.append(name_sep.join([k, _v]))
+            if isinstance(_v, str):
+                _agg_cols.append(name_sep.join([k, _v]))
     return _agg_cols
 
 
-def _apply_conventional_aggs(_df, groupby_cols, _conv_aggs, name_sep="_"):
-    df_cv = None  # Default return
-    if _conv_aggs:
-        _columns = list(set(groupby_cols) | set(_conv_aggs))
-        df_cv = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
-        df_cv.columns = [
-            name_sep.join([n for n in name if n != ""]) for name in df_cv.columns.to_flat_index()
-        ]
-    return df_cv
+def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
 
+    # Apply conventional aggs
+    _columns = list(set(groupby_cols) | set(_conv_aggs) | set(_list_aggs))
+    df = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
+    df.columns = [
+        name_sep.join([n for n in name if n != ""]) for name in df.columns.to_flat_index()
+    ]
 
-def _apply_list_aggs(_df, groupby_cols, _list_aggs, name_sep="_"):
-    df_la = None  # Default return
-    if _list_aggs:
+    # Handle custom aggs (e.g. "first" and "last")
+    for col, aggs in _list_aggs.items():
+        for _agg in aggs:
+            if _is_list_agg(_agg, custom=True):
+                df[f"{col}{name_sep}{_agg}"] = _first_or_last(df[f"{col}{name_sep}list"], _agg)
+        if "list" not in aggs:
+            df.drop(columns=[col + f"{name_sep}list"], inplace=True)
 
-        # Perform initial "collect" aggregation
-        _columns = list(set(groupby_cols) | set(_list_aggs))
-        df_la = _df[_columns].groupby(groupby_cols).collect().reset_index()
-        columns = [c + f"{name_sep}list" if c in _list_aggs else c for c in df_la.columns]
-        df_la.columns = columns
-
-        # Handle "first" and "last" aggregations
-        for col, aggs in _list_aggs.items():
-            for _agg in aggs:
-                if _agg in ("first", "last"):
-                    df_la[f"{col}{name_sep}{_agg}"] = _first_or_last(
-                        df_la[f"{col}{name_sep}list"], _agg
-                    )
-            if "list" not in aggs:
-                df_la.drop(columns=[col + f"{name_sep}list"], inplace=True)
-    return df_la
+    return df
 
 
 def _get_agg_dicts(groupby_cols, list_aggs, conv_aggs, columns):
@@ -203,9 +181,12 @@ def _ensure_agg_dict(_aggs, _allowed_cols):
         return {k: v for k, v in _aggs.items() if k in _allowed_cols}
 
 
-def _is_list_agg(agg):
+def _is_list_agg(agg, custom=False):
     # check if `agg` is a supported list aggregation
-    return agg in ("list", "first", "last")
+    if custom:
+        return agg in ("first", "last")
+    else:
+        return agg in ("list", list, "first", "last")
 
 
 def _first_or_last(x, kind):
@@ -216,14 +197,24 @@ def _first_or_last(x, kind):
 def _first(x):
     # Convert each element of a list column to be the first
     # item in the list
-    offsets = x.list._column.offsets
-    elements = x.list._column.elements
-    return elements[offsets[:-1]]
+    if hasattr(x, "list"):
+        # cuDF-specific behavior
+        offsets = x.list._column.offsets
+        elements = x.list._column.elements
+        return elements[offsets[:-1]]
+    else:
+        # cpu/pandas
+        return x.apply(lambda y: y[0])
 
 
 def _last(x):
     # Convert each element of a list column to be the last
     # item in the list
-    offsets = x.list._column.offsets
-    elements = x.list._column.elements
-    return elements[offsets[1:].values - 1]
+    if hasattr(x, "list"):
+        # cuDF-specific behavior
+        offsets = x.list._column.offsets
+        elements = x.list._column.elements
+        return elements[offsets[1:].values - 1]
+    else:
+        # cpu/pandas
+        return x.apply(lambda y: y[-1])
