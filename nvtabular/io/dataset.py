@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 
+import collections
 import logging
+import math
 import random
 import warnings
 
@@ -26,15 +28,16 @@ import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
-from dask.utils import parse_bytes
+from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+from nvtabular.dispatch import _hex_to_int
 from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
-from .dask import _ddf_to_dataset
+from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -180,6 +183,10 @@ class Dataset:
         devices for down-stream processing.
         NOTE: Down-stream ops and output do not yet support a
         Dataset generated with ``cpu=True``.
+    base_dataset : Dataset
+        Optional reference to the original "base" Dataset object used
+        to construct the current Dataset instance.  This object is
+        used to preserve file-partition mapping information.
     """
 
     def __init__(
@@ -192,6 +199,7 @@ class Dataset:
         dtypes=None,
         client=None,
         cpu=None,
+        base_dataset=None,
         **kwargs,
     ):
         self.dtypes = dtypes
@@ -199,6 +207,9 @@ class Dataset:
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu or False
+
+        # Keep track of base dataset (optional)
+        self.base_dataset = base_dataset or self
 
         # For now, lets warn the user that "cpu mode" is experimental
         if self.cpu:
@@ -267,6 +278,7 @@ class Dataset:
                 paths = stringify_path(paths)
             if isinstance(paths, str):
                 paths = [paths]
+            paths = sorted(paths, key=natural_sort_key)
 
             storage_options = storage_options or {}
             # If engine is not provided, try to infer from end of paths[0]
@@ -346,6 +358,10 @@ class Dataset:
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
+    @property
+    def file_partition_map(self):
+        return self.engine._file_partition_map
+
     def to_cpu(self):
         warnings.warn(
             "Changing an NVTabular Dataset to CPU mode."
@@ -357,6 +373,109 @@ class Dataset:
     def to_gpu(self):
         self.cpu = False
         self.engine.to_gpu()
+
+    def shuffle_by_keys(self, keys, hive_data=None, npartitions=None):
+        """Shuffle the in-memory Dataset so that all unique-key
+        combinations are moved to the same partition.
+
+        Parameters
+        ----------
+        keys : list(str)
+            Column names to shuffle by.
+        hive_data : bool; default None
+            Whether the dataset is backed by a hive-partitioned
+            dataset (with the keys encoded in the directory structure).
+            By default, the Dataset's `file_partition_map` property will
+            be inspected to infer this setting. When `hive_data` is True,
+            the number of output partitions will correspond to the number
+            of unique key combinations in the dataset.
+        npartitions : int; default None
+            Number of partitions in the output Dataset. For hive-partitioned
+            data, this value should be <= the number of unique key
+            combinations (the default), otherwise it will be ignored. For
+            data that is not hive-partitioned, the ``npartitions`` input
+            should be <= the orginal partition count, otherwise it will be
+            ignored.
+        """
+
+        # Make sure we are dealing with a list
+        keys = [keys] if not isinstance(keys, (list, tuple)) else keys
+
+        # Start with default ddf
+        ddf = self.to_ddf()
+        if npartitions:
+            npartitions = min(ddf.npartitions, npartitions)
+
+        if hive_data is not False:
+            # The keys may be encoded in the directory names.
+            # Let's use the file_partition_map to extract this info.
+            try:
+                _mapping = self.file_partition_map
+            except (AttributeError):
+                _mapping = None
+                if hive_data:
+                    raise RuntimeError("Failed to extract hive-partition mapping!")
+
+            # If we have a `_mapping` available, check if the
+            # file names include information about all our keys
+            hive_mapping = collections.defaultdict(list)
+            if _mapping:
+                for k, v in _mapping.items():
+                    for part in k.split(self.engine.fs.sep)[:-1]:
+                        try:
+                            _key, _val = part.split("=")
+                        except ValueError:
+                            continue
+                        if _key in keys:
+                            hive_mapping[_key].append(_val)
+
+            if set(hive_mapping.keys()) == set(keys):
+
+                # Generate hive-mapping DataFrame summary
+                hive_mapping = type(ddf._meta)(hive_mapping)
+                cols = list(hive_mapping.columns)
+                for c in keys:
+                    typ = ddf._meta[c].dtype
+                    if c in cols:
+                        hive_mapping[c] = hive_mapping[c].astype(typ)
+
+                # Generate simple-shuffle plan
+                target_mapping = hive_mapping.drop_duplicates().reset_index(drop=True)
+                target_mapping.index.name = "_partition"
+                hive_mapping.index.name = "_sort"
+                target_mapping.reset_index(drop=False, inplace=True)
+                plan = (
+                    hive_mapping.reset_index()
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
+                )
+
+                if hasattr(plan, "to_pandas"):
+                    plan = plan.to_pandas()
+
+                # Deal with repartitioning
+                if npartitions and npartitions < len(target_mapping):
+                    q = np.linspace(0.0, 1.0, num=npartitions + 1)
+                    divs = plan.quantile(q)
+                    partitions = divs.searchsorted(plan, side="right") - 1
+                    partitions[(plan >= divs.iloc[-1]).values] = len(divs) - 2
+                    plan = partitions.tolist()
+                elif len(plan) != len(plan.unique()):
+                    plan = plan.to_list()
+                else:
+                    # Plan is a unique 1:1 ddf partition mapping.
+                    # We already have shuffled data.
+                    return self
+
+                # TODO: We should avoid shuffling the original ddf and
+                # instead construct a new (more-efficent) graph to read
+                # multiple files from each partition directory at once.
+                # Generally speaking, we can optimize this code path
+                # much further.
+                return Dataset(_simple_shuffle(ddf, plan))
+
+        # Fall back to dask.dataframe algorithm
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
@@ -395,12 +514,16 @@ class Dataset:
         self,
         output_path,
         shuffle=None,
+        preserve_files=False,
+        output_files=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
         cats=None,
         conts=None,
         labels=None,
+        suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -409,8 +532,7 @@ class Dataset:
         output_path : string
             Path to write processed/shuffled output data
         shuffle : nvt.io.Shuffle enum
-            How to shuffle the output dataset. Shuffling is only
-            performed if the data is written to disk. For all options,
+            How to shuffle the output dataset. For all options,
             other than `None` (which means no shuffling), the partitions
             of the underlying dataset/ddf will be randomly ordered. If
             `PER_PARTITION` is specified, each worker/process will also
@@ -423,15 +545,43 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        partition_on : str or list(str)
+            Columns to use for hive-partitioning.  If this option is used,
+            `preserve_files`, `output_files`, and `out_files_per_proc` will
+            all be ignored.  Also, the `PER_WORKER` shuffle will not be
+            supported.
+        preserve_files : bool
+            Whether to preserve the original file-to-partition mapping of
+            the base dataset. This option is only available if the base
+            dataset is known, and if it corresponds to csv or parquet format.
+            If True, the `out_files_per_proc` option will be ignored, but the
+            `output_files` option will take precedence. Default is False.
+        output_files : dict, list or int
+            Dictionary mapping of output file names to partition indices.
+            If a list of file names is specified, a contiguous range of
+            output partitions will be mapped to each file. The same procedure
+            is used if an integer is specified, but the file names will be
+            written as "part_*". If anything is specified for `output_files`,
+            the `output_files_per_proc` argument will be ignored.  Also, if
+            a dictionary is specified, excluded partition indices will not
+            be written to disk.
         out_files_per_proc : integer
-            Number of files to create (per process) after
-            shuffling the data
+            Number of files to create (per process) after shuffling the
+            data. This option will be ignored if `output_files`
+            is specified.
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
         dtypes : dict
             Dictionary containing desired datatypes for output columns.
             Keys are column names, values are datatypes.
+        suffix : str or False
+            File-name extension to use for all output files. This argument
+            is ignored if a specific list of file names is specified using
+            the ``output_files`` option. If ``preserve_files=True``, this
+            suffix will be appended to the original name of each file,
+            unless the original extension is ".csv", ".parquet", ".avro",
+            or ".orc" (in which case the old extension will be replaced).
         cats : list of str, optional
             List of categorical columns
         conts : list of str, optional
@@ -441,7 +591,56 @@ class Dataset:
         """
 
         shuffle = _check_shuffle_arg(shuffle)
-        ddf = self.to_ddf(shuffle=shuffle)
+
+        if isinstance(output_files, dict) or (not output_files and preserve_files):
+            # Do not shuffle partitions if we are preserving files or
+            # if a specific file-partition mapping is already specified
+            ddf = self.to_ddf()
+        else:
+            ddf = self.to_ddf(shuffle=shuffle)
+
+        # Replace None/False suffix argument with ""
+        suffix = suffix or ""
+
+        # Convert `output_files` argument to a dict mapping
+        if output_files:
+
+            if isinstance(output_files, int):
+                output_files = [f"part_{i}" + suffix for i in range(output_files)]
+            if isinstance(output_files, list):
+                new = {}
+                split = math.ceil(ddf.npartitions / len(output_files))
+                for i, fn in enumerate(output_files):
+                    start = i * split
+                    stop = min(start + split, ddf.npartitions)
+                    new[fn] = np.arange(start, stop)
+                output_files = new
+                suffix = ""  # Don't add a suffix later - Names already include it
+            if not isinstance(output_files, dict):
+                raise TypeError(f"{type(output_files)} not a supported type for `output_files`.")
+
+        # If we are preserving files, use the stored dictionary,
+        # or use file_partition_map to extract the mapping
+        elif preserve_files:
+            try:
+                _output_files = self.base_dataset.file_partition_map
+            except (AttributeError):
+                raise AttributeError(
+                    f"`to_parquet(..., preserve_files=True)` is not currently supported "
+                    f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
+                    f"that `dataset.base_dataset` is backed by csv or parquet files."
+                )
+            if suffix == "":
+                output_files = _output_files
+            else:
+                output_files = {}
+                for fn, rgs in _output_files.items():
+                    split_fn = fn.split(".")
+                    if split_fn[-1] in ("parquet", "avro", "orc", "csv"):
+                        output_files[".".join(split_fn[:-1]) + suffix] = rgs
+                    else:
+                        output_files[fn + suffix] = rgs
+            suffix = ""  # Don't add a suffix later - Names already include it
 
         if dtypes:
             _meta = _set_dtypes(ddf._meta, dtypes)
@@ -456,6 +655,7 @@ class Dataset:
             fs,
             output_path,
             shuffle,
+            output_files,
             out_files_per_proc,
             cats or [],
             conts or [],
@@ -464,6 +664,8 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            suffix=suffix,
+            partition_on=partition_on,
         )
 
     def to_hugectr(
@@ -473,6 +675,7 @@ class Dataset:
         conts,
         labels,
         shuffle=None,
+        file_partition_map=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
@@ -504,6 +707,12 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        file_partition_map : dict
+            Dictionary mapping of output file names to partition indices
+            that should be written to that file name.  If this argument
+            is passed, only the partitions included in the dictionary
+            will be written to disk, and the `output_files_per_proc` argument
+            will be ignored.
         out_files_per_proc : integer
             Number of files to create (per process) after
             shuffling the data
@@ -521,7 +730,6 @@ class Dataset:
         self.to_gpu()
 
         shuffle = _check_shuffle_arg(shuffle)
-        shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
         if dtypes:
             _meta = _set_dtypes(ddf._meta, dtypes)
@@ -536,6 +744,7 @@ class Dataset:
             fs,
             output_path,
             shuffle,
+            file_partition_map,
             out_files_per_proc,
             cats,
             conts,
@@ -582,7 +791,7 @@ class Dataset:
         if not isinstance(self.engine, ParquetDatasetEngine):
             msg = (
                 "NVTabular is optimized for the parquet format. Please use "
-                "the regenerate_dataset method to convert your dataset."
+                "the to_parquet method to convert your dataset."
             )
             warnings.warn(msg)
             return False  # Early return
@@ -590,11 +799,17 @@ class Dataset:
         return self.engine.validate_dataset(**kwargs)
 
     def regenerate_dataset(
-        self, output_path, columns=None, output_format="parquet", compute=True, **kwargs
+        self,
+        output_path,
+        columns=None,
+        output_format="parquet",
+        compute=True,
+        **kwargs,
     ):
-        """Regenerate an NVTabular Dataset for efficient processing by writing
-        out new Parquet files. (This method preserves the original ordering,
-        while ``to_parquet`` does not.)
+        """EXPERIMENTAL:
+        Regenerate an NVTabular Dataset for efficient processing by writing
+        out new Parquet files. In contrast to default ``to_parquet`` behavior,
+        this method preserves the original ordering.
 
         Example Usage::
 
@@ -646,10 +861,8 @@ class Dataset:
 
 def _set_dtypes(chunk, dtypes):
     for col, dtype in dtypes.items():
-        if type(dtype) is str:
-            if "hex" in dtype and chunk[col].dtype == "object":
-                chunk[col] = chunk[col].str.htoi()
-                chunk[col] = chunk[col].astype(np.int32)
+        if (type(dtype) is str) and ("hex" in dtype):
+            chunk[col] = _hex_to_int(chunk[col])
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
@@ -662,7 +875,9 @@ class DataFrameIter:
         self.columns = columns
 
     def __len__(self):
-        return len(self.indices)
+        if len(self.indices) < self._ddf.npartitions:
+            return len(self._ddf.partitions[self.indices])
+        return len(self._ddf)
 
     def __iter__(self):
         for i in self.indices:
@@ -671,4 +886,4 @@ class DataFrameIter:
                 yield part[self.columns].compute(scheduler="synchronous")
             else:
                 yield part.compute(scheduler="synchronous")
-            part = None
+        part = None

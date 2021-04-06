@@ -226,7 +226,7 @@ def test_linear_embedding_layer():
     )[:, 0]
     bias = embedding_layer.bias.numpy()[0]
 
-    rtol = 1e-6
+    rtol = 1e-5
     numeric = np.concatenate([scalar[:, None], vector], axis=1)
     expected_y_hat = (numeric @ numeric_weight)[:, 0] + one_hot_weights + multi_hot_weights + bias
     assert np.isclose(y_hat, expected_y_hat, rtol=rtol).all()

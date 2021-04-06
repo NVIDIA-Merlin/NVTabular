@@ -62,6 +62,8 @@ class ThreadedWriter(Writer):
         use_guid=False,
         bytes_io=False,
         cpu=False,
+        fns=None,
+        suffix=None,
     ):
         # set variables
         self.out_dir = out_dir
@@ -76,14 +78,21 @@ class ThreadedWriter(Writer):
         self.col_idx = {}
 
         self.num_threads = num_threads
-        self.num_out_files = num_out_files
-        self.num_samples = [0] * num_out_files
+        self.fns = [fns] if isinstance(fns, str) else fns
+        if self.fns:
+            # If sepecific file names were specified,
+            # ignore `num_out_files` argument
+            self.num_out_files = len(self.fns)
+        else:
+            self.num_out_files = num_out_files
+        self.num_samples = [0] * self.num_out_files
 
         self.data_paths = None
         self.need_cal_col_names = True
         self.use_guid = use_guid
         self.bytes_io = bytes_io
         self.cpu = cpu
+        self.suffix = suffix
 
         # Resolve file system
         self.fs = fs or get_fs_token_paths(str(out_dir))[0]
@@ -119,10 +128,14 @@ class ThreadedWriter(Writer):
     def add_data(self, df):
         # Populate columns idxs
         if not self.col_idx:
-            for i, x in enumerate(df.columns.values):
+            _df = df[0] if isinstance(df, list) else df
+            for i, x in enumerate(_df.columns.values):
                 self.col_idx[str(x)] = i
 
-        if self.num_out_files == 1:
+        if isinstance(df, list):
+            # Data is already partitioned into a list
+            self._add_data_list(df)
+        elif self.num_out_files == 1:
             # Only writing to a single file. No need to
             # scatter or slice the data before writing
             self._add_single_file(df)
@@ -189,6 +202,18 @@ class ThreadedWriter(Writer):
                 self.queue.put((x, to_write))
             else:
                 self._write_table(x, to_write)
+
+    def _add_data_list(self, dfs):
+        """Write a list of DataFrames"""
+        assert len(dfs) == self.num_out_files
+        for x, df in enumerate(dfs):
+            if self.shuffle:
+                df = _shuffle_df(df)
+            self.num_samples[x] = self.num_samples[x] + df.shape[0]
+            if self.num_threads > 1:
+                self.queue.put((x, df))
+            else:
+                self._write_table(x, df)
 
     def _add_single_file(self, df):
         """Write to single file.

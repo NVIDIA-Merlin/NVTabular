@@ -92,7 +92,12 @@ class Workflow:
         """
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client, cpu=dataset.cpu)
+        return Dataset(
+            _transform_ddf(ddf, self.column_group),
+            client=self.client,
+            cpu=dataset.cpu,
+            base_dataset=dataset.base_dataset,
+        )
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
@@ -282,6 +287,13 @@ def _transform_ddf(ddf, column_groups):
         column_groups = [column_groups]
 
     columns = list(flatten(cg.flattened_columns for cg in column_groups))
+
+    # Check if we are only selecting columns (no transforms).
+    # If so, we should perform column selection at the ddf level.
+    # Otherwise, Dask will not push the column selection into the
+    # IO function.
+    if all((c.op is None and not c.parents) for c in column_groups):
+        return ddf[_get_unique(columns)]
 
     # TODO: constructing meta like this loses dtype information on the ddf
     # sets it all to 'float64'. We should propogate dtype information along

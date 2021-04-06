@@ -23,6 +23,7 @@ from distutils.version import LooseVersion
 
 import cudf
 import dask
+import dask.dataframe as dd
 import dask_cudf
 import numpy as np
 import pandas as pd
@@ -323,7 +324,8 @@ def test_dataset_partition_shuffle(tmpdir):
 @pytest.mark.parametrize("num_io_threads", [0, 2])
 @pytest.mark.parametrize("nfiles", [0, 1, 2])
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
-def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle):
+@pytest.mark.parametrize("file_map", [True, False])
+def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle, file_map):
 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
@@ -332,13 +334,23 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     workflow = nvt.Workflow(nvt.ColumnGroup(columns))
 
     outdir = str(tmpdir.mkdir("out"))
-    transformed = workflow.transform(nvt.Dataset(df))
-    transformed.to_parquet(
-        output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, out_files_per_proc=nfiles
-    )
+    transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
+    if file_map and nfiles:
+        transformed.to_parquet(
+            output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, output_files=nfiles
+        )
+        out_paths = glob.glob(os.path.join(outdir, "part_*"))
+        assert len(out_paths) == nfiles
+    else:
+        transformed.to_parquet(
+            output_path=outdir,
+            num_threads=num_io_threads,
+            shuffle=shuffle,
+            out_files_per_proc=nfiles,
+        )
+        out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
 
     # Check that our output data is exactly the same
-    out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
     df_check = cudf.read_parquet(out_paths)
     assert_eq(
         df_check[columns].sort_values(["x", "y"]),
@@ -530,3 +542,164 @@ def test_validate_and_regenerate_dataset(tmpdir):
 
     # Check cpu version of `to_ddf`
     assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
+
+
+@pytest.mark.parametrize("preserve_files", [True, False])
+@pytest.mark.parametrize("cpu", [True, False])
+def test_dataset_conversion(tmpdir, cpu, preserve_files):
+
+    # Generate toy dataset.
+    # Include "hex" strings to mimic Criteo.
+    size = 100
+    npartitions = 4
+    hex_vals = [
+        "62770d79",
+        "e21f5d58",
+        "afea442f",
+        "945c7fcf",
+        "38b02748",
+        "6fcd6dcb",
+        "3580aa21",
+        "46dedfa6",
+    ]
+    df = pd.DataFrame(
+        {
+            "C0": np.random.choice(hex_vals, size),
+            "I0": np.random.randint(1_000_000_000, high=10_000_000_000, size=size),
+            "F0": np.random.uniform(size=size),
+        }
+    )
+    ddf = dd.from_pandas(df, npartitions=npartitions)
+
+    # Write to csv dataset
+    csv_path = os.path.join(str(tmpdir), "csv_dataset")
+    ddf.to_csv(csv_path, header=False, sep="\t", index=False)
+
+    # Create NVT Dataset
+    dtypes = {"F0": np.float64, "I0": np.int64, "C0": "hex"}
+    ds = nvt.Dataset(
+        csv_path,
+        cpu=cpu,
+        engine="csv",
+        dtypes=dtypes,
+        sep="\t",
+        names=["C0", "I0", "F0"],
+    )
+
+    # Convert csv dataset to parquet.
+    # Adding extra ds -> ds2 step to test `base_dataset` usage.
+    pq_path = os.path.join(str(tmpdir), "pq_dataset")
+    ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds)
+    ds2.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
+
+    # Check output.
+    # Note that we are converting the inital hex strings to int32.
+    ds_check = nvt.Dataset(pq_path, engine="parquet")
+    df["C0"] = df["C0"].apply(int, base=16).astype("int32")
+    assert_eq(ds_check.to_ddf().compute(), df, check_index=False)
+
+    # Check that the `suffix=".pq"` argument was successful
+    assert glob.glob(os.path.join(pq_path, "*.pq"))
+    assert not glob.glob(os.path.join(pq_path, "*.parquet"))
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_hive_partitioned_data(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ds = nvt.Dataset(ddf, engine="parquet")
+
+    # Write the dataset to disk
+    path = str(tmpdir)
+    partition_keys = ["timestamp", "name"]
+    ds.to_parquet(path, partition_on=partition_keys)
+
+    # Make sure the directory structure is hive-like
+    df_expect = ddf.compute()
+    df_expect = df_expect.sort_values(["id", "x", "y"]).reset_index(drop=True)
+    timestamp_check = df_expect["timestamp"].iloc[0]
+    name_check = df_expect["name"].iloc[0]
+    assert glob.glob(
+        os.path.join(
+            path,
+            f"timestamp={timestamp_check}/name={name_check}/*",
+        )
+    )
+
+    # Read back with dask.dataframe and check the data
+    df_check = dd.read_parquet(path).compute()
+    df_check["name"] = df_check["name"].astype("object")
+    df_check["timestamp"] = df_check["timestamp"].astype("int64")
+    df_check = df_check.sort_values(["id", "x", "y"]).reset_index(drop=True)
+    for col in df_expect:
+        # Order of columns can change after round-trip partitioning
+        assert_eq(df_expect[col], df_check[col], check_index=False)
+
+    # Read back with NVT and check the data
+    df_check = nvt.Dataset(path, engine="parquet").to_ddf().compute()
+    df_check["name"] = df_check["name"].astype("object")
+    df_check["timestamp"] = df_check["timestamp"].astype("int64")
+    df_check = df_check.sort_values(["id", "x", "y"]).reset_index(drop=True)
+    for col in df_expect:
+        # Order of columns can change after round-trip partitioning
+        assert_eq(df_expect[col], df_check[col], check_index=False)
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("partition_on", [None, ["name", "id"], ["name"]])
+@pytest.mark.parametrize("keys", [["name"], ["id"], ["name", "id"]])
+@pytest.mark.parametrize("npartitions", [None, 2])
+def test_dataset_shuffle_on_keys(tmpdir, cpu, partition_on, keys, npartitions):
+
+    # Initial timeseries dataset
+    size = 60
+    df1 = pd.DataFrame(
+        {
+            "name": np.random.choice(["Dave", "Zelda"], size=size),
+            "id": np.random.choice([0, 1], size=size),
+            "x": np.random.uniform(low=0.0, high=10.0, size=size),
+            "y": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+    ddf1 = dd.from_pandas(df1, npartitions=3)
+
+    # Write the dataset to disk
+    path = str(tmpdir)
+    ddf1.to_parquet(str(tmpdir), partition_on=partition_on)
+
+    # Construct NVT Dataset
+    ds = nvt.Dataset(path, engine="parquet")
+
+    # Shuffle the dataset by `keys`
+    ds2 = ds.shuffle_by_keys(keys, npartitions=npartitions)
+
+    # Inspect the result
+    ddf2 = ds2.to_ddf()
+    if npartitions:
+        assert ddf2.npartitions == npartitions
+
+    # A successful shuffle will return the same unique-value
+    # count for both the full dask algorithm and a partition-wise sum
+    n1 = sum([len(p[keys].drop_duplicates()) for p in ddf2.partitions])
+    n2 = len(ddf2[keys].drop_duplicates())
+    assert n1 == n2
+
+    # Check that none of the rows was changed
+    df1 = df1.sort_values(["id", "x", "y"]).reset_index(drop=True)
+    df2 = ddf2.compute().sort_values(["id", "x", "y"]).reset_index(drop=True)
+    if partition_on:
+        # Dask will convert partitioned columns to Categorical
+        df2["name"] = df2["name"].astype("object")
+        df2["id"] = df2["id"].astype("int64")
+    for col in df1:
+        # Order of columns can change after round-trip partitioning
+        assert_eq(df1[col], df2[col], check_index=False)

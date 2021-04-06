@@ -693,6 +693,24 @@ def test_categorify_max_size(max_emb_size):
     )
 
 
+def test_joingroupby_dependency(tmpdir):
+    df = pd.DataFrame(
+        {
+            "Author": ["User_A", "User_A", "User_A", "User_B", "User_B"],
+            "Cost": [100.0, 200.0, 300.0, 400.0, 400.0],
+        }
+    )
+
+    normalized_cost = ["Cost"] >> nvt.ops.NormalizeMinMax() >> nvt.ops.Rename(postfix="_normalized")
+    groupby_features = ["Author"] >> ops.JoinGroupby(
+        out_path=str(tmpdir), stats=["sum"], cont_cols=normalized_cost
+    )
+    workflow = nvt.Workflow(groupby_features)
+
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    assert df_out["Author_Cost_normalized_sum"].to_arrow().to_pylist() == [1.0, 1.0, 1.0, 2.0, 2.0]
+
+
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups):
 
@@ -706,7 +724,7 @@ def test_joingroupby_multi(tmpdir, groups):
     )
 
     groupby_features = groups >> ops.JoinGroupby(
-        out_path=str(tmpdir), stats=["sum"], cont_names=["Cost"]
+        out_path=str(tmpdir), stats=["sum"], cont_cols=["Cost"]
     )
     workflow = nvt.Workflow(groupby_features + "Post")
 
@@ -945,3 +963,57 @@ def test_data_stats(tmpdir, df, datasets, engine):
         assert output[col]["per_nan"] == pytest.approx(
             100 * (1 - ddf[col].count().compute() / len(ddf[col]))
         )
+
+
+@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
+def test_groupby_op(keys, cpu):
+
+    # Initial timeseries dataset
+    size = 60
+    df1 = pd.DataFrame(
+        {
+            "name": np.random.choice(["Dave", "Zelda"], size=size),
+            "id": np.random.choice([0, 1], size=size),
+            "ts": np.linspace(0.0, 10.0, num=size),
+            "x": np.arange(size),
+            "y": np.linspace(0.0, 10.0, num=size),
+            "shuffle": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+    df1 = df1.sort_values("shuffle").drop(columns="shuffle").reset_index(drop=True)
+
+    # Create a ddf, and be sure to shuffle by the groupby keys
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    # Define Groupby Workflow
+    groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
+        groupby_cols=keys,
+        sort_cols=["ts"],
+        aggs={
+            "x": ["list", "sum"],
+            "y": ["first", "last"],
+        },
+        name_sep="-",
+    )
+    processor = nvtabular.Workflow(groupby_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    # Check list-aggregation ordering
+    x = new_gdf["x-list"]
+    x = x.to_pandas() if hasattr(x, "to_pandas") else x
+    sums = []
+    for el in x.values:
+        _el = pd.Series(el)
+        sums.append(_el.sum())
+        assert _el.is_monotonic_increasing
+
+    # Check that list sums match sum aggregation
+    x = new_gdf["x-sum"]
+    x = x.to_pandas() if hasattr(x, "to_pandas") else x
+    assert list(x) == sums
+
+    # Check basic behavior or "y" column
+    assert (new_gdf["y-first"] < new_gdf["y-last"]).all()

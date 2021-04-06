@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
 import queue
 import threading
+import warnings
 from collections import OrderedDict
 
 import cudf
@@ -26,7 +28,7 @@ from nvtabular.ops import _get_embedding_order
 
 
 def _num_steps(num_samples, step_size):
-    return (num_samples - 1) // step_size + 1
+    return math.ceil(num_samples / step_size)
 
 
 class ChunkQueue:
@@ -48,12 +50,18 @@ class ChunkQueue:
         before checking for errors and trying again
     """
 
-    def __init__(self, qsize, num_parts=1, shuffle=False, put_wait=1e-6):
+    def __init__(self, dataloader, qsize, num_parts=1, shuffle=False, put_wait=1e-6):
         self.num_parts = num_parts
         self.shuffle = shuffle
         self.put_wait = put_wait
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
+        indices = dataloader._gather_indices_for_dev(0)
+        self.itr = dataloader.data.to_iter(indices=indices)
+        self.dataloader = dataloader
+
+    def __len__(self):
+        return len(self.itr)
 
     @property
     def stopped(self):
@@ -96,11 +104,10 @@ class ChunkQueue:
                 yield current
                 current = []
 
-    def load_chunks(self, dev, dataloader):
+    def load_chunks(self, dev):
         try:
-            indices = dataloader._gather_indices_for_dev(dev)
-            itr = iter(dataloader.data.to_iter(indices=indices))
-            with dataloader._get_device_ctx(dev):
+            itr = iter(self.itr)
+            with self.dataloader._get_device_ctx(dev):
                 spill = None
                 for chunks in self.batch(itr):
                     if self.stopped:
@@ -111,12 +118,12 @@ class ChunkQueue:
 
                     chunks = cudf.core.reshape.concat(chunks)
                     chunks.reset_index(drop=True, inplace=True)
-                    chunks, spill = self.get_batch_div_chunk(chunks, dataloader.batch_size)
+                    chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
                     if self.shuffle:
                         _shuffle_df(chunks)
 
                     if len(chunks) > 0:
-                        chunks = dataloader.make_tensors(chunks, dataloader._use_nnz)
+                        chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
                         # put returns True if buffer is stopped before
                         # packet can be put in queue. Keeps us from
                         # freezing on a put on a full queue
@@ -125,8 +132,8 @@ class ChunkQueue:
                     chunks = None
 
                 # takes care final batch, which is less than batch size
-                if spill is not None and not spill.empty:
-                    spill = dataloader.make_tensors(spill, dataloader._use_nnz)
+                if not self.dataloader.drop_last and spill is not None and not spill.empty:
+                    spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
                     self.put(spill)
         except Exception as e:
             self.put(e)
@@ -167,28 +174,42 @@ class DataLoader:
         label_names,
         batch_size,
         shuffle,
+        seed_fn=None,
         parts_per_chunk=1,
-        devices=None,
+        device=None,
+        global_size=None,
+        global_rank=None,
+        drop_last=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
+        self.drop_last = drop_last
+        self.device = device or 0
 
-        devices = devices or [0]
+        self.global_size = global_size or 1
+        self.global_rank = global_rank or 0
 
         self.cat_names = cat_names or []
         self.cont_names = cont_names or []
         self.label_names = label_names
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.devices = devices
+        self.seed_fn = seed_fn
+
         self.num_rows_processed = 0
 
-        self._buff = ChunkQueue(len(devices), num_parts=parts_per_chunk, shuffle=shuffle)
+        # we set size of chunk queue to 1 we only want one chunk in queue at a time.
+        self._buff = ChunkQueue(self, 1, num_parts=parts_per_chunk, shuffle=shuffle)
+        # run once instead of everytime len called
+        self._buff_len = len(self._buff)
         self._batch_itr = None
         self._workers = None
 
     def __len__(self):
-        return _num_steps(self.data.num_rows, self.batch_size)
+        batches = _num_steps(self._buff_len, self.batch_size)
+        if self.drop_last and self._buff_len % self.batch_size > 0:
+            batches = batches - 1
+        return batches
 
     @property
     def _working(self):
@@ -199,18 +220,27 @@ class DataLoader:
     def stop(self):
         # TODO: raise warning or even error if condition
         # isn't met?
-        if self._workers is not None and self._working:
+        if self._workers is not None:
             if not self._buff.stopped:
                 self._buff.stop()
             for t in self._workers:
                 t.join()
+            # remove joined threads from list
+            self._workers = None
             self._buff.q_out.queue.clear()
         self._batch_itr = None
 
     def _gather_indices_for_dev(self, dev):
-        per_worker = _num_steps(len(self.indices), len(self.devices))
-        worker_id = self.devices.index(dev)
-        start = worker_id * per_worker
+        # this should be self.indices divided by total processes, global set
+        if len(self.indices) < self.global_size:
+            warnings.warn(
+                f"""You have more processes({self.global_size}) than dataset
+                    partitions({len(self.indices)}), reduce the number of processes."""
+            )
+            raise IndexError
+        per_worker = _num_steps(len(self.indices), self.global_size)
+        # identify process rank out of all processes (not local rank)
+        start = self.global_rank * per_worker
         return self.indices[start : start + per_worker].tolist()
 
     def __iter__(self):
@@ -222,16 +252,18 @@ class DataLoader:
         # shuffle partition indices to bring disparate
         # parts of the dataset "close" to one another
         if self.shuffle:
+            if self.seed_fn:
+                new_seed = self.seed_fn()
+                cp.random.seed(new_seed)
             cp.random.shuffle(self.indices)
 
         # build and start new threads for loading and
         # concatenating data
         self._workers = []
-        for dev in self.devices:
-            t = threading.Thread(target=self._buff.load_chunks, args=(dev, self))
-            t.daemon = True
-            t.start()
-            self._workers.append(t)
+        t = threading.Thread(target=self._buff.load_chunks, args=(self.device,))
+        t.daemon = True
+        t.start()
+        self._workers.append(t)
         return self
 
     def __next__(self):

@@ -31,6 +31,7 @@ import dask
 import dask.dataframe as dd
 import dask_cudf
 import fsspec
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
@@ -108,6 +109,40 @@ class ParquetDatasetEngine(DatasetEngine):
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
         return dataset
+
+    @property
+    @functools.lru_cache(1)
+    def _file_partition_map(self):
+        dataset = self._dataset
+        if dataset.metadata:
+            # We have a metadata file.
+            # Determing the row-group count per file.
+            _path_row_groups = defaultdict(int)
+            for rg in range(dataset.metadata.num_row_groups):
+                fn = dataset.metadata.row_group(rg).column(0).file_path
+                _path_row_groups[fn] += 1
+
+            # Convert the per-file row-group count to the
+            # file-to-partition mapping
+            ind = 0
+            _pp_map = defaultdict(list)
+            for fn, num_row_groups in _path_row_groups.items():
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                _pp_map[fn] = np.arange(ind, ind + part_count)
+                ind += part_count
+
+        else:
+            # No metadata file. Construct file-to-partition map manually
+            ind = 0
+            _pp_map = {}
+            for piece in dataset.pieces:
+                num_row_groups = piece.get_metadata().num_row_groups
+                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
+                fn = piece.path.split(self.fs.sep)[-1]
+                _pp_map[fn] = np.arange(ind, ind + part_count)
+                ind += part_count
+
+        return _pp_map
 
     @property
     @functools.lru_cache(1)
@@ -620,7 +655,7 @@ def _write_data(data_list, output_path, fs, fn):
 
 
 class BaseParquetWriter(ThreadedWriter):
-    def __init__(self, out_dir, **kwargs):
+    def __init__(self, out_dir, suffix=".parquet", **kwargs):
         super().__init__(out_dir, **kwargs)
         self.data_paths = []
         self.data_files = []
@@ -629,6 +664,7 @@ class BaseParquetWriter(ThreadedWriter):
         self._lock = threading.RLock()
         self.pwriter = self._pwriter
         self.pwriter_kwargs = {}
+        self.suffix = suffix
 
     @property
     def _pwriter(self):
@@ -644,10 +680,12 @@ class BaseParquetWriter(ThreadedWriter):
         raise (NotImplementedError)
 
     def _get_filename(self, i):
-        if self.use_guid:
-            fn = f"{i}.{guid()}.parquet"
+        if self.fns:
+            fn = self.fns[i]
+        elif self.use_guid:
+            fn = f"{i}.{guid()}{self.suffix}"
         else:
-            fn = f"{i}.parquet"
+            fn = f"{i}{self.suffix}"
 
         return os.path.join(self.out_dir, fn)
 
@@ -744,8 +782,8 @@ class GPUParquetWriter(BaseParquetWriter):
 
     def _close_writers(self):
         md_dict = {}
-        for writer, path in zip(self.data_writers, self.data_paths):
-            fn = path.split(self.fs.sep)[-1]
+        _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
+        for writer, fn in zip(self.data_writers, _fns):
             md_dict[fn] = writer.close(metadata_file_path=fn)
         for f in self.data_files:
             f.close()
@@ -801,7 +839,7 @@ class CPUParquetWriter(BaseParquetWriter):
         self.md_collectors[path] = _md_collector
 
     def _write_table(self, idx, data):
-        table = pa.Table.from_pandas(data)
+        table = pa.Table.from_pandas(data, preserve_index=False)
         writer = self._get_or_create_writer(idx, schema=table.schema)
         writer.write_table(table, row_group_size=self._get_row_group_size(data))
 
@@ -815,10 +853,11 @@ class CPUParquetWriter(BaseParquetWriter):
         _write_pq_metadata_file_pyarrow(md_list, fs, out_dir)
 
     def _close_writers(self):
-        for writer, path in zip(self.data_writers, self.data_paths):
-            fn = path.split(self.fs.sep)[-1]
+        _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
+        for writer, fn in zip(self.data_writers, _fns):
             writer.close()
-            self.md_collectors[path][0].set_file_path(fn)
+            _path = self.fs.sep.join([self.out_dir, fn])
+            self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 
 
