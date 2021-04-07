@@ -77,7 +77,9 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     _generate_ensemble_config(name, ensemble_path, nvt_config, tf_config)
 
 
-def export_pytorch_ensemble(model, model_info, sample_input_data, workflow, name, model_path, label_columns, version=1):
+def export_pytorch_ensemble(
+    model, model_info, sample_input_data, workflow, name, model_path, label_columns, version=1
+):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch saved model
 
@@ -94,7 +96,7 @@ def export_pytorch_ensemble(model, model_info, sample_input_data, workflow, name
     label_columns:
         Labels in the dataset (will be removed f
     """
-    
+
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
@@ -105,44 +107,45 @@ def export_pytorch_ensemble(model, model_info, sample_input_data, workflow, name
         output_path=preprocessing_path,
         version=version,
         output_model="pytorch",
-        output_info=model_info['input'],
+        output_info=model_info["input"],
     )
-    
+
     dynamic_axes = dict()
     model_input_names = []
-    for col in model_info['input']:
+    for col in model_info["input"]:
         model_input_names.append(col)
-        dynamic_axes[col] = {0 : 'batch_size'}
+        dynamic_axes[col] = {0: "batch_size"}
 
     model_output_names = []
-    for col in model_info['output']:
+    for col in model_info["output"]:
         model_output_names.append(col)
-        dynamic_axes[col] = {0 : 'batch_size'}
-    
-    
+        dynamic_axes[col] = {0: "batch_size"}
+
     # generate the PT saved model
     pt_path = os.path.join(model_path, name + "_pt")
-    pt_model_path = os.path.join(pt_path, str(version), "model.onnx")    
+    pt_model_path = os.path.join(pt_path, str(version), "model.onnx")
 
     os.makedirs(pt_path, exist_ok=True)
     os.makedirs(os.path.join(pt_path, str(version)), exist_ok=True)
-    
+
     pt_config = _generate_pytorch_config(name + "_pt", pt_path, model_info)
 
-    torch.onnx.export(model,               
-                  (sample_input_data[0], None),
-                  pt_model_path,
-                  export_params=True,
-                  input_names=model_input_names,   # the model's input names
-                  output_names=model_output_names,
-                  dynamic_axes=dynamic_axes)
+    torch.onnx.export(
+        model,
+        (sample_input_data[0], None),
+        pt_model_path,
+        export_params=True,
+        input_names=model_input_names,  # the model's input names
+        output_names=model_output_names,
+        dynamic_axes=dynamic_axes,
+    )
 
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
     os.makedirs(ensemble_path, exist_ok=True)
     os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
     _generate_ensemble_config(name, ensemble_path, nvt_config, pt_config)
-    
+
 
 def export_hugectr_ensemble(
     workflow,
@@ -252,7 +255,9 @@ def generate_nvtabular_model(
             os.path.join(output_path, str(version), "model.py"),
         )
     elif output_model == "pytorch":
-        _generate_column_types_pytorch(os.path.join(output_path, str(version), "workflow"), output_info=output_info)
+        _generate_column_types_pytorch(
+            os.path.join(output_path, str(version), "workflow"), output_info=output_info
+        )
         copyfile(
             os.path.join(os.path.dirname(__file__), "model_pytorch.py"),
             os.path.join(output_path, str(version), "model.py"),
@@ -323,7 +328,14 @@ def convert_triton_output_to_df(columns, response):
 
 
 def _generate_nvtabular_config(
-    workflow, name, output_path, output_model=None, max_batch_size=None, cats=None, conts=None, output_info=None
+    workflow,
+    name,
+    output_path,
+    output_model=None,
+    max_batch_size=None,
+    cats=None,
+    conts=None,
+    output_info=None,
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
@@ -419,24 +431,21 @@ def _generate_tensorflow_config(model, name, output_path):
     return config
 
 
-def _generate_pytorch_config(
-    name, output_path, model_info, max_batch_size=None
-):
+def _generate_pytorch_config(name, output_path, model_info, max_batch_size=None):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
     config = model_config.ModelConfig(
         name=name, platform="onnxruntime_onnx", max_batch_size=max_batch_size
     )
 
-    for col, val in model_info['input'].items():
+    for col, val in model_info["input"].items():
         config.input.append(
             model_config.ModelInput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]])
         )
 
-    for col, val in model_info['output'].items():
+    for col, val in model_info["output"].items():
         config.output.append(
-            model_config.ModelOutput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]]
-            )
+            model_config.ModelOutput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]])
         )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
