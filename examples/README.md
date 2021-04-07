@@ -36,13 +36,18 @@ The MovieLens25M is a popular dataset for recommender systems and is used in aca
 - Using **multiple GPUs and multiple nodes** with NVTabular for ETL
 - Training recommender system model with NVTabular dataloader for PyTorch
 
-### 4. [Winning Solution of the RecSys2020 Competition](https://github.com/NVIDIA/NVTabular/tree/main/examples/winning-solution-recsys2020-twitter)
+### 4. [MultiGPU with MovieLens](https://github.com/NVIDIA/NVTabular/tree/main/examples/multi-gpu-movielens)
+
+In the previous example `Getting Started with MovieLens`, we explain the fundamentals of NVTabular, NVTabular dataloaders, HugeCTR and Triton Inference. As it is an easy example for user to start with, we revisit the dataset and extent the examples for NVTabular data loader multi-GPU training:
+- Learning **multi-GPU training with NVTabular dataloader** in TensorFlow
+
+### 5. [Winning Solution of the RecSys2020 Competition](https://github.com/NVIDIA/NVTabular/tree/main/examples/winning-solution-recsys2020-twitter)
 
 Twitter provided a dataset for the [RecSys2020 challenge](http://www.recsyschallenge.com/2020/). The task was to predict user engagement based on 200M user-tweet pairs. We will show another example using NVTabular:
 - Using more available NVTabular operators for Feature Engineering
 - Training a XGBoost model on GPU with dask
 
-### 5. [Applying the Techniques to other Tabular Problems with Rossmann](https://github.com/NVIDIA/NVTabular/tree/main/examples/tabular-data-rossmann) 
+### 6. [Applying the Techniques to other Tabular Problems with Rossmann](https://github.com/NVIDIA/NVTabular/tree/main/examples/tabular-data-rossmann) 
 
 Rossmann operates over 3,000 drug stores in 7 European countries. Historical sales data for 1,115 Rossmann stores are provided. The task is to forecast the "Sales" column for the test set. Kaggle hosted it as a [competition](https://www.kaggle.com/c/rossmann-store-sales/overview).
 - Using NVTabular for sales prediction
@@ -70,14 +75,14 @@ The container will open a shell when the run command execution is completed. You
 root@2efa5b50b909:
 ```
 
-1. Activate the ```rapids``` conda environment by running the following command:
+1. Activate the ```merlin``` conda environment by running the following command:
    ```
-   root@2efa5b50b909: source activate rapids
+   root@2efa5b50b909: source activate merlin
    ```
 
    You should receive the following response, indicating that the environment has been activated:
    ```
-   (rapids)root@2efa5b50b909:
+   (merlin)root@2efa5b50b909:
    ```
 2. Install jupyter-lab with `conda` or `pip`: [Installation Guide](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html)
 
