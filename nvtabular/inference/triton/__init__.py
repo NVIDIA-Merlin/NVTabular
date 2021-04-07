@@ -77,7 +77,7 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     _generate_ensemble_config(name, ensemble_path, nvt_config, tf_config)
 
 
-def export_pytorch_ensemble(model, sample_input_data, model_output_dims, workflow, name, model_path, version=1):
+def export_pytorch_ensemble(model, model_info, sample_input_data, workflow, name, model_path, label_columns, version=1):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch saved model
 
@@ -94,19 +94,8 @@ def export_pytorch_ensemble(model, sample_input_data, model_output_dims, workflo
     label_columns:
         Labels in the dataset (will be removed f
     """
-
-    input_names = []
-    output_names = []
-    output_dtypes = dict()
-    dynamic_axes = dict()
-    for i, data in enumerate(sample_input_data):
-        input_names.append("input_" + i)
-        output_names.append("output_" + i)
-        output_dtypes[output_names[i]] = data.dtype
-        dynamic_axes[input_names[i]] = {0 : 'batch_size'}
-        dynamic_axes[output_names[i]] = {0 : 'batch_size'}
-
-    workflow = _remove_columns(workflow, label_names)
+    
+    workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
@@ -116,29 +105,44 @@ def export_pytorch_ensemble(model, sample_input_data, model_output_dims, workflo
         output_path=preprocessing_path,
         version=version,
         output_model="pytorch",
-        output_dtypes=output_dtypes,
+        output_info=model_info['input'],
     )
+    
+    dynamic_axes = dict()
+    model_input_names = []
+    for col in model_info['input']:
+        model_input_names.append(col)
+        dynamic_axes[col] = {0 : 'batch_size'}
 
+    model_output_names = []
+    for col in model_info['output']:
+        model_output_names.append(col)
+        dynamic_axes[col] = {0 : 'batch_size'}
+    
+    
     # generate the PT saved model
     pt_path = os.path.join(model_path, name + "_pt")
     pt_model_path = os.path.join(pt_path, str(version), "model.onnx")    
+
+    os.makedirs(pt_path, exist_ok=True)
+    os.makedirs(os.path.join(pt_path, str(version)), exist_ok=True)
     
+    pt_config = _generate_pytorch_config(name + "_pt", pt_path, model_info)
+
     torch.onnx.export(model,               
-                  (sample_input_data),
+                  (sample_input_data[0], None),
                   pt_model_path,
                   export_params=True,
-                  input_names=input_names,   # the model's input names
-                  output_names=output_names,
+                  input_names=model_input_names,   # the model's input names
+                  output_names=model_output_names,
                   dynamic_axes=dynamic_axes)
-
-    pt_config = _generate_pytorch_config(model, name + "_pt", pt_path, input_names, output_names)
 
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
     os.makedirs(ensemble_path, exist_ok=True)
     os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
     _generate_ensemble_config(name, ensemble_path, nvt_config, pt_config)
-
+    
 
 def export_hugectr_ensemble(
     workflow,
@@ -232,13 +236,13 @@ def generate_nvtabular_model(
     cats=None,
     conts=None,
     max_batch_size=None,
-    output_dtypes=None,
+    output_info=None,
 ):
     """ converts a workflow to a triton mode """
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
-        workflow, name, output_path, output_model, max_batch_size, cats, conts, output_dtypes
+        workflow, name, output_path, output_model, max_batch_size, cats, conts, output_info
     )
 
     if output_model == "hugectr":
@@ -248,7 +252,7 @@ def generate_nvtabular_model(
             os.path.join(output_path, str(version), "model.py"),
         )
     elif output_model == "pytorch":
-        _generate_column_types_pytorch(os.path.join(output_path, str(version), "workflow"), output_dtypes=output_dtypes)
+        _generate_column_types_pytorch(os.path.join(output_path, str(version), "workflow"), output_info=output_info)
         copyfile(
             os.path.join(os.path.dirname(__file__), "model_pytorch.py"),
             os.path.join(output_path, str(version), "model.py"),
@@ -319,7 +323,7 @@ def convert_triton_output_to_df(columns, response):
 
 
 def _generate_nvtabular_config(
-    workflow, name, output_path, output_model=None, max_batch_size=None, cats=None, conts=None, output_dtypes=None
+    workflow, name, output_path, output_model=None, max_batch_size=None, cats=None, conts=None, output_info=None
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
@@ -348,8 +352,8 @@ def _generate_nvtabular_config(
         for column, dtype in workflow.input_dtypes.items():
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
-        for column, dtype in output_dtypes.items():
-            _add_model_param(column, dtype, model_config.ModelInput, config.input)
+        for col, val in output_info.items():
+            _add_model_param(col, val[1], model_config.ModelOutput, config.output, [-1, val[0]])
     else:
         for column, dtype in workflow.input_dtypes.items():
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
@@ -416,7 +420,7 @@ def _generate_tensorflow_config(model, name, output_path):
 
 
 def _generate_pytorch_config(
-    model, name, output_path, input_names, label_names, max_batch_size=None
+    name, output_path, model_info, max_batch_size=None
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
@@ -424,15 +428,14 @@ def _generate_pytorch_config(
         name=name, platform="onnxruntime_onnx", max_batch_size=max_batch_size
     )
 
-    for col in input_names:
+    for col, val in model_info['input'].items():
         config.input.append(
-            model_config.ModelInput(name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1])
+            model_config.ModelInput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]])
         )
 
-    for col in label_names:
+    for col, val in model_info['output'].items():
         config.output.append(
-            model_config.ModelOutput(
-                name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1]
+            model_config.ModelOutput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]]
             )
         )
 
@@ -534,18 +537,18 @@ def _remove_columns_from_column_group(cg, to_remove):
     return cg
 
 
-def _add_model_param(column, dtype, paramclass, params):
+def _add_model_param(column, dtype, paramclass, params, dims=[-1, 1]):
     if is_list_dtype(dtype):
         params.append(
             paramclass(
-                name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=[-1, 1]
+                name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=dims
             )
         )
         params.append(
-            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT64, dims=[-1, 1])
+            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT64, dims=dims)
         )
     else:
-        params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=[-1, 1]))
+        params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=dims))
 
 
 def _generate_column_types(output_path, cats=None, conts=None):
@@ -562,10 +565,10 @@ def _generate_column_types(output_path, cats=None, conts=None):
             json.dump(cats_conts_json, o)
 
 
-def _generate_column_types_pytorch(output_path, output_dtypes):
+def _generate_column_types_pytorch(output_path, output_info):
     with open(os.path.join(output_path, "column_types.json"), "w") as o:
         cats_conts_json = dict()
-        json.dump(output_dtypes, o)
+        json.dump(output_info, o)
 
 
 def get_column_types(path):
@@ -598,6 +601,37 @@ def _convert_dtype(dtype):
         return model_config.TYPE_UINT8
     if dtype == "bool":
         return model_config.TYPE_BOOL
+    if cudf.utils.dtypes.is_string_dtype(dtype):
+        return model_config.TYPE_STRING
+    raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _convert_torch_dtype(dtype):
+    """ converts a dtype to the appropriate triton proto type """
+    if dtype == torch.float64:
+        return "float64"
+    if dtype == torch.float32:
+        return "float32"
+    if dtype == torch.float16:
+        return "float16"
+    if dtype == torch.int64:
+        return "int64"
+    if dtype == torch.int32:
+        return "int32"
+    if dtype == torch.int16:
+        return "int16"
+    if dtype == torch.int8:
+        return "int8"
+    if dtype == torch.uint64:
+        return "uint64"
+    if dtype == torch.uint32:
+        return "uint32"
+    if dtype == torch.uint16:
+        return "uint16"
+    if dtype == torch.uint8:
+        return "uint8"
+    if dtype == torch.bool:
+        return "bool"
     if cudf.utils.dtypes.is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
