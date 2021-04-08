@@ -50,7 +50,7 @@ class TritonPythonModel:
         )
         self.workflow = nvtabular.Workflow.load(workflow_path)
         self.model_config = json.loads(args["model_config"])
-        self.column_types = get_column_types(workflow_path)
+        self.output_columns = get_column_types(workflow_path)
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -72,30 +72,9 @@ class TritonPythonModel:
             )
 
             output_tensors = []
-            if "conts" in self.column_types:
-                output_tensors.append(
-                    Tensor(
-                        "DES",
-                        _convert_cudf2numpy(output_df[self.column_types["conts"]], np.float32),
-                    )
-                )
-            else:
-                output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
-
-            if "cats" in self.column_types:
-                cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.int64)
-                output_tensors.append(
-                    Tensor(
-                        "CATCOLUMN",
-                        cats_np,
-                    )
-                )
-            else:
-                output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
-
-            len_cats_np = cats_np.shape[1]
-            row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
-            output_tensors.append(Tensor("ROWINDEX", row_index))
+            for col, val in self.output_columns.items():
+                d = _convert_cudf2numpy(output_df[val["columns"]], val["dtype"])
+                output_tensors.append(Tensor(col, d))
 
             responses.append(InferenceResponse(output_tensors))
 
@@ -107,7 +86,7 @@ def _convert_cudf2numpy(df, dtype):
     for i, name in enumerate(df.columns):
         d[:, i] = df[name].values_host
 
-    return d.reshape(1, df.shape[0] * df.shape[1]).astype(dtype)
+    return d
 
 
 def _convert_tensor(t):

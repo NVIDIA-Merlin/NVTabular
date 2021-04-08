@@ -112,14 +112,15 @@ def export_pytorch_ensemble(
 
     dynamic_axes = dict()
     model_input_names = []
-    for col in model_info["input"]:
-        model_input_names.append(col)
-        dynamic_axes[col] = {0: "batch_size"}
+    for model_input_name in model_info["input"]:
+        print(model_input_name)
+        model_input_names.append(model_input_name)
+        dynamic_axes[model_input_name] = {0: "batch_size"}
 
     model_output_names = []
-    for col in model_info["output"]:
-        model_output_names.append(col)
-        dynamic_axes[col] = {0: "batch_size"}
+    for model_output_name in model_info["output"]:
+        model_output_names.append(model_output_name)
+        dynamic_axes[model_output_name] = {0: "batch_size"}
 
     # generate the PT saved model
     pt_path = os.path.join(model_path, name + "_pt")
@@ -132,7 +133,7 @@ def export_pytorch_ensemble(
 
     torch.onnx.export(
         model,
-        (sample_input_data[0], None),
+        (sample_input_data, None),
         pt_model_path,
         export_params=True,
         input_names=model_input_names,  # the model's input names
@@ -365,7 +366,13 @@ def _generate_nvtabular_config(
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
         for col, val in output_info.items():
-            _add_model_param(col, val[1], model_config.ModelOutput, config.output, [-1, val[0]])
+            _add_model_param(
+                col,
+                val["dtype"],
+                model_config.ModelOutput,
+                config.output,
+                [-1, len(val["columns"])],
+            )
     else:
         for column, dtype in workflow.input_dtypes.items():
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
@@ -440,12 +447,18 @@ def _generate_pytorch_config(name, output_path, model_info, max_batch_size=None)
 
     for col, val in model_info["input"].items():
         config.input.append(
-            model_config.ModelInput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]])
+            model_config.ModelInput(
+                name=col, data_type=_convert_dtype(val["dtype"]), dims=[-1, len(val["columns"])]
+            )
         )
 
     for col, val in model_info["output"].items():
+        if len(val["columns"]) == 1:
+            dims = [-1]
+        else:
+            dims = [-1, len(val["columns"])]
         config.output.append(
-            model_config.ModelOutput(name=col, data_type=_convert_dtype(val[1]), dims=[-1, val[0]])
+            model_config.ModelOutput(name=col, data_type=_convert_dtype(val["dtype"]), dims=dims)
         )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
@@ -576,7 +589,6 @@ def _generate_column_types(output_path, cats=None, conts=None):
 
 def _generate_column_types_pytorch(output_path, output_info):
     with open(os.path.join(output_path, "column_types.json"), "w") as o:
-        cats_conts_json = dict()
         json.dump(output_info, o)
 
 
