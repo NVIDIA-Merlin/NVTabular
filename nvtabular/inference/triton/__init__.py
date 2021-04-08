@@ -113,7 +113,6 @@ def export_pytorch_ensemble(
     dynamic_axes = dict()
     model_input_names = []
     for model_input_name in model_info["input"]:
-        print(model_input_name)
         model_input_names.append(model_input_name)
         dynamic_axes[model_input_name] = {0: "batch_size"}
 
@@ -133,7 +132,7 @@ def export_pytorch_ensemble(
 
     torch.onnx.export(
         model,
-        (sample_input_data, None),
+        sample_input_data,
         pt_model_path,
         export_params=True,
         input_names=model_input_names,  # the model's input names

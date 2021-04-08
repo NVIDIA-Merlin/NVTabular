@@ -82,9 +82,9 @@ class TritonPythonModel:
 
 
 def _convert_cudf2numpy(df, dtype):
-    d = np.empty(df.shape)
+    d = np.empty(df.shape).astype(dtype)
     for i, name in enumerate(df.columns):
-        d[:, i] = df[name].values_host
+        d[:, i] = df[name].values_host.astype(dtype)
 
     return d
 
