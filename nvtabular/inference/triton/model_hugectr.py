@@ -51,6 +51,7 @@ class TritonPythonModel:
         self.workflow = nvtabular.Workflow.load(workflow_path)
         self.model_config = json.loads(args["model_config"])
         self.column_types = get_column_types(workflow_path)
+        self.slot_sizes = get_slot_sizes(workflow_path)
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform

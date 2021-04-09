@@ -131,6 +131,15 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
+    hugectr_config = json.load(open(hugectr_params["config"]))
+    for elem in hugectr_config["layers"]:
+        if "slot_size_array" in elem:
+            with open(os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"), "w") as o:
+                slot_sizes = dict()
+                slot_sizes["slot_size_array"] = elem["slot_size_array"]
+                json.dump(slot_sizes, o)
+            break
+
     hugectr_params["label_dim"] = len(label_columns)
     if conts is None:
         hugectr_params["des_feature_num"] = 0
@@ -461,6 +470,13 @@ def _generate_column_types(output_path, cats=None, conts=None):
 
 def get_column_types(path):
     return json.load(open(os.path.join(path, "column_types.json")))
+
+
+def get_slot_sizes(path):
+    if not path.exists(path):
+        return json.load(open(os.path.join(path, "slot_size_array.json")))
+    else:
+        return None
 
 
 def _convert_dtype(dtype):
