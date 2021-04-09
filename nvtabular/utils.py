@@ -21,7 +21,7 @@ import urllib.request
 import warnings
 import zipfile
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 try:
     from numba import cuda
