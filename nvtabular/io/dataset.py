@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import collections
 import logging
 import math
 import random
@@ -36,7 +37,7 @@ from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
-from .dask import _ddf_to_dataset
+from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -373,6 +374,109 @@ class Dataset:
         self.cpu = False
         self.engine.to_gpu()
 
+    def shuffle_by_keys(self, keys, hive_data=None, npartitions=None):
+        """Shuffle the in-memory Dataset so that all unique-key
+        combinations are moved to the same partition.
+
+        Parameters
+        ----------
+        keys : list(str)
+            Column names to shuffle by.
+        hive_data : bool; default None
+            Whether the dataset is backed by a hive-partitioned
+            dataset (with the keys encoded in the directory structure).
+            By default, the Dataset's `file_partition_map` property will
+            be inspected to infer this setting. When `hive_data` is True,
+            the number of output partitions will correspond to the number
+            of unique key combinations in the dataset.
+        npartitions : int; default None
+            Number of partitions in the output Dataset. For hive-partitioned
+            data, this value should be <= the number of unique key
+            combinations (the default), otherwise it will be ignored. For
+            data that is not hive-partitioned, the ``npartitions`` input
+            should be <= the orginal partition count, otherwise it will be
+            ignored.
+        """
+
+        # Make sure we are dealing with a list
+        keys = [keys] if not isinstance(keys, (list, tuple)) else keys
+
+        # Start with default ddf
+        ddf = self.to_ddf()
+        if npartitions:
+            npartitions = min(ddf.npartitions, npartitions)
+
+        if hive_data is not False:
+            # The keys may be encoded in the directory names.
+            # Let's use the file_partition_map to extract this info.
+            try:
+                _mapping = self.file_partition_map
+            except (AttributeError):
+                _mapping = None
+                if hive_data:
+                    raise RuntimeError("Failed to extract hive-partition mapping!")
+
+            # If we have a `_mapping` available, check if the
+            # file names include information about all our keys
+            hive_mapping = collections.defaultdict(list)
+            if _mapping:
+                for k, v in _mapping.items():
+                    for part in k.split(self.engine.fs.sep)[:-1]:
+                        try:
+                            _key, _val = part.split("=")
+                        except ValueError:
+                            continue
+                        if _key in keys:
+                            hive_mapping[_key].append(_val)
+
+            if set(hive_mapping.keys()) == set(keys):
+
+                # Generate hive-mapping DataFrame summary
+                hive_mapping = type(ddf._meta)(hive_mapping)
+                cols = list(hive_mapping.columns)
+                for c in keys:
+                    typ = ddf._meta[c].dtype
+                    if c in cols:
+                        hive_mapping[c] = hive_mapping[c].astype(typ)
+
+                # Generate simple-shuffle plan
+                target_mapping = hive_mapping.drop_duplicates().reset_index(drop=True)
+                target_mapping.index.name = "_partition"
+                hive_mapping.index.name = "_sort"
+                target_mapping.reset_index(drop=False, inplace=True)
+                plan = (
+                    hive_mapping.reset_index()
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
+                )
+
+                if hasattr(plan, "to_pandas"):
+                    plan = plan.to_pandas()
+
+                # Deal with repartitioning
+                if npartitions and npartitions < len(target_mapping):
+                    q = np.linspace(0.0, 1.0, num=npartitions + 1)
+                    divs = plan.quantile(q)
+                    partitions = divs.searchsorted(plan, side="right") - 1
+                    partitions[(plan >= divs.iloc[-1]).values] = len(divs) - 2
+                    plan = partitions.tolist()
+                elif len(plan) != len(plan.unique()):
+                    plan = plan.to_list()
+                else:
+                    # Plan is a unique 1:1 ddf partition mapping.
+                    # We already have shuffled data.
+                    return self
+
+                # TODO: We should avoid shuffling the original ddf and
+                # instead construct a new (more-efficent) graph to read
+                # multiple files from each partition directory at once.
+                # Generally speaking, we can optimize this code path
+                # much further.
+                return Dataset(_simple_shuffle(ddf, plan))
+
+        # Fall back to dask.dataframe algorithm
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
+
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
@@ -419,6 +523,7 @@ class Dataset:
         conts=None,
         labels=None,
         suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -427,8 +532,7 @@ class Dataset:
         output_path : string
             Path to write processed/shuffled output data
         shuffle : nvt.io.Shuffle enum
-            How to shuffle the output dataset. Shuffling is only
-            performed if the data is written to disk. For all options,
+            How to shuffle the output dataset. For all options,
             other than `None` (which means no shuffling), the partitions
             of the underlying dataset/ddf will be randomly ordered. If
             `PER_PARTITION` is specified, each worker/process will also
@@ -441,6 +545,11 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        partition_on : str or list(str)
+            Columns to use for hive-partitioning.  If this option is used,
+            `preserve_files`, `output_files`, and `out_files_per_proc` will
+            all be ignored.  Also, the `PER_WORKER` shuffle will not be
+            supported.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
             the base dataset. This option is only available if the base
@@ -556,6 +665,7 @@ class Dataset:
             num_threads,
             self.cpu,
             suffix=suffix,
+            partition_on=partition_on,
         )
 
     def to_hugectr(
@@ -765,7 +875,9 @@ class DataFrameIter:
         self.columns = columns
 
     def __len__(self):
-        return len(self._ddf.partitions[self.indices])
+        if len(self.indices) < self._ddf.npartitions:
+            return len(self._ddf.partitions[self.indices])
+        return len(self._ddf)
 
     def __iter__(self):
         for i in self.indices:

@@ -33,6 +33,55 @@ tf = pytest.importorskip("tensorflow")
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 
 
+@pytest.mark.parametrize("batch_size", [10, 9, 8])
+@pytest.mark.parametrize("drop_last", [True, False])
+@pytest.mark.parametrize("num_rows", [100])
+def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
+    df = cudf.DataFrame(
+        {
+            "cat1": [1] * num_rows,
+            "cat2": [2] * num_rows,
+            "cat3": [3] * num_rows,
+            "label": [0] * num_rows,
+            "cont3": [3.0] * num_rows,
+            "cont2": [2.0] * num_rows,
+            "cont1": [1.0] * num_rows,
+        }
+    )
+    path = os.path.join(tmpdir, "dataset.parquet")
+    df.to_parquet(path)
+    cat_names = ["cat3", "cat2", "cat1"]
+    cont_names = ["cont3", "cont2", "cont1"]
+    label_name = ["label"]
+
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        [path],
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        label_names=label_name,
+        shuffle=False,
+        drop_last=drop_last,
+    )
+
+    all_len = len(data_itr) if drop_last else len(data_itr) - 1
+    all_rows = 0
+    for idx, (X, y) in enumerate(data_itr):
+        all_rows += len(X["cat1"])
+        if idx < all_len:
+            assert list(X["cat1"].numpy()) == [1] * batch_size
+            assert list(X["cat2"].numpy()) == [2] * batch_size
+            assert list(X["cat3"].numpy()) == [3] * batch_size
+            assert list(X["cont1"].numpy()) == [1.0] * batch_size
+            assert list(X["cont2"].numpy()) == [2.0] * batch_size
+            assert list(X["cont3"].numpy()) == [3.0] * batch_size
+
+    if drop_last and num_rows % batch_size > 0:
+        assert num_rows > all_rows
+    else:
+        assert num_rows == all_rows
+
+
 def test_tf_catname_ordering(tmpdir):
     df = cudf.DataFrame(
         {
@@ -301,7 +350,7 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
 
 
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
-def test_hvd(tmpdir):
+def test_horovod_multigpu(tmpdir):
     json_sample = {
         "conts": {},
         "cats": {
@@ -359,6 +408,8 @@ def test_hvd(tmpdir):
             hvd_exam_path,
             "--dir_in",
             f"{tmpdir}",
+            "--batch_size",
+            "1024",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
