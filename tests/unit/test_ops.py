@@ -994,6 +994,7 @@ def test_groupby_op(keys, cpu):
         aggs={
             "x": ["list", "sum"],
             "y": ["first", "last"],
+            "ts": ["min"],
         },
         name_sep="-",
     )
