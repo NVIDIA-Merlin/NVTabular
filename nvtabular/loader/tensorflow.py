@@ -175,8 +175,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         the last chunk in a dataset, which will, in general, be smaller).
         Larger chunk sizes will lead to more efficieny and randomness,
         but require more memory.
-    - devices: None
-        Which GPU devices to load from. Ignored for now
+    - device: None
+        Which GPU device to load from. Ignored for now
     - parts_per_chunk: int
         Number of dataset partitions with size dictated by `buffer_size`
         to load and concatenate asynchronously. More partitions leads to
@@ -198,10 +198,14 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         cont_names=None,
         engine=None,
         shuffle=True,
+        seed_fn=None,
         buffer_size=0.1,
-        devices=None,
+        device=None,
         parts_per_chunk=1,
         reader_kwargs=None,
+        global_size=None,
+        global_rank=None,
+        drop_last=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -213,8 +217,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         cat_names = _get_embedding_order(cat_names)
         cont_names = _get_embedding_order(cont_names)
 
-        assert devices is None or len(devices) == 1  # TODO: figure out multi-gpu support
-        devices = devices or [0]
+        device = device or 0
         DataLoader.__init__(
             self,
             dataset,
@@ -223,8 +226,12 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             label_names,
             batch_size,
             shuffle,
+            seed_fn=seed_fn,
             parts_per_chunk=parts_per_chunk,
-            devices=devices,
+            device=device,
+            global_size=global_size,
+            global_rank=global_rank,
+            drop_last=drop_last,
         )
 
     def __len__(self):
@@ -233,6 +240,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         # TODO: what's a better way to do this inheritance
         # of the appropriate methods? A Metaclass?
+        DataLoader.stop(self)
         return DataLoader.__len__(self)
 
     def __getitem__(self, idx):
@@ -241,18 +249,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         with Keras model.fit. Does not leverage
         passed idx in any way
         """
-        try:
-            return DataLoader.__next__(self)
-        except StopIteration:
-            # TODO: I would like to do a check for idx == 0
-            # here, but that requires that tf.keras.Model.fit
-            # be called with shuffle=False, and that seems
-            # small enough that it would be too easy to miss
-            # for many users. That said, blind reinitialization
-            # is probably irresponsible, so worth thinking
-            # of something better here
-            DataLoader.__iter__(self)
-            return DataLoader.__next__(self)
+        return DataLoader.__next__(self)
 
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
@@ -264,7 +261,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # commenting out since device statements cause
         # RuntimeErrors when exiting if two dataloaders
         # are running at once (e.g. train and validation)
-        yield dev
+        yield tf.device("/GPU:" + str(dev))
 
     def _split_fn(self, tensor, idx, axis=0):
         return tf.split(tensor, idx, axis=axis)
@@ -358,6 +355,9 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
             for metric in self.model.metrics:
                 metric.update_state(y_true, y_pred)
 
+        set_logs = {}
         for metric in self.model.metrics:
-            logs["val_" + metric.name] = metric.result().numpy()
+            set_logs[f"val_{metric.name}"] = metric.result().numpy()
+        logs.update(set_logs)
+        print(set_logs)
         return logs
