@@ -243,6 +243,20 @@ class DataLoader:
         start = self.global_rank * per_worker
         return self.indices[start : start + per_worker].tolist()
 
+    def _generate_local_seed(self):
+        random_state = cp.random.get_random_state()
+        seeds = random_state.tomaxint(size=self.global_size)
+        local_seed = seeds[self.global_rank]
+        cp.random.seed(local_seed.get())
+
+    def _shuffle_indices(self):
+        self._generate_local_seed()
+        if self.seed_fn:
+            new_seed = self.seed_fn()
+            cp.random.seed(new_seed)
+        cp.random.shuffle(self.indices)
+        self._generate_local_seed()
+
     def __iter__(self):
         self.stop()
         self.num_rows_processed = 0
@@ -252,10 +266,7 @@ class DataLoader:
         # shuffle partition indices to bring disparate
         # parts of the dataset "close" to one another
         if self.shuffle:
-            if self.seed_fn:
-                new_seed = self.seed_fn()
-                cp.random.seed(new_seed)
-            cp.random.shuffle(self.indices)
+            self._shuffle_indices()
 
         # build and start new threads for loading and
         # concatenating data
