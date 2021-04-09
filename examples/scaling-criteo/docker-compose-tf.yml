@@ -27,7 +27,7 @@ services:
   lab:
     runtime: nvidia
     image: nvcr.io/nvidia/merlin/merlin-tensorflow-training:0.5
-    command: "/bin/bash -c 'source activate merlin && pip install jupyterlab jupytext pydot nvidia-pyindex tritonclient geventhttpclient && apt-get update && apt-get install -y tree && python -m ipykernel install --user --name=rapids && jupyter notebook --no-browser --allow-root --port=8888 --ip=0.0.0.0 --NotebookApp.token='demotoken' --NotebookApp.allow_origin='*' --notebook-dir=/'"
+    command: "/bin/bash -c 'source activate merlin && pip install jupyterlab jupytext pydot nvidia-pyindex tritonclient geventhttpclient && apt-get update && apt-get install -y tree && python -m ipykernel install --user --name=merlin && jupyter notebook --no-browser --allow-root --port=8888 --ip=0.0.0.0 --NotebookApp.token='demotoken' --NotebookApp.allow_origin='*' --notebook-dir=/'"
     volumes:
       - models:/models
       - /raid/:/raid/
