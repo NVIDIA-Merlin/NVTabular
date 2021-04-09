@@ -38,7 +38,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.inference.triton import get_column_types
+from nvtabular.inference.triton import get_column_types, get_slot_sizes
 
 
 class TritonPythonModel:
@@ -86,7 +86,9 @@ class TritonPythonModel:
                 output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
             if "cats" in self.column_types:
-                output_df[self.column_types["cats"] = output_df[self.column_types["cats"] + self.slot_sizes
+                output_df[self.column_types["cats"]] = (
+                    output_df[self.column_types["cats"]] + self.slot_sizes
+                )
                 cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.int64)
                 output_tensors.append(
                     Tensor(
