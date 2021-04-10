@@ -69,43 +69,55 @@ class Categorify(StatOperator):
 
     Example for frequency hashing::
 
-        # Create toy dataframe
+        import nvtabular as nvt
+
+        # Create toy dataset
         df = cudf.DataFrame({
             'author': ['User_A', 'User_B', 'User_C', 'User_C', 'User_A', 'User_B', 'User_A'],
             'productID': [100, 101, 102, 101, 102, 103, 103],
             'label': [0, 0, 1, 1, 1, 0, 0]
         })
-        CATEGORICAL_COLUMNS = ['author', 'productID']
+        dataset = nvt.Dataset(df)
 
         # Define pipeline
+        CATEGORICAL_COLUMNS = ['author', 'productID']
         cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(
             freq_threshold={"author": 3, "productID": 2},
             num_buckets={"author": 10, "productID": 20})
-        )
+
 
         # Initialize the workflow and execute it
         proc = nvt.Workflow(cat_features)
         proc.fit(dataset)
-        proc.transform(dataset).to_parquet('./test/')
+        ddf = proc.transform(dataset).to_ddf()
+
+        # Print results
+        print(ddf.compute())
 
     Example with multi-hot::
 
-        # Create toy dataframe
+        import nvtabular as nvt
+
+        # Create toy dataset
         df = cudf.DataFrame({
             'userID': [10001, 10002, 10003],
             'productID': [30003, 30005, 40005],
             'categories': [['Cat A', 'Cat B'], ['Cat C'], ['Cat A', 'Cat C', 'Cat D']],
             'label': [0,0,1]
         })
-        CATEGORICAL_COLUMNS = ['userID', 'productID', 'categories']
+        dataset = nvt.Dataset(df)
 
         # Define pipeline
+        CATEGORICAL_COLUMNS = ['userID', 'productID', 'categories']
         cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify()
 
         # Initialize the workflow and execute it
         proc = nvt.Workflow(cat_features)
         proc.fit(dataset)
-        proc.transform(dataset).to_parquet('./test/')
+        ddf = proc.transform(dataset).to_ddf()
+
+        # Print results
+        print(ddf.compute())
 
     Parameters
     -----------
