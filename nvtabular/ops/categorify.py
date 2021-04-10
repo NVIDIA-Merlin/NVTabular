@@ -69,6 +69,7 @@ class Categorify(StatOperator):
 
     Example for frequency hashing::
 
+        import cudf
         import nvtabular as nvt
 
         # Create toy dataset
@@ -96,6 +97,7 @@ class Categorify(StatOperator):
 
     Example with multi-hot::
 
+        import cudf
         import nvtabular as nvt
 
         # Create toy dataset
