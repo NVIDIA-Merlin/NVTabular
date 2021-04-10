@@ -624,34 +624,3 @@ def _convert_dtype(dtype):
     if cudf.utils.dtypes.is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
-
-
-def _convert_torch_dtype(dtype):
-    """ converts a dtype to the appropriate triton proto type """
-    if dtype == torch.float64:
-        return "float64"
-    if dtype == torch.float32:
-        return "float32"
-    if dtype == torch.float16:
-        return "float16"
-    if dtype == torch.int64:
-        return "int64"
-    if dtype == torch.int32:
-        return "int32"
-    if dtype == torch.int16:
-        return "int16"
-    if dtype == torch.int8:
-        return "int8"
-    if dtype == torch.uint64:
-        return "uint64"
-    if dtype == torch.uint32:
-        return "uint32"
-    if dtype == torch.uint16:
-        return "uint16"
-    if dtype == torch.uint8:
-        return "uint8"
-    if dtype == torch.bool:
-        return "bool"
-    if cudf.utils.dtypes.is_string_dtype(dtype):
-        return model_config.TYPE_STRING
-    raise ValueError(f"Can't convert dtype {dtype})")
