@@ -782,8 +782,8 @@ class GPUParquetWriter(BaseParquetWriter):
 
     def _close_writers(self):
         md_dict = {}
-        for writer, path in zip(self.data_writers, self.data_paths):
-            fn = path.split(self.fs.sep)[-1]
+        _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
+        for writer, fn in zip(self.data_writers, _fns):
             md_dict[fn] = writer.close(metadata_file_path=fn)
         for f in self.data_files:
             f.close()
@@ -853,10 +853,11 @@ class CPUParquetWriter(BaseParquetWriter):
         _write_pq_metadata_file_pyarrow(md_list, fs, out_dir)
 
     def _close_writers(self):
-        for writer, path in zip(self.data_writers, self.data_paths):
-            fn = path.split(self.fs.sep)[-1]
+        _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
+        for writer, fn in zip(self.data_writers, _fns):
             writer.close()
-            self.md_collectors[path][0].set_file_path(fn)
+            _path = self.fs.sep.join([self.out_dir, fn])
+            self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 
 
