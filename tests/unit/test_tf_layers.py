@@ -284,8 +284,8 @@ def test_dot_product_interaction_layer(
             expected_outputs.append((x_i * x_j).sum(axis=1))
     expected_output = np.stack(expected_outputs).T
 
-    rtol = 1e-3
-    atol = 1e-6
+    rtol = 1e-1
+    atol = 1e-2
     match = np.isclose(expected_output, y_hat, rtol=rtol, atol=atol)
     assert match.all()
 
