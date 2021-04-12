@@ -9,12 +9,13 @@ import cupy
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 # TF will have claimed all free GPU memory
 os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
-import horovod.tensorflow as hvd  # noqa: E402
-import tensorflow as tf  # noqa: E402
 
-import nvtabular as nvt  # noqa: E402
-from nvtabular.framework_utils.tensorflow import layers  # noqa: E402
-from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402
+import nvtabular as nvt  # noqa: E402 isort:skip
+from nvtabular.framework_utils.tensorflow import layers  # noqa: E402 isort:skip
+from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402 isort:skip
+
+import tensorflow as tf  # noqa: E402 isort:skip
+import horovod.tensorflow as hvd  # noqa: E402 isort:skip
 
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument("--dir_in", default=None, help="Input directory")
