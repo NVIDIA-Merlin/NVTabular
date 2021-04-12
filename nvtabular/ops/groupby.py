@@ -90,8 +90,10 @@ class Groupby(Operator):
                     _conv_aggs.add(list)
                 else:
                     _conv_aggs.add(_agg)
-            self.conv_aggs[col] = list(_conv_aggs)
-            self.list_aggs[col] = list(_list_aggs)
+            if _conv_aggs:
+                self.conv_aggs[col] = list(_conv_aggs)
+            if _list_aggs:
+                self.list_aggs[col] = list(_list_aggs)
 
         self.name_sep = name_sep
         super().__init__()
