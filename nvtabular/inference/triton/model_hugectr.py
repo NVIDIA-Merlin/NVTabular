@@ -38,7 +38,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.inference.triton import get_column_types, get_slot_sizes
+from nvtabular.inference.triton import get_column_types
 
 
 class TritonPythonModel:
@@ -52,8 +52,8 @@ class TritonPythonModel:
         self.model_config = json.loads(args["model_config"])
         self.column_types = get_column_types(workflow_path)
         self.slot_sizes = get_slot_sizes(workflow_path)
-        self.slot_sizes.insert(0, 0)
-        self.slot_sizes.pop()
+        if self.slot_sizes is None and "cats" in self.column_types:
+            raise Exception("slot_size_array.json could not find to read slot sizes")
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -124,3 +124,14 @@ def _convert_tensor(t):
     if out.dtype.kind == "S" and out.dtype.str.startswith("|S"):
         out = out.astype("str")
     return out
+
+
+def get_slot_sizes(path):
+    if os.path.exists(path):
+        slot_sizes = json.load(open(os.path.join(path, "slot_size_array.json")))
+        slot_sizes = slot_sizes["slot_size_array"]
+        slot_sizes.insert(0, 0)
+        slot_sizes.pop()
+        return slot_sizes
+    else:
+        return None
