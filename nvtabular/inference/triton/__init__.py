@@ -223,6 +223,18 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
+    hugectr_training_config = json.load(open(hugectr_params["config"]))
+    for elem in hugectr_training_config["layers"]:
+        if "slot_size_array" in elem:
+            with open(
+                os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
+                "w",
+            ) as o:
+                slot_sizes = dict()
+                slot_sizes["slot_size_array"] = elem["slot_size_array"]
+                json.dump(slot_sizes, o)
+            break
+
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")
     os.makedirs(ensemble_path, exist_ok=True)
@@ -343,6 +355,8 @@ def _generate_nvtabular_config(
     config = model_config.ModelConfig(name=name, backend="python", max_batch_size=max_batch_size)
 
     if output_model == "hugectr":
+        config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
+
         for column in workflow.column_group.input_column_names:
             dtype = workflow.input_dtypes[column]
             config.input.append(
