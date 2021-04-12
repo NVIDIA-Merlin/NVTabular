@@ -1,3 +1,16 @@
+# NVTabular v0.5.0 (13 April 2021)
+
+## Improvements
+
+* Adding Horovod integration to NVTabular's dataloaders, allowing you to use multiple GPU's to train TensorFlow and PyTorch models
+* Adding a Groupby operation for use with session based recommender models
+* Added ability to read and write datasets partitioned by a column, allowing 
+* Add example notebooks for using Triton Inference Server with NVTabular
+* Restructure and simplify Criteo example notebooks
+
+## Bug Fixes
+
+* Fix bug with preprocessing categorical columns with NVTabular not working with HugeCTR and Triton Inference Server [#707](https://github.com/NVIDIA/NVTabular/issues/707)
 
 # NVTabular v0.4.0 (9 March 2021)
 
