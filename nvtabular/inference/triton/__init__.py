@@ -20,7 +20,6 @@ import subprocess
 from shutil import copyfile
 
 import cudf
-import torch
 import tritonclient.grpc as grpcclient
 from cudf.utils.dtypes import is_list_dtype
 from google.protobuf import text_format
@@ -96,6 +95,7 @@ def export_pytorch_ensemble(
     label_columns:
         Labels in the dataset (will be removed f
     """
+    import torch
 
     workflow = _remove_columns(workflow, label_columns)
 
