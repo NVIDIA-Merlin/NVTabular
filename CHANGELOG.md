@@ -7,6 +7,7 @@
 * Added ability to read and write datasets partitioned by a column, allowing 
 * Add example notebooks for using Triton Inference Server with NVTabular
 * Restructure and simplify Criteo example notebooks
+* Add support for PyTorch inference with Triton Inference Server
 
 ## Bug Fixes
 
