@@ -394,8 +394,8 @@ def test_horovod_multigpu(tmpdir):
     proc.save(target_path)
     curr_path = os.path.abspath(__file__)
     repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
-    hvd_wrap_path = os.path.join(repo_root, "examples/horovod/hvd_wrapper.sh")
-    hvd_exam_path = os.path.join(repo_root, "examples/horovod/tf_hvd_simple.py")
+    hvd_wrap_path = os.path.join(repo_root, "examples/multi-gpu-movielens/hvd_wrapper.sh")
+    hvd_exam_path = os.path.join(repo_root, "examples/multi-gpu-movielens/tf_trainer.py")
     process = subprocess.Popen(
         [
             "horovodrun",
@@ -403,6 +403,7 @@ def test_horovod_multigpu(tmpdir):
             "2",
             "-H",
             "localhost:2",
+            "sh",
             hvd_wrap_path,
             "python",
             hvd_exam_path,
