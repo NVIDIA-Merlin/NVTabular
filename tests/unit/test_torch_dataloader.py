@@ -484,7 +484,7 @@ def test_horovod_multigpu(tmpdir):
 
     curr_path = os.path.abspath(__file__)
     repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
-    hvd_example_path = os.path.join(repo_root, "examples/horovod/torch-nvt-horovod.py")
+    hvd_example_path = os.path.join(repo_root, "examples/multi-gpu-movielens/torch_trainer.py")
 
     process = subprocess.Popen(
         [
