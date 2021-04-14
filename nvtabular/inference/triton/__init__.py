@@ -187,6 +187,9 @@ def export_hugectr_ensemble(
 
     """
 
+    if cats is None and conts is None:
+        raise ValueError("Either cats or conts has to have a value.")
+
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
@@ -223,9 +226,11 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
+    slot_exist = False
     hugectr_training_config = json.load(open(hugectr_params["config"]))
     for elem in hugectr_training_config["layers"]:
         if "slot_size_array" in elem:
+            slot_exist = True
             with open(
                 os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
                 "w",
@@ -234,6 +239,9 @@ def export_hugectr_ensemble(
                 slot_sizes["slot_size_array"] = elem["slot_size_array"]
                 json.dump(slot_sizes, o)
             break
+
+    if cats is not None and not slot_exist:
+        raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
 
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")
