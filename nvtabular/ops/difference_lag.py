@@ -65,7 +65,7 @@ class DifferenceLag(Operator):
         for shift in self.shifts:
             mask = gdf[self.partition_cols] == gdf[self.partition_cols].shift(shift)
             if isinstance(mask, cudf.DataFrame):
-                mask = mask.all(axis=1)
+                mask = mask.fillna(False).all(axis=1)
             mask[mask == False] = None  # noqa
 
             for col in columns:
