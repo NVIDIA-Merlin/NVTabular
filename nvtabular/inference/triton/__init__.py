@@ -187,7 +187,7 @@ def export_hugectr_ensemble(
 
     """
 
-    if cats is None and conts is None:
+    if not cats and not conts:
         raise ValueError("Either cats or conts has to have a value.")
 
     workflow = _remove_columns(workflow, label_columns)
