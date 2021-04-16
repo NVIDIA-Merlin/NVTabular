@@ -240,7 +240,7 @@ def export_hugectr_ensemble(
                 json.dump(slot_sizes, o)
             break
 
-    if cats is not None and not slot_exist:
+    if cats and not slot_exist:
         raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
 
     # generate the triton ensemble
