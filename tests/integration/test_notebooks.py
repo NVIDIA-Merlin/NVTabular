@@ -41,7 +41,9 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
     notebook_etl = os.path.join(
         dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
     )
-    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False, main_block=39)
+    out = _run_notebook(
+        tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False, main_block=39
+    )
 
     # Only run if PyTorch installed
     try:
@@ -148,7 +150,7 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
     pytest.importorskip("tensorflow")
     data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
     input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
-    
+
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
     os.environ["MODEL_NAME_TF"] = "movielens_tf"
@@ -160,12 +162,12 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
         dirname(TEST_PATH), "examples/getting-started-movielens", "01-Download-Convert.ipynb"
     )
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
-    
+
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/getting-started-movielens", "02-ETL-with-NVTabular.ipynb"
     )
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
-    
+
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/getting-started-movielens", "03a-Training-with-TF.ipynb"
     )
@@ -182,7 +184,9 @@ def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/getting-started-movielens", "04a-Triton-Inference-with-TF.ipynb",
+        dirname(TEST_PATH),
+        "examples/getting-started-movielens",
+        "04a-Triton-Inference-with-TF.ipynb",
     )
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=True)
@@ -213,7 +217,7 @@ def _run_notebook(
     # read in the notebook as JSON, and extract a python script from it
     notebook = json.load(open(notebook_path))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
-    
+
     lines = [
         transform(line.rstrip()) if transform else line
         for line in itertools.chain(*source_cells)
@@ -222,10 +226,10 @@ def _run_notebook(
 
     # Add guarding block and indentation
     if main_block >= 0:
-        lines.insert(main_block, "if __name__ == \"__main__\":")
-        for i in range(main_block+1, len(lines)):
+        lines.insert(main_block, 'if __name__ == "__main__":')
+        for i in range(main_block + 1, len(lines)):
             lines[i] = "    " + lines[i]
-            
+
     # save the script to a file, and run with the current python executable
     # we're doing this in a subprocess to avoid some issues using 'exec'
     # that were causing a segfault with globals of the exec'ed function going
