@@ -154,6 +154,7 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
     os.environ["MODEL_NAME_TF"] = "movielens_tf"
     os.environ["MODEL_NAME_ENSEMBLE"] = "movielens"
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
+    os.environ["MODEL_PATH"] = INFERENCE_MULTI_HOT
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/getting-started-movielens", "01-Download-Convert.ipynb"
