@@ -200,6 +200,7 @@ class Dataset:
         client=None,
         cpu=None,
         base_dataset=None,
+        base_mapping=None,
         **kwargs,
     ):
         self.dtypes = dtypes
@@ -210,6 +211,7 @@ class Dataset:
 
         # Keep track of base dataset (optional)
         self.base_dataset = base_dataset or self
+        self.base_mapping = base_mapping or {}
 
         # For now, lets warn the user that "cpu mode" is experimental
         if self.cpu:
@@ -311,9 +313,76 @@ class Dataset:
                     paths, part_size, cpu=self.cpu, storage_options=storage_options
                 )
 
+
+    def shuffle(self, columns=None, seed=None):
+        """Shuffle the partitions of a `Dataset` object
+
+        Note that this does not shuffle the rows within each
+        partition. This is because the data is not actually loaded
+        into memory for this operation.
+
+        Parameters
+        -----------
+        columns : str or list(str); default None
+            Columns to include in output Dataset. If not specified,
+            the output will contain all known columns in the Dataset.
+        seed : int; Optional
+            The random seed to use for shuffling.  If nothing is
+            specified, the current system time will be used by the
+            `random` std library.
+        """
+        # Use DatasetEngine to create ddf
+        ddf = self.engine.to_ddf(columns=columns)
+
+        # No need to shuffle a single-partition Dataset
+        if ddf.npartitions < 2:
+            return self
+
+        # Start with ordered partitions
+        inds = list(range(ddf.npartitions))
+
+        # Use random std library to reorder partitions
+        random.seed(seed)
+        random.shuffle(inds)
+
+        # Construct new high-level graph (HLG)
+        name = ddf._name
+        new_name = "shuffle-partitions-" + tokenize(ddf)
+        dsk = {(new_name, i): (lambda x: x, (name, ind)) for i, ind in enumerate(inds)}
+
+        new_graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
+
+        # Convert the HLG to a Dask collection
+        divisions = [None] * (ddf.npartitions + 1)
+        ddf = new_dd_object(new_graph, new_name, ddf._meta, divisions)
+
+        # Get updated `base_mapping`.
+        # This attribute maps the the base-dataset partition
+        # indices to the output-dataset partition indices
+        _inv_base_mapping = dict(
+            zip(self.base_mapping.values(), self.base_mapping.keys())
+        )
+        base_mapping = {
+            _inv_base_mapping.get(i, i): ind
+            for i, ind in enumerate(inds)
+        }
+
+        # Special dtype conversion (optional)
+        if self.dtypes:
+            _meta = _set_dtypes(ddf._meta, self.dtypes)
+            ddf = ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
+
+        # Return new (shuffled) Dataset    
+        return Dataset(
+            ddf,
+            client=self.client,
+            cpu=self.cpu,
+            base_dataset=self.base_dataset,
+            base_mapping=base_mapping,
+        )
+
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`
-
         Parameters
         -----------
         columns : str or list(str); default None
@@ -329,28 +398,12 @@ class Dataset:
             is specified, the current system time will be used by the
             `random` std library.
         """
+
+        # Use a shuffled Dataset object if necessary
+        _dataset = self.shuffle(columns=columns, seed=seed) if shuffle else self
+
         # Use DatasetEngine to create ddf
-        ddf = self.engine.to_ddf(columns=columns)
-
-        # Shuffle the partitions of ddf (optional)
-        if shuffle and ddf.npartitions > 1:
-            # Start with ordered partitions
-            inds = list(range(ddf.npartitions))
-
-            # Use random std library to reorder partitions
-            random.seed(seed)
-            random.shuffle(inds)
-
-            # Construct new high-level graph (HLG)
-            name = ddf._name
-            new_name = "shuffle-partitions-" + tokenize(ddf)
-            dsk = {(new_name, i): (lambda x: x, (name, ind)) for i, ind in enumerate(inds)}
-
-            new_graph = HighLevelGraph.from_collections(new_name, dsk, dependencies=[ddf])
-
-            # Convert the HLG to a Dask collection
-            divisions = [None] * (ddf.npartitions + 1)
-            ddf = new_dd_object(new_graph, new_name, ddf._meta, divisions)
+        ddf = _dataset.engine.to_ddf(columns=columns)
 
         # Special dtype conversion (optional)
         if self.dtypes:
@@ -361,6 +414,10 @@ class Dataset:
     @property
     def file_partition_map(self):
         return self.engine._file_partition_map
+
+    @property
+    def partition_lens(self):
+        return self.engine._partition_lens
 
     def to_cpu(self):
         warnings.warn(
@@ -506,8 +563,22 @@ class Dataset:
         if isinstance(columns, str):
             columns = [columns]
 
+        _dataset = self.shuffle(columns=columns, seed=seed) if shuffle else self
+
+        # Try to extract the row-size metadata
+        try:
+            # Cannot rely on base dataset for accurate row-count,
+            # but we can rely on `self`
+            
+            lens = self.partition_lens
+            lens = [lens[_dataset.base_mapping.get(i, i)] for i in range(len(lens))]
+        except AttributeError:
+            lens = None
+    
         return DataFrameIter(
-            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+            _dataset.to_ddf(columns=columns),
+            indices=indices,
+            partition_lens=lens,
         )
 
     def to_parquet(
@@ -634,12 +705,13 @@ class Dataset:
                 output_files = _output_files
             else:
                 output_files = {}
-                for fn, rgs in _output_files.items():
+                for fn, parts in _output_files.items():
                     split_fn = fn.split(".")
+                    _parts = [self.base_mapping.get(p, p) for p in parts]
                     if split_fn[-1] in ("parquet", "avro", "orc", "csv"):
-                        output_files[".".join(split_fn[:-1]) + suffix] = rgs
+                        output_files[".".join(split_fn[:-1]) + suffix] = _parts
                     else:
-                        output_files[fn + suffix] = rgs
+                        output_files[fn + suffix] = _parts
             suffix = ""  # Don't add a suffix later - Names already include it
 
         if dtypes:
@@ -869,12 +941,21 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
+        self.partition_lens = partition_lens
 
     def __len__(self):
+        if self.partition_lens:
+            # Use metadata-based partition-size information
+            # if/when it is available.  Note that this metadata
+            # will not be correct if rows where added or dropped
+            # after IO (within Ops).
+            return sum(
+                self.partition_lens[i] for i in self.indices
+            )
         if len(self.indices) < self._ddf.npartitions:
             return len(self._ddf.partitions[self.indices])
         return len(self._ddf)

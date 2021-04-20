@@ -111,8 +111,45 @@ class ParquetDatasetEngine(DatasetEngine):
         return dataset
 
     @property
-    @functools.lru_cache(1)
     def _file_partition_map(self):
+        if not hasattr(self, "_pp_map"):
+            self._process_parquet_metadata()
+        return self._pp_map
+
+    @property
+    def _partition_lens(self):
+        if not hasattr(self, "_pp_nrows"):
+            self._process_parquet_metadata()
+        return self._pp_nrows
+
+    @property
+    def num_rows(self):
+        # TODO: Avoid parsing metadata once upstream dask
+        # can get the length efficiently (in all practical cases)
+        return sum(self._partition_lens)
+
+    def _process_parquet_metadata(self):
+        # Utility shared by `_file_partition_map` and `_partition_lens`
+        # to collect useful information from the parquet metadata
+
+        _pp_nrows = []
+        def _update_partition_lens(part_count, md, num_row_groups, rg_offset=None):
+            # Helper function to calculate the row count for each
+            # output partition (and add it to `_pp_nrows`)
+            rg_offset = rg_offset or 0
+            for _p in range(part_count):
+                rg_i = _p * self.row_groups_per_part
+                rg_f = min((_p + 1) * self.row_groups_per_part, num_row_groups)
+                _pp_nrows.append(
+                    sum(
+                        [
+                            md.row_group(rg + rg_offset).num_rows
+                            for rg in range(rg_i, rg_f)
+                        ]
+                    )
+                )
+            return
+
         dataset = self._dataset
         if dataset.metadata:
             # We have a metadata file.
@@ -124,41 +161,30 @@ class ParquetDatasetEngine(DatasetEngine):
 
             # Convert the per-file row-group count to the
             # file-to-partition mapping
-            ind = 0
+            ind, rg = 0, 0
             _pp_map = defaultdict(list)
             for fn, num_row_groups in _path_row_groups.items():
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 _pp_map[fn] = np.arange(ind, ind + part_count)
+                _update_partition_lens(part_count, dataset.metadata, num_row_groups, rg_offset=rg)
                 ind += part_count
-
+                rg += num_row_groups
         else:
             # No metadata file. Construct file-to-partition map manually
             ind = 0
             _pp_map = {}
             for piece in dataset.pieces:
-                num_row_groups = piece.get_metadata().num_row_groups
+                md = piece.get_metadata()
+                num_row_groups = md.num_row_groups
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 fn = piece.path.split(self.fs.sep)[-1]
                 _pp_map[fn] = np.arange(ind, ind + part_count)
+                _update_partition_lens(part_count, md, num_row_groups)
                 ind += part_count
 
-        return _pp_map
+        self._pp_map = _pp_map
+        self._pp_nrows = _pp_nrows
 
-    @property
-    @functools.lru_cache(1)
-    def num_rows(self):
-        # TODO: Avoid parsing metadata here if we can confirm upstream dask
-        # can get the length efficiently (in all practical cases)
-        dataset = self._dataset
-        if dataset.metadata:
-            # We have a metadata file
-            return dataset.metadata.num_rows
-        else:
-            # Sum up row-group sizes manually
-            num_rows = 0
-            for piece in dataset.pieces:
-                num_rows += piece.get_metadata().num_rows
-            return num_rows
 
     def to_ddf(self, columns=None, cpu=None):
 
