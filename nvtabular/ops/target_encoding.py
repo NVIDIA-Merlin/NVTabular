@@ -310,7 +310,7 @@ class TargetEncoding(StatOperator):
 
         # Make sure we are preserving the index of gdf
         tran_gdf.index = gdf.index
-        
+
         return tran_gdf
 
     def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
