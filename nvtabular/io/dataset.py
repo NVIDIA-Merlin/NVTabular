@@ -187,6 +187,11 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    base_mapping : dict
+        Mapping from the ``base_dataset`` partition indices to the
+        current partition indices. The primary purpose of this
+        argument is to preserve information about the original
+        partition mapping after ``Dataset._shuffle`` is called.
     """
 
     def __init__(
@@ -313,8 +318,7 @@ class Dataset:
                     paths, part_size, cpu=self.cpu, storage_options=storage_options
                 )
 
-
-    def shuffle(self, columns=None, seed=None):
+    def _shuffle(self, columns=None, seed=None):
         """Shuffle the partitions of a `Dataset` object
 
         Note that this does not shuffle the rows within each
@@ -359,20 +363,15 @@ class Dataset:
         # Get updated `base_mapping`.
         # This attribute maps the the base-dataset partition
         # indices to the output-dataset partition indices
-        _inv_base_mapping = dict(
-            zip(self.base_mapping.values(), self.base_mapping.keys())
-        )
-        base_mapping = {
-            _inv_base_mapping.get(i, i): ind
-            for i, ind in enumerate(inds)
-        }
+        _inv_base_mapping = dict(zip(self.base_mapping.values(), self.base_mapping.keys()))
+        base_mapping = {_inv_base_mapping.get(ind, ind): i for i, ind in enumerate(inds)}
 
         # Special dtype conversion (optional)
         if self.dtypes:
             _meta = _set_dtypes(ddf._meta, self.dtypes)
             ddf = ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
 
-        # Return new (shuffled) Dataset    
+        # Return new (shuffled) Dataset
         return Dataset(
             ddf,
             client=self.client,
@@ -400,7 +399,7 @@ class Dataset:
         """
 
         # Use a shuffled Dataset object if necessary
-        _dataset = self.shuffle(columns=columns, seed=seed) if shuffle else self
+        _dataset = self._shuffle(columns=columns, seed=seed) if shuffle else self
 
         # Use DatasetEngine to create ddf
         ddf = _dataset.engine.to_ddf(columns=columns)
@@ -418,6 +417,12 @@ class Dataset:
     @property
     def partition_lens(self):
         return self.engine._partition_lens
+
+    def __len__(self):
+        try:
+            return sum(self.partition_lens)
+        except AttributeError:
+            return len(self.to_ddf())
 
     def to_cpu(self):
         warnings.warn(
@@ -563,18 +568,19 @@ class Dataset:
         if isinstance(columns, str):
             columns = [columns]
 
-        _dataset = self.shuffle(columns=columns, seed=seed) if shuffle else self
+        _dataset = self._shuffle(columns=columns, seed=seed) if shuffle else self
 
         # Try to extract the row-size metadata
         try:
             # Cannot rely on base dataset for accurate row-count,
             # but we can rely on `self`
-            
-            lens = self.partition_lens
-            lens = [lens[_dataset.base_mapping.get(i, i)] for i in range(len(lens))]
+
+            lens = self.partition_lens.copy()
+            for k, v in _dataset.base_mapping.items():
+                lens[v] = self.partition_lens[k]
         except AttributeError:
             lens = None
-    
+
         return DataFrameIter(
             _dataset.to_ddf(columns=columns),
             indices=indices,
@@ -694,24 +700,23 @@ class Dataset:
         # or use file_partition_map to extract the mapping
         elif preserve_files:
             try:
-                _output_files = self.base_dataset.file_partition_map
+                output_files = {}
+                for fn, parts in self.base_dataset.file_partition_map.items():
+                    _parts = [self.base_mapping.get(p, p) for p in parts]
+                    if suffix == "":
+                        output_files[fn] = _parts
+                    else:
+                        split_fn = fn.split(".")
+                        if split_fn[-1] in ("parquet", "avro", "orc", "csv"):
+                            output_files[".".join(split_fn[:-1]) + suffix] = _parts
+                        else:
+                            output_files[fn + suffix] = _parts
             except (AttributeError):
                 raise AttributeError(
                     f"`to_parquet(..., preserve_files=True)` is not currently supported "
                     f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
                     f"that `dataset.base_dataset` is backed by csv or parquet files."
                 )
-            if suffix == "":
-                output_files = _output_files
-            else:
-                output_files = {}
-                for fn, parts in _output_files.items():
-                    split_fn = fn.split(".")
-                    _parts = [self.base_mapping.get(p, p) for p in parts]
-                    if split_fn[-1] in ("parquet", "avro", "orc", "csv"):
-                        output_files[".".join(split_fn[:-1]) + suffix] = _parts
-                    else:
-                        output_files[fn + suffix] = _parts
             suffix = ""  # Don't add a suffix later - Names already include it
 
         if dtypes:
@@ -953,9 +958,7 @@ class DataFrameIter:
             # if/when it is available.  Note that this metadata
             # will not be correct if rows where added or dropped
             # after IO (within Ops).
-            return sum(
-                self.partition_lens[i] for i in self.indices
-            )
+            return sum(self.partition_lens[i] for i in self.indices)
         if len(self.indices) < self._ddf.npartitions:
             return len(self._ddf.partitions[self.indices])
         return len(self._ddf)
