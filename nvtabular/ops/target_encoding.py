@@ -245,7 +245,6 @@ class TargetEncoding(StatOperator):
 
         # Initialize new data
         _read_pq_func = _read_parquet_dispatch(gdf)
-        new_gdf = cudf.DataFrame()
         tmp = "__tmp__"
 
         if fit_folds:
@@ -308,12 +307,11 @@ class TargetEncoding(StatOperator):
 
         tran_gdf = tran_gdf.sort_values(tmp, ignore_index=True)
         tran_gdf.drop(columns=cols + [tmp], inplace=True)
-        new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-        new_gdf[new_cols] = tran_gdf[new_cols]
 
         # Make sure we are preserving the index of gdf
-        new_gdf.index = gdf.index
-        return new_gdf
+        tran_gdf.index = gdf.index
+
+        return tran_gdf
 
     def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         # Add temporary column for sorting
