@@ -77,7 +77,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     ds = nvtabular.io.Dataset(
         paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes
     )
-    my_iter = ds.to_iter(shuffle=True, columns=columns)
+    my_iter = ds.to_iter(columns=columns)
     for chunk in my_iter:
         size += chunk.shape[0]
         assert chunk["id"].dtype == np.int32
@@ -588,14 +588,11 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
         names=["C0", "I0", "F0"],
     )
 
-    # Extra shuffle step
-    ds2 = ds._shuffle(seed=42)
-
     # Convert csv dataset to parquet.
-    # Adding extra ds -> ds3 step to test `base_dataset` usage.
+    # Adding extra ds -> ds2 step to test `base_dataset` usage.
     pq_path = os.path.join(str(tmpdir), "pq_dataset")
-    ds3 = nvt.Dataset(ds2.to_ddf(), base_mapping=ds2.base_mapping, base_dataset=ds)
-    ds3.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
+    ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds)
+    ds2.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
 
     # Check output.
     # Note that we are converting the inital hex strings to int32.
@@ -608,8 +605,9 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
     assert not glob.glob(os.path.join(pq_path, "*.parquet"))
 
 
+@pytest.mark.parametrize("use_file_metadata", [True, None])
 @pytest.mark.parametrize("shuffle", [True, False])
-def test_parquet_partition_lens(tmpdir, shuffle):
+def test_parquet_iterator_len(tmpdir, shuffle, use_file_metadata):
 
     ddf1 = dask.datasets.timeseries(
         start="2000-01-01",
@@ -626,11 +624,19 @@ def test_parquet_partition_lens(tmpdir, shuffle):
     # Initialize Dataset
     ds = nvt.Dataset(str(tmpdir), engine="parquet")
 
-    # Check that metadata matches real data for len
-    ds_iter = ds.to_iter(shuffle=shuffle, seed=42)
-    ddf2 = ds.to_ddf(shuffle=shuffle, seed=42)
-    for i, size in enumerate(ds_iter.partition_lens):
-        assert len(ddf2.partitions[i]) == size
+    # Convert ds -> ds2
+    ds2 = nvt.Dataset(ds.to_ddf())
+
+    # Check that iterator lengths match the partition lengths
+    ddf2 = ds2.to_ddf(shuffle=shuffle, seed=42)
+    for i in range(ddf2.npartitions):
+        _iter = ds2.to_iter(
+            shuffle=shuffle,
+            seed=42,
+            indices=[i],
+            use_file_metadata=use_file_metadata,
+        )
+        assert len(ddf2.partitions[i]) == len(_iter)
 
 
 @pytest.mark.parametrize("cpu", [True, False])

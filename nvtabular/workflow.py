@@ -97,7 +97,6 @@ class Workflow:
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
-            base_mapping=dataset.base_mapping,
         )
 
     def fit(self, dataset: Dataset):
