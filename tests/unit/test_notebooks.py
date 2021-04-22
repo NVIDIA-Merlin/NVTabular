@@ -180,6 +180,7 @@ def test_movielens_example(tmpdir):
     except Exception:
         pass
     try:
+        import nvtabular.inference.triton  # noqa
         import nvtabular.loader.tensorflow  # noqa
 
         notebooks.append("03a-Training-with-TF.ipynb")
