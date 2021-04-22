@@ -30,10 +30,8 @@ from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorF
 TEST_PATH = dirname(dirname(realpath(__file__)))
 DATA_START = os.environ.get("DATASET_DIR", "/raid/data/")
 
-INFERENCE_ONE_HOT_BASE_DIR = "/model/Test_One_Hot/"
-INFERENCE_ONE_HOT = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "models/")
-INFERENCE_MULTI_HOT_BASE_DIR = "/model/Test_Multi_Hot/"
-INFERENCE_MULTI_HOT = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "models_multihot/")
+INFERENCE_BASE_DIR = "/model/"
+INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 
 
 def test_criteo_example(asv_db, bench_info, tmpdir):
@@ -43,7 +41,9 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
     notebook_etl = os.path.join(
         dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
     )
-    out = _run_notebook(tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False)
+    out = _run_notebook(
+        tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False, main_block=39
+    )
 
     # Only run if PyTorch installed
     try:
@@ -148,65 +148,45 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
 def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
     # Tensorflow required to run this test
     pytest.importorskip("tensorflow")
-    data_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
+    data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
+    input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
 
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-TF.ipynb"
-    )
-
-    os.environ["BASE_DIR"] = INFERENCE_ONE_HOT_BASE_DIR
+    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
     os.environ["MODEL_NAME_TF"] = "movielens_tf"
     os.environ["MODEL_NAME_ENSEMBLE"] = "movielens"
-    os.environ["MODEL_PATH"] = INFERENCE_ONE_HOT
-
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
-
-    data_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
-
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-multihot-TF.ipynb"
-    )
-
-    os.environ["BASE_DIR"] = INFERENCE_MULTI_HOT_BASE_DIR
-    os.environ["MODEL_NAME_NVT"] = "movielens_nvt_mh"
-    os.environ["MODEL_NAME_TF"] = "movielens_tf_mh"
-    os.environ["MODEL_NAME_ENSEMBLE"] = "movielens_mh"
+    os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
     os.environ["MODEL_PATH"] = INFERENCE_MULTI_HOT
 
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/getting-started-movielens", "01-Download-Convert.ipynb"
+    )
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
 
-
-def test_tf_inference_examples(asv_db, bench_info, tmpdir):
-    # Tritonclient required for this test
-    pytest.importorskip("tritonclient")
-    data_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_ONE_HOT_BASE_DIR, "data/")
-
-    os.environ["MODEL_BASE_DIR"] = INFERENCE_ONE_HOT
+    notebookpre_path = os.path.join(
+        dirname(TEST_PATH), "examples/getting-started-movielens", "02-ETL-with-NVTabular.ipynb"
+    )
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/inference_triton/inference-TF", "movielens-inference.ipynb"
+        dirname(TEST_PATH), "examples/getting-started-movielens", "03a-Training-with-TF.ipynb"
     )
-
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=True)
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
 
 
 def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
     # Tritonclient required for this test
     pytest.importorskip("tritonclient")
 
-    data_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_MULTI_HOT_BASE_DIR, "data/")
+    data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
+    input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
 
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH),
-        "examples/inference_triton/inference-TF",
-        "movielens-multihot-inference.ipynb",
+        "examples/getting-started-movielens",
+        "04a-Triton-Inference-with-TF.ipynb",
     )
 
     _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=True)
@@ -221,6 +201,7 @@ def _run_notebook(
     gpu_id=0,
     clean_up=True,
     transform=None,
+    main_block=-1,
 ):
     os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("GPU_TARGET_ID", gpu_id)
 
@@ -236,11 +217,18 @@ def _run_notebook(
     # read in the notebook as JSON, and extract a python script from it
     notebook = json.load(open(notebook_path))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
+
     lines = [
         transform(line.rstrip()) if transform else line
         for line in itertools.chain(*source_cells)
         if not (line.startswith("%") or line.startswith("!"))
     ]
+
+    # Add guarding block and indentation
+    if main_block >= 0:
+        lines.insert(main_block, 'if __name__ == "__main__":')
+        for i in range(main_block + 1, len(lines)):
+            lines[i] = "    " + lines[i]
 
     # save the script to a file, and run with the current python executable
     # we're doing this in a subprocess to avoid some issues using 'exec'
