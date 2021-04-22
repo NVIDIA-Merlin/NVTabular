@@ -174,7 +174,7 @@ def df(engine, paths):
 def dataset(request, paths, engine):
     try:
         gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
-    except Exception: # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         gpu_memory_frac = 0.01
 
     kwargs = {}

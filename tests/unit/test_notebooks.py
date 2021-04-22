@@ -29,7 +29,8 @@ from tests.conftest import get_cuda_cluster
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
-#pylint: disable=unused-import,broad-except
+# pylint: disable=unused-import,broad-except
+
 
 def test_criteo_tf_notebook(tmpdir):
     tor = pytest.importorskip("tensorflow")  # noqa

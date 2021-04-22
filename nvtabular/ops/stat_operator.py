@@ -25,6 +25,7 @@ class StatOperator(Operator):
     Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
     on top of the Operator class.
     """
+
     def fit(self, columns: ColumnNames, ddf: dd.DataFrame) -> Any:
         """Calculate statistics for this operator, and return a dask future
         to these statistics, which will be computed by the workflow."""
