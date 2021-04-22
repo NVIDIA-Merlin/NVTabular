@@ -6,7 +6,7 @@ import cudf
 import fsspec
 import numpy as np
 import pytest
-from cudf.util.dtypes import is_string_dtype
+from cudf.utils.dtypes import is_string_dtype
 
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
@@ -151,10 +151,6 @@ def test_full_df(num_rows, tmpdir, distro):
         assert full_df[cat].str.len().min() == cats_rep[idx + 1].min_entry_size
         assert full_df[cat].str.len().max() == cats_rep[idx + 1].max_entry_size
     check_ser = cudf.Series(full_df[cats[0]]._column.elements.values_host)
-    dist = cats_rep[0].distro or df_gen.dist
-    if not is_string_dtype(full_df[cats[0]]._column):
-        sts, ps = dist.verify(full_df[cats[0].to_pandas()])
-        assert all(s > 0.9 for s in sts)
     assert check_ser.nunique() == cats_rep[0].cardinality
     assert check_ser.str.len().min() == cats_rep[0].min_entry_size
     assert check_ser.str.len().max() == cats_rep[0].max_entry_size
