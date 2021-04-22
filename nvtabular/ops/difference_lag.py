@@ -66,7 +66,7 @@ class DifferenceLag(Operator):
             mask = gdf[self.partition_cols] == gdf[self.partition_cols].shift(shift)
             if isinstance(mask, cudf.DataFrame):
                 mask = mask.fillna(False).all(axis=1)
-            mask[mask == False] = None  # noqa
+            mask[mask == False] = None  # noqa pylint: disable=singleton-comparison
 
             for col in columns:
                 output[self._column_name(col, shift)] = (gdf[col] - gdf[col].shift(shift)) * mask

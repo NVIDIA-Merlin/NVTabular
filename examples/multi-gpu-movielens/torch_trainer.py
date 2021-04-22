@@ -70,7 +70,7 @@ def seed_fn():
     seed_fragment = cupy.random.randint(0, max_rand)
 
     # Aggregate seed fragments from all Horovod workers
-    seed_tensor = torch.tensor(seed_fragment)
+    seed_tensor = torch.tensor(seed_fragment)  # pylint: disable=not-callable
     reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum)
 
     return reduced_seed % max_rand

@@ -107,7 +107,7 @@ def _get_partition_groups(df, partition_cols, fs, output_path, filename):
         sub_df = df.iloc[splits[i] : splits[i + 1]].copy(deep=False)
         if sub_df is None or len(sub_df) == 0:
             continue
-        keys = tuple([sub_df[col].iloc[0] for col in partition_cols])
+        keys = tuple(sub_df[col].iloc[0] for col in partition_cols)
         if not isinstance(keys, tuple):
             keys = (keys,)
         subdir = fs.sep.join(

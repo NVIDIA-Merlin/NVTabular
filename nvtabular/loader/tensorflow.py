@@ -25,6 +25,10 @@ from nvtabular.ops import _get_embedding_order
 
 from_dlpack = configure_tensorflow()
 
+# pylint has issues with TF array ops, so disable checks until fixed:
+# https://github.com/PyCQA/pylint/issues/3613
+# pylint: disable=no-value-for-parameter,unexpected-keyword-arg,redundant-keyword-arg
+
 
 def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
     # TODO: put this in parent class and allow
@@ -319,7 +323,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
             # break list tuples into two keys, with postfixes
             # TODO: better choices for naming?
-            list_columns = [i for i in lists.keys()]
+            list_columns = list(lists.keys())
             for column in list_columns:
                 values, nnzs = lists.pop(column)
                 lists[column + "__values"] = values
@@ -328,7 +332,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             # now add in any scalar tensors
             if len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
-                lists.update({name: x for name, x in zip(names, tensors)})
+                lists.update(zip(names, tensors))
             elif len(names) == 1:
                 lists[names[0]] = tensor
             X.update(lists)
@@ -345,9 +349,11 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
     _supports_tf_logs = True
 
     def __init__(self, dataloader):
+        super().__init__()
         self.dataloader = dataloader
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs if logs is not None else {}
         for X, y_true in self.dataloader:
             y_pred = self.model(X)
 

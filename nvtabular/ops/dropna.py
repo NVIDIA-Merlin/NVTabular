@@ -13,10 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 from nvtx import annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnNames, DataFrameType, Operator
 
 
 class Dropna(Operator):
@@ -35,7 +34,7 @@ class Dropna(Operator):
     """
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
         new_gdf = gdf.dropna(subset=columns or None)
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf

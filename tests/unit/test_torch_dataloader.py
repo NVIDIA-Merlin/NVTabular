@@ -26,7 +26,7 @@ from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
-from nvtabular import ops as ops
+from nvtabular import ops
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
@@ -175,6 +175,7 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
     len_dl = len(data_itr) - 1
 
     first_chunk = 0
+    idx = 0
     for idx, chunk in enumerate(data_itr):
         if idx == 0:
             first_chunk = len(chunk[0])
@@ -235,7 +236,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     columns = mycols_pq
     df_test = cudf.read_parquet(tar_paths[0])[columns]
-    df_test.columns = [x for x in range(0, len(columns))]
+    df_test.columns = list(range(0, len(columns)))
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
@@ -306,6 +307,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
         # import pdb; pdb.set_trace()
         data_itr.batch_size = batch_size
         start = time.time()
+        i = 0
         for i, data in enumerate(data_itr):
             if i >= num_iter:
                 break
