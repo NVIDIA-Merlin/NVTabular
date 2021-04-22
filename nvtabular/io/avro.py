@@ -31,7 +31,7 @@ class AvroDatasetEngine(DatasetEngine):
     """
 
     def __init__(self, paths, part_size, storage_options=None, cpu=False, **kwargs):
-        super().__init__(paths, part_size, storage_options, cpu=cpu)
+        super().__init__(paths, part_size, storage_options=storage_options, cpu=cpu)
         if kwargs != {}:
             raise ValueError("Unexpected AvroDatasetEngine argument(s).")
         self.blocksize = part_size

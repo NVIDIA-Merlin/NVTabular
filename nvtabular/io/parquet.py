@@ -302,8 +302,6 @@ class ParquetDatasetEngine(DatasetEngine):
 
             # If there is schema mismatch, urge the user to add a _metadata file
             if len(schema_errors):
-                import pyarrow.parquet as pq
-
                 meta_valid = False  # There are schema-mismatch errors
 
                 # Check that the Dask version supports `create_metadata_file`
@@ -498,9 +496,7 @@ class ParquetDatasetEngine(DatasetEngine):
         )
         getlen_name = "getlen-" + token
         name = "all-" + getlen_name
-        dsk = {
-            (getlen_name, i): (lambda x: len(x), (_ddf._name, i)) for i in range(_ddf.npartitions)
-        }
+        dsk = {(getlen_name, i): (len, (_ddf._name, i)) for i in range(_ddf.npartitions)}
         dsk[name] = [(getlen_name, i) for i in range(_ddf.npartitions)]
         graph = HighLevelGraph.from_collections(name, dsk, dependencies=[_ddf])
         size_list = Delayed(name, graph).compute()

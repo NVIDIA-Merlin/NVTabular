@@ -48,7 +48,7 @@ def _get_worker_cache(name):
     except ValueError:
         # There is no dask.distributed worker.
         # Assume client/worker are same process
-        global _WORKER_CACHE
+        global _WORKER_CACHE  # pylint: disable=global-statement
         if name not in _WORKER_CACHE:
             _WORKER_CACHE[name] = {}
         return _WORKER_CACHE[name]
@@ -81,7 +81,7 @@ def fetch_table_data(
         if cache in ("device", "disk"):
             table = reader(path, columns=columns, **kwargs)
         elif cache == "host":
-            if reader == cudf.io.read_parquet:
+            if reader == cudf.io.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
                 # Use BytesIO to cache data on host.
 
@@ -112,7 +112,7 @@ def clean_worker_cache(name=None):
         try:
             worker = get_worker()
         except ValueError:
-            global _WORKER_CACHE
+            global _WORKER_CACHE  # pylint: disable=global-statement
             if _WORKER_CACHE != {}:
                 if name:
                     del _WORKER_CACHE[name]

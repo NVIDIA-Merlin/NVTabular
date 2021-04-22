@@ -17,6 +17,7 @@ import json
 import math
 import queue
 import threading
+from typing import Optional
 
 import cupy as cp
 import numpy as np
@@ -27,9 +28,6 @@ from .shuffle import _shuffle_df
 
 
 class Writer:
-    def __init__(self):
-        pass
-
     def add_data(self, df):
         raise NotImplementedError()
 
@@ -274,7 +272,7 @@ class ThreadedWriter(Writer):
     def write_special_metadata(cls, data, fs, out_dir):
         pass
 
-    def _close_writers(self):
+    def _close_writers(self) -> Optional[dict]:
         for writer in self.data_writers:
             writer.close()
         return None
@@ -290,9 +288,9 @@ class ThreadedWriter(Writer):
 
         # Close writers and collect various metadata
         _general_meta = self.package_general_metadata()
-        _special_meta = self._close_writers()
+        _special_meta = self._close_writers()  # pylint: disable=assignment-from-none
 
-        # Move in-meomory file to disk
+        # Move in-memory file to disk
         if self.bytes_io:
             _special_meta = self._bytesio_to_disk()
 

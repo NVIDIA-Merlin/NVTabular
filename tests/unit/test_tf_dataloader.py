@@ -25,7 +25,7 @@ from sklearn.metrics import roc_auc_score
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
-from nvtabular import ops as ops
+from nvtabular import ops
 
 tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
@@ -179,8 +179,8 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         for column, x in X.items():
             try:
                 these_cols.remove(column)
-            except ValueError:
-                raise AssertionError
+            except ValueError as e:
+                raise AssertionError from e
             assert x.shape[0] == num_samples
         assert len(these_cols) == 0
         rows += num_samples
@@ -295,11 +295,11 @@ def test_validater(tmpdir, batch_size):
         shuffle=False,
     )
 
-    input = tf.keras.Input(name="a", dtype=tf.float32, shape=(1,))
-    x = tf.keras.layers.Dense(128, "relu")(input)
+    input_ = tf.keras.Input(name="a", dtype=tf.float32, shape=(1,))
+    x = tf.keras.layers.Dense(128, "relu")(input_)
     x = tf.keras.layers.Dense(1, activation="softmax")(x)
 
-    model = tf.keras.Model(inputs=input, outputs=x)
+    model = tf.keras.Model(inputs=input_, outputs=x)
     model.compile("sgd", "binary_crossentropy", metrics=["accuracy", tf.keras.metrics.AUC()])
 
     validater = tf_dataloader.KerasSequenceValidater(dataloader)
@@ -315,7 +315,7 @@ def test_validater(tmpdir, batch_size):
 
     logs = {}
     validater.on_epoch_end(0, logs)
-    auc_key = [i for i in logs.keys() if i.startswith("val_auc")][0]
+    auc_key = [i for i in logs if i.startswith("val_auc")][0]
 
     true_accuracy = (labels == (predictions > 0.5)).mean()
     estimated_accuracy = logs["val_accuracy"]
