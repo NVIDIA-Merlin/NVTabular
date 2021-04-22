@@ -366,12 +366,6 @@ class Dataset:
     def partition_lens(self):
         return self.engine._partition_lens
 
-    def __len__(self):
-        try:
-            return sum(self.partition_lens)
-        except AttributeError:
-            return len(self.to_ddf())
-
     def to_cpu(self):
         warnings.warn(
             "Changing an NVTabular Dataset to CPU mode."

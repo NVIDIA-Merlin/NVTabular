@@ -133,6 +133,7 @@ class ParquetDatasetEngine(DatasetEngine):
         # to collect useful information from the parquet metadata
 
         _pp_nrows = []
+
         def _update_partition_lens(part_count, md, num_row_groups, rg_offset=None):
             # Helper function to calculate the row count for each
             # output partition (and add it to `_pp_nrows`)
@@ -141,12 +142,7 @@ class ParquetDatasetEngine(DatasetEngine):
                 rg_i = _p * self.row_groups_per_part
                 rg_f = min((_p + 1) * self.row_groups_per_part, num_row_groups)
                 _pp_nrows.append(
-                    sum(
-                        [
-                            md.row_group(rg + rg_offset).num_rows
-                            for rg in range(rg_i, rg_f)
-                        ]
-                    )
+                    sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
                 )
             return
 
@@ -184,7 +180,6 @@ class ParquetDatasetEngine(DatasetEngine):
 
         self._pp_map = _pp_map
         self._pp_nrows = _pp_nrows
-
 
     def to_ddf(self, columns=None, cpu=None):
 
