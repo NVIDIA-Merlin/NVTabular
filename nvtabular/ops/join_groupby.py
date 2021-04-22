@@ -78,7 +78,7 @@ class JoinGroupby(StatOperator):
     def __init__(
         self,
         cont_cols=None,
-        stats=["count"],
+        stats=("count",),
         tree_width=None,
         cat_cache="host",
         out_path=None,

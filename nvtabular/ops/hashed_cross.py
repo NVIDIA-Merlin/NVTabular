@@ -49,7 +49,7 @@ class HashedCross(Operator):
         super().__init__()
         if not isinstance(num_buckets, (int, dict)):
             raise ValueError(
-                "num_buckets should be an int or dict, found %s", num_buckets.__class__
+                f"num_buckets should be an int or dict, found {num_buckets.__class__}"
             )
 
         self.num_buckets = num_buckets

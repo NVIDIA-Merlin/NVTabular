@@ -30,7 +30,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnGroup
-from nvtabular import ops as ops
+from nvtabular import ops
 from tests.conftest import mycols_csv, mycols_pq
 
 
@@ -568,7 +568,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
         }
     )
 
-    isfreqthr = (isinstance(freq_limit, int) and freq_limit > 0) or (isinstance(freq_limit, dict))
+    isfreqthr = freq_limit > 0 if isinstance(freq_limit, int) else isinstance(freq_limit, dict)
 
     if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
         cat_names = ["Author", "Engaging User"]
@@ -890,7 +890,7 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
 
-    bucketize_op = ops.Bucketize({name: boundary for name, boundary in zip(cont_names, boundaries)})
+    bucketize_op = ops.Bucketize(dict(zip(cont_names, boundaries)))
 
     bucket_features = cont_names >> bucketize_op
     processor = nvtabular.Workflow(bucket_features)

@@ -23,7 +23,7 @@ from nvtabular.dispatch import _read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnNames, Operator, DataFrameType
 from .stat_operator import StatOperator
 
 
@@ -313,7 +313,7 @@ class TargetEncoding(StatOperator):
 
         return tran_gdf
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")

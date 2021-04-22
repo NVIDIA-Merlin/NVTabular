@@ -28,7 +28,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import ColumnGroup, Dataset, Workflow
-from nvtabular import ops as ops
+from nvtabular import ops
 from tests.conftest import get_cats, mycols_csv
 
 

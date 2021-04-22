@@ -19,4 +19,4 @@ from nvtabular.framework_utils.torch.layers.embeddings import (
     MultiHotEmbeddings,
 )
 
-__all__ = [ConcatenatedEmbeddings, MultiHotEmbeddings]
+__all__ = ["ConcatenatedEmbeddings", "MultiHotEmbeddings"]

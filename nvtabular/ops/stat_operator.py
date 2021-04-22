@@ -25,10 +25,6 @@ class StatOperator(Operator):
     Base class for statistical operator classes. This adds a 'fit' and 'finalize' method
     on top of the Operator class.
     """
-
-    def __init__(self):
-        super(StatOperator, self).__init__()
-
     def fit(self, columns: ColumnNames, ddf: dd.DataFrame) -> Any:
         """Calculate statistics for this operator, and return a dask future
         to these statistics, which will be computed by the workflow."""
@@ -49,11 +45,10 @@ class StatOperator(Operator):
         """ zero and reinitialize all relevant statistical properties"""
         raise NotImplementedError("clear isn't implemented for this op!")
 
-    def set_storage_path(self, path, copy=False):
+    def set_storage_path(self, new_path, copy=False):
         """Certain stat operators need external storage - for instance Categorify writes out
         parquet files containing the categorical mapping. When we save the operator, we
         also want to save these files as part of the bundle. Implementing this method
         lets statoperators bundle their dependant files into the new path that we're writing
         out (note that this could happen after the operator is created)
         """
-        pass
