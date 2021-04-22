@@ -17,14 +17,12 @@ import json
 import math
 import queue
 import threading
+from typing import Optional
 
 import cupy as cp
 import numpy as np
 from fsspec.core import get_fs_token_paths
 from nvtx import annotate
-
-from typing import Optional
-
 
 from .shuffle import _shuffle_df
 

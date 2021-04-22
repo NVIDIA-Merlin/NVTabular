@@ -23,7 +23,7 @@ from nvtabular.dispatch import _read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator, DataFrameType
+from .operator import ColumnNames, DataFrameType, Operator
 from .stat_operator import StatOperator
 
 

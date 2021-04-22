@@ -29,8 +29,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnGroup
-from nvtabular import ops
+from nvtabular import ColumnGroup, ops
 from tests.conftest import mycols_csv, mycols_pq
 
 

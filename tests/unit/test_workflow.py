@@ -27,8 +27,7 @@ from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-from nvtabular import ColumnGroup, Dataset, Workflow
-from nvtabular import ops
+from nvtabular import ColumnGroup, Dataset, Workflow, ops
 from tests.conftest import get_cats, mycols_csv
 
 
