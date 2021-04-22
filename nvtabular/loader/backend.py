@@ -135,7 +135,7 @@ class ChunkQueue:
                 if not self.dataloader.drop_last and spill is not None and not spill.empty:
                     spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
                     self.put(spill)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             self.put(e)
 
     # For when an iterator is stopped before iteration is complete.
@@ -214,7 +214,7 @@ class DataLoader:
     @property
     def _working(self):
         if self._workers is not None:
-            return any([t.is_alive() for t in self._workers])
+            return any(t.is_alive() for t in self._workers)
         return False
 
     def stop(self):
@@ -316,7 +316,7 @@ class DataLoader:
             if not self._working and self._buff.empty:
                 self._workers = None
                 self._batch_itr = None
-                raise StopIteration
+                raise
 
             # otherwise get the next chunks and return
             # the first batch
@@ -441,7 +441,7 @@ class DataLoader:
         """
         raise NotImplementedError
 
-    def _split_fn(self, tensor, idx):
+    def _split_fn(self, tensor, idx, axis=0):
         raise NotImplementedError
 
     @property

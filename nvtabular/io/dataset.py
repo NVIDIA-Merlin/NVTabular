@@ -264,7 +264,7 @@ class Dataset:
             else:
                 # If a fractional partition size is given, calculate part_size
                 part_mem_fraction = part_mem_fraction or 0.125
-                assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+                assert 0.0 < part_mem_fraction < 1.0
                 if part_mem_fraction > 0.25:
                     warnings.warn(
                         "Using very large partitions sizes for Dask. "
@@ -296,10 +296,10 @@ class Dataset:
                 elif engine == "avro":
                     try:
                         from .avro import AvroDatasetEngine
-                    except ImportError:
+                    except ImportError as e:
                         raise RuntimeError(
                             "Failed to import AvroDatasetEngine. Make sure uavro is installed."
-                        )
+                        ) from e
 
                     self.engine = AvroDatasetEngine(
                         paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
@@ -415,10 +415,10 @@ class Dataset:
             # Let's use the file_partition_map to extract this info.
             try:
                 _mapping = self.file_partition_map
-            except (AttributeError):
+            except AttributeError as e:
                 _mapping = None
                 if hive_data:
-                    raise RuntimeError("Failed to extract hive-partition mapping!")
+                    raise RuntimeError("Failed to extract hive-partition mapping!") from e
 
             # If we have a `_mapping` available, check if the
             # file names include information about all our keys
@@ -655,12 +655,12 @@ class Dataset:
         elif preserve_files:
             try:
                 _output_files = self.base_dataset.file_partition_map
-            except (AttributeError):
+            except AttributeError as e:
                 raise AttributeError(
                     f"`to_parquet(..., preserve_files=True)` is not currently supported "
                     f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
                     f"that `dataset.base_dataset` is backed by csv or parquet files."
-                )
+                ) from e
             if suffix == "":
                 output_files = _output_files
             else:
@@ -892,7 +892,7 @@ class Dataset:
 
 def _set_dtypes(chunk, dtypes):
     for col, dtype in dtypes.items():
-        if (type(dtype) is str) and ("hex" in dtype):
+        if isinstance(dtype, str) and ("hex" in dtype):
             chunk[col] = _hex_to_int(chunk[col])
         else:
             chunk[col] = chunk[col].astype(dtype)
