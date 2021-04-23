@@ -138,9 +138,8 @@ class ParquetDatasetEngine(DatasetEngine):
             # Helper function to calculate the row count for each
             # output partition (and add it to `_pp_nrows`)
             rg_offset = rg_offset or 0
-            for _p in range(part_count):
-                rg_i = _p * self.row_groups_per_part
-                rg_f = min((_p + 1) * self.row_groups_per_part, num_row_groups)
+            for rg_i in range(0, part_count, self.row_groups_per_part):
+                rg_f = min(rg_i + self.row_groups_per_part, num_row_groups)
                 _pp_nrows.append(
                     sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
                 )
