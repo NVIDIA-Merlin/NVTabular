@@ -46,7 +46,7 @@ class build_proto(build_ext):
             pwd = os.path.dirname(output)
             if not os.path.exists(output) or (os.path.getmtime(source) > os.path.getmtime(output)):
                 print("Generating", output, "from", source)
-                cmd = ["protoc", f"--python_out={pwd}", f"--proto_path={pwd}", source]
+                cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
                 subprocess.check_call(cmd, env=env)
 
         # Run original build_ext command
