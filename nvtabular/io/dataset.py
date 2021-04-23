@@ -264,7 +264,7 @@ class Dataset:
             else:
                 # If a fractional partition size is given, calculate part_size
                 part_mem_fraction = part_mem_fraction or 0.125
-                assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+                assert 0.0 < part_mem_fraction < 1.0
                 if part_mem_fraction > 0.25:
                     warnings.warn(
                         "Using very large partitions sizes for Dask. "
@@ -296,10 +296,10 @@ class Dataset:
                 elif engine == "avro":
                     try:
                         from .avro import AvroDatasetEngine
-                    except ImportError:
+                    except ImportError as e:
                         raise RuntimeError(
                             "Failed to import AvroDatasetEngine. Make sure uavro is installed."
-                        )
+                        ) from e
 
                     self.engine = AvroDatasetEngine(
                         paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
@@ -362,6 +362,10 @@ class Dataset:
     def file_partition_map(self):
         return self.engine._file_partition_map
 
+    @property
+    def partition_lens(self):
+        return self.engine._partition_lens
+
     def to_cpu(self):
         warnings.warn(
             "Changing an NVTabular Dataset to CPU mode."
@@ -411,10 +415,10 @@ class Dataset:
             # Let's use the file_partition_map to extract this info.
             try:
                 _mapping = self.file_partition_map
-            except (AttributeError):
+            except AttributeError as e:
                 _mapping = None
                 if hive_data:
-                    raise RuntimeError("Failed to extract hive-partition mapping!")
+                    raise RuntimeError("Failed to extract hive-partition mapping!") from e
 
             # If we have a `_mapping` available, check if the
             # file names include information about all our keys
@@ -477,7 +481,7 @@ class Dataset:
         # Fall back to dask.dataframe algorithm
         return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
+    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -502,12 +506,39 @@ class Dataset:
             The random seed to use if `shuffle=True`.  If nothing
             is specified, the current system time will be used by the
             `random` std library.
+        use_file_metadata : bool; Optional
+            Whether to allow the returned ``DataFrameIter`` object to
+            use file metadata from the ``base_dataset`` to estimate
+            the row-count. By default, the file-metadata
+            optimization will only be used if the current Dataset is
+            backed by a file-based engine. Otherwise, it is possible
+            that an intermediate transform has modified the row-count.
         """
         if isinstance(columns, str):
             columns = [columns]
 
+        # Try to extract the row-size metadata
+        # if we are not shuffling
+        partition_lens_meta = None
+        if not shuffle and use_file_metadata is not False:
+            # We are allowed to use file metadata to calculate
+            # partition sizes.  If `use_file_metadata` is None,
+            # we only use metadata if `self` is backed by a
+            # file-based engine (like "parquet").  Otherwise,
+            # we cannot be "sure" that the metadata row-count
+            # is correct.
+            try:
+                if use_file_metadata:
+                    partition_lens_meta = self.base_dataset.partition_lens
+                else:
+                    partition_lens_meta = self.partition_lens
+            except AttributeError:
+                pass
+
         return DataFrameIter(
-            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
+            indices=indices,
+            partition_lens=partition_lens_meta,
         )
 
     def to_parquet(
@@ -624,12 +655,12 @@ class Dataset:
         elif preserve_files:
             try:
                 _output_files = self.base_dataset.file_partition_map
-            except (AttributeError):
+            except AttributeError as e:
                 raise AttributeError(
                     f"`to_parquet(..., preserve_files=True)` is not currently supported "
                     f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
                     f"that `dataset.base_dataset` is backed by csv or parquet files."
-                )
+                ) from e
             if suffix == "":
                 output_files = _output_files
             else:
@@ -861,7 +892,7 @@ class Dataset:
 
 def _set_dtypes(chunk, dtypes):
     for col, dtype in dtypes.items():
-        if (type(dtype) is str) and ("hex" in dtype):
+        if isinstance(dtype, str) and ("hex" in dtype):
             chunk[col] = _hex_to_int(chunk[col])
         else:
             chunk[col] = chunk[col].astype(dtype)
@@ -869,12 +900,19 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
+        self.partition_lens = partition_lens
 
     def __len__(self):
+        if self.partition_lens:
+            # Use metadata-based partition-size information
+            # if/when it is available.  Note that this metadata
+            # will not be correct if rows where added or dropped
+            # after IO (within Ops).
+            return sum(self.partition_lens[i] for i in self.indices)
         if len(self.indices) < self._ddf.npartitions:
             return len(self._ddf.partitions[self.indices])
         return len(self._ddf)

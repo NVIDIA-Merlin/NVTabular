@@ -336,7 +336,7 @@ class Categorify(StatOperator):
         # TODO: we can't check the dtypes on the ddf here since they are incorrect
         # for cudf's list type. So, we're checking the first partition. fix.
         return Delayed(key, dsk), ddf.partitions[0].map_partitions(
-            lambda df: _is_list_dtype(df), meta=_is_list_dtype(ddf._meta.index)
+            _is_list_dtype, meta=_is_list_dtype(ddf._meta.index)
         )
 
     def fit_finalize(self, dask_stats):

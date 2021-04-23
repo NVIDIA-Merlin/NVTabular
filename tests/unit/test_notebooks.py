@@ -29,6 +29,8 @@ from tests.conftest import get_cuda_cluster
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
+# pylint: disable=unused-import,broad-except
+
 
 def test_criteo_tf_notebook(tmpdir):
     tor = pytest.importorskip("tensorflow")  # noqa
@@ -178,6 +180,7 @@ def test_movielens_example(tmpdir):
     except Exception:
         pass
     try:
+        import nvtabular.inference.triton  # noqa
         import nvtabular.loader.tensorflow  # noqa
 
         notebooks.append("03a-Training-with-TF.ipynb")

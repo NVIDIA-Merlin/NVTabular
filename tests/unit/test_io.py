@@ -33,7 +33,7 @@ from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ops as ops
+from nvtabular import ops
 from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
@@ -73,15 +73,17 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     else:
         columns = mycols_csv
 
-    dd = nvtabular.io.Dataset(
+    size = 0
+    ds = nvtabular.io.Dataset(
         paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes
     )
-    size = 0
-    for chunk in dd.to_iter(columns=columns):
+    my_iter = ds.to_iter(columns=columns)
+    for chunk in my_iter:
         size += chunk.shape[0]
         assert chunk["id"].dtype == np.int32
 
     assert size == df1.shape[0]
+    assert len(my_iter) == size
 
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
@@ -601,6 +603,40 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
     # Check that the `suffix=".pq"` argument was successful
     assert glob.glob(os.path.join(pq_path, "*.pq"))
     assert not glob.glob(os.path.join(pq_path, "*.parquet"))
+
+
+@pytest.mark.parametrize("use_file_metadata", [True, None])
+@pytest.mark.parametrize("shuffle", [True, False])
+def test_parquet_iterator_len(tmpdir, shuffle, use_file_metadata):
+
+    ddf1 = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-6",
+        freq="600s",
+        partition_freq="1d",
+        id_lam=10,
+        seed=42,
+    ).shuffle("id")
+
+    # Write to parquet dataset
+    ddf1.to_parquet(str(tmpdir))
+
+    # Initialize Dataset
+    ds = nvt.Dataset(str(tmpdir), engine="parquet")
+
+    # Convert ds -> ds2
+    ds2 = nvt.Dataset(ds.to_ddf())
+
+    # Check that iterator lengths match the partition lengths
+    ddf2 = ds2.to_ddf(shuffle=shuffle, seed=42)
+    for i in range(ddf2.npartitions):
+        _iter = ds2.to_iter(
+            shuffle=shuffle,
+            seed=42,
+            indices=[i],
+            use_file_metadata=use_file_metadata,
+        )
+        assert len(ddf2.partitions[i]) == len(_iter)
 
 
 @pytest.mark.parametrize("cpu", [True, False])

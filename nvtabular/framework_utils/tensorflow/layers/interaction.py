@@ -70,18 +70,18 @@ class DotProductInteraction(tf.keras.layers.Layer):
         )
         self.built = True
 
-    def call(self, input):
-        right = input
+    def call(self, value):
+        right = value
 
         # first transform v_i depending on the interaction type
         if self.interaction_type is None:
-            left = input
+            left = value
         elif self.interaction_type == "field_all":
-            left = tf.matmul(input, self.kernel)
+            left = tf.matmul(value, self.kernel)
         elif self.interaction_type == "field_each":
-            left = tf.einsum("b...k,...jk->b...j", input, self.kernel)
+            left = tf.einsum("b...k,...jk->b...j", value, self.kernel)
         else:
-            left = tf.einsum("b...k,f...jk->bf...j", input, self.kernel)
+            left = tf.einsum("b...k,f...jk->bf...j", value, self.kernel)
 
         # do the interaction between v_i and v_j
         # output shape will be (batch_size, num_features, num_features)
@@ -99,7 +99,7 @@ class DotProductInteraction(tf.keras.layers.Layer):
         x = tf.boolean_mask(interactions, mask, axis=1)
 
         # masking destroys shape information, set explicitly
-        x.set_shape(self.compute_output_shape(input.shape))
+        x.set_shape(self.compute_output_shape(value.shape))
         return x
 
     def compute_output_shape(self, input_shape):
