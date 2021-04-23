@@ -285,7 +285,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
     # create stats for Categorify op if we need it
     if len(categorifies) > 0:
         if category_dir is None:
-            category_dir = "/tmp/categories"
+            category_dir = "/tmp/categories"  # nosec
         if not os.path.exists(category_dir):
             os.makedirs(category_dir)
 

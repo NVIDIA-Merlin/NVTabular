@@ -89,6 +89,9 @@ def download_file(url, local_filename, unzip_files=True, redownload=True):
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
 
+    if not url.startswith("http"):
+        raise ValueError(f"Unhandled url scheme on {url} - this function only is for http")
+
     if redownload or not os.path.exists(local_filename):
         desc = f"downloading {os.path.basename(local_filename)}"
         with tqdm(unit="B", unit_scale=True, desc=desc) as progress:
@@ -100,8 +103,9 @@ def download_file(url, local_filename, unzip_files=True, redownload=True):
 
             opener = urllib.request.build_opener()
             opener.addheaders = [("Accept-Encoding", "gzip, deflate"), ("Accept", "*/*")]
+
             urllib.request.install_opener(opener)
-            urllib.request.urlretrieve(url, local_filename, reporthook=report)
+            urllib.request.urlretrieve(url, local_filename, reporthook=report)  # nosec
 
     if unzip_files and local_filename.endswith(".zip"):
         with zipfile.ZipFile(local_filename) as z:
