@@ -35,26 +35,19 @@ class build_proto(build_ext):
             sys.stderr.write("protoc not found")
             sys.exit(1)
 
+        # need to set this environment variable otherwise we get an error like "
+        #  model_config.proto: A file with this name is already in the pool. " when
+        # importing the generated file
+        env = os.environ.copy()
+        env["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
         for source in ["nvtabular/inference/triton/model_config.proto"]:
             output = source.replace(".proto", "_pb2.py")
-
+            pwd = os.path.dirname(output)
             if not os.path.exists(output) or (os.path.getmtime(source) > os.path.getmtime(output)):
-                with open(output, "a") as src:
-                    src.write("# flake8: noqa" + os.linesep)
-                    src.write("# fmt: off" + os.linesep)
-                subprocess.check_call([protoc, "--python_out=.", source])
-                with open(output, "r+") as src:
-                    new_src_content = (
-                        "# flake8: noqa"
-                        + os.linesep
-                        + "# fmt: off"
-                        + os.linesep
-                        + src.read()
-                        + "# fmt: on"
-                        + os.linesep
-                    )
-                    src.seek(0)
-                    src.write(new_src_content)
+                print("Generating", output, "from", source)
+                cmd = ["protoc", f"--python_out={pwd}", f"--proto_path={pwd}", source]
+                subprocess.check_call(cmd, env=env)
 
         # Run original build_ext command
         build_ext.run(self)
