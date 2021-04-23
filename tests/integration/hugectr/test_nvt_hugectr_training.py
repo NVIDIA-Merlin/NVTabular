@@ -16,10 +16,6 @@ from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 from nvtabular.utils import download_file
 
-import cudf
-import numpy as np
-
-
 DIR = "/model/"
 BASE_DIR = DIR + "data/"
 TEMP_DIR = DIR + "temp_hugectr/"
