@@ -187,7 +187,7 @@ def export_hugectr_ensemble(
 
     """
 
-    if cats is None and conts is None:
+    if not cats and not conts:
         raise ValueError("Either cats or conts has to have a value.")
 
     workflow = _remove_columns(workflow, label_columns)
@@ -240,7 +240,7 @@ def export_hugectr_ensemble(
                 json.dump(slot_sizes, o)
             break
 
-    if cats is not None and not slot_exist:
+    if cats and not slot_exist:
         raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
 
     # generate the triton ensemble
