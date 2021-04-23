@@ -67,6 +67,8 @@ class ParquetDatasetEngine(DatasetEngine):
         cpu=False,
     ):
         super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
+        self._pp_map = None
+        self._pp_nrows = None
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
             with self.fs.open(path0, "rb") as f0:
@@ -112,13 +114,13 @@ class ParquetDatasetEngine(DatasetEngine):
 
     @property
     def _file_partition_map(self):
-        if not hasattr(self, "_pp_map"):
+        if self._pp_map is None:
             self._process_parquet_metadata()
         return self._pp_map
 
     @property
     def _partition_lens(self):
-        if not hasattr(self, "_pp_nrows"):
+        if self._pp_nrows is None:
             self._process_parquet_metadata()
         return self._pp_nrows
 
