@@ -13,11 +13,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import os
+import subprocess
+import sys
+from distutils.spawn import find_executable
 
 from setuptools import find_packages, setup
+from setuptools.command.build_ext import build_ext
 
 import versioneer
+
+
+class build_proto(build_ext):
+    def run(self):
+        protoc = None
+        if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
+            protoc = os.environ["PROTOC"]
+        else:
+            protoc = find_executable("protoc")
+        if protoc is None:
+            sys.stderr.write("protoc not found")
+            sys.exit(1)
+
+        for source in ["nvtabular/inference/triton/model_config.proto"]:
+            output = source.replace(".proto", "_pb2.py")
+
+            if not os.path.exists(output) or (os.path.getmtime(source) > os.path.getmtime(output)):
+                with open(output, "a") as src:
+                    src.write("# flake8: noqa" + os.linesep)
+                    src.write("# fmt: off" + os.linesep)
+                subprocess.check_call([protoc, "--python_out=.", source])
+                with open(output, "r+") as src:
+                    new_src_content = (
+                        "# flake8: noqa"
+                        + os.linesep
+                        + "# fmt: off"
+                        + os.linesep
+                        + src.read()
+                        + "# fmt: on"
+                        + os.linesep
+                    )
+                    src.seek(0)
+                    src.write(new_src_content)
+
+        # Run original build_ext command
+        build_ext.run(self)
+
+
+cmdclass = versioneer.get_cmdclass()
+cmdclass["build_ext"] = build_proto
+
 
 setup(
     name="nvtabular",
@@ -36,5 +81,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Scientific/Engineering",
     ],
-    cmdclass=versioneer.get_cmdclass(),
+    cmdclass=cmdclass,
 )
