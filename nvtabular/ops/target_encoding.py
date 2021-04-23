@@ -23,7 +23,7 @@ from nvtabular.dispatch import _read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnNames, DataFrameType, Operator
 from .stat_operator import StatOperator
 
 
@@ -245,7 +245,6 @@ class TargetEncoding(StatOperator):
 
         # Initialize new data
         _read_pq_func = _read_parquet_dispatch(gdf)
-        new_gdf = cudf.DataFrame()
         tmp = "__tmp__"
 
         if fit_folds:
@@ -308,14 +307,13 @@ class TargetEncoding(StatOperator):
 
         tran_gdf = tran_gdf.sort_values(tmp, ignore_index=True)
         tran_gdf.drop(columns=cols + [tmp], inplace=True)
-        new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-        new_gdf[new_cols] = tran_gdf[new_cols]
 
         # Make sure we are preserving the index of gdf
-        new_gdf.index = gdf.index
-        return new_gdf
+        tran_gdf.index = gdf.index
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+        return tran_gdf
+
+    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
         gdf[tmp] = cupy.arange(len(gdf), dtype="int32")

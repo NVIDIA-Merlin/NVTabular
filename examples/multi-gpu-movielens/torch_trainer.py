@@ -34,7 +34,7 @@ if torch.cuda.is_available():
 
 
 BASE_DIR = os.path.expanduser(args.dir_in or "./data/")
-BATCH_SIZE = args.batch_size or 16384  # Batch Size
+BATCH_SIZE = int(args.batch_size or 16384)  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
@@ -70,10 +70,10 @@ def seed_fn():
     seed_fragment = cupy.random.randint(0, max_rand)
 
     # Aggregate seed fragments from all Horovod workers
-    seed_tensor = torch.tensor(seed_fragment)
-    reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum) % max_rand
+    seed_tensor = torch.tensor(seed_fragment)  # pylint: disable=not-callable
+    reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum)
 
-    return reduced_seed
+    return reduced_seed % max_rand
 
 
 train_dataset = TorchAsyncItr(
@@ -82,7 +82,7 @@ train_dataset = TorchAsyncItr(
     cats=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
     conts=NUMERIC_COLUMNS,
     labels=["rating"],
-    devices=[gpu_to_use],
+    device=gpu_to_use,
     global_size=hvd.size(),
     global_rank=hvd.rank(),
     shuffle=True,

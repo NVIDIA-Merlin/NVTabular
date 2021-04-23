@@ -29,8 +29,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnGroup
-from nvtabular import ops as ops
+from nvtabular import ColumnGroup, ops
 from tests.conftest import mycols_csv, mycols_pq
 
 
@@ -568,7 +567,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
         }
     )
 
-    isfreqthr = (isinstance(freq_limit, int) and freq_limit > 0) or (isinstance(freq_limit, dict))
+    isfreqthr = freq_limit > 0 if isinstance(freq_limit, int) else isinstance(freq_limit, dict)
 
     if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
         cat_names = ["Author", "Engaging User"]
@@ -890,7 +889,7 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
 
-    bucketize_op = ops.Bucketize({name: boundary for name, boundary in zip(cont_names, boundaries)})
+    bucketize_op = ops.Bucketize(dict(zip(cont_names, boundaries)))
 
     bucket_features = cont_names >> bucketize_op
     processor = nvtabular.Workflow(bucket_features)
@@ -963,3 +962,58 @@ def test_data_stats(tmpdir, df, datasets, engine):
         assert output[col]["per_nan"] == pytest.approx(
             100 * (1 - ddf[col].count().compute() / len(ddf[col]))
         )
+
+
+@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
+def test_groupby_op(keys, cpu):
+
+    # Initial timeseries dataset
+    size = 60
+    df1 = pd.DataFrame(
+        {
+            "name": np.random.choice(["Dave", "Zelda"], size=size),
+            "id": np.random.choice([0, 1], size=size),
+            "ts": np.linspace(0.0, 10.0, num=size),
+            "x": np.arange(size),
+            "y": np.linspace(0.0, 10.0, num=size),
+            "shuffle": np.random.uniform(low=0.0, high=10.0, size=size),
+        }
+    )
+    df1 = df1.sort_values("shuffle").drop(columns="shuffle").reset_index(drop=True)
+
+    # Create a ddf, and be sure to shuffle by the groupby keys
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    # Define Groupby Workflow
+    groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
+        groupby_cols=keys,
+        sort_cols=["ts"],
+        aggs={
+            "x": ["list", "sum"],
+            "y": ["first", "last"],
+            "ts": ["min"],
+        },
+        name_sep="-",
+    )
+    processor = nvtabular.Workflow(groupby_features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    # Check list-aggregation ordering
+    x = new_gdf["x-list"]
+    x = x.to_pandas() if hasattr(x, "to_pandas") else x
+    sums = []
+    for el in x.values:
+        _el = pd.Series(el)
+        sums.append(_el.sum())
+        assert _el.is_monotonic_increasing
+
+    # Check that list sums match sum aggregation
+    x = new_gdf["x-sum"]
+    x = x.to_pandas() if hasattr(x, "to_pandas") else x
+    assert list(x) == sums
+
+    # Check basic behavior or "y" column
+    assert (new_gdf["y-first"] < new_gdf["y-last"]).all()

@@ -26,7 +26,7 @@ from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
-from nvtabular import ops as ops
+from nvtabular import ops
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
@@ -37,6 +37,53 @@ from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
 from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
+
+
+@pytest.mark.parametrize("batch_size", [10, 9, 8])
+@pytest.mark.parametrize("drop_last", [True, False])
+@pytest.mark.parametrize("num_rows", [100])
+def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
+    df = cudf.DataFrame(
+        {
+            "cat1": [1] * num_rows,
+            "cat2": [2] * num_rows,
+            "cat3": [3] * num_rows,
+            "label": [0] * num_rows,
+            "cont3": [3.0] * num_rows,
+            "cont2": [2.0] * num_rows,
+            "cont1": [1.0] * num_rows,
+        }
+    )
+    path = os.path.join(tmpdir, "dataset.parquet")
+    df.to_parquet(path)
+    cat_names = ["cat3", "cat2", "cat1"]
+    cont_names = ["cont3", "cont2", "cont1"]
+    label_name = ["label"]
+
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset([path]),
+        cats=cat_names,
+        conts=cont_names,
+        labels=label_name,
+        batch_size=batch_size,
+        drop_last=drop_last,
+    )
+
+    all_len = len(data_itr) if drop_last else len(data_itr) - 1
+    all_rows = 0
+    for idx, chunk in enumerate(data_itr):
+        all_rows += len(chunk[0])
+        if idx < all_len:
+            for sub in chunk[:2]:
+                sub = sub.cpu()
+                assert list(sub[:, 0].numpy()) == [1] * batch_size
+                assert list(sub[:, 1].numpy()) == [2] * batch_size
+                assert list(sub[:, 2].numpy()) == [3] * batch_size
+
+    if drop_last and num_rows % batch_size > 0:
+        assert num_rows > all_rows
+    else:
+        assert num_rows == all_rows
 
 
 @pytest.mark.parametrize("batch", [0, 100, 1000])
@@ -128,6 +175,7 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
     len_dl = len(data_itr) - 1
 
     first_chunk = 0
+    idx = 0
     for idx, chunk in enumerate(data_itr):
         if idx == 0:
             first_chunk = len(chunk[0])
@@ -188,7 +236,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     columns = mycols_pq
     df_test = cudf.read_parquet(tar_paths[0])[columns]
-    df_test.columns = [x for x in range(0, len(columns))]
+    df_test.columns = list(range(0, len(columns)))
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
@@ -259,6 +307,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
         # import pdb; pdb.set_trace()
         data_itr.batch_size = batch_size
         start = time.time()
+        i = 0
         for i, data in enumerate(data_itr):
             if i >= num_iter:
                 break
@@ -437,7 +486,7 @@ def test_horovod_multigpu(tmpdir):
 
     curr_path = os.path.abspath(__file__)
     repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
-    hvd_example_path = os.path.join(repo_root, "examples/horovod/torch-nvt-horovod.py")
+    hvd_example_path = os.path.join(repo_root, "examples/multi-gpu-movielens/torch_trainer.py")
 
     process = subprocess.Popen(
         [
@@ -450,6 +499,8 @@ def test_horovod_multigpu(tmpdir):
             hvd_example_path,
             "--dir_in",
             f"{tmpdir}",
+            "--batch_size",
+            "1024",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

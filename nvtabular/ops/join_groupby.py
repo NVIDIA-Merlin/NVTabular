@@ -78,7 +78,7 @@ class JoinGroupby(StatOperator):
     def __init__(
         self,
         cont_cols=None,
-        stats=["count"],
+        stats=("count",),
         tree_width=None,
         cat_cache="host",
         out_path=None,
@@ -142,6 +142,7 @@ class JoinGroupby(StatOperator):
 
         _read_pq_func = _read_parquet_dispatch(gdf)
         for name in cat_names:
+            new_part = cudf.DataFrame()
             storage_name = self.storage_name.get(name, name)
             name = multi_col_group.get(name, name)
             path = self.categories[storage_name]
@@ -157,7 +158,8 @@ class JoinGroupby(StatOperator):
             tran_gdf = tran_gdf.sort_values(tmp)
             tran_gdf.drop(columns=selection_l + [tmp], inplace=True)
             new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-            new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+            new_part = tran_gdf[new_cols].reset_index(drop=True)
+            new_gdf = cudf.concat([new_gdf, new_part], axis=1)
         gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 

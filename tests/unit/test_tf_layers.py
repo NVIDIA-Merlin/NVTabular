@@ -249,10 +249,10 @@ def test_dot_product_interaction_layer(
     if num_features == 1 and not self_interaction:
         return
 
-    input = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
+    input_ = tf.keras.Input(name="x", shape=(num_features, embedding_dim), dtype=tf.float32)
     interaction_layer = layers.DotProductInteraction(interaction_type, self_interaction)
-    output = interaction_layer(input)
-    model = tf.keras.Model(inputs=input, outputs=output)
+    output = interaction_layer(input_)
+    model = tf.keras.Model(inputs=input_, outputs=output)
     model.compile("sgd", "mse")
 
     x = np.random.randn(8, num_features, embedding_dim).astype(np.float32)
@@ -284,8 +284,8 @@ def test_dot_product_interaction_layer(
             expected_outputs.append((x_i * x_j).sum(axis=1))
     expected_output = np.stack(expected_outputs).T
 
-    rtol = 1e-3
-    atol = 1e-6
+    rtol = 1e-1
+    atol = 1e-2
     match = np.isclose(expected_output, y_hat, rtol=rtol, atol=atol)
     assert match.all()
 

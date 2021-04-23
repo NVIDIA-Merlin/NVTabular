@@ -25,6 +25,10 @@ from nvtabular.ops import _get_embedding_order
 
 from_dlpack = configure_tensorflow()
 
+# pylint has issues with TF array ops, so disable checks until fixed:
+# https://github.com/PyCQA/pylint/issues/3613
+# pylint: disable=no-value-for-parameter,unexpected-keyword-arg,redundant-keyword-arg
+
 
 def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
     # TODO: put this in parent class and allow
@@ -198,12 +202,14 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         cont_names=None,
         engine=None,
         shuffle=True,
+        seed_fn=None,
         buffer_size=0.1,
         device=None,
         parts_per_chunk=1,
         reader_kwargs=None,
         global_size=None,
         global_rank=None,
+        drop_last=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -224,10 +230,12 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             label_names,
             batch_size,
             shuffle,
+            seed_fn=seed_fn,
             parts_per_chunk=parts_per_chunk,
             device=device,
             global_size=global_size,
             global_rank=global_rank,
+            drop_last=drop_last,
         )
 
     def __len__(self):
@@ -236,6 +244,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         # TODO: what's a better way to do this inheritance
         # of the appropriate methods? A Metaclass?
+        DataLoader.stop(self)
         return DataLoader.__len__(self)
 
     def __getitem__(self, idx):
@@ -244,19 +253,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         with Keras model.fit. Does not leverage
         passed idx in any way
         """
-        try:
-            return DataLoader.__next__(self)
-        except StopIteration:
-            # TODO: I would like to do a check for idx == 0
-            # here, but that requires that tf.keras.Model.fit
-            # be called with shuffle=False, and that seems
-            # small enough that it would be too easy to miss
-            # for many users. That said, blind reinitialization
-            # is probably irresponsible, so worth thinking
-            # of something better here
-            # return StopIteration
-            DataLoader.__iter__(self)
-            return DataLoader.__next__(self)
+        return DataLoader.__next__(self)
 
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
@@ -326,7 +323,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
             # break list tuples into two keys, with postfixes
             # TODO: better choices for naming?
-            list_columns = [i for i in lists.keys()]
+            list_columns = list(lists.keys())
             for column in list_columns:
                 values, nnzs = lists.pop(column)
                 lists[column + "__values"] = values
@@ -335,7 +332,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             # now add in any scalar tensors
             if len(names) > 1:
                 tensors = tf.split(tensor, len(names), axis=1)
-                lists.update({name: x for name, x in zip(names, tensors)})
+                lists.update(zip(names, tensors))
             elif len(names) == 1:
                 lists[names[0]] = tensor
             X.update(lists)
@@ -352,9 +349,11 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
     _supports_tf_logs = True
 
     def __init__(self, dataloader):
+        super().__init__()
         self.dataloader = dataloader
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs if logs is not None else {}
         for X, y_true in self.dataloader:
             y_pred = self.model(X)
 
@@ -362,6 +361,9 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
             for metric in self.model.metrics:
                 metric.update_state(y_true, y_pred)
 
+        set_logs = {}
         for metric in self.model.metrics:
-            logs["val_" + metric.name] = metric.result().numpy()
+            set_logs[f"val_{metric.name}"] = metric.result().numpy()
+        logs.update(set_logs)
+        print(set_logs)
         return logs

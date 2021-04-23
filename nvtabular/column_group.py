@@ -275,4 +275,4 @@ def _convert_col(col):
     elif isinstance(col, list):
         return tuple(col)
     else:
-        raise ValueError("Invalid column value for ColumnGroup: %s", col)
+        raise ValueError(f"Invalid column value for ColumnGroup: {col}")

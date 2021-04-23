@@ -23,7 +23,7 @@ Merlin containers are available in the NVIDIA container repository at the follow
 You can pull the `Merlin-Training` container by running the following command:
 
 ```
-docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.4 /bin/bash
+docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.5 /bin/bash
 ```
 
 The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
@@ -33,28 +33,17 @@ The container will open a shell when the run command execution is completed. You
 root@2efa5b50b909:
 ```
 
-Activate the rapids conda environment by running the following command:
+Activate the merlin conda environment by running the following command:
 ```
-root@2efa5b50b909: source activate rapids
+root@2efa5b50b909: source activate merlin
 ```
 You should receive the following response, indicating that the environment has been activated:
 
 ```
-(rapids)root@2efa5b50b909:
+(merlin)root@2efa5b50b909:
 ```
 
-1) Install Required Libraries:
-
-You might need to install `unzip`, `graphviz`, and `curl` packages if they are missing. You can do that with the following commands:
-
-```
-apt-get update
-apt-get install unzip -y
-apt-get install curl -y
-pip install graphviz 
-```
-
-2) Start the jupyter-lab server by running the following command. In case the container does not have `JupyterLab`, you can easily [install](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html) it either using conda or pip.
+1) Start the jupyter-lab server by running the following command. In case the container does not have `JupyterLab`, you can easily [install](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html) it either using conda or pip.
 ```
 jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
 ```
@@ -83,16 +72,16 @@ cd <path to nvt_triton>
 
 2) Launch Merlin Triton Inference Server container:
 ```
-docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.4
+docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5
 ```
 The container will open a shell when the run command execution is completed. It should look similar to this:
 ```
 root@02d56ff0738f:/opt/tritonserver# 
 ```
 
-Activate the rapids conda environment by running the following command:
+Activate the merlin conda environment by running the following command:
 ```
-root@02d56ff0738f:/opt/tritonserver#  source activate rapids
+root@02d56ff0738f:/opt/tritonserver#  source activate merlin
 ```
 
 3) Your saved model should be in the `/model` directory. Navigate to the `model` working directory inside the triton server container to check the saved models:

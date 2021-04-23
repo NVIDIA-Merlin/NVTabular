@@ -24,7 +24,7 @@ from dask.dataframe.io.parquet.core import create_metadata_file
 from dask_cudf.io.tests import test_s3
 
 import nvtabular as nvt
-from nvtabular import ops as ops
+from nvtabular import ops
 from tests.conftest import mycols_csv, mycols_pq
 
 # Import fixtures and context managers from dask_cudf

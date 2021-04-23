@@ -9,16 +9,17 @@ import cupy
 # IMPORTANT: make sure you do this before you initialize TF's runtime, otherwise
 # TF will have claimed all free GPU memory
 os.environ["TF_MEMORY_ALLOCATION"] = "0.3"  # fraction of free memory
-import horovod.tensorflow as hvd  # noqa: E402
-import tensorflow as tf  # noqa: E402
 
-import nvtabular as nvt  # noqa: E402
-from nvtabular.framework_utils.tensorflow import layers  # noqa: E402
-from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402
+import nvtabular as nvt  # noqa: E402 isort:skip
+from nvtabular.framework_utils.tensorflow import layers  # noqa: E402 isort:skip
+from nvtabular.loader.tensorflow import KerasSequenceLoader  # noqa: E402 isort:skip
+
+import tensorflow as tf  # noqa: E402 isort:skip
+import horovod.tensorflow as hvd  # noqa: E402 isort:skip
 
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument("--dir_in", default=None, help="Input directory")
-parser.add_argument("--b_size", default=None, help="batch size")
+parser.add_argument("--batch_size", default=None, help="batch size")
 parser.add_argument("--cats", default=None, help="categorical columns")
 parser.add_argument("--cats_mh", default=None, help="categorical multihot columns")
 parser.add_argument("--conts", default=None, help="continuous columns")
@@ -26,8 +27,8 @@ parser.add_argument("--labels", default=None, help="continuous columns")
 args = parser.parse_args()
 
 
-BASE_DIR = args.dir_in or "/path/to/files/"
-BATCH_SIZE = args.b_size or 16384  # Batch Size
+BASE_DIR = args.dir_in or "./data/"
+BATCH_SIZE = int(args.batch_size or 16384)  # Batch Size
 CATEGORICAL_COLUMNS = args.cats or ["movieId", "userId"]  # Single-hot
 CATEGORICAL_MH_COLUMNS = args.cats_mh or ["genres"]  # Multi-hot
 NUMERIC_COLUMNS = args.conts or []
@@ -36,11 +37,29 @@ TRAIN_PATHS = sorted(
 )  # Output from ETL-with-NVTabular
 hvd.init()
 
+# Seed with system randomness (or a static seed)
 cupy.random.seed(None)
-seed_fragment = cupy.random.randint(0, 1000)
-seed_tensor = tf.convert_to_tensor(seed_fragment.get())
-reduced_seed = hvd.allreduce(seed_tensor)
-cupy.random.seed(reduced_seed)
+
+
+def seed_fn():
+    """
+    Generate consistent dataloader shuffle seeds across workers
+
+    Reseeds each worker's dataloader each epoch to get fresh a shuffle
+    that's consistent across workers.
+    """
+    min_int, max_int = tf.int32.limits
+    max_rand = max_int // hvd.size()
+
+    # Generate a seed fragment on each worker
+    seed_fragment = cupy.random.randint(0, max_rand).get()
+
+    # Aggregate seed fragments from all Horovod workers
+    seed_tensor = tf.constant(seed_fragment)
+    reduced_seed = hvd.allreduce(seed_tensor, name="shuffle_seed", op=hvd.mpi_ops.Sum)
+
+    return reduced_seed % max_rand
+
 
 proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
 EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
@@ -57,6 +76,7 @@ train_dataset_tf = KerasSequenceLoader(
     parts_per_chunk=1,
     global_size=hvd.size(),
     global_rank=hvd.rank(),
+    seed_fn=seed_fn,
 )
 inputs = {}  # tf.keras.Input placeholders for each feature to be used
 emb_layers = []  # output of all embedding layers, which will be concatenated
@@ -113,9 +133,10 @@ def training_step(examples, labels, first_batch):
 # Horovod: adjust number of steps based on number of GPUs.
 for batch, (examples, labels) in enumerate(train_dataset_tf):
     loss_value = training_step(examples, labels, batch == 0)
-    if batch % 10 == 0 and hvd.local_rank() == 0:
+    if batch % 100 == 0 and hvd.local_rank() == 0:
         print("Step #%d\tLoss: %.6f" % (batch, loss_value))
 hvd.join()
+
 # Horovod: save checkpoints only on worker 0 to prevent other workers from
 # corrupting it.
 if hvd.rank() == 0:
