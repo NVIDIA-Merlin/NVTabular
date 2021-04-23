@@ -362,6 +362,10 @@ class Dataset:
     def file_partition_map(self):
         return self.engine._file_partition_map
 
+    @property
+    def partition_lens(self):
+        return self.engine._partition_lens
+
     def to_cpu(self):
         warnings.warn(
             "Changing an NVTabular Dataset to CPU mode."
@@ -477,7 +481,7 @@ class Dataset:
         # Fall back to dask.dataframe algorithm
         return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
+    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -502,12 +506,39 @@ class Dataset:
             The random seed to use if `shuffle=True`.  If nothing
             is specified, the current system time will be used by the
             `random` std library.
+        use_file_metadata : bool; Optional
+            Whether to allow the returned ``DataFrameIter`` object to
+            use file metadata from the ``base_dataset`` to estimate
+            the row-count. By default, the file-metadata
+            optimization will only be used if the current Dataset is
+            backed by a file-based engine. Otherwise, it is possible
+            that an intermediate transform has modified the row-count.
         """
         if isinstance(columns, str):
             columns = [columns]
 
+        # Try to extract the row-size metadata
+        # if we are not shuffling
+        partition_lens_meta = None
+        if not shuffle and use_file_metadata is not False:
+            # We are allowed to use file metadata to calculate
+            # partition sizes.  If `use_file_metadata` is None,
+            # we only use metadata if `self` is backed by a
+            # file-based engine (like "parquet").  Otherwise,
+            # we cannot be "sure" that the metadata row-count
+            # is correct.
+            try:
+                if use_file_metadata:
+                    partition_lens_meta = self.base_dataset.partition_lens
+                else:
+                    partition_lens_meta = self.partition_lens
+            except AttributeError:
+                pass
+
         return DataFrameIter(
-            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
+            indices=indices,
+            partition_lens=partition_lens_meta,
         )
 
     def to_parquet(
@@ -869,12 +900,19 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
+        self.partition_lens = partition_lens
 
     def __len__(self):
+        if self.partition_lens:
+            # Use metadata-based partition-size information
+            # if/when it is available.  Note that this metadata
+            # will not be correct if rows where added or dropped
+            # after IO (within Ops).
+            return sum(self.partition_lens[i] for i in self.indices)
         if len(self.indices) < self._ddf.npartitions:
             return len(self._ddf.partitions[self.indices])
         return len(self._ddf)
