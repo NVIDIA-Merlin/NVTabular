@@ -31,7 +31,6 @@ import dask
 import dask.dataframe as dd
 import dask_cudf
 import fsspec
-import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
@@ -132,52 +131,54 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def _process_parquet_metadata(self):
         # Utility shared by `_file_partition_map` and `_partition_lens`
-        # to collect useful information from the parquet metadata
+        # to collect information from the graph and parquet metadata
 
+        _row_groups_sizes = defaultdict(list)
+        _pp_map = defaultdict(list)
         _pp_nrows = []
 
-        def _update_partition_lens(part_count, md, num_row_groups, rg_offset=None):
-            # Helper function to calculate the row count for each
-            # output partition (and add it to `_pp_nrows`)
-            rg_offset = rg_offset or 0
-            for rg_i in range(0, part_count, self.row_groups_per_part):
-                rg_f = min(rg_i + self.row_groups_per_part, num_row_groups)
-                _pp_nrows.append(
-                    sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
-                )
-            return
-
+        # First, get the row-group sizes for every file in the
+        # dataset by parsing the parquet metadata.
         dataset = self._dataset
         if dataset.metadata:
             # We have a metadata file.
             # Determing the row-group count per file.
-            _path_row_groups = defaultdict(int)
             for rg in range(dataset.metadata.num_row_groups):
-                fn = dataset.metadata.row_group(rg).column(0).file_path
-                _path_row_groups[fn] += 1
-
-            # Convert the per-file row-group count to the
-            # file-to-partition mapping
-            ind, rg = 0, 0
-            _pp_map = defaultdict(list)
-            for fn, num_row_groups in _path_row_groups.items():
-                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
-                _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(part_count, dataset.metadata, num_row_groups, rg_offset=rg)
-                ind += part_count
-                rg += num_row_groups
+                fn = self.fs.sep.join(
+                    [
+                        self.paths[0],
+                        dataset.metadata.row_group(rg).column(0).file_path,
+                    ]
+                )
+                _row_groups_sizes[fn].append(dataset.metadata.row_group(rg).num_rows)
         else:
             # No metadata file. Construct file-to-partition map manually
-            ind = 0
-            _pp_map = {}
             for piece in dataset.pieces:
                 md = piece.get_metadata()
-                num_row_groups = md.num_row_groups
-                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
-                fn = piece.path.split(self.fs.sep)[-1]
-                _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(part_count, md, num_row_groups)
-                ind += part_count
+                for rg in range(md.num_row_groups):
+                    _row_groups_sizes[piece.path].append(md.row_group(rg).num_rows)
+
+        # Loop over partitions
+        _ddf = self.to_ddf()
+        graph = dict(_ddf.dask)
+        for i in range(_ddf.npartitions):
+
+            # Get partition key
+            k = (_ddf._name, i)
+
+            # Get path and row-group indices for this partition
+            # Ugly indexing explaination:
+            # For this key (k), we want the 4th task argument.
+            # That argument will be a single-item list (so we
+            # take the 0th item). We only want the path and
+            # row-group indices from that item, which are stored
+            # as a tuple in the 0th element (and we only need
+            # the first two element of the tuple)
+            path, row_groups = graph[k][4][0][0][:2]
+
+            # Update partition map and row count
+            _pp_map[path].append(i)
+            _pp_nrows.append(sum([_row_groups_sizes[path][rg] for rg in row_groups]))
 
         self._pp_map = _pp_map
         self._pp_nrows = _pp_nrows
