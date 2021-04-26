@@ -27,6 +27,9 @@ class DataFrameDatasetEngine(DatasetEngine):
     """
 
     def __init__(self, ddf, cpu=False, moved_collection=None):
+        # we're not calling the constructor of the base class - since it has a bunch of
+        # of parameters that assumes we're using files. TODO: refactor
+        # pylint: disable=super-init-not-called
         self._ddf = ddf
         self.cpu = cpu
         self.moved_collection = moved_collection or False
@@ -84,7 +87,7 @@ class DataFrameDatasetEngine(DatasetEngine):
                     pandas_conversion_layer = k
                     break
             if pandas_conversion_layer:
-                deps = [d for d in _ddf.dask.dependencies[pandas_conversion_layer]]
+                deps = list(_ddf.dask.dependencies[pandas_conversion_layer])
                 if len(deps) == 1:
                     pandas_conversion_dep = deps[0]
 

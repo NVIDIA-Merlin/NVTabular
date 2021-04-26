@@ -16,7 +16,6 @@
 import copy
 import json
 import os
-import subprocess
 from shutil import copyfile
 
 import cudf
@@ -25,18 +24,7 @@ from cudf.utils.dtypes import is_list_dtype
 from google.protobuf import text_format
 from tritonclient.utils import np_to_triton_dtype
 
-# read in the triton ModelConfig proto object - generating it if it doesn't exist
-try:
-    import nvtabular.inference.triton.model_config_pb2 as model_config
-except ImportError:
-    pwd = os.path.dirname(__file__)
-    try:
-        subprocess.check_output(
-            ["protoc", f"--python_out={pwd}", f"--proto_path={pwd}", "model_config.proto"]
-        )
-    except Exception as e:
-        raise ImportError("Failed to compile model_config.proto - is protobuf installed?") from e
-    import nvtabular.inference.triton.model_config_pb2 as model_config
+import nvtabular.inference.triton.model_config_pb2 as model_config
 
 
 def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns, version=1):
@@ -572,7 +560,8 @@ def _remove_columns_from_column_group(cg, to_remove):
     return cg
 
 
-def _add_model_param(column, dtype, paramclass, params, dims=[-1, 1]):
+def _add_model_param(column, dtype, paramclass, params, dims=None):
+    dims = dims if dims is not None else [-1, 1]
     if is_list_dtype(dtype):
         params.append(
             paramclass(

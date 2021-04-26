@@ -85,6 +85,7 @@ class NormalizeMinMax(StatOperator):
     """
 
     def __init__(self):
+        super().__init__()
         self.mins = {}
         self.maxs = {}
 

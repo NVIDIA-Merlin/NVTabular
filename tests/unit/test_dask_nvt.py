@@ -24,8 +24,7 @@ import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import read_parquet as dd_read_parquet
 
-from nvtabular import ColumnGroup, Dataset, Workflow
-from nvtabular import ops as ops
+from nvtabular import ColumnGroup, Dataset, Workflow, ops
 from nvtabular.io.shuffle import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
