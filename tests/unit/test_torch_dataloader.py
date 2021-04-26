@@ -488,7 +488,7 @@ def test_horovod_multigpu(tmpdir):
     repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
     hvd_example_path = os.path.join(repo_root, "examples/multi-gpu-movielens/torch_trainer.py")
 
-    process = subprocess.Popen(
+    with subprocess.Popen(
         [
             "horovodrun",
             "-np",
@@ -504,10 +504,9 @@ def test_horovod_multigpu(tmpdir):
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-    )
-    process.wait()
-    stdout, stderr = process.communicate()
-
-    print(str(stdout))
-    print(str(stderr))
-    assert "Training complete" in str(stdout)
+        ) as process:
+        process.wait()
+        stdout, stderr = process.communicate()
+        print(str(stdout))
+        print(str(stderr))
+        assert "Training complete" in str(stdout)

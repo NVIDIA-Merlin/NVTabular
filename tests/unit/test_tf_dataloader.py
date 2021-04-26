@@ -397,7 +397,7 @@ def test_horovod_multigpu(tmpdir):
     repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
     hvd_wrap_path = os.path.join(repo_root, "examples/multi-gpu-movielens/hvd_wrapper.sh")
     hvd_exam_path = os.path.join(repo_root, "examples/multi-gpu-movielens/tf_trainer.py")
-    process = subprocess.Popen(
+    with subprocess.Popen(
         [
             "horovodrun",
             "-np",
@@ -415,8 +415,8 @@ def test_horovod_multigpu(tmpdir):
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-    )
-    process.wait()
-    stdout, stderr = process.communicate()
-    print(stdout, stderr)
-    assert "Loss:" in str(stdout)
+        ) as process:
+        process.wait()
+        stdout, stderr = process.communicate()
+        print(stdout, stderr)
+        assert "Loss:" in str(stdout)
