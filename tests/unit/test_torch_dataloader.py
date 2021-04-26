@@ -504,7 +504,7 @@ def test_horovod_multigpu(tmpdir):
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        ) as process:
+    ) as process:
         process.wait()
         stdout, stderr = process.communicate()
         print(str(stdout))
