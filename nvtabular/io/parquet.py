@@ -880,7 +880,7 @@ class CPUParquetWriter(BaseParquetWriter):
 
 
 def _write_pq_metadata_file_cudf(md_list, fs, path):
-    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    """Converts list of parquet metadata objects into a single shared _metadata file."""
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
@@ -890,7 +890,7 @@ def _write_pq_metadata_file_cudf(md_list, fs, path):
 
 
 def _write_pq_metadata_file_pyarrow(md_list, fs, path):
-    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    """Converts list of parquet metadata objects into a single shared _metadata file."""
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = None
