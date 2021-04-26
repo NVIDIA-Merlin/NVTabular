@@ -241,7 +241,7 @@ def generate_nvtabular_model(
     max_batch_size=None,
     output_info=None,
 ):
-    """ converts a workflow to a triton mode """
+    """converts a workflow to a triton mode"""
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
@@ -279,7 +279,7 @@ def generate_hugectr_model(
     version=1,
     max_batch_size=None,
 ):
-    """ converts a trained HugeCTR model to a triton mode """
+    """converts a trained HugeCTR model to a triton mode"""
 
     out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, name), exist_ok=True)
@@ -599,7 +599,7 @@ def get_column_types(path):
 
 
 def _convert_dtype(dtype):
-    """ converts a dtype to the appropriate triton proto type """
+    """converts a dtype to the appropriate triton proto type"""
     if dtype == "float64":
         return model_config.TYPE_FP64
     if dtype == "float32":

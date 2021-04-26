@@ -315,7 +315,7 @@ def _get_unique(cols):
 
 
 def _transform_partition(root_df, column_groups):
-    """ Transforms a single partition by appyling all operators in a ColumnGroup """
+    """Transforms a single partition by appyling all operators in a ColumnGroup"""
     output = None
     for column_group in column_groups:
         unique_flattened_cols = _get_unique(column_group.flattened_columns)

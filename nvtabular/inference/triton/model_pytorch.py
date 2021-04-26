@@ -42,7 +42,7 @@ from nvtabular.inference.triton import get_column_types
 
 
 class TritonPythonModel:
-    """ Generic TritonPythonModel for nvtabular workflows """
+    """Generic TritonPythonModel for nvtabular workflows"""
 
     def initialize(self, args):
         workflow_path = os.path.join(

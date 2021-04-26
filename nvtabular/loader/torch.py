@@ -127,7 +127,7 @@ class DLDataLoader(torch.utils.data.DataLoader):
 
     @property
     def device(self):
-        return  torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def __len__(self):
         return len(self.dataset)
