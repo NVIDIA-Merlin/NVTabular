@@ -22,8 +22,6 @@ echo "Running pylint"
 pylint nvtabular tests
 echo "Running flake8-nb"
 flake8-nb examples
-echo "Running black-nb"
-black-nb --check examples -q
 
 # check for broken symlinks (indicates a problem with the docs usually)
 broken_symlinks=$(find . -xtype l)
@@ -33,4 +31,8 @@ if [ ! -z "$broken_symlinks" ]; then
     exit 1; 
 fi
 
+# build the docs, treating warnings as errors
+make -C docs html SPHINXOPTS=-W
+
+# test out our codebase
 py.test --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/
