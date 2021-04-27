@@ -8,6 +8,9 @@ from os import path
 import cudf
 import hugectr
 import numpy as np
+import pandas as pd
+import pytest
+from hugectr.inference import CreateEmbeddingCache, CreateParameterServer, InferenceSession
 from mpi4py import MPI
 from sklearn.model_selection import train_test_split
 
@@ -17,18 +20,23 @@ from nvtabular.ops import get_embedding_sizes
 from nvtabular.utils import download_file
 
 DIR = "/model/"
-BASE_DIR = DIR + "data/"
+DATA_DIR = DIR + "data/"
 TEMP_DIR = DIR + "temp_hugectr/"
 MODEL_DIR = DIR + "models/"
 
+CATEGORICAL_COLUMNS = ["userId", "movieId"]
+LABEL_COLUMNS = ["rating"]
 
-def test_nvt_hugectr_training():
+
+@pytest.mark.parametrize("test_nrows", [64])
+def test_nvt_hugectr_training(test_nrows):
+
     download_file(
         "http://files.grouplens.org/datasets/movielens/ml-25m.zip",
-        os.path.join(BASE_DIR, "ml-25m.zip"),
+        os.path.join(DATA_DIR, "ml-25m.zip"),
     )
 
-    ratings = cudf.read_csv(os.path.join(BASE_DIR, "ml-25m", "ratings.csv"))
+    ratings = cudf.read_csv(os.path.join(DATA_DIR, "ml-25m", "ratings.csv"))
     # ratings["new_cat1"] = ratings["userId"] / ratings["movieId"]
     # ratings["new_cat1"] = ratings["new_cat1"].astype("int64")
     ratings.head()
@@ -36,15 +44,12 @@ def test_nvt_hugectr_training():
     ratings = ratings.drop("timestamp", axis=1)
     train, valid = train_test_split(ratings, test_size=0.2, random_state=42)
 
-    train.to_parquet(BASE_DIR + "train.parquet")
-    valid.to_parquet(BASE_DIR + "valid.parquet")
+    train.to_parquet(DATA_DIR + "train.parquet")
+    valid.to_parquet(DATA_DIR + "valid.parquet")
 
     del train
     del valid
     gc.collect()
-
-    CATEGORICAL_COLUMNS = ["userId", "movieId"]
-    LABEL_COLUMNS = ["rating"]
 
     cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(cat_cache="device")
     ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
@@ -52,8 +57,8 @@ def test_nvt_hugectr_training():
 
     workflow = nvt.Workflow(output)
 
-    train_dataset = nvt.Dataset(BASE_DIR + "train.parquet", part_size="100MB")
-    valid_dataset = nvt.Dataset(BASE_DIR + "valid.parquet", part_size="100MB")
+    train_dataset = nvt.Dataset(DATA_DIR + "train.parquet", part_size="100MB")
+    valid_dataset = nvt.Dataset(DATA_DIR + "valid.parquet", part_size="100MB")
 
     workflow.fit(train_dataset)
 
@@ -65,20 +70,20 @@ def test_nvt_hugectr_training():
     for col in LABEL_COLUMNS:
         dict_dtypes[col] = np.float32
 
-    if path.exists(BASE_DIR + "train"):
-        shutil.rmtree(os.path.join(BASE_DIR, "train"))
-    if path.exists(BASE_DIR + "valid"):
-        shutil.rmtree(os.path.join(BASE_DIR, "valid"))
+    if path.exists(DATA_DIR + "train"):
+        shutil.rmtree(os.path.join(DATA_DIR, "train"))
+    if path.exists(DATA_DIR + "valid"):
+        shutil.rmtree(os.path.join(DATA_DIR, "valid"))
 
     workflow.transform(train_dataset).to_parquet(
-        output_path=BASE_DIR + "train/",
+        output_path=DATA_DIR + "train/",
         shuffle=nvt.io.Shuffle.PER_PARTITION,
         cats=CATEGORICAL_COLUMNS,
         labels=LABEL_COLUMNS,
         dtypes=dict_dtypes,
     )
     workflow.transform(valid_dataset).to_parquet(
-        output_path=BASE_DIR + "valid/",
+        output_path=DATA_DIR + "valid/",
         shuffle=False,
         cats=CATEGORICAL_COLUMNS,
         labels=LABEL_COLUMNS,
@@ -92,6 +97,20 @@ def test_nvt_hugectr_training():
         slot_sizes.append(embeddings[column][0])
         total_cardinality += embeddings[column][0]
 
+    test_data_path = DATA_DIR + "test/"
+    if path.exists(test_data_path):
+        shutil.rmtree(test_data_path)
+
+    os.mkdir(test_data_path)
+
+    sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=test_nrows)
+    # sample_data = sample_data[CATEGORICAL_COLUMNS]
+    sample_data.to_csv(test_data_path + "data.csv")
+
+    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
+
+    dense_features, embedding_columns, row_ptrs = _convert(sample_data_trans, slot_sizes)
+
     _run_model(slot_sizes, total_cardinality)
 
     if path.exists(TEMP_DIR):
@@ -103,13 +122,14 @@ def test_nvt_hugectr_training():
     for files in file_names:
         shutil.move(files, TEMP_DIR)
 
-    _write_model_json(slot_sizes)
+    _write_model_json(slot_sizes, total_cardinality)
 
     if path.exists(MODEL_DIR):
         shutil.rmtree(MODEL_DIR)
 
     os.mkdir(MODEL_DIR)
 
+    model_name = "test_model"
     hugectr_params = dict()
     hugectr_params["config"] = MODEL_DIR + "test_model/1/model.json"
     hugectr_params["slots"] = len(slot_sizes)
@@ -121,12 +141,16 @@ def test_nvt_hugectr_training():
         workflow=workflow,
         hugectr_model_path=TEMP_DIR,
         hugectr_params=hugectr_params,
-        name="test_model",
+        name=model_name,
         output_path=MODEL_DIR,
         label_columns=["rating"],
         cats=CATEGORICAL_COLUMNS,
         max_batch_size=64,
     )
+
+    shutil.rmtree(TEMP_DIR)
+
+    _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], model_name)
 
 
 def _run_model(slot_sizes, total_cardinality):
@@ -153,8 +177,8 @@ def _run_model(slot_sizes, total_cardinality):
     model.add(
         hugectr.Input(
             data_reader_type=hugectr.DataReaderType_t.Parquet,
-            source=BASE_DIR + "train/_file_list.txt",
-            eval_source=BASE_DIR + "valid/_file_list.txt",
+            source=DATA_DIR + "train/_file_list.txt",
+            eval_source=DATA_DIR + "valid/_file_list.txt",
             check_type=hugectr.Check_t.Non,
             label_dim=1,
             label_name="label",
@@ -236,7 +260,7 @@ def _run_model(slot_sizes, total_cardinality):
     model.fit()
 
 
-def _write_model_json(slot_sizes):
+def _write_model_json(slot_sizes, total_cardinality):
 
     config = json.dumps(
         {
@@ -254,8 +278,8 @@ def _write_model_json(slot_sizes):
                     "type": "Data",
                     "format": "Parquet",
                     "slot_size_array": slot_sizes,
-                    "source": "/model/data/train/_file_list.txt",
-                    "eval_source": "/model/data/valid/_file_list.txt",
+                    "source": DATA_DIR + "train/_file_list.txt",
+                    "eval_source": DATA_DIR + "valid/_file_list.txt",
                     "check": "Sum",
                     "label": {"top": "label", "label_dim": 1},
                     "dense": {"top": "dense", "dense_dim": 0},
@@ -274,7 +298,7 @@ def _write_model_json(slot_sizes):
                     "bottom": "data1",
                     "top": "sparse_embedding1",
                     "sparse_embedding_hparam": {
-                        "max_vocabulary_size_per_gpu": 219128,
+                        "max_vocabulary_size_per_gpu": total_cardinality,
                         "embedding_vec_size": 16,
                         "combiner": 0,
                     },
@@ -318,3 +342,40 @@ def _write_model_json(slot_sizes):
 
     f = open(os.path.join(TEMP_DIR, "model.json"), "w")
     json.dump(config, f)
+
+
+def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
+    parameter_server = CreateParameterServer([config_file], [model_name], True)
+    embedding_cache = CreateEmbeddingCache(
+        parameter_server, 0, True, 0.1, config_file, model_name, True
+    )
+    inference_session = InferenceSession(config_file, 0, embedding_cache)
+
+    output = inference_session.predict(dense_features, embedding_columns, row_ptrs, True)
+
+    test_data_path = DATA_DIR + "test/"
+    embedding_columns_df = pd.DataFrame()
+    embedding_columns_df["embedding_columns"] = embedding_columns
+    embedding_columns_df.to_csv(test_data_path + "embedding_columns.csv")
+
+    row_ptrs_df = pd.DataFrame()
+    row_ptrs_df["row_ptrs"] = row_ptrs
+    row_ptrs_df.to_csv(test_data_path + "row_ptrs.csv")
+
+    output_df = pd.DataFrame()
+    output_df["output"] = output
+    output_df.to_csv(test_data_path + "output.csv")
+
+
+def _convert(data, slot_size_array):
+    categorical_dim = len(CATEGORICAL_COLUMNS)
+    batch_size = data.shape[0]
+
+    offset = np.insert(np.cumsum(slot_size_array), 0, 0)[:-1].tolist()
+    data[CATEGORICAL_COLUMNS] += offset
+    cat = data[CATEGORICAL_COLUMNS].values.reshape(1, batch_size * categorical_dim).tolist()[0]
+
+    row_ptrs = [i for i in range(batch_size * categorical_dim + 1)]
+    dense = []
+
+    return dense, cat, row_ptrs
