@@ -95,4 +95,4 @@ With NVTabular running on a single V100 32GB GPU, we were able to complete ETL i
 If you'd like to contribute to the library directly, please see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline using this [this survey](https://developer.nvidia.com/merlin-devzone-survey).
 
 If you're interested in learning more about how NVTabular works under the hood, see
-[Architecture](./docs/source/resources/architecture.md). We also have [API documentation](https://nvidia.github.io/NVTabular/main/resources/api/index.html) that outlines the specifics of the available calls within the library.
+[Architecture](https://nvidia.github.io/NVTabular/main/resources/api/index.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/resources/api/index.html) that outlines the specifics of the available calls within the library.
