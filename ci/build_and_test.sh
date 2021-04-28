@@ -32,6 +32,7 @@ if [ ! -z "$broken_symlinks" ]; then
 fi
 
 # build the docs, treating warnings as errors
+echo "Building docs"
 make -C docs html SPHINXOPTS=-W
 
 # test out our codebase
