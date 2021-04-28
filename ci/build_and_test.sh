@@ -19,7 +19,7 @@ isort -c .
 echo "Running bandit"
 bandit -q -ll --recursive nvtabular
 echo "Running pylint"
-pylint nvtabular tests
+pylint nvtabular tests bench
 echo "Running flake8-nb"
 flake8-nb examples
 
