@@ -24,7 +24,7 @@ DATA_DIR = DIR + "data/"
 TEMP_DIR = DIR + "temp_hugectr/"
 MODEL_DIR = DIR + "models/"
 
-CATEGORICAL_COLUMNS = ["userId", "movieId"]
+CATEGORICAL_COLUMNS = ["userId", "movieId", "new_cat1"]
 LABEL_COLUMNS = ["rating"]
 
 
@@ -37,8 +37,8 @@ def test_nvt_hugectr_training(test_nrows):
     )
 
     ratings = cudf.read_csv(os.path.join(DATA_DIR, "ml-25m", "ratings.csv"))
-    # ratings["new_cat1"] = ratings["userId"] / ratings["movieId"]
-    # ratings["new_cat1"] = ratings["new_cat1"].astype("int64")
+    ratings["new_cat1"] = ratings["userId"] / ratings["movieId"]
+    ratings["new_cat1"] = ratings["new_cat1"].astype("int64")
     ratings.head()
 
     ratings = ratings.drop("timestamp", axis=1)
@@ -104,7 +104,6 @@ def test_nvt_hugectr_training(test_nrows):
     os.mkdir(test_data_path)
 
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=test_nrows)
-    # sample_data = sample_data[CATEGORICAL_COLUMNS]
     sample_data.to_csv(test_data_path + "data.csv")
 
     sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
@@ -287,7 +286,7 @@ def _write_model_json(slot_sizes, total_cardinality):
                         {
                             "top": "data1",
                             "type": "DistributedSlot",
-                            "max_feature_num_per_sample": 3,
+                            "max_feature_num_per_sample": len(CATEGORICAL_COLUMNS),
                             "slot_num": len(slot_sizes),
                         }
                     ],

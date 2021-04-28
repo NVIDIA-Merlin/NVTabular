@@ -3,6 +3,7 @@ import warnings
 import cudf
 import cupy as cp
 import numpy as np
+import pytest
 import tritonclient.grpc as httpclient
 from tritonclient.utils import np_to_triton_dtype
 
@@ -17,11 +18,12 @@ DATA_DIR = DIR + "data/"
 #    --load-model=test_model_ens
 
 
-def test_nvt_hugectr_inference():
+@pytest.mark.parametrize("err_tol", [0.00001])
+def test_nvt_hugectr_inference(err_tol):
     warnings.simplefilter("ignore")
 
     model_name = "test_model_ens"
-    col_names = ["userId", "movieId"]
+    col_names = ["userId", "movieId", "new_cat1"]
     # read in a batch of data to get transforms for
     batch = cudf.read_csv(DATA_DIR + "test/data.csv")[col_names]
 
@@ -29,7 +31,7 @@ def test_nvt_hugectr_inference():
     columns = [(col, batch[col]) for col in col_names]
     inputs = []
 
-    col_dtypes = [np.int64, np.int64]
+    col_dtypes = [np.int64, np.int64, np.int64]
     for i, (name, col) in enumerate(columns):
         d = col.values_host.astype(col_dtypes[i])
         d = d.reshape(len(d), 1)
@@ -47,4 +49,6 @@ def test_nvt_hugectr_inference():
     output_actual = cp.asnumpy(output_actual["output"].values)
     output_predict = response.as_numpy("OUTPUT0")
 
-    assert np.array_equal(output_actual.astype(np.int), output_predict.astype(np.int))
+    diff = abs(output_actual - output_predict)
+
+    assert (diff < err_tol).all()
