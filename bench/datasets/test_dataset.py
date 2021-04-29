@@ -62,17 +62,21 @@ def main(args):
         train_tensorflow(workflow, args.out_path + "output", cats, conts, labels, 64 * 1024)
     # PyTorch
     else:
-        from tools.train_pytroch import train_pytorch
+        from tools.train_pytorch import train_pytorch
 
         train_pytorch(workflow, args.out_path + "output", cats, conts, labels, 400000, 2)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=("Dataset Test"))
+    parser = argparse.ArgumentParser(
+        description="Dataset Test", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
-    parser.add_argument("--data-path", type=str, help="Input dataset path (Required)")
+    parser.add_argument("--data-path", type=str, help="Input dataset path", required=True)
 
-    parser.add_argument("--out-path", type=str, help="Directory path to write output (Required)")
+    parser.add_argument(
+        "--out-path", type=str, help="Directory path to write output", required=True
+    )
 
     parser.add_argument(
         "--devices",
@@ -88,24 +92,31 @@ def parse_args():
         choices=["hugectr", "tensorflow", "pytorch"],
         default="hugectr",
         type=str,
-        help="Target Framework (Required)",
+        help="Target Framework",
+        required=True,
     )
 
-    parser.add_argument("--config-file", type=str, help="Configuration file (Required)")
+    parser.add_argument(
+        "--config-file",
+        type=str,
+        help="Configuration file",
+        default="./configs/default_config.json",
+        required=True,
+    )
 
     parser.add_argument(
         "--protocol",
         choices=["tcp", "ucx"],
         default="tcp",
         type=str,
-        help="Communication protocol to use (Default 'tcp')",
+        help="Communication protocol to use",
     )
 
     parser.add_argument(
         "--device-limit-frac",
         default=0.8,
         type=float,
-        help="Worker device-memory limit as a fraction of GPU capacity (Default 0.8). "
+        help="Worker device-memory limit as a fraction of GPU capacity. "
         "The worker will try to spill data to host memory beyond this limit",
     )
 
@@ -113,7 +124,7 @@ def parse_args():
         "--device-pool-frac",
         default=0.9,
         type=float,
-        help="RMM pool size for each worker  as a fraction of GPU capacity (Default 0.9). "
+        help="RMM pool size for each worker  as a fraction of GPU capacity. "
         "If 0 is specified, the RMM pool will be disabled",
     )
 
@@ -129,7 +140,7 @@ def parse_args():
         "--out-files-per-proc",
         default=8,
         type=int,
-        help="Number of output files to write on each worker (Default 8)",
+        help="Number of output files to write on each worker",
     )
 
     parser.add_argument("--workflow-path", type=str, help="Worflow path, so ETL is not performed")
