@@ -449,7 +449,7 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(workflow):
-    """ Returns a dictionary of best embedding sizes from the workflow """
+    """Returns a dictionary of best embedding sizes from the workflow"""
     # TODO: do we need to distinguish multihot columns here?  (if so why? )
     queue = [workflow.column_group]
     output = {}
@@ -1107,7 +1107,7 @@ def _hash_bucket(df, num_buckets, col, encode_type="joint"):
 
 
 def _copy_storage(existing_stats, existing_path, new_path, copy):
-    """ helper function to copy files to a new storage location"""
+    """helper function to copy files to a new storage location"""
     from shutil import copyfile
 
     new_locations = {}

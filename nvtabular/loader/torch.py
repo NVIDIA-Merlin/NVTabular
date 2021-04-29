@@ -125,5 +125,9 @@ class DLDataLoader(torch.utils.data.DataLoader):
     It is required to support the FastAI framework.
     """
 
+    @property
+    def device(self):
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def __len__(self):
         return len(self.dataset)

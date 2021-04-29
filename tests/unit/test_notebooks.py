@@ -51,7 +51,7 @@ def test_criteo_tf_notebook(tmpdir):
             "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
         )
         line = line.replace("client", "# client")
-        line = line.replace("NUM_GPUS = [0,1,2,3,4,5,6,7]", "NUM_GPUS = [0]")
+        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
         line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
 
         return line
@@ -104,7 +104,7 @@ def test_criteo_pyt_notebook(tmpdir):
             "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
         )
         line = line.replace("client", "# client")
-        line = line.replace("NUM_GPUS = [0,1,2,3,4,5,6,7]", "NUM_GPUS = [0]")
+        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
         line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
         return line
 
