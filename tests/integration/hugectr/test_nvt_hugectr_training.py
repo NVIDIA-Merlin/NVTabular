@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from hugectr.inference import CreateEmbeddingCache, CreateParameterServer, InferenceSession
-from mpi4py import MPI
+from mpi4py import MPI  # noqa
 from sklearn.model_selection import train_test_split
 
 import nvtabular as nvt
