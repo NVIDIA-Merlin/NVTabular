@@ -19,7 +19,7 @@ isort -c .
 echo "Running bandit"
 bandit -q -ll --recursive nvtabular
 echo "Running pylint"
-pylint nvtabular tests
+pylint nvtabular tests bench
 echo "Running flake8-nb"
 flake8-nb examples
 
@@ -32,6 +32,7 @@ if [ ! -z "$broken_symlinks" ]; then
 fi
 
 # build the docs, treating warnings as errors
+echo "Building docs"
 make -C docs html SPHINXOPTS=-W
 
 # test out our codebase
