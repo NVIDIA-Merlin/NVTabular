@@ -26,7 +26,8 @@ from nvtabular.ops import get_embedding_sizes
 def train_tensorflow(workflow, out_path, cats, conts, labels, batch_size):
     # Get embeddings from workflow
     embeddings = get_embedding_sizes(workflow)
-    for key in embeddings.keys():
+    for key in embeddings:
+
         embeddings[key] = (
             embeddings[key][0],
             min(16, embeddings[key][1]),
@@ -85,7 +86,6 @@ def train_tensorflow(workflow, out_path, cats, conts, labels, batch_size):
 
     emb_layer = layers.DenseFeatures(emb_layers)
     x_emb_output = emb_layer(inputs)
-    x_emb_output
 
     x = tf.keras.layers.Dense(128, activation="relu")(x_emb_output)
     x = tf.keras.layers.Dense(128, activation="relu")(x)

@@ -26,7 +26,8 @@ from dask_cuda import LocalCUDACluster
 
 from nvtabular import Dataset, Workflow
 from nvtabular import io as nvt_io
-from nvtabular import ops as ops
+from nvtabular import ops
+
 from nvtabular.utils import _pynvml_mem_size, device_mem_size, get_rmm_size
 
 
