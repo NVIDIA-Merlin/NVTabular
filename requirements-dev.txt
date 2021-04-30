@@ -23,3 +23,6 @@ git+https://github.com/rapidsai/asvdb.git
 sphinx_rtd_theme
 scikit-learn
 graphviz
+# needed for test_s3
+flask
+flask_cors
