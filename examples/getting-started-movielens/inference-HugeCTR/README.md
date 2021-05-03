@@ -33,16 +33,6 @@ The container will open a shell when the run command execution is completed. You
 root@2efa5b50b909:
 ```
 
-Activate the merlin conda environment by running the following command:
-```
-root@2efa5b50b909: source activate merlin
-```
-You should receive the following response, indicating that the environment has been activated:
-
-```
-(merlin)root@2efa5b50b909:
-```
-
 1) Start the jupyter-lab server by running the following command. In case the container does not have `JupyterLab`, you can easily [install](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html) it either using conda or pip.
 ```
 jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
@@ -77,11 +67,6 @@ docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108
 The container will open a shell when the run command execution is completed. It should look similar to this:
 ```
 root@02d56ff0738f:/opt/tritonserver# 
-```
-
-Activate the merlin conda environment by running the following command:
-```
-root@02d56ff0738f:/opt/tritonserver#  source activate merlin
 ```
 
 3) Your saved model should be in the `/model` directory. Navigate to the `model` working directory inside the triton server container to check the saved models:
