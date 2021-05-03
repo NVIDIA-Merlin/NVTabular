@@ -9,7 +9,6 @@ import cudf
 import hugectr
 import numpy as np
 import pandas as pd
-import pytest
 from hugectr.inference import CreateEmbeddingCache, CreateParameterServer, InferenceSession
 from mpi4py import MPI  # noqa
 from sklearn.model_selection import train_test_split
@@ -26,10 +25,10 @@ MODEL_DIR = DIR + "models/"
 
 CATEGORICAL_COLUMNS = ["userId", "movieId", "new_cat1"]
 LABEL_COLUMNS = ["rating"]
+TEST_N_ROWS = 64
 
 
-@pytest.mark.parametrize("test_nrows", [64])
-def test_nvt_hugectr_training(test_nrows):
+def test_nvt_hugectr_training():
 
     download_file(
         "http://files.grouplens.org/datasets/movielens/ml-25m.zip",
@@ -103,7 +102,7 @@ def test_nvt_hugectr_training(test_nrows):
 
     os.mkdir(test_data_path)
 
-    sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=test_nrows)
+    sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
     sample_data.to_csv(test_data_path + "data.csv")
 
     sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
@@ -185,7 +184,9 @@ def _run_model(slot_sizes, total_cardinality):
             dense_name="dense",
             slot_size_array=slot_sizes,
             data_reader_sparse_param_array=[
-                hugectr.DataReaderSparseParam(hugectr.DataReaderSparse_t.Distributed, 3, 1, 2)
+                hugectr.DataReaderSparseParam(
+                    hugectr.DataReaderSparse_t.Distributed, len(slot_sizes) + 1, 1, len(slot_sizes)
+                )
             ],
             sparse_names=["data1"],
         )
@@ -206,7 +207,7 @@ def _run_model(slot_sizes, total_cardinality):
             layer_type=hugectr.Layer_t.Reshape,
             bottom_names=["sparse_embedding1"],
             top_names=["reshape1"],
-            leading_dim=32,
+            leading_dim=48,
         )
     )
     model.add(
@@ -307,7 +308,7 @@ def _write_model_json(slot_sizes, total_cardinality):
                     "type": "Reshape",
                     "bottom": "sparse_embedding1",
                     "top": "reshape1",
-                    "leading_dim": 32,
+                    "leading_dim": 48,
                 },
                 {
                     "name": "fc1",

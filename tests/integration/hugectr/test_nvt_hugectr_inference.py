@@ -18,14 +18,16 @@ DATA_DIR = DIR + "data/"
 #    --load-model=test_model_ens
 
 
+# Update TEST_N_ROWS param in test_nvt_hugectr_trainin.py to test larger sizes
+@pytest.mark.parametrize("n_rows", [64, 58, 11, 1])
 @pytest.mark.parametrize("err_tol", [0.00001])
-def test_nvt_hugectr_inference(err_tol):
+def test_nvt_hugectr_inference(n_rows, err_tol):
     warnings.simplefilter("ignore")
 
     model_name = "test_model_ens"
     col_names = ["userId", "movieId", "new_cat1"]
     # read in a batch of data to get transforms for
-    batch = cudf.read_csv(DATA_DIR + "test/data.csv")[col_names]
+    batch = cudf.read_csv(DATA_DIR + "test/data.csv", nrows=n_rows)[col_names]
 
     # convert the batch to a triton inputs
     columns = [(col, batch[col]) for col in col_names]
@@ -45,7 +47,7 @@ def test_nvt_hugectr_inference(err_tol):
     with httpclient.InferenceServerClient("localhost:8001") as client:
         response = client.infer(model_name, inputs, request_id=str(1), outputs=outputs)
 
-    output_actual = cudf.read_csv(DATA_DIR + "test/output.csv")
+    output_actual = cudf.read_csv(DATA_DIR + "test/output.csv", nrows=n_rows)
     output_actual = cp.asnumpy(output_actual["output"].values)
     output_predict = response.as_numpy("OUTPUT0")
 
