@@ -42,7 +42,9 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     model_path:
         The root path to write out files to
     label_columns:
-        Labels in the dataset (will be removed f
+        Labels in the dataset (will be removed from the dataset)
+    version:
+        Version of the model
     """
 
     workflow = _remove_columns(workflow, label_columns)
@@ -74,6 +76,11 @@ def export_pytorch_ensemble(
     ----------
     model:
         The pytorch model that should be served
+    model_info:
+        Extra info about the model such as input dtype and shape
+    sample_input_data:
+        Sample input data to use it for converting PyTorch model
+        to Onnx model
     workflow:
         The nvtabular workflow used in preprocessing
     name:
@@ -81,7 +88,9 @@ def export_pytorch_ensemble(
     model_path:
         The root path to write out files to
     label_columns:
-        Labels in the dataset (will be removed f
+        Labels in the dataset (will be removed from the dataset)
+    version:
+        Version of the model
     """
     import torch
 
@@ -175,6 +184,9 @@ def export_hugectr_ensemble(
 
     """
 
+    if not cats and not conts:
+        raise ValueError("Either cats or conts has to have a value.")
+
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
@@ -211,9 +223,11 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
+    slot_exist = False
     hugectr_training_config = json.load(open(hugectr_params["config"]))
     for elem in hugectr_training_config["layers"]:
         if "slot_size_array" in elem:
+            slot_exist = True
             with open(
                 os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
                 "w",
@@ -222,6 +236,9 @@ def export_hugectr_ensemble(
                 slot_sizes["slot_size_array"] = elem["slot_size_array"]
                 json.dump(slot_sizes, o)
             break
+
+    if cats and not slot_exist:
+        raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
 
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")
