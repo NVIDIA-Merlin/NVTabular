@@ -16,7 +16,6 @@
 import copy
 import json
 import os
-import subprocess
 from shutil import copyfile
 
 import cudf
@@ -25,18 +24,7 @@ from cudf.utils.dtypes import is_list_dtype
 from google.protobuf import text_format
 from tritonclient.utils import np_to_triton_dtype
 
-# read in the triton ModelConfig proto object - generating it if it doesn't exist
-try:
-    import nvtabular.inference.triton.model_config_pb2 as model_config
-except ImportError:
-    pwd = os.path.dirname(__file__)
-    try:
-        subprocess.check_output(
-            ["protoc", f"--python_out={pwd}", f"--proto_path={pwd}", "model_config.proto"]
-        )
-    except Exception as e:
-        raise ImportError("Failed to compile model_config.proto - is protobuf installed?") from e
-    import nvtabular.inference.triton.model_config_pb2 as model_config
+import nvtabular.inference.triton.model_config_pb2 as model_config
 
 
 def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns, version=1):
@@ -253,7 +241,7 @@ def generate_nvtabular_model(
     max_batch_size=None,
     output_info=None,
 ):
-    """ converts a workflow to a triton mode """
+    """converts a workflow to a triton mode"""
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
@@ -291,7 +279,7 @@ def generate_hugectr_model(
     version=1,
     max_batch_size=None,
 ):
-    """ converts a trained HugeCTR model to a triton mode """
+    """converts a trained HugeCTR model to a triton mode"""
 
     out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, name), exist_ok=True)
@@ -611,7 +599,7 @@ def get_column_types(path):
 
 
 def _convert_dtype(dtype):
-    """ converts a dtype to the appropriate triton proto type """
+    """converts a dtype to the appropriate triton proto type"""
     if dtype == "float64":
         return model_config.TYPE_FP64
     if dtype == "float32":

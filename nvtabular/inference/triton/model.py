@@ -44,7 +44,7 @@ import nvtabular
 
 
 class TritonPythonModel:
-    """ Generic TritonPythonModel for nvtabular workflows """
+    """Generic TritonPythonModel for nvtabular workflows"""
 
     def initialize(self, args):
         workflow_path = os.path.join(
