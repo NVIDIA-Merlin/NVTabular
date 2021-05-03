@@ -73,7 +73,7 @@ def main(args):
                 "cats": cat_names,
                 "conts": cont_names,
                 "labels": [label_name],
-                "devices": [i for i in range(args.num_devices)],
+                "devices": list(range(args.num_devices)),
             }
         else:
             kwargs = {"cat_names": cat_names, "cont_names": cont_names, "label_names": [label_name]}
