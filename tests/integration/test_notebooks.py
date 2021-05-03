@@ -234,17 +234,12 @@ def _run_notebook(
 
     # Replace config parms
     if params:
-        transform = lambda line: line.replace(
-            "device_limit_frac = 0.7", "device_limit_frac = " + str(params[0])
-        )
-        lines = [transform(line) for line in lines]
-        transform = lambda line: line.replace(
-            "device_pool_frac = 0.8", "device_pool_frac = " + str(params[1])
-        )
-        lines = [transform(line) for line in lines]
-        transform = lambda line: line.replace(
-            "part_mem_frac = 0.15", "part_mem_frac = " + str(params[2])
-        )
+
+        def transform(line):
+            line = line.replace("device_limit_frac = 0.7", "device_limit_frac = " + str(params[0]))
+            line = line.replace("device_pool_frac = 0.8", "device_pool_frac = " + str(params[1]))
+            return line.replace("part_mem_frac = 0.15", "part_mem_frac = " + str(params[2]))
+
         lines = [transform(line) for line in lines]
 
     # Add guarding block and indentation
