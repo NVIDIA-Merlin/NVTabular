@@ -42,7 +42,14 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
         dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
     )
     out = _run_notebook(
-        tmpdir, notebook_etl, input_path, output_path, gpu_id="0", clean_up=False, main_block=39
+        tmpdir,
+        notebook_etl,
+        input_path,
+        output_path,
+        gpu_id="0",
+        clean_up=False,
+        params=[0.4, 0.5, 0.1],
+        main_block=39,
     )
 
     # Only run if PyTorch installed
@@ -201,6 +208,7 @@ def _run_notebook(
     gpu_id=0,
     clean_up=True,
     transform=None,
+    params=[],
     main_block=-1,
 ):
     os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("GPU_TARGET_ID", gpu_id)
@@ -223,6 +231,16 @@ def _run_notebook(
         for line in itertools.chain(*source_cells)
         if not (line.startswith("%") or line.startswith("!"))
     ]
+
+    # Replace config parms
+    if params:
+
+        def transform(line):
+            line = line.replace("device_limit_frac = 0.7", "device_limit_frac = " + str(params[0]))
+            line = line.replace("device_pool_frac = 0.8", "device_pool_frac = " + str(params[1]))
+            return line.replace("part_mem_frac = 0.15", "part_mem_frac = " + str(params[2]))
+
+        lines = [transform(line) for line in lines]
 
     # Add guarding block and indentation
     if main_block >= 0:
