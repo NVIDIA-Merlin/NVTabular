@@ -13,6 +13,6 @@ For additional information, see our latest `blog post
 .. toctree::
    :maxdepth: 2
 
-   Tensorflow <tensorflow>
+   TensorFlow <tensorflow>
    PyTorch <pytorch>
    HugeCTR <hugectr>
