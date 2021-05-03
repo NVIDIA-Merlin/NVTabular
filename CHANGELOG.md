@@ -1,3 +1,16 @@
+# NVTabular v0.5.1 (4 May 2021)
+
+## Improvements
+
+* Update dependencies to use cudf 0.19
+* Removed conda from docker containers, leading to much smaller container sizes
+* Added CUDA 11.2 support
+* Added FastAI v2.3 support
+
+## Bug Fixes
+
+* Fix NVTabular preprocessing with HugeCTR inference
+
 # NVTabular v0.5.0 (13 April 2021)
 
 ## Improvements
