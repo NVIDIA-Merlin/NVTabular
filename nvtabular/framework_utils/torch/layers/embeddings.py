@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ class MultiHotEmbeddings(torch.nn.Module):
 
     def __init__(self, embedding_table_shapes, dropout=0.0, mode="sum"):
         super().__init__()
-        self.embedding_names = [i for i in embedding_table_shapes.keys()]
+        self.embedding_names = list(embedding_table_shapes.keys())
         self.embedding_layers = torch.nn.ModuleList(
             [
                 torch.nn.EmbeddingBag(*embedding_table_shapes[key], mode=mode)

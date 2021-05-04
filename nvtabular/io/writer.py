@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,19 +17,18 @@ import json
 import math
 import queue
 import threading
+from typing import Optional
 
 import cupy as cp
 import numpy as np
-from cudf.utils.dtypes import is_list_dtype
 from fsspec.core import get_fs_token_paths
 from nvtx import annotate
 
+from .shuffle import _shuffle_df
+
 
 class Writer:
-    def __init__(self):
-        pass
-
-    def add_data(self, gdf):
+    def add_data(self, df):
         raise NotImplementedError()
 
     def package_general_metadata(self):
@@ -60,6 +59,9 @@ class ThreadedWriter(Writer):
         fs=None,
         use_guid=False,
         bytes_io=False,
+        cpu=False,
+        fns=None,
+        suffix=None,
     ):
         # set variables
         self.out_dir = out_dir
@@ -74,13 +76,21 @@ class ThreadedWriter(Writer):
         self.col_idx = {}
 
         self.num_threads = num_threads
-        self.num_out_files = num_out_files
-        self.num_samples = [0] * num_out_files
+        self.fns = [fns] if isinstance(fns, str) else fns
+        if self.fns:
+            # If sepecific file names were specified,
+            # ignore `num_out_files` argument
+            self.num_out_files = len(self.fns)
+        else:
+            self.num_out_files = num_out_files
+        self.num_samples = [0] * self.num_out_files
 
         self.data_paths = None
         self.need_cal_col_names = True
         self.use_guid = use_guid
         self.bytes_io = bytes_io
+        self.cpu = cpu
+        self.suffix = suffix
 
         # Resolve file system
         self.fs = fs or get_fs_token_paths(str(out_dir))[0]
@@ -106,26 +116,46 @@ class ThreadedWriter(Writer):
         self.labels = labels
         self.column_names = labels + conts
 
-    def _write_table(self, idx, data, has_list_column=False):
+    def _write_table(self, idx, data):
         return
 
     def _write_thread(self):
         return
 
     @annotate("add_data", color="orange", domain="nvt_python")
-    def add_data(self, gdf):
+    def add_data(self, df):
         # Populate columns idxs
         if not self.col_idx:
-            for i, x in enumerate(gdf.columns.values):
+            _df = df[0] if isinstance(df, list) else df
+            for i, x in enumerate(_df.columns.values):
                 self.col_idx[str(x)] = i
 
-        # list columns in cudf don't currently support chunked writing in parquet.
-        # hack around this by just writing a single file with this partition
-        # this restriction can be removed once cudf supports chunked writing
-        # in parquet
-        if any(is_list_dtype(gdf[col].dtype) for col in gdf.columns):
-            self._write_table(0, gdf, True)
-            return
+        if isinstance(df, list):
+            # Data is already partitioned into a list
+            self._add_data_list(df)
+        elif self.num_out_files == 1:
+            # Only writing to a single file. No need to
+            # scatter or slice the data before writing
+            self._add_single_file(df)
+        else:
+            # Use different mechanism to decompose and write each df
+            # partition, depending on the backend (pandas or cudf).
+            if self.cpu:
+                self._add_data_slice(df)
+            else:
+                self._add_data_scatter(df)
+
+        # wait for all writes to finish before exiting
+        # (so that we aren't using memory)
+        if self.num_threads > 1:
+            self.queue.join()
+
+    def _add_data_scatter(self, gdf):
+        """Write scattered pieces.
+
+        This method is for cudf-backed data only.
+        """
+        assert not self.cpu
 
         # Generate `ind` array to map each row to an output file.
         # This approach is certainly more optimized for shuffling
@@ -147,10 +177,53 @@ class ThreadedWriter(Writer):
             else:
                 self._write_table(x, group)
 
-        # wait for all writes to finish before exiting
-        # (so that we aren't using memory)
+    def _add_data_slice(self, df):
+        """Write shuffled slices.
+
+        This method works for both pandas and cudf backends.
+        """
+        # Pandas does not support the `scatter_by_map` method
+        # used in `_add_data_scatter`. So, we manually shuffle
+        # the df and write out slices.
+        if self.shuffle:
+            df = _shuffle_df(df)
+        int_slice_size = df.shape[0] // self.num_out_files
+        slice_size = int_slice_size if df.shape[0] % int_slice_size == 0 else int_slice_size + 1
+        for x in range(self.num_out_files):
+            start = x * slice_size
+            end = start + slice_size
+            # check if end is over length
+            end = end if end <= df.shape[0] else df.shape[0]
+            to_write = df.iloc[start:end]
+            self.num_samples[x] = self.num_samples[x] + to_write.shape[0]
+            if self.num_threads > 1:
+                self.queue.put((x, to_write))
+            else:
+                self._write_table(x, to_write)
+
+    def _add_data_list(self, dfs):
+        """Write a list of DataFrames"""
+        assert len(dfs) == self.num_out_files
+        for x, df in enumerate(dfs):
+            if self.shuffle:
+                df = _shuffle_df(df)
+            self.num_samples[x] = self.num_samples[x] + df.shape[0]
+            if self.num_threads > 1:
+                self.queue.put((x, df))
+            else:
+                self._write_table(x, df)
+
+    def _add_single_file(self, df):
+        """Write to single file.
+
+        This method works for both pandas and cudf backends.
+        """
+        df = _shuffle_df(df) if self.shuffle else df
+        self.num_samples[0] = self.num_samples[0] + df.shape[0]
         if self.num_threads > 1:
-            self.queue.join()
+            self.queue.put((0, df))
+        else:
+            self._write_table(0, df)
 
     def package_general_metadata(self):
         data = {}
@@ -199,7 +272,7 @@ class ThreadedWriter(Writer):
     def write_special_metadata(cls, data, fs, out_dir):
         pass
 
-    def _close_writers(self):
+    def _close_writers(self) -> Optional[dict]:
         for writer in self.data_writers:
             writer.close()
         return None
@@ -215,11 +288,11 @@ class ThreadedWriter(Writer):
 
         # Close writers and collect various metadata
         _general_meta = self.package_general_metadata()
-        _special_meta = self._close_writers()
+        _special_meta = self._close_writers()  # pylint: disable=assignment-from-none
 
-        # Move in-meomory file to disk
+        # Move in-memory file to disk
         if self.bytes_io:
-            self._bytesio_to_disk()
+            _special_meta = self._bytesio_to_disk()
 
         return _general_meta, _special_meta
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +24,7 @@ from .operator import ColumnNames, Operator
 class HashedCross(Operator):
     """
     This ops creates hashed cross columns by first combining categorical features
-    and hashing the combined feature then modulating by the number of
-    buckets.
+    and hashing the combined feature, then reducing modulo the number of buckets.
 
     Example usage::
 
@@ -49,9 +48,7 @@ class HashedCross(Operator):
     def __init__(self, num_buckets: Union[int, Dict[str, int]]):
         super().__init__()
         if not isinstance(num_buckets, (int, dict)):
-            raise ValueError(
-                "num_buckets should be an int or dict, found %s", num_buckets.__class__
-            )
+            raise ValueError(f"num_buckets should be an int or dict, found {num_buckets.__class__}")
 
         self.num_buckets = num_buckets
 

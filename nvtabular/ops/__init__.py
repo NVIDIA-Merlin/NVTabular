@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@
 from .bucketize import Bucketize
 from .categorify import Categorify, _get_embedding_order, get_embedding_sizes
 from .clip import Clip
+from .data_stats import DataStats
 from .difference_lag import DifferenceLag
 from .dropna import Dropna
 from .fill import FillMedian, FillMissing
 from .filter import Filter
+from .groupby import Groupby
 from .hash_bucket import HashBucket
 from .hashed_cross import HashedCross
 from .join_external import JoinExternal

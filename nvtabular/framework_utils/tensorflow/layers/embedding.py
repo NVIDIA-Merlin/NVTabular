@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,10 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
+
+# pylint has issues with TF array ops, so disable checks until fixed:
+# https://github.com/PyCQA/pylint/issues/3613
+# pylint: disable=no-value-for-parameter, unexpected-keyword-arg
 
 
 def _sort_columns(feature_columns):
@@ -237,14 +241,14 @@ class DenseFeatures(tf.keras.layers.Layer):
         return tf.concat(features, axis=1)
 
     def compute_output_shape(self, input_shapes):
-        input_shape = [i for i in input_shapes.values()][0]
+        input_shape = list(input_shapes.values())[0]
         if self.aggregation == "concat":
             output_dim = len(self.numeric_features) + sum(
                 [shape[-1] for shape in self.embedding_shapes.values()]
             )
             return (input_shape[0], output_dim)
         else:
-            embedding_dim = [i for i in self.embedding_shapes.values()][0]
+            embedding_dim = list(self.embedding_shapes.values())[0]
             return (input_shape[0], len(self.embedding_shapes), embedding_dim)
 
     def get_config(self):
@@ -286,10 +290,10 @@ class LinearFeatures(tf.keras.layers.Layer):
     and scalar numeric features. Based on the "wide" branch of the Wide & Deep
     network architecture.
 
-    Uses TensorFlow `feature_column`s to represent inputs to the layer, but
+    Uses TensorFlow ``feature_column``s to represent inputs to the layer, but
     does not perform any preprocessing associated with those columns. As such,
-    it should only be passed `numeric_column` and
-    `categorical_column_with_identity`. Preprocessing functionality should
+    it should only be passed ``numeric_column`` and
+    ``categorical_column_with_identity``. Preprocessing functionality should
     be moved to NVTabular.
 
     Also note that, unlike ScalarDenseFeatures, categorical columns should
@@ -369,7 +373,7 @@ class LinearFeatures(tf.keras.layers.Layer):
         return x
 
     def compute_output_shape(self, input_shapes):
-        batch_size = [i for i in input_shapes.values()][0].shape[0]
+        batch_size = list(input_shapes.values())[0].shape[0]
         return (batch_size, 1)
 
     def get_config(self):

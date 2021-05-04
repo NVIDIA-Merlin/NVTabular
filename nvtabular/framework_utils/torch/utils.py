@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ def process_epoch(
         Loss function to use, default is MSELoss.
     """
     model.train(mode=train)
+    idx = 0
     with torch.set_grad_enabled(train):
         y_list, y_pred_list = [], []
         for idx, batch in enumerate(iter(dataloader)):

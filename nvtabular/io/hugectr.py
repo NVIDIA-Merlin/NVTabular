@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,15 +22,17 @@ from .writer import ThreadedWriter
 
 
 class HugeCTRWriter(ThreadedWriter):
-    def __init__(self, out_dir, **kwargs):
+    def __init__(self, out_dir, suffix=".data", **kwargs):
         super().__init__(out_dir, **kwargs)
+        self.suffix = suffix
         if self.use_guid:
             self.data_paths = [
-                os.path.join(out_dir, f"{i}i.{uuid4().hex}.data") for i in range(self.num_out_files)
+                os.path.join(out_dir, f"{i}i.{uuid4().hex}{self.suffix}")
+                for i in range(self.num_out_files)
             ]
         else:
             self.data_paths = [
-                os.path.join(out_dir, f"{i}.data") for i in range(self.num_out_files)
+                os.path.join(out_dir, f"{i}{self.suffix}") for i in range(self.num_out_files)
             ]
         self.data_writers = [open(f, "wb") for f in self.data_paths]
         # Reserve 64 bytes for header
@@ -38,7 +40,7 @@ class HugeCTRWriter(ThreadedWriter):
         for i, writer in enumerate(self.data_writers):
             writer.write(header.tobytes())
 
-    def _write_table(self, idx, data, has_list_columns=False):
+    def _write_table(self, idx, data):
         # Prepare data format
         np_label = data[self.labels].to_pandas().astype(np.single).to_numpy()
         np_conts = data[self.conts].to_pandas().astype(np.single).to_numpy()

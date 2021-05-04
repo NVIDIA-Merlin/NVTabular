@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,15 +19,15 @@ import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from .categorify import _emb_sz_rule, _encode_list_column, _get_embedding_order
+from ..dispatch import _encode_list_column
+from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnNames, Operator
 
 
 class HashBucket(Operator):
     """
-    This op maps categorical columns to a contiguous integer range
-    by first hashing the column then modulating by the number of
-    buckets as indicated by `num_buckets`.
+    This op maps categorical columns to a contiguous integer range by first
+    hashing the column, then reducing modulo the number of buckets.
 
     Example usage::
 

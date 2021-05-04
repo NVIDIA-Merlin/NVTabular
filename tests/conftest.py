@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,12 +16,17 @@
 import contextlib
 import glob
 import os
+import platform
 import random
+import socket
 
 import cudf
 import numpy as np
+import psutil
 import pytest
+from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
+from numba import cuda
 
 import nvtabular
 
@@ -62,9 +67,11 @@ _CUDA_CLUSTER = None
 
 @pytest.fixture(scope="module")
 def client():
-    client = Client(LocalCluster(n_workers=2))
+    cluster = LocalCluster(n_workers=2)
+    client = Client(cluster)
     yield client
     client.close()
+    cluster.close()
 
 
 @contextlib.contextmanager
@@ -101,8 +108,12 @@ def datasets(tmpdir_factory):
     for col in df.columns:
         if col in ["name-cat", "label", "id"]:
             break
-        df[col].iloc[random.randint(1, imax - 1)] = None
-        df[col].iloc[random.randint(1, imax - 1)] = None
+        for _ in range(2):
+            rand_idx = random.randint(1, imax - 1)
+            if rand_idx == df[col].shape[0] // 2:
+                # dont want null in median
+                rand_idx += 1
+            df[col].iloc[rand_idx] = None
 
     datadir = tmpdir_factory.mktemp("data_test")
     datadir = {
@@ -163,7 +174,7 @@ def df(engine, paths):
 def dataset(request, paths, engine):
     try:
         gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         gpu_memory_frac = 0.01
 
     kwargs = {}
@@ -171,6 +182,43 @@ def dataset(request, paths, engine):
         kwargs["names"] = allcols_csv
 
     return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
+
+
+@pytest.fixture(scope="session")
+def asv_db():
+    # Create an interface to an ASV "database" to write the results to.
+    (repo, branch) = utils.getRepoInfo()  # gets repo info from CWD by default
+    # allows control of results location
+    db_dir = os.environ.get("ASVDB_DIR", "./benchmarks")
+    db = ASVDb(dbDir=db_dir, repo=repo, branches=[branch])
+
+    return db
+
+
+@pytest.fixture(scope="session")
+def bench_info():
+
+    # Create a BenchmarkInfo object describing the benchmarking environment.
+    # This can/should be reused when adding multiple results from the same environment.
+
+    uname = platform.uname()
+    (commitHash, commitTime) = utils.getCommitInfo()  # gets commit info from CWD by default
+    cuda_version = os.environ["CUDA_VERSION"]
+    # get GPU info from nvidia-smi
+
+    bInfo = BenchmarkInfo(
+        machineName=socket.gethostname(),
+        cudaVer=cuda_version,
+        osType="%s %s" % (uname.system, uname.release),
+        pythonVer=platform.python_version(),
+        commitHash=commitHash,
+        commitTime=commitTime,
+        gpuType=cuda.get_current_device().name.decode("utf-8"),
+        cpuType=uname.processor,
+        arch=uname.machine,
+        ram="%d" % psutil.virtual_memory().total,
+    )
+    return bInfo
 
 
 def get_cats(workflow, col, stat_name="categories"):
@@ -181,7 +229,7 @@ def get_cats(workflow, col, stat_name="categories"):
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:
-        raise RuntimeError("Found {} categorical ops, expected 1", len(cats))
+        raise RuntimeError(f"Found {len(cats)} categorical ops, expected 1")
     filename = cats[0].categories[col]
     gdf = cudf.read_parquet(filename)
     gdf.reset_index(drop=True, inplace=True)

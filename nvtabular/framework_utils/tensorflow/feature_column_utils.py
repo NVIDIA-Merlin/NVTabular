@@ -1,3 +1,18 @@
+# Copyright (c) 2021, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import os
 import warnings
 
@@ -244,7 +259,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                                 features_replaced_buckets.columns.remove(diff_col[0])
                             cross_columns.append(features_replaced_buckets)
                         else:
-                            raise RuntimeError("Unknown bucket column %s", key)
+                            raise RuntimeError(f"Unknown bucket column {key}")
                     else:
                         cross_columns.append(nvt.ColumnGroup(key))
 
@@ -270,7 +285,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
     # create stats for Categorify op if we need it
     if len(categorifies) > 0:
         if category_dir is None:
-            category_dir = "/tmp/categories"
+            category_dir = "/tmp/categories"  # nosec
         if not os.path.exists(category_dir):
             os.makedirs(category_dir)
 

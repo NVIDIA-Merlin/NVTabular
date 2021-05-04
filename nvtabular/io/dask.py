@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 import collections
 
 import dask
+import pandas as pd
 from dask.base import tokenize
+from dask.dataframe.core import _concat, new_dd_object
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from nvtx import annotate
@@ -27,9 +29,33 @@ from .shuffle import Shuffle
 from .writer_factory import _writer_cls_factory, writer_factory
 
 
+class DaskSubgraph:
+    """Simple container for a Dask subgraph
+
+    Parameters
+    ----------
+    full_graph: dask.HighLevelGraph
+        Full graph for some DataFrame collection.
+    keys: set
+        Subset of collection keys required for this subgraph.
+        This set will be used to cull all unrelated tasks from
+        the full graph during initialization.
+    """
+
+    def __init__(self, full_graph, name, parts):
+        self.name = name
+        self.parts = parts
+        self.subgraph = full_graph.cull({(self.name, part) for part in self.parts})
+
+    def __getitem__(self, part):
+        key = (self.name, part)
+        dsk = self.subgraph.cull({key})
+        return dask.get(dsk, key)
+
+
 @annotate("write_output_partition", color="green", domain="nvt_python")
 def _write_output_partition(
-    gdf,
+    df,
     processed_path,
     shuffle,
     out_files_per_proc,
@@ -39,8 +65,10 @@ def _write_output_partition(
     label_names,
     output_format,
     num_threads,
+    cpu,
+    suffix,
 ):
-    gdf_size = len(gdf)
+    df_size = len(df)
     out_files_per_proc = out_files_per_proc or 1
 
     # Get cached writer (or create/cache a new one)
@@ -55,14 +83,164 @@ def _write_output_partition(
                 use_guid=True,
                 bytes_io=(shuffle == Shuffle.PER_WORKER),
                 num_threads=num_threads,
+                cpu=cpu,
+                suffix=suffix,
             )
             writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
             writer_cache[processed_path] = writer
 
         # Add data
-        writer.add_data(gdf)
+        writer.add_data(df)
 
-    return gdf_size
+    return df_size
+
+
+def _get_partition_groups(df, partition_cols, fs, output_path, filename):
+    # Logic copied from cudf/cudf/io/parquet.py
+    df = df.sort_values(partition_cols)
+    divisions = df[partition_cols].drop_duplicates(ignore_index=True)
+    splits = df[partition_cols].searchsorted(divisions, side="left")
+    splits = splits.tolist() + [len(df[partition_cols])]
+
+    subgroups, fns = [], []
+    for i in range(0, len(splits) - 1):
+        sub_df = df.iloc[splits[i] : splits[i + 1]].copy(deep=False)
+        if sub_df is None or len(sub_df) == 0:
+            continue
+        keys = tuple(sub_df[col].iloc[0] for col in partition_cols)
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        subdir = fs.sep.join(
+            [
+                "{colname}={value}".format(colname=name, value=val)
+                for name, val in zip(partition_cols, keys)
+            ]
+        )
+        prefix = fs.sep.join([output_path, subdir])
+        fs.mkdirs(prefix, exist_ok=True)
+        fns.append(fs.sep.join([subdir, filename]))
+
+        write_df = sub_df.copy(deep=False)
+        write_df.drop(columns=partition_cols, inplace=True)
+        subgroups.append(write_df)
+
+    return fns, subgroups
+
+
+@annotate("write_partitioned", color="green", domain="nvt_python")
+def _write_partitioned(
+    df,
+    filename,
+    output_path,
+    partition_cols,
+    shuffle,
+    fs,
+    cat_names,
+    cont_names,
+    label_names,
+    output_format,
+    num_threads,
+    cpu,
+):
+    # Logic copied from cudf/cudf/io/parquet.py
+    data_cols = df.columns.drop(partition_cols)
+    if len(data_cols) == 0:
+        raise ValueError("No data left to save outside partition columns")
+
+    # Partition the input data
+    fns, dfs = _get_partition_groups(df, partition_cols, fs, output_path, filename)
+    writer = writer_factory(
+        output_format,
+        output_path,
+        1,
+        shuffle,
+        num_threads=num_threads,
+        cpu=cpu,
+        fns=fns,
+    )
+    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+
+    # Add the partitioned data
+    writer.add_data(dfs)
+
+    # Return metadata and row-count in dict
+    return writer.close()
+
+
+@annotate("write_subgraph", color="green", domain="nvt_python")
+def _write_subgraph(
+    subgraph,
+    fn,
+    output_path,
+    shuffle,
+    fs,
+    cat_names,
+    cont_names,
+    label_names,
+    output_format,
+    num_threads,
+    cpu,
+    suffix,
+):
+
+    writer = writer_factory(
+        output_format,
+        output_path,
+        1,
+        shuffle,
+        bytes_io=(shuffle == Shuffle.PER_WORKER),
+        num_threads=num_threads,
+        cpu=cpu,
+        fns=[fn + suffix],
+    )
+    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+
+    # Add data
+    num_rows = 0
+    for part in subgraph.parts:
+        table = subgraph[part]
+        writer.add_data(table)
+        num_rows += len(table)
+        del table
+
+    # Return metadata and row-count in dict
+    return writer.close()
+
+
+def _write_metadata_files(md_list, output_path, output_format, cpu):
+
+    # Separate and merge metadata
+    general_md = []
+    special_md = []
+    for md in md_list:
+        general_md.append(md[0])
+        special_md.append(md[1])
+    general_md = _merge_general_metadata(general_md)
+    special_md = dict(collections.ChainMap(*special_md))
+
+    # Write metadata files
+    if not isinstance(output_path, str):
+        output_path = str(output_path)
+    wc, fs = _writer_cls_factory(output_format, output_path, cpu)
+    wc.write_general_metadata(general_md, fs, output_path)
+    wc.write_special_metadata(special_md, fs, output_path)
+
+
+def _simple_shuffle(ddf, plan):
+
+    # Construct graph for a simple shuffle
+    token = tokenize(ddf, plan)
+    name = "shuffled-" + token
+    final_tasks = collections.defaultdict(list)
+    ignore_index = True
+    for i, p in enumerate(plan):
+        final_tasks[(name, p)].append((ddf._name, i))
+    dsk = {k: (_concat, v, ignore_index) for k, v in final_tasks.items()}
+
+    # Conver to a DataFrame collection
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    divisions = [None] * (len(dsk) + 1)
+    return new_dd_object(graph, name, ddf._meta, divisions)
 
 
 def _ddf_to_dataset(
@@ -70,6 +248,7 @@ def _ddf_to_dataset(
     fs,
     output_path,
     shuffle,
+    file_partition_map,
     out_files_per_proc,
     cat_names,
     cont_names,
@@ -77,31 +256,102 @@ def _ddf_to_dataset(
     output_format,
     client,
     num_threads,
+    cpu,
+    suffix="",
+    partition_on=None,
 ):
+
     # Construct graph for Dask-based dataset write
-    name = "write-processed"
-    write_name = name + tokenize(
-        ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names
+    token = tokenize(
+        ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names, suffix, partition_on
     )
-    task_list = []
+    name = "write-processed-" + token
+    write_name = name + "-partition" + token
+
+    # Check that the data is in the correct place
+    assert isinstance(ddf._meta, pd.DataFrame) is cpu
+
     dsk = {}
-    for idx in range(ddf.npartitions):
-        key = (write_name, idx)
-        dsk[key] = (
-            _write_output_partition,
-            (ddf._name, idx),
+    task_list = []
+    if partition_on:
+        # Use hive partitioning to write the data
+        cached_writers = False
+        for idx in range(ddf.npartitions):
+            task_list.append((write_name, idx))
+            dsk[task_list[-1]] = (
+                _write_partitioned,
+                (ddf._name, idx),
+                f"part.{idx}{suffix}",
+                output_path,
+                partition_on,
+                shuffle,
+                fs,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+                num_threads,
+                cpu,
+            )
+        dsk[name] = (
+            _write_metadata_files,
+            task_list,
             output_path,
-            shuffle,
-            out_files_per_proc,
-            fs,
-            cat_names,
-            cont_names,
-            label_names,
             output_format,
-            num_threads,
+            cpu,
         )
-        task_list.append(key)
-    dsk[name] = (lambda x: x, task_list)
+    elif file_partition_map is not None:
+        # Use specified mapping of data to output files
+        cached_writers = False
+        full_graph = ddf.dask
+        for fn, parts in file_partition_map.items():
+            # Isolate subgraph for this output file
+            subgraph = DaskSubgraph(full_graph, ddf._name, parts)
+            task_list.append((write_name, fn))
+            dsk[task_list[-1]] = (
+                _write_subgraph,
+                subgraph,
+                fn,
+                output_path,
+                shuffle,
+                fs,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+                num_threads,
+                cpu,
+                suffix,
+            )
+        dsk[name] = (
+            _write_metadata_files,
+            task_list,
+            output_path,
+            output_format,
+            cpu,
+        )
+    else:
+        cached_writers = True
+        for idx in range(ddf.npartitions):
+            key = (write_name, idx)
+            dsk[key] = (
+                _write_output_partition,
+                (ddf._name, idx),
+                output_path,
+                shuffle,
+                out_files_per_proc,
+                fs,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+                num_threads,
+                cpu,
+                suffix,
+            )
+            task_list.append(key)
+        dsk[name] = (lambda x: x, task_list)
+
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
     out = Delayed(name, graph)
 
@@ -111,11 +361,12 @@ def _ddf_to_dataset(
     else:
         out = dask.compute(out, scheduler="synchronous")[0]
 
-    # Follow-up Shuffling and _metadata creation
-    _finish_dataset(client, ddf, output_path, fs, output_format)
+    if cached_writers:
+        # Follow-up Shuffling and _metadata creation
+        _finish_dataset(client, ddf, output_path, fs, output_format, cpu)
 
 
-def _finish_dataset(client, ddf, output_path, fs, output_format):
+def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
     # Finish data writing
     if client:
         client.cancel(ddf)
@@ -139,7 +390,7 @@ def _finish_dataset(client, ddf, output_path, fs, output_format):
     if not isinstance(output_path, str):
         output_path = str(output_path)
 
-    wc, fs = _writer_cls_factory(output_format, output_path)
+    wc, fs = _writer_cls_factory(output_format, output_path, cpu)
     wc.write_general_metadata(general_md, fs, output_path)
     wc.write_special_metadata(special_md, fs, output_path)
 

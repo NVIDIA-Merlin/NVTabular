@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,16 +80,18 @@ class Model(torch.nn.Module):
 
     def forward(self, x_cat, x_cont):
         mh_cat = None
+        concat_list = []
         if isinstance(x_cat, tuple):
             x_cat, mh_cat = x_cat
         if mh_cat:
             mh_cat = self.mh_cat_layer(mh_cat)
+            concat_list.append(mh_cat)
         x_cat = self.initial_cat_layer(x_cat)
-        x_cont = self.initial_cont_layer(x_cont)
-        if mh_cat is not None:
-            x = torch.cat([x_cat, x_cont, mh_cat], 1)
-        else:
-            x = torch.cat([x_cat, x_cont], 1)
+        concat_list.append(x_cat)
+        if x_cont is not None:
+            x_cont = self.initial_cont_layer(x_cont)
+            concat_list.append(x_cont)
+        x = torch.cat(concat_list, 1)
         for layer in self.layers:
             x = layer(x)
         x = self.output_layer(x)

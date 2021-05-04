@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ class AvroDatasetEngine(DatasetEngine):
     Uses `cudf` to create new partitions.
     """
 
-    def __init__(self, paths, part_size, storage_options=None, **kwargs):
-        super().__init__(paths, part_size, storage_options)
+    def __init__(self, paths, part_size, storage_options=None, cpu=False, **kwargs):
+        super().__init__(paths, part_size, storage_options=storage_options, cpu=cpu)
         if kwargs != {}:
             raise ValueError("Unexpected AvroDatasetEngine argument(s).")
         self.blocksize = part_size
@@ -41,7 +41,15 @@ class AvroDatasetEngine(DatasetEngine):
         if len(self.paths) == 1 and self.fs.isdir(self.paths[0]):
             self.paths = self.fs.glob(self.fs.sep.join([self.paths[0], "*"]))
 
-    def to_ddf(self, columns=None):
+        if self.cpu:
+            raise ValueError("cpu=True not supported for AvroDatasetEngine.")
+
+    def to_ddf(self, columns=None, cpu=None):
+
+        # Check if we are using cpu
+        cpu = self.cpu if cpu is None else cpu
+        if cpu:
+            raise ValueError("cpu=True not supported for AvroDatasetEngine.")
 
         # Get list of pieces for each output
         pieces, meta = self.process_metadata(columns=columns)
@@ -63,6 +71,12 @@ class AvroDatasetEngine(DatasetEngine):
             for i, piece in enumerate(pieces)
         }
         return new_dd_object(dsk, read_avro_name, meta.iloc[:0], [None] * (len(pieces) + 1))
+
+    def to_cpu(self):
+        raise ValueError("cpu=True not supported for AvroDatasetEngine.")
+
+    def to_gpu(self):
+        self.cpu = False
 
     def process_metadata(self, columns=None):
 

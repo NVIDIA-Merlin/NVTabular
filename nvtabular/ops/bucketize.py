@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
 # limitations under the License.
 import cudf
 from nvtx import annotate
-from six import callable
 
 from .operator import ColumnNames, Operator
 
 
 class Bucketize(Operator):
-    """This operation transforms continuous features into categorical features.
-    The outputs are bins based on the boundaries
+    """This operation transforms continuous features into categorical features
+    with bins based on the provided bin boundaries.
 
     Example usage::
 

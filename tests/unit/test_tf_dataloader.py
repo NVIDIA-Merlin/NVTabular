@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 
+# import importlib
 import os
+import subprocess
 
 import cudf
 import numpy as np
@@ -22,12 +24,62 @@ import pytest
 from sklearn.metrics import roc_auc_score
 
 import nvtabular as nvt
-from nvtabular import ops as ops
+import nvtabular.tools.data_gen as datagen
+from nvtabular import ops
 
 tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
+
+
+@pytest.mark.parametrize("batch_size", [10, 9, 8])
+@pytest.mark.parametrize("drop_last", [True, False])
+@pytest.mark.parametrize("num_rows", [100])
+def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
+    df = cudf.DataFrame(
+        {
+            "cat1": [1] * num_rows,
+            "cat2": [2] * num_rows,
+            "cat3": [3] * num_rows,
+            "label": [0] * num_rows,
+            "cont3": [3.0] * num_rows,
+            "cont2": [2.0] * num_rows,
+            "cont1": [1.0] * num_rows,
+        }
+    )
+    path = os.path.join(tmpdir, "dataset.parquet")
+    df.to_parquet(path)
+    cat_names = ["cat3", "cat2", "cat1"]
+    cont_names = ["cont3", "cont2", "cont1"]
+    label_name = ["label"]
+
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        [path],
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        label_names=label_name,
+        shuffle=False,
+        drop_last=drop_last,
+    )
+
+    all_len = len(data_itr) if drop_last else len(data_itr) - 1
+    all_rows = 0
+    for idx, (X, y) in enumerate(data_itr):
+        all_rows += len(X["cat1"])
+        if idx < all_len:
+            assert list(X["cat1"].numpy()) == [1] * batch_size
+            assert list(X["cat2"].numpy()) == [2] * batch_size
+            assert list(X["cat3"].numpy()) == [3] * batch_size
+            assert list(X["cont1"].numpy()) == [1.0] * batch_size
+            assert list(X["cont2"].numpy()) == [2.0] * batch_size
+            assert list(X["cont3"].numpy()) == [3.0] * batch_size
+
+    if drop_last and num_rows % batch_size > 0:
+        assert num_rows > all_rows
+    else:
+        assert num_rows == all_rows
 
 
 def test_tf_catname_ordering(tmpdir):
@@ -127,8 +179,8 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         for column, x in X.items():
             try:
                 these_cols.remove(column)
-            except ValueError:
-                raise AssertionError
+            except ValueError as e:
+                raise AssertionError from e
             assert x.shape[0] == num_samples
         assert len(these_cols) == 0
         rows += num_samples
@@ -230,9 +282,9 @@ def test_mh_support(tmpdir, batch_size):
 @pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_validater(tmpdir, batch_size):
     n_samples = 9
-    gdf = cudf.DataFrame(
-        {"a": np.random.randn(n_samples), "label": np.random.randint(2, size=n_samples)}
-    )
+    rand = np.random.RandomState(0)
+
+    gdf = cudf.DataFrame({"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)})
 
     dataloader = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(gdf),
@@ -243,11 +295,11 @@ def test_validater(tmpdir, batch_size):
         shuffle=False,
     )
 
-    input = tf.keras.Input(name="a", dtype=tf.float32, shape=(1,))
-    x = tf.keras.layers.Dense(128, "relu")(input)
+    input_ = tf.keras.Input(name="a", dtype=tf.float32, shape=(1,))
+    x = tf.keras.layers.Dense(128, "relu")(input_)
     x = tf.keras.layers.Dense(1, activation="softmax")(x)
 
-    model = tf.keras.Model(inputs=input, outputs=x)
+    model = tf.keras.Model(inputs=input_, outputs=x)
     model.compile("sgd", "binary_crossentropy", metrics=["accuracy", tf.keras.metrics.AUC()])
 
     validater = tf_dataloader.KerasSequenceValidater(dataloader)
@@ -263,7 +315,7 @@ def test_validater(tmpdir, batch_size):
 
     logs = {}
     validater.on_epoch_end(0, logs)
-    auc_key = [i for i in logs.keys() if i.startswith("val_auc")][0]
+    auc_key = [i for i in logs if i.startswith("val_auc")][0]
 
     true_accuracy = (labels == (predictions > 0.5)).mean()
     estimated_accuracy = logs["val_accuracy"]
@@ -272,3 +324,99 @@ def test_validater(tmpdir, batch_size):
     true_auc = roc_auc_score(labels, predictions)
     estimated_auc = logs[auc_key]
     assert np.isclose(true_auc, estimated_auc, rtol=1e-6)
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("batch_size", [1, 10, 100])
+@pytest.mark.parametrize("global_rank", [0, 1])
+def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
+    cont_names = ["x", "y", "id"]
+    cat_names = ["name-string", "name-cat"]
+    label_name = ["label"]
+    data_loader = tf_dataloader.KerasSequenceLoader(
+        str(datasets["parquet"]),
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        buffer_size=0.1,
+        label_names=label_name,
+        engine=engine,
+        shuffle=False,
+        global_size=2,
+        global_rank=global_rank,
+    )
+    indices = data_loader._gather_indices_for_dev(None)
+    assert indices == [global_rank]
+
+
+# @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
+@pytest.mark.skip(reason="passes locally but fails on CI due to environment issues")
+def test_horovod_multigpu(tmpdir):
+    json_sample = {
+        "conts": {},
+        "cats": {
+            "genres": {
+                "dtype": None,
+                "cardinality": 50,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+                "multi_min": 2,
+                "multi_max": 4,
+                "multi_avg": 3,
+            },
+            "movieId": {
+                "dtype": None,
+                "cardinality": 500,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+            },
+            "userId": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
+        },
+        "labels": {"rating": {"dtype": None, "cardinality": 2}},
+    }
+    cols = datagen._get_cols_from_schema(json_sample)
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.0001)
+    target_path = os.path.join(tmpdir, "input/")
+    os.mkdir(target_path)
+    df_files = df_gen.full_df_create(10000, cols, output=target_path)
+    # process them
+    cat_features = nvt.ColumnGroup(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
+    ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    output = cat_features + ratings
+    proc = nvt.Workflow(output)
+    train_iter = nvt.Dataset(df_files, part_size="10MB")
+    proc.fit(train_iter)
+    target_path_train = os.path.join(tmpdir, "train/")
+    os.mkdir(target_path_train)
+    proc.transform(train_iter).to_parquet(output_path=target_path_train, out_files_per_proc=5)
+    # add new location
+    target_path = os.path.join(tmpdir, "workflow/")
+    os.mkdir(target_path)
+    proc.save(target_path)
+    curr_path = os.path.abspath(__file__)
+    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
+    hvd_wrap_path = os.path.join(repo_root, "examples/multi-gpu-movielens/hvd_wrapper.sh")
+    hvd_exam_path = os.path.join(repo_root, "examples/multi-gpu-movielens/tf_trainer.py")
+    with subprocess.Popen(
+        [
+            "horovodrun",
+            "-np",
+            "2",
+            "-H",
+            "localhost:2",
+            "sh",
+            hvd_wrap_path,
+            "python",
+            hvd_exam_path,
+            "--dir_in",
+            f"{tmpdir}",
+            "--batch_size",
+            "1024",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as process:
+        process.wait()
+        stdout, stderr = process.communicate()
+        print(stdout, stderr)
+        assert "Loss:" in str(stdout)

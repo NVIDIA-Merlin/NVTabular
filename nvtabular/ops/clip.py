@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnNames, Operator
 
@@ -47,12 +48,12 @@ class Clip(Operator):
         self.max_value = max_value
 
     @annotate("Clip_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        z_gdf = gdf[columns]
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        z_df = df[columns]
         if self.min_value is not None:
-            z_gdf[z_gdf < self.min_value] = self.min_value
+            z_df[z_df < self.min_value] = self.min_value
         if self.max_value is not None:
-            z_gdf[z_gdf > self.max_value] = self.max_value
-        return z_gdf
+            z_df[z_df > self.max_value] = self.max_value
+        return z_df
 
     transform.__doc__ = Operator.transform.__doc__

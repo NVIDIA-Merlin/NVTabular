@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,4 +18,4 @@ from . import dataset, shuffle
 
 Dataset = dataset.Dataset
 Shuffle = shuffle.Shuffle
-_shuffle_gdf = shuffle._shuffle_gdf
+_shuffle_df = shuffle._shuffle_df

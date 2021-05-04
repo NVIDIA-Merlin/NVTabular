@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@ import cudf
 import cupy
 import dask_cudf
 from dask.delayed import Delayed
+
+import nvtabular as nvt
+from nvtabular.dispatch import _read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .operator import ColumnNames, Operator
@@ -37,14 +40,14 @@ class JoinGroupby(StatOperator):
 
         # Use JoinGroupby to define a NVTabular workflow
         groupby_features = ['cat1', 'cat2', 'cat3'] >> ops.JoinGroupby(
-            out_path=str(tmpdir), stats=['sum','count'], cont_names=['num1']
+            out_path=str(tmpdir), stats=['sum','count'], cont_cols=['num1']
         )
         processor = nvtabular.Workflow(groupby_features)
 
     Parameters
     -----------
-    cont_names : list of str
-        The continuous column names to calculate statistics for
+    cont_cols : list of str or ColumnGroup
+        The continuous columns to calculate statistics for
         (for each unique group in each column in `columns`).
     stats : list of str, default []
         List of statistics to calculate for each unique group. Note
@@ -74,8 +77,8 @@ class JoinGroupby(StatOperator):
 
     def __init__(
         self,
-        cont_names=None,
-        stats=["count"],
+        cont_cols=None,
+        stats=("count",),
         tree_width=None,
         cat_cache="host",
         out_path=None,
@@ -86,7 +89,10 @@ class JoinGroupby(StatOperator):
 
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_names = cont_names
+        self.cont_cols = (
+            cont_cols if isinstance(cont_cols, nvt.ColumnGroup) else nvt.ColumnGroup(cont_cols)
+        )
+        self.cont_names = self.cont_cols.columns
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"
@@ -134,26 +140,31 @@ class JoinGroupby(StatOperator):
             columns, gdf.columns, self.name_sep
         )
 
+        _read_pq_func = _read_parquet_dispatch(gdf)
         for name in cat_names:
+            new_part = cudf.DataFrame()
             storage_name = self.storage_name.get(name, name)
             name = multi_col_group.get(name, name)
             path = self.categories[storage_name]
             selection_l = list(name) if isinstance(name, tuple) else [name]
             selection_r = list(name) if isinstance(name, tuple) else [storage_name]
 
-            stat_gdf = nvt_cat._read_groupby_stat_df(path, storage_name, self.cat_cache)
+            stat_gdf = nvt_cat._read_groupby_stat_df(
+                path, storage_name, self.cat_cache, _read_pq_func
+            )
             tran_gdf = gdf[selection_l + [tmp]].merge(
                 stat_gdf, left_on=selection_l, right_on=selection_r, how="left"
             )
             tran_gdf = tran_gdf.sort_values(tmp)
             tran_gdf.drop(columns=selection_l + [tmp], inplace=True)
             new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-            new_gdf[new_cols] = tran_gdf[new_cols].reset_index(drop=True)
+            new_part = tran_gdf[new_cols].reset_index(drop=True)
+            new_gdf = cudf.concat([new_gdf, new_part], axis=1)
         gdf.drop(columns=[tmp], inplace=True)
         return new_gdf
 
     def dependencies(self):
-        return self.cont_names
+        return self.cont_cols
 
     def output_column_names(self, columns):
         # TODO: the names here are defined in categorify/mid_level_groupby
@@ -170,11 +181,9 @@ class JoinGroupby(StatOperator):
                         output.append(f"{name}_{cont}_{stat}")
         return output
 
-    def save(self):
-        return [self.categories, self.storage_name]
-
-    def load(self, stats):
-        self.categories, self.storage_name = stats
+    def set_storage_path(self, new_path, copy=False):
+        self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
+        self.out_path = new_path
 
     def clear(self):
         self.categories = {}

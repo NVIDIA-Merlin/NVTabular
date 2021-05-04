@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -151,6 +151,8 @@ def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
 def _row_wise_inner_product_cpu(
     a, a_indptr, a_indices, a_data, b, b_indptr, b_indices, b_data, output
 ):
+    # https://github.com/PyCQA/pylint/issues/2910
+    # pylint: disable=not-an-iterable
     for i in numba.prange(len(a)):
         output[i] = _inner_product_cpu(
             a[i], a_indptr, a_indices, a_data, b[i], b_indptr, b_indices, b_data

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,15 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import logging
+import os
+import sys
+import time
+import warnings
 from typing import TYPE_CHECKING, Optional
 
+import cloudpickle
 import cudf
 import dask
-import yaml
 from dask.core import flatten
 
-from nvtabular.column_group import ColumnGroup, iter_nodes
+from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
+from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.worker import clean_worker_cache
@@ -37,8 +43,8 @@ class Workflow:
     """
     The Workflow class applies a graph of operations onto a dataset, letting you transform
     datasets to do feature engineering and preprocessing operations. This class follows an API
-    similar to Transformers in sklearn: we first 'fit' the workflow by calculating statistics
-    on the dataset, and then once fit we can 'transform' datasets by applying these statistics.
+    similar to Transformers in sklearn: we first ``fit`` the workflow by calculating statistics
+    on the dataset, and then once fit we can ``transform`` datasets by applying these statistics.
 
     Example usage::
 
@@ -63,11 +69,13 @@ class Workflow:
     """
 
     def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
-        self.column_group = column_group
+        self.column_group = _merge_add_nodes(column_group)
         self.client = client
+        self.input_dtypes = None
+        self.output_dtypes = None
 
     def transform(self, dataset: Dataset) -> Dataset:
-        """Transforms the dataset by applying the graph of operators to it. Requires the 'fit'
+        """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
 
         This method returns a Dataset object, with the transformations lazily loaded. None
@@ -84,7 +92,12 @@ class Workflow:
         """
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(_transform_ddf(ddf, self.column_group), client=self.client)
+        return Dataset(
+            _transform_ddf(ddf, self.column_group),
+            client=self.client,
+            cpu=dataset.cpu,
+            base_dataset=dataset.base_dataset,
+        )
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
@@ -140,9 +153,18 @@ class Workflow:
             for dependencies in stat_ops.values():
                 dependencies.difference_update(current_phase)
 
+        # hack: store input/output dtypes here. We should have complete dtype
+        # information for each operator (like we do for column names), but as
+        # an interim solution this gets us what we need.
+        input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
+        self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
+        output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
+        self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
+
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
-        call. Equivalent to calling workflow.fit(dataset) followed by workflow.transform(dataset)
+        call. Equivalent to calling ``workflow.fit(dataset)`` followed by
+        ``workflow.transform(dataset)``
 
         Parameters
         -----------
@@ -155,63 +177,94 @@ class Workflow:
         self.fit(dataset)
         return self.transform(dataset)
 
-    def save_stats(self, path):
-        node_ids = {}
-        output_data = []
+    def save(self, path):
+        """Save this workflow to disk
 
-        def add_node(node):
-            if node in node_ids:
-                return node_ids[node]
+        Parameters
+        ----------
+        path: str
+            The path to save the workflow to
+        """
+        # avoid a circular import getting the version
+        from nvtabular import __version__ as nvt_version
 
-            data = {
-                "columns": node.columns,
-            }
-            if node.parents:
-                data["name"] = node.label
-                data["parents"] = [add_node(parent) for parent in node.parents]
-            else:
-                data["name"] = "input"
+        os.makedirs(path, exist_ok=True)
 
-            if isinstance(node.op, StatOperator):
-                data["stats"] = node.op.save()
+        # point all stat ops to store intermediate output (parquet etc) at the path
+        # this lets us easily bundle
+        for stat in _get_stat_ops([self.column_group]):
+            stat.op.set_storage_path(path, copy=True)
 
-            nodeid = len(output_data)
-            data["id"] = nodeid
-            node_ids[node] = nodeid
-            output_data.append(data)
-            return nodeid
+        # generate a file of all versions used to generate this bundle
+        with open(os.path.join(path, "metadata.json"), "w") as o:
+            json.dump(
+                {
+                    "versions": {
+                        "nvtabular": nvt_version,
+                        "cudf": cudf.__version__,
+                        "python": sys.version,
+                    },
+                    "generated_timestamp": int(time.time()),
+                },
+                o,
+            )
 
-        # recursively save each operator, providing enough context
-        # to (columns/labels etc) to load again
-        add_node(self.column_group)
-        with open(path, "w") as outfile:
-            yaml.safe_dump(output_data, outfile, default_flow_style=False)
+        # dump out the full workflow (graph/stats/operators etc) using cloudpickle
+        with open(os.path.join(path, "workflow.pkl"), "wb") as o:
+            cloudpickle.dump(self, o)
 
-    def load_stats(self, path):
-        def load_node(nodeid, node):
-            saved = nodes[nodeid]
-            if "parents" not in saved:
-                return
+    @classmethod
+    def load(cls, path, client=None):
+        """Load up a saved workflow object from disk
 
-            if node.label != saved["name"]:
-                raise ValueError(
-                    "Failed to load saved statistics: names %s != %s" % (node.label, saved["name"])
+        Parameters
+        ----------
+        path: str
+            The path to load the workflow from
+        client: distributed.Client, optional
+            The Dask distributed client to use for multi-gpu processing and multi-node processing
+
+        Returns
+        -------
+            Workflow
+        """
+        # avoid a circular import getting the version
+        from nvtabular import __version__ as nvt_version
+
+        # check version information from the metadata blob, and warn if we have a mismatch
+        meta = json.load(open(os.path.join(path, "metadata.json")))
+
+        def parse_version(version):
+            return version.split(".")[:2]
+
+        def check_version(stored, current, name):
+            if parse_version(stored) != parse_version(current):
+                warnings.warn(
+                    f"Loading workflow generated with {name} version {stored} "
+                    f"- but we are running {name} {current}. This might cause issues"
                 )
-            if node.columns != saved["columns"]:
-                raise ValueError(
-                    "Failed to load saved statistics: columns %s != %s"
-                    % (node.columns, saved["column"])
-                )
 
-            if isinstance(node.op, StatOperator):
-                node.op.load(saved["stats"])
+        # make sure we don't have any major/minor version conflicts between the stored worklflow
+        # and the current environment
+        versions = meta["versions"]
+        check_version(versions["nvtabular"], nvt_version, "nvtabular")
+        check_version(versions["cudf"], cudf.__version__, "cudf")
+        check_version(versions["python"], sys.version, "python")
 
-            for parentid, parent in zip(saved["parents"], node.parents):
-                load_node(parentid, parent)
+        # load up the workflow object di
+        workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
+        workflow.client = client
 
-        # recursively load each operator in the graph
-        nodes = yaml.safe_load(open(path))
-        load_node(nodes[-1]["id"], self.column_group)
+        # we might have been copied since saving, update all the stat ops
+        # with the new path to their storage locations
+        for stat in _get_stat_ops([workflow.column_group]):
+            stat.op.set_storage_path(path, copy=False)
+
+        return workflow
+
+    def __getstate__(self):
+        # dask client objects aren't picklable - exclude from saved representation
+        return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
         for stat in _get_stat_ops([self.column_group]):
@@ -235,13 +288,20 @@ def _transform_ddf(ddf, column_groups):
 
     columns = list(flatten(cg.flattened_columns for cg in column_groups))
 
+    # Check if we are only selecting columns (no transforms).
+    # If so, we should perform column selection at the ddf level.
+    # Otherwise, Dask will not push the column selection into the
+    # IO function.
+    if all((c.op is None and not c.parents) for c in column_groups):
+        return ddf[_get_unique(columns)]
+
     # TODO: constructing meta like this loses dtype information on the ddf
     # sets it all to 'float64'. We should propogate dtype information along
     # with column names in the columngroup graph
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
-        meta=cudf.DataFrame({k: [] for k in columns}),
+        meta=type(ddf._meta)({k: [] for k in columns}),
     )
 
 
@@ -249,29 +309,42 @@ def _get_stat_ops(nodes):
     return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
 
 
-def _transform_partition(root_gdf, column_groups):
-    """ Transforms a single partition by appyling all operators in a ColumnGroup """
-    output = cudf.DataFrame()
+def _get_unique(cols):
+    # Need to preserve order in unique-column list
+    return list({x: x for x in cols}.keys())
+
+
+def _transform_partition(root_df, column_groups):
+    """Transforms a single partition by appyling all operators in a ColumnGroup"""
+    output = None
     for column_group in column_groups:
+        unique_flattened_cols = _get_unique(column_group.flattened_columns)
         # collect dependencies recursively if we have parents
         if column_group.parents:
-            gdf = cudf.DataFrame()
+            df = None
+            columns = None
             for parent in column_group.parents:
-                parent_gdf = _transform_partition(root_gdf, [parent])
-                for column in parent.flattened_columns:
-                    gdf[column] = parent_gdf[column]
+                unique_flattened_cols_parent = _get_unique(parent.flattened_columns)
+                parent_df = _transform_partition(root_df, [parent])
+                if df is None or not len(df):
+                    df = parent_df[unique_flattened_cols_parent]
+                    columns = set(unique_flattened_cols_parent)
+                else:
+                    new_columns = set(unique_flattened_cols_parent) - columns
+                    df = _concat_columns([df, parent_df[list(new_columns)]])
+                    columns.update(new_columns)
         else:
-            # otherwise select the input from the root gdf
-            gdf = root_gdf[column_group.flattened_columns]
+            # otherwise select the input from the root df
+            df = root_df[unique_flattened_cols]
 
         # apply the operator if necessary
         if column_group.op:
             try:
-                gdf = column_group.op.transform(column_group.input_column_names, gdf)
+                df = column_group.op.transform(column_group.input_column_names, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
-            if gdf is None:
+            if df is None:
                 raise RuntimeError(
                     "Operator %s didn't return a value during transform" % column_group.op
                 )
@@ -279,11 +352,9 @@ def _transform_partition(root_gdf, column_groups):
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
-        for column in column_group.flattened_columns:
-            if column not in gdf:
-                raise ValueError(
-                    f"Failed to find {column} in output of {column_group}, which"
-                    f" has columns {gdf.columns}"
-                )
-            output[column] = gdf[column]
+        if not output:
+            output = df[unique_flattened_cols]
+        else:
+            output = _concat_columns([output, df[unique_flattened_cols]])
+
     return output

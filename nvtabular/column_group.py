@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,15 +35,35 @@ class ColumnGroup:
     """
 
     def __init__(self, columns):
-        if isinstance(columns, str):
-            self.columns = [columns]
-        else:
-            self.columns = [_convert_col(col) for col in columns]
         self.parents = []
         self.children = []
         self.op = None
         self.kind = None
         self.dependencies = None
+
+        if isinstance(columns, str):
+            columns = [columns]
+
+        # if any of the values we're passed are a columngroup
+        # we have to ourselves as a childnode in the graph.
+        if any(isinstance(col, ColumnGroup) for col in columns):
+            self.columns = []
+            self.kind = "[...]"
+            for col in columns:
+                if not isinstance(col, ColumnGroup):
+                    col = ColumnGroup(col)
+                else:
+                    # we can't handle nesting arbitrarily deep here
+                    # only accept non-nested (str) columns here
+                    if any(not isinstance(c, str) for c in col.columns):
+                        raise ValueError("Can't handle more than 1 level of nested columns")
+
+                col.children.append(self)
+                self.parents.append(col)
+                self.columns.append(tuple(col.columns))
+
+        else:
+            self.columns = [_convert_col(col) for col in columns]
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
@@ -153,7 +173,7 @@ class ColumnGroup:
 
     @property
     def input_column_names(self):
-        """ returns the names of columns in the main chain """
+        """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
             col for parent in self.parents for col in parent.columns if parent not in dependencies
@@ -193,7 +213,7 @@ def iter_nodes(nodes):
 
 
 def _to_graphviz(column_group):
-    """ converts a columngroup to a GraphViz DiGraph object useful for display in notebooks """
+    """Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
     column_group = _merge_add_nodes(column_group)
@@ -216,11 +236,11 @@ def _to_graphviz(column_group):
 
 
 def _merge_add_nodes(graph):
-    """ merges repeat '+' nodes, leading to nicer looking outputs """
+    """Merges repeat '+' nodes, leading to nicer looking outputs"""
     # lets take a copy to avoid mutating the input
     import copy
 
-    graph = copy.deepcopy(graph)
+    graph = copy.copy(graph)
 
     queue = [graph]
     while queue:
@@ -255,4 +275,4 @@ def _convert_col(col):
     elif isinstance(col, list):
         return tuple(col)
     else:
-        raise ValueError("Invalid column value for ColumnGroup: %s", col)
+        raise ValueError(f"Invalid column value for ColumnGroup: {col}")

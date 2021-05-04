@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ from .operator import ColumnNames, Operator
 
 class Filter(Operator):
     """
-    Filters rows from the dataset. This works by taking a callable that takes a dataframe,
-    and returns a dataframe with unwanted rows filtered out.
+    Filters rows from the dataset. This works by taking a callable that accepts
+    a dataframe, and returns a dataframe with unwanted rows filtered out.
 
     For example to filter out all rows that have a negative value in the ``a`` column::
 

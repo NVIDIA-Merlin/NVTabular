@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 
+import collections
 import logging
+import math
 import random
 import warnings
 
@@ -26,15 +28,16 @@ import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
-from dask.utils import parse_bytes
+from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+from nvtabular.dispatch import _hex_to_int
 from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
-from .dask import _ddf_to_dataset
+from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -130,7 +133,8 @@ class Dataset:
         ddf = ddf.sort_values("user_rank", ignore_index=True)
         dataset = Dataset(ddf)
 
-    Dataset Optimization Tips (DOTs)
+    `Dataset Optimization Tips (DOTs)`
+
     The NVTabular dataset should be created from Parquet files in order
     to get the best possible performance, preferably with a row group size
     of around 128MB.  While NVTabular also supports reading from CSV files,
@@ -163,10 +167,26 @@ class Dataset:
         to GPU memory capacity). Ignored if part_size is passed
         directly. Note that the underlying engine may allow other
         custom kwargs to override this argument. This argument
-        is ignored if path_or_source is a DataFrame type.
+        is ignored if path_or_source is a DataFrame type. If
+        ``cpu=True``, this value will be relative to the total
+        host memory detected by the client process.
     storage_options: None or dict
         Further parameters to pass to the bytes backend. This argument
         is ignored if path_or_source is a DataFrame type.
+    cpu : bool
+        WARNING: Experimental Feature!
+        Whether NVTabular should keep all data in cpu memory when
+        the Dataset is converted to an internal Dask collection. The
+        default value is False, unless ``cudf`` and ``dask_cudf``
+        are not installed (in which case the default is True). In the
+        future, if True, NVTabular will NOT use any available GPU
+        devices for down-stream processing.
+        NOTE: Down-stream ops and output do not yet support a
+        Dataset generated with ``cpu=True``.
+    base_dataset : Dataset
+        Optional reference to the original "base" Dataset object used
+        to construct the current Dataset instance.  This object is
+        used to preserve file-partition mapping information.
     """
 
     def __init__(
@@ -178,26 +198,65 @@ class Dataset:
         storage_options=None,
         dtypes=None,
         client=None,
+        cpu=None,
+        base_dataset=None,
         **kwargs,
     ):
         self.dtypes = dtypes
         self.client = client
+
+        # Check if we are keeping data in cpu memory
+        self.cpu = cpu or False
+
+        # Keep track of base dataset (optional)
+        self.base_dataset = base_dataset or self
+
+        # For now, lets warn the user that "cpu mode" is experimental
+        if self.cpu:
+            warnings.warn(
+                "Initializing an NVTabular Dataset in CPU mode."
+                "This is an experimental feature with extremely limited support!"
+            )
+
         if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
-            if isinstance(path_or_source, cudf.DataFrame):
-                path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
-            elif isinstance(path_or_source, pd.DataFrame):
-                path_or_source = dask_cudf.from_cudf(
-                    cudf.from_pandas(path_or_source), npartitions=1
-                )
-            elif not isinstance(path_or_source, dask_cudf.DataFrame):
-                path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
+            moved_collection = (
+                False  # Whether a pd-backed collection was moved to cudf (or vice versa)
+            )
+            if self.cpu:
+                if isinstance(path_or_source, pd.DataFrame):
+                    # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
+                    path_or_source = dask.dataframe.from_pandas(path_or_source, npartitions=1)
+                elif isinstance(path_or_source, cudf.DataFrame):
+                    # Convert cudf DataFrame to pandas-backed dask.dataframe.DataFrame
+                    path_or_source = dask.dataframe.from_pandas(
+                        path_or_source.to_pandas(), npartitions=1
+                    )
+                elif isinstance(path_or_source, dask_cudf.DataFrame):
+                    # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
+                    path_or_source = path_or_source.to_dask_dataframe()
+                    moved_collection = True
+            else:
+                if isinstance(path_or_source, cudf.DataFrame):
+                    # Convert cudf DataFrame to dask_cudf.DataFrame
+                    path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
+                elif isinstance(path_or_source, pd.DataFrame):
+                    # Convert pandas DataFrame to dask_cudf.DataFrame
+                    path_or_source = dask_cudf.from_cudf(
+                        cudf.from_pandas(path_or_source), npartitions=1
+                    )
+                elif not isinstance(path_or_source, dask_cudf.DataFrame):
+                    # Convert dask.dataframe.DataFrame DataFrame to dask_cudf.DataFrame
+                    path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
+                    moved_collection = True
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
                 warnings.warn("part_mem_fraction is ignored for DataFrame input.")
-            self.engine = DataFrameDatasetEngine(path_or_source)
+            self.engine = DataFrameDatasetEngine(
+                path_or_source, cpu=self.cpu, moved_collection=moved_collection
+            )
         else:
             if part_size:
                 # If a specific partition size is given, use it directly
@@ -205,7 +264,7 @@ class Dataset:
             else:
                 # If a fractional partition size is given, calculate part_size
                 part_mem_fraction = part_mem_fraction or 0.125
-                assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+                assert 0.0 < part_mem_fraction < 1.0
                 if part_mem_fraction > 0.25:
                     warnings.warn(
                         "Using very large partitions sizes for Dask. "
@@ -219,6 +278,7 @@ class Dataset:
                 paths = stringify_path(paths)
             if isinstance(paths, str):
                 paths = [paths]
+            paths = sorted(paths, key=natural_sort_key)
 
             storage_options = storage_options or {}
             # If engine is not provided, try to infer from end of paths[0]
@@ -227,27 +287,29 @@ class Dataset:
             if isinstance(engine, str):
                 if engine == "parquet":
                     self.engine = ParquetDatasetEngine(
-                        paths, part_size, storage_options=storage_options, **kwargs
+                        paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
                     )
                 elif engine == "csv":
                     self.engine = CSVDatasetEngine(
-                        paths, part_size, storage_options=storage_options, **kwargs
+                        paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
                     )
                 elif engine == "avro":
                     try:
                         from .avro import AvroDatasetEngine
-                    except ImportError:
+                    except ImportError as e:
                         raise RuntimeError(
                             "Failed to import AvroDatasetEngine. Make sure uavro is installed."
-                        )
+                        ) from e
 
                     self.engine = AvroDatasetEngine(
-                        paths, part_size, storage_options=storage_options, **kwargs
+                        paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
                     )
                 else:
-                    raise ValueError("Only parquet and csv supported (for now).")
+                    raise ValueError("Only parquet, csv, and avro supported (for now).")
             else:
-                self.engine = engine(paths, part_size, storage_options=storage_options)
+                self.engine = engine(
+                    paths, part_size, cpu=self.cpu, storage_options=storage_options
+                )
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`
@@ -296,7 +358,130 @@ class Dataset:
             return ddf.map_partitions(_set_dtypes, self.dtypes, meta=_meta)
         return ddf
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
+    @property
+    def file_partition_map(self):
+        return self.engine._file_partition_map
+
+    @property
+    def partition_lens(self):
+        return self.engine._partition_lens
+
+    def to_cpu(self):
+        warnings.warn(
+            "Changing an NVTabular Dataset to CPU mode."
+            "This is an experimental feature with extremely limited support!"
+        )
+        self.cpu = True
+        self.engine.to_cpu()
+
+    def to_gpu(self):
+        self.cpu = False
+        self.engine.to_gpu()
+
+    def shuffle_by_keys(self, keys, hive_data=None, npartitions=None):
+        """Shuffle the in-memory Dataset so that all unique-key
+        combinations are moved to the same partition.
+
+        Parameters
+        ----------
+        keys : list(str)
+            Column names to shuffle by.
+        hive_data : bool; default None
+            Whether the dataset is backed by a hive-partitioned
+            dataset (with the keys encoded in the directory structure).
+            By default, the Dataset's `file_partition_map` property will
+            be inspected to infer this setting. When `hive_data` is True,
+            the number of output partitions will correspond to the number
+            of unique key combinations in the dataset.
+        npartitions : int; default None
+            Number of partitions in the output Dataset. For hive-partitioned
+            data, this value should be <= the number of unique key
+            combinations (the default), otherwise it will be ignored. For
+            data that is not hive-partitioned, the ``npartitions`` input
+            should be <= the orginal partition count, otherwise it will be
+            ignored.
+        """
+
+        # Make sure we are dealing with a list
+        keys = [keys] if not isinstance(keys, (list, tuple)) else keys
+
+        # Start with default ddf
+        ddf = self.to_ddf()
+        if npartitions:
+            npartitions = min(ddf.npartitions, npartitions)
+
+        if hive_data is not False:
+            # The keys may be encoded in the directory names.
+            # Let's use the file_partition_map to extract this info.
+            try:
+                _mapping = self.file_partition_map
+            except AttributeError as e:
+                _mapping = None
+                if hive_data:
+                    raise RuntimeError("Failed to extract hive-partition mapping!") from e
+
+            # If we have a `_mapping` available, check if the
+            # file names include information about all our keys
+            hive_mapping = collections.defaultdict(list)
+            if _mapping:
+                for k, v in _mapping.items():
+                    for part in k.split(self.engine.fs.sep)[:-1]:
+                        try:
+                            _key, _val = part.split("=")
+                        except ValueError:
+                            continue
+                        if _key in keys:
+                            hive_mapping[_key].append(_val)
+
+            if set(hive_mapping.keys()) == set(keys):
+
+                # Generate hive-mapping DataFrame summary
+                hive_mapping = type(ddf._meta)(hive_mapping)
+                cols = list(hive_mapping.columns)
+                for c in keys:
+                    typ = ddf._meta[c].dtype
+                    if c in cols:
+                        hive_mapping[c] = hive_mapping[c].astype(typ)
+
+                # Generate simple-shuffle plan
+                target_mapping = hive_mapping.drop_duplicates().reset_index(drop=True)
+                target_mapping.index.name = "_partition"
+                hive_mapping.index.name = "_sort"
+                target_mapping.reset_index(drop=False, inplace=True)
+                plan = (
+                    hive_mapping.reset_index()
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
+                )
+
+                if hasattr(plan, "to_pandas"):
+                    plan = plan.to_pandas()
+
+                # Deal with repartitioning
+                if npartitions and npartitions < len(target_mapping):
+                    q = np.linspace(0.0, 1.0, num=npartitions + 1)
+                    divs = plan.quantile(q)
+                    partitions = divs.searchsorted(plan, side="right") - 1
+                    partitions[(plan >= divs.iloc[-1]).values] = len(divs) - 2
+                    plan = partitions.tolist()
+                elif len(plan) != len(plan.unique()):
+                    plan = plan.to_list()
+                else:
+                    # Plan is a unique 1:1 ddf partition mapping.
+                    # We already have shuffled data.
+                    return self
+
+                # TODO: We should avoid shuffling the original ddf and
+                # instead construct a new (more-efficent) graph to read
+                # multiple files from each partition directory at once.
+                # Generally speaking, we can optimize this code path
+                # much further.
+                return Dataset(_simple_shuffle(ddf, plan))
+
+        # Fall back to dask.dataframe algorithm
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
+
+    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -321,24 +506,55 @@ class Dataset:
             The random seed to use if `shuffle=True`.  If nothing
             is specified, the current system time will be used by the
             `random` std library.
+        use_file_metadata : bool; Optional
+            Whether to allow the returned ``DataFrameIter`` object to
+            use file metadata from the ``base_dataset`` to estimate
+            the row-count. By default, the file-metadata
+            optimization will only be used if the current Dataset is
+            backed by a file-based engine. Otherwise, it is possible
+            that an intermediate transform has modified the row-count.
         """
         if isinstance(columns, str):
             columns = [columns]
 
+        # Try to extract the row-size metadata
+        # if we are not shuffling
+        partition_lens_meta = None
+        if not shuffle and use_file_metadata is not False:
+            # We are allowed to use file metadata to calculate
+            # partition sizes.  If `use_file_metadata` is None,
+            # we only use metadata if `self` is backed by a
+            # file-based engine (like "parquet").  Otherwise,
+            # we cannot be "sure" that the metadata row-count
+            # is correct.
+            try:
+                if use_file_metadata:
+                    partition_lens_meta = self.base_dataset.partition_lens
+                else:
+                    partition_lens_meta = self.partition_lens
+            except AttributeError:
+                pass
+
         return DataFrameIter(
-            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
+            indices=indices,
+            partition_lens=partition_lens_meta,
         )
 
     def to_parquet(
         self,
         output_path,
         shuffle=None,
+        preserve_files=False,
+        output_files=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
         cats=None,
         conts=None,
         labels=None,
+        suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -347,8 +563,7 @@ class Dataset:
         output_path : string
             Path to write processed/shuffled output data
         shuffle : nvt.io.Shuffle enum
-            How to shuffle the output dataset. Shuffling is only
-            performed if the data is written to disk. For all options,
+            How to shuffle the output dataset. For all options,
             other than `None` (which means no shuffling), the partitions
             of the underlying dataset/ddf will be randomly ordered. If
             `PER_PARTITION` is specified, each worker/process will also
@@ -361,15 +576,43 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        partition_on : str or list(str)
+            Columns to use for hive-partitioning.  If this option is used,
+            `preserve_files`, `output_files`, and `out_files_per_proc` will
+            all be ignored.  Also, the `PER_WORKER` shuffle will not be
+            supported.
+        preserve_files : bool
+            Whether to preserve the original file-to-partition mapping of
+            the base dataset. This option is only available if the base
+            dataset is known, and if it corresponds to csv or parquet format.
+            If True, the `out_files_per_proc` option will be ignored, but the
+            `output_files` option will take precedence. Default is False.
+        output_files : dict, list or int
+            Dictionary mapping of output file names to partition indices.
+            If a list of file names is specified, a contiguous range of
+            output partitions will be mapped to each file. The same procedure
+            is used if an integer is specified, but the file names will be
+            written as "part_*". If anything is specified for `output_files`,
+            the `output_files_per_proc` argument will be ignored.  Also, if
+            a dictionary is specified, excluded partition indices will not
+            be written to disk.
         out_files_per_proc : integer
-            Number of files to create (per process) after
-            shuffling the data
+            Number of files to create (per process) after shuffling the
+            data. This option will be ignored if `output_files`
+            is specified.
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
         dtypes : dict
             Dictionary containing desired datatypes for output columns.
             Keys are column names, values are datatypes.
+        suffix : str or False
+            File-name extension to use for all output files. This argument
+            is ignored if a specific list of file names is specified using
+            the ``output_files`` option. If ``preserve_files=True``, this
+            suffix will be appended to the original name of each file,
+            unless the original extension is ".csv", ".parquet", ".avro",
+            or ".orc" (in which case the old extension will be replaced).
         cats : list of str, optional
             List of categorical columns
         conts : list of str, optional
@@ -377,8 +620,58 @@ class Dataset:
         labels : list of str, optional
             List of label columns
         """
+
         shuffle = _check_shuffle_arg(shuffle)
-        ddf = self.to_ddf(shuffle=shuffle)
+
+        if isinstance(output_files, dict) or (not output_files and preserve_files):
+            # Do not shuffle partitions if we are preserving files or
+            # if a specific file-partition mapping is already specified
+            ddf = self.to_ddf()
+        else:
+            ddf = self.to_ddf(shuffle=shuffle)
+
+        # Replace None/False suffix argument with ""
+        suffix = suffix or ""
+
+        # Convert `output_files` argument to a dict mapping
+        if output_files:
+
+            if isinstance(output_files, int):
+                output_files = [f"part_{i}" + suffix for i in range(output_files)]
+            if isinstance(output_files, list):
+                new = {}
+                split = math.ceil(ddf.npartitions / len(output_files))
+                for i, fn in enumerate(output_files):
+                    start = i * split
+                    stop = min(start + split, ddf.npartitions)
+                    new[fn] = np.arange(start, stop)
+                output_files = new
+                suffix = ""  # Don't add a suffix later - Names already include it
+            if not isinstance(output_files, dict):
+                raise TypeError(f"{type(output_files)} not a supported type for `output_files`.")
+
+        # If we are preserving files, use the stored dictionary,
+        # or use file_partition_map to extract the mapping
+        elif preserve_files:
+            try:
+                _output_files = self.base_dataset.file_partition_map
+            except AttributeError as e:
+                raise AttributeError(
+                    f"`to_parquet(..., preserve_files=True)` is not currently supported "
+                    f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
+                    f"that `dataset.base_dataset` is backed by csv or parquet files."
+                ) from e
+            if suffix == "":
+                output_files = _output_files
+            else:
+                output_files = {}
+                for fn, rgs in _output_files.items():
+                    split_fn = fn.split(".")
+                    if split_fn[-1] in ("parquet", "avro", "orc", "csv"):
+                        output_files[".".join(split_fn[:-1]) + suffix] = rgs
+                    else:
+                        output_files[fn + suffix] = rgs
+            suffix = ""  # Don't add a suffix later - Names already include it
 
         if dtypes:
             _meta = _set_dtypes(ddf._meta, dtypes)
@@ -386,30 +679,25 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        if shuffle or out_files_per_proc or cats or conts or labels:
-            # Output dask_cudf DataFrame to dataset
-            _ddf_to_dataset(
-                ddf,
-                fs,
-                output_path,
-                shuffle,
-                out_files_per_proc,
-                cats or [],
-                conts or [],
-                labels or [],
-                "parquet",
-                self.client,
-                num_threads,
-            )
-            return
 
-        # Default (shuffle=None and out_files_per_proc=None)
-        # Just use `dask_cudf.to_parquet`
-        fut = ddf.to_parquet(output_path, compression=None, write_index=False, compute=False)
-        if self.client is None:
-            fut.compute(scheduler="synchronous")
-        else:
-            fut.compute()
+        # Output dask_cudf DataFrame to dataset
+        _ddf_to_dataset(
+            ddf,
+            fs,
+            output_path,
+            shuffle,
+            output_files,
+            out_files_per_proc,
+            cats or [],
+            conts or [],
+            labels or [],
+            "parquet",
+            self.client,
+            num_threads,
+            self.cpu,
+            suffix=suffix,
+            partition_on=partition_on,
+        )
 
     def to_hugectr(
         self,
@@ -418,6 +706,7 @@ class Dataset:
         conts,
         labels,
         shuffle=None,
+        file_partition_map=None,
         out_files_per_proc=None,
         num_threads=0,
         dtypes=None,
@@ -449,6 +738,12 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        file_partition_map : dict
+            Dictionary mapping of output file names to partition indices
+            that should be written to that file name.  If this argument
+            is passed, only the partitions included in the dictionary
+            will be written to disk, and the `output_files_per_proc` argument
+            will be ignored.
         out_files_per_proc : integer
             Number of files to create (per process) after
             shuffling the data
@@ -459,7 +754,12 @@ class Dataset:
             Dictionary containing desired datatypes for output columns.
             Keys are column names, values are datatypes.
         """
-        shuffle = _check_shuffle_arg(shuffle)
+
+        # For now, we must move to the GPU to
+        # write an output dataset.
+        # TODO: Support CPU-mode output
+        self.to_gpu()
+
         shuffle = _check_shuffle_arg(shuffle)
         ddf = self.to_ddf(shuffle=shuffle)
         if dtypes:
@@ -475,6 +775,7 @@ class Dataset:
             fs,
             output_path,
             shuffle,
+            file_partition_map,
             out_files_per_proc,
             cats,
             conts,
@@ -482,32 +783,139 @@ class Dataset:
             "hugectr",
             self.client,
             num_threads,
+            self.cpu,
         )
 
     @property
     def num_rows(self):
         return self.engine.num_rows
 
+    def validate_dataset(self, **kwargs):
+        """Validate for efficient processing.
+
+        The purpose of this method is to validate that the Dataset object
+        meets the minimal requirements for efficient NVTabular processing.
+        For now, this criteria requires the data to be in parquet format.
+
+        Example Usage::
+
+            dataset = Dataset("/path/to/data_pq", engine="parquet")
+            assert validate_dataset(dataset)
+
+        Parameters
+        -----------
+        **kwargs :
+            Key-word arguments to pass down to the engine's validate_dataset
+            method. For the recommended parquet format, these arguments
+            include `add_metadata_file`, `row_group_max_size`, `file_min_size`,
+            and `require_metadata_file`. For more information, see
+            `ParquetDatasetEngine.validate_dataset`.
+
+        Returns
+        -------
+        valid : bool
+            Whether or not the input dataset is valid for efficient NVTabular
+            processing.
+        """
+
+        # Check that the dataset format is Parquet
+        if not isinstance(self.engine, ParquetDatasetEngine):
+            msg = (
+                "NVTabular is optimized for the parquet format. Please use "
+                "the to_parquet method to convert your dataset."
+            )
+            warnings.warn(msg)
+            return False  # Early return
+
+        return self.engine.validate_dataset(**kwargs)
+
+    def regenerate_dataset(
+        self,
+        output_path,
+        columns=None,
+        output_format="parquet",
+        compute=True,
+        **kwargs,
+    ):
+        """EXPERIMENTAL:
+        Regenerate an NVTabular Dataset for efficient processing by writing
+        out new Parquet files. In contrast to default ``to_parquet`` behavior,
+        this method preserves the original ordering.
+
+        Example Usage::
+
+            dataset = Dataset("/path/to/data_pq", engine="parquet")
+            dataset.regenerate_dataset(
+                out_path, part_size="1MiB", file_size="10MiB"
+            )
+
+        Parameters
+        -----------
+        output_path : string
+            Root directory path to use for the new (regenerated) dataset.
+        columns : list(string), optional
+            Subset of columns to include in the regenerated dataset.
+        output_format : string, optional
+            Format to use for regenerated dataset.  Only "parquet" (default)
+            is currently supported.
+        compute : bool, optional
+            Whether to compute the task graph or to return a Delayed object.
+            By default, the graph will be executed.
+        **kwargs :
+            Key-word arguments to pass down to the engine's regenerate_dataset
+            method. See `ParquetDatasetEngine.regenerate_dataset` for more
+            information.
+
+        Returns
+        -------
+        result : int or Delayed
+            If `compute=True` (default), the return value will be an integer
+            corresponding to the number of generated data files.  If `False`,
+            the returned value will be a `Delayed` object.
+        """
+
+        # Check that the desired output format is Parquet
+        if output_format not in ["parquet"]:
+            msg = (
+                f"NVTabular is optimized for the parquet format. "
+                f"{output_format} is not yet a supported output format for "
+                f"regenerate_dataset."
+            )
+            raise ValueError(msg)
+
+        result = ParquetDatasetEngine.regenerate_dataset(self, output_path, columns=None, **kwargs)
+        if compute:
+            return result.compute()
+        else:
+            return result
+
 
 def _set_dtypes(chunk, dtypes):
     for col, dtype in dtypes.items():
-        if type(dtype) is str:
-            if "hex" in dtype and chunk[col].dtype == "object":
-                chunk[col] = chunk[col].str.htoi()
-                chunk[col] = chunk[col].astype(np.int32)
+        if isinstance(dtype, str) and ("hex" in dtype):
+            chunk[col] = _hex_to_int(chunk[col])
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
+        self.partition_lens = partition_lens
 
     def __len__(self):
-        return len(self.indices)
+        if self.partition_lens:
+            # Use metadata-based partition-size information
+            # if/when it is available.  Note that this metadata
+            # will not be correct if rows where added or dropped
+            # after IO (within Ops).
+            return sum(self.partition_lens[i] for i in self.indices)
+        if len(self.indices) < self._ddf.npartitions:
+            return len(self._ddf.partitions[self.indices])
+        return len(self._ddf)
 
     def __iter__(self):
         for i in self.indices:
@@ -516,4 +924,4 @@ class DataFrameIter:
                 yield part[self.columns].compute(scheduler="synchronous")
             else:
                 yield part.compute(scheduler="synchronous")
-            part = None
+        part = None

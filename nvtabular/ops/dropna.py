@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,15 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 from nvtx import annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnNames, DataFrameType, Operator
 
 
 class Dropna(Operator):
     """
-    This operation detects missing values, and filters out rows with null values.
+    This operation detects and filters out rows with missing values.
 
     Example usage::
 
@@ -35,7 +34,7 @@ class Dropna(Operator):
     """
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
         new_gdf = gdf.dropna(subset=columns or None)
         new_gdf.reset_index(drop=True, inplace=True)
         return new_gdf
