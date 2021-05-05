@@ -53,7 +53,7 @@ To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
    ```
-   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE <docker container> /bin/bash
+   docker run --runtime=nvidia --rm -it -v ${PWD}:/root/nvt-examples/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
    **NOTE**: If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
