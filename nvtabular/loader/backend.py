@@ -180,12 +180,13 @@ class DataLoader:
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_list=None,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         self.drop_last = drop_last
         self.device = device or 0
-
+        self.sparse_list = sparse_list
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
@@ -424,6 +425,13 @@ class DataLoader:
         idx.append(num_samples - num_full_batches * self.batch_size)
         return idx
 
+    def _to_sparse_tensor(self, values_offset):
+        """
+        Create a sparse representation of the input tensor.
+        values_offset is either a tensor or a tuple of tensor, offset.
+        """
+        raise NotImplementedError
+
     def _to_tensor(self, gdf, dtype=None):
         """
         One of the mandatory functions a child class needs
@@ -482,15 +490,19 @@ class DataLoader:
             scalars, lists = self._separate_list_columns(gdf_i)
             x = None
             if scalars:
+                # should always return dict column_name: values, offsets (optional)
                 x = self._to_tensor(gdf_i[scalars], dtype)
+                for column_name in x.keys() if column_name in self.sparse_list:
+                    x[column_name] = self._to_sparse_tensor(x[column_name])
             if lists:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
                     leaves = column.list.leaves
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
-
                     offsets[column_name] = column._column.offsets
+                    if column_name in self.sparse_list:
+                        list_tensors[column_name] = self._to_sparse_tensor((list_tensors[column_name], offsets[column_name]))
                 x = x, list_tensors
             tensors.append(x)
 

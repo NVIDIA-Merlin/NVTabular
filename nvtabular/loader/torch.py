@@ -15,6 +15,7 @@
 #
 import pandas as pd
 import torch
+import numpy as np
 from torch.utils.dlpack import from_dlpack
 
 from .backend import DataLoader
@@ -114,9 +115,76 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return torch.float32
 
     def _handle_tensors(self, cats, conts, labels):
-        if isinstance(conts, torch.Tensor):
-            conts = conts.clone()
-        return cats, conts, labels
+        X = {}
+        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
+            lists = {}
+            if isinstance(tensor, tuple):
+                tensor, lists = tensor
+            names = [i for i in names if i not in lists]
+
+            # break list tuples into two keys, with postfixes
+            # TODO: better choices for naming?
+            list_columns = list(lists.keys())
+            for column in list_columns:
+                values, nnzs = lists.pop(column)
+                lists[column + "__values"] = values
+                lists[column + "__nnzs"] = nnzs
+
+            # now add in any scalar tensors
+            if len(names) > 1:
+                tensors = tf.split(tensor, len(names), axis=1)
+                lists.update(zip(names, tensors))
+            elif len(names) == 1:
+                lists[names[0]] = tensor
+            X.update(lists)
+
+        # TODO: use dict for labels as well?
+        # would require output layers to match naming
+        if len(self.label_names) > 1:
+            labels = tf.split(labels, len(self.label_names), axis=1)
+        return X, labels
+
+
+    def _to_sparse_tensor(self, values_offset):
+        """
+        values_offset is either a tuple (values, offsets) or just values.
+        Values is a tensor.
+        This method is used to turn a tensor into its sparse representation
+        """
+        if isinstance(values_offset, tuple):
+            values = values_offset[0].flatten()
+            offsets = values_offset[1].flatten()
+        else:
+            values = values_offset.flatten()
+            offsets = np.array([i for i in values.size()[0]])
+        num_rows = len(offsets)
+
+        #Appending the values length to the end of the offset vector, to be able to compute diff of the last sequence
+        offsets = torch.cat([offsets, torch.LongTensor([len(values)]).to(offsets.device)])
+        #Computing the difference between consecutive offsets, to get the sequence lengths
+        diff_offsets = offsets[1:] - offsets[:-1]
+        #Infering the number of cols based on the maximum sequence length
+        max_seq_len = int(diff_offsets.max())
+        default_seq_features_len = self.default_seq_features_len
+        if max_seq_len > default_seq_features_len:
+            raise ValueError('The default sequence length has been configured to {}, but the '+\
+                                'largest sequence in this batch have {} length'.format(self.default_seq_features_len,
+                                                                                    max_seq_len))
+
+        #Building the indices to reconstruct the sparse tensors
+        row_ids = torch.arange(len(offsets)-1).to(offsets.device)
+        row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
+        row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
+        col_ids = torch.arange(len(row_offset_repeated)).to(offsets.device) - row_offset_repeated.to(offsets.device)
+        indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
+
+        if torch.is_floating_point(values):
+            sparse_tensor_class = torch.sparse.FloatTensor
+        else:
+            sparse_tensor_class = torch.sparse.LongTensor
+
+        sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, default_seq_features_len]))
+        return sparse_tensor
 
 
 class DLDataLoader(torch.utils.data.DataLoader):
