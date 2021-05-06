@@ -35,8 +35,16 @@ Use cmake to build and install in a local directory.
 ```
 $ mkdir build
 $ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX:PATH=`pwd`/install ..
+$ cmake ..
 $ make install
+$ mkdir /opt/tritonserver/nvtabular
+$ cp libtriton_nvtabular.so /opt/tritonserver/nvtabular/
+```
+
+Before start serving a model with nvtabular backend, run the following command;
+
+```
+$ export LD_LIBRARY_PATH=/conda/envs/merlin/lib/:$LD_LIBRARY_PATH
 ```
 
 The following required Triton repositories will be pulled and used in
