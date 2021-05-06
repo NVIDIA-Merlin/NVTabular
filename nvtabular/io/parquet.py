@@ -136,11 +136,11 @@ class ParquetDatasetEngine(DatasetEngine):
 
         _pp_nrows = []
 
-        def _update_partition_lens(part_count, md, num_row_groups, rg_offset=None):
+        def _update_partition_lens(md, num_row_groups, rg_offset=None):
             # Helper function to calculate the row count for each
             # output partition (and add it to `_pp_nrows`)
             rg_offset = rg_offset or 0
-            for rg_i in range(0, part_count, self.row_groups_per_part):
+            for rg_i in range(0, num_row_groups, self.row_groups_per_part):
                 rg_f = min(rg_i + self.row_groups_per_part, num_row_groups)
                 _pp_nrows.append(
                     sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
@@ -163,7 +163,7 @@ class ParquetDatasetEngine(DatasetEngine):
             for fn, num_row_groups in _path_row_groups.items():
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(part_count, dataset.metadata, num_row_groups, rg_offset=rg)
+                _update_partition_lens(dataset.metadata, num_row_groups, rg_offset=rg)
                 ind += part_count
                 rg += num_row_groups
         else:
@@ -176,7 +176,7 @@ class ParquetDatasetEngine(DatasetEngine):
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 fn = piece.path.split(self.fs.sep)[-1]
                 _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(part_count, md, num_row_groups)
+                _update_partition_lens(md, num_row_groups)
                 ind += part_count
 
         self._pp_map = _pp_map
