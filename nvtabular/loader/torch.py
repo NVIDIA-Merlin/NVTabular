@@ -75,6 +75,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_list=None,
     ):
         DataLoader.__init__(
             self,
@@ -90,6 +91,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
+            sparse_list=sparse_list,
         )
 
     def __iter__(self):
@@ -132,16 +134,22 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
             # now add in any scalar tensors
             if len(names) > 1:
-                tensors = tf.split(tensor, len(names), axis=1)
+                tensors = self._split_fn(tensor, len(names), axis=1)
                 lists.update(zip(names, tensors))
             elif len(names) == 1:
                 lists[names[0]] = tensor
             X.update(lists)
 
+        # sparse representation change-over
+        for column_name in X.keys():
+            if column_name in self.sparse_list:
+                X[column_name] = self._to_sparse_tensor(X[column_name])
+
         # TODO: use dict for labels as well?
         # would require output layers to match naming
         if len(self.label_names) > 1:
-            labels = tf.split(labels, len(self.label_names), axis=1)
+            labels = self._split_fn(labels, len(self.label_names), axis=1)
+        import pdb; pdb.set_trace()
         return X, labels
 
 
@@ -156,26 +164,26 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = values_offset[1].flatten()
         else:
             values = values_offset.flatten()
-            offsets = np.array([i for i in values.size()[0]])
+            offsets = torch.from_numpy(np.array([i for i in range(values.size()[0])])).to("cuda")
         num_rows = len(offsets)
 
         #Appending the values length to the end of the offset vector, to be able to compute diff of the last sequence
-        offsets = torch.cat([offsets, torch.LongTensor([len(values)]).to(offsets.device)])
+        offsets = torch.cat([offsets, torch.LongTensor([len(values)]).to("cuda")])
         #Computing the difference between consecutive offsets, to get the sequence lengths
         diff_offsets = offsets[1:] - offsets[:-1]
         #Infering the number of cols based on the maximum sequence length
         max_seq_len = int(diff_offsets.max())
-        default_seq_features_len = self.default_seq_features_len
-        if max_seq_len > default_seq_features_len:
-            raise ValueError('The default sequence length has been configured to {}, but the '+\
-                                'largest sequence in this batch have {} length'.format(self.default_seq_features_len,
-                                                                                    max_seq_len))
+        #default_seq_features_len = 1 
+        #if max_seq_len > default_seq_features_len:
+        #    raise ValueError('The default sequence length has been configured to {}, but the '+\
+        #                        'largest sequence in this batch have {} length'.format(self.default_seq_features_len,
+        #                                                                            max_seq_len))
 
         #Building the indices to reconstruct the sparse tensors
-        row_ids = torch.arange(len(offsets)-1).to(offsets.device)
+        row_ids = torch.arange(len(offsets)-1).to("cuda")
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
-        col_ids = torch.arange(len(row_offset_repeated)).to(offsets.device) - row_offset_repeated.to(offsets.device)
+        col_ids = torch.arange(len(row_offset_repeated)).to("cuda") - row_offset_repeated.to("cuda")
         indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
 
         if torch.is_floating_point(values):
@@ -183,7 +191,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         else:
             sparse_tensor_class = torch.sparse.LongTensor
 
-        sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, default_seq_features_len]))
+        sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, max_seq_len]))
         return sparse_tensor
 
 

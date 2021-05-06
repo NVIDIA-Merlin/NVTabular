@@ -488,12 +488,15 @@ class DataLoader:
             gdf.drop(columns=column_names, inplace=True)
 
             scalars, lists = self._separate_list_columns(gdf_i)
+            
             x = None
             if scalars:
                 # should always return dict column_name: values, offsets (optional)
                 x = self._to_tensor(gdf_i[scalars], dtype)
-                for column_name in x.keys() if column_name in self.sparse_list:
-                    x[column_name] = self._to_sparse_tensor(x[column_name])
+                #import pdb; pdb.set_trace()
+                #for column_name in scalars: 
+                #    if column_name in self.sparse_list:
+                #        x[column_name] = self._to_sparse_tensor(x[column_name])
             if lists:
                 list_tensors = OrderedDict()
                 for column_name in lists:
@@ -501,8 +504,8 @@ class DataLoader:
                     leaves = column.list.leaves
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
                     offsets[column_name] = column._column.offsets
-                    if column_name in self.sparse_list:
-                        list_tensors[column_name] = self._to_sparse_tensor((list_tensors[column_name], offsets[column_name]))
+                    #if column_name in self.sparse_list:
+                    #    list_tensors[column_name] = self._to_sparse_tensor((list_tensors[column_name], offsets[column_name]))
                 x = x, list_tensors
             tensors.append(x)
 
@@ -513,6 +516,7 @@ class DataLoader:
             tensors.append(offsets_tensor)
         del gdf, offsets
 
+        #import pdb; pdb.set_trace()
         return tensors
 
     def _handle_tensors(self, cats, conts, labels):
