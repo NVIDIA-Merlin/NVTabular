@@ -149,7 +149,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = self._split_fn(labels, len(self.label_names), axis=1)
-        import pdb; pdb.set_trace()
+        
         return X, labels
 
 

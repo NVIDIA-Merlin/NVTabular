@@ -67,7 +67,6 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         labels=label_name,
         batch_size=batch_size,
         drop_last=drop_last,
-        sparse_list=["cat3", "cont3"]
     )
 
     all_len = len(data_itr) if drop_last else len(data_itr) - 1

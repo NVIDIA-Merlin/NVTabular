@@ -17,6 +17,7 @@ import contextlib
 import os
 
 import tensorflow as tf
+import numpy as np
 
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
@@ -210,6 +211,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_list=None,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -236,6 +238,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
+            sparse_list=sparse_list,
         )
 
     def __len__(self):
@@ -313,6 +316,43 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             x = tf.transpose(x)
         return x
 
+    def _to_sparse_tensor(self, values_offset):
+        """
+        values_offset is either a tuple (values, offsets) or just values.
+        Values is a tensor.
+        This method is used to turn a tensor into its sparse representation
+        """
+
+        if isinstance(values_offset, tuple):
+            values = tf.reshape(values_offset[0], [-1])
+            offsets = tf.reshape(values_offset[1], [-1])
+        else:
+            values = tf.reshape(values_offset, [-1])
+            offsets = tf.convert_to_tensor(np.array([i for i in range(tf.shape(values)[0])]), dtype=tf.int64)
+        num_rows = len(offsets)
+
+        #Appending the values length to the end of the offset vector, to be able to compute diff of the last sequence
+        offsets = tf.concat([offsets, tf.constant([len(values)], dtype=tf.int64)], 0)
+        #Computing the difference between consecutive offsets, to get the sequence lengths
+        diff_offsets = offsets[1:] - offsets[:-1]
+        #Infering the number of cols based on the maximum sequence length
+        max_seq_len = int(tf.math.reduce_max(diff_offsets))
+        #default_seq_features_len = 1 
+        #if max_seq_len > default_seq_features_len:
+        #    raise ValueError('The default sequence length has been configured to {}, but the '+\
+        #                        'largest sequence in this batch have {} length'.format(self.default_seq_features_len,
+        #                                                                            max_seq_len))
+
+        #Building the indices to reconstruct the sparse tensors
+        row_ids = tf.range(len(offsets)-1)
+        row_ids_repeated = tf.cast(tf.repeat(row_ids, diff_offsets), tf.int64)
+        row_offset_repeated = tf.repeat(offsets[:-1], diff_offsets)
+        col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
+        indices = tf.concat([tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1)
+
+        sparse_tensor = tf.sparse.SparseTensor(indices, values, [num_rows, max_seq_len])
+        return sparse_tensor
+
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
@@ -337,10 +377,15 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
                 lists[names[0]] = tensor
             X.update(lists)
 
+        for column_name in X.keys():
+            if column_name in self.sparse_list:
+                X[column_name] = self._to_sparse_tensor(X[column_name])
+
         # TODO: use dict for labels as well?
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
+        
         return X, labels
 
 
