@@ -53,17 +53,20 @@ To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
    ```
-   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE <docker container> /bin/bash
+   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
-   **NOTE**: If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
+   **NOTES**: 
+   
+   - If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
+   - If you are running `Getting Started with MovieLens` example notebooks you need to add ` -v ${PWD}:/root/ ` to the docker script above. Here `PWD` is a local        directory in your system, and this directory should also be mounted to the `merlin-inference`container if you would like to run inference example.
 
    The container will open a shell when the run command execution is completed. You will have to start JupyterLab on the Docker container. It should look similar to this:
    ```
    root@2efa5b50b909:
    ```
 
-2. Install jupyter-lab with `conda` or `pip` by running the following command:
+2. Install jupyter-lab with `pip` by running the following command:
    ```
    pip install jupyterlab
    ```
