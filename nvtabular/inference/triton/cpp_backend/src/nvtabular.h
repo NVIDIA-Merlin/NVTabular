@@ -31,6 +31,7 @@
 #include <pybind11/numpy.h>
 #include "triton/backend/backend_common.h"
 #include <exception>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -89,21 +90,18 @@ public:
 	}
 
 	void Deserialize(std::string path) {
-		py::object nvtabular = py::module_::import("nvtabular.inference.triton.cpp_backend.nvt").attr("nvt");
+		py::object nvtabular = py::module_::import("nvtabular.inference.triton.cpp_backend.nvt").attr("TritonNVTabularModel");
 		nt = nvtabular();
-		nt.attr("deserialize")(path.data());
+		nt.attr("initialize")(path.data());
 	}
 
-	void Transform(const char** input_names, const void** input_buffers,
+	void Transform(const std::vector<std::string>& input_names, const void** input_buffers,
 			const int64_t** input_shapes, TRITONSERVER_DataType* input_dtypes,
-			uint32_t input_count, void** output_buffers,
-			uint64_t * output_byte_sizes, const char** output_names,
-			uint32_t output_count,
-			std::unordered_map<std::string, TRITONSERVER_DataType> &names_to_dtypes) {
+			const std::vector<std::string>& output_names) {
 
 		py::list all_inputs;
 		py::list all_inputs_names;
-		for (uint32_t i = 0; i < input_count; ++i) {
+		for (uint32_t i = 0; i < input_names.size(); ++i) {
 			py::dict ai_in;
 			std::tuple<long> shape_in((long) input_shapes[i][0]);
 			ai_in["shape"] = shape_in;
@@ -114,9 +112,14 @@ public:
 			all_inputs_names.append(input_names[i]);
 		}
 
+		py::list all_output_names;
+		for (uint32_t i = 0; i < output_names.size(); ++i) {
+			all_output_names.append(output_names[i]);
+		}
+
 		auto transform_start = std::chrono::high_resolution_clock::now();
 
-		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs);
+		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs, all_output_names);
 
 		auto transform_end = std::chrono::high_resolution_clock::now();
 		auto elapsed_transform = std::chrono::duration_cast<
@@ -124,6 +127,7 @@ public:
 		printf("Transform Only Time measured: %.3f seconds.\n",
 				elapsed_transform.count() * 1e-9);
 
+		/*
 		for (uint32_t i = 0; i < output_count; ++i) {
 			std::string curr_name(output_names[i]);
 			TRITONSERVER_DataType dtype = names_to_dtypes[curr_name];
@@ -147,7 +151,7 @@ public:
 						<< std::endl;
 			}
 		}
-
+		*/
 	}
 
 private:

@@ -27,6 +27,8 @@
 #ifndef MODELSTATE_H_
 #define MODELSTATE_H_
 
+#include <vector>
+#include "triton/backend/backend_common.h"
 
 using namespace rapidjson;
 
@@ -50,24 +52,28 @@ class ModelState {
   const std::string& Name() const { return name_; }
   uint64_t Version() const { return version_; }
   const std::string& Path() const { return path_; }
+  const std::vector<std::string>& InputNames() { return input_names_; }
+  const std::vector<std::string>& OutputNames() { return output_names_; }
+  const std::vector<TRITONSERVER_DataType>& OutputDtypes() { return output_dtypes_; }
 
   // Does this model support batching in the first dimension. This
   // function should not be called until after the model is completely
   // loaded.
   TRITONSERVER_Error* SupportsFirstDimBatching(bool* supports);
 
-  // Validate that model configuration is supported by this backend.
-  TRITONSERVER_Error* ValidateModelConfig();
-
   // Block the thread for seconds specified in 'creation_delay_sec' parameter.
   // This function is used for testing.
   TRITONSERVER_Error* CreationDelay();
+
+  TRITONSERVER_Error* ReadInputOutputNames();
 
  private:
   ModelState(
       TRITONSERVER_Server* triton_server, TRITONBACKEND_Model* triton_model,
       const char* name, const uint64_t version, const char* path,
       common::TritonJson::Value&& model_config);
+
+  TRITONSERVER_DataType convertToTritonType(std::string& output_dtype);
 
   TRITONSERVER_Server* triton_server_;
   TRITONBACKEND_Model* triton_model_;
@@ -78,6 +84,9 @@ class ModelState {
 
   bool supports_batching_initialized_;
   bool supports_batching_;
+  std::vector<std::string> input_names_;
+  std::vector<std::string> output_names_;
+  std::vector<TRITONSERVER_DataType> output_dtypes_;
 };
 
 TRITONSERVER_Error*
@@ -208,7 +217,7 @@ ModelState::CreationDelay()
 }
 
 TRITONSERVER_Error*
-ModelState::ValidateModelConfig()
+ModelState::ReadInputOutputNames()
 {
   // We have the json DOM for the model configuration...
   common::TritonJson::WriteBuffer buffer;
@@ -221,22 +230,61 @@ ModelState::ValidateModelConfig()
   RETURN_IF_ERROR(model_config_.MemberAsArray("input", &inputs));
   RETURN_IF_ERROR(model_config_.MemberAsArray("output", &outputs));
 
-  common::TritonJson::Value input, output;
-  RETURN_IF_ERROR(inputs.IndexAsObject(0, &input));
-  RETURN_IF_ERROR(outputs.IndexAsObject(0, &output));
+  for (size_t i = 0; i < inputs.ArraySize(); i++) {
+	common::TritonJson::Value input;
+	RETURN_IF_ERROR(inputs.IndexAsObject(i, &input));
 
-  // Input and output must have same shape
-  std::vector<int64_t> input_cont_shape, output_shape;
-  RETURN_IF_ERROR(backend::ParseShape(input, "dims", &input_cont_shape));
-  RETURN_IF_ERROR(backend::ParseShape(output, "dims", &output_shape));
+	std::string input_name;
+	input.MemberAsString("name", &input_name);
+	input_names_.push_back(input_name);
+  }
 
-  RETURN_ERROR_IF_FALSE(
-      input_cont_shape == output_shape, TRITONSERVER_ERROR_INVALID_ARG,
-      std::string("expected input and output shape to match, got ") +
-          backend::ShapeToString(input_cont_shape) + " and " +
-          backend::ShapeToString(output_shape));
+  for (size_t i = 0; i < outputs.ArraySize(); i++) {
+  	common::TritonJson::Value output;
+  	RETURN_IF_ERROR(outputs.IndexAsObject(i, &output));
+
+  	std::string output_name;
+  	output.MemberAsString("name", &output_name);
+  	std::string output_dtype;
+  	output.MemberAsString("data_type", &output_dtype);
+
+  	output_dtypes_.push_back(convertToTritonType(output_dtype));
+  	output_names_.push_back(output_name);
+  }
 
   return nullptr;  // success
+}
+
+TRITONSERVER_DataType
+ModelState::convertToTritonType(std::string& output_dtype) {
+  if (output_dtype.compare("TRITONSERVER_TYPE_INVALID") == 0)
+    return TRITONSERVER_TYPE_INVALID;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_BOOL") == 0)
+	return TRITONSERVER_TYPE_BOOL;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT8") == 0)
+  	return TRITONSERVER_TYPE_UINT8;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT16") == 0)
+    return TRITONSERVER_TYPE_UINT16;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT32") == 0)
+    return TRITONSERVER_TYPE_UINT32;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT64") == 0)
+    return TRITONSERVER_TYPE_UINT64;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_INT8") == 0)
+    return TRITONSERVER_TYPE_INT8;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_INT16") == 0)
+    return TRITONSERVER_TYPE_INT16;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_INT32") == 0)
+    return TRITONSERVER_TYPE_INT32;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_INT64") == 0)
+    return TRITONSERVER_TYPE_INT64;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_FP16") == 0)
+    return TRITONSERVER_TYPE_FP16;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_FP32") == 0)
+    return TRITONSERVER_TYPE_FP32;
+  else if (output_dtype.compare("TRITONSERVER_TYPE_FP64") == 0)
+    return TRITONSERVER_TYPE_FP64;
+  else
+	return TRITONSERVER_TYPE_BYTES;
 }
 
 }}}

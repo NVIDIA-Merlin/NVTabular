@@ -209,14 +209,8 @@ TRITONBACKEND_ModelInitialize(TRITONBACKEND_Model* model)
   RETURN_IF_ERROR(
       TRITONBACKEND_ModelSetState(model, reinterpret_cast<void*>(model_state)));
 
-  // One of the primary things to do in ModelInitialize is to examine
-  // the model configuration to ensure that it is something that this
-  // backend can support. If not, returning an error from this
-  // function will prevent the model from loading.
-  RETURN_IF_ERROR(model_state->ValidateModelConfig());
 
-  // For testing.. Block the thread for certain time period before returning.
-  RETURN_IF_ERROR(model_state->CreationDelay());
+  RETURN_IF_ERROR(model_state->ReadInputOutputNames());
 
   return nullptr;  // success
 }
@@ -334,7 +328,6 @@ TRITONBACKEND_ModelInstanceExecute(
     responses.push_back(response);
   }
 
-
   uint64_t min_exec_start_ns = std::numeric_limits<uint64_t>::max();
   uint64_t max_exec_end_ns = 0;
   uint64_t total_batch_size = 0;
@@ -373,34 +366,30 @@ TRITONBACKEND_ModelInstanceExecute(
       continue;
     }
 
-    /*info = (std::string("request ") + std::to_string(r) + ": id = \"" +
+    info = (std::string("request ") + std::to_string(r) + ": id = \"" +
             request_id + "\", correlation_id = " + std::to_string(correlation_id) +
             ", input_count = " + std::to_string(input_count) +
             ", requested_output_count = " + std::to_string(requested_output_count))
                .c_str();
-    LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());*/
+    LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());
 
-    const char* input_names[input_count];
+    const std::vector<std::string> input_names = model_state->InputNames();
     TRITONBACKEND_Input* inputs[input_count];
     TRITONSERVER_DataType input_dtypes[input_count];
     const int64_t* input_shapes[input_count];
     uint32_t input_dims_counts[input_count];
     uint64_t input_byte_sizes[input_count];
     uint32_t input_buffer_counts[input_count];
-    std::unordered_map<std::string, TRITONSERVER_DataType> names_to_dtypes;
 
     for (uint32_t i = 0; i < input_count; i++) {
+      const char* input_name = input_names[i].c_str();
       GUARDED_RESPOND_IF_ERROR(
-    	responses, r,
-    	TRITONBACKEND_RequestInputName(request, i, &input_names[i]));
-
-      GUARDED_RESPOND_IF_ERROR(
-        responses, r, TRITONBACKEND_RequestInput(request, input_names[i], &inputs[i]));
+        responses, r, TRITONBACKEND_RequestInput(request, input_name, &inputs[i]));
 
       GUARDED_RESPOND_IF_ERROR(
         responses, r,
         TRITONBACKEND_InputProperties(
-          inputs[i], &input_names[i], &input_dtypes[i], &input_shapes[i],
+          inputs[i], &input_name, &input_dtypes[i], &input_shapes[i],
           &input_dims_counts[i], &input_byte_sizes[i], &input_buffer_counts[i]));
 
       if (responses[r] == nullptr) {
@@ -411,11 +400,7 @@ TRITONBACKEND_ModelInstanceExecute(
         continue;
       }
 
-      std::string curr_name(input_names[i]);
-      names_to_dtypes[curr_name] = input_dtypes[i];
-
-
-      info = (std::string("\tinput ") + input_names[i] +
+      info = (std::string("\tinput ") + input_name +
               ": datatype = " + TRITONSERVER_DataTypeString(input_dtypes[i]) +
               ", shape = " + backend::ShapeToString(input_shapes[i], input_dims_counts[i]) +
               ", byte_size = " + std::to_string(input_byte_sizes[i]) +
@@ -424,32 +409,24 @@ TRITONBACKEND_ModelInstanceExecute(
       LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());
     }
 
-    const char* output_names[requested_output_count];
-    TRITONBACKEND_Output* outputs[requested_output_count];
-    void* output_buffers[requested_output_count];
-    uint64_t output_byte_sizes[requested_output_count];
+    const std::vector<std::string> output_names = model_state->OutputNames();
+    const std::vector<TRITONSERVER_DataType> output_dtypes = model_state->OutputDtypes();
+    TRITONBACKEND_Output* outputs[output_names.size()];
+    void* output_buffers[output_names.size()];
+    uint64_t output_byte_sizes[output_names.size()];
 
-    for (uint32_t i = 0; i < requested_output_count; ++i) {
-      GUARDED_RESPOND_IF_ERROR(
-    	responses, r,
-    	TRITONBACKEND_RequestOutputName(
-    	  request, i, &output_names[i]));
+    /*
+    for (uint32_t i = 0; i < output_names.size(); ++i) {
+      const char* output_name = output_names[i].c_str();
 
-      std::string curr_name(output_names[i]);
-      TRITONSERVER_DataType req_dtype = names_to_dtypes[curr_name];
-
-      if (req_dtype == TRITONSERVER_TYPE_BYTES) {
-    	  req_dtype = TRITONSERVER_TYPE_INT64;
-      }
-
-      output_byte_sizes[i] = (int64_t)TRITONSERVER_DataTypeByteSize(req_dtype) *
+      output_byte_sizes[i] = (int64_t)TRITONSERVER_DataTypeByteSize(output_dtypes[i]) *
     		  input_shapes[i][0] * (int64_t)input_dims_counts[i];
 
       TRITONBACKEND_Response* response = responses[r];
       GUARDED_RESPOND_IF_ERROR(
         responses, r,
         TRITONBACKEND_ResponseOutput(
-          response, &outputs[i], output_names[i], req_dtype,
+          response, &outputs[i], output_name, output_dtypes[i],
           input_shapes[i], input_dims_counts[i]));
 
       if (responses[r] == nullptr) {
@@ -481,7 +458,8 @@ TRITONBACKEND_ModelInstanceExecute(
         LOG_MESSAGE(TRITONSERVER_LOG_ERROR, info.c_str());
         continue;
       }
-    }
+
+    }*/
 
     auto data_prep_end = std::chrono::high_resolution_clock::now();
     auto elapsed_prep = std::chrono::duration_cast<std::chrono::nanoseconds>(data_prep_end - data_prep_begin);
@@ -516,12 +494,8 @@ TRITONBACKEND_ModelInstanceExecute(
 
       auto transform_start = std::chrono::high_resolution_clock::now();
 
-      LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Transform will be performed");
-
       instance_state->nvt.Transform(input_names, input_buffers, input_shapes,
-    		  input_dtypes, input_count, output_buffers,
-    		  output_byte_sizes, output_names, requested_output_count,
-    		  names_to_dtypes);
+    		  input_dtypes, output_names);
 
       auto transform_end = std::chrono::high_resolution_clock::now();
       auto elapsed_transform = std::chrono::duration_cast<std::chrono::nanoseconds>(transform_end - transform_start);
