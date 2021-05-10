@@ -90,8 +90,8 @@ for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
     emb_layers.append(
         tf.feature_column.embedding_column(
             tf.feature_column.categorical_column_with_identity(
-                col, EMBEDDING_TABLE_SHAPES[col][0]  # Input dimension (vocab size)
-            ),
+                col, EMBEDDING_TABLE_SHAPES[col][0]
+            ),  # Input dimension (vocab size)
             EMBEDDING_TABLE_SHAPES[col][1],  # Embedding output dimension
         )
     )
