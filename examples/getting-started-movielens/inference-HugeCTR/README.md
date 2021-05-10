@@ -23,7 +23,7 @@ Merlin containers are available in the NVIDIA container repository at the follow
 You can pull the `Merlin-Training` container by running the following command:
 
 ```
-docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.5 /bin/bash
+docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.5.1 /bin/bash
 ```
 
 The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
@@ -33,7 +33,7 @@ The container will open a shell when the run command execution is completed. You
 root@2efa5b50b909:
 ```
 
-1) Start the jupyter-lab server by running the following command. In case the container does not have `JupyterLab`, you can easily [install](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html) it either using conda or pip.
+1) Start the jupyter-lab server by running the following command. In case the container does not have `JupyterLab`, you can easily [install](https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html) it using pip.
 ```
 jupyter-lab --allow-root --ip='0.0.0.0' --NotebookApp.token='<password>'
 ```
@@ -42,16 +42,16 @@ Open any browser to access the jupyter-lab server using `https://<host IP-Addres
 
 ## 2. Run example notebooks:
 
-There are two example notebooks that should be run in order. The first one [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-TF.ipynb) shows how to
+There are two example notebooks that should be run in order. The first one [Training-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb) shows how to
 - do preprocessing with NVTabular
 - serialize and save a workflow to load later to transform new dataset
 - train a HugeCTR MLP model and save it in the `/models` directory.
 
-The following notebook [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/movielens_inference.ipynb) shows how to send request to Triton IS 
+The following notebook [Triton-Inference-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb) shows how to send request to Triton IS 
 - to transform new data with NVTabular
 - to generate prediction results for new dataset.
 
-Now you can start `movielens-HugeCTR` and `movielens-HugeCTR-inference` notebooks. Note that you need to save your workflow and DL model in the `models` directory before launching the `tritonserver` as defined below. Then you can run the `movielens-HugeCTR-inference` example notebook once the server is started.
+Now you can start `Training-with-HugeCTR` and `Triton-Inference-with-HugeCTR` notebooks. Note that you need to mount the directory where your NVTAbular workflow and HugeCTR model is saved when launching the `tritonserver` docker image as shown below. Then you can run the `Triton-Inference-with-HugeCTR` example notebook once the server is started.
 
 ## 3. Build and Run the Triton Inference Server container:
 
@@ -62,7 +62,8 @@ cd <path to nvt_triton>
 
 2) Launch Merlin Triton Inference Server container:
 ```
-docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5
+docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5.1
+
 ```
 The container will open a shell when the run command execution is completed. It should look similar to this:
 ```
@@ -78,6 +79,4 @@ cd /model
 tritonserver --model-repository=/model/models/ --backend-config=hugectr,movielens=/model/models/movielens/1/movielens.json --backend-config=hugectr,supportlonglong=true --model-control-mode=explicit
 ```
 
-After you start Triton you will see output on the console showing the server starting up. At this stage it does not load any model, you will load the `movielens_ens` model in the  `movielens-HugeCTR-inference` notebook to be able to send the request. All the models should load successfully. If a model fails to load the status will report the failure and a reason for the failure. 
-
-Once the models are successfully loaded, you can run the `movielens-HugeCTR-inference` notebook to send requests to the Triton IS. Note that, by default Triton will not start if models are not loaded successfully.
+After you start Triton you will see output on the console showing the server starting up. At this stage it does not load any model, you will load the `movielens_ens` model in the  `Triton-Inference-with-HugeCTR` notebook to be able to send the request. All the models should load successfully. If a model fails to load the status will report the failure and a reason for the failure. Once the models are successfully loaded, you can send requests to the Triton IS. 
