@@ -54,36 +54,36 @@ When training is accelerated with HugeCTR, the following happens:
    -  ``sparse``-``label_dim`` provides the number of categorical input
       features
 
-.. code:: python
+   .. code:: python
 
-   # Part of JSON config
-   "layers": [
-      {
-      "name": "data",
-      "type": "Data",
-      "format": "Parquet",
-      "slot_size_array": [10000000, 10000000, 3014529, 400781, 11, 2209, 11869, 148, 4, 977, 15, 38713, 10000000, 10000000, 10000000, 584616, 12883, 109, 37, 17177, 7425,             20266, 4, 7085, 1535, 64],
-      "source": "/raid/criteo/tests/test_dask/output/train/_file_list.txt",
-      "eval_source": "/raid/criteo/tests/test_dask/output/valid/_file_list.txt",
-      "check": "None",
-      "label": {
-          "top": "label",
-          "label_dim": 1
+      # Part of JSON config
+      "layers": [
+        {
+        "name": "data",
+        "type": "Data",
+        "format": "Parquet",
+        "slot_size_array": [10000000, 10000000, 3014529, 400781, 11, 2209, 11869, 148, 4, 977, 15, 38713, 10000000, 10000000, 10000000, 584616, 12883, 109, 37, 17177, 7425,             20266, 4, 7085, 1535, 64],
+        "source": "/raid/criteo/tests/test_dask/output/train/_file_list.txt",
+        "eval_source": "/raid/criteo/tests/test_dask/output/valid/_file_list.txt",
+        "check": "None",
+        "label": {
+            "top": "label",
+            "label_dim": 1
+        },
+        "dense": {
+            "top": "dense",
+            "dense_dim": 13
+        },
+        "sparse": [
+            {
+            "top": "data1",
+            "type": "LocalizedSlot",
+            "max_feature_num_per_sample": 30,
+            "max_nnz": 1,
+            "slot_num": 26
+            }
+        ]
       },
-      "dense": {
-          "top": "dense",
-          "dense_dim": 13
-      },
-      "sparse": [
-          {
-          "top": "data1",
-          "type": "LocalizedSlot",
-          "max_feature_num_per_sample": 30,
-          "max_nnz": 1,
-          "slot_num": 26
-          }
-      ]
-   },
 
 3. The solver configuration is defined. The batch_sizes for training,
    validation, and GPUs are specified in the solver
