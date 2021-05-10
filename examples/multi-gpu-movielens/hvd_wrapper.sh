@@ -1,6 +1,7 @@
+
 #!/bin/bash
 
-## Get local process ID from OpenMPI or alternatively from SLURM
+# Get local process ID from OpenMPI or alternatively from SLURM
 if [ -z "${CUDA_VISIBLE_DEVICES:-}" ]; then
     if [ -n "${OMPI_COMM_WORLD_LOCAL_RANK:-}" ]; then
         LOCAL_RANK="${OMPI_COMM_WORLD_LOCAL_RANK}"
