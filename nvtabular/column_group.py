@@ -173,7 +173,7 @@ class ColumnGroup:
 
     @property
     def input_column_names(self):
-        """ Returns the names of columns in the main chain """
+        """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
             col for parent in self.parents for col in parent.columns if parent not in dependencies
@@ -213,7 +213,7 @@ def iter_nodes(nodes):
 
 
 def _to_graphviz(column_group):
-    """ Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks """
+    """Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
     column_group = _merge_add_nodes(column_group)
@@ -236,7 +236,7 @@ def _to_graphviz(column_group):
 
 
 def _merge_add_nodes(graph):
-    """ Merges repeat '+' nodes, leading to nicer looking outputs """
+    """Merges repeat '+' nodes, leading to nicer looking outputs"""
     # lets take a copy to avoid mutating the input
     import copy
 
@@ -275,4 +275,4 @@ def _convert_col(col):
     elif isinstance(col, list):
         return tuple(col)
     else:
-        raise ValueError("Invalid column value for ColumnGroup: %s", col)
+        raise ValueError(f"Invalid column value for ColumnGroup: {col}")

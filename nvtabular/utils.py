@@ -13,7 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import gzip
+import os
+import shutil
+import tarfile
+import urllib.request
 import warnings
+import zipfile
+
+from tqdm import tqdm
 
 try:
     from numba import cuda
@@ -71,3 +79,45 @@ def device_mem_size(kind="total", cpu=False):
 
 def get_rmm_size(size):
     return (size // 256) * 256
+
+
+def download_file(url, local_filename, unzip_files=True, redownload=True):
+    """utility function to download a dataset file (movielens/criteo/rossmann etc)
+    locally, displaying a progress bar during download"""
+    local_filename = os.path.abspath(local_filename)
+    path = os.path.dirname(local_filename)
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
+    if not url.startswith("http"):
+        raise ValueError(f"Unhandled url scheme on {url} - this function only is for http")
+
+    if redownload or not os.path.exists(local_filename):
+        desc = f"downloading {os.path.basename(local_filename)}"
+        with tqdm(unit="B", unit_scale=True, desc=desc) as progress:
+
+            def report(chunk, chunksize, total):
+                if not progress.total:
+                    progress.reset(total=total)
+                progress.update(chunksize)
+
+            opener = urllib.request.build_opener()
+            opener.addheaders = [("Accept-Encoding", "gzip, deflate"), ("Accept", "*/*")]
+
+            urllib.request.install_opener(opener)
+            urllib.request.urlretrieve(url, local_filename, reporthook=report)  # nosec
+
+    if unzip_files and local_filename.endswith(".zip"):
+        with zipfile.ZipFile(local_filename) as z:
+            for filename in tqdm(z.infolist(), desc="unzipping files", unit="files"):
+                z.extract(filename, path)
+
+    elif unzip_files and local_filename.endswith(".tgz"):
+        with tarfile.open(local_filename, "r") as tar:
+            for filename in tqdm(tar.getnames(), desc="untarring files", unit="files"):
+                tar.extract(filename, path)
+
+    elif unzip_files and local_filename.endswith(".gz"):
+        with gzip.open(local_filename, "rb") as input_file:
+            with open(local_filename[:-3], "wb") as output_file:
+                shutil.copyfileobj(input_file, output_file)

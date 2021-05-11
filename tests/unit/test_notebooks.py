@@ -24,68 +24,179 @@ from os.path import dirname, realpath
 import cudf
 import pytest
 
+import nvtabular.tools.data_gen as datagen
 from tests.conftest import get_cuda_cluster
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
+# pylint: disable=unused-import,broad-except
 
-def test_criteo_notebook(tmpdir):
-    tor = pytest.importorskip("fastai")  # noqa
+
+def test_criteo_tf_notebook(tmpdir):
+    tor = pytest.importorskip("tensorflow")  # noqa
     # create a toy dataset in tmpdir, and point environment variables so the notebook
     # will read from it
+    os.system("mkdir -p " + os.path.join(tmpdir, "converted/criteo"))
     for i in range(24):
         df = _get_random_criteo_data(1000)
-        df.to_parquet(os.path.join(tmpdir, f"day_{i}.parquet"))
-    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
-    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
+        df.to_parquet(os.path.join(tmpdir, "converted/criteo", f"day_{i}.parquet"))
+    os.environ["BASE_DIR"] = str(tmpdir)
+
+    def _nb_modify(line):
+        # Disable LocalCUDACluster
+        line = line.replace("client.run(_rmm_pool)", "# client.run(_rmm_pool)")
+        line = line.replace("if cluster is None:", "if False:")
+        line = line.replace("client = Client(cluster)", "# client = Client(cluster)")
+        line = line.replace(
+            "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
+        )
+        line = line.replace("client", "# client")
+        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
+        line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
+
+        return line
 
     _run_notebook(
         tmpdir,
         os.path.join(
             dirname(TEST_PATH),
             "examples/scaling-criteo/",
-            "02-03b-ETL-with-NVTabular-Training-with-PyTorch.ipynb",
+            "02-ETL-with-NVTabular.ipynb",
         ),
         # disable rmm.reinitialize, seems to be causing issues
-        transform=lambda line: line.replace("rmm.reinitialize(", "# rmm.reinitialize("),
+        transform=_nb_modify,
+    )
+
+    def _modify_tf_nb(line):
+        return line.replace(
+            # don't require grqphviz/pydot
+            "tf.keras.utils.plot_model(model)",
+            "# tf.keras.utils.plot_model(model)",
+        )
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(
+            dirname(TEST_PATH),
+            "examples/scaling-criteo/",
+            "03a-Training-with-TF.ipynb",
+        ),
+        transform=_modify_tf_nb,
+    )
+
+
+def test_criteo_pyt_notebook(tmpdir):
+    tor = pytest.importorskip("fastai")  # noqa
+    # create a toy dataset in tmpdir, and point environment variables so the notebook
+    # will read from it
+    os.system("mkdir -p " + os.path.join(tmpdir, "converted/criteo"))
+    for i in range(24):
+        df = _get_random_criteo_data(1000)
+        df.to_parquet(os.path.join(tmpdir, "converted/criteo", f"day_{i}.parquet"))
+    os.environ["BASE_DIR"] = str(tmpdir)
+
+    def _nb_modify(line):
+        # Disable LocalCUDACluster
+        line = line.replace("client.run(_rmm_pool)", "# client.run(_rmm_pool)")
+        line = line.replace("if cluster is None:", "if False:")
+        line = line.replace("client = Client(cluster)", "# client = Client(cluster)")
+        line = line.replace(
+            "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
+        )
+        line = line.replace("client", "# client")
+        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
+        line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
+        return line
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(
+            dirname(TEST_PATH),
+            "examples/scaling-criteo/",
+            "02-ETL-with-NVTabular.ipynb",
+        ),
+        # disable rmm.reinitialize, seems to be causing issues
+        transform=_nb_modify,
+    )
+
+    _run_notebook(
+        tmpdir,
+        os.path.join(
+            dirname(TEST_PATH),
+            "examples/scaling-criteo/",
+            "03d-Training-with-FastAI.ipynb",
+        ),
     )
 
 
 def test_optimize_criteo(tmpdir):
-    _get_random_criteo_data(1000).to_csv(os.path.join(tmpdir, "day_0"), sep="\t", header=False)
-    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
-    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
+    input_path = str(tmpdir.mkdir("input"))
+    _get_random_criteo_data(1000).to_csv(os.path.join(input_path, "day_0"), sep="\t", header=False)
+    os.environ["INPUT_DATA_DIR"] = input_path
+    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir.mkdir("output"))
+    with get_cuda_cluster() as cuda_cluster:
+        scheduler_port = cuda_cluster.scheduler_address
 
+        def _nb_modify(line):
+            # Use cuda_cluster "fixture" port rather than allowing notebook
+            # to deploy a LocalCUDACluster within the subprocess
+            line = line.replace("download_criteo = True", "download_criteo = False")
+            line = line.replace("cluster = None", f"cluster = '{scheduler_port}'")
+            return line
+
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/scaling-criteo/",
+            "01-Download-Convert.ipynb",
+        )
+        _run_notebook(tmpdir, notebook_path, _nb_modify)
+
+
+def test_movielens_example(tmpdir):
+    _get_random_movielens_data(tmpdir, 10000, dataset="movie")
+    _get_random_movielens_data(tmpdir, 10000, dataset="ratings")
+    _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
+
+    os.environ["INPUT_DATA_DIR"] = str(tmpdir)
     notebook_path = os.path.join(
         dirname(TEST_PATH),
-        "examples/scaling-criteo/",
-        "01-Download-Convert.ipynb",
+        "examples/getting-started-movielens/",
+        "02-ETL-with-NVTabular.ipynb",
     )
     _run_notebook(tmpdir, notebook_path)
 
+    def _modify_tf_nb(line):
+        return line.replace(
+            # don't require grqphviz/pydot
+            "tf.keras.utils.plot_model(model)",
+            "# tf.keras.utils.plot_model(model)",
+        )
 
-@pytest.mark.skip(reason="Need to install pydot / use mock data on this")
-def test_movielens_example(tmpdir):
-    os.environ["OUTPUT_DATA_DIR"] = str(tmpdir)
-    notebooks = [
-        "01-Download-Convert.ipynb",
-        "02-ETL-with-NVTabular.ipynb",
-        "03a-Training-with-TF.ipynb",
-        "03b-Training-with-PyTorch.ipynb",
-    ]
+    notebooks = []
+    try:
+        import torch  # noqa
+
+        notebooks.append("03b-Training-with-PyTorch.ipynb")
+    except Exception:
+        pass
+    try:
+        import nvtabular.inference.triton  # noqa
+        import nvtabular.loader.tensorflow  # noqa
+
+        notebooks.append("03a-Training-with-TF.ipynb")
+    except Exception:
+        pass
+
     for notebook in notebooks:
         notebook_path = os.path.join(
             dirname(TEST_PATH),
             "examples/getting-started-movielens/",
             notebook,
         )
-        _run_notebook(
-            tmpdir,
-            notebook_path,
-            lambda line: line.replace(
-                "BASE_DIR = '/raid/data/ml/'", "BASE_DIR = '" + str(tmpdir) + "/'"
-            ),
-        )
+        if notebook == "03a-Training-with-TF.ipynb":
+            _run_notebook(tmpdir, notebook_path, transform=_modify_tf_nb)
+        else:
+            _run_notebook(tmpdir, notebook_path)
 
 
 def test_rossman_example(tmpdir):
@@ -277,3 +388,62 @@ def _get_random_rossmann_data(rows):
     )  # noqa
     dtypes["StateHoliday"] = bool
     return cudf.datasets.randomdata(rows, dtypes=dtypes)
+
+
+def _get_random_movielens_data(tmpdir, rows, dataset="movie", valid=None):
+    if dataset == "movie":
+        json_sample_movie = {
+            "conts": {},
+            "cats": {
+                "genres": {
+                    "dtype": None,
+                    "cardinality": 50,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                    "multi_min": 2,
+                    "multi_max": 4,
+                    "multi_avg": 3,
+                },
+                "movieId": {
+                    "dtype": None,
+                    "cardinality": 500,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                },
+            },
+        }
+        cols = datagen._get_cols_from_schema(json_sample_movie)
+    if dataset == "ratings":
+        json_sample_ratings = {
+            "conts": {},
+            "cats": {
+                "movieId": {
+                    "dtype": None,
+                    "cardinality": 500,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                },
+                "userId": {
+                    "dtype": None,
+                    "cardinality": 500,
+                    "min_entry_size": 1,
+                    "max_entry_size": 5,
+                },
+            },
+            "labels": {"rating": {"dtype": None, "cardinality": 5}},
+        }
+        cols = datagen._get_cols_from_schema(json_sample_ratings)
+
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.1)
+    target_path = tmpdir
+    df_gen.full_df_create(rows, cols, output=target_path)
+
+    if dataset == "movie":
+        movies_converted = cudf.read_parquet(os.path.join(tmpdir, "dataset_0.parquet"))
+        movies_converted = movies_converted.drop_duplicates(["movieId"], keep="first")
+        movies_converted.to_parquet(os.path.join(tmpdir, "movies_converted.parquet"))
+
+    elif dataset == "ratings" and not valid:
+        os.rename(os.path.join(tmpdir, "dataset_0.parquet"), os.path.join(tmpdir, "train.parquet"))
+    else:
+        os.rename(os.path.join(tmpdir, "dataset_0.parquet"), os.path.join(tmpdir, "valid.parquet"))

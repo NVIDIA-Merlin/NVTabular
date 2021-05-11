@@ -259,7 +259,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                                 features_replaced_buckets.columns.remove(diff_col[0])
                             cross_columns.append(features_replaced_buckets)
                         else:
-                            raise RuntimeError("Unknown bucket column %s", key)
+                            raise RuntimeError(f"Unknown bucket column {key}")
                     else:
                         cross_columns.append(nvt.ColumnGroup(key))
 
@@ -285,7 +285,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
     # create stats for Categorify op if we need it
     if len(categorifies) > 0:
         if category_dir is None:
-            category_dir = "/tmp/categories"
+            category_dir = "/tmp/categories"  # nosec
         if not os.path.exists(category_dir):
             os.makedirs(category_dir)
 

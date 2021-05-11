@@ -68,8 +68,12 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         labels=None,
         batch_size=1,
         shuffle=False,
+        seed_fn=None,
         parts_per_chunk=1,
-        devices=None,
+        device=None,
+        global_size=None,
+        global_rank=None,
+        drop_last=False,
     ):
         DataLoader.__init__(
             self,
@@ -79,8 +83,12 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             labels,
             batch_size,
             shuffle,
+            seed_fn=seed_fn,
             parts_per_chunk=parts_per_chunk,
-            devices=devices,
+            device=device,
+            global_size=global_size,
+            global_rank=global_rank,
+            drop_last=drop_last,
         )
 
     def __iter__(self):
@@ -116,6 +124,10 @@ class DLDataLoader(torch.utils.data.DataLoader):
     This class is an extension of the torch dataloader.
     It is required to support the FastAI framework.
     """
+
+    @property
+    def device(self):
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def __len__(self):
         return len(self.dataset)

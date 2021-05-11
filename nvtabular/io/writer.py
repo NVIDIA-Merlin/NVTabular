@@ -17,6 +17,7 @@ import json
 import math
 import queue
 import threading
+from typing import Optional
 
 import cupy as cp
 import numpy as np
@@ -27,9 +28,6 @@ from .shuffle import _shuffle_df
 
 
 class Writer:
-    def __init__(self):
-        pass
-
     def add_data(self, df):
         raise NotImplementedError()
 
@@ -85,7 +83,7 @@ class ThreadedWriter(Writer):
             self.num_out_files = len(self.fns)
         else:
             self.num_out_files = num_out_files
-        self.num_samples = [0] * num_out_files
+        self.num_samples = [0] * self.num_out_files
 
         self.data_paths = None
         self.need_cal_col_names = True
@@ -128,10 +126,14 @@ class ThreadedWriter(Writer):
     def add_data(self, df):
         # Populate columns idxs
         if not self.col_idx:
-            for i, x in enumerate(df.columns.values):
+            _df = df[0] if isinstance(df, list) else df
+            for i, x in enumerate(_df.columns.values):
                 self.col_idx[str(x)] = i
 
-        if self.num_out_files == 1:
+        if isinstance(df, list):
+            # Data is already partitioned into a list
+            self._add_data_list(df)
+        elif self.num_out_files == 1:
             # Only writing to a single file. No need to
             # scatter or slice the data before writing
             self._add_single_file(df)
@@ -199,6 +201,18 @@ class ThreadedWriter(Writer):
             else:
                 self._write_table(x, to_write)
 
+    def _add_data_list(self, dfs):
+        """Write a list of DataFrames"""
+        assert len(dfs) == self.num_out_files
+        for x, df in enumerate(dfs):
+            if self.shuffle:
+                df = _shuffle_df(df)
+            self.num_samples[x] = self.num_samples[x] + df.shape[0]
+            if self.num_threads > 1:
+                self.queue.put((x, df))
+            else:
+                self._write_table(x, df)
+
     def _add_single_file(self, df):
         """Write to single file.
 
@@ -258,7 +272,7 @@ class ThreadedWriter(Writer):
     def write_special_metadata(cls, data, fs, out_dir):
         pass
 
-    def _close_writers(self):
+    def _close_writers(self) -> Optional[dict]:
         for writer in self.data_writers:
             writer.close()
         return None
@@ -274,9 +288,9 @@ class ThreadedWriter(Writer):
 
         # Close writers and collect various metadata
         _general_meta = self.package_general_metadata()
-        _special_meta = self._close_writers()
+        _special_meta = self._close_writers()  # pylint: disable=assignment-from-none
 
-        # Move in-meomory file to disk
+        # Move in-memory file to disk
         if self.bytes_io:
             _special_meta = self._bytesio_to_disk()
 

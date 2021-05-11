@@ -67,6 +67,8 @@ class ParquetDatasetEngine(DatasetEngine):
         cpu=False,
     ):
         super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
+        self._pp_map = None
+        self._pp_nrows = None
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
             with self.fs.open(path0, "rb") as f0:
@@ -111,8 +113,40 @@ class ParquetDatasetEngine(DatasetEngine):
         return dataset
 
     @property
-    @functools.lru_cache(1)
     def _file_partition_map(self):
+        if self._pp_map is None:
+            self._process_parquet_metadata()
+        return self._pp_map
+
+    @property
+    def _partition_lens(self):
+        if self._pp_nrows is None:
+            self._process_parquet_metadata()
+        return self._pp_nrows
+
+    @property
+    def num_rows(self):
+        # TODO: Avoid parsing metadata once upstream dask
+        # can get the length efficiently (in all practical cases)
+        return sum(self._partition_lens)
+
+    def _process_parquet_metadata(self):
+        # Utility shared by `_file_partition_map` and `_partition_lens`
+        # to collect useful information from the parquet metadata
+
+        _pp_nrows = []
+
+        def _update_partition_lens(md, num_row_groups, rg_offset=None):
+            # Helper function to calculate the row count for each
+            # output partition (and add it to `_pp_nrows`)
+            rg_offset = rg_offset or 0
+            for rg_i in range(0, num_row_groups, self.row_groups_per_part):
+                rg_f = min(rg_i + self.row_groups_per_part, num_row_groups)
+                _pp_nrows.append(
+                    sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
+                )
+            return
+
         dataset = self._dataset
         if dataset.metadata:
             # We have a metadata file.
@@ -124,41 +158,29 @@ class ParquetDatasetEngine(DatasetEngine):
 
             # Convert the per-file row-group count to the
             # file-to-partition mapping
-            ind = 0
+            ind, rg = 0, 0
             _pp_map = defaultdict(list)
             for fn, num_row_groups in _path_row_groups.items():
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 _pp_map[fn] = np.arange(ind, ind + part_count)
+                _update_partition_lens(dataset.metadata, num_row_groups, rg_offset=rg)
                 ind += part_count
-
+                rg += num_row_groups
         else:
             # No metadata file. Construct file-to-partition map manually
             ind = 0
             _pp_map = {}
             for piece in dataset.pieces:
-                num_row_groups = piece.get_metadata().num_row_groups
+                md = piece.get_metadata()
+                num_row_groups = md.num_row_groups
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 fn = piece.path.split(self.fs.sep)[-1]
                 _pp_map[fn] = np.arange(ind, ind + part_count)
+                _update_partition_lens(md, num_row_groups)
                 ind += part_count
 
-        return _pp_map
-
-    @property
-    @functools.lru_cache(1)
-    def num_rows(self):
-        # TODO: Avoid parsing metadata here if we can confirm upstream dask
-        # can get the length efficiently (in all practical cases)
-        dataset = self._dataset
-        if dataset.metadata:
-            # We have a metadata file
-            return dataset.metadata.num_rows
-        else:
-            # Sum up row-group sizes manually
-            num_rows = 0
-            for piece in dataset.pieces:
-                num_rows += piece.get_metadata().num_rows
-            return num_rows
+        self._pp_map = _pp_map
+        self._pp_nrows = _pp_nrows
 
     def to_ddf(self, columns=None, cpu=None):
 
@@ -302,8 +324,6 @@ class ParquetDatasetEngine(DatasetEngine):
 
             # If there is schema mismatch, urge the user to add a _metadata file
             if len(schema_errors):
-                import pyarrow.parquet as pq
-
                 meta_valid = False  # There are schema-mismatch errors
 
                 # Check that the Dask version supports `create_metadata_file`
@@ -498,9 +518,7 @@ class ParquetDatasetEngine(DatasetEngine):
         )
         getlen_name = "getlen-" + token
         name = "all-" + getlen_name
-        dsk = {
-            (getlen_name, i): (lambda x: len(x), (_ddf._name, i)) for i in range(_ddf.npartitions)
-        }
+        dsk = {(getlen_name, i): (len, (_ddf._name, i)) for i in range(_ddf.npartitions)}
         dsk[name] = [(getlen_name, i) for i in range(_ddf.npartitions)]
         graph = HighLevelGraph.from_collections(name, dsk, dependencies=[_ddf])
         size_list = Delayed(name, graph).compute()
@@ -782,8 +800,8 @@ class GPUParquetWriter(BaseParquetWriter):
 
     def _close_writers(self):
         md_dict = {}
-        for writer, path in zip(self.data_writers, self.data_paths):
-            fn = path.split(self.fs.sep)[-1]
+        _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
+        for writer, fn in zip(self.data_writers, _fns):
             md_dict[fn] = writer.close(metadata_file_path=fn)
         for f in self.data_files:
             f.close()
@@ -853,15 +871,16 @@ class CPUParquetWriter(BaseParquetWriter):
         _write_pq_metadata_file_pyarrow(md_list, fs, out_dir)
 
     def _close_writers(self):
-        for writer, path in zip(self.data_writers, self.data_paths):
-            fn = path.split(self.fs.sep)[-1]
+        _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
+        for writer, fn in zip(self.data_writers, _fns):
             writer.close()
-            self.md_collectors[path][0].set_file_path(fn)
+            _path = self.fs.sep.join([self.out_dir, fn])
+            self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 
 
 def _write_pq_metadata_file_cudf(md_list, fs, path):
-    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    """Converts list of parquet metadata objects into a single shared _metadata file."""
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
@@ -871,7 +890,7 @@ def _write_pq_metadata_file_cudf(md_list, fs, path):
 
 
 def _write_pq_metadata_file_pyarrow(md_list, fs, path):
-    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    """Converts list of parquet metadata objects into a single shared _metadata file."""
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = None

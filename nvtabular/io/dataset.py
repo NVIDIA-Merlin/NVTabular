@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import collections
 import logging
 import math
 import random
@@ -36,7 +37,7 @@ from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
-from .dask import _ddf_to_dataset
+from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
@@ -263,7 +264,7 @@ class Dataset:
             else:
                 # If a fractional partition size is given, calculate part_size
                 part_mem_fraction = part_mem_fraction or 0.125
-                assert part_mem_fraction > 0.0 and part_mem_fraction < 1.0
+                assert 0.0 < part_mem_fraction < 1.0
                 if part_mem_fraction > 0.25:
                     warnings.warn(
                         "Using very large partitions sizes for Dask. "
@@ -295,10 +296,10 @@ class Dataset:
                 elif engine == "avro":
                     try:
                         from .avro import AvroDatasetEngine
-                    except ImportError:
+                    except ImportError as e:
                         raise RuntimeError(
                             "Failed to import AvroDatasetEngine. Make sure uavro is installed."
-                        )
+                        ) from e
 
                     self.engine = AvroDatasetEngine(
                         paths, part_size, storage_options=storage_options, cpu=self.cpu, **kwargs
@@ -361,6 +362,10 @@ class Dataset:
     def file_partition_map(self):
         return self.engine._file_partition_map
 
+    @property
+    def partition_lens(self):
+        return self.engine._partition_lens
+
     def to_cpu(self):
         warnings.warn(
             "Changing an NVTabular Dataset to CPU mode."
@@ -373,7 +378,110 @@ class Dataset:
         self.cpu = False
         self.engine.to_gpu()
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None):
+    def shuffle_by_keys(self, keys, hive_data=None, npartitions=None):
+        """Shuffle the in-memory Dataset so that all unique-key
+        combinations are moved to the same partition.
+
+        Parameters
+        ----------
+        keys : list(str)
+            Column names to shuffle by.
+        hive_data : bool; default None
+            Whether the dataset is backed by a hive-partitioned
+            dataset (with the keys encoded in the directory structure).
+            By default, the Dataset's `file_partition_map` property will
+            be inspected to infer this setting. When `hive_data` is True,
+            the number of output partitions will correspond to the number
+            of unique key combinations in the dataset.
+        npartitions : int; default None
+            Number of partitions in the output Dataset. For hive-partitioned
+            data, this value should be <= the number of unique key
+            combinations (the default), otherwise it will be ignored. For
+            data that is not hive-partitioned, the ``npartitions`` input
+            should be <= the orginal partition count, otherwise it will be
+            ignored.
+        """
+
+        # Make sure we are dealing with a list
+        keys = [keys] if not isinstance(keys, (list, tuple)) else keys
+
+        # Start with default ddf
+        ddf = self.to_ddf()
+        if npartitions:
+            npartitions = min(ddf.npartitions, npartitions)
+
+        if hive_data is not False:
+            # The keys may be encoded in the directory names.
+            # Let's use the file_partition_map to extract this info.
+            try:
+                _mapping = self.file_partition_map
+            except AttributeError as e:
+                _mapping = None
+                if hive_data:
+                    raise RuntimeError("Failed to extract hive-partition mapping!") from e
+
+            # If we have a `_mapping` available, check if the
+            # file names include information about all our keys
+            hive_mapping = collections.defaultdict(list)
+            if _mapping:
+                for k, v in _mapping.items():
+                    for part in k.split(self.engine.fs.sep)[:-1]:
+                        try:
+                            _key, _val = part.split("=")
+                        except ValueError:
+                            continue
+                        if _key in keys:
+                            hive_mapping[_key].append(_val)
+
+            if set(hive_mapping.keys()) == set(keys):
+
+                # Generate hive-mapping DataFrame summary
+                hive_mapping = type(ddf._meta)(hive_mapping)
+                cols = list(hive_mapping.columns)
+                for c in keys:
+                    typ = ddf._meta[c].dtype
+                    if c in cols:
+                        hive_mapping[c] = hive_mapping[c].astype(typ)
+
+                # Generate simple-shuffle plan
+                target_mapping = hive_mapping.drop_duplicates().reset_index(drop=True)
+                target_mapping.index.name = "_partition"
+                hive_mapping.index.name = "_sort"
+                target_mapping.reset_index(drop=False, inplace=True)
+                plan = (
+                    hive_mapping.reset_index()
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
+                )
+
+                if hasattr(plan, "to_pandas"):
+                    plan = plan.to_pandas()
+
+                # Deal with repartitioning
+                if npartitions and npartitions < len(target_mapping):
+                    q = np.linspace(0.0, 1.0, num=npartitions + 1)
+                    divs = plan.quantile(q)
+                    partitions = divs.searchsorted(plan, side="right") - 1
+                    partitions[(plan >= divs.iloc[-1]).values] = len(divs) - 2
+                    plan = partitions.tolist()
+                elif len(plan) != len(plan.unique()):
+                    plan = plan.to_list()
+                else:
+                    # Plan is a unique 1:1 ddf partition mapping.
+                    # We already have shuffled data.
+                    return self
+
+                # TODO: We should avoid shuffling the original ddf and
+                # instead construct a new (more-efficent) graph to read
+                # multiple files from each partition directory at once.
+                # Generally speaking, we can optimize this code path
+                # much further.
+                return Dataset(_simple_shuffle(ddf, plan))
+
+        # Fall back to dask.dataframe algorithm
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
+
+    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -398,12 +506,39 @@ class Dataset:
             The random seed to use if `shuffle=True`.  If nothing
             is specified, the current system time will be used by the
             `random` std library.
+        use_file_metadata : bool; Optional
+            Whether to allow the returned ``DataFrameIter`` object to
+            use file metadata from the ``base_dataset`` to estimate
+            the row-count. By default, the file-metadata
+            optimization will only be used if the current Dataset is
+            backed by a file-based engine. Otherwise, it is possible
+            that an intermediate transform has modified the row-count.
         """
         if isinstance(columns, str):
             columns = [columns]
 
+        # Try to extract the row-size metadata
+        # if we are not shuffling
+        partition_lens_meta = None
+        if not shuffle and use_file_metadata is not False:
+            # We are allowed to use file metadata to calculate
+            # partition sizes.  If `use_file_metadata` is None,
+            # we only use metadata if `self` is backed by a
+            # file-based engine (like "parquet").  Otherwise,
+            # we cannot be "sure" that the metadata row-count
+            # is correct.
+            try:
+                if use_file_metadata:
+                    partition_lens_meta = self.base_dataset.partition_lens
+                else:
+                    partition_lens_meta = self.partition_lens
+            except AttributeError:
+                pass
+
         return DataFrameIter(
-            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed), indices=indices
+            self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
+            indices=indices,
+            partition_lens=partition_lens_meta,
         )
 
     def to_parquet(
@@ -419,6 +554,7 @@ class Dataset:
         conts=None,
         labels=None,
         suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -427,8 +563,7 @@ class Dataset:
         output_path : string
             Path to write processed/shuffled output data
         shuffle : nvt.io.Shuffle enum
-            How to shuffle the output dataset. Shuffling is only
-            performed if the data is written to disk. For all options,
+            How to shuffle the output dataset. For all options,
             other than `None` (which means no shuffling), the partitions
             of the underlying dataset/ddf will be randomly ordered. If
             `PER_PARTITION` is specified, each worker/process will also
@@ -441,6 +576,11 @@ class Dataset:
             data processed by each worker.  To improve performace, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
+        partition_on : str or list(str)
+            Columns to use for hive-partitioning.  If this option is used,
+            `preserve_files`, `output_files`, and `out_files_per_proc` will
+            all be ignored.  Also, the `PER_WORKER` shuffle will not be
+            supported.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
             the base dataset. This option is only available if the base
@@ -515,12 +655,12 @@ class Dataset:
         elif preserve_files:
             try:
                 _output_files = self.base_dataset.file_partition_map
-            except (AttributeError):
+            except AttributeError as e:
                 raise AttributeError(
                     f"`to_parquet(..., preserve_files=True)` is not currently supported "
                     f"for datasets with a {type(self.base_dataset.engine)} engine. Check "
                     f"that `dataset.base_dataset` is backed by csv or parquet files."
-                )
+                ) from e
             if suffix == "":
                 output_files = _output_files
             else:
@@ -556,6 +696,7 @@ class Dataset:
             num_threads,
             self.cpu,
             suffix=suffix,
+            partition_on=partition_on,
         )
 
     def to_hugectr(
@@ -751,7 +892,7 @@ class Dataset:
 
 def _set_dtypes(chunk, dtypes):
     for col, dtype in dtypes.items():
-        if (type(dtype) is str) and ("hex" in dtype):
+        if isinstance(dtype, str) and ("hex" in dtype):
             chunk[col] = _hex_to_int(chunk[col])
         else:
             chunk[col] = chunk[col].astype(dtype)
@@ -759,13 +900,22 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
+        self.partition_lens = partition_lens
 
     def __len__(self):
-        return len(self._ddf.partitions[self.indices])
+        if self.partition_lens:
+            # Use metadata-based partition-size information
+            # if/when it is available.  Note that this metadata
+            # will not be correct if rows where added or dropped
+            # after IO (within Ops).
+            return sum(self.partition_lens[i] for i in self.indices)
+        if len(self.indices) < self._ddf.npartitions:
+            return len(self._ddf.partitions[self.indices])
+        return len(self._ddf)
 
     def __iter__(self):
         for i in self.indices:
