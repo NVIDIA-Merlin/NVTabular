@@ -145,10 +145,15 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
     keys = ddf.__dask_keys__() if keys is None else keys
 
     if isinstance(dsk, dask.highlevelgraph.HighLevelGraph):
-        # Active fusion is now disabled by default in Dask's
-        # `main` branch, but we can be explicit here anyway.
-        with dask.config.set({"optimization.fuse.active": False}):
-            dsk = dask.dataframe.optimize(dsk, keys)
+        from dask.dataframe.optimize import (
+            fuse_roots,
+            optimize_blockwise,
+            optimize_dataframe_getitem,
+        )
+
+        dsk = optimize_dataframe_getitem(dsk, keys=keys)
+        dsk = optimize_blockwise(dsk, keys=keys)
+        dsk = fuse_roots(dsk, keys=keys)
 
     if ddf is None:
         # Return optimized graph
