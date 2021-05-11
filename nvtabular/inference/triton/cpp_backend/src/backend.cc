@@ -36,6 +36,8 @@
 #include <fstream>
 #include "model_state.h"
 #include "model_inst_state.h"
+#include <pybind11/embed.h>
+#include <pybind11/numpy.h>
 
 using namespace rapidjson;
 
@@ -415,56 +417,6 @@ TRITONBACKEND_ModelInstanceExecute(
     void* output_buffers[output_names.size()];
     uint64_t output_byte_sizes[output_names.size()];
 
-    /*
-    for (uint32_t i = 0; i < output_names.size(); ++i) {
-      const char* output_name = output_names[i].c_str();
-
-      output_byte_sizes[i] = (int64_t)TRITONSERVER_DataTypeByteSize(output_dtypes[i]) *
-    		  input_shapes[i][0] * (int64_t)input_dims_counts[i];
-
-      TRITONBACKEND_Response* response = responses[r];
-      GUARDED_RESPOND_IF_ERROR(
-        responses, r,
-        TRITONBACKEND_ResponseOutput(
-          response, &outputs[i], output_name, output_dtypes[i],
-          input_shapes[i], input_dims_counts[i]));
-
-      if (responses[r] == nullptr) {
-        error = (std::string("request ") + std::to_string(r) +
-                ": failed to create response output, error response sent")
-                   .c_str();
-    	LOG_MESSAGE(TRITONSERVER_LOG_ERROR, error.c_str());
-        continue;
-      }
-
-      TRITONSERVER_MemoryType output_memory_type = TRITONSERVER_MEMORY_CPU;
-      int64_t output_memory_type_id = 0;
-      GUARDED_RESPOND_IF_ERROR(
-        responses, r,
-        TRITONBACKEND_OutputBuffer(
-          outputs[i], &output_buffers[i], output_byte_sizes[i], &output_memory_type,
-          &output_memory_type_id));
-
-      if ((responses[r] == nullptr) || (output_memory_type == TRITONSERVER_MEMORY_GPU)) {
-        GUARDED_RESPOND_IF_ERROR(
-          responses, r,
-          TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNSUPPORTED,
-            "failed to create output buffer in CPU memory"));
-
-        info = (std::string("request ") + std::to_string(r) +
-               ": failed to create output buffer in CPU memory, error response "
-               "sent")
-                 .c_str();
-        LOG_MESSAGE(TRITONSERVER_LOG_ERROR, info.c_str());
-        continue;
-      }
-
-    }*/
-
-    auto data_prep_end = std::chrono::high_resolution_clock::now();
-    auto elapsed_prep = std::chrono::duration_cast<std::chrono::nanoseconds>(data_prep_end - data_prep_begin);
-    printf("Prep Time measured: %.3f seconds.\n", elapsed_prep.count() * 1e-9);
-
     for (uint32_t b = 0; b < input_buffer_counts[0]; ++b) {
       const void* input_buffers[input_count];
       uint64_t buffer_byte_sizes[input_count];
@@ -492,14 +444,55 @@ TRITONBACKEND_ModelInstanceExecute(
     	}
       }
 
-      auto transform_start = std::chrono::high_resolution_clock::now();
-
       instance_state->nvt.Transform(input_names, input_buffers, input_shapes,
-    		  input_dtypes, output_names);
+        input_dtypes, output_names);
 
-      auto transform_end = std::chrono::high_resolution_clock::now();
-      auto elapsed_transform = std::chrono::duration_cast<std::chrono::nanoseconds>(transform_end - transform_start);
-      printf("Transform Time measured: %.3f seconds.\n", elapsed_transform.count() * 1e-9);
+      py::list lengths = instance_state->nvt.GetOutputSizes();
+      for (uint32_t i = 0; i < output_names.size(); ++i) {
+    	const char* output_name = output_names[i].c_str();
+    	const int64_t output_length = lengths[i].cast<int64_t>();
+    	int64_t output_width = 1;
+    	output_byte_sizes[i] = output_length * output_width *
+    			Utils::GetTritonTypeByteSize(output_dtypes[i]);
+
+    	TRITONBACKEND_Response* response = responses[r];
+    	  GUARDED_RESPOND_IF_ERROR(
+    	    responses, r,
+    	    TRITONBACKEND_ResponseOutput(
+    	      response, &outputs[i], output_name, output_dtypes[i],
+    	      &output_length, output_width));
+
+    	if (responses[r] == nullptr) {
+          error = (std::string("request ") + std::to_string(r) +
+                  ": failed to create response output, error response sent").c_str();
+    	  LOG_MESSAGE(TRITONSERVER_LOG_ERROR, error.c_str());
+    	  continue;
+    	}
+
+    	TRITONSERVER_MemoryType output_memory_type = TRITONSERVER_MEMORY_CPU;
+        int64_t output_memory_type_id = 0;
+        GUARDED_RESPOND_IF_ERROR(
+          responses, r,
+          TRITONBACKEND_OutputBuffer(
+          outputs[i], &output_buffers[i], output_byte_sizes[i], &output_memory_type,
+          &output_memory_type_id));
+
+        if ((responses[r] == nullptr) || (output_memory_type == TRITONSERVER_MEMORY_GPU)) {
+          GUARDED_RESPOND_IF_ERROR(
+             responses, r,
+             TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNSUPPORTED,
+             "failed to create output buffer in CPU memory"));
+
+          info = (std::string("request ") + std::to_string(r) +
+                 ": failed to create output buffer in CPU memory, error response "
+                 "sent").c_str();
+    	  LOG_MESSAGE(TRITONSERVER_LOG_ERROR, info.c_str());
+    	          continue;
+        }
+
+      }
+
+      instance_state->nvt.CopyData(output_buffers, output_byte_sizes, output_names, output_dtypes);
 
       if (responses[r] == nullptr) {
         error = (std::string("request ") + std::to_string(r) +
@@ -545,7 +538,6 @@ TRITONBACKEND_ModelInstanceExecute(
         exec_start_ns, exec_start_ns, exec_end_ns, exec_end_ns),
         "failed reporting request statistics");
   }
-
 
   LOG_IF_ERROR(
     TRITONBACKEND_ModelInstanceReportBatchStatistics(

@@ -27,12 +27,15 @@
 #ifndef MODELSTATE_H_
 #define MODELSTATE_H_
 
-#include <vector>
 #include "triton/backend/backend_common.h"
+#include "utils.h"
+#include <vector>
 
 using namespace rapidjson;
 
-namespace triton { namespace backend { namespace nvtabular {
+namespace triton {
+namespace backend {
+namespace nvtabular {
 //
 // ModelState
 //
@@ -41,42 +44,42 @@ namespace triton { namespace backend { namespace nvtabular {
 // TRITONBACKEND_Model.
 //
 class ModelState {
- public:
-  static TRITONSERVER_Error* Create(
-      TRITONBACKEND_Model* triton_model, ModelState** state);
+public:
+  static TRITONSERVER_Error *Create(TRITONBACKEND_Model *triton_model,
+                                    ModelState **state);
 
   // Get the handle to the TRITONBACKEND model.
-  TRITONBACKEND_Model* TritonModel() { return triton_model_; }
+  TRITONBACKEND_Model *TritonModel() { return triton_model_; }
 
   // Get the name and version of the model.
-  const std::string& Name() const { return name_; }
+  const std::string &Name() const { return name_; }
   uint64_t Version() const { return version_; }
-  const std::string& Path() const { return path_; }
-  const std::vector<std::string>& InputNames() { return input_names_; }
-  const std::vector<std::string>& OutputNames() { return output_names_; }
-  const std::vector<TRITONSERVER_DataType>& OutputDtypes() { return output_dtypes_; }
+  const std::string &Path() const { return path_; }
+  const std::vector<std::string> &InputNames() { return input_names_; }
+  const std::vector<std::string> &OutputNames() { return output_names_; }
+  const std::vector<TRITONSERVER_DataType> &OutputDtypes() {
+    return output_dtypes_;
+  }
 
   // Does this model support batching in the first dimension. This
   // function should not be called until after the model is completely
   // loaded.
-  TRITONSERVER_Error* SupportsFirstDimBatching(bool* supports);
+  TRITONSERVER_Error *SupportsFirstDimBatching(bool *supports);
 
   // Block the thread for seconds specified in 'creation_delay_sec' parameter.
   // This function is used for testing.
-  TRITONSERVER_Error* CreationDelay();
+  TRITONSERVER_Error *CreationDelay();
 
-  TRITONSERVER_Error* ReadInputOutputNames();
+  TRITONSERVER_Error *ReadInputOutputNames();
 
- private:
-  ModelState(
-      TRITONSERVER_Server* triton_server, TRITONBACKEND_Model* triton_model,
-      const char* name, const uint64_t version, const char* path,
-      common::TritonJson::Value&& model_config);
+private:
+  ModelState(TRITONSERVER_Server *triton_server,
+             TRITONBACKEND_Model *triton_model, const char *name,
+             const uint64_t version, const char *path,
+             common::TritonJson::Value &&model_config);
 
-  TRITONSERVER_DataType convertToTritonType(std::string& output_dtype);
-
-  TRITONSERVER_Server* triton_server_;
-  TRITONBACKEND_Model* triton_model_;
+  TRITONSERVER_Server *triton_server_;
+  TRITONBACKEND_Model *triton_model_;
   const std::string name_;
   const uint64_t version_;
   const std::string path_;
@@ -89,10 +92,9 @@ class ModelState {
   std::vector<TRITONSERVER_DataType> output_dtypes_;
 };
 
-TRITONSERVER_Error*
-ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
-{
-  TRITONSERVER_Message* config_message;
+TRITONSERVER_Error *ModelState::Create(TRITONBACKEND_Model *triton_model,
+                                       ModelState **state) {
+  TRITONSERVER_Message *config_message;
   RETURN_IF_ERROR(TRITONBACKEND_ModelConfig(
       triton_model, 1 /* config_version */, &config_message));
 
@@ -103,27 +105,27 @@ ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
   // nice errors (currently the underlying implementation is
   // rapidjson... but others could be added). You can use any json
   // parser you prefer.
-  const char* buffer;
+  const char *buffer;
   size_t byte_size;
   RETURN_IF_ERROR(
       TRITONSERVER_MessageSerializeToJson(config_message, &buffer, &byte_size));
 
   common::TritonJson::Value model_config;
-  TRITONSERVER_Error* err = model_config.Parse(buffer, byte_size);
+  TRITONSERVER_Error *err = model_config.Parse(buffer, byte_size);
   RETURN_IF_ERROR(TRITONSERVER_MessageDelete(config_message));
   RETURN_IF_ERROR(err);
 
-  const char* model_name;
+  const char *model_name;
   RETURN_IF_ERROR(TRITONBACKEND_ModelName(triton_model, &model_name));
 
   uint64_t model_version;
   RETURN_IF_ERROR(TRITONBACKEND_ModelVersion(triton_model, &model_version));
 
-  TRITONSERVER_Server* triton_server;
+  TRITONSERVER_Server *triton_server;
   RETURN_IF_ERROR(TRITONBACKEND_ModelServer(triton_model, &triton_server));
 
   TRITONBACKEND_ArtifactType artifact_type;
-  const char* path;
+  const char *path;
   RETURN_IF_ERROR(
       TRITONBACKEND_ModelRepository(triton_model, &artifact_type, &path));
 
@@ -133,19 +135,19 @@ ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
   python_version_path.append("/workflow/metadata.json");
 
   std::string line;
-  std::ifstream myfile (python_version_path.c_str());
+  std::ifstream myfile(python_version_path.c_str());
   if (myfile.is_open()) {
-	std::getline(myfile, line);
+    std::getline(myfile, line);
     myfile.close();
   }
 
   Document document;
   document.Parse(line.c_str());
   if (document["versions"].HasMember("python")) {
-	std::string python_lib = "libpython";
+    std::string python_lib = "libpython";
 
     std::string value(document["versions"]["python"].GetString());
-    python_lib.append(value.substr(0,3));
+    python_lib.append(value.substr(0, 3));
     python_lib.append(".so");
 
     void *handle = dlopen(python_lib.c_str(), RTLD_LAZY | RTLD_GLOBAL);
@@ -155,28 +157,24 @@ ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
       LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Loaded libpython successfully");
     }
   } else {
-	  LOG_MESSAGE(TRITONSERVER_LOG_ERROR, "Python version is not specified in the metada.json");
+    LOG_MESSAGE(TRITONSERVER_LOG_ERROR,
+                "Python version is not specified in the metada.json");
   }
 
-  *state = new ModelState(
-      triton_server, triton_model, model_name, model_version, path,
-      std::move(model_config));
-  return nullptr;  // success
+  *state = new ModelState(triton_server, triton_model, model_name,
+                          model_version, path, std::move(model_config));
+  return nullptr; // success
 }
 
-ModelState::ModelState(
-    TRITONSERVER_Server* triton_server, TRITONBACKEND_Model* triton_model,
-    const char* name, const uint64_t version, const char* path,
-    common::TritonJson::Value&& model_config)
+ModelState::ModelState(TRITONSERVER_Server *triton_server,
+                       TRITONBACKEND_Model *triton_model, const char *name,
+                       const uint64_t version, const char *path,
+                       common::TritonJson::Value &&model_config)
     : triton_server_(triton_server), triton_model_(triton_model), name_(name),
       version_(version), path_(path), model_config_(std::move(model_config)),
-      supports_batching_initialized_(false), supports_batching_(false)
-{
-}
+      supports_batching_initialized_(false), supports_batching_(false) {}
 
-TRITONSERVER_Error*
-ModelState::SupportsFirstDimBatching(bool* supports)
-{
+TRITONSERVER_Error *ModelState::SupportsFirstDimBatching(bool *supports) {
   // We can't determine this during model initialization because
   // TRITONSERVER_ServerModelBatchProperties can't be called until the
   // model is loaded. So we just cache it here.
@@ -189,12 +187,10 @@ ModelState::SupportsFirstDimBatching(bool* supports)
   }
 
   *supports = supports_batching_;
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-ModelState::CreationDelay()
-{
+TRITONSERVER_Error *ModelState::CreationDelay() {
   // Feature for testing purpose...
   // look for parameter 'creation_delay_sec' in model config
   // and sleep for the value specified
@@ -213,12 +209,10 @@ ModelState::CreationDelay()
           std::chrono::seconds(std::stoi(creation_delay_sec_str)));
     }
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-ModelState::ReadInputOutputNames()
-{
+TRITONSERVER_Error *ModelState::ReadInputOutputNames() {
   // We have the json DOM for the model configuration...
   common::TritonJson::WriteBuffer buffer;
   RETURN_IF_ERROR(model_config_.PrettyWrite(&buffer));
@@ -231,62 +225,32 @@ ModelState::ReadInputOutputNames()
   RETURN_IF_ERROR(model_config_.MemberAsArray("output", &outputs));
 
   for (size_t i = 0; i < inputs.ArraySize(); i++) {
-	common::TritonJson::Value input;
-	RETURN_IF_ERROR(inputs.IndexAsObject(i, &input));
+    common::TritonJson::Value input;
+    RETURN_IF_ERROR(inputs.IndexAsObject(i, &input));
 
-	std::string input_name;
-	input.MemberAsString("name", &input_name);
-	input_names_.push_back(input_name);
+    std::string input_name;
+    input.MemberAsString("name", &input_name);
+    input_names_.push_back(input_name);
   }
 
   for (size_t i = 0; i < outputs.ArraySize(); i++) {
-  	common::TritonJson::Value output;
-  	RETURN_IF_ERROR(outputs.IndexAsObject(i, &output));
+    common::TritonJson::Value output;
+    RETURN_IF_ERROR(outputs.IndexAsObject(i, &output));
 
-  	std::string output_name;
-  	output.MemberAsString("name", &output_name);
-  	std::string output_dtype;
-  	output.MemberAsString("data_type", &output_dtype);
+    std::string output_name;
+    output.MemberAsString("name", &output_name);
+    std::string output_dtype;
+    output.MemberAsString("data_type", &output_dtype);
 
-  	output_dtypes_.push_back(convertToTritonType(output_dtype));
-  	output_names_.push_back(output_name);
+    output_dtypes_.push_back(Utils::ConvertToTritonType(output_dtype));
+    output_names_.push_back(output_name);
   }
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_DataType
-ModelState::convertToTritonType(std::string& output_dtype) {
-  if (output_dtype.compare("TRITONSERVER_TYPE_INVALID") == 0)
-    return TRITONSERVER_TYPE_INVALID;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_BOOL") == 0)
-	return TRITONSERVER_TYPE_BOOL;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT8") == 0)
-  	return TRITONSERVER_TYPE_UINT8;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT16") == 0)
-    return TRITONSERVER_TYPE_UINT16;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT32") == 0)
-    return TRITONSERVER_TYPE_UINT32;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_UINT64") == 0)
-    return TRITONSERVER_TYPE_UINT64;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_INT8") == 0)
-    return TRITONSERVER_TYPE_INT8;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_INT16") == 0)
-    return TRITONSERVER_TYPE_INT16;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_INT32") == 0)
-    return TRITONSERVER_TYPE_INT32;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_INT64") == 0)
-    return TRITONSERVER_TYPE_INT64;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_FP16") == 0)
-    return TRITONSERVER_TYPE_FP16;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_FP32") == 0)
-    return TRITONSERVER_TYPE_FP32;
-  else if (output_dtype.compare("TRITONSERVER_TYPE_FP64") == 0)
-    return TRITONSERVER_TYPE_FP64;
-  else
-	return TRITONSERVER_TYPE_BYTES;
-}
-
-}}}
+} // namespace nvtabular
+} // namespace backend
+} // namespace triton
 
 #endif /* MODELSTATE_H_ */

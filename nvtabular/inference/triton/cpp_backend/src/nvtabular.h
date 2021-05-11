@@ -27,135 +27,183 @@
 #ifndef NVTABULAR_H_
 #define NVTABULAR_H_
 
-#include <pybind11/embed.h>
-#include <pybind11/numpy.h>
 #include "triton/backend/backend_common.h"
 #include <exception>
+#include <map>
+#include <pybind11/embed.h>
+#include <pybind11/numpy.h>
 #include <vector>
 
 namespace py = pybind11;
 
+namespace triton {
+namespace backend {
+namespace nvtabular {
+
 class NVTabular {
 
 private:
-	void fill_array_interface(py::dict &ai, TRITONSERVER_DataType dtype) {
-		py::list list_desc;
-		if (dtype == TRITONSERVER_TYPE_BYTES) {
-			ai["typestr"] = "<U6";
-			std::tuple<std::string, std::string> desc("", "<U6");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_INT8) {
-			ai["typestr"] = "<i1";
-			std::tuple<std::string, std::string> desc("", "<i1");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_INT16) {
-			ai["typestr"] = "<i2";
-			std::tuple<std::string, std::string> desc("", "<i2");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_INT32) {
-			ai["typestr"] = "<i4";
-			std::tuple<std::string, std::string> desc("", "<i4");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_INT64) {
-			ai["typestr"] = "<i8";
-			std::tuple<std::string, std::string> desc("", "<i8");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_FP16) {
-			ai["typestr"] = "<f2";
-			std::tuple<std::string, std::string> desc("", "<f2");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_FP32) {
-			ai["typestr"] = "<f4";
-			std::tuple<std::string, std::string> desc("", "<f4");
-			list_desc.append(desc);
-		} else if (dtype == TRITONSERVER_TYPE_FP64) {
-			ai["typestr"] = "<f8";
-			std::tuple<std::string, std::string> desc("", "<f8");
-			list_desc.append(desc);
-		}
-		ai["descr"] = list_desc;
-		ai["version"] = 3;
-	}
+  void fill_array_interface(py::dict &ai, TRITONSERVER_DataType dtype) {
+    py::list list_desc;
+    if (dtype == TRITONSERVER_TYPE_BYTES) {
+      ai["typestr"] = "<U6";
+      std::tuple<std::string, std::string> desc("", "<U6");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_INT8) {
+      ai["typestr"] = "<i1";
+      std::tuple<std::string, std::string> desc("", "<i1");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_INT16) {
+      ai["typestr"] = "<i2";
+      std::tuple<std::string, std::string> desc("", "<i2");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_INT32) {
+      ai["typestr"] = "<i4";
+      std::tuple<std::string, std::string> desc("", "<i4");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_INT64) {
+      ai["typestr"] = "<i8";
+      std::tuple<std::string, std::string> desc("", "<i8");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_FP16) {
+      ai["typestr"] = "<f2";
+      std::tuple<std::string, std::string> desc("", "<f2");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_FP32) {
+      ai["typestr"] = "<f4";
+      std::tuple<std::string, std::string> desc("", "<f4");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_FP64) {
+      ai["typestr"] = "<f8";
+      std::tuple<std::string, std::string> desc("", "<f8");
+      list_desc.append(desc);
+    }
+    ai["descr"] = list_desc;
+    ai["version"] = 3;
+  }
+
+  std::map<std::string, std::string> dtypes;
+
 public:
+  NVTabular() {
+    py::initialize_interpreter();
+    LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Python interpreter is initialized");
+  }
 
-	NVTabular() {
-		py::initialize_interpreter();
-		LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Python interpreter is initialized");
-	}
+  ~NVTabular() {
+    py::finalize_interpreter();
+    LOG_MESSAGE(TRITONSERVER_LOG_INFO, "Python interpreter is  finalized\n");
+  }
 
-	~NVTabular() {
-		py::finalize_interpreter();
-		LOG_MESSAGE(TRITONSERVER_LOG_INFO,
-				"Python interpreter is  finalized\n");
-	}
+  void Deserialize(std::string &path_workflow,
+                   std::map<std::string, std::string> dtypes) {
+    this->dtypes = dtypes;
 
-	void Deserialize(std::string path) {
-		py::object nvtabular = py::module_::import("nvtabular.inference.triton.cpp_backend.nvt").attr("TritonNVTabularModel");
-		nt = nvtabular();
-		nt.attr("initialize")(path.data());
-	}
+    py::dict dtypes_py;
+    for (const auto &[name, np_dtype] : dtypes) {
+      dtypes_py[name.c_str()] = np_dtype;
+    }
 
-	void Transform(const std::vector<std::string>& input_names, const void** input_buffers,
-			const int64_t** input_shapes, TRITONSERVER_DataType* input_dtypes,
-			const std::vector<std::string>& output_names) {
+    py::object nvtabular =
+        py::module_::import("nvtabular.inference.triton.cpp_backend.nvt")
+            .attr("TritonNVTabularModel");
 
-		py::list all_inputs;
-		py::list all_inputs_names;
-		for (uint32_t i = 0; i < input_names.size(); ++i) {
-			py::dict ai_in;
-			std::tuple<long> shape_in((long) input_shapes[i][0]);
-			ai_in["shape"] = shape_in;
-			std::tuple<long, bool> data_in((long) *(&input_buffers[i]), false);
-			ai_in["data"] = data_in;
-			fill_array_interface(ai_in, input_dtypes[i]);
-			all_inputs.append(ai_in);
-			all_inputs_names.append(input_names[i]);
-		}
+    nt = nvtabular();
+    nt.attr("initialize")(path_workflow.data(), dtypes_py);
+  }
 
-		py::list all_output_names;
-		for (uint32_t i = 0; i < output_names.size(); ++i) {
-			all_output_names.append(output_names[i]);
-		}
+  void Transform(const std::vector<std::string> &input_names,
+                 const void **input_buffers, const int64_t **input_shapes,
+                 TRITONSERVER_DataType *input_dtypes,
+                 const std::vector<std::string> &output_names) {
 
-		auto transform_start = std::chrono::high_resolution_clock::now();
+    py::list all_inputs;
+    py::list all_inputs_names;
+    for (uint32_t i = 0; i < input_names.size(); ++i) {
+      py::dict ai_in;
+      std::tuple<long> shape_in((long)input_shapes[i][0]);
+      ai_in["shape"] = shape_in;
+      std::tuple<long, bool> data_in((long)*(&input_buffers[i]), false);
+      ai_in["data"] = data_in;
+      fill_array_interface(ai_in, input_dtypes[i]);
+      all_inputs.append(ai_in);
+      all_inputs_names.append(input_names[i]);
+    }
 
-		py::dict output = nt.attr("transform")(all_inputs_names, all_inputs, all_output_names);
+    py::list all_output_names;
+    for (uint32_t i = 0; i < output_names.size(); ++i) {
+      all_output_names.append(output_names[i]);
+    }
 
-		auto transform_end = std::chrono::high_resolution_clock::now();
-		auto elapsed_transform = std::chrono::duration_cast<
-				std::chrono::nanoseconds>(transform_end - transform_start);
-		printf("Transform Only Time measured: %.3f seconds.\n",
-				elapsed_transform.count() * 1e-9);
+    output =
+        nt.attr("transform")(all_inputs_names, all_inputs, all_output_names);
+  }
 
-		/*
-		for (uint32_t i = 0; i < output_count; ++i) {
-			std::string curr_name(output_names[i]);
-			TRITONSERVER_DataType dtype = names_to_dtypes[curr_name];
-			if (dtype == TRITONSERVER_TYPE_INT32) {
-				py::array_t<uint32_t> a =
-						(py::array_t<uint32_t>) output[output_names[i]];
-				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
+  void CopyData(void **output_buffers, const uint64_t *output_byte_sizes,
+                const std::vector<std::string> &output_names,
+                const std::vector<TRITONSERVER_DataType> &output_dtypes) {
 
-			} else if (dtype == TRITONSERVER_TYPE_INT64) {
-				py::array_t<uint64_t> a =
-						(py::array_t<uint64_t>) output[output_names[i]];
-				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
-			} else if (dtype == TRITONSERVER_TYPE_FP16) {
+    for (uint32_t i = 0; i < output_names.size(); ++i) {
+      if (output_dtypes[i] == TRITONSERVER_TYPE_BOOL) {
+        py::array_t<bool> arr =
+            (py::array_t<bool>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_UINT8) {
+        py::array_t<uint8_t> arr =
+            (py::array_t<uint8_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_UINT16) {
+        py::array_t<uint16_t> arr =
+            (py::array_t<uint16_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_UINT32) {
+        py::array_t<uint32_t> arr =
+            (py::array_t<uint32_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_UINT64) {
+        py::array_t<uint64_t> arr =
+            (py::array_t<uint64_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_INT8) {
+        py::array_t<int8_t> arr =
+            (py::array_t<int8_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_INT16) {
+        py::array_t<int16_t> arr =
+            (py::array_t<int16_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_INT32) {
+        py::array_t<int32_t> arr =
+            (py::array_t<int32_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_INT64) {
+        py::array_t<uint64_t> arr =
+            (py::array_t<uint64_t>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_FP16) {
 
-			} else if (dtype == TRITONSERVER_TYPE_FP32) {
-				py::array_t<float> a =
-						(py::array_t<float>) output[output_names[i]];
-				memcpy(output_buffers[i], a.data(), output_byte_sizes[i]);
-			} else {
-				std::cout << "** None of them: " << output_names[i]
-						<< std::endl;
-			}
-		}
-		*/
-	}
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_FP32) {
+        py::array_t<float> arr =
+            (py::array_t<float>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else if (output_dtypes[i] == TRITONSERVER_TYPE_FP64) {
+        py::array_t<double> arr =
+            (py::array_t<double>)output[output_names[i].c_str()];
+        memcpy(output_buffers[i], arr.data(), output_byte_sizes[i]);
+      } else {
+      }
+    }
+  }
+
+  py::list GetOutputSizes() { return nt.attr("get_lengths")(); }
 
 private:
-	py::object nt;
+  py::object nt;
+  py::dict output;
 };
+
+} // namespace nvtabular
+} // namespace backend
+} // namespace triton
 
 #endif /* NVTABULAR_H_ */

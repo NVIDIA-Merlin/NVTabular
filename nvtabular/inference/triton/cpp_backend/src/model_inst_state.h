@@ -27,10 +27,15 @@
 #ifndef MODELINSTSTATE_H_
 #define MODELINSTSTATE_H_
 
+#include "utils.h"
+#include <map>
+#include <vector>
 
 using namespace rapidjson;
 
-namespace triton { namespace backend { namespace nvtabular {
+namespace triton {
+namespace backend {
+namespace nvtabular {
 
 //
 // ModelInstanceState
@@ -39,49 +44,47 @@ namespace triton { namespace backend { namespace nvtabular {
 // created and associated with each TRITONBACKEND_ModelInstance.
 //
 class ModelInstanceState {
- public:
-  static TRITONSERVER_Error* Create(
-      ModelState* model_state,
-      TRITONBACKEND_ModelInstance* triton_model_instance,
-      ModelInstanceState** state);
+public:
+  static TRITONSERVER_Error *
+  Create(ModelState *model_state,
+         TRITONBACKEND_ModelInstance *triton_model_instance,
+         ModelInstanceState **state);
 
   // Get the handle to the TRITONBACKEND model instance.
-  TRITONBACKEND_ModelInstance* TritonModelInstance()
-  {
+  TRITONBACKEND_ModelInstance *TritonModelInstance() {
     return triton_model_instance_;
   }
 
   // Get the name, kind and device ID of the instance.
-  const std::string& Name() const { return name_; }
+  const std::string &Name() const { return name_; }
   TRITONSERVER_InstanceGroupKind Kind() const { return kind_; }
   int32_t DeviceId() const { return device_id_; }
 
   // Get the state of the model that corresponds to this instance.
-  ModelState* StateForModel() const { return model_state_; }
+  ModelState *StateForModel() const { return model_state_; }
 
   bool inter_started = false;
   NVTabular nvt;
 
- private:
-  ModelInstanceState(
-      ModelState* model_state,
-      TRITONBACKEND_ModelInstance* triton_model_instance, const char* name,
-      const TRITONSERVER_InstanceGroupKind kind, const int32_t device_id);
+private:
+  ModelInstanceState(ModelState *model_state,
+                     TRITONBACKEND_ModelInstance *triton_model_instance,
+                     const char *name,
+                     const TRITONSERVER_InstanceGroupKind kind,
+                     const int32_t device_id);
 
-  ModelState* model_state_;
-  TRITONBACKEND_ModelInstance* triton_model_instance_;
+  ModelState *model_state_;
+  TRITONBACKEND_ModelInstance *triton_model_instance_;
   const std::string name_;
   const TRITONSERVER_InstanceGroupKind kind_;
   const int32_t device_id_;
-
 };
 
-TRITONSERVER_Error*
-ModelInstanceState::Create(
-    ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
-    ModelInstanceState** state)
-{
-  const char* instance_name;
+TRITONSERVER_Error *
+ModelInstanceState::Create(ModelState *model_state,
+                           TRITONBACKEND_ModelInstance *triton_model_instance,
+                           ModelInstanceState **state) {
+  const char *instance_name;
   RETURN_IF_ERROR(
       TRITONBACKEND_ModelInstanceName(triton_model_instance, &instance_name));
 
@@ -93,28 +96,35 @@ ModelInstanceState::Create(
   RETURN_IF_ERROR(
       TRITONBACKEND_ModelInstanceDeviceId(triton_model_instance, &instance_id));
 
-  *state = new ModelInstanceState(
-      model_state, triton_model_instance, instance_name, instance_kind,
-      instance_id);
+  *state = new ModelInstanceState(model_state, triton_model_instance,
+                                  instance_name, instance_kind, instance_id);
 
-  std::string path(model_state->Path());
-  path.append("/");
-  path.append(std::to_string(model_state->Version()));
-  path.append("/workflow");
+  std::string path_workflow(model_state->Path());
+  path_workflow.append("/");
+  path_workflow.append(std::to_string(model_state->Version()));
+  path_workflow.append("/workflow");
 
-  (*state)->nvt.Deserialize(path.c_str());
-  return nullptr;  // success
+  const std::vector<TRITONSERVER_DataType> triton_dtypes =
+      model_state->OutputDtypes();
+  std::map<std::string, std::string> dtypes;
+  for (size_t i = 0; i < model_state->OutputNames().size(); i++) {
+    dtypes[model_state->OutputNames()[i]] =
+        Utils::ConvertToNumpyType(triton_dtypes[i]);
+  }
+
+  (*state)->nvt.Deserialize(path_workflow, dtypes);
+  return nullptr; // success
 }
 
 ModelInstanceState::ModelInstanceState(
-    ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
-    const char* name, const TRITONSERVER_InstanceGroupKind kind,
+    ModelState *model_state, TRITONBACKEND_ModelInstance *triton_model_instance,
+    const char *name, const TRITONSERVER_InstanceGroupKind kind,
     const int32_t device_id)
     : model_state_(model_state), triton_model_instance_(triton_model_instance),
-      name_(name), kind_(kind), device_id_(device_id)
-{
-}
+      name_(name), kind_(kind), device_id_(device_id) {}
 
-}}}
+} // namespace nvtabular
+} // namespace backend
+} // namespace triton
 
 #endif /* MODELINSTSTATE_H_ */
