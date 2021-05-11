@@ -967,7 +967,6 @@ def test_data_stats(tmpdir, df, datasets, engine):
 @pytest.mark.parametrize("cpu", [False, True])
 @pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
 def test_groupby_op(keys, cpu):
-
     # Initial timeseries dataset
     size = 60
     df1 = pd.DataFrame(
@@ -1017,3 +1016,42 @@ def test_groupby_op(keys, cpu):
 
     # Check basic behavior or "y" column
     assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_list_slice(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+
+    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+
+    op = ops.ListSlice(0, 2)
+    print("df", df)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(3, 5)
+    print("df", df)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[2, 767], [3], []]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(4, 10)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[767], [], []]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(100, 20000)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[], [], []]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-4)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-3, -1)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
+    assert_eq(transformed, expected)
