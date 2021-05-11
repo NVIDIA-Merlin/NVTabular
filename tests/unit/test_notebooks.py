@@ -79,7 +79,7 @@ def test_criteo_tf_notebook(tmpdir):
         os.path.join(
             dirname(TEST_PATH),
             "examples/scaling-criteo/",
-            "03a-Training-with-TF.ipynb",
+            "03-Training-with-TF.ipynb",
         ),
         transform=_modify_tf_nb,
     )
@@ -124,7 +124,7 @@ def test_criteo_pyt_notebook(tmpdir):
         os.path.join(
             dirname(TEST_PATH),
             "examples/scaling-criteo/",
-            "03d-Training-with-FastAI.ipynb",
+            "03-Training-with-FastAI.ipynb",
         ),
     )
 
@@ -176,14 +176,14 @@ def test_movielens_example(tmpdir):
     try:
         import torch  # noqa
 
-        notebooks.append("03b-Training-with-PyTorch.ipynb")
+        notebooks.append("03-Training-with-PyTorch.ipynb")
     except Exception:
         pass
     try:
         import nvtabular.inference.triton  # noqa
         import nvtabular.loader.tensorflow  # noqa
 
-        notebooks.append("03a-Training-with-TF.ipynb")
+        notebooks.append("03-Training-with-TF.ipynb")
     except Exception:
         pass
 
@@ -193,7 +193,7 @@ def test_movielens_example(tmpdir):
             "examples/getting-started-movielens/",
             notebook,
         )
-        if notebook == "03a-Training-with-TF.ipynb":
+        if notebook == "03-Training-with-TF.ipynb":
             _run_notebook(tmpdir, notebook_path, transform=_modify_tf_nb)
         else:
             _run_notebook(tmpdir, notebook_path)
@@ -217,16 +217,16 @@ def test_rossman_example(tmpdir):
     try:
         import torch  # noqa
 
-        notebooks.append("03b-Training-with-PyTorch.ipynb")
+        notebooks.append("03-Training-with-PyTorch.ipynb")
         import fastai  # noqa
 
-        notebooks.append("04-Training-with-FastAI.ipynb")
+        notebooks.append("03-Training-with-FastAI.ipynb")
     except Exception:
         pass
     try:
         import nvtabular.loader.tensorflow  # noqa
 
-        notebooks.append("03a-Training-with-TF.ipynb")
+        notebooks.append("03-Training-with-TF.ipynb")
     except Exception:
         pass
 
