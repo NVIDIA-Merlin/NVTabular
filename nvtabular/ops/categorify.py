@@ -371,6 +371,7 @@ class Categorify(StatOperator):
             #            string representation of both single- and multi-column groups.
             #
             cat_names, multi_col_group = _get_multicolumn_names(columns, df.columns, self.name_sep)
+            import pdb; pdb.set_trace()
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
@@ -458,15 +459,14 @@ def get_embedding_sizes(workflow):
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.columns))
-
-            if hasattr(current.op, "get_multihot_columns"):
-                multihot_columns.update(current.op.get_multihot_columns())
-
         elif not current.op:
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
-
+    for column in output.keys():
+        if type(workflow.output_dtypes[column]) is cudf.core.dtypes.ListDtype:
+            # multi hot so remove from output and add to multihot
+            multihot_columns.add(column)
     # TODO: returning differnt return types like this (based off the presence
     # of multihot features) is pretty janky. fix.
     if not multihot_columns:
@@ -1066,6 +1066,7 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
 
 
 def _get_multicolumn_names(column_groups, df_columns, name_sep):
+    import pdb; pdb.set_trace()
     cat_names = []
     multi_col_group = {}
     for col_group in column_groups:

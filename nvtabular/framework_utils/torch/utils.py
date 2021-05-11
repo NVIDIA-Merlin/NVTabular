@@ -17,6 +17,38 @@
 import torch
 
 
+class dict_transform:
+    
+    def __init__(self, dataloader):
+        self.cats = dataloader.cat_names
+        self.conts = dataloader.cont_names
+        self.labels = dataloader.label_names
+
+    def transform(self, batch):
+        batch, labels = batch
+        # take a part the batch and put together into subsets
+        cats = self.create_stack(batch, self.cats)
+        conts, _ = self.create_stack(batch, self.conts)
+        #labels = self.create_stack(batch, self.labels)
+        return cats, conts, labels
+
+    def create_stack(self, batch, target_columns):
+        columns = []
+        mh_s = {}
+        for column_name in target_columns:
+            target = batch[column_name]
+            if isinstance(target, torch.Tensor):
+                if batch[column_name].is_sparse:
+                    mh_s[column_name] = batch[column_name]
+                else:
+                    columns.append(target)
+            # if not a tensor, must be tuple
+            else:
+                # multihot column type, appending tuple representation
+                mh_s[column_name] = target
+        return torch.cat(columns, 1), mh_s 
+
+
 def process_epoch(
     dataloader,
     model,

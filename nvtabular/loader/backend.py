@@ -186,7 +186,7 @@ class DataLoader:
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         self.drop_last = drop_last
         self.device = device or 0
-        self.sparse_list = sparse_list
+        self.sparse_list = sparse_list or []
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
@@ -493,7 +493,6 @@ class DataLoader:
             if scalars:
                 # should always return dict column_name: values, offsets (optional)
                 x = self._to_tensor(gdf_i[scalars], dtype)
-                #import pdb; pdb.set_trace()
                 #for column_name in scalars: 
                 #    if column_name in self.sparse_list:
                 #        x[column_name] = self._to_sparse_tensor(x[column_name])
@@ -516,7 +515,6 @@ class DataLoader:
             tensors.append(offsets_tensor)
         del gdf, offsets
 
-        #import pdb; pdb.set_trace()
         return tensors
 
     def _handle_tensors(self, cats, conts, labels):

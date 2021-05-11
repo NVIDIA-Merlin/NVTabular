@@ -34,7 +34,7 @@ from tests.conftest import mycols_csv, mycols_pq
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
-from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
+from nvtabular.framework_utils.torch.utils import process_epoch, dict_transform  # noqa isort:skip
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
@@ -71,14 +71,16 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
     all_len = len(data_itr) if drop_last else len(data_itr) - 1
     all_rows = 0
+    df_cols = df.columns.to_list()
     for idx, chunk in enumerate(data_itr):
         all_rows += len(chunk[0])
         if idx < all_len:
-            for sub in chunk[:2]:
-                sub = sub.cpu()
-                assert list(sub[:, 0].numpy()) == [1] * batch_size
-                assert list(sub[:, 1].numpy()) == [2] * batch_size
-                assert list(sub[:, 2].numpy()) == [3] * batch_size
+            for col in df_cols:
+                if col in chunk[0].keys():
+                    assert all(list(chunk[0][col].cpu().numpy()) == df[col].values_host)
+                #assert list(sub[:, 0].numpy()) == [1] * batch_size
+                #assert list(sub[:, 1].numpy()) == [2] * batch_size
+                #assert list(sub[:, 2].numpy()) == [3] * batch_size
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -366,21 +368,21 @@ def test_mh_support(tmpdir):
     assert idx > 0
 
 
-@pytest.mark.skip(reason="fails with cuda illegal memory access")
+#@pytest.mark.skip(reason="fails with cuda illegal memory access")
 def test_mh_model_support(tmpdir):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
-            "Null User": ["User_B", "User_B", "User_A", "User_D"],
+            "Null_User": ["User_B", "User_B", "User_A", "User_D"],
             "Post": [1, 2, 3, 4],
             "Cont1": [0.3, 0.4, 0.5, 0.6],
             "Cont2": [0.3, 0.4, 0.5, 0.6],
             "Cat1": ["A", "B", "A", "C"],
         }
     )
-    cat_names = ["Cat1", "Null User", "Authors", "Reviewers"]  # , "Engaging User"]
+    cat_names = ["Cat1", "Null_User", "Authors", "Reviewers"]  # , "Engaging User"]
     cont_names = ["Cont1", "Cont2"]
     label_name = ["Post"]
     out_path = os.path.join(tmpdir, "train/")
@@ -397,6 +399,7 @@ def test_mh_model_support(tmpdir):
         conts=cont_names,
         labels=label_name,
         batch_size=2,
+        #sparse_list=["Cat1"],
     )
     emb_sizes = nvt.ops.get_embedding_sizes(processor)
     EMBEDDING_DROPOUT_RATE = 0.04
@@ -423,7 +426,7 @@ def test_mh_model_support(tmpdir):
         model,
         train=True,
         optimizer=optimizer,
-        # transform=batch_transform,
+        transform=dict_transform(data_itr).transform,
         amp=False,
     )
     train_rmspe = None

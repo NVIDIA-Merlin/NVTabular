@@ -129,12 +129,11 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             list_columns = list(lists.keys())
             for column in list_columns:
                 values, nnzs = lists.pop(column)
-                lists[column + "__values"] = values
-                lists[column + "__nnzs"] = nnzs
-
+                lists[column] = values, nnzs
+                #lists[column + "__nnzs"] = nnzs
             # now add in any scalar tensors
             if len(names) > 1:
-                tensors = self._split_fn(tensor, len(names), axis=1)
+                tensors = torch.tensor_split(tensor, len(names), axis=1)
                 lists.update(zip(names, tensors))
             elif len(names) == 1:
                 lists[names[0]] = tensor
@@ -148,8 +147,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         # TODO: use dict for labels as well?
         # would require output layers to match naming
         if len(self.label_names) > 1:
-            labels = self._split_fn(labels, len(self.label_names), axis=1)
-        
+            labels = torch.tensor_split(labels, len(self.label_names), axis=1)
         return X, labels
 
 
