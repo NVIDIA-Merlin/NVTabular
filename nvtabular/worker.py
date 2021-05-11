@@ -16,11 +16,11 @@
 
 import contextlib
 import threading
-from io import BytesIO
 
 import cudf
 import fsspec
 import pandas as pd
+import pyarrow as pa
 from dask.distributed import get_worker
 
 # Use global variable as the default
@@ -68,7 +68,7 @@ def fetch_table_data(
     """
     reader = reader or cudf.io.read_parquet
     table = table_cache.get(path, None)
-    if table is not None and not isinstance(table, (cudf.DataFrame, pd.DataFrame)):
+    if table is not None and not isinstance(table, (cudf.DataFrame, pd.DataFrame, pa.Table)):
         if not cats_only:
             return reader(table)
         df = reader(table, columns=columns)
@@ -83,13 +83,10 @@ def fetch_table_data(
         elif cache == "host":
             if reader == cudf.io.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
-                # Use BytesIO to cache data on host.
-
-                # Since the file is already in parquet format,
-                # we can just move the same bytes to host memory
+                # Cache as an Arrow table.
                 with fsspec.open(path, "rb") as f:
-                    table_cache[path] = BytesIO(f.read())
-                table = reader(table_cache[path], columns=columns, **kwargs)
+                    table = reader(f, columns=columns, **kwargs)
+                table_cache[path] = table.to_arrow()
             else:
                 # Using pandas-backed data with "host" caching.
                 # Just read in data and cache as a pandas DataFrame.
@@ -100,6 +97,8 @@ def fetch_table_data(
             table.reset_index(drop=False, inplace=True)
         if cache_df:
             table_cache[path] = table.copy(deep=False)
+    elif isinstance(table, pa.Table):
+        return cudf.DataFrame.from_arrow(table)
     return table
 
 

@@ -128,7 +128,9 @@ class Workflow:
             for column_group in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = _transform_ddf(ddf, column_group.parents)
+                transformed_ddf = _ensure_optimize_dataframe_graph(
+                    _transform_ddf(ddf, column_group.parents)
+                )
 
                 op = column_group.op
                 try:
@@ -303,6 +305,23 @@ def _transform_ddf(ddf, column_groups):
         column_groups,
         meta=type(ddf._meta)({k: [] for k in columns}),
     )
+
+
+def _ensure_optimize_dataframe_graph(ddf):
+    # Perform HLG DataFrame optimizations
+    #
+    # These optimizations are performed automatically
+    # when a DataFrame collection is computed/persisted,
+    # but they are NOT always performed when statistics
+    # are computed. The purpose of this utility is to
+    # ensure that the Dataframe-based optimizations are
+    # always applied.
+    if isinstance(ddf.dask, dask.highlevelgraph.HighLevelGraph):
+        # Active fusion is now disabled by default in Dask's
+        # `main` branch, but we can be explicit here anyway.
+        with dask.config.set({"optimization.fuse.active": False}):
+            ddf.dask = dask.dataframe.optimize(ddf.dask, ddf.__dask_keys__())
+    return ddf
 
 
 def _get_stat_ops(nodes):
