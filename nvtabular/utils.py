@@ -21,6 +21,7 @@ import urllib.request
 import warnings
 import zipfile
 
+import dask
 from tqdm import tqdm
 
 try:
@@ -121,3 +122,38 @@ def download_file(url, local_filename, unzip_files=True, redownload=True):
         with gzip.open(local_filename, "rb") as input_file:
             with open(local_filename[:-3], "wb") as output_file:
                 shutil.copyfileobj(input_file, output_file)
+
+
+def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
+    # Perform HLG DataFrame optimizations
+    #
+    # If `ddf` is specified, an optimized Dataframe
+    # collection will be returned. If `dsk` and `keys`
+    # are specified, an optimized graph will be returned.
+    #
+    # These optimizations are performed automatically
+    # when a DataFrame collection is computed/persisted,
+    # but they are NOT always performed when statistics
+    # are computed. The purpose of this utility is to
+    # ensure that the Dataframe-based optimizations are
+    # always applied.
+
+    if ddf is None:
+        if dsk is None or keys is None:
+            raise ValueError("Must specify both `dsk` and `keys` if `ddf` " "is not supplied.")
+    dsk = ddf.dask if dsk is None else dsk
+    keys = ddf.__dask_keys__() if keys is None else keys
+
+    if isinstance(dsk, dask.highlevelgraph.HighLevelGraph):
+        # Active fusion is now disabled by default in Dask's
+        # `main` branch, but we can be explicit here anyway.
+        with dask.config.set({"optimization.fuse.active": False}):
+            dsk = dask.dataframe.optimize(dsk, keys)
+
+    if ddf is None:
+        # Return optimized graph
+        return dsk
+
+    # Return optimized ddf
+    ddf.dask = dsk
+    return ddf

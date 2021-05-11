@@ -23,6 +23,7 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from nvtx import annotate
 
+from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
 from .shuffle import Shuffle
@@ -352,14 +353,18 @@ def _ddf_to_dataset(
             task_list.append(key)
         dsk[name] = (lambda x: x, task_list)
 
-    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    graph = _ensure_optimize_dataframe_graph(
+        dsk=HighLevelGraph.from_collections(name, dsk, dependencies=[ddf]),
+        keys=[name],
+    )
     out = Delayed(name, graph)
 
     # Trigger write execution
-    if client:
-        out = client.compute(out).result()
-    else:
-        out = dask.compute(out, scheduler="synchronous")[0]
+    with dask.config.set({"optimization.fuse.active": False}):
+        if client:
+            out = client.compute(out).result()
+        else:
+            out = dask.compute(out, scheduler="synchronous")[0]
 
     if cached_writers:
         # Follow-up Shuffling and _metadata creation
