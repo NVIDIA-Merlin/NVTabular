@@ -398,9 +398,9 @@ def test_mh_model_support(tmpdir):
         batch_size=2,
     )
     emb_sizes = nvt.ops.get_embedding_sizes(processor)
-    #check  for correct  embedding representation  
-    assert len(emb_sizes[1].keys()) == 2 #  Authors, Reviewers
-    assert len(emb_sizes[0].keys()) == 2 # Null User, Cat1
+    # check  for correct  embedding representation
+    assert len(emb_sizes[1].keys()) == 2  # Authors, Reviewers
+    assert len(emb_sizes[0].keys()) == 2  # Null User, Cat1
 
     EMBEDDING_DROPOUT_RATE = 0.04
     DROPOUT_RATES = [0.001, 0.01]
