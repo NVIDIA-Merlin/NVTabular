@@ -44,7 +44,8 @@ TRAIN_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "train", "*.parquet")))
 
 proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
 
-EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)
 
 
 # TensorItrDataset returns a single batch of x_cat, x_cont, y.
@@ -100,7 +101,6 @@ EMBEDDING_TABLE_SHAPES_TUPLE = (
     },
     {CATEGORICAL_MH_COLUMNS[0]: EMBEDDING_TABLE_SHAPES[CATEGORICAL_MH_COLUMNS[0]]},
 )
-
 model = Model(
     embedding_table_shapes=EMBEDDING_TABLE_SHAPES_TUPLE,
     num_continuous=0,
