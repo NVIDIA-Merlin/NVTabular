@@ -450,17 +450,21 @@ TRITONBACKEND_ModelInstanceExecute(
       py::list lengths = instance_state->nvt.GetOutputSizes();
       for (uint32_t i = 0; i < output_names.size(); ++i) {
     	const char* output_name = output_names[i].c_str();
-    	const int64_t output_length = lengths[i].cast<int64_t>();
+    	int64_t output_length = lengths[i].cast<int64_t>();
     	int64_t output_width = 1;
     	output_byte_sizes[i] = output_length * output_width *
     			Utils::GetTritonTypeByteSize(output_dtypes[i]);
+
+    	std::vector<int64_t> batch_shape;
+    	batch_shape.push_back(output_length);
+    	batch_shape.push_back(output_width);
 
     	TRITONBACKEND_Response* response = responses[r];
     	  GUARDED_RESPOND_IF_ERROR(
     	    responses, r,
     	    TRITONBACKEND_ResponseOutput(
     	      response, &outputs[i], output_name, output_dtypes[i],
-    	      &output_length, output_width));
+    	      batch_shape.data(), batch_shape.size()));
 
     	if (responses[r] == nullptr) {
           error = (std::string("request ") + std::to_string(r) +
