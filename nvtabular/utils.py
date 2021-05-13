@@ -22,6 +22,7 @@ import warnings
 import zipfile
 
 import dask
+from dask.dataframe.optimize import optimize as dd_optimize
 from tqdm import tqdm
 
 try:
@@ -145,15 +146,8 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
     keys = ddf.__dask_keys__() if keys is None else keys
 
     if isinstance(dsk, dask.highlevelgraph.HighLevelGraph):
-        from dask.dataframe.optimize import (
-            fuse_roots,
-            optimize_blockwise,
-            optimize_dataframe_getitem,
-        )
-
-        dsk = optimize_dataframe_getitem(dsk, keys=keys)
-        dsk = optimize_blockwise(dsk, keys=keys)
-        dsk = fuse_roots(dsk, keys=keys)
+        with dask.config.set({"optimization.fuse.active": False}):
+            dsk = dd_optimize(dsk, keys=keys)
 
     if ddf is None:
         # Return optimized graph
