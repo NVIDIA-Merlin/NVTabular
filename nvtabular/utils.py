@@ -141,7 +141,7 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
 
     if ddf is None:
         if dsk is None or keys is None:
-            raise ValueError("Must specify both `dsk` and `keys` if `ddf` " "is not supplied.")
+            raise ValueError("Must specify both `dsk` and `keys` if `ddf` is not supplied.")
     dsk = ddf.dask if dsk is None else dsk
     keys = ddf.__dask_keys__() if keys is None else keys
 
