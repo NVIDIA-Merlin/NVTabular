@@ -28,9 +28,13 @@
 
 [![License](https://img.shields.io/badge/License-BSD3-lightgrey.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-# Triton Inference Server NVTabular Backend
+# NVTabular C++ Triton Backend
+`nvcr.io/nvstaging/merlin/merlin-inference` container includes all the required
+packages and libraries to build the C++ backend from source. Please follow the
+steps below;
 
-Use cmake to build and install in a local directory.
+Assuming the NVTabular C++ backend repo is cloned and you are in the folder where
+the src folder is located;
 
 ```
 $ mkdir build
@@ -47,7 +51,18 @@ Before start serving a model with nvtabular backend, run the following command;
 $ export LD_LIBRARY_PATH=/conda/envs/merlin/lib/:$LD_LIBRARY_PATH
 ```
 
-The following required Triton repositories will be pulled and used in
+If the path of the libraries (i.e. python libs) has already been added to the `LD_LIBRARY_PATH`,
+you don't have to run the command above.
+
+The model that will use NVTabular C++ backend should have the following in the
+config.pbtxt file
+
+```
+backend: "nvtabular"
+instance_group [{ kind: KIND_CPU }]
+```
+
+Note that the following required Triton repositories will be pulled and used in
 the build. By default the "main" branch/tag will be used for each repo
 but the listed CMake argument can be used to override.
 
