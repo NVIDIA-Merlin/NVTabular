@@ -19,7 +19,6 @@ import threading
 
 import cudf
 import fsspec
-import pandas as pd
 import pyarrow as pa
 from dask.distributed import get_worker
 
@@ -68,14 +67,6 @@ def fetch_table_data(
     """
     reader = reader or cudf.io.read_parquet
     table = table_cache.get(path, None)
-    if table is not None and not isinstance(table, (cudf.DataFrame, pd.DataFrame, pa.Table)):
-        if not cats_only:
-            return reader(table)
-        df = reader(table, columns=columns)
-        df.index.name = "labels"
-        df.reset_index(drop=False, inplace=True)
-        return df
-
     cache_df = cache == "device"
     if table is None:
         if cache in ("device", "disk"):
@@ -85,8 +76,9 @@ def fetch_table_data(
                 # Using cudf-backed data with "host" caching.
                 # Cache as an Arrow table.
                 with fsspec.open(path, "rb") as f:
-                    table = reader(f, columns=columns, **kwargs)
+                    table = reader(f, **kwargs)
                 table_cache[path] = table.to_arrow()
+                table = table[columns]
             else:
                 # Using pandas-backed data with "host" caching.
                 # Just read in data and cache as a pandas DataFrame.
@@ -98,7 +90,12 @@ def fetch_table_data(
         if cache_df:
             table_cache[path] = table.copy(deep=False)
     elif isinstance(table, pa.Table):
-        return cudf.DataFrame.from_arrow(table)
+        if not cats_only:
+            return cudf.DataFrame.from_arrow(table)
+        df = cudf.DataFrame.from_arrow(table)[columns]
+        df.index.name = "labels"
+        df.reset_index(drop=False, inplace=True)
+        return df
     return table
 
 
