@@ -141,17 +141,10 @@ class Workflow:
                     LOG.exception("Failed to fit operator %s", column_group.op)
                     raise
 
-            with dask.config.set({"optimization.fuse.active": False}):
-                # Disable active fusion here, since we already performed
-                # HLG fusion above, and Dask will not be using
-                # Dataframe-specific optimizations in the compute below.
-                # Note that Dask will disable active fusion by default
-                # when it computes a Dataframe-collection, but not for
-                # `dask.compute(...)` or `client.compute(...)`
-                if self.client:
-                    results = [r.result() for r in self.client.compute(stats)]
-                else:
-                    results = dask.compute(stats, scheduler="synchronous")[0]
+            if self.client:
+                results = [r.result() for r in self.client.compute(stats)]
+            else:
+                results = dask.compute(stats, scheduler="synchronous")[0]
 
             for computed_stats, op in zip(results, ops):
                 op.fit_finalize(computed_stats)

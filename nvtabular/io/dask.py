@@ -360,11 +360,10 @@ def _ddf_to_dataset(
     out = Delayed(name, graph)
 
     # Trigger write execution
-    with dask.config.set({"optimization.fuse.active": False}):
-        if client:
-            out = client.compute(out).result()
-        else:
-            out = dask.compute(out, scheduler="synchronous")[0]
+    if client:
+        out = client.compute(out).result()
+    else:
+        out = dask.compute(out, scheduler="synchronous")[0]
 
     if cached_writers:
         # Follow-up Shuffling and _metadata creation
