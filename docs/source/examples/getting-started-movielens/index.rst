@@ -14,5 +14,5 @@ The MovieLens25M is a popular dataset for recommender systems and is used in aca
 
    Download and Convert <01-Download-Convert>
    ETL with NVTabular <02-ETL-with-NVTabular.ipynb>
-   Training with TensorFlow <03a-Training-with-TF.ipynb>
-   Training with PyTorch <03b-Training-with-PyTorch.ipynb>
+   Training with TensorFlow <03-Training-with-TF.ipynb>
+   Training with PyTorch <03-Training-with-PyTorch.ipynb>
