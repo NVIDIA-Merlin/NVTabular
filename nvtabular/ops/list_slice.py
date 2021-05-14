@@ -63,36 +63,35 @@ class ListSlice(Operator):
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]
-                continue
+            else:
+                # figure out the size of each row from the list offsets
+                c = df[col]._column
+                offsets = c.offsets.values
+                elements = c.elements.values
 
-            # figure out the size of each row from the list offsets
-            c = df[col]._column
-            offsets = c.offsets.values
-            elements = c.elements.values
+                # figure out the size of each row after slicing start/end
+                new_offsets = cp.zeros(offsets.size, dtype=offsets.dtype)
+                threads = 32
+                blocks = (offsets.size + threads - 1) // threads
 
-            # figure out the size of each row after slicing start/end
-            new_offsets = cp.zeros(offsets.size, dtype=offsets.dtype)
-            threads = 32
-            blocks = (offsets.size + threads - 1) // threads
+                # calculate new row offsets after slicing
+                _calculate_row_sizes[blocks, threads](self.start, self.end, offsets, new_offsets)
+                new_offsets = cp.cumsum(new_offsets).astype(offsets.dtype)
 
-            # calculate new row offsets after slicing
-            _calculate_row_sizes[blocks, threads](self.start, self.end, offsets, new_offsets)
-            new_offsets = cp.cumsum(new_offsets).astype(offsets.dtype)
+                # create a new array for the sliced elements
+                new_elements = cp.zeros(new_offsets[-1].item(), dtype=elements.dtype)
+                if new_elements.size:
+                    _slice_rows[blocks, threads](
+                        self.start, offsets, elements, new_offsets, new_elements
+                    )
 
-            # create a new array for the sliced elements
-            new_elements = cp.zeros(new_offsets[-1].item(), dtype=elements.dtype)
-            if new_elements.size:
-                _slice_rows[blocks, threads](
-                    self.start, offsets, elements, new_offsets, new_elements
+                # build up a list column with the sliced values
+                ret[col] = build_column(
+                    None,
+                    dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),
+                    size=new_offsets.size - 1,
+                    children=(as_column(new_offsets), as_column(new_elements)),
                 )
-
-            # build up a list column with the sliced values
-            ret[col] = build_column(
-                None,
-                dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),
-                size=new_offsets.size - 1,
-                children=(as_column(new_offsets), as_column(new_elements)),
-            )
 
         return ret
 
@@ -124,7 +123,7 @@ def _calculate_row_sizes(start, end, offsets, row_sizes):
 def _slice_rows(start, offsets, elements, new_offsets, new_elements):
     """slices rows of a list column. requires the 'new_offsets' to
     be previously calculated (meaning that we don't need the 'end' slice index
-    since thats baked into the new_offests"""
+    since thats baked into the new_offsets"""
     rowid = numba.cuda.grid(1)
     if rowid < (new_offsets.size - 1):
         if start >= 0:
