@@ -55,4 +55,5 @@ filterwarnings = [
 		'ignore:Performing a hash-based transformation:UserWarning',
     		'ignore:WARNING..cuDF.to_dlpack',
     		'ignore:::numba.cuda.envvar:',
+		'ignore:Call to deprecated create function:DeprecationWarning',
 	]
