@@ -30,6 +30,7 @@ from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
+from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -128,7 +129,9 @@ class Workflow:
             for column_group in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = _transform_ddf(ddf, column_group.parents)
+                transformed_ddf = _ensure_optimize_dataframe_graph(
+                    ddf=_transform_ddf(ddf, column_group.parents)
+                )
 
                 op = column_group.op
                 try:
