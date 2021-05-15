@@ -30,6 +30,7 @@ from .hashed_cross import HashedCross
 from .join_external import JoinExternal
 from .join_groupby import JoinGroupby
 from .lambdaop import LambdaOp
+from .list_slice import ListSlice
 from .logop import LogOp
 from .normalize import Normalize, NormalizeMinMax
 from .operator import Operator
