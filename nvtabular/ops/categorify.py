@@ -460,11 +460,12 @@ def get_embedding_sizes(workflow):
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.columns))
         elif not current.op:
+
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
-    for column in output.keys():
-        if type(workflow.output_dtypes[column]) is cudf.core.dtypes.ListDtype:
+    for column in output:
+        if isinstance(workflow.output_dtypes[column], cudf.core.dtypes.ListDtype):
             # multi hot so remove from output and add to multihot
             multihot_columns.add(column)
     # TODO: returning differnt return types like this (based off the presence
