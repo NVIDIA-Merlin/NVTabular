@@ -73,12 +73,13 @@ def process_epoch(
             if train:
                 optimizer.zero_grad()
                 if amp:
-                    loss.backward()
-                    optimizer.step()
-                else:
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
+                else:
+                    loss.backward()
+                    optimizer.step()
+
     print(f"Total batches: {idx}")
     y = torch.cat(y_list)
     y_pred = torch.cat(y_pred_list)
