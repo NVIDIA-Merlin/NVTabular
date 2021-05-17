@@ -371,7 +371,6 @@ class Categorify(StatOperator):
             #            string representation of both single- and multi-column groups.
             #
             cat_names, multi_col_group = _get_multicolumn_names(columns, df.columns, self.name_sep)
-            import pdb; pdb.set_trace()
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
@@ -1067,7 +1066,6 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
 
 
 def _get_multicolumn_names(column_groups, df_columns, name_sep):
-    import pdb; pdb.set_trace()
     cat_names = []
     multi_col_group = {}
     for col_group in column_groups:
