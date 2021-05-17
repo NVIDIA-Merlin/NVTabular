@@ -45,6 +45,8 @@ def process_epoch(
         Loss function to use, default is MSELoss.
     """
     model.train(mode=train)
+    if amp:
+        scaler = torch.cuda.amp.GradScaler()
     idx = 0
     with torch.set_grad_enabled(train):
         y_list, y_pred_list = [], []
@@ -70,8 +72,13 @@ def process_epoch(
                 loss = loss_func(y_pred, y)
             if train:
                 optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                if amp:
+                    loss.backward()
+                    optimizer.step()
+                else:
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
     print(f"Total batches: {idx}")
     y = torch.cat(y_list)
     y_pred = torch.cat(y_pred_list)
