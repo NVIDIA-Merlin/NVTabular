@@ -43,11 +43,22 @@ namespace nvtabular {
 class NVTabular {
 
 private:
+  void fill_array_interface(py::dict &ai, const size_t max_size) {
+    py::list list_desc;
+    std::string u("<U");
+    u.append(std::to_string(max_size));
+    ai["typestr"] = u.c_str();
+    std::tuple<std::string, std::string> desc("", u.c_str());
+    list_desc.append(desc);
+    ai["descr"] = list_desc;
+    ai["version"] = 3;
+  }
+
   void fill_array_interface(py::dict &ai, TRITONSERVER_DataType dtype) {
     py::list list_desc;
-    if (dtype == TRITONSERVER_TYPE_BYTES) {
-      ai["typestr"] = "<U6";
-      std::tuple<std::string, std::string> desc("", "<U6");
+    if (dtype == TRITONSERVER_TYPE_BOOL) {
+      ai["typestr"] = "|b1";
+      std::tuple<std::string, std::string> desc("", "|b1");
       list_desc.append(desc);
     } else if (dtype == TRITONSERVER_TYPE_INT8) {
       ai["typestr"] = "<i1";
@@ -64,6 +75,22 @@ private:
     } else if (dtype == TRITONSERVER_TYPE_INT64) {
       ai["typestr"] = "<i8";
       std::tuple<std::string, std::string> desc("", "<i8");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_UINT8) {
+      ai["typestr"] = "<i1";
+      std::tuple<std::string, std::string> desc("", "<u1");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_UINT16) {
+      ai["typestr"] = "<i2";
+      std::tuple<std::string, std::string> desc("", "<u2");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_UINT32) {
+      ai["typestr"] = "<i4";
+      std::tuple<std::string, std::string> desc("", "<u4");
+      list_desc.append(desc);
+    } else if (dtype == TRITONSERVER_TYPE_UINT64) {
+      ai["typestr"] = "<i8";
+      std::tuple<std::string, std::string> desc("", "<u8");
       list_desc.append(desc);
     } else if (dtype == TRITONSERVER_TYPE_FP16) {
       ai["typestr"] = "<f2";
@@ -115,6 +142,7 @@ public:
   void Transform(const std::vector<std::string> &input_names,
                  const void **input_buffers, const int64_t **input_shapes,
                  TRITONSERVER_DataType *input_dtypes,
+                 std::unordered_map<std::string, size_t> &max_str_sizes,
                  const std::vector<std::string> &output_names) {
 
     py::list all_inputs;
@@ -125,7 +153,11 @@ public:
       ai_in["shape"] = shape_in;
       std::tuple<long, bool> data_in((long)*(&input_buffers[i]), false);
       ai_in["data"] = data_in;
-      fill_array_interface(ai_in, input_dtypes[i]);
+      if (input_dtypes[i] == TRITONSERVER_TYPE_BYTES) {
+        fill_array_interface(ai_in, max_str_sizes[input_names[i]]);
+      } else {
+        fill_array_interface(ai_in, input_dtypes[i]);
+      }
       all_inputs.append(ai_in);
       all_inputs_names.append(input_names[i]);
     }
@@ -196,6 +228,36 @@ public:
   }
 
   py::list GetOutputSizes() { return nt.attr("get_lengths")(); }
+
+  void test_string() {
+
+    wchar_t data[10];
+    data[0] = 'Y';
+    data[1] = 'I';
+    data[2] = 'l';
+    data[3] = 'm';
+    data[4] = 'a';
+    data[5] = 'z';
+    data[6] = 'O';
+    data[7] = 'n';
+    data[8] = 'u';
+    data[9] = 'r';
+
+    py::dict ai_in;
+    std::tuple<long> shape_in((long)2);
+    ai_in["shape"] = shape_in;
+    std::tuple<long, bool> data_in((long)*(&data), false);
+    ai_in["data"] = data_in;
+
+    ai_in["typestr"] = "<U6";
+    std::tuple<std::string, std::string> desc("", "<U6");
+    py::list list_desc;
+    list_desc.append(desc);
+    ai_in["descr"] = list_desc;
+    ai_in["version"] = 3;
+
+    nt.attr("test")(ai_in);
+  }
 
 private:
   py::object nt;

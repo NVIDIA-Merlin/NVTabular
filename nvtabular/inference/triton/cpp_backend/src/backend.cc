@@ -304,8 +304,6 @@ TRITONBACKEND_ModelInstanceExecute(
     const uint32_t request_count)
 {
 
-  auto data_prep_begin = std::chrono::high_resolution_clock::now();
-
   ModelInstanceState* instance_state;
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceState(
 	instance, reinterpret_cast<void**>(&instance_state)));
@@ -402,6 +400,7 @@ TRITONBACKEND_ModelInstanceExecute(
         continue;
       }
 
+      /*
       info = (std::string("\tinput ") + input_name +
               ": datatype = " + TRITONSERVER_DataTypeString(input_dtypes[i]) +
               ", shape = " + backend::ShapeToString(input_shapes[i], input_dims_counts[i]) +
@@ -409,6 +408,7 @@ TRITONBACKEND_ModelInstanceExecute(
               ", buffer_count = " + std::to_string(input_buffer_counts[i]))
                  .c_str();
       LOG_MESSAGE(TRITONSERVER_LOG_INFO, info.c_str());
+      */
     }
 
     const std::vector<std::string> output_names = model_state->OutputNames();
@@ -416,10 +416,13 @@ TRITONBACKEND_ModelInstanceExecute(
     TRITONBACKEND_Output* outputs[output_names.size()];
     void* output_buffers[output_names.size()];
     uint64_t output_byte_sizes[output_names.size()];
+    std::vector<std::vector<wchar_t>*> numpy_input_buffers;
+    std::unordered_map<std::string, size_t> max_str_sizes;
 
     for (uint32_t b = 0; b < input_buffer_counts[0]; ++b) {
       const void* input_buffers[input_count];
       uint64_t buffer_byte_sizes[input_count];
+
       for (uint32_t i = 0; i < input_count; ++i) {
     	input_buffers[i] = nullptr;
 
@@ -427,11 +430,28 @@ TRITONBACKEND_ModelInstanceExecute(
     	TRITONSERVER_MemoryType input_memory_type = TRITONSERVER_MEMORY_CPU;
     	int64_t input_memory_type_id = 0;
 
+    	const void* input_buffer;
+
     	GUARDED_RESPOND_IF_ERROR(
     	  responses, r,
     	  TRITONBACKEND_InputBuffer(
-    	    inputs[i], b, &input_buffers[i], &buffer_byte_sizes[i], &input_memory_type,
+    	    inputs[i], b, &input_buffer, &buffer_byte_sizes[i], &input_memory_type,
     	    &input_memory_type_id));
+
+    	if (input_dtypes[i] == TRITONSERVER_TYPE_BYTES) {
+    	  size_t max_size = Utils::GetMaxStringLen((const unsigned char*)input_buffer, buffer_byte_sizes[i]);
+
+    	  max_str_sizes[input_names[i]] = max_size;
+    	  size_t nif_size = max_size * input_shapes[i][0];
+    	  std::vector<wchar_t>* numpy_input_buffer = new std::vector<wchar_t>(nif_size, '\0');
+    	  numpy_input_buffers.push_back(numpy_input_buffer);
+
+    	  Utils::ConstructNumpyStringArray(numpy_input_buffer->data(), (uint64_t)max_size,
+    			  (const unsigned char*)input_buffer, buffer_byte_sizes[i]);
+    	  input_buffers[i] = numpy_input_buffer->data();
+    	} else {
+    	  input_buffers[i] = input_buffer;
+    	}
 
     	if ((responses[r] == nullptr) ||
     	  (input_memory_type == TRITONSERVER_MEMORY_GPU)) {
@@ -445,7 +465,7 @@ TRITONBACKEND_ModelInstanceExecute(
       }
 
       instance_state->nvt.Transform(input_names, input_buffers, input_shapes,
-        input_dtypes, output_names);
+        input_dtypes, max_str_sizes, output_names);
 
       py::list lengths = instance_state->nvt.GetOutputSizes();
       for (uint32_t i = 0; i < output_names.size(); ++i) {
@@ -511,6 +531,10 @@ TRITONBACKEND_ModelInstanceExecute(
       total_batch_size += input_shapes[0][0];
     } else {
       total_batch_size++;
+    }
+
+    for (size_t i = 0; i < numpy_input_buffers.size(); ++i) {
+      delete numpy_input_buffers[i];
     }
 
     LOG_IF_ERROR(
