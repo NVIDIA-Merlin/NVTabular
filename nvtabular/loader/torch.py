@@ -119,6 +119,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
+#            import pdb; pdb.set_trace()
             lists = {}
             if isinstance(tensor, tuple):
                 tensor, lists = tensor

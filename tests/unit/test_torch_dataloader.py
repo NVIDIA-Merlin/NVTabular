@@ -73,14 +73,11 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
     all_rows = 0
     df_cols = df.columns.to_list()
     for idx, chunk in enumerate(data_itr):
-        all_rows += len(chunk[0])
+        all_rows += len(chunk[0]['cat1'])
         if idx < all_len:
             for col in df_cols:
                 if col in chunk[0].keys():
-                    assert all(list(chunk[0][col].cpu().numpy()) == df[col].values_host)
-                #assert list(sub[:, 0].numpy()) == [1] * batch_size
-                #assert list(sub[:, 1].numpy()) == [2] * batch_size
-                #assert list(sub[:, 2].numpy()) == [3] * batch_size
+                    assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -129,13 +126,13 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
     )
 
     for nvt_batch in data_itr:
-        cats, conts, labels = nvt_batch
+        cats_conts, labels = nvt_batch
         if cat_names:
-            assert cats.shape[-1] == len(cat_names)
+            assert set(cat_names).issubset(set(list(cats_conts.keys())))
         if cont_names:
-            assert conts.shape[-1] == len(cont_names)
+            assert set(cont_names).issubset(set(list(cats_conts.keys())))
         if label_name:
-            assert labels.shape[-1] == len(label_name)
+            assert len(labels) == len(label_name)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
@@ -263,8 +260,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     rows = 0
     for idx, chunk in enumerate(t_dl):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
-        rows += len(chunk[0])
+            
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]['x'][0])
+        
+        rows += len(chunk[0]['x'])
 
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
