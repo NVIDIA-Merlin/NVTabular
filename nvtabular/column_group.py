@@ -138,11 +138,12 @@ class ColumnGroup:
     __radd__ = __add__
 
     def __sub__(self, other):
-        """Adds columns from this ColumnGroup with another to return a new ColumnGroup
+        """Removes columns from this ColumnGroup with another to return a new ColumnGroup
 
         Parameters
         -----------
         other: ColumnGroup or str or list of str
+            Columns to remove
 
         Returns
         -------
@@ -161,6 +162,28 @@ class ColumnGroup:
         child.parents = [self]
         self.children.append(child)
         child.kind = f"- {list(to_remove)}"
+        return child
+
+    def __getitem__(self, columns):
+        """Selects certain columns from this ColumnGroup, and returns a new Columngroup with only
+        those columns
+
+        Parameters
+        -----------
+        columns: str or list of str
+            Columns to select
+
+        Returns
+        -------
+        ColumnGroup
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+
+        child = ColumnGroup(columns)
+        child.parents = [self]
+        self.children.append(child)
+        child.kind = str(columns)
         return child
 
     def __repr__(self):
