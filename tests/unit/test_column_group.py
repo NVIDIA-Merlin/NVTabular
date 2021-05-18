@@ -1,8 +1,28 @@
 import cudf
 import pytest
+from cudf.tests.utils import assert_eq
 
 from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular.ops import Categorify, Rename
+
+
+def test_column_group_select(tmpdir):
+    df = cudf.DataFrame({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
+
+    input_features = ColumnGroup(["a", "b", "c"])
+    sqrt_features = input_features[["a", "c"]] >> cudf.sqrt
+    plus_one_features = input_features["b"] >> (lambda col: col + 1)
+    features = sqrt_features + plus_one_features
+
+    workflow = Workflow(features)
+    df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
+
+    expected = cudf.DataFrame()
+    expected["a"] = cudf.sqrt(df["a"])
+    expected["c"] = cudf.sqrt(df["c"])
+    expected["b"] = df["b"] + 1
+
+    assert_eq(expected, df_out)
 
 
 def test_nested_column_group(tmpdir):
