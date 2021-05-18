@@ -6,7 +6,7 @@ from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular.ops import Categorify, Rename
 
 
-def test_column_group_select(tmpdir):
+def test_column_group_select():
     df = cudf.DataFrame({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
     input_features = ColumnGroup(["a", "b", "c"])
@@ -25,7 +25,7 @@ def test_column_group_select(tmpdir):
     assert_eq(expected, df_out)
 
 
-def test_nested_column_group(tmpdir):
+def test_nested_column_group():
     df = cudf.DataFrame(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
