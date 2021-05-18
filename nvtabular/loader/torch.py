@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
 from torch.utils.dlpack import from_dlpack
 
 from .backend import DataLoader
@@ -119,7 +119,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-#            import pdb; pdb.set_trace()
+            #            import pdb; pdb.set_trace()
             lists = {}
             if isinstance(tensor, tuple):
                 tensor, lists = tensor
@@ -131,7 +131,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             for column in list_columns:
                 values, nnzs = lists.pop(column)
                 lists[column] = values, nnzs
-                #lists[column + "__nnzs"] = nnzs
+                # lists[column + "__nnzs"] = nnzs
             # now add in any scalar tensors
             if len(names) > 1:
                 tensors = torch.tensor_split(tensor, len(names), axis=1)
@@ -151,7 +151,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             labels = torch.tensor_split(labels, len(self.label_names), axis=1)
         return X, labels
 
-
     def _to_sparse_tensor(self, values_offset):
         """
         values_offset is either a tuple (values, offsets) or just values.
@@ -166,20 +165,23 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = torch.from_numpy(np.array([i for i in range(values.size()[0])])).to("cuda")
         num_rows = len(offsets)
 
-        #Appending the values length to the end of the offset vector, to be able to compute diff of the last sequence
+        # Appending the values length to the end of the offset vector, to be able
+        # to compute diff of the last sequence
         offsets = torch.cat([offsets, torch.LongTensor([len(values)]).to("cuda")])
-        #Computing the difference between consecutive offsets, to get the sequence lengths
+        # Computing the difference between consecutive offsets, to get the sequence lengths
         diff_offsets = offsets[1:] - offsets[:-1]
-        #Infering the number of cols based on the maximum sequence length
+        # Infering the number of cols based on the maximum sequence length
         max_seq_len = int(diff_offsets.max())
-        #default_seq_features_len = 1 
-        #if max_seq_len > default_seq_features_len:
-        #    raise ValueError('The default sequence length has been configured to {}, but the '+\
-        #                        'largest sequence in this batch have {} length'.format(self.default_seq_features_len,
-        #                                                                            max_seq_len))
+        # default_seq_features_len = 1
+        # if max_seq_len > default_seq_features_len:
+        #    raise ValueError('The default sequence length has been configured to {},
+        #           but the '+\
+        #           'largest sequence in this batch have {} length'.format(
+        #               self.default_seq_features_len,
+        #               max_seq_len))
 
-        #Building the indices to reconstruct the sparse tensors
-        row_ids = torch.arange(len(offsets)-1).to("cuda")
+        # Building the indices to reconstruct the sparse tensors
+        row_ids = torch.arange(len(offsets) - 1).to("cuda")
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
         col_ids = torch.arange(len(row_offset_repeated)).to("cuda") - row_offset_repeated.to("cuda")

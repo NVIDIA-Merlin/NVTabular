@@ -16,8 +16,8 @@
 import contextlib
 import os
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
@@ -328,27 +328,34 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             offsets = tf.reshape(values_offset[1], [-1])
         else:
             values = tf.reshape(values_offset, [-1])
-            offsets = tf.convert_to_tensor(np.array([i for i in range(tf.shape(values)[0])]), dtype=tf.int64)
+            offsets = tf.convert_to_tensor(
+                np.array([i for i in range(tf.shape(values)[0])]), dtype=tf.int64
+            )
         num_rows = len(offsets)
 
-        #Appending the values length to the end of the offset vector, to be able to compute diff of the last sequence
+        # Appending the values length to the end of the offset vector, to be able
+        # to compute diff of the last sequence
         offsets = tf.concat([offsets, tf.constant([len(values)], dtype=tf.int64)], 0)
-        #Computing the difference between consecutive offsets, to get the sequence lengths
+        # Computing the difference between consecutive offsets, to get the sequence lengths
         diff_offsets = offsets[1:] - offsets[:-1]
-        #Infering the number of cols based on the maximum sequence length
+        # Infering the number of cols based on the maximum sequence length
         max_seq_len = int(tf.math.reduce_max(diff_offsets))
-        #default_seq_features_len = 1 
-        #if max_seq_len > default_seq_features_len:
-        #    raise ValueError('The default sequence length has been configured to {}, but the '+\
-        #                        'largest sequence in this batch have {} length'.format(self.default_seq_features_len,
-        #                                                                            max_seq_len))
+        # default_seq_features_len = 1
+        # if max_seq_len > default_seq_features_len:
+        #    raise ValueError('The default sequence length has been configured to {},
+        #               but the '+\
+        #               'largest sequence in this batch have {} length'.format(
+        #               self.default_seq_features_len,
+        #               max_seq_len))
 
-        #Building the indices to reconstruct the sparse tensors
-        row_ids = tf.range(len(offsets)-1)
+        # Building the indices to reconstruct the sparse tensors
+        row_ids = tf.range(len(offsets) - 1)
         row_ids_repeated = tf.cast(tf.repeat(row_ids, diff_offsets), tf.int64)
         row_offset_repeated = tf.repeat(offsets[:-1], diff_offsets)
         col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
-        indices = tf.concat([tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1)
+        indices = tf.concat(
+            [tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
+        )
 
         sparse_tensor = tf.sparse.SparseTensor(indices, values, [num_rows, max_seq_len])
         return sparse_tensor
@@ -385,7 +392,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = tf.split(labels, len(self.label_names), axis=1)
-        
+
         return X, labels
 
 

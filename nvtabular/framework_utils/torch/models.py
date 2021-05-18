@@ -82,7 +82,7 @@ class Model(torch.nn.Module):
         mh_cat = None
         concat_list = []
         if isinstance(x_cat, tuple):
-            
+
             x_cat, mh_cat = x_cat
         if mh_cat:
             mh_cat = self.mh_cat_layer(mh_cat)

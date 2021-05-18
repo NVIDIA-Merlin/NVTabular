@@ -18,7 +18,6 @@ import torch
 
 
 class dict_transform:
-    
     def __init__(self, dataloader):
         self.cats = dataloader.cat_names
         self.conts = dataloader.cont_names
@@ -29,7 +28,7 @@ class dict_transform:
         # take a part the batch and put together into subsets
         cats = self.create_stack(batch, self.cats)
         conts, _ = self.create_stack(batch, self.conts)
-        #labels = self.create_stack(batch, self.labels)
+        # labels = self.create_stack(batch, self.labels)
         return cats, conts, labels
 
     def create_stack(self, batch, target_columns):
@@ -46,7 +45,7 @@ class dict_transform:
             else:
                 # multihot column type, appending tuple representation
                 mh_s[column_name] = target
-        return torch.cat(columns, 1), mh_s 
+        return torch.cat(columns, 1), mh_s
 
 
 def process_epoch(

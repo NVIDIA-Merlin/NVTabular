@@ -73,7 +73,7 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
     all_rows = 0
     df_cols = df.columns.to_list()
     for idx, chunk in enumerate(data_itr):
-        all_rows += len(chunk[0]['cat1'])
+        all_rows += len(chunk[0]["cat1"])
         if idx < all_len:
             for col in df_cols:
                 if col in chunk[0].keys():
@@ -260,10 +260,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     rows = 0
     for idx, chunk in enumerate(t_dl):
         if device is None:
-            
-            assert float(df_test.iloc[rows][0]) == float(chunk[0]['x'][0])
-        
-        rows += len(chunk[0]['x'])
+
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["x"][0])
+
+        rows += len(chunk[0]["x"])
 
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
@@ -397,7 +397,7 @@ def test_mh_model_support(tmpdir):
         conts=cont_names,
         labels=label_name,
         batch_size=2,
-        #sparse_list=["Cat1"],
+        # sparse_list=["Cat1"],
     )
     emb_sizes = nvt.ops.get_embedding_sizes(processor)
     # check  for correct  embedding representation

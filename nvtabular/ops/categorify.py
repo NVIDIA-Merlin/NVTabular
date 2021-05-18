@@ -445,7 +445,7 @@ def _get_embedding_order(cat_names):
     cat_names : list of str
         names of the categorical columns
     """
-    #return sorted(cat_names)
+    # return sorted(cat_names)
     return cat_names
 
 
