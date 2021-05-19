@@ -366,6 +366,38 @@ def test_mh_support(tmpdir):
     assert idx > 0
 
 
+def test_sparse_tensors():
+    # create small dataset, add values to sparse_list
+    df = cudf.DataFrame(
+        {
+            "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
+            "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
+        }
+    )
+    spa_lst = ["spar1", "spar2"]
+    spa_mx = {"spar1": 5, "spar2": 6}
+    batch_size = 2
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df),
+        cats=spa_lst,
+        conts=[],
+        labels=[],
+        batch_size=batch_size,
+        sparse_list=spa_lst,
+        sparse_max=spa_mx,
+    )
+    for batch in data_itr:
+        feats, labs = batch
+        for col in spa_lst:
+            feature_tensor = feats[col]
+            assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+            assert feature_tensor.is_sparse
+
+    # add dict sparse_max entry for each target
+    # iterate dataloader grab sparse columns
+    # ensure they are correct structurally
+
+
 def test_mh_model_support(tmpdir):
     df = cudf.DataFrame(
         {
@@ -396,7 +428,6 @@ def test_mh_model_support(tmpdir):
         conts=cont_names,
         labels=label_name,
         batch_size=2,
-        # sparse_list=["Cat1"],
     )
     emb_sizes = nvt.ops.get_embedding_sizes(processor)
     # check  for correct  embedding representation

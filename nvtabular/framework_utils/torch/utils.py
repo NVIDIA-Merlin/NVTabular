@@ -31,9 +31,9 @@ class FastaiTransform:
                     cols.append(v)
             concats.append(torch.cat(cols, axis=1))
         return (
-            concats[0].type(dtype=torch.LongTensor).to("cuda"),
+            concats[0].to("cuda", dtype=torch.long),
             concats[1],
-            batch[1].type(dtype=torch.LongTensor).to("cuda"),
+            batch[1].to("cuda", dtype=torch.long),
         )
 
 

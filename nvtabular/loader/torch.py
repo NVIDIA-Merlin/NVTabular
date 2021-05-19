@@ -76,6 +76,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         global_rank=None,
         drop_last=False,
         sparse_list=None,
+        sparse_max=None,
     ):
         DataLoader.__init__(
             self,
@@ -92,6 +93,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             global_rank=global_rank,
             drop_last=drop_last,
             sparse_list=sparse_list,
+            sparse_max=sparse_max,
         )
 
     def __iter__(self):
@@ -142,8 +144,13 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
         # sparse representation change-over
         for column_name in X.keys():
+            # check for sparse struct and also max_size
             if column_name in self.sparse_list:
-                X[column_name] = self._to_sparse_tensor(X[column_name])
+                if not column_name in self.sparse_max:
+                    raise ValueError(
+                        f"Did not convert {column_name} to sparse missing sparse_max entry"
+                    )
+                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
 
         # TODO: use dict for labels as well?
         # would require output layers to match naming
@@ -151,12 +158,13 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             labels = torch.tensor_split(labels, len(self.label_names), axis=1)
         return X, labels
 
-    def _to_sparse_tensor(self, values_offset):
+    def _to_sparse_tensor(self, values_offset, column_name):
         """
         values_offset is either a tuple (values, offsets) or just values.
         Values is a tensor.
         This method is used to turn a tensor into its sparse representation
         """
+        seq_limit = self.sparse_max[column_name]
         if isinstance(values_offset, tuple):
             values = values_offset[0].flatten()
             offsets = values_offset[1].flatten()
@@ -172,13 +180,14 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         diff_offsets = offsets[1:] - offsets[:-1]
         # Infering the number of cols based on the maximum sequence length
         max_seq_len = int(diff_offsets.max())
+
         # default_seq_features_len = 1
-        # if max_seq_len > default_seq_features_len:
-        #    raise ValueError('The default sequence length has been configured to {},
-        #           but the '+\
-        #           'largest sequence in this batch have {} length'.format(
-        #               self.default_seq_features_len,
-        #               max_seq_len))
+        if max_seq_len > seq_limit:
+            raise ValueError(
+                "The default sequence length has been configured "
+                + "to {seq_limit} but the "
+                + "largest sequence in this batch have {max_seq_len} length"
+            )
 
         # Building the indices to reconstruct the sparse tensors
         row_ids = torch.arange(len(offsets) - 1).to("cuda")
@@ -192,7 +201,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         else:
             sparse_tensor_class = torch.sparse.LongTensor
 
-        sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, max_seq_len]))
+        sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, seq_limit]))
         return sparse_tensor
 
 

@@ -349,8 +349,49 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
     assert indices == [global_rank]
 
 
+# @pytest.mark.skip()
+def test_sparse_tensors():
+    # create small dataset, add values to sparse_list
+    df = cudf.DataFrame(
+        {
+            "spar1": [
+                [1, 2, 3, 4],
+                [4, 2, 4, 4],
+                [1, 3, 4, 3],
+                [1, 1, 3, 3],
+            ],
+            "spar2": [
+                [1, 2, 3, 4, 5],
+                [6, 7, 8, 9, 10],
+                [11, 12, 13, 14],
+                [15, 16],
+            ],
+        }
+    )
+    spa_lst = ["spar1", "spar2"]
+    spa_mx = {"spar1": 5, "spar2": 6}
+    batch_size = 2
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        nvt.Dataset(df),
+        cat_names=spa_lst,
+        cont_names=[],
+        label_names=[],
+        batch_size=batch_size,
+        # sparse_list=spa_lst,
+        # sparse_max=spa_mx,
+    )
+    for batch in data_itr:
+        import pdb
+
+        pdb.set_trace()
+        feats, labs = batch
+        for col in spa_lst:
+            feature_tensor = feats[col]
+            assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+            assert feature_tensor.is_sparse
+
+
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
-# @pytest.mark.skip(reason="passes locally but fails on CI due to environment issues")
 def test_horovod_multigpu(tmpdir):
     json_sample = {
         "conts": {},
