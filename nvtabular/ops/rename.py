@@ -19,8 +19,11 @@ from .operator import ColumnNames, Operator
 
 
 class Rename(Operator):
-    """This operation renames columns, either by using a user defined lambda function to
-    transform column names, or by appending a postfix string to every column name
+    """This operation renames columns by one of several methods:
+
+        - using a user defined lambda function to transform column names
+        - appending a postfix string to every column name
+        - renaming a single column to a single fixed string
 
     Example usage::
 
@@ -34,14 +37,17 @@ class Rename(Operator):
         Function that takes a column name and returns a new column name
     postfix : str, optional
         If set each column name in the output will have this string appended to it
+    name : str, optional
+        If set, a single input column will be renamed to this string
     """
 
-    def __init__(self, f=None, postfix=None):
-        if not f and postfix is None:
-            raise ValueError("must specify either f or postfix for Rename op")
+    def __init__(self, f=None, postfix=None, name=None):
+        if not f and postfix is None and name is None:
+            raise ValueError("must specify name, f, or postfix, for Rename op")
 
-        self.postfix = postfix
         self.f = f
+        self.postfix = postfix
+        self.name = name
 
     def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
         gdf.columns = self.output_column_names(columns)
@@ -54,5 +60,10 @@ class Rename(Operator):
             return [self.f(col) for col in columns]
         elif self.postfix:
             return [col + self.postfix for col in columns]
+        elif self.name:
+            if len(columns) == 1:
+                return [self.name]
+            else:
+                raise RuntimeError("Single column name provided for renaming multiple columns")
         else:
-            raise RuntimeError("invalid rename op state found")
+            raise RuntimeError("The Rename op requires one of f, postfix, or name to be provided")
