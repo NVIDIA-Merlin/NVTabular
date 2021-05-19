@@ -13,16 +13,18 @@ Operators
    FillMissing <fillmissing>
    FillMedian <fillmedian>
    Filter <filter>
+   Groupby <groupby>
    HashBucket <hashbucket>
    HashedCross <hashedcross>
    JoinExternal <joinexternal>
-   JoinGroupby <groupby>
+   JoinGroupby <joingroupby>
    LambdaOp <lambdaop>
+   ListSlice <listslice>
    LogOp <log>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
+   Rename <rename>
    TargetEncoding <targetencoding>
-
 
    Operator <operator>
    StatOperator <stat_operator>

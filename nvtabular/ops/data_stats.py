@@ -18,6 +18,7 @@ import dask_cudf
 import numpy as np
 from nvtx import annotate
 
+from .moments import _custom_moments
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
@@ -69,24 +70,24 @@ class DataStats(StatOperator):
             # Get min,max, and mean
             dask_stats[col]["min"] = ddf[col].min()
             dask_stats[col]["max"] = ddf[col].max()
-            dask_stats[col]["mean"] = ddf[col].mean()
-
-            # Get std only for conts
-            if col_type == "conts":
-                dask_stats[col]["std"] = ddf[col].std()
 
             # Get Percentage of NaNs for all
             dask_stats[col]["per_nan"] = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
-        return dask_stats
+        return dask_stats, _custom_moments(ddf[columns])
 
-    def fit_finalize(self, dask_stats):
+    def fit_finalize(self, stats):
+        dask_stats, moments = stats
+
+        # merge in mean/std from the custom_moments code
+        for col in moments.index:
+            dask_stats[col]["mean"] = moments["mean"].loc[col].item()
+            dask_stats[col]["std"] = moments["std"].loc[col].item()
+
         for i, col in enumerate(self.col_names):
             # Add dtype
             dask_stats[col]["dtype"] = str(self.col_dtypes[i])
             # Cast types for yaml
-            if isinstance(dask_stats[col]["mean"], np.floating):
-                dask_stats[col]["mean"] = dask_stats[col]["mean"].item()
             if isinstance(dask_stats[col]["per_nan"], np.floating):
                 dask_stats[col]["per_nan"] = dask_stats[col]["per_nan"].item()
             if self.col_types[i] == "conts":

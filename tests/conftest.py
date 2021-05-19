@@ -108,8 +108,12 @@ def datasets(tmpdir_factory):
     for col in df.columns:
         if col in ["name-cat", "label", "id"]:
             break
-        df[col].iloc[random.randint(1, imax - 1)] = None
-        df[col].iloc[random.randint(1, imax - 1)] = None
+        for _ in range(2):
+            rand_idx = random.randint(1, imax - 1)
+            if rand_idx == df[col].shape[0] // 2:
+                # dont want null in median
+                rand_idx += 1
+            df[col].iloc[rand_idx] = None
 
     datadir = tmpdir_factory.mktemp("data_test")
     datadir = {
@@ -170,7 +174,7 @@ def df(engine, paths):
 def dataset(request, paths, engine):
     try:
         gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         gpu_memory_frac = 0.01
 
     kwargs = {}
@@ -225,7 +229,7 @@ def get_cats(workflow, col, stat_name="categories"):
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:
-        raise RuntimeError("Found {} categorical ops, expected 1", len(cats))
+        raise RuntimeError(f"Found {len(cats)} categorical ops, expected 1")
     filename = cats[0].categories[col]
     gdf = cudf.read_parquet(filename)
     gdf.reset_index(drop=True, inplace=True)

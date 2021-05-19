@@ -13,7 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import gzip
+import os
+import shutil
+import tarfile
+import urllib.request
 import warnings
+import zipfile
+
+import dask
+from dask.dataframe.optimize import optimize as dd_optimize
+from tqdm import tqdm
 
 try:
     from numba import cuda
@@ -71,3 +81,78 @@ def device_mem_size(kind="total", cpu=False):
 
 def get_rmm_size(size):
     return (size // 256) * 256
+
+
+def download_file(url, local_filename, unzip_files=True, redownload=True):
+    """utility function to download a dataset file (movielens/criteo/rossmann etc)
+    locally, displaying a progress bar during download"""
+    local_filename = os.path.abspath(local_filename)
+    path = os.path.dirname(local_filename)
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
+    if not url.startswith("http"):
+        raise ValueError(f"Unhandled url scheme on {url} - this function only is for http")
+
+    if redownload or not os.path.exists(local_filename):
+        desc = f"downloading {os.path.basename(local_filename)}"
+        with tqdm(unit="B", unit_scale=True, desc=desc) as progress:
+
+            def report(chunk, chunksize, total):
+                if not progress.total:
+                    progress.reset(total=total)
+                progress.update(chunksize)
+
+            opener = urllib.request.build_opener()
+            opener.addheaders = [("Accept-Encoding", "gzip, deflate"), ("Accept", "*/*")]
+
+            urllib.request.install_opener(opener)
+            urllib.request.urlretrieve(url, local_filename, reporthook=report)  # nosec
+
+    if unzip_files and local_filename.endswith(".zip"):
+        with zipfile.ZipFile(local_filename) as z:
+            for filename in tqdm(z.infolist(), desc="unzipping files", unit="files"):
+                z.extract(filename, path)
+
+    elif unzip_files and local_filename.endswith(".tgz"):
+        with tarfile.open(local_filename, "r") as tar:
+            for filename in tqdm(tar.getnames(), desc="untarring files", unit="files"):
+                tar.extract(filename, path)
+
+    elif unzip_files and local_filename.endswith(".gz"):
+        with gzip.open(local_filename, "rb") as input_file:
+            with open(local_filename[:-3], "wb") as output_file:
+                shutil.copyfileobj(input_file, output_file)
+
+
+def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
+    # Perform HLG DataFrame optimizations
+    #
+    # If `ddf` is specified, an optimized Dataframe
+    # collection will be returned. If `dsk` and `keys`
+    # are specified, an optimized graph will be returned.
+    #
+    # These optimizations are performed automatically
+    # when a DataFrame collection is computed/persisted,
+    # but they are NOT always performed when statistics
+    # are computed. The purpose of this utility is to
+    # ensure that the Dataframe-based optimizations are
+    # always applied.
+
+    if ddf is None:
+        if dsk is None or keys is None:
+            raise ValueError("Must specify both `dsk` and `keys` if `ddf` is not supplied.")
+    dsk = ddf.dask if dsk is None else dsk
+    keys = ddf.__dask_keys__() if keys is None else keys
+
+    if isinstance(dsk, dask.highlevelgraph.HighLevelGraph):
+        with dask.config.set({"optimization.fuse.active": False}):
+            dsk = dd_optimize(dsk, keys=keys)
+
+    if ddf is None:
+        # Return optimized graph
+        return dsk
+
+    # Return optimized ddf
+    ddf.dask = dsk
+    return ddf

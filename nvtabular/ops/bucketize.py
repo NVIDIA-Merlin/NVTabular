@@ -14,7 +14,6 @@
 # limitations under the License.
 import cudf
 from nvtx import annotate
-from six import callable
 
 from .operator import ColumnNames, Operator
 

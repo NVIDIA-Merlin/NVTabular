@@ -30,6 +30,7 @@ from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
+from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -128,7 +129,9 @@ class Workflow:
             for column_group in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = _transform_ddf(ddf, column_group.parents)
+                transformed_ddf = _ensure_optimize_dataframe_graph(
+                    ddf=_transform_ddf(ddf, column_group.parents)
+                )
 
                 op = column_group.op
                 try:
@@ -288,6 +291,13 @@ def _transform_ddf(ddf, column_groups):
 
     columns = list(flatten(cg.flattened_columns for cg in column_groups))
 
+    # Check if we are only selecting columns (no transforms).
+    # If so, we should perform column selection at the ddf level.
+    # Otherwise, Dask will not push the column selection into the
+    # IO function.
+    if all((c.op is None and not c.parents) for c in column_groups):
+        return ddf[_get_unique(columns)]
+
     # TODO: constructing meta like this loses dtype information on the ddf
     # sets it all to 'float64'. We should propogate dtype information along
     # with column names in the columngroup graph
@@ -308,7 +318,7 @@ def _get_unique(cols):
 
 
 def _transform_partition(root_df, column_groups):
-    """ Transforms a single partition by appyling all operators in a ColumnGroup """
+    """Transforms a single partition by appyling all operators in a ColumnGroup"""
     output = None
     for column_group in column_groups:
         unique_flattened_cols = _get_unique(column_group.flattened_columns)

@@ -42,7 +42,7 @@ from nvtabular.inference.triton import get_column_types
 
 
 class TritonPythonModel:
-    """ Generic TritonPythonModel for nvtabular workflows """
+    """Generic TritonPythonModel for nvtabular workflows"""
 
     def initialize(self, args):
         workflow_path = os.path.join(
@@ -51,6 +51,9 @@ class TritonPythonModel:
         self.workflow = nvtabular.Workflow.load(workflow_path)
         self.model_config = json.loads(args["model_config"])
         self.column_types = get_column_types(workflow_path)
+        self.offsets = get_offsets(workflow_path)
+        if self.offsets is None and "cats" in self.column_types:
+            raise Exception("slot_size_array.json could not be found to read the slot sizes")
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
@@ -83,6 +86,7 @@ class TritonPythonModel:
                 output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
             if "cats" in self.column_types:
+                output_df[self.column_types["cats"]] += self.offsets
                 cats_np = _convert_cudf2numpy(output_df[self.column_types["cats"]], np.int64)
                 output_tensors.append(
                     Tensor(
@@ -118,3 +122,14 @@ def _convert_tensor(t):
     if out.dtype.kind == "S" and out.dtype.str.startswith("|S"):
         out = out.astype("str")
     return out
+
+
+def get_offsets(path):
+    if os.path.exists(path):
+        slot_sizes = json.load(open(os.path.join(path, "slot_size_array.json")))
+        slot_sizes = slot_sizes["slot_size_array"]
+        slot_sizes.insert(0, 0)
+        slot_sizes.pop()
+        return np.cumsum(np.array(slot_sizes)).tolist()
+    else:
+        return None

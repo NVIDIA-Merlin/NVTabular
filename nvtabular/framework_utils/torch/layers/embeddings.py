@@ -69,7 +69,7 @@ class MultiHotEmbeddings(torch.nn.Module):
 
     def __init__(self, embedding_table_shapes, dropout=0.0, mode="sum"):
         super().__init__()
-        self.embedding_names = [i for i in embedding_table_shapes.keys()]
+        self.embedding_names = list(embedding_table_shapes.keys())
         self.embedding_layers = torch.nn.ModuleList(
             [
                 torch.nn.EmbeddingBag(*embedding_table_shapes[key], mode=mode)

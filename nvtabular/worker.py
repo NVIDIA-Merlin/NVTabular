@@ -16,11 +16,10 @@
 
 import contextlib
 import threading
-from io import BytesIO
 
 import cudf
 import fsspec
-import pandas as pd
+import pyarrow as pa
 from dask.distributed import get_worker
 
 # Use global variable as the default
@@ -48,7 +47,7 @@ def _get_worker_cache(name):
     except ValueError:
         # There is no dask.distributed worker.
         # Assume client/worker are same process
-        global _WORKER_CACHE
+        global _WORKER_CACHE  # pylint: disable=global-statement
         if name not in _WORKER_CACHE:
             _WORKER_CACHE[name] = {}
         return _WORKER_CACHE[name]
@@ -68,28 +67,18 @@ def fetch_table_data(
     """
     reader = reader or cudf.io.read_parquet
     table = table_cache.get(path, None)
-    if table is not None and not isinstance(table, (cudf.DataFrame, pd.DataFrame)):
-        if not cats_only:
-            return reader(table)
-        df = reader(table, columns=columns)
-        df.index.name = "labels"
-        df.reset_index(drop=False, inplace=True)
-        return df
-
     cache_df = cache == "device"
     if table is None:
         if cache in ("device", "disk"):
             table = reader(path, columns=columns, **kwargs)
         elif cache == "host":
-            if reader == cudf.io.read_parquet:
+            if reader == cudf.io.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
-                # Use BytesIO to cache data on host.
-
-                # Since the file is already in parquet format,
-                # we can just move the same bytes to host memory
+                # Cache as an Arrow table.
                 with fsspec.open(path, "rb") as f:
-                    table_cache[path] = BytesIO(f.read())
-                table = reader(table_cache[path], columns=columns, **kwargs)
+                    table = reader(f, **kwargs)
+                table_cache[path] = table.to_arrow()
+                table = table[columns]
             else:
                 # Using pandas-backed data with "host" caching.
                 # Just read in data and cache as a pandas DataFrame.
@@ -100,6 +89,13 @@ def fetch_table_data(
             table.reset_index(drop=False, inplace=True)
         if cache_df:
             table_cache[path] = table.copy(deep=False)
+    elif isinstance(table, pa.Table):
+        if not cats_only:
+            return cudf.DataFrame.from_arrow(table)
+        df = cudf.DataFrame.from_arrow(table)[columns]
+        df.index.name = "labels"
+        df.reset_index(drop=False, inplace=True)
+        return df
     return table
 
 
@@ -112,7 +108,7 @@ def clean_worker_cache(name=None):
         try:
             worker = get_worker()
         except ValueError:
-            global _WORKER_CACHE
+            global _WORKER_CACHE  # pylint: disable=global-statement
             if _WORKER_CACHE != {}:
                 if name:
                     del _WORKER_CACHE[name]

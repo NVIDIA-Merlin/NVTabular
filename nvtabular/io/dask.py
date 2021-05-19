@@ -18,10 +18,12 @@ import collections
 import dask
 import pandas as pd
 from dask.base import tokenize
+from dask.dataframe.core import _concat, new_dd_object
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from nvtx import annotate
 
+from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
 from .shuffle import Shuffle
@@ -94,6 +96,78 @@ def _write_output_partition(
     return df_size
 
 
+def _get_partition_groups(df, partition_cols, fs, output_path, filename):
+    # Logic copied from cudf/cudf/io/parquet.py
+    df = df.sort_values(partition_cols)
+    divisions = df[partition_cols].drop_duplicates(ignore_index=True)
+    splits = df[partition_cols].searchsorted(divisions, side="left")
+    splits = splits.tolist() + [len(df[partition_cols])]
+
+    subgroups, fns = [], []
+    for i in range(0, len(splits) - 1):
+        sub_df = df.iloc[splits[i] : splits[i + 1]].copy(deep=False)
+        if sub_df is None or len(sub_df) == 0:
+            continue
+        keys = tuple(sub_df[col].iloc[0] for col in partition_cols)
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        subdir = fs.sep.join(
+            [
+                "{colname}={value}".format(colname=name, value=val)
+                for name, val in zip(partition_cols, keys)
+            ]
+        )
+        prefix = fs.sep.join([output_path, subdir])
+        fs.mkdirs(prefix, exist_ok=True)
+        fns.append(fs.sep.join([subdir, filename]))
+
+        write_df = sub_df.copy(deep=False)
+        write_df.drop(columns=partition_cols, inplace=True)
+        subgroups.append(write_df)
+
+    return fns, subgroups
+
+
+@annotate("write_partitioned", color="green", domain="nvt_python")
+def _write_partitioned(
+    df,
+    filename,
+    output_path,
+    partition_cols,
+    shuffle,
+    fs,
+    cat_names,
+    cont_names,
+    label_names,
+    output_format,
+    num_threads,
+    cpu,
+):
+    # Logic copied from cudf/cudf/io/parquet.py
+    data_cols = df.columns.drop(partition_cols)
+    if len(data_cols) == 0:
+        raise ValueError("No data left to save outside partition columns")
+
+    # Partition the input data
+    fns, dfs = _get_partition_groups(df, partition_cols, fs, output_path, filename)
+    writer = writer_factory(
+        output_format,
+        output_path,
+        1,
+        shuffle,
+        num_threads=num_threads,
+        cpu=cpu,
+        fns=fns,
+    )
+    writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
+
+    # Add the partitioned data
+    writer.add_data(dfs)
+
+    # Return metadata and row-count in dict
+    return writer.close()
+
+
 @annotate("write_subgraph", color="green", domain="nvt_python")
 def _write_subgraph(
     subgraph,
@@ -153,6 +227,23 @@ def _write_metadata_files(md_list, output_path, output_format, cpu):
     wc.write_special_metadata(special_md, fs, output_path)
 
 
+def _simple_shuffle(ddf, plan):
+
+    # Construct graph for a simple shuffle
+    token = tokenize(ddf, plan)
+    name = "shuffled-" + token
+    final_tasks = collections.defaultdict(list)
+    ignore_index = True
+    for i, p in enumerate(plan):
+        final_tasks[(name, p)].append((ddf._name, i))
+    dsk = {k: (_concat, v, ignore_index) for k, v in final_tasks.items()}
+
+    # Conver to a DataFrame collection
+    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    divisions = [None] * (len(dsk) + 1)
+    return new_dd_object(graph, name, ddf._meta, divisions)
+
+
 def _ddf_to_dataset(
     ddf,
     fs,
@@ -168,10 +259,13 @@ def _ddf_to_dataset(
     num_threads,
     cpu,
     suffix="",
+    partition_on=None,
 ):
 
     # Construct graph for Dask-based dataset write
-    token = tokenize(ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names)
+    token = tokenize(
+        ddf, shuffle, out_files_per_proc, cat_names, cont_names, label_names, suffix, partition_on
+    )
     name = "write-processed-" + token
     write_name = name + "-partition" + token
 
@@ -180,7 +274,34 @@ def _ddf_to_dataset(
 
     dsk = {}
     task_list = []
-    if file_partition_map is not None:
+    if partition_on:
+        # Use hive partitioning to write the data
+        cached_writers = False
+        for idx in range(ddf.npartitions):
+            task_list.append((write_name, idx))
+            dsk[task_list[-1]] = (
+                _write_partitioned,
+                (ddf._name, idx),
+                f"part.{idx}{suffix}",
+                output_path,
+                partition_on,
+                shuffle,
+                fs,
+                cat_names,
+                cont_names,
+                label_names,
+                output_format,
+                num_threads,
+                cpu,
+            )
+        dsk[name] = (
+            _write_metadata_files,
+            task_list,
+            output_path,
+            output_format,
+            cpu,
+        )
+    elif file_partition_map is not None:
         # Use specified mapping of data to output files
         cached_writers = False
         full_graph = ddf.dask
@@ -232,7 +353,10 @@ def _ddf_to_dataset(
             task_list.append(key)
         dsk[name] = (lambda x: x, task_list)
 
-    graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
+    graph = _ensure_optimize_dataframe_graph(
+        dsk=HighLevelGraph.from_collections(name, dsk, dependencies=[ddf]),
+        keys=[name],
+    )
     out = Delayed(name, graph)
 
     # Trigger write execution
