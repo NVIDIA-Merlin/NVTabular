@@ -239,11 +239,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
-
     for idx, chunk in enumerate(data_itr):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
-        rows += len(chunk[0])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]['name-cat'][0])
+        rows += len(chunk[0]['x'])
         del chunk
 
     # accounts for incomplete batches at the end of chunks
@@ -252,7 +251,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     def gen_col(batch):
         batch = batch[0]
-        return batch[0], batch[1], batch[2]
+        return (batch[0]), batch[1]
 
     t_dl = torch_dataloader.DLDataLoader(
         data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
@@ -260,8 +259,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     rows = 0
     for idx, chunk in enumerate(t_dl):
         if device is None:
-
-            assert float(df_test.iloc[rows][0]) == float(chunk[0]["x"][0])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["name-cat"][0])
 
         rows += len(chunk[0]["x"])
 
@@ -305,7 +303,6 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     for batch_size in [2 ** i for i in range(9, 25, 1)]:
         print("Checking batch size: ", batch_size)
         num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
-        # import pdb; pdb.set_trace()
         data_itr.batch_size = batch_size
         start = time.time()
         i = 0
@@ -359,11 +356,13 @@ def test_mh_support(tmpdir):
     idx = 0
     for batch in data_itr:
         idx = idx + 1
-        cats, conts, labels = batch
-        cats, mh = cats
+        cats_conts, labels = batch
+        assert "Reviewers" in cats_conts
+        # check it is multihot 
+        assert isinstance(cats_conts["Reviewers"], tuple)
         # mh is a tuple of dictionaries {Column name: (values, offsets)}
-        assert len(mh) == len(cat_names)
-        assert not cats
+        assert "Authors" in cats_conts
+        assert isinstance(cats_conts["Authors"], tuple)
     assert idx > 0
 
 

@@ -17,6 +17,22 @@
 import torch
 
 
+
+class FastaiTransform:
+    def __init__(self, dataloader):
+        self.data = dict_transform(dataloader)
+
+    def transform(self, batch):
+        concats = []
+        for columns in [self.data.cats, self.data.conts]:
+            #cols = [v for k,v in batch[0] if k in columns and isinstance(v, torch.Tensor)]
+            cols = []
+            for k,v in batch[0].items():
+                if k in columns and not isinstance(v, tuple) and isinstance(v, torch.Tensor):
+                    cols.append(v)
+            concats.append(torch.cat(cols, axis=1))
+        return concats[0].type(torch.LongTensor), concats[1], batch[1].type(torch.LongTensor)
+
 class dict_transform:
     def __init__(self, dataloader):
         self.cats = dataloader.cat_names
@@ -25,9 +41,13 @@ class dict_transform:
 
     def transform(self, batch):
         batch, labels = batch
+        cats = None
+        conts = None
         # take a part the batch and put together into subsets
-        cats = self.create_stack(batch, self.cats)
-        conts, _ = self.create_stack(batch, self.conts)
+        if self.cats:
+            cats = self.create_stack(batch, self.cats)
+        if self.conts:
+            conts, _ = self.create_stack(batch, self.conts)
         # labels = self.create_stack(batch, self.labels)
         return cats, conts, labels
 
@@ -45,7 +65,9 @@ class dict_transform:
             else:
                 # multihot column type, appending tuple representation
                 mh_s[column_name] = target
-        return torch.cat(columns, 1), mh_s
+        if columns:
+            columns = torch.cat(columns, 1)
+        return columns, mh_s
 
 
 def process_epoch(
