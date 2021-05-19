@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-# import importlib
+import importlib
 import os
 import subprocess
 
@@ -349,8 +349,8 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
     assert indices == [global_rank]
 
 
-# @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
-@pytest.mark.skip(reason="passes locally but fails on CI due to environment issues")
+@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
+# @pytest.mark.skip(reason="passes locally but fails on CI due to environment issues")
 def test_horovod_multigpu(tmpdir):
     json_sample = {
         "conts": {},

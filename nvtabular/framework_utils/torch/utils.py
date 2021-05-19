@@ -30,7 +30,11 @@ class FastaiTransform:
                 if k in columns and not isinstance(v, tuple) and isinstance(v, torch.Tensor):
                     cols.append(v)
             concats.append(torch.cat(cols, axis=1))
-        return concats[0].type(torch.LongTensor), concats[1], batch[1].type(torch.LongTensor)
+        return (
+            concats[0].type(dtype=torch.LongTensor).to("cuda"),
+            concats[1],
+            batch[1].type(dtype=torch.LongTensor).to("cuda"),
+        )
 
 
 class dict_transform:

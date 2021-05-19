@@ -62,7 +62,9 @@ def seed_fn():
 
 
 proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
-EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)
+
 
 train_dataset_tf = KerasSequenceLoader(
     TRAIN_PATHS,  # you could also use a glob pattern
