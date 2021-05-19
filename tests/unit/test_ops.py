@@ -1055,3 +1055,27 @@ def test_list_slice(cpu):
     transformed = op.transform(["y"], df)
     expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
     assert_eq(transformed, expected)
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_rename(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+
+    df = DataFrame({"x": [1, 2, 3, 4, 5], "y": [6, 7, 8, 9, 10]})
+
+    op = ops.Rename(f=lambda name: name.upper())
+    transformed = op.transform(["x", "y"], df)
+    expected = DataFrame({"X": [1, 2, 3, 4, 5], "Y": [6, 7, 8, 9, 10]})
+    assert_eq(transformed, expected)
+
+    op = ops.Rename(postfix="_lower")
+    transformed = op.transform(["x", "y"], df)
+    expected = DataFrame({"x_lower": [1, 2, 3, 4, 5], "y_lower": [6, 7, 8, 9, 10]})
+    assert_eq(transformed, expected)
+
+    df = DataFrame({"x": [1, 2, 3, 4, 5]})
+
+    op = ops.Rename(name="z")
+    transformed = op.transform(["x"], df)
+    expected = DataFrame({"z": [1, 2, 3, 4, 5]})
+    assert_eq(transformed, expected)
