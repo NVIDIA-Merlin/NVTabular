@@ -241,8 +241,8 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     # works with iterator alone, needs to test inside torch dataloader
     for idx, chunk in enumerate(data_itr):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0]['name-cat'][0])
-        rows += len(chunk[0]['x'])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["name-cat"][0])
+        rows += len(chunk[0]["x"])
         del chunk
 
     # accounts for incomplete batches at the end of chunks
@@ -358,7 +358,7 @@ def test_mh_support(tmpdir):
         idx = idx + 1
         cats_conts, labels = batch
         assert "Reviewers" in cats_conts
-        # check it is multihot 
+        # check it is multihot
         assert isinstance(cats_conts["Reviewers"], tuple)
         # mh is a tuple of dictionaries {Column name: (values, offsets)}
         assert "Authors" in cats_conts

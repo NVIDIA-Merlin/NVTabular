@@ -8,7 +8,7 @@ import torch
 
 import nvtabular as nvt
 from nvtabular.framework_utils.torch.models import Model
-from nvtabular.framework_utils.torch.utils import process_epoch, dict_transform
+from nvtabular.framework_utils.torch.utils import dict_transform, process_epoch
 from nvtabular.loader.torch import DLDataLoader, TorchAsyncItr
 
 # Horovod must be the last import to avoid conflicts
@@ -122,11 +122,13 @@ optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_par
 for epoch in range(args.epochs):
     start = time()
     print(f"Training epoch {epoch}")
-    train_loss, y_pred, y = process_epoch(train_loader, 
-                                        model, 
-                                        train=True, 
-                                        transform=dict_transform(train_loader.dataset).transform, 
-                                        optimizer=optimizer)
+    train_loss, y_pred, y = process_epoch(
+        train_loader,
+        model,
+        train=True,
+        transform=dict_transform(train_loader.dataset).transform,
+        optimizer=optimizer,
+    )
     hvd.join(gpu_to_use)
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
     print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}.")

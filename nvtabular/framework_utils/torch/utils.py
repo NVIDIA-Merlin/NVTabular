@@ -17,7 +17,6 @@
 import torch
 
 
-
 class FastaiTransform:
     def __init__(self, dataloader):
         self.data = dict_transform(dataloader)
@@ -25,13 +24,14 @@ class FastaiTransform:
     def transform(self, batch):
         concats = []
         for columns in [self.data.cats, self.data.conts]:
-            #cols = [v for k,v in batch[0] if k in columns and isinstance(v, torch.Tensor)]
+            # cols = [v for k,v in batch[0] if k in columns and isinstance(v, torch.Tensor)]
             cols = []
-            for k,v in batch[0].items():
+            for k, v in batch[0].items():
                 if k in columns and not isinstance(v, tuple) and isinstance(v, torch.Tensor):
                     cols.append(v)
             concats.append(torch.cat(cols, axis=1))
         return concats[0].type(torch.LongTensor), concats[1], batch[1].type(torch.LongTensor)
+
 
 class dict_transform:
     def __init__(self, dataloader):
