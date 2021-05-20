@@ -325,41 +325,45 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         This method is used to turn a tensor into its sparse representation
         """
         seq_limit = self.sparse_max[column_name]
+        diff_offsets = None
         if isinstance(values_offset, tuple):
             values = tf.reshape(values_offset[0], [-1])
-            offsets = tf.reshape(values_offset[1], [-1])
+            diff_offsets = tf.cast(tf.reshape(values_offset[1], [-1]), dtype=tf.int64)
+            offsets = tf.math.cumsum(diff_offsets)
         else:
             values = tf.reshape(values_offset, [-1])
             offsets = tf.convert_to_tensor(
                 np.array([i for i in range(tf.shape(values)[0])]), dtype=tf.int64
             )
+            diff_offsets = offsets[1:] - offsets[:-1]
         num_rows = len(offsets)
 
         # Appending the values length to the end of the offset vector, to be able
         # to compute diff of the last sequence
-        offsets = tf.concat([offsets, tf.constant([len(values)], dtype=tf.int64)], 0)
+        # offsets = tf.concat([offsets, tf.constant([len(values)], dtype=tf.int64)], 0)
         # Computing the difference between consecutive offsets, to get the sequence lengths
-        diff_offsets = offsets[1:] - offsets[:-1]
+        # diff_offsets = offsets[1:] - offsets[:-1]
         # Infering the number of cols based on the maximum sequence length
         max_seq_len = int(tf.math.reduce_max(diff_offsets))
         # default_seq_features_len = 1
         if max_seq_len > seq_limit:
             raise ValueError(
                 f"The default sequence length has been configured "
-                + "to {seq_limit}, but the "
+                + f"to {seq_limit}, but the "
                 + f"largest sequence in this batch have {max_seq_len} length"
             )
 
         # Building the indices to reconstruct the sparse tensors
-        row_ids = tf.range(len(offsets) - 1)
-        row_ids_repeated = tf.cast(tf.repeat(row_ids, diff_offsets), tf.int64)
-        row_offset_repeated = tf.repeat(offsets[:-1], diff_offsets)
+        row_ids = tf.range(len(offsets), dtype=tf.int64)
+        
+        row_ids_repeated = tf.repeat(row_ids, diff_offsets)
+        row_offset_repeated = tf.repeat(offsets, diff_offsets)
         col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
+        # import pdb; pdb.set_trace()
         indices = tf.concat(
-            [tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
+            values=[tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
         )
-
-        sparse_tensor = tf.sparse.SparseTensor(indices, values, [num_rows, seq_limit])
+        sparse_tensor = tf.sparse.SparseTensor(indices=indices, values=values, dense_shape=[num_rows, seq_limit])
         return sparse_tensor
 
     def _handle_tensors(self, cats, conts, labels):
@@ -375,8 +379,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             list_columns = list(lists.keys())
             for column in list_columns:
                 values, nnzs = lists.pop(column)
-                lists[column + "__values"] = values
-                lists[column + "__nnzs"] = nnzs
+                lists[column] = values, nnzs
+                #lists[column + "__nnzs"] = nnzs
 
             # now add in any scalar tensors
             if len(names) > 1:

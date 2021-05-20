@@ -190,6 +190,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             )
 
         # Building the indices to reconstruct the sparse tensors
+        import pdb; pdb.set_trace()
         row_ids = torch.arange(len(offsets) - 1).to("cuda")
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
