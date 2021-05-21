@@ -1,6 +1,6 @@
 # Training and Inference with HugeCTR Model
 
-In this folder, we provide two example notebooks, [Training-with-HugeCTR](https://github.com/rnyak/NVTabular/blob/fix-hugectr-nbs/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb) and [Triton-Inference-with-HugeCTR](https://github.com/rnyak/NVTabular/blob/fix-hugectr-nbs/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
+In this folder, we provide two example notebooks, [Training-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb) and [Triton-Inference-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
 
 ## Getting Started 
 
