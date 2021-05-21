@@ -644,3 +644,13 @@ def _convert_dtype(dtype):
     if cudf.utils.dtypes.is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _convert_tensor(t):
+    out = t.as_numpy()
+    if len(out.shape) == 2:
+        out = out[:, 0]
+    # cudf doesn't seem to handle dtypes like |S15 or object that well
+    if cudf.utils.dtypes.is_string_dtype(out.dtype):
+        out = out.astype("str")
+    return out
