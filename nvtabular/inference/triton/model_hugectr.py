@@ -38,7 +38,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.inference.triton import get_column_types
+from nvtabular.inference.triton import _convert_tensor, get_column_types
 
 
 class TritonPythonModel:
@@ -112,16 +112,6 @@ def _convert_cudf2numpy(df, dtype):
         d[:, i] = df[name].values_host
 
     return d.reshape(1, df.shape[0] * df.shape[1]).astype(dtype)
-
-
-def _convert_tensor(t):
-    out = t.as_numpy()
-    if len(out.shape) == 2:
-        out = out[:, 0]
-    # cudf doesn't seem to handle dtypes like |S15
-    if out.dtype.kind == "S" and out.dtype.str.startswith("|S"):
-        out = out.astype("str")
-    return out
 
 
 def get_offsets(path):
