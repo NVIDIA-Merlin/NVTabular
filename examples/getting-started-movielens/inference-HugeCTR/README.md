@@ -62,7 +62,7 @@ cd <path to nvt_triton>
 
 2) Launch Merlin Triton Inference Server container:
 ```
-docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5.2
+docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5.3
 
 ```
 The container will open a shell when the run command execution is completed. It should look similar to this:
