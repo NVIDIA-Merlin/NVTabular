@@ -27,7 +27,7 @@ def run_triton_server(modelpath):
         try:
             with grpcclient.InferenceServerClient("localhost:8001") as client:
                 # wait until server is ready
-                for _ in range(20):
+                for _ in range(60):
                     try:
                         ready = client.is_server_ready()
                     except tritonclient.utils.InferenceServerException:
