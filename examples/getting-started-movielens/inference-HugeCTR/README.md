@@ -1,6 +1,6 @@
-# Inference with HugeCTR Model
+# Training and Inference with HugeCTR Model
 
-In this folder, we provide two example notebooks, [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCR.ipynb) and [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-inference.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
+In this folder, we provide two example notebooks, [Training-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb) and [Triton-Inference-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
 
 ## Getting Started 
 
@@ -70,7 +70,7 @@ The container will open a shell when the run command execution is completed. It 
 root@02d56ff0738f:/opt/tritonserver# 
 ```
 
-3) Your saved model should be in the `/model` directory. Navigate to the `model` working directory inside the triton server container to check the saved models:
+3) Your saved models should be in the `/model` directory. Navigate to the `model` working directory inside the triton server container to check the saved models:
 ```
 cd /model
 ```
