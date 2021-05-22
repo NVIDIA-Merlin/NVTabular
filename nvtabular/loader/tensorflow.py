@@ -380,7 +380,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             for column in list_columns:
                 values, nnzs = lists.pop(column)
                 lists[column] = values, nnzs
-                #lists[column + "__nnzs"] = nnzs
+                # lists[column + "__values"] = values
+                # lists[column + "__nnzs"] = nnzs
 
             # now add in any scalar tensors
             if len(names) > 1:

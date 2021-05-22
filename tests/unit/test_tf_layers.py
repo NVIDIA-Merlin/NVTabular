@@ -94,8 +94,7 @@ def test_dense_embedding_layer(aggregation, combiner):
             name="vector_continuous__values", shape=(1,), dtype=tf.float32
         ),
         "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
-        "multi_hot__values": tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
-        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
+        "multi_hot": (tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64)),
     }
     if aggregation == "stack":
         inputs.pop("scalar_continuous")
@@ -115,8 +114,7 @@ def test_dense_embedding_layer(aggregation, combiner):
         "scalar_continuous": scalar[:, None],
         "vector_continuous__values": vector.flatten()[:, None],
         "one_hot": one_hot[:, None],
-        "multi_hot__values": multi_hot_values[:, None],
-        "multi_hot__nnzs": multi_hot_nnzs[:, None],
+        "multi_hot": (multi_hot_values[:, None], multi_hot_nnzs[:, None]),
     }
     if aggregation == "stack":
         x.pop("scalar_continuous")
@@ -296,8 +294,7 @@ def test_multihot_empty_rows():
 
     embedding_layer = layers.DenseFeatures([multi_hot_embedding])
     inputs = {
-        "multihot__values": tf.keras.Input(name="multihot__values", shape=(1,), dtype=tf.int64),
-        "multihot__nnzs": tf.keras.Input(name="multihot__nnzs", shape=(1,), dtype=tf.int64),
+        "multihot": (tf.keras.Input(name="multihot__values", shape=(1,), dtype=tf.int64), tf.keras.Input(name="multihot__nnzs", shape=(1,), dtype=tf.int64))
     }
     output = embedding_layer(inputs)
 
@@ -307,8 +304,7 @@ def test_multihot_empty_rows():
     multi_hot_values = np.array([0, 2, 1, 4, 1, 3, 1])
     multi_hot_nnzs = np.array([1, 0, 2, 4, 0])
     x = {
-        "multihot__values": multi_hot_values[:, None],
-        "multihot__nnzs": multi_hot_nnzs[:, None],
+        "multihot": (multi_hot_values[:, None], multi_hot_nnzs[:, None])
     }
 
     multi_hot_embedding_table = embedding_layer.embedding_tables["multihot"].numpy()
