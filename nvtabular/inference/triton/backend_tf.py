@@ -1,6 +1,5 @@
 import cudf
 import numpy as np
-from cudf.core.column import as_column, build_column
 from cudf.utils.dtypes import is_list_dtype
 
 import nvtabular
@@ -31,7 +30,6 @@ class TritonNVTabularModel:
 
         self.lenghts = list()
 
-
     def transform(self, input_names, inputs, output_names):
         input_df = cudf.DataFrame()
 
@@ -49,14 +47,12 @@ class TritonNVTabularModel:
             col = output_df[name]
             if is_list_dtype(col.dtype):
                 # convert list values to match TF dataloader
-                values = col.list.leaves.values_host.astype(
-                    self.output_dtypes[name + "__values"]
-                )
+                values = col.list.leaves.values_host.astype(self.output_dtypes[name + "__values"])
                 output[name + "__values"] = values
                 self.lenghts.append(len(output[name + "__values"]))
 
                 offsets = col._column.offsets.values_host.astype(
-                   self.output_dtypes[name + "__nnzs"]
+                    self.output_dtypes[name + "__nnzs"]
                 )
                 nnzs = offsets[1:] - offsets[:-1]
                 nnzs = nnzs.reshape(len(nnzs), 1)
@@ -65,7 +61,7 @@ class TritonNVTabularModel:
             else:
                 output[name] = col.values_host.astype(self.output_dtypes[name])
                 self.lenghts.append(len(output[name]))
-        
+
         return output
 
     def get_lengths(self):
