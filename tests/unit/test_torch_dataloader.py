@@ -21,12 +21,15 @@ import time
 
 import cudf
 import numba.cuda
+import numpy as np
+import pandas as pd
 import pytest
 from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
+from nvtabular.io.dataset import Dataset
 from tests.conftest import mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
@@ -37,6 +40,25 @@ from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
 from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
+
+
+def test_shuffling():
+    num_rows = 10000
+    batch_size = 10000
+
+    df = pd.DataFrame({"a": np.asarray(range(num_rows)), "b": np.asarray([0] * num_rows)})
+
+    train_dataset = torch_dataloader.TorchAsyncItr(
+        Dataset(df), conts=["a"], labels=["b"], batch_size=batch_size, shuffle=True
+    )
+
+    batch = next(iter(train_dataset))
+
+    first_batch = batch[1].cpu()
+    in_order = torch.arange(0, batch_size)
+
+    assert (first_batch != in_order).any()
+    assert (torch.sort(first_batch).values == in_order).all()
 
 
 @pytest.mark.parametrize("batch_size", [10, 9, 8])
@@ -304,7 +326,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     for batch_size in [2 ** i for i in range(9, 25, 1)]:
         print("Checking batch size: ", batch_size)
         num_iter = max(10 * 1000 * 1000 // batch_size, 100)  # load 10e7 samples
-        # import pdb; pdb.set_trace()
+
         data_itr.batch_size = batch_size
         start = time.time()
         i = 0
@@ -366,7 +388,6 @@ def test_mh_support(tmpdir):
     assert idx > 0
 
 
-@pytest.mark.skip(reason="fails with cuda illegal memory access")
 def test_mh_model_support(tmpdir):
     df = cudf.DataFrame(
         {
@@ -399,6 +420,10 @@ def test_mh_model_support(tmpdir):
         batch_size=2,
     )
     emb_sizes = nvt.ops.get_embedding_sizes(processor)
+    # check  for correct  embedding representation
+    assert len(emb_sizes[1].keys()) == 2  # Authors, Reviewers
+    assert len(emb_sizes[0].keys()) == 2  # Null User, Cat1
+
     EMBEDDING_DROPOUT_RATE = 0.04
     DROPOUT_RATES = [0.001, 0.01]
     HIDDEN_DIMS = [1000, 500]

@@ -7,9 +7,9 @@ We have created a collection of Jupyter notebooks based on different datasets. T
 The example notebooks are structured as follows and should be reviewed in this order:
 - 01-Download-Convert.ipynb: Demonstrates how to download the dataset and convert it into the correct format so that it can be consumed. 
 - 02-ETL-with-NVTabular.ipynb: Demonstrates how to execute the preprocessing and feature engineering pipeline (ETL) with NVTabular on the GPU.
-- 03a-Training-with-TF.ipynb: Demonstrates how to train a model with TensorFlow based on the ETL output.
-- 03b-Training-with-PyTorch.ipynb: Demonstrates how to train a model with PyTorch based on the ETL output.
-- 03c-Training-with-HugeCTR.ipynb: Demonstrates how to train a model with HugeCTR based on the ETL output.
+- 03-Training-with-TF.ipynb: Demonstrates how to train a model with TensorFlow based on the ETL output.
+- 03-Training-with-PyTorch.ipynb: Demonstrates how to train a model with PyTorch based on the ETL output.
+- 03-Training-with-HugeCTR.ipynb: Demonstrates how to train a model with HugeCTR based on the ETL output.
 
 ## Available Example Notebooks
 
@@ -53,17 +53,20 @@ To run the example notebooks using Docker containers, do the following:
 
 1. Pull the container by running the following command:
    ```
-   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host --cap-add SYS_PTRACE <docker container> /bin/bash
+   docker run --runtime=nvidia --rm -it -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host <docker container> /bin/bash
    ```
 
-   **NOTE**: If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
+   **NOTES**: 
+   
+   - If you are running on Docker version 19 and higher, change ```--runtime=nvidia``` to ```--gpus all```.
+   - If you are running `Getting Started with MovieLens` , `Advanced Ops with Outbrain` or `Tabular Problems with Rossmann` example notebooks you need to add ` -v ${PWD}:/root/ ` to the docker script above. Here `PWD` is a local directory in your system, and this very same directory should also be mounted to the `merlin-inference`container if you would like to run the inference example. Please follow the `start and launch triton server` instructions given in the inference notebooks. 
 
    The container will open a shell when the run command execution is completed. You will have to start JupyterLab on the Docker container. It should look similar to this:
    ```
    root@2efa5b50b909:
    ```
 
-2. Install jupyter-lab with `conda` or `pip` by running the following command:
+2. Install jupyter-lab with `pip` by running the following command:
    ```
    pip install jupyterlab
    ```
