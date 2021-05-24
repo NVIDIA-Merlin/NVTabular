@@ -378,7 +378,6 @@ class Categorify(StatOperator):
 
         # Encode each column-group separately
         for name in cat_names:
-            import pdb; pdb.set_trace()
             try:
                 # Use the column-group `list` directly (not the string name)
                 use_name = multi_col_group.get(name, name)

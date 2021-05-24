@@ -99,7 +99,7 @@ def _validate_stack_dimensions(feature_columns):
 
 def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
     # check for sparse embeddings by name
-        # build values and nnz tensors into ragged array, convert to sparse
+    # build values and nnz tensors into ragged array, convert to sparse
     if isinstance(inputs[feature_name], tuple):
         values = inputs[feature_name][0][:, 0]
         row_lengths = inputs[feature_name][1][:, 0]
@@ -185,7 +185,7 @@ class DenseFeatures(tf.keras.layers.Layer):
         super(DenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
-        #assert all(shape[1] == 1 for shape in input_shapes.values())
+        # assert all(shape[1] == 1 for shape in input_shapes.values())
 
         self.embedding_tables = {}
         for feature_column in self.feature_columns:
@@ -311,7 +311,7 @@ class LinearFeatures(tf.keras.layers.Layer):
         super(LinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
-        assert all(shape[1] == 1 for shape in input_shapes.values())
+        # assert all(shape[1] == 1 for shape in input_shapes.values())
 
         # TODO: I've tried combining all the categorical tables
         # into a single giant lookup op, but it ends up turning

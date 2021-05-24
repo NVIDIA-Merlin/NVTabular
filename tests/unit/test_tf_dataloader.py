@@ -253,11 +253,11 @@ def test_mh_support(tmpdir, batch_size):
     nnzs = None
     idx = 0
     for X, y in data_itr:
-        assert len(X) == 4 
+        assert len(X) == 4
         n_samples = y.shape[0]
 
         for mh_name in ["Authors", "Reviewers", "Embedding"]:
-            #assert (mh_name) in X
+            # assert (mh_name) in X
             array, nnzs = X[mh_name]
             nnzs = nnzs.numpy()[:, 0]
             array = array.numpy()[:, 0]
@@ -266,11 +266,10 @@ def test_mh_support(tmpdir, batch_size):
                 assert (nnzs == 3).all()
             else:
                 lens = [
-                            len(x)
-                            for x in data[mh_name][idx * batch_size : idx * batch_size + n_samples]
-                        ]
+                    len(x) for x in data[mh_name][idx * batch_size : idx * batch_size + n_samples]
+                ]
                 assert (nnzs == np.array(lens)).all()
-            
+
             if mh_name == "Embedding":
                 assert len(array) == (n_samples * 3)
             else:
@@ -373,7 +372,7 @@ def test_sparse_tensors(tmpdir):
                 "multi_max": 5,
                 "multi_avg": 4,
             },
-            #"": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
+            # "": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
         },
         "labels": {"rating": {"dtype": None, "cardinality": 2}},
     }
@@ -384,12 +383,12 @@ def test_sparse_tensors(tmpdir):
     df_files = df_gen.full_df_create(10000, cols, output=target_path)
     spa_lst = ["spar1", "spar2"]
     spa_mx = {"spar1": 5, "spar2": 6}
-    batch_size = 10 
+    batch_size = 10
     data_itr = tf_dataloader.KerasSequenceLoader(
         df_files,
         cat_names=spa_lst,
         cont_names=[],
-        label_names=['rating'],
+        label_names=["rating"],
         batch_size=batch_size,
         buffer_size=0.1,
         sparse_list=spa_lst,
@@ -398,7 +397,7 @@ def test_sparse_tensors(tmpdir):
     for batch in data_itr:
         feats, labs = batch
         for col in spa_lst:
-            feature_tensor = feats[f'{col}']
+            feature_tensor = feats[f"{col}"]
             assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
             assert isinstance(feature_tensor, tf.sparse.SparseTensor)
 
@@ -439,8 +438,9 @@ def test_horovod_multigpu(tmpdir):
     proc = nvt.Workflow(output)
     target_path_train = os.path.join(tmpdir, "train/")
     os.mkdir(target_path_train)
-    import pdb; pdb.set_trace()
-    proc.fit_transform(nvt.Dataset(df_files)).to_parquet(output_path=target_path_train, out_files_per_proc=5)
+    proc.fit_transform(nvt.Dataset(df_files)).to_parquet(
+        output_path=target_path_train, out_files_per_proc=5
+    )
     # add new location
     target_path = os.path.join(tmpdir, "workflow/")
     os.mkdir(target_path)
@@ -472,5 +472,7 @@ def test_horovod_multigpu(tmpdir):
         stdout, stderr = process.communicate()
         print(stdout, stderr)
         assert "Loss:" in str(stdout)
+
+
 #
 #

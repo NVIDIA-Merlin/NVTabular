@@ -90,15 +90,18 @@ def test_dense_embedding_layer(aggregation, combiner):
     embedding_layer = layers.DenseFeatures(cols, aggregation=aggregation)
     inputs = {
         "scalar_continuous": tf.keras.Input(name="scalar_continuous", shape=(1,), dtype=tf.float32),
-        "vector_continuous__values": tf.keras.Input(
+        "vector_continuous": tf.keras.Input(
             name="vector_continuous__values", shape=(1,), dtype=tf.float32
         ),
         "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
-        "multi_hot": (tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64)),
+        "multi_hot": (
+            tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
+            tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
+        ),
     }
     if aggregation == "stack":
         inputs.pop("scalar_continuous")
-        inputs.pop("vector_continuous__values")
+        inputs.pop("vector_continuous")
 
     output = embedding_layer(inputs)
     model = tf.keras.Model(inputs=inputs, outputs=output)
@@ -112,13 +115,13 @@ def test_dense_embedding_layer(aggregation, combiner):
     multi_hot_nnzs = np.array([1, 2, 4])
     x = {
         "scalar_continuous": scalar[:, None],
-        "vector_continuous__values": vector.flatten()[:, None],
+        "vector_continuous": vector.flatten()[:, None],
         "one_hot": one_hot[:, None],
         "multi_hot": (multi_hot_values[:, None], multi_hot_nnzs[:, None]),
     }
     if aggregation == "stack":
         x.pop("scalar_continuous")
-        x.pop("vector_continuous__values")
+        x.pop("vector_continuous")
 
     multi_hot_embedding_table = embedding_layer.embedding_tables["multi_hot"].numpy()
     multi_hot_embedding_rows = _compute_expected_multi_hot(
@@ -130,7 +133,8 @@ def test_dense_embedding_layer(aggregation, combiner):
     assert y_hat.shape[0] == 3
     if aggregation == "stack":
         assert len(y_hat.shape) == 3
-        assert y_hat.shape[1] == (len(x) - 1)
+        # len of columns is 2 because of mh (vals, nnzs) struct
+        assert y_hat.shape[1] == (len(x))
         assert y_hat.shape[2] == 100
 
         assert (y_hat[:, 0] == multi_hot_embedding_rows).all()
@@ -175,12 +179,14 @@ def test_linear_embedding_layer():
 
     inputs = {
         "scalar_continuous": tf.keras.Input(name="scalar_continuous", shape=(1,), dtype=tf.float32),
-        "vector_continuous__values": tf.keras.Input(
+        "vector_continuous": tf.keras.Input(
             name="vector_continuous__values", shape=(1,), dtype=tf.float32
         ),
         "one_hot": tf.keras.Input(name="one_hot", shape=(1,), dtype=tf.int64),
-        "multi_hot__values": tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
-        "multi_hot__nnzs": tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
+        "multi_hot": (
+            tf.keras.Input(name="multi_hot__values", shape=(1,), dtype=tf.int64),
+            tf.keras.Input(name="multi_hot__nnzs", shape=(1,), dtype=tf.int64),
+        ),
     }
 
     output = embedding_layer(inputs)
@@ -195,10 +201,9 @@ def test_linear_embedding_layer():
     multi_hot_nnzs = np.array([1, 2, 4])
     x = {
         "scalar_continuous": scalar[:, None],
-        "vector_continuous__values": vector.flatten()[:, None],
+        "vector_continuous": vector.flatten()[:, None],
         "one_hot": one_hot[:, None],
-        "multi_hot__values": multi_hot_values[:, None],
-        "multi_hot__nnzs": multi_hot_nnzs[:, None],
+        "multi_hot": (multi_hot_values[:, None], multi_hot_nnzs[:, None]),
     }
 
     y_hat = model(x).numpy()
@@ -294,7 +299,10 @@ def test_multihot_empty_rows():
 
     embedding_layer = layers.DenseFeatures([multi_hot_embedding])
     inputs = {
-        "multihot": (tf.keras.Input(name="multihot__values", shape=(1,), dtype=tf.int64), tf.keras.Input(name="multihot__nnzs", shape=(1,), dtype=tf.int64))
+        "multihot": (
+            tf.keras.Input(name="multihot__values", shape=(1,), dtype=tf.int64),
+            tf.keras.Input(name="multihot__nnzs", shape=(1,), dtype=tf.int64),
+        )
     }
     output = embedding_layer(inputs)
 
@@ -303,9 +311,7 @@ def test_multihot_empty_rows():
 
     multi_hot_values = np.array([0, 2, 1, 4, 1, 3, 1])
     multi_hot_nnzs = np.array([1, 0, 2, 4, 0])
-    x = {
-        "multihot": (multi_hot_values[:, None], multi_hot_nnzs[:, None])
-    }
+    x = {"multihot": (multi_hot_values[:, None], multi_hot_nnzs[:, None])}
 
     multi_hot_embedding_table = embedding_layer.embedding_tables["multihot"].numpy()
     multi_hot_embedding_rows = _compute_expected_multi_hot(

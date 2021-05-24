@@ -332,9 +332,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             offsets = tf.math.cumsum(diff_offsets)
         else:
             values = tf.reshape(values_offset, [-1])
-            offsets = tf.convert_to_tensor(
-                np.array([i for i in range(tf.shape(values)[0])]), dtype=tf.int64
-            )
+            offsets = tf.convert_to_tensor(np.arange(tf.shape(values)[0]), dtype=tf.int64)
             diff_offsets = offsets[1:] - offsets[:-1]
         num_rows = len(offsets)
 
@@ -348,22 +346,23 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # default_seq_features_len = 1
         if max_seq_len > seq_limit:
             raise ValueError(
-                f"The default sequence length has been configured "
+                "The default sequence length has been configured "
                 + f"to {seq_limit}, but the "
                 + f"largest sequence in this batch have {max_seq_len} length"
             )
 
         # Building the indices to reconstruct the sparse tensors
         row_ids = tf.range(len(offsets), dtype=tf.int64)
-        
+
         row_ids_repeated = tf.repeat(row_ids, diff_offsets)
         row_offset_repeated = tf.repeat(offsets, diff_offsets)
         col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
-        # import pdb; pdb.set_trace()
         indices = tf.concat(
             values=[tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
         )
-        sparse_tensor = tf.sparse.SparseTensor(indices=indices, values=values, dense_shape=[num_rows, seq_limit])
+        sparse_tensor = tf.sparse.SparseTensor(
+            indices=indices, values=values, dense_shape=[num_rows, seq_limit]
+        )
         return sparse_tensor
 
     def _handle_tensors(self, cats, conts, labels):
@@ -380,8 +379,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             for column in list_columns:
                 values, nnzs = lists.pop(column)
                 lists[column] = values, nnzs
-                # lists[column + "__values"] = values
-                # lists[column + "__nnzs"] = nnzs
 
             # now add in any scalar tensors
             if len(names) > 1:
@@ -391,9 +388,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
                 lists[names[0]] = tensor
             X.update(lists)
 
-        for column_name in X.keys():
+        for column_name in X:
             if column_name in self.sparse_list:
-                if not column_name in self.sparse_max:
+                if column_name not in self.sparse_max:
                     raise ValueError(
                         f"Did not convert {column_name} to sparse missing sparse_max entry"
                     )

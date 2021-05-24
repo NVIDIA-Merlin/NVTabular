@@ -143,10 +143,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             X.update(lists)
 
         # sparse representation change-over
-        for column_name in X.keys():
+        for column_name in X:
             # check for sparse struct and also max_size
             if column_name in self.sparse_list:
-                if not column_name in self.sparse_max:
+                if column_name not in self.sparse_max:
                     raise ValueError(
                         f"Did not convert {column_name} to sparse missing sparse_max entry"
                     )
@@ -170,7 +170,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = values_offset[1].flatten()
         else:
             values = values_offset.flatten()
-            offsets = torch.from_numpy(np.array([i for i in range(values.size()[0])])).to("cuda")
+            offsets = torch.from_numpy(np.arange(values.size()[0])).to("cuda")
         num_rows = len(offsets)
 
         # Appending the values length to the end of the offset vector, to be able
