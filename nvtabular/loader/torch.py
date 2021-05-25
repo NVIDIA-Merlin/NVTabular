@@ -158,6 +158,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, seq_limit]))
         return sparse_tensor
 
+    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        indices = self._get_indices(offsets, diff_offsets)
+        return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
+
 
 class DLDataLoader(torch.utils.data.DataLoader):
     """

@@ -366,6 +366,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         )
         return sparse_tensor
 
+    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
+        return tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
+
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
     # TODO: document

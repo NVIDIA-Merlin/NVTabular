@@ -441,8 +441,7 @@ class DataLoader:
                 + f"to {seq_limit} but the "
                 + f"largest sequence in this batch have {max_seq_len} length"
             )
-        indices = self._get_indices(offsets, diff_offsets)
-        return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
+        return self._build_sparse_tensor(values, offsets, diff_offsets, num_rows, seq_limit)
 
     def _to_tensor(self, gdf, dtype=None):
         """
