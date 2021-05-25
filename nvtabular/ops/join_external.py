@@ -21,7 +21,7 @@ import pandas as pd
 import pyarrow as pa
 import numpy as np
 
-from dask.dataframe import DataFrame as DaskDataFrame, from_pandas
+import dask.dataframe as dd
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 from nvtabular.dispatch import DataFrameType, _arange
@@ -54,8 +54,11 @@ class JoinExternal(Operator):
 
     Parameters
     -----------
-    df_ext : DataFrame, pyarrow.Table, or file path
-        The external table to join to each partition of the dataset.
+    df_ext : DataFrame, pyarrow.Table, Dataset, dd.DataFrame, or file path
+        The external table to join to each partition of the dataset. Note
+        that the join must be a partition-wise transformation. Therefore,
+        if ``df_ext`` is a multi-partition Dask collection, it will need to
+        be broadcasted to every partition.
     on : str or list(str)
         Column name(s) to merge on
     how : {"left", "inner"}; default "left"
@@ -183,7 +186,7 @@ class JoinExternal(Operator):
 
         # Drop duplicates if requested
         if self.drop_duplicates_ext:
-            if isinstance(_ext, DaskDataFrame):
+            if isinstance(_ext, dd.DataFrame):
                 return _ext.drop_duplicates(ignore_index=True)
             _ext.drop_duplicates(ignore_index=True, inplace=True)
 
@@ -191,8 +194,8 @@ class JoinExternal(Operator):
 
 
     def _merge(self, df, _ext):
-        if isinstance(_ext, DaskDataFrame):
-            _ddf = from_pandas(df, npartitions=1)
+        if isinstance(_ext, dd.DataFrame):
+            _ddf = dd.from_pandas(df, npartitions=1)
             return _ddf.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how).compute()
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
@@ -219,8 +222,16 @@ class JoinExternal(Operator):
 
 
 def _materialize_if_single_partition(df):
-    if hasattr(df, "npartitions") and df.npartitions == 1:
-        return df.compute()
+    if hasattr(df, "npartitions"):
+        if df.npartitions == 1:
+            return df.compute()
+        elif df.npartitions > 3:
+            warnings.warn(
+                f"Joining an external Dask collection with "
+                f"{df.npartitions} partitions. This transformation "
+                f"requires a broadcast merge, which can be problematic "
+                f"when the external collection is too large."
+            )
     return df
 
 
@@ -229,7 +240,7 @@ def _detect_format(data):
 
     if isinstance(data, Dataset):
         return "dataset"
-    elif isinstance(data, DaskDataFrame):
+    elif isinstance(data, dd.DataFrame):
         if isinstance(data._meta, cudf.DataFrame):
             return "dask-cudf"
         return "dask-dataframe"
