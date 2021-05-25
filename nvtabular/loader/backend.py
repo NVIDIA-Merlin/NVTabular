@@ -427,12 +427,22 @@ class DataLoader:
         idx.append(num_samples - num_full_batches * self.batch_size)
         return idx
 
-    def _to_sparse_tensor(self, values_offset):
+    def _to_sparse_tensor(self, values_offset, column_name):
         """
         Create a sparse representation of the input tensor.
         values_offset is either a tensor or a tuple of tensor, offset.
         """
-        raise NotImplementedError
+        seq_limit = self.sparse_max[column_name]
+        values, offsets, diff_offsets, num_rows = self._pull_values_offsets(values_offset)
+        max_seq_len = self._get_max_seq_len(diff_offsets)
+        if max_seq_len > seq_limit:
+            raise ValueError(
+                "The default sequence length has been configured "
+                + f"to {seq_limit} but the "
+                + f"largest sequence in this batch have {max_seq_len} length"
+            )
+        indices = self._get_indices(offsets, diff_offsets)
+        return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
     def _to_tensor(self, gdf, dtype=None):
         """
@@ -515,4 +525,39 @@ class DataLoader:
         return tensors
 
     def _handle_tensors(self, cats, conts, labels):
-        return cats, conts, labels
+        X = {}
+        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
+            lists = {}
+            if isinstance(tensor, tuple):
+                tensor, lists = tensor
+            names = [i for i in names if i not in lists]
+
+            # break list tuples into two keys, with postfixes
+            # TODO: better choices for naming?
+            list_columns = list(lists.keys())
+            for column in list_columns:
+                values, nnzs = lists.pop(column)
+                lists[column] = values, nnzs
+
+            # now add in any scalar tensors
+            if len(names) > 1:
+                tensors = self._tensor_split(tensor, len(names), axis=1)
+                lists.update(zip(names, tensors))
+            elif len(names) == 1:
+                lists[names[0]] = tensor
+            X.update(lists)
+
+        for column_name in X:
+            if column_name in self.sparse_list:
+                if column_name not in self.sparse_max:
+                    raise ValueError(
+                        f"Did not convert {column_name} to sparse missing sparse_max entry"
+                    )
+                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
+
+        # TODO: use dict for labels as well?
+        # would require output layers to match naming
+        if len(self.label_names) > 1:
+            labels = self._tensor_split(labels, len(self.label_names), axis=1)
+
+        return X, labels

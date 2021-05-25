@@ -110,6 +110,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _split_fn(self, tensor, idx, axis=0):
         return torch.split(tensor, idx, dim=axis)
 
+    def _tensor_split(self, tensor, idx, axis=0):
+        return torch.tensor_split(tensor, idx, axis=axis)
+
     @property
     def _LONG_DTYPE(self):
         return torch.long
@@ -118,53 +121,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _FLOAT32_DTYPE(self):
         return torch.float32
 
-    def _handle_tensors(self, cats, conts, labels):
-        X = {}
-        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            #            import pdb; pdb.set_trace()
-            lists = {}
-            if isinstance(tensor, tuple):
-                tensor, lists = tensor
-            names = [i for i in names if i not in lists]
-
-            # break list tuples into two keys, with postfixes
-            # TODO: better choices for naming?
-            list_columns = list(lists.keys())
-            for column in list_columns:
-                values, nnzs = lists.pop(column)
-                lists[column] = values, nnzs
-                # lists[column + "__nnzs"] = nnzs
-            # now add in any scalar tensors
-            if len(names) > 1:
-                tensors = torch.tensor_split(tensor, len(names), axis=1)
-                lists.update(zip(names, tensors))
-            elif len(names) == 1:
-                lists[names[0]] = tensor
-            X.update(lists)
-
-        # sparse representation change-over
-        for column_name in X:
-            # check for sparse struct and also max_size
-            if column_name in self.sparse_list:
-                if column_name not in self.sparse_max:
-                    raise ValueError(
-                        f"Did not convert {column_name} to sparse missing sparse_max entry"
-                    )
-                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
-
-        # TODO: use dict for labels as well?
-        # would require output layers to match naming
-        if len(self.label_names) > 1:
-            labels = torch.tensor_split(labels, len(self.label_names), axis=1)
-        return X, labels
-
-    def _to_sparse_tensor(self, values_offset, column_name):
-        """
-        values_offset is either a tuple (values, offsets) or just values.
-        Values is a tensor.
-        This method is used to turn a tensor into its sparse representation
-        """
-        seq_limit = self.sparse_max[column_name]
+    def _pull_values_offsets(self, values_offset):
+        # pull_values_offsets, return values offsets diff_offsets
         if isinstance(values_offset, tuple):
             values = values_offset[0].flatten()
             offsets = values_offset[1].flatten()
@@ -172,30 +130,26 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             values = values_offset.flatten()
             offsets = torch.from_numpy(np.arange(values.size()[0])).to("cuda")
         num_rows = len(offsets)
-
-        # Appending the values length to the end of the offset vector, to be able
-        # to compute diff of the last sequence
         offsets = torch.cat([offsets, torch.LongTensor([len(values)]).to("cuda")])
-        # Computing the difference between consecutive offsets, to get the sequence lengths
         diff_offsets = offsets[1:] - offsets[:-1]
-        # Infering the number of cols based on the maximum sequence length
-        max_seq_len = int(diff_offsets.max())
+        return values, offsets, diff_offsets, num_rows
 
-        # default_seq_features_len = 1
-        if max_seq_len > seq_limit:
-            raise ValueError(
-                "The default sequence length has been configured "
-                + "to {seq_limit} but the "
-                + "largest sequence in this batch have {max_seq_len} length"
-            )
+    def _get_max_seq_len(self, diff_offsets):
+        # get_max_seq_len, return int
+        return int(diff_offsets.max())
 
         # Building the indices to reconstruct the sparse tensors
+
+    def _get_indices(self, offsets, diff_offsets):
         row_ids = torch.arange(len(offsets) - 1).to("cuda")
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
         col_ids = torch.arange(len(row_offset_repeated)).to("cuda") - row_offset_repeated.to("cuda")
         indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
+        return indices
 
+    def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
+        # get_sparse_tensor_class, return sparse_tensor_class
         if torch.is_floating_point(values):
             sparse_tensor_class = torch.sparse.FloatTensor
         else:

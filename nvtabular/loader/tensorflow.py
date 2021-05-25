@@ -275,6 +275,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _split_fn(self, tensor, idx, axis=0):
         return tf.split(tensor, idx, axis=axis)
 
+    def _tensor_split(self, tensor, idx, axis=0):
+        """
+        Same function as above but need this method
+        for api match.
+        """
+        return tf.split(tensor, idx, axis=axis)
+
     @property
     def _LONG_DTYPE(self):
         return tf.int64
@@ -318,13 +325,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             x = tf.transpose(x)
         return x
 
-    def _to_sparse_tensor(self, values_offset, column_name):
+    def _pull_values_offsets(self, values_offset):
         """
         values_offset is either a tuple (values, offsets) or just values.
         Values is a tensor.
         This method is used to turn a tensor into its sparse representation
         """
-        seq_limit = self.sparse_max[column_name]
+        # pull_values_offsets, return values offsets diff_offsets
         diff_offsets = None
         if isinstance(values_offset, tuple):
             values = tf.reshape(values_offset[0], [-1])
@@ -335,22 +342,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             offsets = tf.convert_to_tensor(np.arange(tf.shape(values)[0]), dtype=tf.int64)
             diff_offsets = offsets[1:] - offsets[:-1]
         num_rows = len(offsets)
+        return values, offsets, diff_offsets, num_rows
 
-        # Appending the values length to the end of the offset vector, to be able
-        # to compute diff of the last sequence
-        # offsets = tf.concat([offsets, tf.constant([len(values)], dtype=tf.int64)], 0)
-        # Computing the difference between consecutive offsets, to get the sequence lengths
-        # diff_offsets = offsets[1:] - offsets[:-1]
-        # Infering the number of cols based on the maximum sequence length
-        max_seq_len = int(tf.math.reduce_max(diff_offsets))
-        # default_seq_features_len = 1
-        if max_seq_len > seq_limit:
-            raise ValueError(
-                "The default sequence length has been configured "
-                + f"to {seq_limit}, but the "
-                + f"largest sequence in this batch have {max_seq_len} length"
-            )
+    def _get_max_seq_len(self, diff_offsets):
+        # get_max_seq_len, return int
+        return int(tf.math.reduce_max(diff_offsets))
 
+    def _get_indices(self, offsets, diff_offsets):
         # Building the indices to reconstruct the sparse tensors
         row_ids = tf.range(len(offsets), dtype=tf.int64)
 
@@ -360,48 +358,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         indices = tf.concat(
             values=[tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
         )
+        return indices
+
+    def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
         sparse_tensor = tf.sparse.SparseTensor(
             indices=indices, values=values, dense_shape=[num_rows, seq_limit]
         )
         return sparse_tensor
-
-    def _handle_tensors(self, cats, conts, labels):
-        X = {}
-        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            lists = {}
-            if isinstance(tensor, tuple):
-                tensor, lists = tensor
-            names = [i for i in names if i not in lists]
-
-            # break list tuples into two keys, with postfixes
-            # TODO: better choices for naming?
-            list_columns = list(lists.keys())
-            for column in list_columns:
-                values, nnzs = lists.pop(column)
-                lists[column] = values, nnzs
-
-            # now add in any scalar tensors
-            if len(names) > 1:
-                tensors = tf.split(tensor, len(names), axis=1)
-                lists.update(zip(names, tensors))
-            elif len(names) == 1:
-                lists[names[0]] = tensor
-            X.update(lists)
-
-        for column_name in X:
-            if column_name in self.sparse_list:
-                if column_name not in self.sparse_max:
-                    raise ValueError(
-                        f"Did not convert {column_name} to sparse missing sparse_max entry"
-                    )
-                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
-
-        # TODO: use dict for labels as well?
-        # would require output layers to match naming
-        if len(self.label_names) > 1:
-            labels = tf.split(labels, len(self.label_names), axis=1)
-
-        return X, labels
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
