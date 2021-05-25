@@ -23,6 +23,7 @@ Operators
    LogOp <log>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
+   Rename <rename>
    TargetEncoding <targetencoding>
 
    Operator <operator>

@@ -20,17 +20,38 @@ import subprocess
 
 import cudf
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.metrics import roc_auc_score
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
+from nvtabular.io.dataset import Dataset
 
 tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
 # tf_dataloader import needs to happen after this line
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
+
+
+def test_shuffling():
+    num_rows = 10000
+    batch_size = 10000
+
+    df = pd.DataFrame({"a": np.asarray(range(num_rows)), "b": np.asarray([0] * num_rows)})
+
+    train_dataset = tf_dataloader.KerasSequenceLoader(
+        Dataset(df), cont_names=["a"], label_names=["b"], batch_size=batch_size, shuffle=True
+    )
+
+    batch = next(iter(train_dataset))
+
+    first_batch = tf.reshape(tf.cast(batch[0]["a"].cpu(), tf.int32), (batch_size,))
+    in_order = tf.range(0, batch_size, dtype=tf.int32)
+
+    assert (first_batch != in_order).numpy().any()
+    assert (tf.sort(first_batch) == in_order).numpy().all()
 
 
 @pytest.mark.parametrize("batch_size", [10, 9, 8])
