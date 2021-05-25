@@ -531,13 +531,6 @@ class DataLoader:
                 tensor, lists = tensor
             names = [i for i in names if i not in lists]
 
-            # break list tuples into two keys, with postfixes
-            # TODO: better choices for naming?
-            list_columns = list(lists.keys())
-            for column in list_columns:
-                values, nnzs = lists.pop(column)
-                lists[column] = values, nnzs
-
             # now add in any scalar tensors
             if len(names) > 1:
                 tensors = self._tensor_split(tensor, len(names), axis=1)

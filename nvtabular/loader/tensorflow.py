@@ -189,6 +189,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     - reader_kwargs: dict
         extra kwargs to pass when instantiating the underlying
         `nvtabular.Dataset`
+    sparse_list : list(str) or None
+        list with column names of columns that should be represented as sparse tensors
+    sparse_max : dict
+        dictionary of key: column_name and value: integer representing max sequence length for column
     """
 
     _use_nnz = True

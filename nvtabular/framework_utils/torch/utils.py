@@ -37,7 +37,7 @@ class FastaiTransform:
         )
 
 
-class dict_transform:
+class DictTransform:
     def __init__(self, dataloader):
         self.cats = dataloader.cat_names
         self.conts = dataloader.cont_names
@@ -52,7 +52,6 @@ class dict_transform:
             cats = self.create_stack(batch, self.cats)
         if self.conts:
             conts, _ = self.create_stack(batch, self.conts)
-        # labels = self.create_stack(batch, self.labels)
         return cats, conts, labels
 
     def create_stack(self, batch, target_columns):
