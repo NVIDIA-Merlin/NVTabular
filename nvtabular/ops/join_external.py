@@ -22,6 +22,7 @@ import pyarrow as pa
 import numpy as np
 
 import dask.dataframe as dd
+import dask_cudf
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
 from nvtabular.dispatch import DataFrameType, _arange
@@ -54,7 +55,7 @@ class JoinExternal(Operator):
 
     Parameters
     -----------
-    df_ext : DataFrame, pyarrow.Table, Dataset, dd.DataFrame, or file path
+    df_ext : DataFrame, pyarrow.Table, Dataset, dd.DataFrame, or file path(s)
         The external table to join to each partition of the dataset. Note
         that the join must be a partition-wise transformation. Therefore,
         if ``df_ext`` is a multi-partition Dask collection, it will need to
@@ -126,7 +127,7 @@ class JoinExternal(Operator):
                 _dataset.to_cpu()
             else:
                 _dataset.to_gpu()
-            _ext = _materialize_if_single_partition(
+            _ext = _check_partition_count(
                 _dataset.to_ddf(columns=self.columns_ext)
             )
         elif self.kind_ext in ("cudf", "dask-cudf"):
@@ -135,24 +136,24 @@ class JoinExternal(Operator):
                 if self.kind_ext == "cudf":
                     _ext = self.df_ext.to_pandas()
                 else:
-                    _ext = _materialize_if_single_partition(
+                    _ext = _check_partition_count(
                         self.df_ext.to_dask_dataframe()
                     )
             else:
                 # Already in proper GPU format
-                _ext = _materialize_if_single_partition(self.df_ext)
+                _ext = _check_partition_count(self.df_ext)
         elif self.kind_ext in ("pandas", "dask-dataframe"):
             if not self.cpu:
                 # Need to convert CPU DataFrame to GPU Dataframe
                 if self.kind_ext == "pandas":
                     _ext = cudf.DataFrame.from_pandas(self.df_ext)
                 else:
-                    _ext = _materialize_if_single_partition(
+                    _ext = _check_partition_count(
                         self.df_ext.map_partitions(cudf.from_pandas)
                     )
             else:
                 # Already in proper CPU format
-                _ext = _materialize_if_single_partition(self.df_ext)
+                _ext = _check_partition_count(self.df_ext)
         elif self.kind_ext == "arrow":
             if self.cpu:
                 # Arrow Table to pandas DataFrame
@@ -162,23 +163,23 @@ class JoinExternal(Operator):
                 _ext = cudf.DataFrame.from_arrow(self.df_ext)
         else:
             if self.kind_ext == "parquet":
-                reader = pd.read_parquet if self.cpu else cudf.read_parquet
-                _columns = self.columns_ext
+                # Read from parquet dataset
+                kwargs = {
+                    "split_row_groups": False,
+                    "index": False,
+                    "gather_statistics": False,
+                    "columns": self.columns_ext,
+                }
+                kwargs.update(self.kwargs)
+                reader = dd.read_parquet if self.cpu else dask_cudf.read_parquet
             elif self.kind_ext == "csv":
-                reader = pd.read_csv if self.cpu else cudf.read_csv
-                _columns = None
+                # Read from CSV dataset
+                kwargs = {"usecols": self.columns_ext}
+                kwargs.update(self.kwargs)
+                reader = dd.read_csv if self.cpu else dask_cudf.read_csv
             else:
                 raise ValueError("Disk format not yet supported")
-
-            with get_worker_cache(self.df_ext) as cached_table:
-                _ext = fetch_table_data(
-                    cached_table,
-                    self.df_ext,
-                    cache="host" if self.cpu and self.cache == "device" else self.cache,
-                    columns=_columns,
-                    reader=reader,
-                    **self.kwargs,
-                )
+            _ext = reader(self.df_ext, **kwargs)
 
         # Take subset of columns if a list is specified
         if self.columns_ext:
@@ -203,10 +204,9 @@ class JoinExternal(Operator):
 
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         self.cpu = not isinstance(df, cudf.DataFrame)
-        _ext = self._ext
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
-        new_df = self._merge(df, _ext)
+        new_df = self._merge(df, self._ext)
         new_df = new_df.sort_values(tmp)
         new_df.drop(columns=[tmp], inplace=True)
         df.drop(columns=[tmp], inplace=True)
@@ -221,11 +221,9 @@ class JoinExternal(Operator):
         return list(set(columns + list(self._ext.columns)))
 
 
-def _materialize_if_single_partition(df):
+def _check_partition_count(df):
     if hasattr(df, "npartitions"):
-        if df.npartitions == 1:
-            return df.compute()
-        elif df.npartitions > 3:
+        if df.npartitions > 3:
             warnings.warn(
                 f"Joining an external Dask collection with "
                 f"{df.npartitions} partitions. This transformation "
@@ -251,7 +249,10 @@ def _detect_format(data):
     elif isinstance(data, pa.Table):
         return "arrow"
     else:
-        file_type = str(data).split(".")[-1]
+        if isinstance(data, list) and data:
+            file_type = str(data[0]).split(".")[-1]
+        else:
+            file_type = str(data).split(".")[-1]
         if file_type not in ("parquet", "csv"):
             raise ValueError("Data format not recognized.")
         return file_type

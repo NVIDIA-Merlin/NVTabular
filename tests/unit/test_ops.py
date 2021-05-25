@@ -749,11 +749,11 @@ def test_joingroupby_multi(tmpdir, groups):
         "pandas",
         "arrow",
         "parquet",
+        "parquet-multi",
         "csv",
         "dask-dataframe",
         "dask-cudf",
         "dataset",
-        "dask-dataframe-2",
     ]
 )
 @pytest.mark.parametrize("cache", ["host", "device"])
@@ -776,6 +776,10 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     elif kind_ext == "parquet":
         path = tmpdir.join("external.parquet")
         df_ext.to_parquet(path)
+        df_ext = path
+    elif kind_ext == "parquet-multi":
+        path = tmpdir.join("external-multi.parquet")
+        dask_cudf.from_cudf(df_ext, npartitions=2).to_parquet(path)
         df_ext = path
     elif kind_ext == "csv":
         path = tmpdir.join("external.csv")
