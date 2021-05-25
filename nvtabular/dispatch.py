@@ -47,12 +47,12 @@ def _hex_to_int(s, dtype=None):
         return s.astype("Int64").astype(dtype or "Int32")
 
 
-def _arange(size, like_df=None):
+def _arange(size, like_df=None, dtype=None):
     """Dispatch for numpy.arange"""
     if isinstance(like_df, pd.DataFrame):
-        return np.arange(size)
+        return np.arange(size, dtype=dtype)
     else:
-        return cp.arange(size)
+        return cp.arange(size, dtype=dtype)
 
 
 def _hash_series(s):

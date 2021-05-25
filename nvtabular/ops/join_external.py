@@ -19,10 +19,15 @@ import cudf
 import cupy
 import pandas as pd
 import pyarrow as pa
+import numpy as np
+
+from dask.dataframe import DataFrame as DaskDataFrame, from_pandas
 
 from nvtabular.worker import fetch_table_data, get_worker_cache
+from nvtabular.dispatch import DataFrameType, _arange
+from nvtabular.io import Dataset
 
-from .operator import Operator
+from .operator import ColumnNames, Operator
 
 
 class JoinExternal(Operator):
@@ -92,26 +97,73 @@ class JoinExternal(Operator):
         self.drop_duplicates_ext = drop_duplicates_ext
         self.cache = cache
         self.kwargs = kwargs
+        self.cpu = None
         if self.how not in ("left", "inner"):
             raise ValueError("Only left join is currently supported.")
-        if self.kind_ext not in ("arrow", "cudf", "pandas", "parquet", "csv"):
+        if self.kind_ext not in (
+            "arrow",
+            "cudf",
+            "pandas",
+            "parquet",
+            "csv",
+            "dask-dataframe",
+            "dask-cudf",
+            "dataset",
+        ):
             raise ValueError("kind_ext option not recognized.")
 
     @property
     @functools.lru_cache(1)
     def _ext(self):
         # Define _ext, depending on `kind_ext`
-        if self.kind_ext == "cudf":
-            _ext = self.df_ext
-        elif self.kind_ext == "pandas":
-            _ext = cudf.DataFrame.from_pandas(self.df_ext)
+        if self.kind_ext == "dataset":
+            # Use Dataset.to_ddf
+            _dataset = self.df_ext
+            if self.cpu:
+                _dataset.to_cpu()
+            else:
+                _dataset.to_gpu()
+            _ext = _materialize_if_single_partition(
+                _dataset.to_ddf(columns=self.columns_ext)
+            )
+        elif self.kind_ext in ("cudf", "dask-cudf"):
+            if self.cpu:
+                # Need to convert GPU DataFrame to CPU Dataframe
+                if self.kind_ext == "cudf":
+                    _ext = self.df_ext.to_pandas()
+                else:
+                    _ext = _materialize_if_single_partition(
+                        self.df_ext.to_dask_dataframe()
+                    )
+            else:
+                # Already in proper GPU format
+                _ext = _materialize_if_single_partition(self.df_ext)
+        elif self.kind_ext in ("pandas", "dask-dataframe"):
+            if not self.cpu:
+                # Need to convert CPU DataFrame to GPU Dataframe
+                if self.kind_ext == "pandas":
+                    _ext = cudf.DataFrame.from_pandas(self.df_ext)
+                else:
+                    _ext = _materialize_if_single_partition(
+                        self.df_ext.map_partitions(cudf.from_pandas)
+                    )
+            else:
+                # Already in proper CPU format
+                _ext = _materialize_if_single_partition(self.df_ext)
         elif self.kind_ext == "arrow":
-            _ext = cudf.DataFrame.from_arrow(self.df_ext)
+            if self.cpu:
+                # Arrow Table to pandas DataFrame
+                _ext = self.df_ext.to_pandas()
+            else:
+                # Arrow Table to cudf DataFrame
+                _ext = cudf.DataFrame.from_arrow(self.df_ext)
         else:
             if self.kind_ext == "parquet":
-                reader = cudf.read_parquet
+                reader = pd.read_parquet if self.cpu else cudf.read_parquet
+                _columns = self.columns_ext
             elif self.kind_ext == "csv":
-                reader = cudf.read_csv
+                reader = pd.read_csv if self.cpu else cudf.read_csv
+                _columns = None
             else:
                 raise ValueError("Disk format not yet supported")
 
@@ -119,8 +171,8 @@ class JoinExternal(Operator):
                 _ext = fetch_table_data(
                     cached_table,
                     self.df_ext,
-                    cache=self.cache,
-                    columns=self.columns_ext,
+                    cache="host" if self.cpu and self.cache == "device" else self.cache,
+                    columns=_columns,
                     reader=reader,
                     **self.kwargs,
                 )
@@ -131,19 +183,32 @@ class JoinExternal(Operator):
 
         # Drop duplicates if requested
         if self.drop_duplicates_ext:
+            if isinstance(_ext, DaskDataFrame):
+                return _ext.drop_duplicates(ignore_index=True)
             _ext.drop_duplicates(ignore_index=True, inplace=True)
 
         return _ext
 
-    def transform(self, columns, gdf: cudf.DataFrame) -> cudf.DataFrame:
+
+    def _merge(self, df, _ext):
+        if isinstance(_ext, DaskDataFrame):
+            _ddf = from_pandas(df, npartitions=1)
+            return _ddf.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how).compute()
+        else:
+            return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
+
+
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        self.cpu = not isinstance(df, cudf.DataFrame)
+        _ext = self._ext
         tmp = "__tmp__"  # Temporary column for sorting
-        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
-        new_gdf = gdf.merge(self._ext, left_on=self.on, right_on=self.on_ext, how=self.how)
-        new_gdf = new_gdf.sort_values(tmp)
-        new_gdf.drop(columns=[tmp], inplace=True)
-        gdf.drop(columns=[tmp], inplace=True)
-        new_gdf.reset_index(drop=True, inplace=True)
-        return new_gdf
+        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        new_df = self._merge(df, _ext)
+        new_df = new_df.sort_values(tmp)
+        new_df.drop(columns=[tmp], inplace=True)
+        df.drop(columns=[tmp], inplace=True)
+        new_df.reset_index(drop=True, inplace=True)
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -153,10 +218,22 @@ class JoinExternal(Operator):
         return list(set(columns + list(self._ext.columns)))
 
 
+def _materialize_if_single_partition(df):
+    if hasattr(df, "npartitions") and df.npartitions == 1:
+        return df.compute()
+    return df
+
+
 def _detect_format(data):
     """Utility to detect the format of `data`"""
 
-    if isinstance(data, cudf.DataFrame):
+    if isinstance(data, Dataset):
+        return "dataset"
+    elif isinstance(data, DaskDataFrame):
+        if isinstance(data._meta, cudf.DataFrame):
+            return "dask-cudf"
+        return "dask-dataframe"
+    elif isinstance(data, cudf.DataFrame):
         return "cudf"
     elif isinstance(data, pd.DataFrame):
         return "pandas"

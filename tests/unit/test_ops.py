@@ -743,11 +743,24 @@ def test_joingroupby_multi(tmpdir, groups):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
+@pytest.mark.parametrize(
+    "kind_ext", [
+        "cudf",
+        "pandas",
+        "arrow",
+        "parquet",
+        "csv",
+        "dask-dataframe",
+        "dask-cudf",
+        "dataset",
+        "dask-dataframe-2",
+    ]
+)
 @pytest.mark.parametrize("cache", ["host", "device"])
 @pytest.mark.parametrize("how", ["left", "inner"])
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("drop_duplicates", [True, False])
-def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
+def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, drop_duplicates):
 
     # Define "external" table
     shift = 100
@@ -768,6 +781,12 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
         path = tmpdir.join("external.csv")
         df_ext.to_csv(path)
         df_ext = path
+    elif kind_ext == "dask-dataframe":
+        df_ext = dd.from_pandas(df_ext.to_pandas(), npartitions=2)
+    elif kind_ext == "dask-cudf":
+        df_ext = dask_cudf.from_cudf(df_ext, npartitions=2)
+    elif kind_ext == "dataset":
+        df_ext = nvt.Dataset(df_ext)
 
     # Define Op
     on = "id"
@@ -786,7 +805,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
     )
 
     gdf = df.reset_index()
-    dataset = nvt.Dataset(gdf)
+    dataset = nvt.Dataset(gdf, cpu=cpu)
     processor = nvt.Workflow(joined)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
