@@ -37,7 +37,7 @@ from tests.conftest import mycols_csv, mycols_pq
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
-from nvtabular.framework_utils.torch.utils import process_epoch, dict_transform  # noqa isort:skip
+from nvtabular.framework_utils.torch.utils import process_epoch, DictTransform  # noqa isort:skip
 
 GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
@@ -481,7 +481,7 @@ def test_mh_model_support(tmpdir):
         model,
         train=True,
         optimizer=optimizer,
-        transform=dict_transform(data_itr).transform,
+        transform=DictTransform(data_itr).transform,
         amp=False,
     )
     train_rmspe = None

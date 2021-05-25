@@ -19,7 +19,7 @@ import torch
 
 class FastaiTransform:
     def __init__(self, dataloader):
-        self.data = dict_transform(dataloader)
+        self.data = DictTransform(dataloader)
 
     def transform(self, batch):
         concats = []
