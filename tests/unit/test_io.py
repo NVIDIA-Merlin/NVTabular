@@ -352,7 +352,7 @@ def test_dataset_partition_shuffle(tmpdir):
 
 @pytest.mark.parametrize("engine", ["csv"])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
-@pytest.mark.parametrize("nfiles", [0, 1, 2])
+@pytest.mark.parametrize("nfiles", [0, 1, 5])  # Use 5 to test repartition in to_parquet
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
 @pytest.mark.parametrize("file_map", [True, False])
 def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle, file_map):
