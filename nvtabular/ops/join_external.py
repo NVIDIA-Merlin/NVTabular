@@ -145,7 +145,7 @@ class JoinExternal(Operator):
                 reader = _read_dispatch(cpu=self.cpu, collection=True, fmt="csv")
             else:
                 raise ValueError("Disk format not yet supported")
-            _ext = reader(self.df_ext, **kwargs)
+            _ext = _check_partition_count(reader(self.df_ext, **kwargs))
 
         # Take subset of columns if a list is specified
         if self.columns_ext:
@@ -187,6 +187,9 @@ class JoinExternal(Operator):
 
 def _check_partition_count(df):
     if hasattr(df, "npartitions"):
+        if df.npartitions == 1:
+            # Materialize single-partition collections
+            return df.compute()
         if df.npartitions > 3:
             warnings.warn(
                 f"Joining an external Dask collection with "
