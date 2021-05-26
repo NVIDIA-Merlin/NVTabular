@@ -89,7 +89,6 @@ def _series_has_nulls(s):
 
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
-    # import pdb; pdb.set_trace()
     if isinstance(ser, pd.Series):
         if not len(ser):  # pylint: disable=len-as-condition
             return False
