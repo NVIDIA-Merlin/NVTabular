@@ -1,10 +1,9 @@
-# NVTabular v0.5.2 (18 May 2021)
+# NVTabular v0.5.3 (1 June 2021)
 
 ## Bug Fixes
-
-* Fix Movielens TF example running on 1080ti [#792](https://github.com/NVIDIA/NVTabular/issues/792)
-* Fix Multihot output from get_embedding_sizes [#808](https://github.com/NVIDIA/NVTabular/pull/808)
-* Fix accelerated training documentation [#791](https://github.com/NVIDIA/NVTabular/pull/791)
+* Fix Shuffling in Torch DataLoader [#818](https://github.com/NVIDIA/NVTabular/pull/818)
+* Fix "Unsupported type_id conversion" in triton inference for string columns [#813](https://github.com/NVIDIA/NVTabular/issues/813)
+* Fix HugeCTR inference backend [Merlin#8](https://github.com/NVIDIA-Merlin/Merlin/pull/8)
 
 # NVTabular v0.5.1 (4 May 2021)
 
