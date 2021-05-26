@@ -543,7 +543,7 @@ class DataLoader:
             if column_name in self.sparse_list:
                 if column_name not in self.sparse_max:
                     raise ValueError(
-                        f"Did not convert {column_name} to sparse missing sparse_max entry"
+                        f"Did not convert {column_name} to sparse due to missing sparse_max entry"
                     )
                 X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
 

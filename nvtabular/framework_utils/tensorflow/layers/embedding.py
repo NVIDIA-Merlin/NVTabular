@@ -185,6 +185,10 @@ class DenseFeatures(tf.keras.layers.Layer):
         super(DenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
+        assert all(shape[1] == 1 for shape in input_shapes.values()  
+                if not isinstance(shape, tuple))
+        assert all(shape[1] > 1 for shape in input_shapes.values()  
+                if isinstance(shape, tuple))
         self.embedding_tables = {}
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
