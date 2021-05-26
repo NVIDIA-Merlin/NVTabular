@@ -54,7 +54,7 @@ def export_tensorflow_ensemble(
     version:
         Version of the model
     nvtabular_backend: "python" or "nvtabular"
-        The backend that will be used for inference in Triton.        
+        The backend that will be used for inference in Triton.
     """
 
     workflow = _remove_columns(workflow, label_columns)
@@ -115,7 +115,7 @@ def export_pytorch_ensemble(
     version:
         Version of the model
     nvtabular_backend: "python" or "nvtabular"
-        The backend that will be used for inference in Triton. 
+        The backend that will be used for inference in Triton.
     """
     import torch
 
@@ -209,7 +209,7 @@ def export_hugectr_ensemble(
     max_batch_size:
         Max batch size that Triton can receive
     nvtabular_backend: "python" or "nvtabular"
-        The backend that will be used for inference in Triton. 
+        The backend that will be used for inference in Triton.
     """
 
     if not cats and not conts:
