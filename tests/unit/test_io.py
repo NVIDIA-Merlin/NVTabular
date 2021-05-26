@@ -205,11 +205,9 @@ def test_dask_datframe_methods(tmpdir, cpu):
     ds3 = ds3.repartition(npartitions=4)
     assert ds3.npartitions == 4
 
-    # Check head and tail
-    assert_eq(ds3.head(1), ds3.compute().head(1))
-    assert_eq(ds3.tail(1), ds3.compute().tail(1))
-
-    # Check that persist is recognized
+    # Check that head, tail, and persist are recognized
+    ds1.head()
+    ds1.tail()
     ds1.persist()
 
     # Check merge result
