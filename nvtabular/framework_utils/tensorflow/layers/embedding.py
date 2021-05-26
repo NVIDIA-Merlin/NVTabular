@@ -186,8 +186,8 @@ class DenseFeatures(tf.keras.layers.Layer):
 
     def build(self, input_shapes):
         assert all(shape[1] == 1 for shape in input_shapes.values()  
-                if not isinstance(shape, tuple))
-        assert all(shape[1] > 1 for shape in input_shapes.values()  
+                if not isinstance(shape, tuple)) 
+        assert all(shape[0][1] == 1 for shape in input_shapes.values()  
                 if isinstance(shape, tuple))
         self.embedding_tables = {}
         for feature_column in self.feature_columns:
