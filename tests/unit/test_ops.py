@@ -215,7 +215,7 @@ def test_hash_bucket_lists(tmpdir):
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
-    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == 10
+    assert nvt.ops.get_embedding_sizes(processor)[1]["Authors"][0] == 10
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -967,7 +967,6 @@ def test_data_stats(tmpdir, df, datasets, engine):
 @pytest.mark.parametrize("cpu", [False, True])
 @pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
 def test_groupby_op(keys, cpu):
-
     # Initial timeseries dataset
     size = 60
     df1 = pd.DataFrame(
@@ -1017,3 +1016,66 @@ def test_groupby_op(keys, cpu):
 
     # Check basic behavior or "y" column
     assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_list_slice(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+
+    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+
+    op = ops.ListSlice(0, 2)
+    print("df", df)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(3, 5)
+    print("df", df)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[2, 767], [3], []]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(4, 10)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[767], [], []]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(100, 20000)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[], [], []]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-4)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-3, -1)
+    transformed = op.transform(["y"], df)
+    expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
+    assert_eq(transformed, expected)
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_rename(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+
+    df = DataFrame({"x": [1, 2, 3, 4, 5], "y": [6, 7, 8, 9, 10]})
+
+    op = ops.Rename(f=lambda name: name.upper())
+    transformed = op.transform(["x", "y"], df)
+    expected = DataFrame({"X": [1, 2, 3, 4, 5], "Y": [6, 7, 8, 9, 10]})
+    assert_eq(transformed, expected)
+
+    op = ops.Rename(postfix="_lower")
+    transformed = op.transform(["x", "y"], df)
+    expected = DataFrame({"x_lower": [1, 2, 3, 4, 5], "y_lower": [6, 7, 8, 9, 10]})
+    assert_eq(transformed, expected)
+
+    df = DataFrame({"x": [1, 2, 3, 4, 5]})
+
+    op = ops.Rename(name="z")
+    transformed = op.transform(["x"], df)
+    expected = DataFrame({"z": [1, 2, 3, 4, 5]})
+    assert_eq(transformed, expected)

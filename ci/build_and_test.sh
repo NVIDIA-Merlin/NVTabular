@@ -33,7 +33,7 @@ fi
 
 # build the docs, treating warnings as errors
 echo "Building docs"
-make -C docs html SPHINXOPTS=-W
+make -C docs html SPHINXOPTS="-W -q"
 
 # test out our codebase
 py.test --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/

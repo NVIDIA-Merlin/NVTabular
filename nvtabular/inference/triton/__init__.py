@@ -257,12 +257,21 @@ def generate_nvtabular_model(
     conts=None,
     max_batch_size=None,
     output_info=None,
+    backend="python",
 ):
     """converts a workflow to a triton mode"""
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
-        workflow, name, output_path, output_model, max_batch_size, cats, conts, output_info
+        workflow,
+        name,
+        output_path,
+        output_model,
+        max_batch_size,
+        cats,
+        conts,
+        output_info,
+        backend=backend,
     )
 
     if output_model == "hugectr":
@@ -353,11 +362,11 @@ def _generate_nvtabular_config(
     cats=None,
     conts=None,
     output_info=None,
+    backend="python",
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
-
-    config = model_config.ModelConfig(name=name, backend="python", max_batch_size=max_batch_size)
+    config = model_config.ModelConfig(name=name, backend=backend, max_batch_size=max_batch_size)
 
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
@@ -644,3 +653,13 @@ def _convert_dtype(dtype):
     if cudf.utils.dtypes.is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _convert_tensor(t):
+    out = t.as_numpy()
+    if len(out.shape) == 2:
+        out = out[:, 0]
+    # cudf doesn't seem to handle dtypes like |S15 or object that well
+    if cudf.utils.dtypes.is_string_dtype(out.dtype):
+        out = out.astype("str")
+    return out

@@ -19,9 +19,11 @@ Operators
    JoinExternal <joinexternal>
    JoinGroupby <joingroupby>
    LambdaOp <lambdaop>
+   ListSlice <listslice>
    LogOp <log>
    Normalize <normalize>
    NormalizeMinMax <normalizeminmax>
+   Rename <rename>
    TargetEncoding <targetencoding>
 
    Operator <operator>
