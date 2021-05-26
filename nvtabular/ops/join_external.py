@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import functools
 import warnings
 
 import dask.dataframe as dd
@@ -26,6 +25,7 @@ from nvtabular.dispatch import (
     _convert_data,
     _detect_format,
     _read_dispatch,
+    _to_host,
 )
 
 from .operator import ColumnNames, Operator
@@ -76,7 +76,8 @@ class JoinExternal(Operator):
         will be inferred.
     cache : {"device", "host", "disk"}
         Where to cache ``df_ext`` between transformations. Only used
-        if the data is originally stored on disk.
+        if the data is originally stored on disk. The "host" option
+        is also supported when ``df_ext`` is a ``cudf.DataFrame``.
     """
 
     def __init__(
@@ -102,15 +103,19 @@ class JoinExternal(Operator):
         self.cache = cache
         self.kwargs = kwargs
         self.cpu = None
+        self._ext_cache = None
         if self.how not in ("left", "inner"):
             raise ValueError("Only left join is currently supported.")
         if not isinstance(self.kind_ext, ExtData):
             raise ValueError("kind_ext option not recognized.")
 
     @property
-    @functools.lru_cache(1)
     def _ext(self):
-        # Define _ext, depending on `kind_ext`
+
+        if self._ext_cache is not None:
+            # Return cached result if present
+            return _convert_data(self._ext_cache, cpu=self.cpu)
+
         if self.kind_ext == ExtData.DATASET:
             # Use Dataset.to_ddf
             _dataset = self.df_ext
@@ -154,9 +159,15 @@ class JoinExternal(Operator):
         # Drop duplicates if requested
         if self.drop_duplicates_ext:
             if isinstance(_ext, dd.DataFrame):
-                return _ext.drop_duplicates(ignore_index=True)
-            _ext.drop_duplicates(ignore_index=True, inplace=True)
+                _ext = _ext.drop_duplicates(ignore_index=True)
+            else:
+                _ext.drop_duplicates(ignore_index=True, inplace=True)
 
+        # Cache and return
+        if self.cache == "host":
+            self._ext_cache = _to_host(_ext)
+        elif self.cache == "device" or self.kind_ext not in (ExtData.PARQUET, ExtData.CSV):
+            self._ext_cache = _ext
         return _ext
 
     def _merge(self, df, _ext):

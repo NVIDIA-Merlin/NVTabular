@@ -252,3 +252,14 @@ def _convert_data(x, cpu=True):
             if isinstance(x, cudf.DataFrame):
                 return x
             return cudf.DataFrame.from_pandas(x)
+
+
+def _to_host(x):
+    """Move cudf.DataFrame to host memory for caching.
+
+    All other data will pass through unchanged.
+    """
+    if isinstance(x, cudf.DataFrame):
+        return x.to_arrow()
+    else:
+        return x
