@@ -190,6 +190,32 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     assert_eq(df, ddf_check, check_index=False)
 
 
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_datframe_methods(tmpdir, cpu):
+    # Input DataFrame objects
+    df1 = cudf.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
+    df2 = cudf.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
+
+    # Initialize and merge Dataset objects
+    ds1 = nvtabular.io.Dataset(df1, npartitions=3, cpu=cpu)
+    ds2 = nvtabular.io.Dataset(df2, npartitions=2, cpu=not cpu)
+    ds3 = nvtabular.io.Dataset.merge(ds1, ds2, on="id", how="inner")
+
+    # Check repartitioning
+    ds3 = ds3.repartition(npartitions=4)
+    assert ds3.npartitions == 4
+
+    # Check that head, tail, and persist are recognized
+    ds1.head()
+    ds1.tail()
+    ds1.persist()
+
+    # Check merge result
+    result = ds3.compute().sort_values(["id", "x", "y"])
+    expect = cudf.DataFrame.merge(df1, df2, on="id", how="inner").sort_values(["id", "x", "y"])
+    assert_eq(result, expect, check_index=False)
+
+
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
@@ -324,7 +350,7 @@ def test_dataset_partition_shuffle(tmpdir):
 
 @pytest.mark.parametrize("engine", ["csv"])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
-@pytest.mark.parametrize("nfiles", [0, 1, 2])
+@pytest.mark.parametrize("nfiles", [0, 1, 5])  # Use 5 to test repartition in to_parquet
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
 @pytest.mark.parametrize("file_map", [True, False])
 def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle, file_map):
