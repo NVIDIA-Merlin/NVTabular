@@ -13,11 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import enum
 import itertools
 from typing import Union
 
 import cudf
 import cupy as cp
+import dask.dataframe as dd
+import dask_cudf
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -27,6 +30,19 @@ from cudf.utils.dtypes import is_list_dtype
 from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+
+
+class ExtData(enum.Enum):
+    """Simple Enum to track external-data types"""
+
+    DATASET = 0
+    ARROW = 1
+    CUDF = 2
+    PANDAS = 3
+    DASK_CUDF = 4
+    DASK_PANDAS = 5
+    PARQUET = 6
+    CSV = 7
 
 
 def _hex_to_int(s, dtype=None):
@@ -118,14 +134,20 @@ def _concat_columns(args: list):
     return None
 
 
-def _read_parquet_dispatch(df: DataFrameType):
+def _read_parquet_dispatch(df):
+    return _read_dispatch(df=df, fmt="parquet")
+
+
+def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="parquet"):
     """Return the necessary read_parquet function to generate
     data of a specified type.
     """
-    if isinstance(df, pd.DataFrame):
-        return pd.read_parquet
+    if cpu or (df and isinstance(df, pd.DataFrame)):
+        _mod = dd if collection else pd
     else:
-        return cudf.io.read_parquet
+        _mod = dask_cudf if collection else cudf.io
+    _attr = "read_csv" if fmt == "csv" else "read_parquet"
+    return getattr(_mod, _attr)
 
 
 def _parquet_writer_dispatch(df: DataFrameType):
@@ -168,3 +190,65 @@ def _to_arrow(x):
         return x.to_arrow()
     else:
         return pa.Table.from_pandas(x, preserve_index=False)
+
+
+def _detect_format(data):
+    """Utility to detect the format of `data`"""
+    from nvtabular import Dataset
+
+    if isinstance(data, Dataset):
+        return ExtData.DATASET
+    elif isinstance(data, dd.DataFrame):
+        if isinstance(data._meta, cudf.DataFrame):
+            return ExtData.DASK_CUDF
+        return ExtData.DASK_PANDAS
+    elif isinstance(data, cudf.DataFrame):
+        return ExtData.CUDF
+    elif isinstance(data, pd.DataFrame):
+        return ExtData.PANDAS
+    elif isinstance(data, pa.Table):
+        return ExtData.ARROW
+    else:
+        mapping = {
+            "pq": ExtData.PARQUET,
+            "parquet": ExtData.PARQUET,
+            "csv": ExtData.CSV,
+        }
+        if isinstance(data, list) and data:
+            file_type = mapping.get(str(data[0]).split(".")[-1], None)
+        else:
+            file_type = mapping.get(str(data).split(".")[-1], None)
+        if file_type is None:
+            raise ValueError("Data format not recognized.")
+        return file_type
+
+
+def _convert_data(x, cpu=True):
+    """Move data between cpu and gpu-backed data.
+
+    Note that the input ``x`` may be an Arrow Table,
+    but the output will only be a pandas or cudf DataFrame.
+    """
+    if cpu:
+        if isinstance(x, dd.DataFrame):
+            # If input is a dask_cudf collection, convert
+            # to a pandas-based Dask collection
+            if not isinstance(x, dask_cudf.DataFrame):
+                return x
+            return x.to_dask_dataframe()
+        else:
+            if isinstance(x, pd.DataFrame):
+                return x
+            return x.to_pandas()
+    else:
+        if isinstance(x, dd.DataFrame):
+            # If input is a Dask collection, covert to dask_cudf
+            if isinstance(x, dask_cudf.DataFrame):
+                return x
+            return x.map_partitions(cudf.from_pandas)
+        elif isinstance(x, pa.Table):
+            return cudf.DataFrame.from_arrow(x)
+        else:
+            if isinstance(x, cudf.DataFrame):
+                return x
+            return cudf.DataFrame.from_pandas(x)

@@ -14,19 +14,19 @@
 # limitations under the License.
 #
 import functools
-
-import cudf
-import cupy
-import pandas as pd
-import pyarrow as pa
-import numpy as np
+import warnings
 
 import dask.dataframe as dd
-import dask_cudf
+import pandas as pd
 
-from nvtabular.worker import fetch_table_data, get_worker_cache
-from nvtabular.dispatch import DataFrameType, _arange
-from nvtabular.io import Dataset
+from nvtabular.dispatch import (
+    DataFrameType,
+    ExtData,
+    _arange,
+    _convert_data,
+    _detect_format,
+    _read_dispatch,
+)
 
 from .operator import ColumnNames, Operator
 
@@ -71,7 +71,7 @@ class JoinExternal(Operator):
         Subset of columns to select from external table before join.
     drop_duplicates_ext : bool; Default False
         Drop duplicates from external table before join.
-    kind_ext : {"arrow", "cudf", "pandas", "parquet", "csv"}
+    kind_ext : ExtData; Optional
         Format of ``df_ext``.  If nothing is specified, the format
         will be inferred.
     cache : {"device", "host", "disk"}
@@ -104,65 +104,31 @@ class JoinExternal(Operator):
         self.cpu = None
         if self.how not in ("left", "inner"):
             raise ValueError("Only left join is currently supported.")
-        if self.kind_ext not in (
-            "arrow",
-            "cudf",
-            "pandas",
-            "parquet",
-            "csv",
-            "dask-dataframe",
-            "dask-cudf",
-            "dataset",
-        ):
+        if not isinstance(self.kind_ext, ExtData):
             raise ValueError("kind_ext option not recognized.")
 
     @property
     @functools.lru_cache(1)
     def _ext(self):
         # Define _ext, depending on `kind_ext`
-        if self.kind_ext == "dataset":
+        if self.kind_ext == ExtData.DATASET:
             # Use Dataset.to_ddf
             _dataset = self.df_ext
             if self.cpu:
                 _dataset.to_cpu()
             else:
                 _dataset.to_gpu()
-            _ext = _check_partition_count(
-                _dataset.to_ddf(columns=self.columns_ext)
-            )
-        elif self.kind_ext in ("cudf", "dask-cudf"):
-            if self.cpu:
-                # Need to convert GPU DataFrame to CPU Dataframe
-                if self.kind_ext == "cudf":
-                    _ext = self.df_ext.to_pandas()
-                else:
-                    _ext = _check_partition_count(
-                        self.df_ext.to_dask_dataframe()
-                    )
-            else:
-                # Already in proper GPU format
-                _ext = _check_partition_count(self.df_ext)
-        elif self.kind_ext in ("pandas", "dask-dataframe"):
-            if not self.cpu:
-                # Need to convert CPU DataFrame to GPU Dataframe
-                if self.kind_ext == "pandas":
-                    _ext = cudf.DataFrame.from_pandas(self.df_ext)
-                else:
-                    _ext = _check_partition_count(
-                        self.df_ext.map_partitions(cudf.from_pandas)
-                    )
-            else:
-                # Already in proper CPU format
-                _ext = _check_partition_count(self.df_ext)
-        elif self.kind_ext == "arrow":
-            if self.cpu:
-                # Arrow Table to pandas DataFrame
-                _ext = self.df_ext.to_pandas()
-            else:
-                # Arrow Table to cudf DataFrame
-                _ext = cudf.DataFrame.from_arrow(self.df_ext)
+            _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
+        elif self.kind_ext in (
+            ExtData.ARROW,
+            ExtData.CUDF,
+            ExtData.DASK_CUDF,
+            ExtData.PANDAS,
+            ExtData.DASK_PANDAS,
+        ):
+            _ext = _check_partition_count(_convert_data(self.df_ext, cpu=self.cpu))
         else:
-            if self.kind_ext == "parquet":
+            if self.kind_ext == ExtData.PARQUET:
                 # Read from parquet dataset
                 kwargs = {
                     "split_row_groups": False,
@@ -171,12 +137,12 @@ class JoinExternal(Operator):
                     "columns": self.columns_ext,
                 }
                 kwargs.update(self.kwargs)
-                reader = dd.read_parquet if self.cpu else dask_cudf.read_parquet
-            elif self.kind_ext == "csv":
+                reader = _read_dispatch(cpu=self.cpu, collection=True)
+            elif self.kind_ext == ExtData.CSV:
                 # Read from CSV dataset
                 kwargs = {"usecols": self.columns_ext}
                 kwargs.update(self.kwargs)
-                reader = dd.read_csv if self.cpu else dask_cudf.read_csv
+                reader = _read_dispatch(cpu=self.cpu, collection=True, fmt="csv")
             else:
                 raise ValueError("Disk format not yet supported")
             _ext = reader(self.df_ext, **kwargs)
@@ -193,7 +159,6 @@ class JoinExternal(Operator):
 
         return _ext
 
-
     def _merge(self, df, _ext):
         if isinstance(_ext, dd.DataFrame):
             _ddf = dd.from_pandas(df, npartitions=1)
@@ -201,9 +166,8 @@ class JoinExternal(Operator):
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
 
-
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        self.cpu = not isinstance(df, cudf.DataFrame)
+        self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
         new_df = self._merge(df, self._ext)
@@ -231,28 +195,3 @@ def _check_partition_count(df):
                 f"when the external collection is too large."
             )
     return df
-
-
-def _detect_format(data):
-    """Utility to detect the format of `data`"""
-
-    if isinstance(data, Dataset):
-        return "dataset"
-    elif isinstance(data, dd.DataFrame):
-        if isinstance(data._meta, cudf.DataFrame):
-            return "dask-cudf"
-        return "dask-dataframe"
-    elif isinstance(data, cudf.DataFrame):
-        return "cudf"
-    elif isinstance(data, pd.DataFrame):
-        return "pandas"
-    elif isinstance(data, pa.Table):
-        return "arrow"
-    else:
-        if isinstance(data, list) and data:
-            file_type = str(data[0]).split(".")[-1]
-        else:
-            file_type = str(data).split(".")[-1]
-        if file_type not in ("parquet", "csv"):
-            raise ValueError("Data format not recognized.")
-        return file_type
