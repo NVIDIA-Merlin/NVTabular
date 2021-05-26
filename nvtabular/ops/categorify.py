@@ -999,7 +999,9 @@ def _encode(
                         reader=read_pq_func,
                     )
         else:
-            value = read_pq_func(path, columns=selection_r)
+            value = read_pq_func(
+                path, columns=selection_r
+            )  # pylint: disable=unexpected-keyword-arg
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 

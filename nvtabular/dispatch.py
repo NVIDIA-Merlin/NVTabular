@@ -15,7 +15,7 @@
 #
 import enum
 import itertools
-from typing import Union
+from typing import Callable, Union
 
 import cudf
 import cupy as cp
@@ -134,11 +134,11 @@ def _concat_columns(args: list):
     return None
 
 
-def _read_parquet_dispatch(df):
+def _read_parquet_dispatch(df: DataFrameType) -> Callable:
     return _read_dispatch(df=df, fmt="parquet")
 
 
-def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="parquet"):
+def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="parquet") -> Callable:
     """Return the necessary read_parquet function to generate
     data of a specified type.
     """
