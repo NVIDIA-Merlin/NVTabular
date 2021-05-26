@@ -62,7 +62,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     sparse_list : [str]
         list with column names of columns that should be represented as sparse tensors
     sparse_max : {str: int}
-        dictionary of key: column_name and value: integer representing max sequence length for column
+        dictionary of key: column_name + value: integer representing max sequence length for column
     """
 
     def __init__(
