@@ -518,8 +518,9 @@ class Dataset:
     def merge(cls, left, right, **kwargs):
         """Merge two Dataset objects
 
-        Produces a new Dataset object. See Dask-Dataframe ``merge``
-        documentation for more information. Example usage::
+        Produces a new Dataset object. If the ``cpu`` Dataset attributes
+        do not match, the right side will be modified. See Dask-Dataframe
+        ``merge`` documentation for more information. Example usage::
 
             ds_1 = Dataset("file.parquet")
             ds_2 = Dataset(cudf.DataFrame(...))
@@ -535,11 +536,19 @@ class Dataset:
             Key-word arguments to be passed through to Dask-Dataframe.
         """
 
+        # Ensure both Dataset objects are eith cudf or pandas based
+        if left.cpu and not right.cpu:
+            _right = cls(right.to_ddf())
+            _right.to_cpu()
+        elif not left.cpu and right.cpu:
+            _right = cls(right.to_ddf())
+            _right.to_gpu()
+
         return cls(
             left.to_ddf()
             .clear_divisions()
             .merge(
-                right.to_ddf().clear_divisions(),
+                _right.to_ddf().clear_divisions(),
                 **kwargs,
             )
         )
@@ -861,6 +870,10 @@ class Dataset:
     @property
     def num_rows(self):
         return self.engine.num_rows
+
+    @property
+    def npartitions(self):
+        return self.to_ddf().npartitions
 
     def validate_dataset(self, **kwargs):
         """Validate for efficient processing.
