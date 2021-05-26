@@ -142,7 +142,7 @@ def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="pa
     """Return the necessary read_parquet function to generate
     data of a specified type.
     """
-    if cpu or (df and isinstance(df, pd.DataFrame)):
+    if cpu or isinstance(df, pd.DataFrame):
         _mod = dd if collection else pd
     else:
         _mod = dask_cudf if collection else cudf.io
