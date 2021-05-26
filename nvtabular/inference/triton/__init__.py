@@ -27,7 +27,15 @@ from tritonclient.utils import np_to_triton_dtype
 import nvtabular.inference.triton.model_config_pb2 as model_config
 
 
-def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns, version=1):
+def export_tensorflow_ensemble(
+    model,
+    workflow,
+    name,
+    model_path,
+    label_columns,
+    version=1,
+    nvtabular_backend="python",
+):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a tensorflow savedmodel
 
@@ -45,13 +53,20 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
         Labels in the dataset (will be removed from the dataset)
     version:
         Version of the model
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
 
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
-    nvt_config = generate_nvtabular_model(workflow, name + "_nvt", preprocessing_path)
+    nvt_config = generate_nvtabular_model(
+        workflow,
+        name + "_nvt",
+        preprocessing_path,
+        backend=nvtabular_backend,
+    )
 
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
@@ -67,7 +82,15 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
 
 
 def export_pytorch_ensemble(
-    model, model_info, sample_input_data, workflow, name, model_path, label_columns, version=1
+    model,
+    model_info,
+    sample_input_data,
+    workflow,
+    name,
+    model_path,
+    label_columns,
+    version=1,
+    nvtabular_backend="python",
 ):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch saved model
@@ -91,6 +114,8 @@ def export_pytorch_ensemble(
         Labels in the dataset (will be removed from the dataset)
     version:
         Version of the model
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
     import torch
 
@@ -105,6 +130,7 @@ def export_pytorch_ensemble(
         version=version,
         output_model="pytorch",
         output_info=model_info["input"],
+        backend=nvtabular_backend,
     )
 
     dynamic_axes = dict()
@@ -155,6 +181,7 @@ def export_hugectr_ensemble(
     cats=None,
     conts=None,
     max_batch_size=None,
+    nvtabular_backend="python",
 ):
     """Creates an ensemble hugectr server model, with the first model being a nvtabular
     preprocessing, and the second by a hugectr savedmodel
@@ -181,7 +208,8 @@ def export_hugectr_ensemble(
         Names of the continous columns
     max_batch_size:
         Max batch size that Triton can receive
-
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
 
     if not cats and not conts:
@@ -200,6 +228,7 @@ def export_hugectr_ensemble(
         cats=cats,
         conts=conts,
         max_batch_size=max_batch_size,
+        backend=nvtabular_backend,
     )
 
     hugectr_params["label_dim"] = len(label_columns)
