@@ -61,6 +61,5 @@ def test_nvt_tf_movielens_inference(n_rows, err_tol):
     output_actual = cp.asnumpy(output_actual["0"].values)
     output_predict = response.as_numpy("output")
 
-    diff = abs(output_actual - output_predict[:,0])
+    diff = abs(output_actual - output_predict[:, 0])
     assert (diff < err_tol).all()
-

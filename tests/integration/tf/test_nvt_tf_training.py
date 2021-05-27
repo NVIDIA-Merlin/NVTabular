@@ -14,19 +14,23 @@
 # limitations under the License.
 #
 
+import glob
+
 # External dependencies
 import os
-import cudf  # cuDF is an implementation of Pandas-like Dataframe on GPU
-from sklearn.model_selection import train_test_split
-from nvtabular.utils import download_file
 import shutil
-import numpy as np
-import nvtabular as nvt
 from os import path
-import glob
+
+import cudf  # cuDF is an implementation of Pandas-like Dataframe on GPU
+import numpy as np
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
+import nvtabular as nvt
+from nvtabular.utils import download_file
 
 TEST_N_ROWS = 64
+
 
 def test_nvt_tf_movielens_training():
 
@@ -51,7 +55,7 @@ def test_nvt_tf_movielens_training():
     valid.to_parquet(os.path.join(INPUT_DATA_DIR, "valid.parquet"))
 
     movies = cudf.read_parquet(os.path.join(INPUT_DATA_DIR, "movies_converted.parquet"))
-    
+
     CATEGORICAL_COLUMNS = ["userId", "movieId"]
     LABEL_COLUMNS = ["rating"]
 
@@ -98,11 +102,13 @@ def test_nvt_tf_movielens_training():
         dtypes=dict_dtypes,
     )
 
-    sample_data = cudf.read_parquet(os.path.join(INPUT_DATA_DIR, "valid.parquet"), num_rows=TEST_N_ROWS)
+    sample_data = cudf.read_parquet(
+        os.path.join(INPUT_DATA_DIR, "valid.parquet"), num_rows=TEST_N_ROWS
+    )
     sample_data.to_csv(os.path.join(INPUT_DATA_DIR, "test_data.csv"))
     sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
     sample_data_trans.to_parquet(os.path.join(INPUT_DATA_DIR, "test_data_trans.parquet"))
-    
+
     workflow.save(os.path.join(INPUT_DATA_DIR, "workflow"))
 
     MODEL_BASE_DIR = os.environ.get("MODEL_BASE_DIR", os.path.expanduser("~/nvt-examples/"))
@@ -121,8 +127,8 @@ def test_nvt_tf_movielens_training():
     EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)
 
     os.environ["TF_MEMORY_ALLOCATION"] = "0.7"  # fraction of free memory
-    from nvtabular.loader.tensorflow import KerasSequenceLoader, KerasSequenceValidater
     from nvtabular.framework_utils.tensorflow import layers
+    from nvtabular.loader.tensorflow import KerasSequenceLoader, KerasSequenceValidater
 
     train_dataset_tf = KerasSequenceLoader(
         TRAIN_PATHS,  # you could also use a glob pattern
@@ -146,8 +152,8 @@ def test_nvt_tf_movielens_training():
         shuffle=False,
         buffer_size=0.06,
         parts_per_chunk=1,
-    )  
-  
+    )
+
     inputs = {}  # tf.keras.Input placeholders for each feature to be used
     emb_layers = []  # output of all embedding layers, which will be concatenated
 
@@ -157,7 +163,7 @@ def test_nvt_tf_movielens_training():
     for col in CATEGORICAL_MH_COLUMNS:
         inputs[col + "__values"] = tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,))
         inputs[col + "__nnzs"] = tf.keras.Input(name=f"{col}__nnzs", dtype=tf.int64, shape=(1,))
-    
+
     for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
         emb_layers.append(
             tf.feature_column.embedding_column(
@@ -181,7 +187,7 @@ def test_nvt_tf_movielens_training():
 
     validation_callback = KerasSequenceValidater(valid_dataset_tf)
 
-    history = model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=1)
+    model.fit(train_dataset_tf, callbacks=[validation_callback], epochs=1)
 
     sample_data_trans = KerasSequenceLoader(
         os.path.join(INPUT_DATA_DIR, "test_data_trans.parquet"),
@@ -193,8 +199,8 @@ def test_nvt_tf_movielens_training():
         shuffle=False,
         buffer_size=0.06,
         parts_per_chunk=1,
-    )  
-   
+    )
+
     pred = model.predict(sample_data_trans)
     cudf_pred = cudf.DataFrame(pred)
     cudf_pred.to_csv(os.path.join(INPUT_DATA_DIR, "output.csv"))
@@ -216,5 +222,3 @@ def test_nvt_tf_movielens_training():
     from nvtabular.inference.triton import export_tensorflow_ensemble
 
     export_tensorflow_ensemble(model, workflow, MODEL_NAME_ENSEMBLE, MODEL_PATH, ["rating"])
-
-
