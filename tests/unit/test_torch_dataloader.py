@@ -481,7 +481,7 @@ def test_mh_model_support(tmpdir):
         model,
         train=True,
         optimizer=optimizer,
-        transform=DictTransform(data_itr).transform,
+        #transform=DictTransform(data_itr).transform,
         amp=False,
     )
     train_rmspe = None

@@ -126,7 +126,7 @@ for epoch in range(args.epochs):
         train_loader,
         model,
         train=True,
-        transform=DictTransform(train_loader.dataset).transform,
+        #transform=DictTransform(train_loader.dataset).transform,
         optimizer=optimizer,
     )
     hvd.join(gpu_to_use)

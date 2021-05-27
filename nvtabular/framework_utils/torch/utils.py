@@ -79,7 +79,7 @@ def process_epoch(
     train=False,
     optimizer=None,
     loss_func=torch.nn.MSELoss(),
-    transform=None,
+    transform=DictTransform,
     amp=True,
     device=None,
 ):
@@ -100,6 +100,11 @@ def process_epoch(
     loss_func : function
         Loss function to use, default is MSELoss.
     """
+    if isinstance(dataloader,torch.utils.data.DataLoader):
+        target = dataloader.dataset
+    else:
+        target = dataloader
+    transform = transform(target).transform
     model.train(mode=train)
     idx = 0
     with torch.set_grad_enabled(train):
