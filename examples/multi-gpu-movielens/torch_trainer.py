@@ -8,7 +8,7 @@ import torch
 
 import nvtabular as nvt
 from nvtabular.framework_utils.torch.models import Model
-from nvtabular.framework_utils.torch.utils import DictTransform, process_epoch
+from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import DLDataLoader, TorchAsyncItr
 
 # Horovod must be the last import to avoid conflicts
@@ -126,7 +126,6 @@ for epoch in range(args.epochs):
         train_loader,
         model,
         train=True,
-        #transform=DictTransform(train_loader.dataset).transform,
         optimizer=optimizer,
     )
     hvd.join(gpu_to_use)

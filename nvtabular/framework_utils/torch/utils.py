@@ -100,7 +100,7 @@ def process_epoch(
     loss_func : function
         Loss function to use, default is MSELoss.
     """
-    if isinstance(dataloader,torch.utils.data.DataLoader):
+    if isinstance(dataloader, torch.utils.data.DataLoader):
         target = dataloader.dataset
     else:
         target = dataloader

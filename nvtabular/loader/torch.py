@@ -63,6 +63,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         list with column names of columns that should be represented as sparse tensors
     sparse_max : {str: int}
         dictionary of key: column_name + value: integer representing max sequence length for column
+    sparse_dense : bool
+        bool value to activate transforming sparse tensors to dense
     """
 
     def __init__(
@@ -81,6 +83,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         drop_last=False,
         sparse_list=None,
         sparse_max=None,
+        sparse_dense=False,
     ):
         DataLoader.__init__(
             self,
@@ -98,6 +101,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             drop_last=drop_last,
             sparse_list=sparse_list,
             sparse_max=sparse_max,
+            sparse_dense=sparse_dense,
         )
 
     def __iter__(self):
@@ -160,6 +164,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_tensor_class = torch.sparse.LongTensor
 
         sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, seq_limit]))
+        if DataLoader.sparse_dense:
+            sparse_tensor = sparse_tensor.to_dense()
         return sparse_tensor
 
     def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):

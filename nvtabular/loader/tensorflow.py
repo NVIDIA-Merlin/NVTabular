@@ -193,6 +193,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         list with column names of columns that should be represented as sparse tensors
     sparse_max : dict
         dictionary of key: column_name + value: integer representing max sequence length for column
+    sparse_dense : bool
+        bool value to activate transforming sparse tensors to dense
     """
 
     _use_nnz = True
@@ -217,6 +219,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         drop_last=False,
         sparse_list=None,
         sparse_max=None,
+        sparse_dense=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -245,6 +248,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             drop_last=drop_last,
             sparse_list=sparse_list,
             sparse_max=sparse_max,
+            sparse_dense=sparse_dense,
         )
 
     def __len__(self):
@@ -372,7 +376,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
         ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
-        return tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
+        tensor = tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
+        if DataLoader.sparse_dense:
+            tensor = tf.sparse.to_dense(tensor)
+        return tensor
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
