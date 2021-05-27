@@ -311,6 +311,8 @@ class LinearFeatures(tf.keras.layers.Layer):
         super(LinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
+        assert all(shape[1] == 1 for shape in input_shapes.values() if not isinstance(shape, tuple))
+        assert all(shape[0][1] == 1 for shape in input_shapes.values() if isinstance(shape, tuple))
         # TODO: I've tried combining all the categorical tables
         # into a single giant lookup op, but it ends up turning
         # out the adding the offsets to lookup indices at call
