@@ -389,7 +389,8 @@ def test_mh_support(tmpdir):
     assert idx > 0
 
 
-def test_sparse_tensors():
+@pytest.mark.parametrize("sparse_dense", [False, True])
+def test_sparse_tensors(sparse_dense):
     # create small dataset, add values to sparse_list
     df = cudf.DataFrame(
         {
@@ -408,13 +409,18 @@ def test_sparse_tensors():
         batch_size=batch_size,
         sparse_list=spa_lst,
         sparse_max=spa_mx,
+        sparse_dense=sparse_dense,
     )
     for batch in data_itr:
         feats, labs = batch
         for col in spa_lst:
             feature_tensor = feats[col]
-            assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
-            assert feature_tensor.is_sparse
+            if not sparse_dense:
+                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+                assert feature_tensor.is_sparse
+            else:
+                assert feature_tensor.shape[1] == spa_mx[col]
+                assert not feature_tensor.is_sparse
 
     # add dict sparse_max entry for each target
     # iterate dataloader grab sparse columns

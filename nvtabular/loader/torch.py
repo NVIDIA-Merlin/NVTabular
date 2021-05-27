@@ -164,7 +164,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_tensor_class = torch.sparse.LongTensor
 
         sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, seq_limit]))
-        if DataLoader.sparse_dense:
+        if self.sparse_dense:
             sparse_tensor = sparse_tensor.to_dense()
         return sparse_tensor
 
