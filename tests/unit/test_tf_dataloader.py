@@ -369,8 +369,8 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
     assert indices == [global_rank]
 
 
-# @pytest.mark.skip()
-def test_sparse_tensors(tmpdir):
+@pytest.mark.parametrize("sparse_dense", [False, True])
+def test_sparse_tensors(tmpdir, sparse_dense):
     # create small dataset, add values to sparse_list
     json_sample = {
         "conts": {},
@@ -414,13 +414,18 @@ def test_sparse_tensors(tmpdir):
         buffer_size=0.1,
         sparse_list=spa_lst,
         sparse_max=spa_mx,
+        sparse_dense=sparse_dense,
     )
     for batch in data_itr:
         feats, labs = batch
         for col in spa_lst:
             feature_tensor = feats[f"{col}"]
-            assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
-            assert isinstance(feature_tensor, tf.sparse.SparseTensor)
+            if not sparse_dense:
+                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+                assert isinstance(feature_tensor, tf.sparse.SparseTensor)
+            else:
+                assert feature_tensor.shape[1] == spa_mx[col]
+                assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
 
 
 @pytest.mark.skip(reason="not working correctly in ci environment")
