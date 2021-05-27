@@ -86,8 +86,9 @@ for col in CATEGORICAL_COLUMNS:
     inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(1,))
 # Note that we need two input tensors for multi-hot categorical features
 for col in CATEGORICAL_MH_COLUMNS:
-    inputs[col] = tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,)), tf.keras.Input(
-        name=f"{col}__nnzs", dtype=tf.int64, shape=(1,)
+    inputs[col] = (
+        tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,)),
+        tf.keras.Input(name=f"{col}__nnzs", dtype=tf.int64, shape=(1,)),
     )
 for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
     emb_layers.append(
