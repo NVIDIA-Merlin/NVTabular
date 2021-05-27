@@ -81,9 +81,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
-        sparse_list=None,
+        sparse_names=None,
         sparse_max=None,
-        sparse_dense=False,
+        sparse_as_dense=False,
     ):
         DataLoader.__init__(
             self,
@@ -99,9 +99,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
-            sparse_list=sparse_list,
+            sparse_names=sparse_names,
             sparse_max=sparse_max,
-            sparse_dense=sparse_dense,
+            sparse_as_dense=sparse_as_dense,
         )
 
     def __iter__(self):
@@ -149,10 +149,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         # Building the indices to reconstruct the sparse tensors
 
     def _get_indices(self, offsets, diff_offsets):
-        row_ids = torch.arange(len(offsets) - 1).to("cuda")
+        row_ids = torch.arange(len(offsets) - 1, device='cuda')
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
-        col_ids = torch.arange(len(row_offset_repeated)).to("cuda") - row_offset_repeated.to("cuda")
+        col_ids = torch.arange(len(row_offset_repeated), device='cuda') - row_offset_repeated
         indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
         return indices
 
@@ -164,7 +164,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_tensor_class = torch.sparse.LongTensor
 
         sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, seq_limit]))
-        if self.sparse_dense:
+        if self.sparse_as_dense:
             sparse_tensor = sparse_tensor.to_dense()
         return sparse_tensor
 

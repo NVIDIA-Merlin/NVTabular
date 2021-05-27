@@ -407,9 +407,9 @@ def test_sparse_tensors(sparse_dense):
         conts=[],
         labels=[],
         batch_size=batch_size,
-        sparse_list=spa_lst,
+        sparse_names=spa_lst,
         sparse_max=spa_mx,
-        sparse_dense=sparse_dense,
+        sparse_as_dense=sparse_dense,
     )
     for batch in data_itr:
         feats, labs = batch

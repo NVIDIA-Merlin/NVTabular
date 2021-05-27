@@ -180,17 +180,17 @@ class DataLoader:
         global_size=None,
         global_rank=None,
         drop_last=False,
-        sparse_list=None,
+        sparse_names=None,
         sparse_max=None,
-        sparse_dense=False,
+        sparse_as_dense=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         self.drop_last = drop_last
         self.device = device or 0
-        self.sparse_list = sparse_list or []
+        self.sparse_names = sparse_names or []
         self.sparse_max = sparse_max or {}
-        self.sparse_dense = sparse_dense
+        self.sparse_as_dense = sparse_as_dense
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
@@ -542,7 +542,7 @@ class DataLoader:
             X.update(lists)
 
         for column_name in X:
-            if column_name in self.sparse_list:
+            if column_name in self.sparse_names:
                 if column_name not in self.sparse_max:
                     raise ValueError(
                         f"Did not convert {column_name} to sparse due to missing sparse_max entry"

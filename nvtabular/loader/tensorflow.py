@@ -217,9 +217,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
-        sparse_list=None,
+        sparse_names=None,
         sparse_max=None,
-        sparse_dense=False,
+        sparse_as_dense=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -246,9 +246,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
-            sparse_list=sparse_list,
+            sparse_names=sparse_names,
             sparse_max=sparse_max,
-            sparse_dense=sparse_dense,
+            sparse_as_dense=sparse_as_dense,
         )
 
     def __len__(self):
@@ -377,7 +377,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
         ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
         tensor = tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
-        if self.sparse_dense:
+        if self.sparse_as_dense:
             tensor = tf.sparse.to_dense(tensor)
         return tensor
 
