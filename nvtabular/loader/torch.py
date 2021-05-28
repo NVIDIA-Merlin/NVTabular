@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import numpy as np
 import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
@@ -136,9 +135,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = values_offset[1].flatten()
         else:
             values = values_offset.flatten()
-            offsets = torch.from_numpy(np.arange(values.size()[0])).to("cuda")
+            offsets = torch.arange(values.size()[0], device="cuda")
         num_rows = len(offsets)
-        offsets = torch.cat([offsets, torch.LongTensor([len(values)]).to("cuda")])
+        offsets = torch.cat([offsets, torch.cuda.LongTensor([len(values)])])
         diff_offsets = offsets[1:] - offsets[:-1]
         return values, offsets, diff_offsets, num_rows
 
@@ -163,7 +162,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         else:
             sparse_tensor_class = torch.sparse.LongTensor
 
-        sparse_tensor = sparse_tensor_class(indices.T, values, torch.Size([num_rows, seq_limit]))
+        sparse_tensor = sparse_tensor_class(
+            indices.T, values, torch.Size([num_rows, seq_limit]), device="cuda"
+        )
         if self.sparse_as_dense:
             sparse_tensor = sparse_tensor.to_dense()
         return sparse_tensor

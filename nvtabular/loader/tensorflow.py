@@ -16,7 +16,6 @@
 import contextlib
 import os
 
-import numpy as np
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
@@ -347,7 +346,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             offsets = tf.math.cumsum(diff_offsets)
         else:
             values = tf.reshape(values_offset, [-1])
-            offsets = tf.convert_to_tensor(np.arange(tf.shape(values)[0]), dtype=tf.int64)
+            offsets = tf.arange(tf.shape(values)[0], dtype=tf.int64)
             diff_offsets = offsets[1:] - offsets[:-1]
         num_rows = len(offsets)
         return values, offsets, diff_offsets, num_rows
