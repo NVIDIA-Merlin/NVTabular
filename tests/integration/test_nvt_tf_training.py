@@ -15,25 +15,25 @@
 #
 
 import glob
+import math
 
 # External dependencies
 import os
-from os.path import dirname, realpath
-from os import path
 import shutil
-import math
+from os import path
+from os.path import dirname, realpath
 
 import cudf
-import pandas as pd
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+from test_notebooks import _run_notebook
 
 import nvtabular as nvt
 from nvtabular import ops
-from nvtabular.utils import download_file
 from nvtabular.inference.triton import export_tensorflow_ensemble
-from test_notebooks import _run_notebook
+from nvtabular.utils import download_file
 
 TEST_N_ROWS = 64
 

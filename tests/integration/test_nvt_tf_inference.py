@@ -21,9 +21,10 @@ import cudf
 import cupy as cp
 import numpy as np
 import pytest
-import nvtabular as nvt
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import np_to_triton_dtype
+
+import nvtabular as nvt
 
 
 # Update TEST_N_ROWS param in test_nvt_tf_trainin.py to test larger sizes
@@ -70,24 +71,30 @@ def test_nvt_tf_movielens_inference(n_rows, err_tol):
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_rossmann_inference(n_rows, err_tol):
 
-    workflow = nvt.Workflow.load(os.path.expanduser("~/nvt-examples/models/test_rossmann_tf_nvt/1/workflow/"))
-    batch = cudf.read_csv(os.path.expanduser("~/nvt-examples/rossmann/input/test_data.csv"), nrows=n_rows)[workflow.column_group.input_column_names]
-    
+    workflow = nvt.Workflow.load(
+        os.path.expanduser("~/nvt-examples/models/test_rossmann_tf_nvt/1/workflow/")
+    )
+    batch = cudf.read_csv(
+        os.path.expanduser("~/nvt-examples/rossmann/input/test_data.csv"), nrows=n_rows
+    )[workflow.column_group.input_column_names]
+
     columns = [(col, batch[col]) for col in batch.columns]
 
     inputs = []
     for i, (name, col) in enumerate(columns):
         d = col.values_host.astype(col.dtype)
-        d = d.reshape(len(d),1)    
+        d = d.reshape(len(d), 1)
         inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
         inputs[i].set_data_from_numpy(d)
 
-    outputs = [grpcclient.InferRequestedOutput('tf.math.multiply_1')]
+    outputs = [grpcclient.InferRequestedOutput("tf.math.multiply_1")]
 
     with grpcclient.InferenceServerClient("localhost:8001") as client:
-        response = client.infer("test_rossmann_tf", inputs, request_id="1",outputs=outputs)
+        response = client.infer("test_rossmann_tf", inputs, request_id="1", outputs=outputs)
 
-    output_actual = cudf.read_csv(os.path.expanduser("~/nvt-examples/rossmann/input/output.csv"), nrows=n_rows)
+    output_actual = cudf.read_csv(
+        os.path.expanduser("~/nvt-examples/rossmann/input/output.csv"), nrows=n_rows
+    )
     output_actual = cp.asnumpy(output_actual["0"].values)
     output_predict = response.as_numpy("tf.math.multiply_1")
 
