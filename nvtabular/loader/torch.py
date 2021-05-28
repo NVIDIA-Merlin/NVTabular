@@ -149,10 +149,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         # Building the indices to reconstruct the sparse tensors
 
     def _get_indices(self, offsets, diff_offsets):
-        row_ids = torch.arange(len(offsets) - 1, device='cuda')
+        row_ids = torch.arange(len(offsets) - 1, device="cuda")
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
-        col_ids = torch.arange(len(row_offset_repeated), device='cuda') - row_offset_repeated
+        col_ids = torch.arange(len(row_offset_repeated), device="cuda") - row_offset_repeated
         indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
         return indices
 
