@@ -108,5 +108,5 @@ Each Jupyter notebook covers the following:
 
 If you'd like to contribute to the library directly, please see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline using this [survey](https://developer.nvidia.com/merlin-devzone-survey).
 
-If you're interested in learning more about how NVTabular works under the hood, see
-[Architecture](https://nvidia.github.io/NVTabular/main/resources/api/index.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/resources/api/index.html) that outlines the specifics of the available calls within the library.
+If you're interested in learning more about how NVTabular works see
+[our documentation](https://nvidia.github.io/NVTabular/main/Introduction.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/api/index.html) that outlines the specifics of the available calls within the library.
