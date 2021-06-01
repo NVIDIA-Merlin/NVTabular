@@ -17,13 +17,69 @@
 import torch
 
 
+class FastaiTransform:
+    def __init__(self, dataloader):
+        self.data = DictTransform(dataloader)
+
+    def transform(self, batch):
+        concats = []
+        for columns in [self.data.cats, self.data.conts]:
+            # cols = [v for k,v in batch[0] if k in columns and isinstance(v, torch.Tensor)]
+            cols = []
+            for k, v in batch[0].items():
+                if k in columns and not isinstance(v, tuple) and isinstance(v, torch.Tensor):
+                    cols.append(v)
+            concats.append(torch.cat(cols, axis=1))
+        return (
+            concats[0].to("cuda", dtype=torch.long),
+            concats[1],
+            batch[1].to("cuda", dtype=torch.long),
+        )
+
+
+class DictTransform:
+    def __init__(self, dataloader):
+        self.cats = dataloader.cat_names
+        self.conts = dataloader.cont_names
+        self.labels = dataloader.label_names
+
+    def transform(self, batch):
+        batch, labels = batch
+        cats = None
+        conts = None
+        # take a part the batch and put together into subsets
+        if self.cats:
+            cats = self.create_stack(batch, self.cats)
+        if self.conts:
+            conts, _ = self.create_stack(batch, self.conts)
+        return cats, conts, labels
+
+    def create_stack(self, batch, target_columns):
+        columns = []
+        mh_s = {}
+        for column_name in target_columns:
+            target = batch[column_name]
+            if isinstance(target, torch.Tensor):
+                if batch[column_name].is_sparse:
+                    mh_s[column_name] = batch[column_name]
+                else:
+                    columns.append(target)
+            # if not a tensor, must be tuple
+            else:
+                # multihot column type, appending tuple representation
+                mh_s[column_name] = target
+        if columns:
+            columns = torch.cat(columns, 1)
+        return columns, mh_s
+
+
 def process_epoch(
     dataloader,
     model,
     train=False,
     optimizer=None,
     loss_func=torch.nn.MSELoss(),
-    transform=None,
+    transform=DictTransform,
     amp=True,
     device=None,
 ):
@@ -44,6 +100,11 @@ def process_epoch(
     loss_func : function
         Loss function to use, default is MSELoss.
     """
+    if isinstance(dataloader, torch.utils.data.DataLoader):
+        target = dataloader.dataset
+    else:
+        target = dataloader
+    transform = transform(target).transform
     model.train(mode=train)
     idx = 0
     with torch.set_grad_enabled(train):

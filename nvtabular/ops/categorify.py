@@ -445,7 +445,7 @@ def _get_embedding_order(cat_names):
     cat_names : list of str
         names of the categorical columns
     """
-    return sorted(cat_names)
+    return cat_names
 
 
 def get_embedding_sizes(workflow):
@@ -458,16 +458,11 @@ def get_embedding_sizes(workflow):
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.columns))
-
-            if hasattr(current.op, "get_multihot_columns"):
-                multihot_columns.update(current.op.get_multihot_columns())
-
         elif not current.op:
 
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
-
     for column in output:
         if isinstance(workflow.output_dtypes[column], cudf.core.dtypes.ListDtype):
             # multi hot so remove from output and add to multihot
