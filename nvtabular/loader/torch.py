@@ -156,13 +156,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return indices
 
     def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
-        # get_sparse_tensor_class, return sparse_tensor_class
-        if torch.is_floating_point(values):
-            sparse_tensor_class = torch.sparse.FloatTensor
-        else:
-            sparse_tensor_class = torch.sparse.LongTensor
-
-        sparse_tensor = sparse_tensor_class(
+        sparse_tensor = torch.sparse_coo_tensor(
             indices.T, values, torch.Size([num_rows, seq_limit]), device="cuda"
         )
         if self.sparse_as_dense:
