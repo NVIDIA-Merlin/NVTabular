@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-# import importlib
+import importlib
 import os
 import subprocess
 
@@ -271,31 +271,30 @@ def test_mh_support(tmpdir, batch_size):
         batch_size=batch_size,
         shuffle=False,
     )
-
+    nnzs = None
     idx = 0
     for X, y in data_itr:
-        assert len(X) == 7
+        assert len(X) == 4
         n_samples = y.shape[0]
 
         for mh_name in ["Authors", "Reviewers", "Embedding"]:
-            for postfix in ["__nnzs", "__values"]:
-                assert (mh_name + postfix) in X
-                array = X[mh_name + postfix].numpy()[:, 0]
+            # assert (mh_name) in X
+            array, nnzs = X[mh_name]
+            nnzs = nnzs.numpy()[:, 0]
+            array = array.numpy()[:, 0]
 
-                if postfix == "__nnzs":
-                    if mh_name == "Embedding":
-                        assert (array == 3).all()
-                    else:
-                        lens = [
-                            len(x)
-                            for x in data[mh_name][idx * batch_size : idx * batch_size + n_samples]
-                        ]
-                        assert (array == np.array(lens)).all()
-                else:
-                    if mh_name == "Embedding":
-                        assert len(array) == (n_samples * 3)
-                    else:
-                        assert len(array) == sum(lens)
+            if mh_name == "Embedding":
+                assert (nnzs == 3).all()
+            else:
+                lens = [
+                    len(x) for x in data[mh_name][idx * batch_size : idx * batch_size + n_samples]
+                ]
+                assert (nnzs == np.array(lens)).all()
+
+            if mh_name == "Embedding":
+                assert len(array) == (n_samples * 3)
+            else:
+                assert len(array) == sum(lens)
         idx += 1
     assert idx == (3 // batch_size + 1)
 
@@ -370,8 +369,67 @@ def test_multigpu_partitioning(datasets, engine, batch_size, global_rank):
     assert indices == [global_rank]
 
 
-# @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
-@pytest.mark.skip(reason="passes locally but fails on CI due to environment issues")
+@pytest.mark.parametrize("sparse_dense", [False, True])
+def test_sparse_tensors(tmpdir, sparse_dense):
+    # create small dataset, add values to sparse_list
+    json_sample = {
+        "conts": {},
+        "cats": {
+            "spar1": {
+                "dtype": None,
+                "cardinality": 50,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+                "multi_min": 2,
+                "multi_max": 4,
+                "multi_avg": 3,
+            },
+            "spar2": {
+                "dtype": None,
+                "cardinality": 50,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+                "multi_min": 3,
+                "multi_max": 5,
+                "multi_avg": 4,
+            },
+            # "": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
+        },
+        "labels": {"rating": {"dtype": None, "cardinality": 2}},
+    }
+    cols = datagen._get_cols_from_schema(json_sample)
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.0001)
+    target_path = os.path.join(tmpdir, "input/")
+    os.mkdir(target_path)
+    df_files = df_gen.full_df_create(10000, cols, output=target_path)
+    spa_lst = ["spar1", "spar2"]
+    spa_mx = {"spar1": 5, "spar2": 6}
+    batch_size = 10
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        df_files,
+        cat_names=spa_lst,
+        cont_names=[],
+        label_names=["rating"],
+        batch_size=batch_size,
+        buffer_size=0.1,
+        sparse_names=spa_lst,
+        sparse_max=spa_mx,
+        sparse_as_dense=sparse_dense,
+    )
+    for batch in data_itr:
+        feats, labs = batch
+        for col in spa_lst:
+            feature_tensor = feats[f"{col}"]
+            if not sparse_dense:
+                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+                assert isinstance(feature_tensor, tf.sparse.SparseTensor)
+            else:
+                assert feature_tensor.shape[1] == spa_mx[col]
+                assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
+
+
+@pytest.mark.skip(reason="not working correctly in ci environment")
+@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 def test_horovod_multigpu(tmpdir):
     json_sample = {
         "conts": {},
@@ -405,11 +463,11 @@ def test_horovod_multigpu(tmpdir):
     ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
     proc = nvt.Workflow(output)
-    train_iter = nvt.Dataset(df_files, part_size="10MB")
-    proc.fit(train_iter)
     target_path_train = os.path.join(tmpdir, "train/")
     os.mkdir(target_path_train)
-    proc.transform(train_iter).to_parquet(output_path=target_path_train, out_files_per_proc=5)
+    proc.fit_transform(nvt.Dataset(df_files)).to_parquet(
+        output_path=target_path_train, out_files_per_proc=5
+    )
     # add new location
     target_path = os.path.join(tmpdir, "workflow/")
     os.mkdir(target_path)
@@ -441,3 +499,7 @@ def test_horovod_multigpu(tmpdir):
         stdout, stderr = process.communicate()
         print(stdout, stderr)
         assert "Loss:" in str(stdout)
+
+
+#
+#

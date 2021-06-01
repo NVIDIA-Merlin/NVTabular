@@ -54,7 +54,7 @@ def test_shuffling():
 
     batch = next(iter(train_dataset))
 
-    first_batch = batch[1].cpu()
+    first_batch = batch[0]["a"].cpu()
     in_order = torch.arange(0, batch_size)
 
     assert (first_batch != in_order).any()
@@ -93,14 +93,13 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
     all_len = len(data_itr) if drop_last else len(data_itr) - 1
     all_rows = 0
+    df_cols = df.columns.to_list()
     for idx, chunk in enumerate(data_itr):
-        all_rows += len(chunk[0])
+        all_rows += len(chunk[0]["cat1"])
         if idx < all_len:
-            for sub in chunk[:2]:
-                sub = sub.cpu()
-                assert list(sub[:, 0].numpy()) == [1] * batch_size
-                assert list(sub[:, 1].numpy()) == [2] * batch_size
-                assert list(sub[:, 2].numpy()) == [3] * batch_size
+            for col in df_cols:
+                if col in chunk[0].keys():
+                    assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -149,13 +148,13 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
     )
 
     for nvt_batch in data_itr:
-        cats, conts, labels = nvt_batch
+        cats_conts, labels = nvt_batch
         if cat_names:
-            assert cats.shape[-1] == len(cat_names)
+            assert set(cat_names).issubset(set(list(cats_conts.keys())))
         if cont_names:
-            assert conts.shape[-1] == len(cont_names)
+            assert set(cont_names).issubset(set(list(cats_conts.keys())))
         if label_name:
-            assert labels.shape[-1] == len(label_name)
+            assert len(labels) == len(label_name)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
@@ -262,11 +261,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
-
     for idx, chunk in enumerate(data_itr):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
-        rows += len(chunk[0])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["name-cat"][0])
+        rows += len(chunk[0]["x"])
         del chunk
 
     # accounts for incomplete batches at the end of chunks
@@ -275,7 +273,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     def gen_col(batch):
         batch = batch[0]
-        return batch[0], batch[1], batch[2]
+        return (batch[0]), batch[1]
 
     t_dl = torch_dataloader.DLDataLoader(
         data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
@@ -283,8 +281,9 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     rows = 0
     for idx, chunk in enumerate(t_dl):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
-        rows += len(chunk[0])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["name-cat"][0])
+
+        rows += len(chunk[0]["x"])
 
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
@@ -380,12 +379,52 @@ def test_mh_support(tmpdir):
     idx = 0
     for batch in data_itr:
         idx = idx + 1
-        cats, conts, labels = batch
-        cats, mh = cats
+        cats_conts, labels = batch
+        assert "Reviewers" in cats_conts
+        # check it is multihot
+        assert isinstance(cats_conts["Reviewers"], tuple)
         # mh is a tuple of dictionaries {Column name: (values, offsets)}
-        assert len(mh) == len(cat_names)
-        assert not cats
+        assert "Authors" in cats_conts
+        assert isinstance(cats_conts["Authors"], tuple)
     assert idx > 0
+
+
+@pytest.mark.parametrize("sparse_dense", [False, True])
+def test_sparse_tensors(sparse_dense):
+    # create small dataset, add values to sparse_list
+    df = cudf.DataFrame(
+        {
+            "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
+            "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
+        }
+    )
+    spa_lst = ["spar1", "spar2"]
+    spa_mx = {"spar1": 5, "spar2": 6}
+    batch_size = 2
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df),
+        cats=spa_lst,
+        conts=[],
+        labels=[],
+        batch_size=batch_size,
+        sparse_names=spa_lst,
+        sparse_max=spa_mx,
+        sparse_as_dense=sparse_dense,
+    )
+    for batch in data_itr:
+        feats, labs = batch
+        for col in spa_lst:
+            feature_tensor = feats[col]
+            if not sparse_dense:
+                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+                assert feature_tensor.is_sparse
+            else:
+                assert feature_tensor.shape[1] == spa_mx[col]
+                assert not feature_tensor.is_sparse
+
+    # add dict sparse_max entry for each target
+    # iterate dataloader grab sparse columns
+    # ensure they are correct structurally
 
 
 def test_mh_model_support(tmpdir):
@@ -394,14 +433,14 @@ def test_mh_model_support(tmpdir):
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
-            "Null User": ["User_B", "User_B", "User_A", "User_D"],
+            "Null_User": ["User_B", "User_B", "User_A", "User_D"],
             "Post": [1, 2, 3, 4],
             "Cont1": [0.3, 0.4, 0.5, 0.6],
             "Cont2": [0.3, 0.4, 0.5, 0.6],
             "Cat1": ["A", "B", "A", "C"],
         }
     )
-    cat_names = ["Cat1", "Null User", "Authors", "Reviewers"]  # , "Engaging User"]
+    cat_names = ["Cat1", "Null_User", "Authors", "Reviewers"]  # , "Engaging User"]
     cont_names = ["Cont1", "Cont2"]
     label_name = ["Post"]
     out_path = os.path.join(tmpdir, "train/")
@@ -448,7 +487,7 @@ def test_mh_model_support(tmpdir):
         model,
         train=True,
         optimizer=optimizer,
-        # transform=batch_transform,
+        # transform=DictTransform(data_itr).transform,
         amp=False,
     )
     train_rmspe = None
