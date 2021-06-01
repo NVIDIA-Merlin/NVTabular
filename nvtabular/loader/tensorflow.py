@@ -188,6 +188,12 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     - reader_kwargs: dict
         extra kwargs to pass when instantiating the underlying
         `nvtabular.Dataset`
+    sparse_list : list(str) or None
+        list with column names of columns that should be represented as sparse tensors
+    sparse_max : dict
+        dictionary of key: column_name + value: integer representing max sequence length for column
+    sparse_dense : bool
+        bool value to activate transforming sparse tensors to dense
     """
 
     _use_nnz = True
@@ -210,6 +216,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_names=None,
+        sparse_max=None,
+        sparse_as_dense=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -236,6 +245,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
+            sparse_names=sparse_names,
+            sparse_max=sparse_max,
+            sparse_as_dense=sparse_as_dense,
         )
 
     def __len__(self):
@@ -268,6 +280,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         yield tf.device("/GPU:" + str(dev))
 
     def _split_fn(self, tensor, idx, axis=0):
+        return tf.split(tensor, idx, axis=axis)
+
+    def _tensor_split(self, tensor, idx, axis=0):
+        """
+        Same function as above but need this method
+        for api match.
+        """
         return tf.split(tensor, idx, axis=axis)
 
     @property
@@ -313,35 +332,53 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             x = tf.transpose(x)
         return x
 
-    def _handle_tensors(self, cats, conts, labels):
-        X = {}
-        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            lists = {}
-            if isinstance(tensor, tuple):
-                tensor, lists = tensor
-            names = [i for i in names if i not in lists]
+    def _pull_values_offsets(self, values_offset):
+        """
+        values_offset is either a tuple (values, offsets) or just values.
+        Values is a tensor.
+        This method is used to turn a tensor into its sparse representation
+        """
+        # pull_values_offsets, return values offsets diff_offsets
+        diff_offsets = None
+        if isinstance(values_offset, tuple):
+            values = tf.reshape(values_offset[0], [-1])
+            diff_offsets = tf.cast(tf.reshape(values_offset[1], [-1]), dtype=tf.int64)
+            offsets = tf.math.cumsum(diff_offsets)
+        else:
+            values = tf.reshape(values_offset, [-1])
+            offsets = tf.arange(tf.shape(values)[0], dtype=tf.int64)
+            diff_offsets = offsets[1:] - offsets[:-1]
+        num_rows = len(offsets)
+        return values, offsets, diff_offsets, num_rows
 
-            # break list tuples into two keys, with postfixes
-            # TODO: better choices for naming?
-            list_columns = list(lists.keys())
-            for column in list_columns:
-                values, nnzs = lists.pop(column)
-                lists[column + "__values"] = values
-                lists[column + "__nnzs"] = nnzs
+    def _get_max_seq_len(self, diff_offsets):
+        # get_max_seq_len, return int
+        return int(tf.math.reduce_max(diff_offsets))
 
-            # now add in any scalar tensors
-            if len(names) > 1:
-                tensors = tf.split(tensor, len(names), axis=1)
-                lists.update(zip(names, tensors))
-            elif len(names) == 1:
-                lists[names[0]] = tensor
-            X.update(lists)
+    def _get_indices(self, offsets, diff_offsets):
+        # Building the indices to reconstruct the sparse tensors
+        row_ids = tf.range(len(offsets), dtype=tf.int64)
 
-        # TODO: use dict for labels as well?
-        # would require output layers to match naming
-        if len(self.label_names) > 1:
-            labels = tf.split(labels, len(self.label_names), axis=1)
-        return X, labels
+        row_ids_repeated = tf.repeat(row_ids, diff_offsets)
+        row_offset_repeated = tf.repeat(offsets, diff_offsets)
+        col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
+        indices = tf.concat(
+            values=[tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
+        )
+        return indices
+
+    def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
+        sparse_tensor = tf.sparse.SparseTensor(
+            indices=indices, values=values, dense_shape=[num_rows, seq_limit]
+        )
+        return sparse_tensor
+
+    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
+        tensor = tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
+        if self.sparse_as_dense:
+            tensor = tf.sparse.to_dense(tensor)
+        return tensor
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
