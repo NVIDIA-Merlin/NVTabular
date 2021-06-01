@@ -294,7 +294,7 @@ def test_nvt_tf_rossmann_training(tmpdir):
 
     TRAIN_PATH = os.path.join(DATA_DIR, "train.csv")
     VALID_PATH = os.path.join(DATA_DIR, "valid.csv")
-    
+
     cat_features = CATEGORICAL_COLUMNS >> ops.Categorify()
     cont_features = CONTINUOUS_COLUMNS >> ops.FillMissing() >> ops.Normalize()
     label_feature = LABEL_COLUMNS >> ops.LogOp()
@@ -319,7 +319,9 @@ def test_nvt_tf_rossmann_training(tmpdir):
     if path.exists(PREPROCESS_DIR_VALID):
         shutil.rmtree(PREPROCESS_DIR_VALID)
 
-    proc.transform(train_dataset).to_parquet(PREPROCESS_DIR_TRAIN, shuffle=nvt.io.Shuffle.PER_WORKER)
+    proc.transform(train_dataset).to_parquet(
+        PREPROCESS_DIR_TRAIN, shuffle=nvt.io.Shuffle.PER_WORKER
+    )
     proc.transform(valid_dataset).to_parquet(PREPROCESS_DIR_VALID, shuffle=None)
 
     sample_data = cudf.read_csv(VALID_PATH, nrows=TEST_N_ROWS)
@@ -352,7 +354,9 @@ def test_nvt_tf_rossmann_training(tmpdir):
         _make_categorical_embedding_column(name, *EMBEDDING_TABLE_SHAPES[name])
         for name in CATEGORICAL_COLUMNS
     ]
-    continuous_columns = [tf.feature_column.numeric_column(name, (1,)) for name in CONTINUOUS_COLUMNS]
+    continuous_columns = [
+        tf.feature_column.numeric_column(name, (1,)) for name in CONTINUOUS_COLUMNS
+    ]
 
     # feed them to our datasets
     train_dataset = KerasSequenceLoader(
@@ -376,7 +380,9 @@ def test_nvt_tf_rossmann_training(tmpdir):
     # DenseFeatures layer needs a dictionary of {feature_name: input}
     categorical_inputs = {}
     for column_name in CATEGORICAL_COLUMNS:
-        categorical_inputs[column_name] = tf.keras.Input(name=column_name, shape=(1,), dtype=tf.int64)
+        categorical_inputs[column_name] = tf.keras.Input(
+            name=column_name, shape=(1,), dtype=tf.int64
+        )
     categorical_embedding_layer = tf.keras.layers.DenseFeatures(categorical_columns)
     categorical_x = categorical_embedding_layer(categorical_inputs)
     categorical_x = tf.keras.layers.Dropout(EMBEDDING_DROPOUT_RATE)(categorical_x)
@@ -409,16 +415,14 @@ def test_nvt_tf_rossmann_training(tmpdir):
     # that maps input tensor names to input values)
     inputs = list(categorical_inputs.values()) + continuous_inputs
     tf_model = tf.keras.Model(inputs=inputs, outputs=x)
- 
+
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     tf_model.compile(optimizer, "mse", metrics=[_rmspe_tf])
 
     validation_callback = KerasSequenceValidater(valid_dataset)
 
     tf_model.fit(
-        train_dataset,
-        callbacks=[validation_callback],
-        epochs=EPOCHS,
+        train_dataset, callbacks=[validation_callback], epochs=EPOCHS,
     )
 
     sample_data_trans = KerasSequenceLoader(
@@ -436,8 +440,15 @@ def test_nvt_tf_rossmann_training(tmpdir):
     cudf_pred = cudf.DataFrame(pred)
     cudf_pred.to_csv(os.path.join(DATA_DIR, "output.csv"))
 
-    export_tensorflow_ensemble(tf_model, proc, 'test_rossmann_tf', os.path.expanduser("~/nvt-examples/models/"), LABEL_COLUMNS)
-    
+    export_tensorflow_ensemble(
+        tf_model,
+        proc,
+        "test_rossmann_tf",
+        os.path.expanduser("~/nvt-examples/models/"),
+        LABEL_COLUMNS,
+    )
+
+
 def _rmspe_tf(y_true, y_pred):
     # map back into "true" space by undoing transform
     y_true = tf.exp(y_true) - 1
@@ -445,6 +456,7 @@ def _rmspe_tf(y_true, y_pred):
 
     percent_error = (y_true - y_pred) / y_true
     return tf.sqrt(tf.reduce_mean(percent_error ** 2))
+
 
 def _make_categorical_embedding_column(name, dictionary_size, embedding_dim):
     return tf.feature_column.embedding_column(
