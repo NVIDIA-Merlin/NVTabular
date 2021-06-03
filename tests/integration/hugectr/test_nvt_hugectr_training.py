@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 from os import path
+import time
 
 import cudf
 import hugectr
@@ -17,6 +18,9 @@ import nvtabular as nvt
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 from nvtabular.utils import download_file
+import tritonclient.grpc as httpclient
+from tritonclient.utils import np_to_triton_dtype
+
 
 DIR = "/model/"
 DATA_DIR = DIR + "data/"
@@ -379,3 +383,24 @@ def _convert(data, slot_size_array):
     dense = []
 
     return dense, cat, row_ptrs
+
+DIR = "/model/"
+DATA_DIR = DIR + "data/"
+
+# This test assumes that the Triton Inference Server has been started already
+# using this command:
+import subprocess
+def test_server():
+    tri_cmd = [
+            "tritonserver",
+            "--model-repository=/model/models/", 
+            "--backend-config=hugectr,test_model=/model/models/test_model/1/model.json",  
+            "--backend-config=hugectr,supportlonglong=true", 
+            "--model-control-mode=explicit", 
+            "--load-model=test_model_ens"
+            ]
+    subprocess.Popen(tri_cmd)
+    time.sleep(10)
+
+
+
