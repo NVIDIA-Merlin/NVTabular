@@ -37,3 +37,4 @@ make -C docs html SPHINXOPTS="-W -q"
 
 # test out our codebase
 py.test --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/
+pytest tests/integration/hugectr/test_nvt_hugectr_training.py::test_nvt_hugectr_training; pytest tests/integration/hugectr/test_nvt_hugectr_training.py::test_server; pytest tests/integration/hugectr/test_nvt_hugectr_inference.py; ps -axf | grep tritonserver | grep -v grep | awk '{print "kill -9 " $1}' | sh
