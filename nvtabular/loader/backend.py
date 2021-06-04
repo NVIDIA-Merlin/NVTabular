@@ -180,12 +180,17 @@ class DataLoader:
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_names=None,
+        sparse_max=None,
+        sparse_as_dense=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         self.drop_last = drop_last
         self.device = device or 0
-
+        self.sparse_names = sparse_names or []
+        self.sparse_max = sparse_max or {}
+        self.sparse_as_dense = sparse_as_dense
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
@@ -424,6 +429,22 @@ class DataLoader:
         idx.append(num_samples - num_full_batches * self.batch_size)
         return idx
 
+    def _to_sparse_tensor(self, values_offset, column_name):
+        """
+        Create a sparse representation of the input tensor.
+        values_offset is either a tensor or a tuple of tensor, offset.
+        """
+        seq_limit = self.sparse_max[column_name]
+        values, offsets, diff_offsets, num_rows = self._pull_values_offsets(values_offset)
+        max_seq_len = self._get_max_seq_len(diff_offsets)
+        if max_seq_len > seq_limit:
+            raise ValueError(
+                "The default sequence length has been configured "
+                + f"to {seq_limit} but the "
+                + f"largest sequence in this batch have {max_seq_len} length"
+            )
+        return self._build_sparse_tensor(values, offsets, diff_offsets, num_rows, seq_limit)
+
     def _to_tensor(self, gdf, dtype=None):
         """
         One of the mandatory functions a child class needs
@@ -480,8 +501,10 @@ class DataLoader:
             gdf.drop(columns=column_names, inplace=True)
 
             scalars, lists = self._separate_list_columns(gdf_i)
+
             x = None
             if scalars:
+                # should always return dict column_name: values, offsets (optional)
                 x = self._to_tensor(gdf_i[scalars], dtype)
             if lists:
                 list_tensors = OrderedDict()
@@ -489,7 +512,6 @@ class DataLoader:
                     column = gdf_i.pop(column_name)
                     leaves = column.list.leaves
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
-
                     offsets[column_name] = column._column.offsets
                 x = x, list_tensors
             tensors.append(x)
@@ -504,4 +526,32 @@ class DataLoader:
         return tensors
 
     def _handle_tensors(self, cats, conts, labels):
-        return cats, conts, labels
+        X = {}
+        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
+            lists = {}
+            if isinstance(tensor, tuple):
+                tensor, lists = tensor
+            names = [i for i in names if i not in lists]
+
+            # now add in any scalar tensors
+            if len(names) > 1:
+                tensors = self._tensor_split(tensor, len(names), axis=1)
+                lists.update(zip(names, tensors))
+            elif len(names) == 1:
+                lists[names[0]] = tensor
+            X.update(lists)
+
+        for column_name in X:
+            if column_name in self.sparse_names:
+                if column_name not in self.sparse_max:
+                    raise ValueError(
+                        f"Did not convert {column_name} to sparse due to missing sparse_max entry"
+                    )
+                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
+
+        # TODO: use dict for labels as well?
+        # would require output layers to match naming
+        if len(self.label_names) > 1:
+            labels = self._tensor_split(labels, len(self.label_names), axis=1)
+
+        return X, labels
