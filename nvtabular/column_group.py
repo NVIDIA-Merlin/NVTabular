@@ -205,7 +205,7 @@ class ColumnGroup:
     @property
     def label(self):
         if self.op:
-            return str(self.op.__class__.__name__)
+            return self.op.label
         elif self.kind:
             return self.kind
         elif not self.parents:
