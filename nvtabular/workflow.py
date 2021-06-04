@@ -94,7 +94,7 @@ class Workflow:
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
-            _transform_ddf(ddf, self.column_group),
+            _transform_ddf(ddf, self.column_group, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
@@ -285,7 +285,7 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, column_groups):
+def _transform_ddf(ddf, column_groups, meta=None):
     if isinstance(column_groups, ColumnGroup):
         column_groups = [column_groups]
 
@@ -298,13 +298,18 @@ def _transform_ddf(ddf, column_groups):
     if all((c.op is None and not c.parents) for c in column_groups):
         return ddf[_get_unique(columns)]
 
-    # TODO: constructing meta like this loses dtype information on the ddf
-    # sets it all to 'float64'. We should propogate dtype information along
-    # with column names in the columngroup graph
+    if not meta:
+        # TODO: constructing meta like this loses dtype information on the ddf
+        # and sets it all to 'float64'. We should propogate dtype information along
+        # with column names in the columngroup graph. This currently only
+        # happesn during intermediate 'fit' transforms, so as long as statoperators
+        # don't require dtype information on the DDF this doesn't matter all that much
+        meta = type(ddf._meta)({k: [] for k in columns})
+
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
-        meta=type(ddf._meta)({k: [] for k in columns}),
+        meta=meta,
     )
 
 
