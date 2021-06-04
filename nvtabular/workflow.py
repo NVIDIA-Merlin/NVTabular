@@ -298,7 +298,13 @@ def _transform_ddf(ddf, column_groups, meta=None):
     if all((c.op is None and not c.parents) for c in column_groups):
         return ddf[_get_unique(columns)]
 
-    if not meta:
+    if isinstance(meta, dict):
+        dtypes = meta
+        meta = type(ddf._meta)({k: [] for k in columns})
+        for column, dtype in dtypes.items():
+            meta[column] = meta[column].astype(dtype)
+
+    elif not meta:
         # TODO: constructing meta like this loses dtype information on the ddf
         # and sets it all to 'float64'. We should propogate dtype information along
         # with column names in the columngroup graph. This currently only
