@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Optional
 import cloudpickle
 import cudf
 import dask
+import pandas as pd
 from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
@@ -298,7 +299,7 @@ def _transform_ddf(ddf, column_groups, meta=None):
     if all((c.op is None and not c.parents) for c in column_groups):
         return ddf[_get_unique(columns)]
 
-    if isinstance(meta, dict):
+    if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):
         dtypes = meta
         meta = type(ddf._meta)({k: [] for k in columns})
         for column, dtype in dtypes.items():
