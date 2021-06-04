@@ -18,7 +18,7 @@ import torch
 from torch.utils.dlpack import from_dlpack
 
 from .backend import DataLoader
-
+from nvtabular.dispatch import _make_df
 
 class IterDL(torch.utils.data.IterableDataset):
     def __init__(self, file_paths, batch_size=1, shuffle=False):
@@ -107,11 +107,24 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return DataLoader.__iter__(self)
 
     def _get_device_ctx(self, dev):
+        if dev == 'cpu':
+            return torch.device("cpu")
         return torch.cuda.device("cuda:{}".format(dev))
 
+    def _to_dlpack(self, gdf):
+        if self.device == 'cpu':
+            return gdf
+        return gdf.to_dlpack()
+
+    def _from_dlpack(self, dlpack):
+        if self.device == 'cpu':
+            return torch.tensor(dlpack.values)
+        return from_dlpack(dlpack)
+
+
     def _to_tensor(self, gdf, dtype=None):
-        dl_pack = gdf.to_dlpack()
-        tensor = from_dlpack(dl_pack)
+        dl_pack = self._to_dlpack(gdf)
+        tensor = self._from_dlpack(dl_pack)
         return tensor.type(dtype)
 
     def _split_fn(self, tensor, idx, axis=0):
@@ -135,7 +148,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = values_offset[1].flatten()
         else:
             values = values_offset.flatten()
-            offsets = torch.arange(values.size()[0], device="cuda")
+            offsets = torch.arange(values.size()[0], device=self.device)
         num_rows = len(offsets)
         offsets = torch.cat([offsets, torch.cuda.LongTensor([len(values)])])
         diff_offsets = offsets[1:] - offsets[:-1]
@@ -148,16 +161,16 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         # Building the indices to reconstruct the sparse tensors
 
     def _get_indices(self, offsets, diff_offsets):
-        row_ids = torch.arange(len(offsets) - 1, device="cuda")
+        row_ids = torch.arange(len(offsets) - 1, device=self.device)
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
-        col_ids = torch.arange(len(row_offset_repeated), device="cuda") - row_offset_repeated
+        col_ids = torch.arange(len(row_offset_repeated), device=self.device) - row_offset_repeated
         indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
         return indices
 
     def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
         sparse_tensor = torch.sparse_coo_tensor(
-            indices.T, values, torch.Size([num_rows, seq_limit]), device="cuda"
+            indices.T, values, torch.Size([num_rows, seq_limit]), device=self.device
         )
         if self.sparse_as_dense:
             sparse_tensor = sparse_tensor.to_dense()
