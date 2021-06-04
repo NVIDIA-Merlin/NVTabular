@@ -79,3 +79,7 @@ class Operator:
         import nvtabular
 
         return nvtabular.ColumnGroup(other) >> self
+
+    @property
+    def label(self) -> str:
+        return self.__class__.__name__
