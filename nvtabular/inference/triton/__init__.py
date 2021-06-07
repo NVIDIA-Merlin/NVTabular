@@ -70,9 +70,7 @@ def export_tensorflow_ensemble(
 
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
-    tf_model_path = os.path.join(tf_path, str(version), "model.savedmodel")
-    model.save(tf_model_path)
-    tf_config = _generate_tensorflow_config(model, name + "_tf", tf_path)
+    tf_config = export_tensorflow_model(model, name + "_tf", tf_path, version=version)
 
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
@@ -468,9 +466,20 @@ def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext
     return config
 
 
-def _generate_tensorflow_config(model, name, output_path):
-    """given a workflow generates the trton modelconfig proto object describing the inputs
-    and outputs to that workflow"""
+def export_tensorflow_model(model, name, output_path, version=1):
+    """Exports a TensorFlow model for serving with Triton
+
+    Parameters
+    ----------
+    model:
+        The tensorflow model that should be served
+    name:
+        The name of the triton model to export
+    output_path:
+        The path to write the exported model to
+    """
+    tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
+    model.save(tf_model_path)
     config = model_config.ModelConfig(
         name=name, backend="tensorflow", platform="tensorflow_savedmodel"
     )
