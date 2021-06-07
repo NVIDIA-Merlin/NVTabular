@@ -27,7 +27,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf.core.column import as_column, build_column
 from cudf.utils.dtypes import is_list_dtype
-from dask.dataframe.utils import hash_object_dispatch
+
+try:
+    # Dask >= 2021.5.1
+    from dask.dataframe.core import hash_object_dispatch
+except ImportError:
+    # Dask < 2021.5.1
+    from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
 
@@ -44,6 +50,11 @@ class ExtData(enum.Enum):
     PARQUET = 6
     CSV = 7
 
+
+def _is_dataframe_object(x):
+    # Simple check if object is a cudf or pandas
+    # DataFrame object
+    return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
@@ -222,7 +233,7 @@ def _detect_format(data):
         return file_type
 
 
-def _convert_data(x, cpu=True):
+def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
     """Move data between cpu and gpu-backed data.
 
     Note that the input ``x`` may be an Arrow Table,
@@ -231,26 +242,40 @@ def _convert_data(x, cpu=True):
     if cpu:
         if isinstance(x, dd.DataFrame):
             # If input is a dask_cudf collection, convert
-            # to a pandas-based Dask collection
+            # to a pandas-backed Dask collection
             if not isinstance(x, dask_cudf.DataFrame):
+                # Already a Pandas-backed collection
                 return x
+            # Convert cudf-backed collection to pandas-backed collection
             return x.to_dask_dataframe()
         else:
-            if isinstance(x, pd.DataFrame):
-                return x
-            return x.to_pandas()
+            # Make sure _x is a pandas DataFrame
+            _x = x if isinstance(x, pd.DataFrame) else x.to_pandas()
+            # Output a collection if `to_collection=True`
+            return dd.from_pandas(
+                _x, sort=False, npartitions=npartitions
+            ) if to_collection else _x
     else:
         if isinstance(x, dd.DataFrame):
             # If input is a Dask collection, covert to dask_cudf
             if isinstance(x, dask_cudf.DataFrame):
+                # Already a cudf-backed Dask collection
                 return x
+            # Convert pandas-backed collection to cudf-backed collection
             return x.map_partitions(cudf.from_pandas)
         elif isinstance(x, pa.Table):
             return cudf.DataFrame.from_arrow(x)
         else:
-            if isinstance(x, cudf.DataFrame):
-                return x
-            return cudf.DataFrame.from_pandas(x)
+            # Make sure _x is a cudf DataFrame
+            _x = x
+            if isinstance(x, pa.Table):
+                _x = cudf.DataFrame.from_arrow(x)
+            elif isinstance(x, pd.DataFrame):
+                _x = cudf.DataFrame.from_pandas(x)
+            # Output a collection if `to_collection=True`
+            return dask_cudf.from_cudf(
+                _x, sort=False, npartitions=npartitions
+            ) if to_collection else _x
 
 
 def _to_host(x):

@@ -32,7 +32,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
-from nvtabular.dispatch import _hex_to_int
+from nvtabular.dispatch import _hex_to_int, _convert_data, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
@@ -225,48 +225,18 @@ class Dataset:
             )
 
         npartitions = npartitions or 1
-        if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
+        if isinstance(path_or_source, dask.dataframe.DataFrame) or _is_dataframe_object(path_or_source):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
-            moved_collection = (
-                False  # Whether a pd-backed collection was moved to cudf (or vice versa)
-            )
-            if self.cpu:
-                if isinstance(path_or_source, pd.DataFrame):
-                    # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = dask.dataframe.from_pandas(
-                        path_or_source, sort=False, npartitions=npartitions
-                    )
-                elif isinstance(path_or_source, cudf.DataFrame):
-                    # Convert cudf DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = dask.dataframe.from_pandas(
-                        path_or_source.to_pandas(), sort=False, npartitions=npartitions
-                    )
-                elif isinstance(path_or_source, dask_cudf.DataFrame):
-                    # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = path_or_source.to_dask_dataframe()
-                    moved_collection = True
-            else:
-                if isinstance(path_or_source, cudf.DataFrame):
-                    # Convert cudf DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_cudf(
-                        path_or_source, sort=False, npartitions=npartitions
-                    )
-                elif isinstance(path_or_source, pd.DataFrame):
-                    # Convert pandas DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_cudf(
-                        cudf.from_pandas(path_or_source), sort=False, npartitions=npartitions
-                    )
-                elif not isinstance(path_or_source, dask_cudf.DataFrame):
-                    # Convert dask.dataframe.DataFrame DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
-                    moved_collection = True
+            _path_or_source = _convert_data(path_or_source, cpu=self.cpu, to_collection=True, npartitions=npartitions)
+            # Check if this is a collection that has now moved between host <-> device
+            moved_collection = isinstance(path_or_source, dask.dataframe.DataFrame) and (type(path_or_source) != type(_path_or_source))
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
                 warnings.warn("part_mem_fraction is ignored for DataFrame input.")
             self.engine = DataFrameDatasetEngine(
-                path_or_source, cpu=self.cpu, moved_collection=moved_collection
+                _path_or_source, cpu=self.cpu, moved_collection=moved_collection
             )
         else:
             if part_size:
