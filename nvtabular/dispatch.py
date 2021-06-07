@@ -56,6 +56,7 @@ def _is_dataframe_object(x):
     # DataFrame object
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
+
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
         if pd.isnull(x):
@@ -238,6 +239,9 @@ def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
 
     Note that the input ``x`` may be an Arrow Table,
     but the output will only be a pandas or cudf DataFrame.
+    Use `to_collection=True` to specify that the output should
+    always be a Dask collection (otherwise, "serial" DataFrame
+    objects will remain "serial").
     """
     if cpu:
         if isinstance(x, dd.DataFrame):
@@ -252,9 +256,7 @@ def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
             # Make sure _x is a pandas DataFrame
             _x = x if isinstance(x, pd.DataFrame) else x.to_pandas()
             # Output a collection if `to_collection=True`
-            return dd.from_pandas(
-                _x, sort=False, npartitions=npartitions
-            ) if to_collection else _x
+            return dd.from_pandas(_x, sort=False, npartitions=npartitions) if to_collection else _x
     else:
         if isinstance(x, dd.DataFrame):
             # If input is a Dask collection, covert to dask_cudf
@@ -273,9 +275,11 @@ def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
             elif isinstance(x, pd.DataFrame):
                 _x = cudf.DataFrame.from_pandas(x)
             # Output a collection if `to_collection=True`
-            return dask_cudf.from_cudf(
-                _x, sort=False, npartitions=npartitions
-            ) if to_collection else _x
+            return (
+                dask_cudf.from_cudf(_x, sort=False, npartitions=npartitions)
+                if to_collection
+                else _x
+            )
 
 
 def _to_host(x):
