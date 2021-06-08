@@ -249,6 +249,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             sparse_max=sparse_max,
             sparse_as_dense=sparse_as_dense,
         )
+        self._map_fns = []
 
     def __len__(self):
         """
@@ -266,6 +267,16 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         passed idx in any way
         """
         return DataLoader.__next__(self)
+
+    def map(self, fn):
+        """
+        Applying a function to each batch.
+
+        This can for instance be used to add `sample_weight` to the model.
+        """
+        self._map_fns.append(fn)
+
+        return self
 
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
@@ -379,6 +390,14 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         if self.sparse_as_dense:
             tensor = tf.sparse.to_dense(tensor)
         return tensor
+
+    def _handle_tensors(self, cats, conts, labels):
+        to_return = super()._handle_tensors(cats, conts, labels)
+
+        for map_fn in self._map_fns:
+            to_return = map_fn(*to_return)
+
+        return to_return
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):
