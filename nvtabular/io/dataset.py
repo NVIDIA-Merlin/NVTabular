@@ -20,11 +20,8 @@ import math
 import random
 import warnings
 
-import cudf
 import dask
-import dask_cudf
 import numpy as np
-import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -32,7 +29,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
-from nvtabular.dispatch import _hex_to_int, _convert_data, _is_dataframe_object
+from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
@@ -225,12 +222,18 @@ class Dataset:
             )
 
         npartitions = npartitions or 1
-        if isinstance(path_or_source, dask.dataframe.DataFrame) or _is_dataframe_object(path_or_source):
+        if isinstance(path_or_source, dask.dataframe.DataFrame) or _is_dataframe_object(
+            path_or_source
+        ):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
-            _path_or_source = _convert_data(path_or_source, cpu=self.cpu, to_collection=True, npartitions=npartitions)
+            _path_or_source = _convert_data(
+                path_or_source, cpu=self.cpu, to_collection=True, npartitions=npartitions
+            )
             # Check if this is a collection that has now moved between host <-> device
-            moved_collection = isinstance(path_or_source, dask.dataframe.DataFrame) and (type(path_or_source) != type(_path_or_source))
+            moved_collection = isinstance(path_or_source, dask.dataframe.DataFrame) and (
+                isinstance(_path_or_source._meta, type(path_or_source._meta))
+            )
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
