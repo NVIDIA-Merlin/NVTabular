@@ -168,20 +168,19 @@ def _to_arrow(x):
     else:
         return pa.Table.from_pandas(x, preserve_index=False)
 
+
 def _concat(objs, **kwargs):
-    if isinstance(objs[0], cudf.DataFrame) or isinstance(objs[0], cudf.Series):
+    if isinstance(objs[0], (cudf.DataFrame, cudf.Series)):
         return cudf.core.reshape.concat(objs, **kwargs)
     else:
         return pd.concat(objs, **kwargs)
 
+
 def _make_df(x=None, device=None):
-    if isinstance(x, cudf.DataFrame) or isinstance(x, cudf.Series):
+    if isinstance(x, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(x)
-    elif isinstance(x, pd.DataFrame) or isinstance(x, pd.Series):
+    elif isinstance(x, (pd.DataFrame, pd.Series)):
         return pd.DataFrame(x)
-    if device == 'cpu':
+    if device == "cpu":
         return pd.DataFrame()
     return cudf.DataFrame()
-
-        
-

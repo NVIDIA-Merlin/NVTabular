@@ -18,7 +18,7 @@ import torch
 from torch.utils.dlpack import from_dlpack
 
 from .backend import DataLoader
-from nvtabular.dispatch import _make_df
+
 
 class IterDL(torch.utils.data.IterableDataset):
     def __init__(self, file_paths, batch_size=1, shuffle=False):
@@ -107,20 +107,19 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return DataLoader.__iter__(self)
 
     def _get_device_ctx(self, dev):
-        if dev == 'cpu':
+        if dev == "cpu":
             return torch.device("cpu")
         return torch.cuda.device("cuda:{}".format(dev))
 
     def _to_dlpack(self, gdf):
-        if self.device == 'cpu':
+        if self.device == "cpu":
             return gdf
         return gdf.to_dlpack()
 
     def _from_dlpack(self, dlpack):
-        if self.device == 'cpu':
-            return torch.tensor(dlpack.values)
+        if self.device == "cpu":
+            return torch.Tensor(dlpack.values)
         return from_dlpack(dlpack)
-
 
     def _to_tensor(self, gdf, dtype=None):
         dl_pack = self._to_dlpack(gdf)

@@ -20,7 +20,6 @@ import subprocess
 import time
 
 import cudf
-import numba.cuda
 import numpy as np
 import pandas as pd
 import pytest
@@ -243,8 +242,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
-    cpu_true = True if device =='cpu' else False
-    nvt_data = nvt.Dataset(tar_paths[0], cpu=cpu_true, engine="parquet", part_mem_fraction=part_mem_fraction)
+    cpu_true = True if device == "cpu" else False
+    nvt_data = nvt.Dataset(
+        tar_paths[0], cpu=cpu_true, engine="parquet", part_mem_fraction=part_mem_fraction
+    )
     data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data,
         batch_size=batch_size,

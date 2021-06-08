@@ -19,13 +19,12 @@ import threading
 import warnings
 from collections import OrderedDict
 
-import cudf
 import cupy as cp
-#from cudf.utils.dtypes import is_list_dtype
 
+from nvtabular.dispatch import _concat, _is_list_dtype, _make_df
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
-from nvtabular.dispatch import _make_df, _concat, _is_list_dtype
+
 
 def _num_steps(num_samples, step_size):
     return math.ceil(num_samples / step_size)
@@ -105,32 +104,32 @@ class ChunkQueue:
                 current = []
 
     def chunk_logic(self, itr):
-            spill = None
-            for chunks in self.batch(itr):
-                if self.stopped:
+        spill = None
+        for chunks in self.batch(itr):
+            if self.stopped:
+                return
+
+            if spill and not spill.empty:
+                chunks.insert(0, spill)
+
+            chunks = _concat(chunks)
+            chunks.reset_index(drop=True, inplace=True)
+            chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
+            if self.shuffle:
+                chunks = _shuffle_df(chunks)
+
+            if len(chunks) > 0:
+                chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
+                # put returns True if buffer is stopped before
+                # packet can be put in queue. Keeps us from
+                # freezing on a put on a full queue
+                if self.put(chunks):
                     return
-
-                if spill and not spill.empty:
-                    chunks.insert(0, spill)
-
-                chunks = _concat(chunks)
-                chunks.reset_index(drop=True, inplace=True)
-                chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
-                if self.shuffle:
-                    chunks = _shuffle_df(chunks)
-
-                if len(chunks) > 0:
-                    chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
-                    # put returns True if buffer is stopped before
-                    # packet can be put in queue. Keeps us from
-                    # freezing on a put on a full queue
-                    if self.put(chunks):
-                        return
-                chunks = None
-            # takes care final batch, which is less than batch size
-            if not self.dataloader.drop_last and spill is not None and not spill.empty:
-                spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
-                self.put(spill)
+            chunks = None
+        # takes care final batch, which is less than batch size
+        if not self.dataloader.drop_last and spill is not None and not spill.empty:
+            spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
+            self.put(spill)
 
     def load_chunks(self, dev):
         try:
@@ -157,9 +156,9 @@ class ChunkQueue:
     def get_batch_div_chunk(self, chunks, batch_size):
         # TODO: is there a way to do this using cupy?
         spill_idx = int(chunks.shape[0] / batch_size) * batch_size
-        #spill = cudf.DataFrame(chunks.iloc[spill_idx:])
+        # spill = cudf.DataFrame(chunks.iloc[spill_idx:])
         spill = _make_df(chunks.iloc[spill_idx:])
-        #chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
+        # chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
         chunks = _make_df(chunks.iloc[:spill_idx])
         if not chunks.empty:
             chunks.reset_index(drop=True, inplace=True)
@@ -498,7 +497,7 @@ class DataLoader:
         column_groups = (self.cat_names, self.cont_names, self.label_names)
         dtypes = (self._LONG_DTYPE, self._FLOAT32_DTYPE, self._FLOAT32_DTYPE)
         tensors = []
-        #offsets = cudf.DataFrame()
+        # offsets = cudf.DataFrame()
         offsets = _make_df(device=self.device)
         for column_names, dtype in zip(column_groups, dtypes):
             if len(column_names) == 0:
