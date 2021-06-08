@@ -232,7 +232,7 @@ class Dataset:
             )
             # Check if this is a collection that has now moved between host <-> device
             moved_collection = isinstance(path_or_source, dask.dataframe.DataFrame) and (
-                isinstance(_path_or_source._meta, type(path_or_source._meta))
+                not isinstance(_path_or_source._meta, type(path_or_source._meta))
             )
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
