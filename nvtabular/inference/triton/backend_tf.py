@@ -102,7 +102,7 @@ class TritonNVTabularModel:
     def get_lengths(self):
         return self.lenghts
 
-    def _convertToNumpyDtype(self, dtype):
+    def _convert_to_numpy_dtype(self, dtype):
         if dtype == "invalid":
             raise Exception("wrong data type")
         elif dtype == "np.bool_":
