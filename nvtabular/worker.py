@@ -69,20 +69,23 @@ def fetch_table_data(
     table = table_cache.get(path, None)
     cache_df = cache == "device"
     if table is None:
+        use_kwargs = {"columns": columns} if columns is not None else {}
+        use_kwargs.update(kwargs)
         if cache in ("device", "disk"):
-            table = reader(path, columns=columns, **kwargs)
+            table = reader(path, **use_kwargs)
         elif cache == "host":
             if reader == cudf.io.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
                 # Cache as an Arrow table.
                 with fsspec.open(path, "rb") as f:
-                    table = reader(f, **kwargs)
+                    table = reader(f, **use_kwargs)
                 table_cache[path] = table.to_arrow()
-                table = table[columns]
+                if columns is not None:
+                    table = table[columns]
             else:
                 # Using pandas-backed data with "host" caching.
                 # Just read in data and cache as a pandas DataFrame.
-                table = reader(path, columns=columns, **kwargs)
+                table = reader(path, **use_kwargs)
                 cache_df = True
         if cats_only:
             table.index.name = "labels"
@@ -92,7 +95,9 @@ def fetch_table_data(
     elif isinstance(table, pa.Table):
         if not cats_only:
             return cudf.DataFrame.from_arrow(table)
-        df = cudf.DataFrame.from_arrow(table)[columns]
+        df = cudf.DataFrame.from_arrow(table)
+        if columns is not None:
+            df = df[columns]
         df.index.name = "labels"
         df.reset_index(drop=False, inplace=True)
         return df
