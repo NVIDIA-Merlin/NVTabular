@@ -58,6 +58,9 @@ class Model(torch.nn.Module):
             cat_shapes = embedding_table_shapes
             mh_shapes = None
 
+        cat_shapes = cat_shapes or None
+        mh_shapes = mh_shapes or None
+
         embedding_size = 0
         if cat_shapes:
             self.initial_cat_layer = ConcatenatedEmbeddings(cat_shapes, dropout=emb_dropout)
