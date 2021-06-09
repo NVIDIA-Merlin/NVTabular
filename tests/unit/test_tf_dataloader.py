@@ -145,7 +145,11 @@ def test_tf_catname_ordering(tmpdir):
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("use_paths", [True, False])
-def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu_true", [False, True])
+@pytest.mark.parametrize("device", ["cpu", 0])
+def test_tf_gpu_dl(
+    tmpdir, paths, use_paths, device, cpu_true, dataset, batch_size, gpu_memory_frac, engine
+):
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
     label_name = ["label"]
@@ -170,6 +174,8 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         label_names=label_name,
         engine=engine,
         shuffle=False,
+        device=device,
+        reader_kwargs={"cpu": cpu_true},
     )
     _ = tf.random.uniform((1,))
 
@@ -428,7 +434,7 @@ def test_sparse_tensors(tmpdir, sparse_dense):
                 assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
 
 
-@pytest.mark.skip(reason="not working correctly in ci environment")
+# @pytest.mark.skip(reason="not working correctly in ci environment")
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 def test_horovod_multigpu(tmpdir):
     json_sample = {
