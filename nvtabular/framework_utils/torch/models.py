@@ -54,7 +54,10 @@ class Model(torch.nn.Module):
         mh_shapes = None
         if isinstance(embedding_table_shapes, tuple):
             embedding_table_shapes, mh_shapes = embedding_table_shapes
-        self.initial_cat_layer = ConcatenatedEmbeddings(embedding_table_shapes, dropout=emb_dropout)
+        if embedding_table_shapes:
+            self.initial_cat_layer = ConcatenatedEmbeddings(
+                embedding_table_shapes, dropout=emb_dropout
+            )
         if mh_shapes:
             self.mh_cat_layer = MultiHotEmbeddings(mh_shapes, dropout=emb_dropout, mode=bag_mode)
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
@@ -87,11 +90,13 @@ class Model(torch.nn.Module):
         if mh_cat:
             mh_cat = self.mh_cat_layer(mh_cat)
             concat_list.append(mh_cat)
-        x_cat = self.initial_cat_layer(x_cat)
-        concat_list.append(x_cat)
+        if x_cat:
+            x_cat = self.initial_cat_layer(x_cat)
+            concat_list.append(x_cat)
         if x_cont is not None:
             x_cont = self.initial_cont_layer(x_cont)
             concat_list.append(x_cont)
+        # if no layers in concat_list this breaks by design
         x = torch.cat(concat_list, 1)
         for layer in self.layers:
             x = layer(x)
