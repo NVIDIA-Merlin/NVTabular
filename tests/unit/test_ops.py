@@ -743,11 +743,25 @@ def test_joingroupby_multi(tmpdir, groups):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
+@pytest.mark.parametrize(
+    "kind_ext",
+    [
+        "cudf",
+        "pandas",
+        "arrow",
+        "parquet",
+        "parquet-multi",
+        "csv",
+        "dask-dataframe",
+        "dask-cudf",
+        "dataset",
+    ],
+)
 @pytest.mark.parametrize("cache", ["host", "device"])
 @pytest.mark.parametrize("how", ["left", "inner"])
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("drop_duplicates", [True, False])
-def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
+def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, drop_duplicates):
 
     # Define "external" table
     shift = 100
@@ -764,10 +778,20 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
         path = tmpdir.join("external.parquet")
         df_ext.to_parquet(path)
         df_ext = path
+    elif kind_ext == "parquet-multi":
+        path = tmpdir.join("external-multi.parquet")
+        dask_cudf.from_cudf(df_ext, npartitions=3).to_parquet(path)
+        df_ext = path
     elif kind_ext == "csv":
         path = tmpdir.join("external.csv")
         df_ext.to_csv(path)
         df_ext = path
+    elif kind_ext == "dask-dataframe":
+        df_ext = dd.from_pandas(df_ext.to_pandas(), npartitions=2)
+    elif kind_ext == "dask-cudf":
+        df_ext = dask_cudf.from_cudf(df_ext, npartitions=2)
+    elif kind_ext == "dataset":
+        df_ext = nvt.Dataset(df_ext)
 
     # Define Op
     on = "id"
@@ -786,7 +810,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
     )
 
     gdf = df.reset_index()
-    dataset = nvt.Dataset(gdf)
+    dataset = nvt.Dataset(gdf, cpu=cpu)
     processor = nvt.Workflow(joined)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
