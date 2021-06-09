@@ -154,10 +154,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return values, offsets, diff_offsets, num_rows
 
     def _get_max_seq_len(self, diff_offsets):
-        # get_max_seq_len, return int
         return int(diff_offsets.max())
 
-        # Building the indices to reconstruct the sparse tensors
+    # Building the indices to reconstruct the sparse tensors
 
     def _get_indices(self, offsets, diff_offsets):
         row_ids = torch.arange(len(offsets) - 1, device=self.device)

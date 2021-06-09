@@ -156,9 +156,7 @@ class ChunkQueue:
     def get_batch_div_chunk(self, chunks, batch_size):
         # TODO: is there a way to do this using cupy?
         spill_idx = int(chunks.shape[0] / batch_size) * batch_size
-        # spill = cudf.DataFrame(chunks.iloc[spill_idx:])
         spill = _make_df(chunks.iloc[spill_idx:])
-        # chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
         chunks = _make_df(chunks.iloc[:spill_idx])
         if not chunks.empty:
             chunks.reset_index(drop=True, inplace=True)
