@@ -128,6 +128,6 @@ class TritonNVTabularModel:
         elif dtype == "np.float32":
             return np.float32
         elif dtype == "np.float64":
-            return np.float54
+            return np.float64
         else:
             return np.bytes
