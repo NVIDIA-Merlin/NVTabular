@@ -94,11 +94,11 @@ class Model(torch.nn.Module):
             sh_cat = x_cat
             mh_cat = None
 
-        if sh_cat:
+        if sh_cat is not None:
             sh_cat = self.initial_cat_layer(sh_cat)
             concat_list.append(sh_cat)
 
-        if mh_cat:
+        if mh_cat is not None:
             mh_cat = self.mh_cat_layer(mh_cat)
             concat_list.append(mh_cat)
 
