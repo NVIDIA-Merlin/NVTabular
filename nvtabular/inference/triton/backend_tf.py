@@ -80,8 +80,7 @@ class TritonNVTabularModel:
             col = output_df[name]
             if is_list_dtype(col.dtype):
                 # convert list values to match TF dataloader
-                values = col.list.leaves.values_host.astype(self.output_dtypes[name + "__values"])
-                output[name + "__values"] = values
+                output[name + "__values"] = col.list.leaves.values_host.astype(self.output_dtypes[name + "__values"])
                 lengths.append(len(output[name + "__values"]))
 
                 offsets = col._column.offsets.values_host.astype(
