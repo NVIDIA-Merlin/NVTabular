@@ -75,9 +75,17 @@ def _hex_to_int(s, dtype=None):
         return s.astype("Int64").astype(dtype or "Int32")
 
 
+def _random_state(seed, like_df=None):
+    """Dispatch for numpy.random.RandomState"""
+    if isinstance(like_df, (pd.DataFrame, pd.Series)):
+        return np.random.RandomState(seed)
+    else:
+        return cp.random.RandomState(seed)
+
+
 def _arange(size, like_df=None, dtype=None):
     """Dispatch for numpy.arange"""
-    if isinstance(like_df, pd.DataFrame):
+    if isinstance(like_df, (pd.DataFrame, pd.Series)):
         return np.arange(size, dtype=dtype)
     else:
         return cp.arange(size, dtype=dtype)
