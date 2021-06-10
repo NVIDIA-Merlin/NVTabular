@@ -30,6 +30,7 @@ Dataset = io.dataset.Dataset
 FeatureGroup = feature_group.FeatureGroup
 TargetGroup = feature_group.TargetGroup
 TagAs = column_group.TagAs
+DefaultTags = column_group.DefaultTags
 
 # Tensorflow specific
 try:

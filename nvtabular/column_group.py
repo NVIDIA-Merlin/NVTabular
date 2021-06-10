@@ -14,27 +14,48 @@
 # limitations under the License.
 #
 import collections.abc
+from enum import Enum
 
 from dask.core import flatten
 
 from nvtabular.ops import LambdaOp, Operator
 
 
+class DefaultTags(Enum):
+    # Feature types
+    CATEGORICAL = ["categorical"]
+    CONTINUOUS = ["continuous"]
+    LIST = ["list"]
+
+    # Feature context
+    USER = ["user"]
+    ITEM = ["item"]
+    CONTEXT = ["context"]
+
+    # Target related
+    TARGETS = ["target"]
+    TARGETS_BINARY = ["target", "binary"]
+    TARGETS_REGRESSION = ["target", "regression"]
+    TARGETS_MULTI_CLASS = ["target", "multi_class"]
+
+
 class TagAs:
     def __init__(self, tags=None, is_target=False, is_regression_target=False, is_binary_target=False,
                  is_multi_class_target=False):
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
         if not tags:
             tags = []
         if not isinstance(tags, list):
             tags = [tags]
         if is_target:
-            tags.append("target")
+            tags.extend(DefaultTags.TARGETS.value)
         if is_regression_target:
-            tags.extend(["target", "regression"])
+            tags.extend(DefaultTags.TARGETS_REGRESSION.value)
         if is_multi_class_target:
-            tags.extend(["target", "multi_class"])
+            tags.extend(DefaultTags.TARGETS_MULTI_CLASS.value)
         if is_binary_target:
-            tags.extend(["target", "binary"])
+            tags.extend(DefaultTags.TARGETS_BINARY.value)
 
         self.tags = list(set(tags))
 
@@ -53,13 +74,18 @@ class ColumnGroup:
         for feature crosses.
     """
 
-    def __init__(self, columns):
+    def __init__(self, columns, tags=None):
         self.parents = []
         self.children = []
         self.op = None
         self.kind = None
         self.dependencies = None
-        self.tags = []
+
+        if not tags:
+            tags = []
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+        self.tags = tags
 
         if isinstance(columns, str):
             columns = [columns]
@@ -228,6 +254,8 @@ class ColumnGroup:
         return self.filter_columns(lambda c: c.startswith(namespace))
 
     def get_tagged(self, tags):
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
         if not isinstance(tags, list):
             tags = [tags]
         output_cols = []

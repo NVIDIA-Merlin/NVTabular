@@ -134,6 +134,9 @@ class Groupby(Operator):
 
         return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
 
+    def output_tags(self):
+        return ["list"]
+
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
     # Helper function for `output_column_names`
