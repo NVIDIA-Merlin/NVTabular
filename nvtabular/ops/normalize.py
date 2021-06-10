@@ -67,6 +67,9 @@ class Normalize(StatOperator):
         self.means = {}
         self.stds = {}
 
+    def output_tags(self):
+        return ["continuous"]
+
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

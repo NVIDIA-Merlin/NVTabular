@@ -29,6 +29,7 @@ Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
 FeatureGroup = feature_group.FeatureGroup
 TargetGroup = feature_group.TargetGroup
+TagAs = column_group.TagAs
 
 # Tensorflow specific
 try:

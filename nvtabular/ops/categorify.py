@@ -432,9 +432,14 @@ class Categorify(StatOperator):
     def get_multihot_columns(self):
         return self.mh_columns
 
+    def output_tags(self):
+        return [self.TAG]
+
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
+    TAG = "categorical"
 
 
 def _get_embedding_order(cat_names):

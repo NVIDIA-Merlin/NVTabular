@@ -20,6 +20,25 @@ from dask.core import flatten
 from nvtabular.ops import LambdaOp, Operator
 
 
+class TagAs:
+    def __init__(self, tags=None, is_target=False, is_regression_target=False, is_binary_target=False,
+                 is_multi_class_target=False):
+        if not tags:
+            tags = []
+        if not isinstance(tags, list):
+            tags = [tags]
+        if is_target:
+            tags.append("target")
+        if is_regression_target:
+            tags.extend(["target", "regression"])
+        if is_multi_class_target:
+            tags.extend(["target", "multi_class"])
+        if is_binary_target:
+            tags.extend(["target", "binary"])
+
+        self.tags = list(set(tags))
+
+
 class ColumnGroup:
     """A ColumnGroup is a group of columns that you want to apply the same transformations to.
     ColumnGroup's can be transformed by shifting operators on to them, which returns a new
@@ -40,6 +59,7 @@ class ColumnGroup:
         self.op = None
         self.kind = None
         self.dependencies = None
+        self.tags = []
 
         if isinstance(columns, str):
             columns = [columns]
@@ -82,6 +102,10 @@ class ColumnGroup:
         elif callable(operator):
             # implicit lambdaop conversion.
             operator = LambdaOp(operator)
+        elif isinstance(operator, TagAs):
+            self.tags.extend(operator.tags)
+
+            return self
 
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
@@ -90,6 +114,7 @@ class ColumnGroup:
         child.parents = [self]
         self.children.append(child)
         child.op = operator
+        child.tags = operator.output_tags()
 
         dependencies = operator.dependencies()
         if dependencies:
@@ -201,6 +226,26 @@ class ColumnGroup:
 
     def filter_by_namespace(self, namespace):
         return self.filter_columns(lambda c: c.startswith(namespace))
+
+    def get_tagged(self, tags):
+        if not isinstance(tags, list):
+            tags = [tags]
+        output_cols = []
+        column_group = _merge_add_nodes(self)
+
+        # get all the nodes from parents of this columngroup
+        # and add edges between each of them
+        allnodes = list(set(iter_nodes([column_group])))
+        for node in allnodes:
+            if all(x in node.tags for x in tags):
+                output_cols.extend(node.columns)
+
+        return list(set(output_cols))
+
+    def remove_tagged(self, tags):
+        to_remove = self.get_tagged(tags)
+
+        return self - to_remove
 
     def __repr__(self):
         output = " output" if not self.children else ""
