@@ -53,8 +53,7 @@ class TritonNVTabularModel:
         self.output_dtypes = dict()
         for name, dtype in dtypes.items():
             self.output_dtypes[name] = self._convert_to_numpy_dtype(dtype)
-
-        self.lenghts = list()
+            
 
     def transform(self, input_names, inputs, output_names):
         """Transforms the inputs by running through a NVTabular workflow.transform
@@ -74,7 +73,7 @@ class TritonNVTabularModel:
         # Applies nvtabular transforms
         output_df = nvtabular.workflow._transform_partition(input_df, [self.workflow.column_group])
         output = dict()
-        self.lenghts = list()
+        lengths = list()
 
         # Applies nvtabular transforms
         for name in output_df.columns:
@@ -82,25 +81,21 @@ class TritonNVTabularModel:
             if is_list_dtype(col.dtype):
                 # convert list values to match TF dataloader
                 values = col.list.leaves.values_host.astype(self.output_dtypes[name + "__values"])
-                values = values.reshape(len(values), 1)
                 output[name + "__values"] = values
-                self.lenghts.append(len(output[name + "__values"]))
+                lengths.append(len(output[name + "__values"]))
 
                 offsets = col._column.offsets.values_host.astype(
                     self.output_dtypes[name + "__nnzs"]
                 )
                 nnzs = offsets[1:] - offsets[:-1]
-                nnzs = nnzs.reshape(len(nnzs), 1)
                 output[name + "__nnzs"] = nnzs
-                self.lenghts.append(len(output[name + "__nnzs"]))
+                lengths.append(len(output[name + "__nnzs"]))
             else:
                 output[name] = col.values_host.astype(self.output_dtypes[name])
-                self.lenghts.append(len(output[name]))
+                lengths.append(len(output[name]))
 
-        return output
-
-    def get_lengths(self):
-        return self.lenghts
+        return (output, lengths)
+    
 
     def _convert_to_numpy_dtype(self, dtype):
         if dtype == "invalid":
