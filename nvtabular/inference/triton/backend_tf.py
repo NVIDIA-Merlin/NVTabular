@@ -52,7 +52,7 @@ class TritonNVTabularModel:
 
         self.output_dtypes = dict()
         for name, dtype in dtypes.items():
-            self.output_dtypes[name] = self._convertToNumpyDtype(dtype)
+            self.output_dtypes[name] = self._convert_to_numpy_dtype(dtype)
 
         self.lenghts = list()
 
