@@ -13,15 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 import cupy
 import cupy.sparse
 import numba
 import numpy
+import pandas as pd
 import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
 from nvtx import annotate
 
+from .dispatch import DataFrameType
 from .operator import ColumnNames, Operator
 
 
@@ -70,11 +71,14 @@ class ColumnSimilarity(Operator):
         self.on_device = on_device
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        if isinstance(df, pd.DataFrame):
+            # Disallow on-device computation for cpu-backed data
+            self.on_device = False
         names = self.output_column_names(columns)
         for name, (left, right) in zip(names, columns):
-            a = gdf[left].values if self.on_device else gdf[left].values_host
-            b = gdf[right].values if self.on_device else gdf[right].values_host
+            a = df[left].values if self.on_device else df[left].values_host
+            b = df[right].values if self.on_device else df[right].values_host
 
             if len(a) and len(b):
                 similarities = row_wise_inner_product(
@@ -82,9 +86,9 @@ class ColumnSimilarity(Operator):
                 )
             else:
                 similarities = []
-            gdf[name] = similarities
+            df[name] = similarities
 
-        return gdf
+        return df
 
     transform.__doc__ = Operator.transform.__doc__
 
