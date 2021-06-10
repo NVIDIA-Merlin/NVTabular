@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from distutils.version import LooseVersion
+
 import numpy as np
 from nvtx import annotate
 
@@ -42,6 +45,15 @@ class Bucketize(Operator):
     """
 
     def __init__(self, boundaries):
+        # Check if we have cupy.digitize support
+        try:
+            import cupy
+
+            self.use_digitize = LooseVersion(cupy.__version__) >= "8.0.0"
+        except ImportError:
+            # Assume cpu-backed data (since cupy is not even installed)
+            self.use_digitize = True
+
         # transform boundaries into a lookup function on column names
         if isinstance(boundaries, (list, tuple)):
             self.boundaries = lambda col: boundaries
@@ -60,11 +72,19 @@ class Bucketize(Operator):
         boundaries = {name: self.boundaries(name) for name in columns}
         new_df = type(df)()
         for col, b in boundaries.items():
-            new_df[col] = np.digitize(
-                df[col].values,
-                _array(b, like_df=df),
-                right=False,
-            )
+            if self.use_digitize:
+                new_df[col] = np.digitize(
+                    df[col].values,
+                    _array(b, like_df=df),
+                    right=False,
+                )
+            else:
+                # TODO: Remove use_digitize=False code path
+                # once cupy>=8.0.0 is required.
+                val = 0
+                for boundary in b:
+                    val += (df[col] >= boundary).astype("int")
+                new_df[col] = val
         return new_df
 
     transform.__doc__ = Operator.transform.__doc__
