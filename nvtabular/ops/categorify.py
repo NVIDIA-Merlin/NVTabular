@@ -1069,7 +1069,7 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
         with get_worker_cache("stats") as cache:
             if cache:
                 return fetch_table_data(cache, path, cache=cat_cache, reader=read_pq_func)
-    return read_pq_func(path)  # , index=False)
+    return read_pq_func(path)
 
 
 def _get_multicolumn_names(column_groups, df_columns, name_sep):
