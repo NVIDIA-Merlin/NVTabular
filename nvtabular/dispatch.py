@@ -91,6 +91,14 @@ def _arange(size, like_df=None, dtype=None):
         return cp.arange(size, dtype=dtype)
 
 
+def _array(x, like_df=None, dtype=None):
+    """Dispatch for numpy.array"""
+    if isinstance(like_df, pd.DataFrame):
+        return np.array(x, dtype=dtype)
+    else:
+        return cp.array(x, dtype=dtype)
+
+
 def _hash_series(s):
     """Row-wise Series hash"""
     if isinstance(s, pd.Series):
