@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import copy
 import math
 import string
 
@@ -909,7 +910,8 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine):
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
 
@@ -917,12 +919,18 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
 
     bucket_features = cont_names >> bucketize_op
     processor = nvtabular.Workflow(bucket_features)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    ds = copy.copy(dataset)
+    if cpu:
+        ds.to_cpu()
+    processor.fit(ds)
+    new_df = processor.transform(ds).to_ddf().compute()
+    if cpu:
+        assert isinstance(new_df, pd.DataFrame)
 
     for col, bs in zip(cont_names, boundaries):
-        assert np.all(new_gdf[col].values >= 0)
-        assert np.all(new_gdf[col].values <= len(bs))
+        assert np.all(new_df[col].values >= 0)
+        assert np.all(new_df[col].values <= len(bs))
         # TODO: add checks for correctness here that don't just
         # repeat the existing logic
 

@@ -12,8 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import cudf
+import numpy as np
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType, _array
 
 from .operator import ColumnNames, Operator
 
@@ -54,15 +56,15 @@ class Bucketize(Operator):
         super().__init__()
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         boundaries = {name: self.boundaries(name) for name in columns}
-        new_gdf = cudf.DataFrame()
+        new_df = type(df)()
         for col, b in boundaries.items():
-            # TODO: should just be using cupy.digitize but it's not in 7.8
-            val = 0
-            for boundary in b:
-                val += (gdf[col] >= boundary).astype("int")
-            new_gdf[col] = val
-        return new_gdf
+            new_df[col] = np.digitize(
+                df[col].values,
+                _array(b, like_df=df),
+                right=False,
+            )
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
