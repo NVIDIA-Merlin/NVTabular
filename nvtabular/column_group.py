@@ -65,7 +65,7 @@ class ColumnGroup:
         else:
             self.columns = [_convert_col(col) for col in columns]
 
-    def __rshift__(self, operator):
+    def __call__(self, operator, **kwargs):
         """Transforms this ColumnGroup by applying an Operator
 
         Parameters
@@ -105,6 +105,14 @@ class ColumnGroup:
                 child.dependencies.add(dependency)
 
         return child
+
+    def __rshift__(self, operator):
+        return self.__call__(operator)
+
+    def to_feature_group(self):
+        from nvtabular.feature_group import FeatureGroup
+
+        return FeatureGroup(self.columns)
 
     def __add__(self, other):
         """Adds columns from this ColumnGroup with another to return a new ColumnGroup
@@ -185,6 +193,14 @@ class ColumnGroup:
         self.children.append(child)
         child.kind = str(columns)
         return child
+
+    def filter_columns(self, filter_fn):
+        filtered = [c for c in self.columns if filter_fn(c)]
+
+        return self[filtered]
+
+    def filter_by_namespace(self, namespace):
+        return self.filter_columns(lambda c: c.startswith(namespace))
 
     def __repr__(self):
         output = " output" if not self.children else ""

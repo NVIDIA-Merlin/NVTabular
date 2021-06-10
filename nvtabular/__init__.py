@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import column_group, io, workflow  # noqa
+from . import column_group, io, workflow, feature_group  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -27,9 +27,18 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 ColumnGroup = column_group.ColumnGroup
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
+FeatureGroup = feature_group.FeatureGroup
+TargetGroup = feature_group.TargetGroup
+
+# Tensorflow specific
+try:
+    from .framework_utils import tensorflow
+    tf = tensorflow
+except ImportError:
+    pass
 
 
-__all__ = ["Workflow", "Dataset", "ColumnGroup"]
+__all__ = ["Workflow", "Dataset", "ColumnGroup", "FeatureGroup", "TargetGroup"]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")
