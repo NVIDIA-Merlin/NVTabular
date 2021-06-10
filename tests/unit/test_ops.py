@@ -59,7 +59,8 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
-def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
     df = cudf.DataFrame(
         {
             "Author": list(string.ascii_uppercase),
@@ -68,7 +69,10 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
             "Post": [0, 1] * 13,
         }
     )
-    df = dask_cudf.from_cudf(df, npartitions=3)
+    if cpu:
+        df = dd.from_pandas(df.to_pandas(), npartitions=3)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=3)
 
     cont_names = ["Cost"]
     te_features = cat_groups >> ops.TargetEncoding(
@@ -100,14 +104,18 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
 
 
 @pytest.mark.parametrize("npartitions", [1, 2])
-def test_target_encode_multi(tmpdir, npartitions):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_target_encode_multi(tmpdir, npartitions, cpu):
 
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
     df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
-    df = dask_cudf.from_cudf(df, npartitions=npartitions)
+    if cpu:
+        df = dd.from_pandas(df.to_pandas(), npartitions=npartitions)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
     cat_groups = ["cat", "cat2", ["cat", "cat2"]]
     te_features = cat_groups >> ops.TargetEncoding(
