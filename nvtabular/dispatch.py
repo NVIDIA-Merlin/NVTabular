@@ -185,14 +185,32 @@ def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="pa
     return getattr(_mod, _attr)
 
 
-def _parquet_writer_dispatch(df: DataFrameType):
+def _parquet_writer_dispatch(df: DataFrameType, path=None, **kwargs):
     """Return the necessary ParquetWriter class to write
     data of a specified type.
+
+    If `path` is specified, an initialized `ParquetWriter`
+    object will be returned.  To do this, the pyarrow schema
+    will be inferred from df, and kwargs will be used for the
+    ParquetWriter-initialization call.
     """
+    _args = []
     if isinstance(df, pd.DataFrame):
-        return pq.ParquetWriter
+        _cls = pq.ParquetWriter
+        if path:
+            _args.append(pa.Table.from_pandas(df, preserve_index=False).schema)
     else:
-        return cudf.io.parquet.ParquetWriter
+        _cls = cudf.io.parquet.ParquetWriter
+
+    if not path:
+        return _cls
+
+    ret = _cls(path, *_args, **kwargs)
+    if isinstance(df, pd.DataFrame):
+        ret.write_table = lambda df: _cls.write_table(
+            ret, pa.Table.from_pandas(df, preserve_index=False)
+        )
+    return ret
 
 
 def _encode_list_column(original, encoded):
