@@ -701,7 +701,8 @@ def test_categorify_max_size(max_emb_size):
     )
 
 
-def test_joingroupby_dependency(tmpdir):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_joingroupby_dependency(tmpdir, cpu):
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_A", "User_A", "User_B", "User_B"],
@@ -715,12 +716,22 @@ def test_joingroupby_dependency(tmpdir):
     )
     workflow = nvt.Workflow(groupby_features)
 
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
-    assert df_out["Author_Cost_normalized_sum"].to_arrow().to_pylist() == [1.0, 1.0, 1.0, 2.0, 2.0]
+    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    if cpu:
+        assert df_out["Author_Cost_normalized_sum"].to_list() == [1.0, 1.0, 1.0, 2.0, 2.0]
+    else:
+        assert df_out["Author_Cost_normalized_sum"].to_arrow().to_pylist() == [
+            1.0,
+            1.0,
+            1.0,
+            2.0,
+            2.0,
+        ]
 
 
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
-def test_joingroupby_multi(tmpdir, groups):
+def test_joingroupby_multi(tmpdir, groups, cpu):
 
     df = pd.DataFrame(
         {
@@ -736,19 +747,22 @@ def test_joingroupby_multi(tmpdir, groups):
     )
     workflow = nvt.Workflow(groupby_features + "Post")
 
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     if isinstance(groups, list):
         # Join on ["Author", "Engaging-User"]
-        assert df_out["Author_Engaging-User_Cost_sum"].to_arrow().to_pylist() == [
-            300.0,
-            300.0,
-            300.0,
-            400.0,
-        ]
+        if cpu:
+            check = df_out["Author_Engaging-User_Cost_sum"].to_list()
+        else:
+            check = df_out["Author_Engaging-User_Cost_sum"].to_arrow().to_pylist()
+        assert check == [300.0, 300.0, 300.0, 400.0]
     else:
         # Join on ["Author"]
-        assert df_out["Author_Cost_sum"].to_arrow().to_pylist() == [600.0, 600.0, 600.0, 400.0]
+        if cpu:
+            check = df_out["Author_Cost_sum"].to_list()
+        else:
+            check = df_out["Author_Cost_sum"].to_arrow().to_pylist()
+        assert check == [600.0, 600.0, 600.0, 400.0]
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
