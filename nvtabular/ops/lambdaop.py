@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from inspect import signature
+from inspect import getsourcelines, signature
 
 from nvtx import annotate
 
@@ -55,7 +55,7 @@ class LambdaOp(Operator):
         Whether to provide a dependency column or not.
     """
 
-    def __init__(self, f, dependency=None):
+    def __init__(self, f, dependency=None, label=None):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
@@ -64,6 +64,7 @@ class LambdaOp(Operator):
         if self._param_count not in (1, 2):
             raise ValueError("lambda function must accept either one or two parameters")
         self.dependency = dependency
+        self._label = label
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
@@ -82,3 +83,23 @@ class LambdaOp(Operator):
 
     def dependencies(self):
         return self.dependency
+
+    @property
+    def label(self):
+        # if we're given an explicit label to use, return it
+        if self._label:
+            return self._label
+
+        # if we have a named function (not a lambda) return the function name
+        name = self.f.__name__
+        if name != "<lambda>":
+            return name
+        else:
+            # otherwise get the lambda source code from the inspect module if possible
+            source = getsourcelines(self.f)[0][0]
+            lambdas = [op.strip() for op in source.split(">>") if "lambda " in op]
+            if len(lambdas) == 1 and lambdas[0].count("lambda") == 1:
+                return lambdas[0]
+
+        # Failed to figure out the source
+        return "LambdaOp"

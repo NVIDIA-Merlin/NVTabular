@@ -139,6 +139,48 @@ def test_tf_catname_ordering(tmpdir):
         assert list(X["cont3"].numpy()) == [3.0] * 10
 
 
+def test_tf_map(tmpdir):
+    df = cudf.DataFrame(
+        {
+            "cat1": [1] * 100,
+            "cat2": [2] * 100,
+            "cat3": [3] * 100,
+            "label": [0] * 100,
+            "sample_weight": [1.0] * 100,
+            "cont2": [2.0] * 100,
+            "cont1": [1.0] * 100,
+        }
+    )
+    path = os.path.join(tmpdir, "dataset.parquet")
+    df.to_parquet(path)
+    cat_names = ["cat3", "cat2", "cat1"]
+    cont_names = ["sample_weight", "cont2", "cont1"]
+    label_name = ["label"]
+
+    def add_sample_weight(features, labels, sample_weight_col_name="sample_weight"):
+        sample_weight = tf.cast(features.pop(sample_weight_col_name) > 0, tf.float32)
+
+        return features, labels, sample_weight
+
+    data_itr = tf_dataloader.KerasSequenceLoader(
+        [path],
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=10,
+        label_names=label_name,
+        shuffle=False,
+    ).map(add_sample_weight)
+
+    for X, y, sample_weight in data_itr:
+        assert list(X["cat1"].numpy()) == [1] * 10
+        assert list(X["cat2"].numpy()) == [2] * 10
+        assert list(X["cat3"].numpy()) == [3] * 10
+        assert list(X["cont1"].numpy()) == [1.0] * 10
+        assert list(X["cont2"].numpy()) == [2.0] * 10
+
+        assert list(sample_weight.numpy()) == [1.0] * 10
+
+
 # TODO: include use_columns option
 # TODO: include parts_per_chunk test
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.06])
