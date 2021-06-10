@@ -686,10 +686,8 @@ def _write_gb_stats(
     path = os.path.join(base_path, rel_path)
     pwriter = None
     if not on_host and len(dfs):
-        _d = dfs[0]  # Satisfy linter
-        for _d in dfs:
-            if len(_d):
-                break  # Want first non-empty df for schema (if there are any)
+        # Want first non-empty df for schema (if there are any)
+        _d = next((df for df in dfs if len(df)), dfs[0])
         pwriter = _parquet_writer_dispatch(_d, path=path, compression=None)
 
     # Loop over dfs and append to file
