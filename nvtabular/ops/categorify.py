@@ -42,7 +42,6 @@ from nvtabular.dispatch import (
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
-    _write_table_dispatch,
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -705,7 +704,7 @@ def _write_gb_stats(
             else:
                 # df is a cudf or pandas DataFrame
                 df.reset_index(drop=True, inplace=True)
-                _write_table_dispatch(pwriter, df)
+                pwriter.write_table(df)
             n_writes += 1
 
     # No data to write

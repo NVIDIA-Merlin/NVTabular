@@ -196,15 +196,13 @@ def _parquet_writer_dispatch(df: DataFrameType, path=None, **kwargs):
 
     if not path:
         return _cls
-    return _cls(path, *_args, **kwargs)
 
-
-def _write_table_dispatch(pwriter, df):
-    """ParquetWriter.write_table Dispatch"""
+    ret = _cls(path, *_args, **kwargs)
     if isinstance(df, pd.DataFrame):
-        pwriter.write_table(pa.Table.from_pandas(df, preserve_index=False))
-    else:
-        pwriter.write_table(df)
+        ret.write_table = lambda df: _cls.write_table(
+            ret, pa.Table.from_pandas(df, preserve_index=False)
+        )
+    return ret
 
 
 def _encode_list_column(original, encoded):
