@@ -50,6 +50,14 @@ To install NVTabular, ensure that you meet the following prerequisites:
 
 **NOTE**: NVTabular will only run on Linux. Other operating systems are not currently supported.
 
+#### Installing NVTabular Using Conda
+
+NVTabular can be installed with Anaconda from the ```nvidia``` channel by running the following command:
+
+```
+conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
+```
+
 #### Installing NVTabular with Docker
 
 NVTabular Docker containers are available in the [NVIDIA Merlin container repository](https://ngc.nvidia.com/catalog/containers/nvidia:merlin). There are four different containers:
