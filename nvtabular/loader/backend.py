@@ -495,7 +495,6 @@ class DataLoader:
         column_groups = (self.cat_names, self.cont_names, self.label_names)
         dtypes = (self._LONG_DTYPE, self._FLOAT32_DTYPE, self._FLOAT32_DTYPE)
         tensors = []
-        # offsets = cudf.DataFrame()
         offsets = _make_df(device=self.device)
         for column_names, dtype in zip(column_groups, dtypes):
             if len(column_names) == 0:

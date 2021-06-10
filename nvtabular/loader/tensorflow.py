@@ -302,7 +302,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _FLOAT32_DTYPE(self):
         return tf.float32
 
-    def _to_dlpack(self, gdf):
+    def _pack(self, gdf):
         if isinstance(gdf, np.ndarray):
             return gdf
         if hasattr(gdf, "to_dlpack") and callable(getattr(gdf, "to_dlpack")):
@@ -311,7 +311,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             return gdf.to_numpy()
         return gdf.toDlpack()
 
-    def _from_dlpack(self, gdf):
+    def _unpack(self, gdf):
         if hasattr(gdf, "shape"):
             return tf.convert_to_tensor(gdf)
         return from_dlpack(gdf)
@@ -323,19 +323,19 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
         if len(gdf.shape) == 1 or gdf.shape[1] == 1:
-            dlpack = self._to_dlpack(gdf)
+            dlpack = self._pack(gdf)
         elif gdf.shape[0] == 1:
-            dlpack = self._to_dlpack(gdf.values[0])
+            dlpack = self._pack(gdf.values[0])
         else:
-            dlpack = self._to_dlpack(gdf.values.T)
+            dlpack = self._pack(gdf.values.T)
 
         # catch error caused by tf eager context
         # not being initialized
         try:
-            x = self._from_dlpack(dlpack)
+            x = self._unpack(dlpack)
         except AssertionError:
             tf.random.uniform((1,))
-            x = self._from_dlpack(dlpack)
+            x = self._unpack(dlpack)
 
         if gdf.shape[0] == 1:
             # batch size 1 so got squashed to a vector

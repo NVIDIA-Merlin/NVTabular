@@ -111,19 +111,19 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             return torch.device("cpu")
         return torch.cuda.device("cuda:{}".format(dev))
 
-    def _to_dlpack(self, gdf):
+    def _pack(self, gdf):
         if self.device == "cpu":
             return gdf
         return gdf.to_dlpack()
 
-    def _from_dlpack(self, dlpack):
+    def _unpack(self, dlpack):
         if self.device == "cpu":
             return torch.Tensor(dlpack.values)
         return from_dlpack(dlpack)
 
     def _to_tensor(self, gdf, dtype=None):
-        dl_pack = self._to_dlpack(gdf)
-        tensor = self._from_dlpack(dl_pack)
+        dl_pack = self._pack(gdf)
+        tensor = self._unpack(dl_pack)
         return tensor.type(dtype)
 
     def _split_fn(self, tensor, idx, axis=0):

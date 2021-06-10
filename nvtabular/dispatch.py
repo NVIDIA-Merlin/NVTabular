@@ -176,11 +176,11 @@ def _concat(objs, **kwargs):
         return pd.concat(objs, **kwargs)
 
 
-def _make_df(x=None, device=None):
-    if isinstance(x, (cudf.DataFrame, cudf.Series)):
-        return cudf.DataFrame(x)
-    elif isinstance(x, (pd.DataFrame, pd.Series)):
-        return pd.DataFrame(x)
+def _make_df(_like_df=None, device=None):
+    if isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
+        return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, (pd.DataFrame, pd.Series)):
+        return pd.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame()
     return cudf.DataFrame()
