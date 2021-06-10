@@ -38,16 +38,16 @@ class Filter(Operator):
         dataframe with unwanted rows filtered out.
     """
 
-    def __init__(self, f: Callable[[cudf.DataFrame], Union[cudf.DataFrame, cudf.Series]]):
+    def __init__(self, f: Callable[[DataFrame], Union[DataFrame, cudf.Series]]):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, columns: ColumnNames, gdf: DataFrame) -> DataFrame:
         filtered = self.f(gdf)
-        if isinstance(filtered, cudf.DataFrame):
+        if isinstance(filtered, DataFrame):
             new_gdf = filtered
         elif isinstance(filtered, cudf.Series) and filtered.dtype == bool:
             new_gdf = gdf[filtered]
