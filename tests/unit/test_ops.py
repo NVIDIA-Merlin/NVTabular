@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import copy
 import math
 import string
 
@@ -58,7 +59,8 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
-def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
     df = cudf.DataFrame(
         {
             "Author": list(string.ascii_uppercase),
@@ -67,7 +69,10 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
             "Post": [0, 1] * 13,
         }
     )
-    df = dask_cudf.from_cudf(df, npartitions=3)
+    if cpu:
+        df = dd.from_pandas(df.to_pandas(), npartitions=3)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=3)
 
     cont_names = ["Cost"]
     te_features = cat_groups >> ops.TargetEncoding(
@@ -99,14 +104,18 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
 
 
 @pytest.mark.parametrize("npartitions", [1, 2])
-def test_target_encode_multi(tmpdir, npartitions):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_target_encode_multi(tmpdir, npartitions, cpu):
 
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
     df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
-    df = dask_cudf.from_cudf(df, npartitions=npartitions)
+    if cpu:
+        df = dd.from_pandas(df.to_pandas(), npartitions=npartitions)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
     cat_groups = ["cat", "cat2", ["cat", "cat2"]]
     te_features = cat_groups >> ops.TargetEncoding(
@@ -923,7 +932,8 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine):
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
 
@@ -931,12 +941,18 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
 
     bucket_features = cont_names >> bucketize_op
     processor = nvtabular.Workflow(bucket_features)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    ds = copy.copy(dataset)
+    if cpu:
+        ds.to_cpu()
+    processor.fit(ds)
+    new_df = processor.transform(ds).to_ddf().compute()
+    if cpu:
+        assert isinstance(new_df, pd.DataFrame)
 
     for col, bs in zip(cont_names, boundaries):
-        assert np.all(new_gdf[col].values >= 0)
-        assert np.all(new_gdf[col].values <= len(bs))
+        assert np.all(new_df[col].values >= 0)
+        assert np.all(new_df[col].values <= len(bs))
         # TODO: add checks for correctness here that don't just
         # repeat the existing logic
 
