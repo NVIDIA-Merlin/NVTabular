@@ -42,6 +42,7 @@ from nvtabular.dispatch import (
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
+    _write_table_dispatch,
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -685,7 +686,11 @@ def _write_gb_stats(
     path = os.path.join(base_path, rel_path)
     pwriter = None
     if not on_host and len(dfs):
-        pwriter = _parquet_writer_dispatch(dfs[0])(path, compression=None)
+        _d = dfs[0]  # Satisfy linter
+        for _d in dfs:
+            if len(_d):
+                break  # Want first non-empty df for schema (if there are any)
+        pwriter = _parquet_writer_dispatch(_d, path=path, compression=None)
 
     # Loop over dfs and append to file
     # TODO: For high-cardinality columns, should support
@@ -700,9 +705,9 @@ def _write_gb_stats(
                     pwriter = pq.ParquetWriter(path, df.schema, compression=None)
                 pwriter.write_table(df)
             else:
-                # Use CuDF
+                # df is a cudf or pandas DataFrame
                 df.reset_index(drop=True, inplace=True)
-                pwriter.write_table(df)
+                _write_table_dispatch(pwriter, df)
             n_writes += 1
 
     # No data to write
@@ -1064,7 +1069,7 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
         with get_worker_cache("stats") as cache:
             if cache:
                 return fetch_table_data(cache, path, cache=cat_cache, reader=read_pq_func)
-    return read_pq_func(path, index=False)
+    return read_pq_func(path)  # , index=False)
 
 
 def _get_multicolumn_names(column_groups, df_columns, name_sep):
