@@ -17,7 +17,7 @@ from typing import Dict, Union
 
 from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _create_frame, _hash_series
+from nvtabular.dispatch import DataFrameType, _hash_series
 
 from .operator import ColumnNames, Operator
 
@@ -55,7 +55,7 @@ class HashedCross(Operator):
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        new_df = _create_frame({}, df)
+        new_df = type(df)({})
         for cross in _nest_columns(columns):
             val = 0
             for column in cross:

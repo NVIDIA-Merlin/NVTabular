@@ -15,7 +15,7 @@
 #
 from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _create_frame, _is_dataframe_object
+from nvtabular.dispatch import DataFrameType, _is_dataframe_object
 
 from .operator import ColumnNames, Operator
 
@@ -71,7 +71,7 @@ class DifferenceLag(Operator):
 
             for col in columns:
                 output[self._column_name(col, shift)] = (df[col] - df[col].shift(shift)) * mask
-        return _create_frame(output, df)
+        return type(df)(output)
 
     transform.__doc__ = Operator.transform.__doc__
 
