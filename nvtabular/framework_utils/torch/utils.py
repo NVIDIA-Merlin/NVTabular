@@ -110,10 +110,7 @@ def process_epoch(
     with torch.set_grad_enabled(train):
         y_list, y_pred_list = [], []
         for idx, batch in enumerate(iter(dataloader)):
-            if transform:
-                x_cat, x_cont, y = transform(batch)
-            else:
-                x_cat, x_cont, y = batch
+            x_cat, x_cont, y = transform(batch)
             if device:
                 x_cat = x_cat.to(device)
                 x_cont = x_cont.to(device)
