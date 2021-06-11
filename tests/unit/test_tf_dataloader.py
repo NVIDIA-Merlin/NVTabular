@@ -187,7 +187,11 @@ def test_tf_map(tmpdir):
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [1, 10, 100])
 @pytest.mark.parametrize("use_paths", [True, False])
-def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu_true", [False, True])
+@pytest.mark.parametrize("device", ["cpu", 0])
+def test_tf_gpu_dl(
+    tmpdir, paths, use_paths, device, cpu_true, dataset, batch_size, gpu_memory_frac, engine
+):
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string"]
     label_name = ["label"]
@@ -212,6 +216,8 @@ def test_tf_gpu_dl(tmpdir, paths, use_paths, dataset, batch_size, gpu_memory_fra
         label_names=label_name,
         engine=engine,
         shuffle=False,
+        device=device,
+        reader_kwargs={"cpu": cpu_true},
     )
     _ = tf.random.uniform((1,))
 
