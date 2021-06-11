@@ -39,7 +39,9 @@ from tests.conftest import mycols_csv, mycols_pq
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, cpu):
+    df = dataset.to_ddf().compute()
     cont_features = op_columns >> ops.NormalizeMinMax()
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
@@ -229,7 +231,10 @@ def test_hash_bucket_lists(tmpdir):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("add_binary_cols", [True, False])
-def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_fill_missing(tmpdir, df, engine, add_binary_cols, cpu):
+    if cpu:
+        df = df.to_pandas()
     cont_names = ["x", "y"]
     cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42, add_binary_cols=add_binary_cols)
 
@@ -238,7 +243,7 @@ def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
         df[col].iloc[idx] = None
 
     df = df.reset_index()
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -308,7 +313,9 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
+    dataset = nvt.Dataset(paths, cpu=cpu)
     df_copy = df.copy()
 
     # Substring
@@ -1079,13 +1086,11 @@ def test_list_slice(cpu):
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
     op = ops.ListSlice(0, 2)
-    print("df", df)
     transformed = op.transform(["y"], df)
     expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(3, 5)
-    print("df", df)
     transformed = op.transform(["y"], df)
     expected = DataFrame({"y": [[2, 767], [3], []]})
     assert_eq(transformed, expected)
