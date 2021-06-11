@@ -19,7 +19,7 @@ import cudf
 from nvtx import annotate
 
 from .operator import ColumnNames, Operator
-
+from nvtabular.dispatch import DataFrameType, _hash_series, _create_frame
 
 class HashedCross(Operator):
     """
@@ -53,19 +53,19 @@ class HashedCross(Operator):
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        new_gdf = cudf.DataFrame()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = _create_frame({}, df)
         for cross in _nest_columns(columns):
             val = 0
             for column in cross:
-                val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+                val ^= _hash_series(df[column])  # or however we want to do this aggregation
 
             if isinstance(self.num_buckets, dict):
                 val = val % self.num_buckets[cross]
             else:
                 val = val % self.num_buckets
-            new_gdf["_X_".join(cross)] = val
-        return new_gdf
+            new_df["_X_".join(cross)] = val
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 
