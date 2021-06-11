@@ -685,7 +685,9 @@ def _write_gb_stats(
     path = os.path.join(base_path, rel_path)
     pwriter = None
     if not on_host and len(dfs):
-        pwriter = _parquet_writer_dispatch(dfs[0])(path, compression=None)
+        # Want first non-empty df for schema (if there are any)
+        _d = next((df for df in dfs if len(df)), dfs[0])
+        pwriter = _parquet_writer_dispatch(_d, path=path, compression=None)
 
     # Loop over dfs and append to file
     # TODO: For high-cardinality columns, should support
@@ -700,7 +702,7 @@ def _write_gb_stats(
                     pwriter = pq.ParquetWriter(path, df.schema, compression=None)
                 pwriter.write_table(df)
             else:
-                # Use CuDF
+                # df is a cudf or pandas DataFrame
                 df.reset_index(drop=True, inplace=True)
                 pwriter.write_table(df)
             n_writes += 1
@@ -994,7 +996,9 @@ def _encode(
                         reader=read_pq_func,
                     )
         else:
-            value = read_pq_func(path, columns=selection_r)
+            value = read_pq_func(  # pylint: disable=unexpected-keyword-arg
+                path, columns=selection_r
+            )
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
 
@@ -1062,7 +1066,7 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
         with get_worker_cache("stats") as cache:
             if cache:
                 return fetch_table_data(cache, path, cache=cat_cache, reader=read_pq_func)
-    return read_pq_func(path, index=False)
+    return read_pq_func(path)
 
 
 def _get_multicolumn_names(column_groups, df_columns, name_sep):
