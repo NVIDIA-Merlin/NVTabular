@@ -36,6 +36,7 @@ except ImportError:
     from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+SeriesType = Union[pd.Series, cudf.Series]
 
 
 class ExtData(enum.Enum):
@@ -55,6 +56,12 @@ def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
+
+
+def _is_series_object(x):
+    # Simple check if object is a cudf or pandas
+    # Series object
+    return isinstance(x, (cudf.Series, pd.Series))
 
 
 def _hex_to_int(s, dtype=None):

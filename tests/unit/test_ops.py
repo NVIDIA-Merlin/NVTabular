@@ -846,9 +846,10 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     assert "new_col_3" not in new_gdf.columns
 
 
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine):
+def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     cont_names = ["x", "y"]
     filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
     processor = nvtabular.Workflow(filtered)
@@ -863,7 +864,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine):
         idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
         df[col].iloc[idx] = None
 
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     filtered = cont_names >> ops.Filter(f=lambda df: df[df.x.isnull()])
     processor = nvtabular.Workflow(filtered)
     processor.fit(dataset)
