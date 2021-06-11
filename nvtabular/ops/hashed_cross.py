@@ -55,7 +55,7 @@ class HashedCross(Operator):
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        new_df = type(df)({})
+        new_df = type(df)()
         for cross in _nest_columns(columns):
             val = 0
             for column in cross:
