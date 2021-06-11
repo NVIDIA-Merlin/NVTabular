@@ -171,7 +171,7 @@ def df(engine, paths):
 
 
 @pytest.fixture(scope="function")
-def dataset(request, paths, engine, cpu):
+def dataset(request, paths, engine):
     try:
         gpu_memory_frac = request.getfixturevalue("gpu_memory_frac")
     except Exception:  # pylint: disable=broad-except
