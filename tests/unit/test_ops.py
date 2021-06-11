@@ -252,15 +252,19 @@ def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dropna(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_dropna(tmpdir, df, dataset, engine, cpu):
     columns = mycols_pq if engine == "parquet" else mycols_csv
     dropna_features = columns >> ops.Dropna()
-
+    if cpu:
+        dataset.to_cpu()
+    
     processor = nvt.Workflow(dropna_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    assert new_gdf.columns.all() == df.columns.all()
-    assert new_gdf.isnull().all().sum() < 1, "null values exist"
+    
+    new_df = processor.transform(dataset).to_ddf().compute()
+    assert new_df.columns.all() == df.columns.all()
+    assert new_df.isnull().all().sum() < 1, "null values exist"
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
