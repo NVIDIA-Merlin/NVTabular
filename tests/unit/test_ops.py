@@ -890,28 +890,37 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
 
-def test_difference_lag():
-    df = cudf.DataFrame(
+@pytest.mark.parametrize("cpu", [True, False])
+def test_difference_lag(cpu):
+    lib = pd if cpu else cudf
+    df = lib.DataFrame(
         {"userid": [0, 0, 0, 1, 1, 2], "timestamp": [1000, 1005, 1100, 2000, 2001, 3000]}
     )
 
     diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(diff_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["timestamp_difference_lag_1"][0] is (cudf.NA if hasattr(cudf, "NA") else None)
-    assert new_gdf["timestamp_difference_lag_1"][1] == 5
-    assert new_gdf["timestamp_difference_lag_1"][2] == 95
-    assert new_gdf["timestamp_difference_lag_1"][3] is (cudf.NA if hasattr(cudf, "NA") else None)
+    assert new_df["timestamp_difference_lag_1"][1] == 5
+    assert new_df["timestamp_difference_lag_1"][2] == 95
+    if cpu:
+        assert lib.isna(new_df["timestamp_difference_lag_1"][0])
+        assert lib.isna(new_df["timestamp_difference_lag_1"][3])
+    else:
+         assert new_df["timestamp_difference_lag_1"][0] is (lib.NA if hasattr(lib, "NA") else None)
+         assert new_df["timestamp_difference_lag_1"][3] is (lib.NA if hasattr(lib, "NA") else None)
 
-    assert new_gdf["timestamp_difference_lag_-1"][0] == -5
-    assert new_gdf["timestamp_difference_lag_-1"][1] == -95
-    assert new_gdf["timestamp_difference_lag_-1"][2] is (cudf.NA if hasattr(cudf, "NA") else None)
-    assert new_gdf["timestamp_difference_lag_-1"][3] == -1
-    assert new_gdf["timestamp_difference_lag_-1"][5] is (cudf.NA if hasattr(cudf, "NA") else None)
-
+    assert new_df["timestamp_difference_lag_-1"][0] == -5
+    assert new_df["timestamp_difference_lag_-1"][1] == -95
+    assert new_df["timestamp_difference_lag_-1"][3] == -1
+    if cpu:
+        assert lib.isna(new_df["timestamp_difference_lag_-1"][2])
+        assert lib.isna(new_df["timestamp_difference_lag_-1"][5])
+    else:
+        assert new_df["timestamp_difference_lag_-1"][2] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_-1"][5] is (lib.NA if hasattr(lib, "NA") else None)
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])

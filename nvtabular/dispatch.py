@@ -63,6 +63,11 @@ def _is_series_object(x):
     # Series object
     return isinstance(x, (cudf.Series, pd.Series))
 
+def _create_frame(x, df):
+    if isinstance(df, cudf.DataFrame):
+        return cudf.DataFrame(x)
+    else:
+        return pd.DataFrame(x)
 
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
