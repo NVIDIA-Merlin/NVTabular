@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType, _create_frame, _is_dataframe_object
 
 from .operator import ColumnNames, Operator
 
-from nvtabular.dispatch import DataFrameType, _create_frame, _is_dataframe_object
 
 class DifferenceLag(Operator):
     """Calculates the difference between two consecutive rows of the dataset. For instance, this

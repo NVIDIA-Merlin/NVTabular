@@ -15,11 +15,12 @@
 
 from typing import Dict, Union
 
-import cudf
 from nvtx import annotate
 
+from nvtabular.dispatch import DataFrameType, _create_frame, _hash_series
+
 from .operator import ColumnNames, Operator
-from nvtabular.dispatch import DataFrameType, _hash_series, _create_frame
+
 
 class HashedCross(Operator):
     """

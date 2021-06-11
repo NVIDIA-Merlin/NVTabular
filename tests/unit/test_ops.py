@@ -201,7 +201,6 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, c
     assert np.all(new_df[cat_names].values >= 0)
     assert np.all(new_df[cat_names].values <= 9)
     checksum = new_df[cat_names].sum().values
-    
 
     new_df = processor.transform(dataset).to_ddf().compute()
     np.all(new_df[cat_names].sum().values == checksum)
@@ -262,10 +261,10 @@ def test_dropna(tmpdir, df, dataset, engine, cpu):
     dropna_features = columns >> ops.Dropna()
     if cpu:
         dataset.to_cpu()
-    
+
     processor = nvt.Workflow(dropna_features)
     processor.fit(dataset)
-    
+
     new_df = processor.transform(dataset).to_ddf().compute()
     assert new_df.columns.all() == df.columns.all()
     assert new_df.isnull().all().sum() < 1, "null values exist"
@@ -913,8 +912,8 @@ def test_difference_lag(cpu):
         assert lib.isna(new_df["timestamp_difference_lag_1"][0])
         assert lib.isna(new_df["timestamp_difference_lag_1"][3])
     else:
-         assert new_df["timestamp_difference_lag_1"][0] is (lib.NA if hasattr(lib, "NA") else None)
-         assert new_df["timestamp_difference_lag_1"][3] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_1"][0] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_1"][3] is (lib.NA if hasattr(lib, "NA") else None)
 
     assert new_df["timestamp_difference_lag_-1"][0] == -5
     assert new_df["timestamp_difference_lag_-1"][1] == -95
@@ -925,6 +924,7 @@ def test_difference_lag(cpu):
     else:
         assert new_df["timestamp_difference_lag_-1"][2] is (lib.NA if hasattr(lib, "NA") else None)
         assert new_df["timestamp_difference_lag_-1"][5] is (lib.NA if hasattr(lib, "NA") else None)
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])

@@ -15,11 +15,10 @@
 #
 from typing import Dict, Union
 
-import cudf
 from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from ..dispatch import _encode_list_column, DataFrameType, _hash_series
+from ..dispatch import DataFrameType, _encode_list_column, _hash_series
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnNames, Operator
 

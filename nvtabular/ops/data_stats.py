@@ -13,17 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import dask_cudf
+import dask.dataframe as dd
 import numpy as np
 from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType
 
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
-from nvtabular.dispatch import DataFrameType
-import dask.dataframe as dd
 
 class DataStats(StatOperator):
     def __init__(self):
