@@ -182,9 +182,11 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     cat_names = ["name-string"]
-
+    if cpu:
+        dataset.to_cpu()
     if op_columns is None:
         num_buckets = 10
     else:
@@ -193,14 +195,15 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     hash_features = cat_names >> ops.HashBucket(num_buckets)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
-    assert np.all(new_gdf[cat_names].values >= 0)
-    assert np.all(new_gdf[cat_names].values <= 9)
-    checksum = new_gdf[cat_names].sum().values
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    np.all(new_gdf[cat_names].sum().values == checksum)
+    assert np.all(new_df[cat_names].values >= 0)
+    assert np.all(new_df[cat_names].values <= 9)
+    checksum = new_df[cat_names].sum().values
+
+    new_df = processor.transform(dataset).to_ddf().compute()
+    np.all(new_df[cat_names].sum().values == checksum)
 
 
 def test_hash_bucket_lists(tmpdir):
@@ -252,15 +255,19 @@ def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dropna(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_dropna(tmpdir, df, dataset, engine, cpu):
     columns = mycols_pq if engine == "parquet" else mycols_csv
     dropna_features = columns >> ops.Dropna()
+    if cpu:
+        dataset.to_cpu()
 
     processor = nvt.Workflow(dropna_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    assert new_gdf.columns.all() == df.columns.all()
-    assert new_gdf.isnull().all().sum() < 1, "null values exist"
+
+    new_df = processor.transform(dataset).to_ddf().compute()
+    assert new_df.columns.all() == df.columns.all()
+    assert new_df.isnull().all().sum() < 1, "null values exist"
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -886,49 +893,60 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
 
-def test_difference_lag():
-    df = cudf.DataFrame(
+@pytest.mark.parametrize("cpu", [True, False])
+def test_difference_lag(cpu):
+    lib = pd if cpu else cudf
+    df = lib.DataFrame(
         {"userid": [0, 0, 0, 1, 1, 2], "timestamp": [1000, 1005, 1100, 2000, 2001, 3000]}
     )
 
     diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(diff_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["timestamp_difference_lag_1"][0] is (cudf.NA if hasattr(cudf, "NA") else None)
-    assert new_gdf["timestamp_difference_lag_1"][1] == 5
-    assert new_gdf["timestamp_difference_lag_1"][2] == 95
-    assert new_gdf["timestamp_difference_lag_1"][3] is (cudf.NA if hasattr(cudf, "NA") else None)
+    assert new_df["timestamp_difference_lag_1"][1] == 5
+    assert new_df["timestamp_difference_lag_1"][2] == 95
+    if cpu:
+        assert lib.isna(new_df["timestamp_difference_lag_1"][0])
+        assert lib.isna(new_df["timestamp_difference_lag_1"][3])
+    else:
+        assert new_df["timestamp_difference_lag_1"][0] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_1"][3] is (lib.NA if hasattr(lib, "NA") else None)
 
-    assert new_gdf["timestamp_difference_lag_-1"][0] == -5
-    assert new_gdf["timestamp_difference_lag_-1"][1] == -95
-    assert new_gdf["timestamp_difference_lag_-1"][2] is (cudf.NA if hasattr(cudf, "NA") else None)
-    assert new_gdf["timestamp_difference_lag_-1"][3] == -1
-    assert new_gdf["timestamp_difference_lag_-1"][5] is (cudf.NA if hasattr(cudf, "NA") else None)
+    assert new_df["timestamp_difference_lag_-1"][0] == -5
+    assert new_df["timestamp_difference_lag_-1"][1] == -95
+    assert new_df["timestamp_difference_lag_-1"][3] == -1
+    if cpu:
+        assert lib.isna(new_df["timestamp_difference_lag_-1"][2])
+        assert lib.isna(new_df["timestamp_difference_lag_-1"][5])
+    else:
+        assert new_df["timestamp_difference_lag_-1"][2] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_-1"][5] is (lib.NA if hasattr(lib, "NA") else None)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # TODO: add tests for > 2 features, multiple crosses, etc.
     cat_names = [["name-string", "id"]]
     num_buckets = 10
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(hashed_cross)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
     new_column_name = "_X_".join(cat_names[0])
-    assert np.all(new_gdf[new_column_name].values >= 0)
-    assert np.all(new_gdf[new_column_name].values <= 9)
-    checksum = new_gdf[new_column_name].sum()
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    assert new_gdf[new_column_name].sum() == checksum
+    assert np.all(new_df[new_column_name].values >= 0)
+    assert np.all(new_df[new_column_name].values <= 9)
+    checksum = new_df[new_column_name].sum()
+    new_df = processor.transform(dataset).to_ddf().compute()
+    assert new_df[new_column_name].sum() == checksum
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -959,14 +977,15 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_data_stats(tmpdir, df, datasets, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_data_stats(tmpdir, df, datasets, engine, cpu):
     # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
     all_cols = cat_names + cont_names + label_name
 
-    dataset = nvtabular.Dataset(df, engine=engine)
+    dataset = nvtabular.Dataset(df, engine=engine, cpu=cpu)
 
     data_stats = ops.DataStats()
 
