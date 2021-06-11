@@ -85,15 +85,15 @@ class Model(torch.nn.Module):
         mh_cat = None
         concat_list = []
         if isinstance(x_cat, tuple):
-
             x_cat, mh_cat = x_cat
         if mh_cat:
             mh_cat = self.mh_cat_layer(mh_cat)
             concat_list.append(mh_cat)
-        if x_cat is not None:
+        # must use is not None for tensor, and len logic for empty list
+        if x_cat is not None and len(x_cat) > 0:
             x_cat = self.initial_cat_layer(x_cat)
             concat_list.append(x_cat)
-        if x_cont is not None:
+        if x_cont is not None and len(x_cont) > 0:
             x_cont = self.initial_cont_layer(x_cont)
             concat_list.append(x_cont)
         # if no layers in concat_list this breaks by design
