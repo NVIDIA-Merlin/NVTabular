@@ -845,6 +845,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     assert "new_col_2" in new_gdf.columns
     assert "new_col_3" not in new_gdf.columns
 
+
 @pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
