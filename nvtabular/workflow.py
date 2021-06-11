@@ -355,7 +355,7 @@ def _transform_partition(root_df, column_groups):
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
-        if not output:
+        if output is None:
             output = df[unique_flattened_cols]
         else:
             output = _concat_columns([output, df[unique_flattened_cols]])

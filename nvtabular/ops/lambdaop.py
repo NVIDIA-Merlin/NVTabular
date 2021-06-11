@@ -49,7 +49,7 @@ class LambdaOp(Operator):
     Parameters
     -----------
     f : callable
-        Defines a function that takes a cudf.Series and an optional cudf.DataFrame as input,
+        Defines a function that takes a Series and an optional DataFrame as input,
         and returns a new Series as the output.
     dependency : list, default None
         Whether to provide a dependency column or not.

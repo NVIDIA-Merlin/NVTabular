@@ -20,7 +20,6 @@ import subprocess
 import time
 
 import cudf
-import numba.cuda
 import numpy as np
 import pandas as pd
 import pytest
@@ -38,8 +37,6 @@ torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
 from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
-
-GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
 
 def test_shuffling():
@@ -221,7 +218,7 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
 @pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("device", [None, 0])
+@pytest.mark.parametrize("device", [None, "cpu"])
 def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, device):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
@@ -245,7 +242,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
-    nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
+    cpu_true = device == "cpu"
+    nvt_data = nvt.Dataset(
+        tar_paths[0], cpu=cpu_true, engine="parquet", part_mem_fraction=part_mem_fraction
+    )
     data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data,
         batch_size=batch_size,

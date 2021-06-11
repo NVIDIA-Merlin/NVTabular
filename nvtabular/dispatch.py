@@ -36,6 +36,7 @@ except ImportError:
     from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+SeriesType = Union[pd.Series, cudf.Series]
 
 
 class ExtData(enum.Enum):
@@ -57,6 +58,12 @@ def _is_dataframe_object(x):
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
 
+def _is_series_object(x):
+    # Simple check if object is a cudf or pandas
+    # Series object
+    return isinstance(x, (cudf.Series, pd.Series))
+
+
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
         if pd.isnull(x):
@@ -75,12 +82,36 @@ def _hex_to_int(s, dtype=None):
         return s.astype("Int64").astype(dtype or "Int32")
 
 
+def _random_state(seed, like_df=None):
+    """Dispatch for numpy.random.RandomState"""
+    if isinstance(like_df, (pd.DataFrame, pd.Series)):
+        return np.random.RandomState(seed)
+    else:
+        return cp.random.RandomState(seed)
+
+
 def _arange(size, like_df=None, dtype=None):
     """Dispatch for numpy.arange"""
-    if isinstance(like_df, pd.DataFrame):
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
         return np.arange(size, dtype=dtype)
     else:
         return cp.arange(size, dtype=dtype)
+
+
+def _array(x, like_df=None, dtype=None):
+    """Dispatch for numpy.array"""
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+        return np.array(x, dtype=dtype)
+    else:
+        return cp.array(x, dtype=dtype)
+
+
+def _zeros(size, like_df=None, dtype=None):
+    """Dispatch for numpy.array"""
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+        return np.zeros(size, dtype=dtype)
+    else:
+        return cp.zeros(size, dtype=dtype)
 
 
 def _hash_series(s):
@@ -161,14 +192,32 @@ def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="pa
     return getattr(_mod, _attr)
 
 
-def _parquet_writer_dispatch(df: DataFrameType):
+def _parquet_writer_dispatch(df: DataFrameType, path=None, **kwargs):
     """Return the necessary ParquetWriter class to write
     data of a specified type.
+
+    If `path` is specified, an initialized `ParquetWriter`
+    object will be returned.  To do this, the pyarrow schema
+    will be inferred from df, and kwargs will be used for the
+    ParquetWriter-initialization call.
     """
+    _args = []
     if isinstance(df, pd.DataFrame):
-        return pq.ParquetWriter
+        _cls = pq.ParquetWriter
+        if path:
+            _args.append(pa.Table.from_pandas(df, preserve_index=False).schema)
     else:
-        return cudf.io.parquet.ParquetWriter
+        _cls = cudf.io.parquet.ParquetWriter
+
+    if not path:
+        return _cls
+
+    ret = _cls(path, *_args, **kwargs)
+    if isinstance(df, pd.DataFrame):
+        ret.write_table = lambda df: _cls.write_table(
+            ret, pa.Table.from_pandas(df, preserve_index=False)
+        )
+    return ret
 
 
 def _encode_list_column(original, encoded):
@@ -201,6 +250,23 @@ def _to_arrow(x):
         return x.to_arrow()
     else:
         return pa.Table.from_pandas(x, preserve_index=False)
+
+
+def _concat(objs, **kwargs):
+    if isinstance(objs[0], (cudf.DataFrame, cudf.Series)):
+        return cudf.core.reshape.concat(objs, **kwargs)
+    else:
+        return pd.concat(objs, **kwargs)
+
+
+def _make_df(_like_df=None, device=None):
+    if isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
+        return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, (pd.DataFrame, pd.Series)):
+        return pd.DataFrame(_like_df)
+    if device == "cpu":
+        return pd.DataFrame()
+    return cudf.DataFrame()
 
 
 def _detect_format(data):
