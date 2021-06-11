@@ -177,11 +177,16 @@ def dataset(request, paths, engine):
     except Exception:  # pylint: disable=broad-except
         gpu_memory_frac = 0.01
 
+    try:
+        cpu = request.getfixturevalue("cpu")
+    except Exception:  # pylint: disable=broad-except
+        cpu = False
+
     kwargs = {}
     if engine == "csv-no-header":
         kwargs["names"] = allcols_csv
 
-    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
+    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, cpu=cpu, **kwargs)
 
 
 @pytest.fixture(scope="session")
