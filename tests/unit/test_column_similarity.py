@@ -16,15 +16,19 @@
 import cudf
 import cupy
 import pytest
+import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
 
 import nvtabular
 from nvtabular.ops.column_similarity import ColumnSimilarity
 
 
+@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu_features", [True, False])
 @pytest.mark.parametrize("on_device", [True, False])
 @pytest.mark.parametrize("metric", ["tfidf", "cosine", "inner"])
-def test_column_similarity(on_device, metric):
+def test_column_similarity(on_device, metric, cpu, cpu_features):
+
     categories = coo_matrix(
         (
             cupy.ones(14),
@@ -37,12 +41,15 @@ def test_column_similarity(on_device, metric):
 
     input_df = cudf.DataFrame({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]})
 
+    if cpu_features:
+        categories = scipy.sparse.coo_matrix(categories.get())
+
     sim_features = [["left", "right"]] >> ColumnSimilarity(
         categories, metric=metric, on_device=on_device
     )
     workflow = nvtabular.Workflow(sim_features)
 
-    df = workflow.transform(nvtabular.Dataset(input_df)).to_ddf().compute()
+    df = workflow.transform(nvtabular.Dataset(input_df, cpu=cpu)).to_ddf().compute()
     output = df["left_right_sim"].values
     if metric in ("tfidf", "cosine"):
         # distance from document 0 to itself should be 1, since these metrics are fully normalized
@@ -60,6 +67,5 @@ def test_column_similarity(on_device, metric):
     )
     workflow = nvtabular.Workflow(sim_features)
 
-    df = workflow.transform(nvtabular.Dataset(input_df)).to_ddf().compute()
-
+    df = workflow.transform(nvtabular.Dataset(input_df, cpu=cpu)).to_ddf().compute()
     assert float(df["left_right_sim"].values[0]) == pytest.approx(3)
