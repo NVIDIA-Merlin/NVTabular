@@ -22,6 +22,8 @@ from .moments import _custom_moments
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
+from nvtabular.dispatch import DataFrameType
+import dask.dataframe as dd
 
 class DataStats(StatOperator):
     def __init__(self):
@@ -31,11 +33,11 @@ class DataStats(StatOperator):
         self.col_dtypes = []
         self.output = {}
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        return gdf
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        return df
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         dask_stats = {}
 
         ddf_dtypes = ddf.head(1)

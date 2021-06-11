@@ -959,14 +959,15 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_data_stats(tmpdir, df, datasets, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_data_stats(tmpdir, df, datasets, engine, cpu):
     # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
     all_cols = cat_names + cont_names + label_name
 
-    dataset = nvtabular.Dataset(df, engine=engine)
+    dataset = nvtabular.Dataset(df, engine=engine, cpu=cpu)
 
     data_stats = ops.DataStats()
 
