@@ -2,13 +2,11 @@ name: nvtabular_dev_11.0
 channels:
   - rapidsai
   - nvidia
-  - rapidsai-nightly
-  - fastai
-  - pytorch
   - conda-forge
   - defaults
 dependencies:
   - arrow-cpp=1.0.1
+  - asvdb
   - black
   - boost-cpp
   - clang-tools=8.0.1
@@ -25,7 +23,6 @@ dependencies:
   - distributed>=2.22.0,<=2021.4.0
   - dlpack
   - double-conversion
-  - fastai
   - fastavro>=0.22.9
   - flake8
   - flatbuffers
@@ -37,6 +34,7 @@ dependencies:
   - notebook>=0.5.0
   - numba>=0.49.0
   - numpydoc
+  - nvtabular
   - nvtx>=0.2.1
   - pandas>=1.0,<=1.2.4
   - pandoc=<2.0.0
@@ -46,7 +44,6 @@ dependencies:
   - pyarrow=1.0.1
   - pytest
   - python>=3.7
-  - pytorch
   - rapidjson
   - recommonmark
   - rmm>=0.19.*
@@ -55,7 +52,7 @@ dependencies:
   - sphinx_rtd_theme
   - sphinxcontrib-websupport
   - streamz
+  - tqdm
   - pip:
-      - tensorflow==2.4.1
       - graphviz
       - sphinx-markdown-tables
