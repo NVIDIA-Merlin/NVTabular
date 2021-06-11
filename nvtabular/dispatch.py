@@ -237,6 +237,23 @@ def _to_arrow(x):
         return pa.Table.from_pandas(x, preserve_index=False)
 
 
+def _concat(objs, **kwargs):
+    if isinstance(objs[0], (cudf.DataFrame, cudf.Series)):
+        return cudf.core.reshape.concat(objs, **kwargs)
+    else:
+        return pd.concat(objs, **kwargs)
+
+
+def _make_df(_like_df=None, device=None):
+    if isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
+        return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, (pd.DataFrame, pd.Series)):
+        return pd.DataFrame(_like_df)
+    if device == "cpu":
+        return pd.DataFrame()
+    return cudf.DataFrame()
+
+
 def _detect_format(data):
     """Utility to detect the format of `data`"""
     from nvtabular import Dataset
