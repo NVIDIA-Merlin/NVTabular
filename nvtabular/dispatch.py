@@ -36,6 +36,7 @@ except ImportError:
     from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+SeriesType = Union[pd.Series, cudf.Series]
 
 
 class ExtData(enum.Enum):
@@ -55,6 +56,12 @@ def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
+
+
+def _is_series_object(x):
+    # Simple check if object is a cudf or pandas
+    # Series object
+    return isinstance(x, (cudf.Series, pd.Series))
 
 
 def _hex_to_int(s, dtype=None):
@@ -85,7 +92,7 @@ def _random_state(seed, like_df=None):
 
 def _arange(size, like_df=None, dtype=None):
     """Dispatch for numpy.arange"""
-    if isinstance(like_df, (pd.DataFrame, pd.Series)):
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
         return np.arange(size, dtype=dtype)
     else:
         return cp.arange(size, dtype=dtype)
@@ -93,10 +100,18 @@ def _arange(size, like_df=None, dtype=None):
 
 def _array(x, like_df=None, dtype=None):
     """Dispatch for numpy.array"""
-    if isinstance(like_df, pd.DataFrame):
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
         return np.array(x, dtype=dtype)
     else:
         return cp.array(x, dtype=dtype)
+
+
+def _zeros(size, like_df=None, dtype=None):
+    """Dispatch for numpy.array"""
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+        return np.zeros(size, dtype=dtype)
+    else:
+        return cp.zeros(size, dtype=dtype)
 
 
 def _hash_series(s):
