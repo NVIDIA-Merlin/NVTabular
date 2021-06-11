@@ -39,6 +39,35 @@ class DefaultTags(Enum):
     TARGETS_MULTI_CLASS = ["target", "multi_class"]
 
 
+class Tag:
+    CATEGORICAL = DefaultTags.CATEGORICAL
+    CONTINUOUS = DefaultTags.CONTINUOUS
+    LIST = DefaultTags.LIST
+
+    # Feature context
+    USER = DefaultTags.USER
+    ITEM = DefaultTags.ITEM
+    CONTEXT = DefaultTags.CONTEXT
+
+    # Target related
+    TARGETS = DefaultTags.TARGETS
+    TARGETS_BINARY = DefaultTags.TARGETS_BINARY
+    TARGETS_REGRESSION = DefaultTags.TARGETS_REGRESSION
+    TARGETS_MULTI_CLASS = DefaultTags.TARGETS_MULTI_CLASS
+
+    def __init__(self, *tag):
+        self.tags = tag
+
+    @classmethod
+    def parse(cls, tag, allow_list=True):
+        if allow_list and isinstance(tag, list):
+            return Tag(tag)
+        elif isinstance(tag, DefaultTags):
+            return Tag(tag.value)
+        elif isinstance(tag, Tag):
+            return tag
+
+
 class TagAs:
     def __init__(self, tags=None, is_target=False, is_regression_target=False, is_binary_target=False,
                  is_multi_class_target=False):
@@ -238,6 +267,8 @@ class ColumnGroup:
         """
         if isinstance(columns, str):
             columns = [columns]
+        if Tag.parse(columns):
+            return self.get_tagged(columns)
 
         child = ColumnGroup(columns)
         child.parents = [self]
@@ -253,7 +284,7 @@ class ColumnGroup:
     def filter_by_namespace(self, namespace):
         return self.filter_columns(lambda c: c.startswith(namespace))
 
-    def get_tagged(self, tags):
+    def get_tagged(self, tags, output_list=False):
         if isinstance(tags, DefaultTags):
             tags = tags.value
         if not isinstance(tags, list):
@@ -268,7 +299,35 @@ class ColumnGroup:
             if all(x in node.tags for x in tags):
                 output_cols.extend(node.columns)
 
-        return list(set(output_cols))
+        if output_list:
+            return list(set(output_cols))
+
+        child = ColumnGroup(list(set(output_cols)))
+        child.parents = [self]
+        self.children.append(child)
+        child.kind = f" (tagged={tags})"
+
+        return child
+
+    def embedding_sizes(self):
+        queue = [self]
+        output = {}
+        while queue:
+            current = queue.pop()
+            if current.op and hasattr(current.op, "get_embedding_sizes"):
+                output.update(current.op.get_embedding_sizes(current.columns))
+            elif not current.op:
+
+                # only follow parents if its not an operator node (which could
+                # transform meaning of the get_embedding_sizes
+                queue.extend(current.parents)
+
+        output = {k: v for k, v in output.items() if k in self.columns}
+
+        return output
+
+    def cardinalities(self):
+        return {k: v[0] for k, v in self.embedding_sizes().items()}
 
     def remove_tagged(self, tags):
         to_remove = self.get_tagged(tags)

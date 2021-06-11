@@ -17,3 +17,4 @@
 # flake8: noqa
 from .feature_column_utils import make_feature_column_workflow
 from .features import FilterFeatures, ConcatFeatures, SequentialLayer, StackFeatures
+from .layers.embedding import AsSparseLayer, EmbeddingsLayer

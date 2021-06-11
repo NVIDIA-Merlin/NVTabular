@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import math
+from typing import Dict
 
 import numpy as np
 import tensorflow as tf
@@ -21,6 +23,16 @@ from tensorflow.python.feature_column import feature_column_v2 as fc
 # pylint has issues with TF array ops, so disable checks until fixed:
 # https://github.com/PyCQA/pylint/issues/3613
 # pylint: disable=no-value-for-parameter, unexpected-keyword-arg
+from tensorflow.python.ops import init_ops_v2
+from tensorflow.python.tpu.tpu_embedding_v2_utils import (
+    FeatureConfig,
+    TableConfig,
+)
+
+from nvtabular.column_group import ColumnGroup
+from nvtabular.framework_utils.tensorflow.features import TabularLayer
+from nvtabular.ops import get_embedding_sizes
+from nvtabular.workflow import Workflow
 
 
 def _sort_columns(feature_columns):
@@ -122,6 +134,115 @@ def _handle_continuous_feature(inputs, feature_column):
             x = x[0]
         return tf.reshape(x, (-1, feature_column.shape[0]))
     return inputs[feature_column.name]
+
+
+class AsSparseLayer(TabularLayer):
+    def call(self, inputs, **kwargs):
+        outputs = {}
+        for name, val in inputs.items():
+            if isinstance(val, tuple):
+                values = val[0][:, 0]
+                row_lengths = val[1][:, 0]
+                outputs[name] = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
+            else:
+                outputs[name] = val
+
+        return outputs
+
+
+class EmbeddingsLayer(TabularLayer):
+    """Mimics the API of [TPUEmbedding-layer](https://github.com/tensorflow/recommenders/blob/main/tensorflow_recommenders/layers/embedding/tpu_embedding_layer.py#L221)
+    from TF-recommenders, use this for efficient embeddings on CPU or GPU."""
+
+    def __init__(self, feature_config: Dict[str, FeatureConfig], **kwargs):
+        super().__init__(**kwargs)
+        self.feature_config = feature_config
+        self.convert_to_sparse = AsSparseLayer()
+
+    def build(self, input_shapes):
+        self.embedding_tables = {}
+        tables: Dict[str, TableConfig] = {}
+        for name, feature in self.feature_config.items():
+            table: TableConfig = feature.table
+            if table.name not in tables:
+                tables[table.name] = table
+
+        for name, table in tables.items():
+            shape = (table.vocabulary_size, table.dim)
+            self.embedding_tables[name] = self.add_weight(
+                name="{}/embedding_weights".format(name),
+                trainable=True,
+                initializer=table.initializer,
+                shape=shape,
+            )
+        super().build(input_shapes)
+
+    def lookup_feature(self, name, val):
+        table: TableConfig = self.feature_config[name].table
+        table_var = self.embedding_tables[table.name]
+        if isinstance(val, tf.SparseTensor):
+            return tf.nn.safe_embedding_lookup_sparse(
+                table_var, tf.cast(val, tf.int32), None, combiner=table.combiner
+            )
+
+        # embedded_outputs[name] = tf.gather(table_var, tf.cast(val, tf.int32))
+        return tf.gather(table_var, val[:, 0])
+
+    def call(self, inputs, **kwargs):
+        embedded_outputs = {}
+        sparse_inputs = self.convert_to_sparse(inputs)
+        for name, val in sparse_inputs.items():
+            if name in self.feature_config:
+                embedded_outputs[name] = self.lookup_feature(name, val)
+
+        return embedded_outputs
+
+    @classmethod
+    def from_nvt_workflow(cls, workflow: Workflow, combiner="mean") -> "EmbeddingsLayer":
+        embedding_size = get_embedding_sizes(workflow)
+        if isinstance(embedding_size, tuple):
+            embedding_size = embedding_size[0]
+        feature_config: Dict[str, FeatureConfig] = {}
+        for name, (vocab_size, dim) in embedding_size.items():
+            feature_config[name] = FeatureConfig(
+                TableConfig(
+                    vocabulary_size=vocab_size,
+                    dim=dim,
+                    name=name,
+                    combiner=combiner,
+                    initializer=init_ops_v2.TruncatedNormal(mean=0.0, stddev=1 / math.sqrt(dim)),
+                )
+            )
+
+        return cls(feature_config)
+
+    @classmethod
+    def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
+                          infer_embedding_sizes=True, combiner="mean"):
+        if infer_embedding_sizes:
+            sizes = column_group.embedding_sizes()
+        else:
+            if not embedding_dims:
+                embedding_dims = {}
+            sizes = {}
+            cardinalities = column_group.cardinalities()
+            for key, cardinality in cardinalities.items():
+                embedding_size = embedding_dims.get(key, default_embedding_dim)
+                sizes[key] = (cardinality, embedding_size)
+
+        feature_config: Dict[str, FeatureConfig] = {}
+        for name, (vocab_size, dim) in sizes.items():
+            feature_config[name] = FeatureConfig(
+                TableConfig(
+                    vocabulary_size=vocab_size,
+                    dim=dim,
+                    name=name,
+                    combiner=combiner,
+                    initializer=init_ops_v2.TruncatedNormal(mean=0.0, stddev=1 / math.sqrt(dim)),
+                )
+            )
+
+        return cls(feature_config)
 
 
 class DenseFeatures(tf.keras.layers.Layer):

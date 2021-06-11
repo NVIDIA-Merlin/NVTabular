@@ -31,7 +31,9 @@ class ConcatFeatures(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
         assert isinstance(inputs, dict), "Inputs needs to be a dict"
 
-        features = [v for k, v in sorted(inputs.items())]
+        features = inputs
+        if isinstance(inputs, dict):
+            features = [v for k, v in sorted(inputs.items())]
 
         return tf.concat(features, axis=self.axis)
 
@@ -59,7 +61,51 @@ class StackFeatures(tf.keras.layers.Layer):
         }
 
 
-class SequentialLayer(tf.keras.layers.Layer):
+class TabularLayer(tf.keras.layers.Layer):
+    def __call__(self, inputs, pre=None, post=None, merge_with=None, stack_outputs=False, concat_outputs=False,
+                 filter_columns=None,
+                 **kwargs):
+        if concat_outputs:
+            post = ConcatFeatures()
+        if stack_outputs:
+            post = StackFeatures()
+        if filter_columns:
+            pre = FilterFeatures(filter_columns)
+        if pre:
+            inputs = pre(inputs)
+        outputs = super().__call__(inputs, **kwargs)
+
+        if merge_with:
+            if not isinstance(merge_with, list):
+                merge_with = [merge_with]
+            for layer in merge_with:
+                outputs.update(layer(inputs))
+
+        if post:
+            outputs = post(outputs)
+
+        return outputs
+
+    def call_on_cols(self, inputs, columns_to_include):
+        return self(inputs, pre=FilterFeatures(columns_to_include))
+
+    def call_and_concat(self, inputs):
+        return self(inputs, post=ConcatFeatures())
+
+    def call_and_stack(self, inputs):
+        return self(inputs, post=StackFeatures())
+
+    def apply_to_all(self, inputs, columns_to_filter=None):
+        outputs = {}
+        if columns_to_filter:
+            inputs = FilterFeatures(columns_to_filter)(inputs)
+        for key, val in inputs.items():
+            outputs[key] = self(val)
+
+        return outputs
+
+
+class SequentialLayer(TabularLayer):
     """The SequentialLayer represents a sequence of Keras layers.
     It is a Keras Layer that can be used instead of tf.keras.layers.Sequential,
     which is actually a Keras Model.  In contrast to keras Sequential, this
