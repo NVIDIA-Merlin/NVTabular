@@ -186,7 +186,7 @@ class EmbeddingsLayer(TabularLayer):
             )
 
         # embedded_outputs[name] = tf.gather(table_var, tf.cast(val, tf.int32))
-        return tf.gather(table_var, val[:, 0])
+        return tf.gather(table_var, tf.cast(val, tf.int32)[:, 0])
 
     def call(self, inputs, **kwargs):
         embedded_outputs = {}

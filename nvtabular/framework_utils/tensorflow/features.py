@@ -6,14 +6,18 @@ from nvtabular.feature_group import FeatureGroup
 
 
 class FilterFeatures(tf.keras.layers.Layer):
-    def __init__(self, columns, trainable=False, name=None, dtype=None, dynamic=False, **kwargs):
+    def __init__(self, columns, trainable=False, name=None, dtype=None, dynamic=False, pop=False, **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
         self.columns = columns
+        self.pop = pop
 
     def call(self, inputs, **kwargs):
         assert isinstance(inputs, dict), "Inputs needs to be a dict"
 
         outputs = {k: v for k, v in inputs.items() if k in self.columns}
+        if self.pop:
+            for key in outputs.keys():
+                inputs.pop(key)
 
         return outputs
 
@@ -29,13 +33,7 @@ class ConcatFeatures(tf.keras.layers.Layer):
         self.axis = axis
 
     def call(self, inputs, **kwargs):
-        assert isinstance(inputs, dict), "Inputs needs to be a dict"
-
-        features = inputs
-        if isinstance(inputs, dict):
-            features = [v for k, v in sorted(inputs.items())]
-
-        return tf.concat(features, axis=self.axis)
+        return tf.concat(tf.nest.flatten(inputs), axis=self.axis)
 
     def get_config(self):
         return {
@@ -49,11 +47,7 @@ class StackFeatures(tf.keras.layers.Layer):
         self.axis = axis
 
     def call(self, inputs, **kwargs):
-        assert isinstance(inputs, dict), "Inputs needs to be a dict"
-
-        features = [v for k, v in sorted(inputs.items())]
-
-        return tf.stack(features, axis=self.axis)
+        return tf.stack(tf.nest.flatten(inputs), axis=self.axis)
 
     def get_config(self):
         return {
@@ -96,11 +90,9 @@ class TabularLayer(tf.keras.layers.Layer):
         return self(inputs, post=StackFeatures())
 
     def apply_to_all(self, inputs, columns_to_filter=None):
-        outputs = {}
         if columns_to_filter:
             inputs = FilterFeatures(columns_to_filter)(inputs)
-        for key, val in inputs.items():
-            outputs[key] = self(val)
+        outputs = tf.nest.map_structure(self, inputs)
 
         return outputs
 
@@ -201,7 +193,7 @@ class SequentialLayer(TabularLayer):
             values.update(l.regularizers)
         return list(values)
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, training=False, **kwargs):
         outputs = inputs
         for l in self.layers:
             outputs = l(outputs, training=training)

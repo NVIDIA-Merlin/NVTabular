@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+import shutil
 import sys
 import time
 import warnings
@@ -26,15 +27,16 @@ import cudf
 import dask
 from dask.core import flatten
 
-from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
+from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
+from nvtabular.dataset import TabularDataset
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
+from nvtabular.io.shuffle import Shuffle
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
-
 
 if TYPE_CHECKING:
     import distributed
@@ -179,6 +181,45 @@ class Workflow:
         """
         self.fit(dataset)
         return self.transform(dataset)
+
+    def __call__(self, train, eval, output_path, continuous_features=None, categorical_features=None,
+                 targets=None, shuffle=Shuffle.PER_PARTITION, overwrite=False, **kwargs):
+        continuous_features = continuous_features or self.column_group.get_tagged(Tag.CONTINUOUS).columns
+        categorical_features = categorical_features or self.column_group.get_tagged(Tag.CATEGORICAL).columns
+        targets = targets or self.column_group.get_tagged(Tag.TARGETS).columns
+
+        output = TabularDataset(os.path.join(output_path, "train"),
+                                os.path.join(output_path, "valid"),
+                                continuous_features=continuous_features,
+                                categorical_features=categorical_features,
+                                targets=targets)
+
+        if os.path.exists(output_path):
+            if not overwrite and os.path.exists(output.train_path) and os.path.exists(output.eval_path):
+                return output
+            shutil.rmtree(output_path)
+
+        train_dataset = train if isinstance(train, Dataset) else Dataset(train)
+        valid_dataset = eval if isinstance(eval, Dataset) else Dataset(eval)
+
+        print("Fitting dataset...")
+        self.fit(train_dataset)
+
+        print("Transforming train-dataset...")
+        self.transform(train_dataset).to_parquet(
+            output_path=output.train_path,
+            shuffle=shuffle,
+            **kwargs
+        )
+
+        print("Transforming eval-dataset...")
+        self.transform(valid_dataset).to_parquet(
+            output_path=output.eval_path,
+            shuffle=shuffle,
+            **kwargs
+        )
+
+        return output
 
     def save(self, path):
         """Save this workflow to disk
