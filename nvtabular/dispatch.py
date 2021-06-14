@@ -243,6 +243,15 @@ def _encode_list_column(original, encoded):
             children=(original._column.offsets, encoded),
         )
 
+    
+def _pull_apart_list(original):
+    values = _flatten_list_column(original)
+    if isinstance(original, pd.Series):
+        offsets = original.map(len)
+    else:
+        offsets = original._column.offsets
+    return values, offsets
+    
 
 def _to_arrow(x):
     """Move data to arrow format"""

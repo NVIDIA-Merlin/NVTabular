@@ -21,7 +21,7 @@ from collections import OrderedDict
 
 import cupy as cp
 
-from nvtabular.dispatch import _concat, _is_list_dtype, _make_df
+from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
 
@@ -514,9 +514,10 @@ class DataLoader:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-                    leaves = column.list.leaves
+#                     leaves = column.list.leaves
+                    leaves, offs = _pull_apart_list(column)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
-                    offsets[column_name] = column._column.offsets
+                    offsets[column_name] = offs
                 x = x, list_tensors
             tensors.append(x)
 

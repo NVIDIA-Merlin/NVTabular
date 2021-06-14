@@ -69,7 +69,10 @@ class DictTransform:
                 # multihot column type, appending tuple representation
                 mh_s[column_name] = target
         if columns:
-            columns = torch.cat(columns, 1)
+            if len(columns) > 1:
+                columns = torch.cat(columns, 1)
+            else:
+                columns = torch.unsqueeze(columns[0],1)
         return columns, mh_s
 
 
