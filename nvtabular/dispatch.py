@@ -13,20 +13,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import enum
 import itertools
-from typing import Union
+from typing import Callable, Union
 
 import cudf
 import cupy as cp
+import dask.dataframe as dd
+import dask_cudf
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from cudf.core.column import as_column, build_column
 from cudf.utils.dtypes import is_list_dtype
-from dask.dataframe.utils import hash_object_dispatch
+
+try:
+    # Dask >= 2021.5.1
+    from dask.dataframe.core import hash_object_dispatch
+except ImportError:
+    # Dask < 2021.5.1
+    from dask.dataframe.utils import hash_object_dispatch
 
 DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+SeriesType = Union[pd.Series, cudf.Series]
+
+
+class ExtData(enum.Enum):
+    """Simple Enum to track external-data types"""
+
+    DATASET = 0
+    ARROW = 1
+    CUDF = 2
+    PANDAS = 3
+    DASK_CUDF = 4
+    DASK_PANDAS = 5
+    PARQUET = 6
+    CSV = 7
+
+
+def _is_dataframe_object(x):
+    # Simple check if object is a cudf or pandas
+    # DataFrame object
+    return isinstance(x, (cudf.DataFrame, pd.DataFrame))
+
+
+def _is_series_object(x):
+    # Simple check if object is a cudf or pandas
+    # Series object
+    return isinstance(x, (cudf.Series, pd.Series))
 
 
 def _hex_to_int(s, dtype=None):
@@ -47,12 +82,36 @@ def _hex_to_int(s, dtype=None):
         return s.astype("Int64").astype(dtype or "Int32")
 
 
-def _arange(size, like_df=None):
-    """Dispatch for numpy.arange"""
-    if isinstance(like_df, pd.DataFrame):
-        return np.arange(size)
+def _random_state(seed, like_df=None):
+    """Dispatch for numpy.random.RandomState"""
+    if isinstance(like_df, (pd.DataFrame, pd.Series)):
+        return np.random.RandomState(seed)
     else:
-        return cp.arange(size)
+        return cp.random.RandomState(seed)
+
+
+def _arange(size, like_df=None, dtype=None):
+    """Dispatch for numpy.arange"""
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+        return np.arange(size, dtype=dtype)
+    else:
+        return cp.arange(size, dtype=dtype)
+
+
+def _array(x, like_df=None, dtype=None):
+    """Dispatch for numpy.array"""
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+        return np.array(x, dtype=dtype)
+    else:
+        return cp.array(x, dtype=dtype)
+
+
+def _zeros(size, like_df=None, dtype=None):
+    """Dispatch for numpy.array"""
+    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+        return np.zeros(size, dtype=dtype)
+    else:
+        return cp.zeros(size, dtype=dtype)
 
 
 def _hash_series(s):
@@ -87,14 +146,13 @@ def _series_has_nulls(s):
         return s._column.has_nulls
 
 
-def _is_list_dtype(s):
+def _is_list_dtype(ser):
     """Check if Series contains list elements"""
-    if isinstance(s, pd.Series):
-        if not len(s):  # pylint: disable=len-as-condition
+    if isinstance(ser, pd.Series):
+        if not len(ser):  # pylint: disable=len-as-condition
             return False
-        return pd.api.types.is_list_like(s.values[0])
-    else:
-        return is_list_dtype(s)
+        return pd.api.types.is_list_like(ser.values[0])
+    return is_list_dtype(ser)
 
 
 def _flatten_list_column(s):
@@ -118,24 +176,48 @@ def _concat_columns(args: list):
     return None
 
 
-def _read_parquet_dispatch(df: DataFrameType):
+def _read_parquet_dispatch(df: DataFrameType) -> Callable:
+    return _read_dispatch(df=df, fmt="parquet")
+
+
+def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="parquet") -> Callable:
     """Return the necessary read_parquet function to generate
     data of a specified type.
     """
-    if isinstance(df, pd.DataFrame):
-        return pd.read_parquet
+    if cpu or isinstance(df, pd.DataFrame):
+        _mod = dd if collection else pd
     else:
-        return cudf.io.read_parquet
+        _mod = dask_cudf if collection else cudf.io
+    _attr = "read_csv" if fmt == "csv" else "read_parquet"
+    return getattr(_mod, _attr)
 
 
-def _parquet_writer_dispatch(df: DataFrameType):
+def _parquet_writer_dispatch(df: DataFrameType, path=None, **kwargs):
     """Return the necessary ParquetWriter class to write
     data of a specified type.
+
+    If `path` is specified, an initialized `ParquetWriter`
+    object will be returned.  To do this, the pyarrow schema
+    will be inferred from df, and kwargs will be used for the
+    ParquetWriter-initialization call.
     """
+    _args = []
     if isinstance(df, pd.DataFrame):
-        return pq.ParquetWriter
+        _cls = pq.ParquetWriter
+        if path:
+            _args.append(pa.Table.from_pandas(df, preserve_index=False).schema)
     else:
-        return cudf.io.parquet.ParquetWriter
+        _cls = cudf.io.parquet.ParquetWriter
+
+    if not path:
+        return _cls
+
+    ret = _cls(path, *_args, **kwargs)
+    if isinstance(df, pd.DataFrame):
+        ret.write_table = lambda df: _cls.write_table(
+            ret, pa.Table.from_pandas(df, preserve_index=False)
+        )
+    return ret
 
 
 def _encode_list_column(original, encoded):
@@ -168,3 +250,110 @@ def _to_arrow(x):
         return x.to_arrow()
     else:
         return pa.Table.from_pandas(x, preserve_index=False)
+
+
+def _concat(objs, **kwargs):
+    if isinstance(objs[0], (cudf.DataFrame, cudf.Series)):
+        return cudf.core.reshape.concat(objs, **kwargs)
+    else:
+        return pd.concat(objs, **kwargs)
+
+
+def _make_df(_like_df=None, device=None):
+    if isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
+        return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, (pd.DataFrame, pd.Series)):
+        return pd.DataFrame(_like_df)
+    if device == "cpu":
+        return pd.DataFrame()
+    return cudf.DataFrame()
+
+
+def _detect_format(data):
+    """Utility to detect the format of `data`"""
+    from nvtabular import Dataset
+
+    if isinstance(data, Dataset):
+        return ExtData.DATASET
+    elif isinstance(data, dd.DataFrame):
+        if isinstance(data._meta, cudf.DataFrame):
+            return ExtData.DASK_CUDF
+        return ExtData.DASK_PANDAS
+    elif isinstance(data, cudf.DataFrame):
+        return ExtData.CUDF
+    elif isinstance(data, pd.DataFrame):
+        return ExtData.PANDAS
+    elif isinstance(data, pa.Table):
+        return ExtData.ARROW
+    else:
+        mapping = {
+            "pq": ExtData.PARQUET,
+            "parquet": ExtData.PARQUET,
+            "csv": ExtData.CSV,
+        }
+        if isinstance(data, list) and data:
+            file_type = mapping.get(str(data[0]).split(".")[-1], None)
+        else:
+            file_type = mapping.get(str(data).split(".")[-1], None)
+        if file_type is None:
+            raise ValueError("Data format not recognized.")
+        return file_type
+
+
+def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
+    """Move data between cpu and gpu-backed data.
+
+    Note that the input ``x`` may be an Arrow Table,
+    but the output will only be a pandas or cudf DataFrame.
+    Use `to_collection=True` to specify that the output should
+    always be a Dask collection (otherwise, "serial" DataFrame
+    objects will remain "serial").
+    """
+    if cpu:
+        if isinstance(x, dd.DataFrame):
+            # If input is a dask_cudf collection, convert
+            # to a pandas-backed Dask collection
+            if not isinstance(x, dask_cudf.DataFrame):
+                # Already a Pandas-backed collection
+                return x
+            # Convert cudf-backed collection to pandas-backed collection
+            return x.to_dask_dataframe()
+        else:
+            # Make sure _x is a pandas DataFrame
+            _x = x if isinstance(x, pd.DataFrame) else x.to_pandas()
+            # Output a collection if `to_collection=True`
+            return dd.from_pandas(_x, sort=False, npartitions=npartitions) if to_collection else _x
+    else:
+        if isinstance(x, dd.DataFrame):
+            # If input is a Dask collection, covert to dask_cudf
+            if isinstance(x, dask_cudf.DataFrame):
+                # Already a cudf-backed Dask collection
+                return x
+            # Convert pandas-backed collection to cudf-backed collection
+            return x.map_partitions(cudf.from_pandas)
+        elif isinstance(x, pa.Table):
+            return cudf.DataFrame.from_arrow(x)
+        else:
+            # Make sure _x is a cudf DataFrame
+            _x = x
+            if isinstance(x, pa.Table):
+                _x = cudf.DataFrame.from_arrow(x)
+            elif isinstance(x, pd.DataFrame):
+                _x = cudf.DataFrame.from_pandas(x)
+            # Output a collection if `to_collection=True`
+            return (
+                dask_cudf.from_cudf(_x, sort=False, npartitions=npartitions)
+                if to_collection
+                else _x
+            )
+
+
+def _to_host(x):
+    """Move cudf.DataFrame to host memory for caching.
+
+    All other data will pass through unchanged.
+    """
+    if isinstance(x, cudf.DataFrame):
+        return x.to_arrow()
+    else:
+        return x

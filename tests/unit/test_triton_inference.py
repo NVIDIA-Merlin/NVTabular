@@ -23,7 +23,9 @@ _TRITON_SERVER_PATH = find_executable("tritonserver")
 @contextlib.contextmanager
 def run_triton_server(modelpath):
     cmdline = [_TRITON_SERVER_PATH, "--model-repository", modelpath]
-    with subprocess.Popen(cmdline) as process:
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = "0"
+    with subprocess.Popen(cmdline, env=env) as process:
         try:
             with grpcclient.InferenceServerClient("localhost:8001") as client:
                 # wait until server is ready
