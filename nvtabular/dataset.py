@@ -3,7 +3,6 @@ import os
 import typing as T
 from dataclasses import dataclass
 
-import tensorflow as tf
 import dask_cudf
 
 
@@ -81,6 +80,8 @@ class TabularDataset(object):
     #     return InputLayer(self.continuous_features, EmbeddingsLayer.from_nvt_workflow(workflow))
 
     def create_keras_inputs(self, for_prediction=False, sparse_columns=None):
+        import tensorflow as tf
+
         if sparse_columns is None:
             sparse_columns = []
         inputs = {}

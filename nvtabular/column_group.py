@@ -26,6 +26,8 @@ class DefaultTags(Enum):
     CATEGORICAL = ["categorical"]
     CONTINUOUS = ["continuous"]
     LIST = ["list"]
+    IMAGE = ["image"]
+    TEXT = ["text"]
 
     # Feature context
     USER = ["user"]
@@ -43,6 +45,8 @@ class Tag:
     CATEGORICAL = DefaultTags.CATEGORICAL
     CONTINUOUS = DefaultTags.CONTINUOUS
     LIST = DefaultTags.LIST
+    IMAGE = DefaultTags.IMAGE
+    TEXT = DefaultTags.TEXT
 
     # Feature context
     USER = DefaultTags.USER
