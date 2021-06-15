@@ -1,10 +1,10 @@
-Resources
-============
+Talks and Blog Posts
+====================
 
 This is a collection of presentations, blog posts and documentation around NVIDIA Merlin (NVTabular and HugeCTR).
 
 Talks
-----------
+-----
 
 * [Part 6: "AI for Every Company" | GTC Keynote Oct 2020](https://www.youtube.com/watch?v=XiwVziNh_3s) Oct 5th, 2020
 * [A Deep Dive into the NVIDIA Merlin Recommendation Framework | GTC Session Oct 2020](https://www.nvidia.com/en-us/on-demand/session/gtcfall20-a21132/) Oct 6th, 2020

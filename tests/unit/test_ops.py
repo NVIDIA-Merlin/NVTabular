@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import copy
 import math
 import string
 
@@ -38,7 +39,9 @@ from tests.conftest import mycols_csv, mycols_pq
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, cpu):
+    df = dataset.to_ddf().compute()
     cont_features = op_columns >> ops.NormalizeMinMax()
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
@@ -58,7 +61,8 @@ def test_normalize_minmax(tmpdir, df, dataset, gpu_memory_frac, engine, op_colum
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
-def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
     df = cudf.DataFrame(
         {
             "Author": list(string.ascii_uppercase),
@@ -67,7 +71,10 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
             "Post": [0, 1] * 13,
         }
     )
-    df = dask_cudf.from_cudf(df, npartitions=3)
+    if cpu:
+        df = dd.from_pandas(df.to_pandas(), npartitions=3)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=3)
 
     cont_names = ["Cost"]
     te_features = cat_groups >> ops.TargetEncoding(
@@ -99,14 +106,18 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed):
 
 
 @pytest.mark.parametrize("npartitions", [1, 2])
-def test_target_encode_multi(tmpdir, npartitions):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_target_encode_multi(tmpdir, npartitions, cpu):
 
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
     df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
-    df = dask_cudf.from_cudf(df, npartitions=npartitions)
+    if cpu:
+        df = dd.from_pandas(df.to_pandas(), npartitions=npartitions)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
     cat_groups = ["cat", "cat2", ["cat", "cat2"]]
     te_features = cat_groups >> ops.TargetEncoding(
@@ -173,9 +184,11 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     cat_names = ["name-string"]
-
+    if cpu:
+        dataset.to_cpu()
     if op_columns is None:
         num_buckets = 10
     else:
@@ -184,14 +197,15 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     hash_features = cat_names >> ops.HashBucket(num_buckets)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
-    assert np.all(new_gdf[cat_names].values >= 0)
-    assert np.all(new_gdf[cat_names].values <= 9)
-    checksum = new_gdf[cat_names].sum().values
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    np.all(new_gdf[cat_names].sum().values == checksum)
+    assert np.all(new_df[cat_names].values >= 0)
+    assert np.all(new_df[cat_names].values <= 9)
+    checksum = new_df[cat_names].sum().values
+
+    new_df = processor.transform(dataset).to_ddf().compute()
+    np.all(new_df[cat_names].sum().values == checksum)
 
 
 def test_hash_bucket_lists(tmpdir):
@@ -220,7 +234,10 @@ def test_hash_bucket_lists(tmpdir):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("add_binary_cols", [True, False])
-def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_fill_missing(tmpdir, df, engine, add_binary_cols, cpu):
+    if cpu:
+        df = df.to_pandas()
     cont_names = ["x", "y"]
     cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42, add_binary_cols=add_binary_cols)
 
@@ -229,7 +246,7 @@ def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
         df[col].iloc[idx] = None
 
     df = df.reset_index()
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -243,15 +260,19 @@ def test_fill_missing(tmpdir, df, dataset, engine, add_binary_cols):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_dropna(tmpdir, df, dataset, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_dropna(tmpdir, df, dataset, engine, cpu):
     columns = mycols_pq if engine == "parquet" else mycols_csv
     dropna_features = columns >> ops.Dropna()
+    if cpu:
+        dataset.to_cpu()
 
     processor = nvt.Workflow(dropna_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    assert new_gdf.columns.all() == df.columns.all()
-    assert new_gdf.isnull().all().sum() < 1, "null values exist"
+
+    new_df = processor.transform(dataset).to_ddf().compute()
+    assert new_df.columns.all() == df.columns.all()
+    assert new_df.isnull().all().sum() < 1, "null values exist"
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -299,7 +320,9 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_lambdaop(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [False, True])
+def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
+    dataset = nvt.Dataset(paths, cpu=cpu)
     df_copy = df.copy()
 
     # Substring
@@ -692,7 +715,8 @@ def test_categorify_max_size(max_emb_size):
     )
 
 
-def test_joingroupby_dependency(tmpdir):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_joingroupby_dependency(tmpdir, cpu):
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_A", "User_A", "User_B", "User_B"],
@@ -706,12 +730,22 @@ def test_joingroupby_dependency(tmpdir):
     )
     workflow = nvt.Workflow(groupby_features)
 
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
-    assert df_out["Author_Cost_normalized_sum"].to_arrow().to_pylist() == [1.0, 1.0, 1.0, 2.0, 2.0]
+    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    if cpu:
+        assert df_out["Author_Cost_normalized_sum"].to_list() == [1.0, 1.0, 1.0, 2.0, 2.0]
+    else:
+        assert df_out["Author_Cost_normalized_sum"].to_arrow().to_pylist() == [
+            1.0,
+            1.0,
+            1.0,
+            2.0,
+            2.0,
+        ]
 
 
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
-def test_joingroupby_multi(tmpdir, groups):
+def test_joingroupby_multi(tmpdir, groups, cpu):
 
     df = pd.DataFrame(
         {
@@ -727,27 +761,44 @@ def test_joingroupby_multi(tmpdir, groups):
     )
     workflow = nvt.Workflow(groupby_features + "Post")
 
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     if isinstance(groups, list):
         # Join on ["Author", "Engaging-User"]
-        assert df_out["Author_Engaging-User_Cost_sum"].to_arrow().to_pylist() == [
-            300.0,
-            300.0,
-            300.0,
-            400.0,
-        ]
+        if cpu:
+            check = df_out["Author_Engaging-User_Cost_sum"].to_list()
+        else:
+            check = df_out["Author_Engaging-User_Cost_sum"].to_arrow().to_pylist()
+        assert check == [300.0, 300.0, 300.0, 400.0]
     else:
         # Join on ["Author"]
-        assert df_out["Author_Cost_sum"].to_arrow().to_pylist() == [600.0, 600.0, 600.0, 400.0]
+        if cpu:
+            check = df_out["Author_Cost_sum"].to_list()
+        else:
+            check = df_out["Author_Cost_sum"].to_arrow().to_pylist()
+        assert check == [600.0, 600.0, 600.0, 400.0]
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("kind_ext", ["cudf", "pandas", "arrow", "parquet", "csv"])
+@pytest.mark.parametrize(
+    "kind_ext",
+    [
+        "cudf",
+        "pandas",
+        "arrow",
+        "parquet",
+        "parquet-multi",
+        "csv",
+        "dask-dataframe",
+        "dask-cudf",
+        "dataset",
+    ],
+)
 @pytest.mark.parametrize("cache", ["host", "device"])
 @pytest.mark.parametrize("how", ["left", "inner"])
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("drop_duplicates", [True, False])
-def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_duplicates):
+def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, drop_duplicates):
 
     # Define "external" table
     shift = 100
@@ -764,10 +815,20 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
         path = tmpdir.join("external.parquet")
         df_ext.to_parquet(path)
         df_ext = path
+    elif kind_ext == "parquet-multi":
+        path = tmpdir.join("external-multi.parquet")
+        dask_cudf.from_cudf(df_ext, npartitions=3).to_parquet(path)
+        df_ext = path
     elif kind_ext == "csv":
         path = tmpdir.join("external.csv")
         df_ext.to_csv(path)
         df_ext = path
+    elif kind_ext == "dask-dataframe":
+        df_ext = dd.from_pandas(df_ext.to_pandas(), npartitions=2)
+    elif kind_ext == "dask-cudf":
+        df_ext = dask_cudf.from_cudf(df_ext, npartitions=2)
+    elif kind_ext == "dataset":
+        df_ext = nvt.Dataset(df_ext)
 
     # Define Op
     on = "id"
@@ -786,7 +847,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
     )
 
     gdf = df.reset_index()
-    dataset = nvt.Dataset(gdf)
+    dataset = nvt.Dataset(gdf, cpu=cpu)
     processor = nvt.Workflow(joined)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
@@ -799,9 +860,13 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, drop_d
     assert "new_col_3" not in new_gdf.columns
 
 
+@pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine):
+def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
+    if cpu:
+        df = df.to_pandas()
+
     cont_names = ["x", "y"]
     filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
     processor = nvtabular.Workflow(filtered)
@@ -816,7 +881,6 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine):
         idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
         df[col].iloc[idx] = None
 
-    dataset = nvt.Dataset(df)
     filtered = cont_names >> ops.Filter(f=lambda df: df[df.x.isnull()])
     processor = nvtabular.Workflow(filtered)
     processor.fit(dataset)
@@ -838,54 +902,66 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
 
-def test_difference_lag():
-    df = cudf.DataFrame(
+@pytest.mark.parametrize("cpu", [True, False])
+def test_difference_lag(cpu):
+    lib = pd if cpu else cudf
+    df = lib.DataFrame(
         {"userid": [0, 0, 0, 1, 1, 2], "timestamp": [1000, 1005, 1100, 2000, 2001, 3000]}
     )
 
     diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(diff_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
-    assert new_gdf["timestamp_difference_lag_1"][0] is (cudf.NA if hasattr(cudf, "NA") else None)
-    assert new_gdf["timestamp_difference_lag_1"][1] == 5
-    assert new_gdf["timestamp_difference_lag_1"][2] == 95
-    assert new_gdf["timestamp_difference_lag_1"][3] is (cudf.NA if hasattr(cudf, "NA") else None)
+    assert new_df["timestamp_difference_lag_1"][1] == 5
+    assert new_df["timestamp_difference_lag_1"][2] == 95
+    if cpu:
+        assert lib.isna(new_df["timestamp_difference_lag_1"][0])
+        assert lib.isna(new_df["timestamp_difference_lag_1"][3])
+    else:
+        assert new_df["timestamp_difference_lag_1"][0] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_1"][3] is (lib.NA if hasattr(lib, "NA") else None)
 
-    assert new_gdf["timestamp_difference_lag_-1"][0] == -5
-    assert new_gdf["timestamp_difference_lag_-1"][1] == -95
-    assert new_gdf["timestamp_difference_lag_-1"][2] is (cudf.NA if hasattr(cudf, "NA") else None)
-    assert new_gdf["timestamp_difference_lag_-1"][3] == -1
-    assert new_gdf["timestamp_difference_lag_-1"][5] is (cudf.NA if hasattr(cudf, "NA") else None)
+    assert new_df["timestamp_difference_lag_-1"][0] == -5
+    assert new_df["timestamp_difference_lag_-1"][1] == -95
+    assert new_df["timestamp_difference_lag_-1"][3] == -1
+    if cpu:
+        assert lib.isna(new_df["timestamp_difference_lag_-1"][2])
+        assert lib.isna(new_df["timestamp_difference_lag_-1"][5])
+    else:
+        assert new_df["timestamp_difference_lag_-1"][2] is (lib.NA if hasattr(lib, "NA") else None)
+        assert new_df["timestamp_difference_lag_-1"][5] is (lib.NA if hasattr(lib, "NA") else None)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # TODO: add tests for > 2 features, multiple crosses, etc.
     cat_names = [["name-string", "id"]]
     num_buckets = 10
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
-    dataset = nvt.Dataset(df)
+    dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(hashed_cross)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+    new_df = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
     new_column_name = "_X_".join(cat_names[0])
-    assert np.all(new_gdf[new_column_name].values >= 0)
-    assert np.all(new_gdf[new_column_name].values <= 9)
-    checksum = new_gdf[new_column_name].sum()
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    assert new_gdf[new_column_name].sum() == checksum
+    assert np.all(new_df[new_column_name].values >= 0)
+    assert np.all(new_df[new_column_name].values <= 9)
+    checksum = new_df[new_column_name].sum()
+    new_df = processor.transform(dataset).to_ddf().compute()
+    assert new_df[new_column_name].sum() == checksum
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
 
@@ -893,25 +969,32 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine):
 
     bucket_features = cont_names >> bucketize_op
     processor = nvtabular.Workflow(bucket_features)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    ds = copy.copy(dataset)
+    if cpu:
+        ds.to_cpu()
+    processor.fit(ds)
+    new_df = processor.transform(ds).to_ddf().compute()
+    if cpu:
+        assert isinstance(new_df, pd.DataFrame)
 
     for col, bs in zip(cont_names, boundaries):
-        assert np.all(new_gdf[col].values >= 0)
-        assert np.all(new_gdf[col].values <= len(bs))
+        assert np.all(new_df[col].values >= 0)
+        assert np.all(new_df[col].values <= len(bs))
         # TODO: add checks for correctness here that don't just
         # repeat the existing logic
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_data_stats(tmpdir, df, datasets, engine):
+@pytest.mark.parametrize("cpu", [True, False])
+def test_data_stats(tmpdir, df, datasets, engine, cpu):
     # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_name = ["label"]
     all_cols = cat_names + cont_names + label_name
 
-    dataset = nvtabular.Dataset(df, engine=engine)
+    dataset = nvtabular.Dataset(df, engine=engine, cpu=cpu)
 
     data_stats = ops.DataStats()
 
@@ -1025,13 +1108,11 @@ def test_list_slice(cpu):
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
     op = ops.ListSlice(0, 2)
-    print("df", df)
     transformed = op.transform(["y"], df)
     expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(3, 5)
-    print("df", df)
     transformed = op.transform(["y"], df)
     expected = DataFrame({"y": [[2, 767], [3], []]})
     assert_eq(transformed, expected)

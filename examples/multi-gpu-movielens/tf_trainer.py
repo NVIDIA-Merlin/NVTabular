@@ -62,7 +62,9 @@ def seed_fn():
 
 
 proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
-EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)
+
 
 train_dataset_tf = KerasSequenceLoader(
     TRAIN_PATHS,  # you could also use a glob pattern
@@ -84,8 +86,10 @@ for col in CATEGORICAL_COLUMNS:
     inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(1,))
 # Note that we need two input tensors for multi-hot categorical features
 for col in CATEGORICAL_MH_COLUMNS:
-    inputs[col + "__values"] = tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,))
-    inputs[col + "__nnzs"] = tf.keras.Input(name=f"{col}__nnzs", dtype=tf.int64, shape=(1,))
+    inputs[col] = (
+        tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,)),
+        tf.keras.Input(name=f"{col}__nnzs", dtype=tf.int64, shape=(1,)),
+    )
 for col in CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS:
     emb_layers.append(
         tf.feature_column.embedding_column(
