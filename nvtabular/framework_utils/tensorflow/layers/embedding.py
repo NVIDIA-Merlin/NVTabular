@@ -218,7 +218,10 @@ class EmbeddingsLayer(TabularLayer):
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
-                          infer_embedding_sizes=True, combiner="mean"):
+                          infer_embedding_sizes=True, combiner="mean", tags=None):
+        if tags:
+            column_group = column_group.get_tagged(tags)
+
         if infer_embedding_sizes:
             sizes = column_group.embedding_sizes()
         else:

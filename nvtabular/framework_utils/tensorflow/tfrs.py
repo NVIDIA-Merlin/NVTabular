@@ -46,7 +46,7 @@ class Model(tf.keras.Model):
         """Custom train step using the `compute_loss` method."""
 
         with tf.GradientTape() as tape:
-            loss = self.compute_loss(inputs, training=True)
+            loss = self.compute_loss(*inputs, training=True)
 
             # Handle regularization losses as well.
             regularization_loss = sum(self.losses)
@@ -66,7 +66,7 @@ class Model(tf.keras.Model):
     def test_step(self, inputs):
         """Custom test step using the `compute_loss` method."""
 
-        loss = self.compute_loss(inputs, training=False)
+        loss = self.compute_loss(*inputs, training=False)
 
         # Handle regularization losses as well.
         regularization_loss = sum(self.losses)

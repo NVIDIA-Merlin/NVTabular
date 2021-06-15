@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Optional, Dict, Text
 
 import tensorflow as tf
@@ -33,45 +34,56 @@ class Task(tfrs.Task):
         )
 
 
-class MultiTask(tf.keras.layers.Layer):
+class MultiTaskHead(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._tasks = {}
         self._tasks_prepares = {}
+        self._task_weights = defaultdict(lambda: 1)
 
     @classmethod
-    def from_column_group(cls, column_group: ColumnGroup, add_logits=True):
+    def from_column_group(cls, column_group: ColumnGroup, add_logits=True, task_weights=None):
+        if task_weights is None:
+            task_weights = {}
         to_return = cls()
 
         for binary_target in column_group.get_tagged(Tag.TARGETS_BINARY).columns:
-            to_return = to_return.add_binary_classification_task(binary_target, add_logit_layer=add_logits)
+            to_return = to_return.add_binary_classification_task(binary_target, add_logit_layer=add_logits,
+                                                                 task_weight=task_weights.get(binary_target, 1))
 
         for regression_target in column_group.get_tagged(Tag.TARGETS_REGRESSION).columns:
-            to_return = to_return.add_regression_task(regression_target, add_logit_layer=add_logits)
+            to_return = to_return.add_regression_task(regression_target, add_logit_layer=add_logits,
+                                                      task_weight=task_weights.get(regression_target, 1))
 
         # TODO: Add multi-class classification here. Figure out how to get number of classes
 
         return to_return
 
-    def add_task(self, target_name, task: Task, pre: Optional[tf.keras.layers.Layer] = None):
+    def add_task(self, target_name, task: Task, pre: Optional[tf.keras.layers.Layer] = None, task_weight=1):
         self._tasks[target_name] = task
         if pre:
             self._tasks_prepares[target_name] = pre
+        if task_weight:
+            self._task_weights[target_name] = task_weight
 
         return self
 
-    def add_binary_classification_task(self, target_name, add_logit_layer=True):
+    def add_binary_classification_task(self, target_name, add_logit_layer=True, task_weight=1):
         self._tasks[target_name] = Task.binary_classification()
         if add_logit_layer:
             self._tasks_prepares[target_name] = tf.keras.layers.Dense(1, activation="sigmoid",
                                                                       name=f"binary/{target_name}")
+        if task_weight:
+            self._task_weights[target_name] = task_weight
 
         return self
 
-    def add_regression_task(self, target_name, add_logit_layer=True):
+    def add_regression_task(self, target_name, add_logit_layer=True, task_weight=1):
         self._tasks[target_name] = Task.regression()
         if add_logit_layer:
             self._tasks_prepares[target_name] = tf.keras.layers.Dense(1, name=f"regression/{target_name}")
+        if task_weight:
+            self._task_weights[target_name] = task_weight
 
         return self
 
@@ -100,6 +112,6 @@ class MultiTask(tf.keras.layers.Layer):
             # predictions = self._tasks_prepares[name](logits) if name in self._tasks_prepares else logits
             # print(predictions)
 
-            losses.append(self._tasks[name](target, predictions, **kwargs))
+            losses.append(self._tasks[name](target, predictions, **kwargs) * self._task_weights[name])
 
         return tf.reduce_sum(losses)

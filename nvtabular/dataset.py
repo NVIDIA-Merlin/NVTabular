@@ -23,10 +23,11 @@ class TabularDataset(object):
     def train_df(self, sample=0.1):
         return dask_cudf.read_parquet(self.train_files).sample(frac=sample).compute()
 
-    def train_tf_dataset(self, batch_size, separate_labels=True, shuffle=True, buffer_size=0.06, parts_per_chunk=1):
+    def train_tf_dataset(self, batch_size, separate_labels=True, named_labels=False, shuffle=True, buffer_size=0.06,
+                         parts_per_chunk=1):
         from nvtabular.loader.tensorflow import KerasSequenceLoader
 
-        return KerasSequenceLoader(
+        output = KerasSequenceLoader(
             self.train_files,
             batch_size=batch_size,
             label_names=self.targets if separate_labels else [],
@@ -38,6 +39,11 @@ class TabularDataset(object):
             parts_per_chunk=parts_per_chunk,
         )
 
+        if named_labels and separate_labels:
+            return output.map(lambda X, y: (X, dict(zip(self.targets, y))))
+
+        return output
+
     @property
     def eval_files(self):
         return sorted(glob.glob(os.path.join(self.eval_path, "*.parquet")))
@@ -45,10 +51,11 @@ class TabularDataset(object):
     def eval_df(self, sample=0.1):
         return dask_cudf.read_parquet(self.eval_files).sample(frac=sample).compute()
 
-    def eval_tf_dataset(self, batch_size, separate_labels=True, shuffle=True, buffer_size=0.06, parts_per_chunk=1):
+    def eval_tf_dataset(self, batch_size, separate_labels=True, named_labels=False, shuffle=True, buffer_size=0.06,
+                        parts_per_chunk=1):
         from nvtabular.loader.tensorflow import KerasSequenceLoader
 
-        return KerasSequenceLoader(
+        output = KerasSequenceLoader(
             self.eval_files,
             batch_size=batch_size,
             label_names=self.targets if separate_labels else [],
@@ -59,6 +66,11 @@ class TabularDataset(object):
             buffer_size=buffer_size,  # how many batches to load at once
             parts_per_chunk=parts_per_chunk,
         )
+
+        if named_labels and separate_labels:
+            return output.map(lambda X, y: (X, dict(zip(self.targets, y))))
+
+        return output
 
     def eval_tf_callback(self, batch_size, **kwargs):
         from nvtabular.loader.tensorflow import KerasSequenceValidater
