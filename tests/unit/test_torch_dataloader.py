@@ -148,7 +148,7 @@ json_sample = {
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("cat_names", [["cat_2", "cat_3", "cat_4"], ["cat_2"],[]])
+@pytest.mark.parametrize("cat_names", [["cat_2", "cat_3", "cat_4"], ["cat_2"], []])
 @pytest.mark.parametrize("cont_names", [["cont_1", "cont_2", "cont_3"], ["cont_1"], []])
 @pytest.mark.parametrize("mh_names", [["cat_5", "cat_1"], ["cat_1"], []])
 @pytest.mark.parametrize("label_name", [["lab_1"]])
