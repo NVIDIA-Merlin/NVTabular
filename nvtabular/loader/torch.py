@@ -118,7 +118,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
     def _unpack(self, dlpack):
         if self.device == "cpu":
-            return torch.Tensor(dlpack.values)
+            return torch.Tensor(dlpack.values).squeeze(1)
         return from_dlpack(dlpack)
 
     def _to_tensor(self, gdf, dtype=None):
