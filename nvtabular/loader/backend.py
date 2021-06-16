@@ -514,10 +514,8 @@ class DataLoader:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-#                     leaves = column.list.leaves
-                    leaves, offs = _pull_apart_list(column)
+                    leaves, offsets[column_name] = _pull_apart_list(column)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
-                    offsets[column_name] = offs
                 x = x, list_tensors
             tensors.append(x)
 
@@ -558,5 +556,4 @@ class DataLoader:
         # would require output layers to match naming
         if len(self.label_names) > 1:
             labels = self._tensor_split(labels, len(self.label_names), axis=1)
-
         return X, labels

@@ -97,7 +97,10 @@ class Model(torch.nn.Module):
             x_cont = self.initial_cont_layer(x_cont)
             concat_list.append(x_cont)
         # if no layers in concat_list this breaks by design
-        x = torch.cat(concat_list, 1)
+        if len(concat_list) > 1:
+            x = torch.cat(concat_list, 1)
+        else:
+            x = concat_list[0]
         for layer in self.layers:
             x = layer(x)
         x = self.output_layer(x)
