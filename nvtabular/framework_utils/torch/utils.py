@@ -60,8 +60,8 @@ class DictTransform:
         for column_name in target_columns:
             target = batch[column_name]
             if isinstance(target, torch.Tensor):
-                if batch[column_name].is_sparse:
-                    mh_s[column_name] = batch[column_name]
+                if target.is_sparse:
+                    mh_s[column_name] = target
                 else:
                     columns.append(target)
             # if not a tensor, must be tuple
@@ -69,7 +69,10 @@ class DictTransform:
                 # multihot column type, appending tuple representation
                 mh_s[column_name] = target
         if columns:
-            columns = torch.cat(columns, 1)
+            if len(columns) > 1:
+                columns = torch.cat(columns, 1)
+            else:
+                columns = columns[0].unsqueeze(1)
         return columns, mh_s
 
 
