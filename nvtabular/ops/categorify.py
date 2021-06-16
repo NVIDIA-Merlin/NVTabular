@@ -47,6 +47,7 @@ from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
+from ..tag import Tag
 
 
 class Categorify(StatOperator):
@@ -433,13 +434,11 @@ class Categorify(StatOperator):
         return self.mh_columns
 
     def output_tags(self):
-        return [self.TAG]
+        return [Tag.CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
-
-    TAG = "categorical"
 
 
 def _get_embedding_order(cat_names):

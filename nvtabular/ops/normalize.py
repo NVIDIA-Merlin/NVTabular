@@ -21,6 +21,7 @@ from ..dispatch import DataFrameType
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
+from ..tag import Tag
 
 
 class Normalize(StatOperator):
@@ -68,7 +69,7 @@ class Normalize(StatOperator):
         self.stds = {}
 
     def output_tags(self):
-        return ["continuous"]
+        return [Tag.CONTINUOUS]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

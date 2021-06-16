@@ -37,3 +37,4 @@ from .operator import Operator
 from .rename import Rename
 from .stat_operator import StatOperator
 from .target_encoding import TargetEncoding
+from .tokenize import TokenizeText

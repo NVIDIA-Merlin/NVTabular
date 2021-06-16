@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import column_group, io, workflow, feature_group  # noqa
+from . import column_group, io, workflow, feature_group, dataset  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -40,7 +40,7 @@ except ImportError:
     pass
 
 
-__all__ = ["Workflow", "Dataset", "ColumnGroup", "FeatureGroup", "TargetGroup"]
+__all__ = ["Workflow", "Dataset", "ColumnGroup", "FeatureGroup", "TargetGroup", "dataset"]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")
