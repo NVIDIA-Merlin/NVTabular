@@ -19,7 +19,7 @@ movie_features_view = FeatureView(
     features=[
         Feature(name="genres", dtype=ValueType.INT64_LIST),
         Feature(name="tags_unique", dtype=ValueType.INT64_LIST),
-        Feature(name="tags_nunique", dtype=ValueType.INT64),
+        Feature(name="tags_nunique", dtype=ValueType.INT32),
     ],
     online=True,
     input=movie_features,
