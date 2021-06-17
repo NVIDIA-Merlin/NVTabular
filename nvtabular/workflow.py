@@ -48,7 +48,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class TransformedDataset(object):
-    workflow: T.Any
+    workflow: "Workflow"
+    column_group: ColumnGroup
     train_path: str
     eval_path: str
 
@@ -287,6 +288,7 @@ class Workflow:
         targets = targets or self.column_group.get_tagged(Tag.TARGETS).columns
 
         output = TransformedDataset(self,
+                                    self.column_group,
                                     os.path.join(output_path, "train"),
                                     os.path.join(output_path, "valid"),
                                     continuous_features=continuous_features,

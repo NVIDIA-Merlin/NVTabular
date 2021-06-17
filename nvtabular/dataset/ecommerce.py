@@ -14,7 +14,7 @@ class ClothingReviews(PublicDataset):
     ORIG_FILE_NAME = "Womens Clothing E-Commerce Reviews.csv"
     PARQUET_FILE_NAME = "Womens Clothing E-Commerce Reviews.parquet"
 
-    def __init__(self, data_dir, client=None, tokenizer=None, test_size=0.1, random_state=42):
+    def __init__(self, data_dir, tokenizer=None, client=None, test_size=0.1, random_state=42):
         super().__init__(data_dir)
         self.client = client
         self.parquet_dir = os.path.join(self.input_dir, "parquet")

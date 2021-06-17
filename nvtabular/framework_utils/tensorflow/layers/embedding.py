@@ -30,8 +30,9 @@ from tensorflow.python.tpu.tpu_embedding_v2_utils import (
 )
 
 from nvtabular.column_group import ColumnGroup
-from nvtabular.framework_utils.tensorflow.features import TabularLayer
+from nvtabular.framework_utils.tensorflow.features import TabularLayer, AsSparseLayer, ParseTokenizedText
 from nvtabular.ops import get_embedding_sizes
+from nvtabular.tag import Tag
 from nvtabular.workflow import Workflow
 
 
@@ -136,20 +137,6 @@ def _handle_continuous_feature(inputs, feature_column):
     return inputs[feature_column.name]
 
 
-class AsSparseLayer(TabularLayer):
-    def call(self, inputs, **kwargs):
-        outputs = {}
-        for name, val in inputs.items():
-            if isinstance(val, tuple):
-                values = val[0][:, 0]
-                row_lengths = val[1][:, 0]
-                outputs[name] = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
-            else:
-                outputs[name] = val
-
-        return outputs
-
-
 class EmbeddingsLayer(TabularLayer):
     """Mimics the API of [TPUEmbedding-layer](https://github.com/tensorflow/recommenders/blob/main/tensorflow_recommenders/layers/embedding/tpu_embedding_layer.py#L221)
     from TF-recommenders, use this for efficient embeddings on CPU or GPU."""
@@ -218,9 +205,9 @@ class EmbeddingsLayer(TabularLayer):
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
-                          infer_embedding_sizes=True, combiner="mean", tags=None):
+                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None):
         if tags:
-            column_group = column_group.get_tagged(tags)
+            column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
 
         if infer_embedding_sizes:
             sizes = column_group.embedding_sizes()
@@ -246,6 +233,56 @@ class EmbeddingsLayer(TabularLayer):
             )
 
         return cls(feature_config)
+
+
+class TransformersTextEmbedding(TabularLayer):
+    def __init__(self, transformer_model, output="pooler_output", **kwargs):
+        super().__init__(**kwargs)
+        self.parse_tokens = ParseTokenizedText()
+        self.transformer_model = transformer_model
+        self.transformer_output = output
+
+    def call(self, inputs, **kwargs):
+        tokenized = self.parse_tokens(inputs)
+        outputs = {}
+        for key, val in tokenized.items():
+            if self.transformer_output == "pooler_output":
+                outputs[key] = self.transformer_model(**val).pooler_output
+            elif self.transformer_output == "last_hidden_state":
+                outputs[key] = self.transformer_model(**val).last_hidden_state
+            else:
+                outputs[key] = self.transformer_model(**val)
+
+        return outputs
+
+
+class InputFeatures(TabularLayer):
+    def __init__(self, continuous_layer, categorical_layer, **kwargs):
+        super(InputFeatures, self).__init__(**kwargs)
+        self.categorical_layer = categorical_layer or tf.keras.layers.Layer()
+        self.continuous_layer = continuous_layer or tf.keras.layers.Layer()
+
+    def call(self, inputs, **kwargs):
+        return self.categorical_layer(inputs, merge_with=self.continuous_layer)
+
+    @classmethod
+    def from_column_group(cls,
+                          column_group: ColumnGroup,
+                          continuous_tags=Tag.CONTINUOUS,
+                          continuous_tags_to_filter=None,
+                          categorical_tags=Tag.CATEGORICAL,
+                          categorical_tags_to_filter=None,
+                          **kwargs):
+        continuous_layer = TabularLayer.from_column_group(
+            column_group,
+            tags=continuous_tags,
+            tags_to_filter=continuous_tags_to_filter)
+        categorical_layer = EmbeddingsLayer.from_column_group(
+            column_group,
+            tags=categorical_tags,
+            tags_to_filter=categorical_tags_to_filter)
+
+        return cls(continuous_layer, categorical_layer, **kwargs)
 
 
 class DenseFeatures(tf.keras.layers.Layer):

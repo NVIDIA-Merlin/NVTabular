@@ -2,6 +2,7 @@ import copy
 
 import tensorflow as tf
 
+from nvtabular.column_group import ColumnGroup
 from nvtabular.feature_group import FeatureGroup
 
 
@@ -31,9 +32,10 @@ class ConcatFeatures(tf.keras.layers.Layer):
     def __init__(self, axis=-1, trainable=False, name=None, dtype=None, dynamic=False, **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
         self.axis = axis
+        self.flatten = tf.keras.layers.Flatten()
 
     def call(self, inputs, **kwargs):
-        return tf.concat(tf.nest.flatten(inputs), axis=self.axis)
+        return tf.concat(tf.nest.flatten(tf.nest.map_structure(self.flatten, inputs)), axis=self.axis)
 
     def get_config(self):
         return {
@@ -47,7 +49,7 @@ class StackFeatures(tf.keras.layers.Layer):
         self.axis = axis
 
     def call(self, inputs, **kwargs):
-        return tf.stack(tf.nest.flatten(inputs), axis=self.axis)
+        return tf.stack(tf.nest.flatten(tf.nest.map_structure(self.flatten, inputs), axis=self.axis))
 
     def get_config(self):
         return {
@@ -57,8 +59,7 @@ class StackFeatures(tf.keras.layers.Layer):
 
 class TabularLayer(tf.keras.layers.Layer):
     def __call__(self, inputs, pre=None, post=None, merge_with=None, stack_outputs=False, concat_outputs=False,
-                 filter_columns=None,
-                 **kwargs):
+                 filter_columns=None, **kwargs):
         if concat_outputs:
             post = ConcatFeatures()
         if stack_outputs:
@@ -95,6 +96,13 @@ class TabularLayer(tf.keras.layers.Layer):
         outputs = tf.nest.map_structure(self, inputs)
 
         return outputs
+
+    @classmethod
+    def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs):
+        if tags:
+            column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
+
+        return column_group.columns >> cls()
 
 
 class SequentialLayer(TabularLayer):
@@ -218,6 +226,53 @@ class SequentialLayer(TabularLayer):
         return cls(layers)
 
 
+class AsSparseLayer(TabularLayer):
+    def call(self, inputs, **kwargs):
+        outputs = {}
+        for name, val in inputs.items():
+            if isinstance(val, tuple):
+                values = val[0][:, 0]
+                row_lengths = val[1][:, 0]
+                outputs[name] = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
+            else:
+                outputs[name] = val
+
+        return outputs
+
+
+class AsDenseLayer(TabularLayer):
+    def call(self, inputs, **kwargs):
+        outputs = {}
+        for name, val in inputs.items():
+            if isinstance(val, tuple):
+                values = val[0][:, 0]
+                row_lengths = val[1][:, 0]
+                outputs[name] = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_tensor()
+            else:
+                outputs[name] = val
+
+        return outputs
+
+
+class ParseTokenizedText(TabularLayer):
+    def call(self, inputs, **kwargs):
+        outputs, text_tensors, text_column_names = {}, {}, []
+        for name, val in inputs.items():
+            if isinstance(val, tuple) and name.endswith(("/tokens", "/attention_mask")):
+                values = val[0][:, 0]
+                row_lengths = val[1][:, 0]
+                text_tensors[name] = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_tensor()
+                text_column_names.append("/".join(name.split("/")[:-1]))
+            # else:
+            #     outputs[name] = val
+
+        for text_col in set(text_column_names):
+            outputs[text_col] = dict(input_ids=tf.cast(text_tensors[text_col + "/tokens"], tf.int32),
+                                     attention_mask=tf.cast(text_tensors[text_col + "/attention_mask"], tf.int32))
+
+        return outputs
+
+
 def right_shift(self, other):
     if isinstance(other, list):
         left_side = [FilterFeatures(other)]
@@ -229,7 +284,6 @@ def right_shift(self, other):
 
 
 tf.keras.layers.Layer.__rrshift__ = right_shift
-
 
 # class TFFeatureGroup(FeatureGroup):
 #     def __call__(self, operator, **kwargs):

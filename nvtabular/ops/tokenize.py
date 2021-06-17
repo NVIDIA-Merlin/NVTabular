@@ -78,7 +78,7 @@ class TokenizeText(Operator):
         ]
 
     def output_tags(self):
-        return Tag.CATEGORICAL.value
+        return Tag.CATEGORICAL.value + Tag.TEXT_TOKENIZED.value
 
     @classmethod
     def prepare_hash_file(cls, tokenizer_url, cache_dir):

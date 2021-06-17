@@ -8,6 +8,7 @@ class DefaultTags(Enum):
     LIST = ["list"]
     IMAGE = ["image"]
     TEXT = ["text"]
+    TEXT_TOKENIZED = ["text_tokenized"]
 
     # Feature context
     USER = ["user"]
@@ -27,6 +28,7 @@ class Tag:
     LIST = DefaultTags.LIST
     IMAGE = DefaultTags.IMAGE
     TEXT = DefaultTags.TEXT
+    TEXT_TOKENIZED = DefaultTags.TEXT_TOKENIZED
 
     # Feature context
     USER = DefaultTags.USER

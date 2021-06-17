@@ -217,7 +217,9 @@ class ColumnGroup:
     def filter_by_namespace(self, namespace):
         return self.filter_columns(lambda c: c.startswith(namespace))
 
-    def get_tagged(self, tags, output_list=False):
+    def get_tagged(self, tags, output_list=False, tags_to_filter=None):
+        columns_to_filter = self.get_tagged(tags_to_filter, output_list=True) if tags_to_filter else []
+
         if isinstance(tags, DefaultTags):
             tags = tags.value
         if not isinstance(tags, list):
@@ -232,7 +234,7 @@ class ColumnGroup:
             if all(x in node.tags for x in tags):
                 output_cols.extend(node.columns)
 
-        columns = list(set(output_cols))
+        columns = list(set(output_cols) - set(columns_to_filter))
         if output_list:
             return columns
 
