@@ -19,19 +19,15 @@ import logging
 import math
 import random
 import warnings
-from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Optional, Any
 from glob import glob
-
-import cudf
-import dask
-import dask_cudf
-import joblib
-import numpy as np
 import os
-import pandas as pd
+import joblib
 import shutil
+
+import dask
+import numpy as np
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -39,7 +35,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
-from nvtabular.dispatch import _hex_to_int
+from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
 from ..tag import Tag
 
@@ -235,48 +231,24 @@ class Dataset:
             )
 
         npartitions = npartitions or 1
-        if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
+        if isinstance(path_or_source, dask.dataframe.DataFrame) or _is_dataframe_object(
+            path_or_source
+        ):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
-            moved_collection = (
-                False  # Whether a pd-backed collection was moved to cudf (or vice versa)
+            _path_or_source = _convert_data(
+                path_or_source, cpu=self.cpu, to_collection=True, npartitions=npartitions
             )
-            if self.cpu:
-                if isinstance(path_or_source, pd.DataFrame):
-                    # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = dask.dataframe.from_pandas(
-                        path_or_source, sort=False, npartitions=npartitions
-                    )
-                elif isinstance(path_or_source, cudf.DataFrame):
-                    # Convert cudf DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = dask.dataframe.from_pandas(
-                        path_or_source.to_pandas(), sort=False, npartitions=npartitions
-                    )
-                elif isinstance(path_or_source, dask_cudf.DataFrame):
-                    # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = path_or_source.to_dask_dataframe()
-                    moved_collection = True
-            else:
-                if isinstance(path_or_source, cudf.DataFrame):
-                    # Convert cudf DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_cudf(
-                        path_or_source, sort=False, npartitions=npartitions
-                    )
-                elif isinstance(path_or_source, pd.DataFrame):
-                    # Convert pandas DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_cudf(
-                        cudf.from_pandas(path_or_source), sort=False, npartitions=npartitions
-                    )
-                elif not isinstance(path_or_source, dask_cudf.DataFrame):
-                    # Convert dask.dataframe.DataFrame DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
-                    moved_collection = True
+            # Check if this is a collection that has now moved between host <-> device
+            moved_collection = isinstance(path_or_source, dask.dataframe.DataFrame) and (
+                not isinstance(_path_or_source._meta, type(path_or_source._meta))
+            )
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
                 warnings.warn("part_mem_fraction is ignored for DataFrame input.")
             self.engine = DataFrameDatasetEngine(
-                path_or_source, cpu=self.cpu, moved_collection=moved_collection
+                _path_or_source, cpu=self.cpu, moved_collection=moved_collection
             )
         else:
             if part_size:
@@ -487,8 +459,8 @@ class Dataset:
                 target_mapping.reset_index(drop=False, inplace=True)
                 plan = (
                     hive_mapping.reset_index()
-                        .merge(target_mapping, on=cols, how="left")
-                        .sort_values("_sort")["_partition"]
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
                 )
 
                 if hasattr(plan, "to_pandas"):
@@ -533,8 +505,8 @@ class Dataset:
         """
         return Dataset(
             self.to_ddf()
-                .clear_divisions()
-                .repartition(
+            .clear_divisions()
+            .repartition(
                 npartitions=npartitions,
                 partition_size=partition_size,
             )
@@ -572,8 +544,8 @@ class Dataset:
 
         return cls(
             left.to_ddf()
-                .clear_divisions()
-                .merge(
+            .clear_divisions()
+            .merge(
                 _right.to_ddf().clear_divisions(),
                 **kwargs,
             )
@@ -640,19 +612,19 @@ class Dataset:
         )
 
     def to_parquet(
-            self,
-            output_path,
-            shuffle=None,
-            preserve_files=False,
-            output_files=None,
-            out_files_per_proc=None,
-            num_threads=0,
-            dtypes=None,
-            cats=None,
-            conts=None,
-            labels=None,
-            suffix=".parquet",
-            partition_on=None,
+        self,
+        output_path,
+        shuffle=None,
+        preserve_files=False,
+        output_files=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+        cats=None,
+        conts=None,
+        labels=None,
+        suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -809,16 +781,16 @@ class Dataset:
         )
 
     def to_hugectr(
-            self,
-            output_path,
-            cats,
-            conts,
-            labels,
-            shuffle=None,
-            file_partition_map=None,
-            out_files_per_proc=None,
-            num_threads=0,
-            dtypes=None,
+        self,
+        output_path,
+        cats,
+        conts,
+        labels,
+        shuffle=None,
+        file_partition_map=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
     ):
         """Writes out to a parquet dataset
 
@@ -985,12 +957,12 @@ class Dataset:
         return self.engine.validate_dataset(**kwargs)
 
     def regenerate_dataset(
-            self,
-            output_path,
-            columns=None,
-            output_format="parquet",
-            compute=True,
-            **kwargs,
+        self,
+        output_path,
+        columns=None,
+        output_format="parquet",
+        compute=True,
+        **kwargs,
     ):
         """EXPERIMENTAL:
         Regenerate an NVTabular Dataset for efficient processing by writing
@@ -1061,6 +1033,9 @@ class DatasetCollection(SimpleNamespace):
         assert all([isinstance(dataset, Dataset) for dataset in kwargs.values()])
         super().__init__(**kwargs)
 
+    def get(self, name):
+        return vars(self).get(name)
+
     def to_parquet(self,
                    output_path,
                    by_hash=True,
@@ -1080,7 +1055,7 @@ class DatasetCollection(SimpleNamespace):
         for key in ["self", "output_path"]:
             del kwargs[key]
 
-        for name, dataset in vars(self):
+        for name, dataset in vars(self).items():
             train_dir = os.path.join(output_path, dataset.hash if by_hash else name)
             dataset.to_parquet(train_dir, **kwargs)
 

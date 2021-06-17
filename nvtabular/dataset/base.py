@@ -39,8 +39,8 @@ class TabularDataset:
         if not workflow:
             workflow = Workflow(self.create_default_transformations(splits), self.transformed_dir)
 
-        splits = workflow.fit_transform(splits.train, eval=splits.eval, test=splits.test, overwrite=overwrite,
-                                        save=save)
+        splits = workflow.fit_transform(splits.train, eval=splits.get("eval"), test=splits.get("test"),
+                                        overwrite=overwrite, save=save)
         self.transformed = splits
 
         return splits

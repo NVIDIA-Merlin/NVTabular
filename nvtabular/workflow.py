@@ -25,6 +25,7 @@ import typing as T
 import cloudpickle
 import cudf
 import dask
+import pandas as pd
 from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
@@ -35,6 +36,7 @@ from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
+
 
 if TYPE_CHECKING:
     import distributed
@@ -95,7 +97,7 @@ class Workflow:
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
         output = Dataset(
-            _transform_ddf(ddf, self.column_group),
+            _transform_ddf(ddf, self.column_group, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
@@ -325,7 +327,7 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, column_groups):
+def _transform_ddf(ddf, column_groups, meta=None):
     if isinstance(column_groups, ColumnGroup):
         column_groups = [column_groups]
 
@@ -338,13 +340,24 @@ def _transform_ddf(ddf, column_groups):
     if all((c.op is None and not c.parents) for c in column_groups):
         return ddf[_get_unique(columns)]
 
-    # TODO: constructing meta like this loses dtype information on the ddf
-    # sets it all to 'float64'. We should propogate dtype information along
-    # with column names in the columngroup graph
+    if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):
+        dtypes = meta
+        meta = type(ddf._meta)({k: [] for k in columns})
+        for column, dtype in dtypes.items():
+            meta[column] = meta[column].astype(dtype)
+
+    elif not meta:
+        # TODO: constructing meta like this loses dtype information on the ddf
+        # and sets it all to 'float64'. We should propogate dtype information along
+        # with column names in the columngroup graph. This currently only
+        # happesn during intermediate 'fit' transforms, so as long as statoperators
+        # don't require dtype information on the DDF this doesn't matter all that much
+        meta = type(ddf._meta)({k: [] for k in columns})
+
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
-        meta=type(ddf._meta)({k: [] for k in columns}),
+        meta=meta,
     )
 
 
@@ -395,7 +408,7 @@ def _transform_partition(root_df, column_groups):
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
-        if not output:
+        if output is None:
             output = df[unique_flattened_cols]
         else:
             output = _concat_columns([output, df[unique_flattened_cols]])
