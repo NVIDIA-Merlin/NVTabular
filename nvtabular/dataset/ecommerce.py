@@ -1,21 +1,24 @@
 import os
+from glob import glob
 
+import cudf
 from kaggle import api as kaggle_api
 from sklearn.model_selection import train_test_split
 
 from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
-from nvtabular.dataset.base import PublicDataset
+from nvtabular.dataset.base import TabularDataset
 from nvtabular.io import Dataset
-from nvtabular.workflow import Workflow
+from nvtabular.io.dataset import DatasetSplits
+from nvtabular.tag import TagAs
 
 
-class ClothingReviews(PublicDataset):
+class ClothingReviews(TabularDataset):
     ORIG_FILE_NAME = "Womens Clothing E-Commerce Reviews.csv"
     PARQUET_FILE_NAME = "Womens Clothing E-Commerce Reviews.parquet"
 
-    def __init__(self, data_dir, tokenizer=None, client=None, test_size=0.1, random_state=42):
-        super().__init__(data_dir)
+    def __init__(self, work_dir, tokenizer=None, client=None, test_size=0.1, random_state=42):
+        super().__init__(os.path.join(work_dir, self.name()))
         self.client = client
         self.parquet_dir = os.path.join(self.input_dir, "parquet")
         self.data_parquet = os.path.join(self.parquet_dir, self.PARQUET_FILE_NAME)
@@ -35,12 +38,15 @@ class ClothingReviews(PublicDataset):
                                tags=Tag.CATEGORICAL)
         columns += ColumnGroup(["Positive Feedback Count", "Age"], tags=Tag.CONTINUOUS)
 
-        columns += ColumnGroup(["Recommended IND"], tags=Tag.TARGETS_BINARY)
+        columns += (ColumnGroup(["Recommended IND"])
+                    >> ops.Rename(f=lambda x: x.replace(" IND", ""))
+                    >> TagAs(Tag.TARGETS_BINARY)
+                    )
         columns += ColumnGroup(["Rating"], tags=Tag.TARGETS_REGRESSION)
 
         return columns
 
-    def create_default_transformations(self) -> Workflow:
+    def create_default_transformations(self, data) -> ColumnGroup:
         outputs = self.column_group.get_tagged(Tag.TARGETS)
         outputs += self.column_group.get_tagged(Tag.CONTINUOUS) >> ops.FillMissing() >> ops.Normalize()
         outputs += self.column_group.get_tagged(Tag.CATEGORICAL) >> ops.Categorify()
@@ -58,9 +64,12 @@ class ClothingReviews(PublicDataset):
         else:
             outputs += self.column_group.get_tagged(Tag.TEXT)
 
-        return Workflow(outputs)
+        return outputs
 
-    def prepare(self, frac_size=0.10):
+    def name(self) -> str:
+        return "clothing_reviews"
+
+    def prepare(self, frac_size=0.10) -> DatasetSplits:
         kaggle_api.authenticate()
 
         if not os.path.exists(self.data_parquet):
@@ -76,13 +85,16 @@ class ClothingReviews(PublicDataset):
             )
             dataset.to_parquet(self.parquet_dir, preserve_files=True)
 
-    def create_splits(self):
-        train_path = os.path.join(self.splits_dir, "train.parquet")
-        eval_path = os.path.join(self.splits_dir, "eval.parquet")
+        train_path = os.path.join(self.splits_dir, "train")
+        eval_path = os.path.join(self.splits_dir, "eval")
 
-        if not os.path.exists(train_path):
-            train, valid = train_test_split(self.df(), test_size=self.test_size, random_state=self.random_state)
-            train.to_parquet(train_path)
-            valid.to_parquet(eval_path)
+        if not os.path.exists(train_path) or not os.path.exists(eval_path):
+            df = cudf.read_parquet(self.data_parquet)
+            train, eval = train_test_split(df, test_size=self.test_size, random_state=self.random_state)
+            Dataset(train).to_parquet(train_path)
+            Dataset(eval).to_parquet(eval_path)
 
-        return train_path, eval_path
+        return DatasetSplits(
+            Dataset(glob(os.path.join(train_path, "*.parquet"))),
+            eval=Dataset(glob(os.path.join(eval_path, "*.parquet")))
+        )

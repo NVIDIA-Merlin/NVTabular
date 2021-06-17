@@ -1,14 +1,12 @@
-import glob
 import os
 
 import abc
-
+from ..column_group import ColumnGroup
+from ..io.dataset import DatasetCollection
 from ..workflow import Workflow
-import cudf
-import dask_cudf
 
 
-class PublicDataset:
+class TabularDataset:
     def __init__(self, data_dir, is_dask=False):
         self.data_dir = data_dir
         self.transformed_dir = os.path.join(data_dir, "transformed")
@@ -21,56 +19,28 @@ class PublicDataset:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def create_default_transformations(self) -> Workflow:
+    def create_default_transformations(self, data) -> ColumnGroup:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def prepare(self):
+    def prepare(self) -> DatasetCollection:
         raise NotImplementedError()
 
     @property
     def column_group(self):
         return self.create_input_column_group()
 
-    def read_parquet(self, path):
-        if os.path.isdir(path):
-            path = glob.glob(os.path.join(path, "*.parquet"))
+    @property
+    def data(self):
+        return self.prepare()
 
-        return dask_cudf.read_parquet(path[0]) if self.is_dask else cudf.read_parquet(path)
-
-    def df(self):
-        self.prepare()
-
-        return self.read_parquet(self.data_parquet)
-
-    def transform(self, workflow=None, overwrite=False):
+    def transform(self, workflow=None, overwrite=False, save=True):
+        splits = self.prepare()
         if not workflow:
-            workflow = self.create_default_transformations()
-        train_path, eval_path = self.create_splits()
+            workflow = Workflow(self.create_default_transformations(splits), self.transformed_dir)
 
-        output = workflow(train_path, eval_path, self.transformed_dir, overwrite=overwrite)
-        self.transformed = output
+        splits = workflow.fit_transform(splits.train, eval=splits.eval, test=splits.test, overwrite=overwrite,
+                                        save=save)
+        self.transformed = splits
 
-        return output
-
-    def train_df(self, transformed=True):
-        if not transformed:
-            train_path, _ = self.create_splits()
-
-            return self.read_parquet(train_path)
-
-        if not self.transformed:
-            raise ValueError("Dataset not transformed yet")
-
-        return self.read_parquet(self.transformed.train_path)
-
-    def eval_df(self, transformed=True):
-        if not transformed:
-            _, eval_path = self.create_splits()
-
-            return self.read_parquet(eval_path)
-
-        if not self.transformed:
-            raise ValueError("Dataset not transformed yet")
-
-        return self.read_parquet(self.transformed.eval_path)
+        return splits

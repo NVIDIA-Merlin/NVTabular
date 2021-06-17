@@ -219,6 +219,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        column_group=None
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -229,6 +230,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # (https://github.com/NVIDIA/NVTabular/issues/412)
         cat_names = _get_embedding_order(cat_names)
         cont_names = _get_embedding_order(cont_names)
+        self._column_group = column_group
 
         device = device or 0
         DataLoader.__init__(
@@ -299,6 +301,29 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         for api match.
         """
         return tf.split(tensor, idx, axis=axis)
+
+    def create_keras_inputs(self, sparse_columns=None):
+        if sparse_columns is None:
+            sparse_columns = []
+        inputs = {}
+
+        for col in self.cont_names:
+            inputs[col] = tf.keras.Input(name=col, dtype=tf.float32, shape=(None, 1))
+
+        for col in self.cat_names:
+            if col not in sparse_columns:
+                inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(None, 1))
+            else:
+                inputs[col] = (
+                    tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,)),
+                    tf.keras.Input(name=f"{col}__nnzs", dtype=tf.int64, shape=(1,))
+                )
+
+        return inputs
+
+    @property
+    def columns(self):
+        return self._column_group
 
     @property
     def _LONG_DTYPE(self):

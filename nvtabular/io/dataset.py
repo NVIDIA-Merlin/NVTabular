@@ -19,12 +19,19 @@ import logging
 import math
 import random
 import warnings
+from dataclasses import dataclass
+from types import SimpleNamespace
+from typing import Optional, Any
+from glob import glob
 
 import cudf
 import dask
 import dask_cudf
+import joblib
 import numpy as np
+import os
 import pandas as pd
+import shutil
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -34,6 +41,7 @@ from fsspec.utils import stringify_path
 
 from nvtabular.dispatch import _hex_to_int
 from nvtabular.io.shuffle import _check_shuffle_arg
+from ..tag import Tag
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
@@ -195,21 +203,23 @@ class Dataset:
     """
 
     def __init__(
-        self,
-        path_or_source,
-        engine=None,
-        npartitions=None,
-        part_size=None,
-        part_mem_fraction=None,
-        storage_options=None,
-        dtypes=None,
-        client=None,
-        cpu=None,
-        base_dataset=None,
-        **kwargs,
+            self,
+            path_or_source,
+            engine=None,
+            npartitions=None,
+            part_size=None,
+            part_mem_fraction=None,
+            storage_options=None,
+            dtypes=None,
+            client=None,
+            cpu=None,
+            base_dataset=None,
+            workflow=None,
+            **kwargs,
     ):
         self.dtypes = dtypes
         self.client = client
+        self.workflow = workflow
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu or False
@@ -322,6 +332,10 @@ class Dataset:
                     paths, part_size, cpu=self.cpu, storage_options=storage_options
                 )
 
+    @classmethod
+    def from_pattern(cls, path, pattern="*.parquet"):
+        return cls(glob(os.path.join(path, pattern)))
+
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`
 
@@ -376,6 +390,18 @@ class Dataset:
     @property
     def partition_lens(self):
         return self.engine._partition_lens
+
+    @property
+    def hash(self):
+        static_hash = getattr(self, "_hash", None)
+        if static_hash:
+            return static_hash
+
+        paths = getattr(self.engine, "paths", None)
+        if paths:
+            return joblib.hash(paths)
+
+        return joblib.hash(self.to_ddf())
 
     def to_cpu(self):
         warnings.warn(
@@ -461,8 +487,8 @@ class Dataset:
                 target_mapping.reset_index(drop=False, inplace=True)
                 plan = (
                     hive_mapping.reset_index()
-                    .merge(target_mapping, on=cols, how="left")
-                    .sort_values("_sort")["_partition"]
+                        .merge(target_mapping, on=cols, how="left")
+                        .sort_values("_sort")["_partition"]
                 )
 
                 if hasattr(plan, "to_pandas"):
@@ -507,8 +533,8 @@ class Dataset:
         """
         return Dataset(
             self.to_ddf()
-            .clear_divisions()
-            .repartition(
+                .clear_divisions()
+                .repartition(
                 npartitions=npartitions,
                 partition_size=partition_size,
             )
@@ -546,8 +572,8 @@ class Dataset:
 
         return cls(
             left.to_ddf()
-            .clear_divisions()
-            .merge(
+                .clear_divisions()
+                .merge(
                 _right.to_ddf().clear_divisions(),
                 **kwargs,
             )
@@ -614,19 +640,19 @@ class Dataset:
         )
 
     def to_parquet(
-        self,
-        output_path,
-        shuffle=None,
-        preserve_files=False,
-        output_files=None,
-        out_files_per_proc=None,
-        num_threads=0,
-        dtypes=None,
-        cats=None,
-        conts=None,
-        labels=None,
-        suffix=".parquet",
-        partition_on=None,
+            self,
+            output_path,
+            shuffle=None,
+            preserve_files=False,
+            output_files=None,
+            out_files_per_proc=None,
+            num_threads=0,
+            dtypes=None,
+            cats=None,
+            conts=None,
+            labels=None,
+            suffix=".parquet",
+            partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -761,6 +787,8 @@ class Dataset:
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
 
+        LOG.info("Saving dataset to parquet in: " + output_path)
+
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
             ddf,
@@ -781,16 +809,16 @@ class Dataset:
         )
 
     def to_hugectr(
-        self,
-        output_path,
-        cats,
-        conts,
-        labels,
-        shuffle=None,
-        file_partition_map=None,
-        out_files_per_proc=None,
-        num_threads=0,
-        dtypes=None,
+            self,
+            output_path,
+            cats,
+            conts,
+            labels,
+            shuffle=None,
+            file_partition_map=None,
+            out_files_per_proc=None,
+            num_threads=0,
+            dtypes=None,
     ):
         """Writes out to a parquet dataset
 
@@ -867,6 +895,48 @@ class Dataset:
             self.cpu,
         )
 
+    def to_tf_dataset(self, batch_size, data_dir=None, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
+                      separate_labels=True, named_labels=False, overwrite=False,
+                      continuous_features=None, categorical_features=None, targets=None, **kwargs):
+        from nvtabular.loader.tensorflow import KerasSequenceLoader
+
+        data_dir = data_dir or os.path.join(self.workflow.work_dir, self.hash)
+
+        col_group = self.workflow.column_group
+        categorical_features = categorical_features or col_group.get_tagged(Tag.CATEGORICAL).columns
+        continuous_features = continuous_features or col_group.get_tagged(Tag.CONTINUOUS).columns
+        targets = targets or col_group.get_tagged(Tag.TARGETS).columns
+
+        if not os.path.exists(data_dir):
+            self.to_parquet(data_dir, **kwargs)
+
+        elif os.path.exists(data_dir) and overwrite:
+            shutil.rmtree(data_dir)
+            self.to_parquet(data_dir, **kwargs)
+
+        tf_dataset = KerasSequenceLoader(
+            data_dir,
+            batch_size=batch_size,
+            label_names=targets if separate_labels else [],
+            cat_names=categorical_features if separate_labels else categorical_features + targets,
+            cont_names=continuous_features,
+            engine="parquet",
+            shuffle=shuffle,
+            buffer_size=buffer_size,  # how many batches to load at once
+            parts_per_chunk=parts_per_chunk,
+            column_group=getattr(self.workflow, "column_group", None)
+        )
+
+        if named_labels and separate_labels:
+            return tf_dataset.map(lambda X, y: (X, dict(zip(targets, y))))
+
+        return tf_dataset
+
+    def to_tf_callback(self, batch_size, **kwargs):
+        from nvtabular.loader.tensorflow import KerasSequenceValidater
+
+        return KerasSequenceValidater(self.to_tf_dataset(batch_size, **kwargs))
+
     @property
     def num_rows(self):
         return self.engine.num_rows
@@ -915,12 +985,12 @@ class Dataset:
         return self.engine.validate_dataset(**kwargs)
 
     def regenerate_dataset(
-        self,
-        output_path,
-        columns=None,
-        output_format="parquet",
-        compute=True,
-        **kwargs,
+            self,
+            output_path,
+            columns=None,
+            output_format="parquet",
+            compute=True,
+            **kwargs,
     ):
         """EXPERIMENTAL:
         Regenerate an NVTabular Dataset for efficient processing by writing
@@ -984,6 +1054,138 @@ class Dataset:
 
         meth.__name__ = name
         setattr(cls, name, meth)
+
+
+class DatasetCollection(SimpleNamespace):
+    def __init__(self, **kwargs: Any) -> None:
+        assert all([isinstance(dataset, Dataset) for dataset in kwargs.values()])
+        super().__init__(**kwargs)
+
+    def to_parquet(self,
+                   output_path,
+                   by_hash=True,
+                   shuffle=None,
+                   preserve_files=False,
+                   output_files=None,
+                   out_files_per_proc=None,
+                   num_threads=0,
+                   dtypes=None,
+                   cats=None,
+                   conts=None,
+                   labels=None,
+                   suffix=".parquet",
+                   partition_on=None):
+        kwargs = locals()
+        by_hash = kwargs.pop("by_hash")
+        for key in ["self", "output_path"]:
+            del kwargs[key]
+
+        for name, dataset in vars(self):
+            train_dir = os.path.join(output_path, dataset.hash if by_hash else name)
+            dataset.to_parquet(train_dir, **kwargs)
+
+    # @classmethod
+    # def load_from_dir(cls, directory, train_data, eval_data=None, test_data=None, format="parquet", workflow=None,
+    #                   save=False):
+    #     get_files = lambda path: glob(os.path.join(path, f"*.{format}"))
+    #     train_dir = os.path.join(directory, train_data.hash)
+    #     if not os.path.exists(train_dir):
+    #         return None
+    #     train_data = Dataset(get_files(train_dir))
+    #     if workflow:
+    #         train_data.workflow = workflow
+    #
+    #     if eval_data:
+    #         eval_dir = os.path.join(directory, eval_data.hash)
+    #         if os.path.exists(eval_dir):
+    #             eval_data = Dataset(get_files(eval_dir))
+    #             if workflow:
+    #                 eval_data.workflow = workflow
+    #             else:
+    #                 eval_data = workflow.transform(eval_dir, save=save)
+    #
+    #     if test_data:
+    #         test_dir = os.path.join(directory, test_data.hash)
+    #         if os.path.exists(test_dir):
+    #             test_data = Dataset(get_files(test_data))
+    #             if workflow:
+    #                 test_data.workflow = workflow
+    #         else:
+    #             test_data = workflow.transform(test_data, save=save)
+    #
+    #     return cls(train_data, eval=eval_data, test=test_data)
+
+
+class DatasetSplits(DatasetCollection):
+    train: Dataset
+    eval: Optional[Dataset] = None
+    test: Optional[Dataset] = None
+
+    def __init__(self, train, eval=None, test=None, **kwargs: Any) -> None:
+        if eval:
+            kwargs["eval"] = eval
+        if test:
+            kwargs["test"] = test
+
+        super().__init__(train=train, **kwargs)
+
+    # def to_parquet(self,
+    #                output_path,
+    #                shuffle=None,
+    #                preserve_files=False,
+    #                output_files=None,
+    #                out_files_per_proc=None,
+    #                num_threads=0,
+    #                dtypes=None,
+    #                cats=None,
+    #                conts=None,
+    #                labels=None,
+    #                suffix=".parquet",
+    #                partition_on=None):
+    #     kwargs = locals()
+    #     for key in ["self", "output_path"]:
+    #         del kwargs[key]
+    #
+    #     train_dir = os.path.join(output_path, self.train.hash)
+    #     self.train.to_parquet(train_dir, **kwargs)
+    #
+    #     if self.eval is not None:
+    #         eval_dir = os.path.join(output_path, self.eval.hash)
+    #         self.eval.to_parquet(eval_dir, **kwargs)
+    #
+    #     if self.test is not None:
+    #         test_dir = os.path.join(output_path, self.test.hash)
+    #         self.test.to_parquet(test_dir, **kwargs)
+
+    @classmethod
+    def load_from_dir(cls, directory, train_data, eval_data=None, test_data=None, format="parquet", workflow=None, save=False):
+        get_files = lambda path: glob(os.path.join(path, f"*.{format}"))
+        train_dir = os.path.join(directory, train_data.hash)
+        if not os.path.exists(train_dir):
+            return None
+        train_data = Dataset(get_files(train_dir))
+        if workflow:
+            train_data.workflow = workflow
+
+        if eval_data:
+            eval_dir = os.path.join(directory, eval_data.hash)
+            if os.path.exists(eval_dir):
+                eval_data = Dataset(get_files(eval_dir))
+                if workflow:
+                    eval_data.workflow = workflow
+                else:
+                    eval_data = workflow.transform(eval_dir, save=save)
+
+        if test_data:
+            test_dir = os.path.join(directory, test_data.hash)
+            if os.path.exists(test_dir):
+                test_data = Dataset(get_files(test_data))
+                if workflow:
+                    test_data.workflow = workflow
+            else:
+                test_data = workflow.transform(test_data, save=save)
+
+        return cls(train_data, eval=eval_data, test=test_data)
 
 
 # Bind (simple) Dask-Dataframe Methods

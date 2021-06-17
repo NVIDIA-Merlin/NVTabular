@@ -245,6 +245,34 @@ class ColumnGroup:
 
         return child
 
+    @property
+    def targets(self):
+        return self.get_tagged(Tag.TARGETS)
+
+    @property
+    def targets_binary(self):
+        return self.get_tagged(Tag.TARGETS_BINARY)
+
+    @property
+    def targets_regression(self):
+        return self.get_tagged(Tag.TARGETS_REGRESSION)
+
+    @property
+    def continuous(self):
+        return self.get_tagged(Tag.CONTINUOUS)
+
+    @property
+    def categorical(self):
+        return self.get_tagged(Tag.CATEGORICAL)
+
+    @property
+    def text(self):
+        return self.get_tagged(Tag.TEXT)
+
+    @property
+    def text_tokenized(self):
+        return self.get_tagged(Tag.TEXT_TOKENIZED)
+
     def embedding_sizes(self):
         queue = [self]
         output = {}
