@@ -20,7 +20,6 @@ import sys
 import time
 import warnings
 from typing import TYPE_CHECKING, Optional
-import typing as T
 
 import cloudpickle
 import cudf
@@ -30,7 +29,7 @@ from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
 from nvtabular.dispatch import _concat_columns
-from nvtabular.io.dataset import Dataset, DatasetSplits, DatasetCollection
+from nvtabular.io.dataset import Dataset, DatasetCollection
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
