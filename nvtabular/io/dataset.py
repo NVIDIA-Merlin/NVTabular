@@ -1030,16 +1030,23 @@ class Dataset:
 
 class DatasetCollection(SimpleNamespace):
     def __init__(self, **kwargs: Any) -> None:
+        splits = {}
         for key, val in kwargs.items():
             if not val:
                 LOG.warning(f"{key} is emtpy, remove it from the collection")
-                kwargs.pop(key)
+            else:
+                splits[key] = val
         assert all([isinstance(dataset, (Dataset, DatasetCollection)) for dataset in kwargs.values()])
         super().__init__(**kwargs)
 
     @classmethod
     def from_splits(cls, train, eval=None, test=None):
-        return cls(train=train, eval=eval, test=test)
+        splits = dict(train=train)
+        if eval:
+            splits["eval"] = eval
+        if test:
+            splits["test"] = test
+        return cls(**splits)
 
     def get(self, name):
         return vars(self).get(name)

@@ -62,17 +62,17 @@ class Criteo(TabularDataset):
 
         dataset.to_parquet(self.parquet_dir, preserve_files=True)
 
-    def prepare(self) -> DatasetCollection:
+    def prepare(self, **kwargs) -> DatasetCollection:
         orig_files = []
         # Iterate over days
         for i in range(0, self.num_days):
             file = os.path.join(self.input_dir, "day_" + str(i) + ".gz")
-            orig_files.append(file)
+            orig_files.append(file.replace(".gz", ""))
             # Download file, if there is no .gz, .csv or .parquet file
             if not (
                     os.path.exists(file)
                     or os.path.exists(
-                file.replace(".gz", ".parquet").replace("crit_orig", "converted/criteo/")
+                file.replace(".gz", ".parquet").replace("orig", "orig/parquet/")
             )
                     or os.path.exists(file.replace(".gz", ""))
             ):
@@ -83,12 +83,21 @@ class Criteo(TabularDataset):
                     file,
                 )
 
-        if not os.path.exists(self.parquet_dir):
-            self.convert_files_to_parquet(orig_files)
+        # Check if files need to be converted
+        files_to_convert = []
+        for f in orig_files:
+            parquet_file = f"{f}.parquet".replace("orig", "orig/parquet")
+            if not os.path.exists(parquet_file):
+                files_to_convert.append(f)
+        if files_to_convert:
+            self.convert_files_to_parquet(files_to_convert)
 
         parquet_files = [os.path.join(self.parquet_dir, f"day_{i}.parquet") for i in range(0, self.num_days)]
 
-        return DatasetCollection.from_splits(Dataset(parquet_files[:-1]), eval=Dataset(parquet_files[-1]))
+        return DatasetCollection.from_splits(Dataset(parquet_files[:-1], engine="parquet", client=self.client,
+                                                     **kwargs),
+                                             eval=Dataset(parquet_files[-1], engine="parquet", client=self.client,
+                                                          **kwargs))
 
     def name(self):
         return f"criteo"

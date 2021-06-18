@@ -27,7 +27,7 @@ class TabularDataset:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def prepare(self) -> DatasetCollection:
+    def prepare(self, **kwargs) -> DatasetCollection:
         raise NotImplementedError()
 
     @property
@@ -38,8 +38,8 @@ class TabularDataset:
     def data(self):
         return self.prepare()
 
-    def transform(self, workflow=None, overwrite=False, save=True, to_fit="train") -> DatasetCollection:
-        splits = self.prepare()
+    def transform(self, workflow=None, overwrite=False, save=True, to_fit="train", **kwargs) -> DatasetCollection:
+        splits = self.prepare(**kwargs)
         if not workflow:
             workflow = Workflow(self.create_default_transformations(splits), self.transformed_dir)
 
