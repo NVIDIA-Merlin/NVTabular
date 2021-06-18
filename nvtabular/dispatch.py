@@ -67,10 +67,12 @@ def _is_series_object(x):
     # Series object
     return isinstance(x, (cudf.Series, pd.Series))
 
+
 def _is_cpu_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
     return isinstance(x, (pd.DataFrame, pd.Series))
+
 
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
@@ -375,13 +377,22 @@ def _to_host(x):
     else:
         return x
 
+
 def _from_host(x):
     if isinstance(x, cudf.DataFrame):
         return x
     else:
-        return cudf.DataFrame.from_arrow(df)
+        return cudf.DataFrame.from_arrow(x)
+
+
 def _get_list_dtype():
     return cudf.core.dtypes.ListDtype
 
+
 def _build_column(new_elements, new_offsets):
-    return build_column(None, dtype=cudf.core.dtypes.ListDtype(new_elements.dtype), size=new_offsets.size - 1, children=(as_column(new_offsets), as_column(new_elements)))
+    return build_column(
+        None,
+        dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),
+        size=new_offsets.size - 1,
+        children=(as_column(new_offsets), as_column(new_elements)),
+    )

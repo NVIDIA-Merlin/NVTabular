@@ -16,10 +16,9 @@
 import cupy as cp
 import numba.cuda
 import numpy as np
-import pandas as pd
 from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _is_cpu_object, _build_column
+from nvtabular.dispatch import DataFrameType, _build_column, _is_cpu_object
 
 from .operator import ColumnNames, Operator
 
