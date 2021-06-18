@@ -7,12 +7,16 @@ from ..workflow import Workflow
 
 
 class TabularDataset:
-    def __init__(self, data_dir, is_dask=False):
+    def __init__(self, data_dir, client=None, is_dask=False):
         self.data_dir = data_dir
+        self.client = client
         self.transformed_dir = os.path.join(data_dir, "transformed")
         self.input_dir = os.path.join(data_dir, "orig")
         self.is_dask = is_dask
         self.transformed = None
+
+        if not os.path.exists(self.input_dir):
+            os.makedirs(self.input_dir)
 
     @abc.abstractmethod
     def create_input_column_group(self):
@@ -27,7 +31,7 @@ class TabularDataset:
         raise NotImplementedError()
 
     @property
-    def column_group(self):
+    def column_group(self) -> ColumnGroup:
         return self.create_input_column_group()
 
     @property
