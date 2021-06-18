@@ -27,6 +27,7 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 ColumnGroup = column_group.ColumnGroup
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
+DatasetCollection = io.dataset.DatasetCollection
 FeatureGroup = feature_group.FeatureGroup
 TargetGroup = feature_group.TargetGroup
 TagAs = column_group.TagAs

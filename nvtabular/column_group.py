@@ -14,11 +14,12 @@
 # limitations under the License.
 #
 import collections.abc
-from enum import Enum
+from operator import attrgetter
 
+import joblib
 from dask.core import flatten
 
-from nvtabular.ops import LambdaOp, Operator, TokenizeText, Categorify
+from nvtabular.ops import LambdaOp, Operator
 from nvtabular.tag import Tag, TagAs, DefaultTags
 
 
@@ -241,37 +242,30 @@ class ColumnGroup:
         child = ColumnGroup(columns)
         child.parents = [self]
         self.children.append(child)
-        child.kind = f"tagged={tags} " + str(columns)
+        child.kind = f"tagged={self._tags_repr} " + self._cols_repr
 
         return child
 
-    @property
-    def targets(self):
-        return self.get_tagged(Tag.TARGETS)
+    def targets(self, column_group=False):
+        return self.get_tagged(Tag.TARGETS, output_list=not column_group)
 
-    @property
-    def targets_binary(self):
-        return self.get_tagged(Tag.TARGETS_BINARY)
+    def targets_binary(self, column_group=False):
+        return self.get_tagged(Tag.TARGETS_BINARY, output_list=not column_group)
 
-    @property
-    def targets_regression(self):
-        return self.get_tagged(Tag.TARGETS_REGRESSION)
+    def targets_regression(self, column_group=False):
+        return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=not column_group)
 
-    @property
-    def continuous(self):
-        return self.get_tagged(Tag.CONTINUOUS)
+    def continuous(self, column_group=False):
+        return self.get_tagged(Tag.CONTINUOUS, output_list=not column_group)
 
-    @property
-    def categorical(self):
-        return self.get_tagged(Tag.CATEGORICAL)
+    def categorical(self, column_group=False):
+        return self.get_tagged(Tag.CATEGORICAL, output_list=not column_group)
 
-    @property
-    def text(self):
-        return self.get_tagged(Tag.TEXT)
+    def text(self, column_group=False):
+        return self.get_tagged(Tag.TEXT, output_list=not column_group)
 
-    @property
-    def text_tokenized(self):
-        return self.get_tagged(Tag.TEXT_TOKENIZED)
+    def text_tokenized(self, column_group=False):
+        return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=not column_group)
 
     def embedding_sizes(self):
         queue = [self]
@@ -326,9 +320,24 @@ class ColumnGroup:
             return "??"
 
     @property
+    def is_transformation(self):
+        return True if self.parents else False
+
+    @property
+    def id(self):
+        return joblib.hash(sorted([n.label for n in self.nodes]))
+
+    @property
     def _cols_repr(self):
         cols = ", ".join(map(str, self.columns[:3]))
         if len(self.columns) > 3:
+            cols += "..."
+        return cols
+
+    @property
+    def _tags_repr(self):
+        cols = ", ".join(map(str, self.tags[:3]))
+        if len(self.tags) > 3:
             cols += "..."
         return cols
 
@@ -338,7 +347,7 @@ class ColumnGroup:
 
     @property
     def nodes(self):
-        return list(set(iter_nodes([self])))
+        return sorted(list(set(iter_nodes([self]))), key=attrgetter('is_transformation', 'label'))
 
 
 def iter_nodes(nodes):

@@ -30,13 +30,12 @@ from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
 from nvtabular.dispatch import _concat_columns
-from nvtabular.io.dataset import Dataset, DatasetSplits
+from nvtabular.io.dataset import Dataset, DatasetSplits, DatasetCollection
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
-
 
 if TYPE_CHECKING:
     import distributed
@@ -101,10 +100,9 @@ class Workflow:
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
-            workflow=self
+            workflow=self,
+            id=self.transformed_dataset_id(dataset)
         )
-
-        output._hash = dataset.hash
 
         return output
 
@@ -175,12 +173,7 @@ class Workflow:
         if save_workflow:
             self.save()
 
-    def fit_transform(self,
-                      dataset: Dataset,
-                      eval: Optional[Dataset] = None,
-                      test: Optional[Dataset] = None,
-                      save=False,
-                      overwrite=False) -> T.Union[Dataset, DatasetSplits]:
+    def fit_transform(self, dataset: Dataset, save=False, overwrite=False, **kwargs) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
         call. Equivalent to calling ``workflow.fit(dataset)`` followed by
         ``workflow.transform(dataset)``
@@ -193,32 +186,42 @@ class Workflow:
         -------
         Dataset
         """
-        splits = DatasetSplits.load_from_dir(self.work_dir, dataset, eval_data=eval, test_data=test, workflow=self, save=save)
-        if not overwrite and splits:
-            return splits
+        cached = DatasetCollection(data=dataset).load_transformed_from_dir(self.work_dir, self)
+        if cached:
+            return cached.data
 
         LOG.info("Fitting dataset...")
         self.fit(dataset)
 
         LOG.info("Transforming dataset...")
         transformed = self.transform(dataset)
-        if not eval and not test:
-            return transformed
-
-        eval_transformed, test_transformed = None, None
-        if eval:
-            LOG.info("Transforming eval dataset...")
-            eval_transformed = self.transform(eval)
-        if test:
-            LOG.info("Transforming test dataset...")
-            test_transformed = self.transform(test)
-
-        splits = DatasetSplits(transformed, test=test_transformed, eval=eval_transformed)
 
         if save:
-            splits.to_parquet(self.work_dir)
+            DatasetCollection(data=dataset).to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
 
-        return splits
+        return transformed
+
+    def fit_transform_collection(self, datasets: DatasetCollection, to_fit="train", save=False,
+                                 overwrite=False, **kwargs) -> DatasetCollection:
+        outputs = datasets.load_transformed_from_dir(self.work_dir, self)
+
+        if outputs:
+            for split_name, dataset in datasets.items():
+                if not outputs.get(split_name):
+                    outputs[split_name] = self.transform(dataset)
+        else:
+            outputs = DatasetCollection()
+            LOG.info("Fitting dataset...")
+            self.fit(datasets[to_fit])
+
+            for split_name, dataset in datasets.items():
+                LOG.info(f"Transforming {split_name}...")
+                outputs[split_name] = self.transform(dataset)
+
+        if save:
+            outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
+
+        return outputs
 
     def save(self, path=None):
         """Save this workflow to disk
@@ -314,6 +317,9 @@ class Workflow:
     def clear_stats(self):
         for stat in _get_stat_ops([self.column_group]):
             stat.op.clear()
+
+    def transformed_dataset_id(self, dataset: Dataset):
+        return "_".join([dataset.id, self.column_group.id])
 
     def _input_columns(self):
         input_nodes = set(node for node in iter_nodes([self.column_group]) if not node.parents)

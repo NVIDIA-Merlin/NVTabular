@@ -34,13 +34,14 @@ class TabularDataset:
     def data(self):
         return self.prepare()
 
-    def transform(self, workflow=None, overwrite=False, save=True):
+    def transform(self, workflow=None, overwrite=False, save=True, to_fit="train") -> DatasetCollection:
         splits = self.prepare()
         if not workflow:
             workflow = Workflow(self.create_default_transformations(splits), self.transformed_dir)
 
-        splits = workflow.fit_transform(splits.train, eval=splits.get("eval"), test=splits.get("test"),
-                                        overwrite=overwrite, save=save)
+        splits = splits.splits if splits.get("splits") else splits
+
+        splits = workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite, save=save)
         self.transformed = splits
 
         return splits

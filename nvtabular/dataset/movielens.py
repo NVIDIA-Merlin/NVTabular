@@ -1,5 +1,4 @@
 import os
-from glob import glob
 
 import cudf
 from kaggle import api as kaggle_api
@@ -90,7 +89,9 @@ class MovieLens(TabularDataset):
             Dataset(movies).to_parquet(movies_path)
 
         return DatasetCollection(
-            train=Dataset.from_pattern(train_path),
-            eval=Dataset.from_pattern(eval_path),
+            splits=DatasetCollection(
+                train=Dataset.from_pattern(train_path),
+                eval=Dataset.from_pattern(eval_path)
+            ),
             movies=Dataset.from_pattern(movies_path)
         )
