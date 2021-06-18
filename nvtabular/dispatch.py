@@ -17,7 +17,6 @@ import enum
 import itertools
 from typing import Callable, Union
 
-import cudf
 import cupy as cp
 import dask.dataframe as dd
 import dask_cudf
@@ -25,8 +24,13 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from cudf.core.column import as_column, build_column
-from cudf.utils.dtypes import is_list_dtype
+
+try:
+    import cudf
+    from cudf.core.column import as_column, build_column
+    from cudf.utils.dtypes import is_list_dtype
+except ImportError:
+    cudf = None
 
 try:
     # Dask >= 2021.5.1
@@ -63,6 +67,10 @@ def _is_series_object(x):
     # Series object
     return isinstance(x, (cudf.Series, pd.Series))
 
+def _is_cpu_object(x):
+    # Simple check if object is a cudf or pandas
+    # DataFrame object
+    return isinstance(x, (pd.DataFrame, pd.Series))
 
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
@@ -366,3 +374,14 @@ def _to_host(x):
         return x.to_arrow()
     else:
         return x
+
+def _from_host(x):
+    if isinstance(x, cudf.DataFrame):
+        return x
+    else:
+        return cudf.DataFrame.from_arrow(df)
+def _get_list_dtype():
+    return cudf.core.dtypes.ListDtype
+
+def _build_column(new_elements, new_offsets):
+    return build_column(None, dtype=cudf.core.dtypes.ListDtype(new_elements.dtype), size=new_offsets.size - 1, children=(as_column(new_offsets), as_column(new_elements)))

@@ -17,7 +17,6 @@ import os
 import warnings
 from operator import getitem
 
-import cudf
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -36,7 +35,9 @@ from nvtabular.dispatch import (
     DataFrameType,
     _arange,
     _encode_list_column,
+    _get_list_dtype,
     _flatten_list_column,
+    _from_host,
     _hash_series,
     _is_list_dtype,
     _parquet_writer_dispatch,
@@ -464,7 +465,7 @@ def get_embedding_sizes(workflow):
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
     for column in output:
-        if isinstance(workflow.output_dtypes[column], cudf.core.dtypes.ListDtype):
+        if isinstance(workflow.output_dtypes[column], _get_list_dtype()):
             # multi hot so remove from output and add to multihot
             multihot_columns.add(column)
     # TODO: returning differnt return types like this (based off the presence
@@ -603,7 +604,7 @@ def _mid_level_groupby(
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
-        df = cudf.DataFrame.from_arrow(df)
+        df = _from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
     groups = df.groupby(col_group, dropna=False)
@@ -730,7 +731,7 @@ def _write_uniques(
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
-        df = cudf.DataFrame.from_arrow(df)
+        df = _from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
     rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=name_sep))
