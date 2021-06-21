@@ -43,6 +43,20 @@ class ConcatFeatures(tf.keras.layers.Layer):
         }
 
 
+class AsTabular(tf.keras.layers.Layer):
+    def __init__(self, output_name, trainable=False, name=None, dtype=None, dynamic=False, **kwargs):
+        super().__init__(trainable, name, dtype, dynamic, **kwargs)
+        self.output_name = output_name
+
+    def call(self, inputs, **kwargs):
+        return {self.output_name: inputs}
+
+    def get_config(self):
+        return {
+            "axis": self.axis,
+        }
+
+
 class StackFeatures(tf.keras.layers.Layer):
     def __init__(self, axis=-1, trainable=False, name=None, dtype=None, dynamic=False, **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
@@ -50,7 +64,7 @@ class StackFeatures(tf.keras.layers.Layer):
         self.flatten = tf.keras.layers.Flatten()
 
     def call(self, inputs, **kwargs):
-        return tf.stack(tf.nest.flatten(tf.nest.map_structure(self.flatten, inputs), axis=self.axis))
+        return tf.stack(tf.nest.flatten(tf.nest.map_structure(self.flatten, inputs)), axis=self.axis)
 
     def get_config(self):
         return {
@@ -59,12 +73,17 @@ class StackFeatures(tf.keras.layers.Layer):
 
 
 class TabularLayer(tf.keras.layers.Layer):
+    def __init__(self, aggregation=None, trainable=True, name=None, dtype=None, dynamic=False, **kwargs):
+        super().__init__(trainable, name, dtype, dynamic, **kwargs)
+        self.aggregation = aggregation
+
     def __call__(self, inputs, pre=None, post=None, merge_with=None, stack_outputs=False, concat_outputs=False,
                  filter_columns=None, **kwargs):
+        post_op = self.maybe_aggregate()
         if concat_outputs:
-            post = ConcatFeatures()
+            post_op = ConcatFeatures()
         if stack_outputs:
-            post = StackFeatures()
+            post_op = StackFeatures()
         if filter_columns:
             pre = FilterFeatures(filter_columns)
         if pre:
@@ -74,13 +93,34 @@ class TabularLayer(tf.keras.layers.Layer):
         if merge_with:
             if not isinstance(merge_with, list):
                 merge_with = [merge_with]
-            for layer in merge_with:
-                outputs.update(layer(inputs))
+            for layer_or_tensor in merge_with:
+                to_add = layer_or_tensor(inputs) if callable(layer_or_tensor) else layer_or_tensor
+                outputs.update(to_add)
 
-        if post:
-            outputs = post(outputs)
+        if post_op:
+            outputs = post_op(outputs)
 
         return outputs
+
+    def maybe_aggregate(self):
+        if self.aggregation == "concat":
+            return ConcatFeatures()
+
+        if self.aggregation == "stack":
+            return StackFeatures()
+
+        return None
+
+    def compute_output_shape(self, input_shapes):
+        batch_size = [i for i in input_shapes.values()][0][0]
+        if self.aggregation == "concat":
+            return batch_size, sum([i[1] for i in input_shapes.values()])
+        elif self.aggregation == "stack":
+            last_dim = [i for i in input_shapes.values()][0][-1]
+
+            return batch_size, len(input_shapes), last_dim
+        else:
+            return super(TabularLayer, self).compute_output_shape(input_shapes)
 
     def call_on_cols(self, inputs, columns_to_include):
         return self(inputs, pre=FilterFeatures(columns_to_include))
@@ -103,7 +143,11 @@ class TabularLayer(tf.keras.layers.Layer):
         if tags:
             column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
 
-        return column_group.columns >> cls()
+        return cls.from_features(column_group.columns, **kwargs)
+
+    @classmethod
+    def from_features(cls, features, **kwargs):
+        return features >> cls(**kwargs)
 
 
 class SequentialLayer(TabularLayer):
@@ -144,10 +188,10 @@ class SequentialLayer(TabularLayer):
             self.layers = copy.copy(layers)
 
     def compute_output_shape(self, input_shape):
-        output_shape = tf.TensorShape(input_shape)
+        output_shape = input_shape
         for l in self.layers:
             output_shape = l.compute_output_shape(output_shape)
-        return tf.TensorShape(output_shape)
+        return output_shape
 
     def compute_output_signature(self, input_signature):
         output_signature = input_signature

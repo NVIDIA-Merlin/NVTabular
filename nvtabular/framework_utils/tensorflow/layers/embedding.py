@@ -30,7 +30,8 @@ from tensorflow.python.tpu.tpu_embedding_v2_utils import (
 )
 
 from nvtabular.column_group import ColumnGroup
-from nvtabular.framework_utils.tensorflow.features import TabularLayer, AsSparseLayer, ParseTokenizedText
+from nvtabular.framework_utils.tensorflow.features import TabularLayer, AsSparseLayer, ParseTokenizedText, \
+    SequentialLayer, AsTabular
 from nvtabular.ops import get_embedding_sizes
 from nvtabular.tag import Tag
 from nvtabular.workflow import Workflow
@@ -205,7 +206,7 @@ class EmbeddingsLayer(TabularLayer):
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
-                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None):
+                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None, **kwargs):
         if tags:
             column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
 
@@ -232,7 +233,7 @@ class EmbeddingsLayer(TabularLayer):
                 )
             )
 
-        return cls(feature_config)
+        return cls(feature_config, **kwargs)
 
 
 class TransformersTextEmbedding(TabularLayer):
@@ -283,6 +284,54 @@ class InputFeatures(TabularLayer):
             tags_to_filter=categorical_tags_to_filter)
 
         return cls(continuous_layer, categorical_layer, **kwargs)
+
+
+class DLRMInputLayer(tf.keras.layers.Layer):
+    def __init__(self, continuous_features, embedding_layer, bottom_mlp, trainable=True, name=None, dtype=None,
+                 dynamic=False, interaction_layer=None, **kwargs):
+        super().__init__(trainable, name, dtype, dynamic, **kwargs)
+        self.continuous_features = continuous_features
+        self.embedding_layer = embedding_layer
+        self.embedding_layer.aggregation = "stack"
+        self.bottom_mlp = bottom_mlp
+
+        if isinstance(continuous_features, TabularLayer):
+            self.con_input_layer = continuous_features
+        elif isinstance(continuous_features, ColumnGroup):
+            self.con_input_layer = TabularLayer.from_column_group(continuous_features, aggregation="concat")
+        elif isinstance(continuous_features, list):
+            self.con_input_layer = TabularLayer.from_features(continuous_features, aggregation="concat")
+
+        self.continuous_embedding = SequentialLayer([
+            self.con_input_layer,
+            bottom_mlp,
+            tf.keras.layers.Lambda(lambda x: dict(continuous=tf.expand_dims(x, 1))),
+            AsTabular("continuous")
+        ])
+
+        from nvtabular.framework_utils.tensorflow.layers import DotProductInteraction
+        self.interaction_layer = interaction_layer or DotProductInteraction()
+
+    @classmethod
+    def from_column_group(cls, column_group, bottom_mlp, **kwargs):
+        embedding_layer = EmbeddingsLayer.from_column_group(
+            column_group.categorical_column_group,
+            infer_embedding_sizes=False,
+            default_embedding_dim=bottom_mlp.layers[-1].units,
+            aggregation="stack"
+        )
+
+        continuous_features = TabularLayer.from_column_group(
+            column_group.continuous_column_group,
+            aggregation="concat"
+        )
+
+        return cls(continuous_features, embedding_layer, bottom_mlp, **kwargs)
+
+    def call(self, inputs, **kwargs):
+        stacked = self.embedding_layer(inputs, merge_with=self.continuous_embedding)
+
+        return self.interaction_layer(stacked)
 
 
 class DenseFeatures(tf.keras.layers.Layer):

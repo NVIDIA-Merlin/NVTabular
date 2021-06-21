@@ -17,7 +17,7 @@
 # flake8: noqa
 from .feature_column_utils import make_feature_column_workflow
 from .features import (FilterFeatures, ConcatFeatures, SequentialLayer, StackFeatures, TabularLayer, AsSparseLayer,
-                       AsDenseLayer, ParseTokenizedText)
-from .layers.embedding import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures
+                       AsDenseLayer, ParseTokenizedText, AsTabular)
+from .layers.embedding import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures, DLRMInputLayer
 from .heads import MultiTaskHead, Task
 from . import tfrs
