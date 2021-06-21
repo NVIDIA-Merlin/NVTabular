@@ -27,6 +27,7 @@ import dask
 import pandas as pd
 from dask.core import flatten
 
+
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset, DatasetCollection

@@ -47,22 +47,22 @@ class ClothingReviews(TabularDataset):
         return columns
 
     def create_default_transformations(self, data) -> ColumnGroup:
-        outputs = self.column_group.get_tagged(Tag.TARGETS)
-        outputs += self.column_group.get_tagged(Tag.CONTINUOUS) >> ops.FillMissing() >> ops.Normalize()
-        outputs += self.column_group.get_tagged(Tag.CATEGORICAL) >> ops.Categorify()
+        outputs = self.column_group.targets_column_group
+        outputs += self.column_group.continuous_column_group >> ops.FillMissing() >> ops.Normalize()
+        outputs += self.column_group.categorical_column_group >> ops.Categorify()
 
         if self.tokenizer:
             if isinstance(self.tokenizer, ops.TokenizeText):
-                outputs += self.column_group.get_tagged(Tag.TEXT) >> self.tokenizer
+                outputs += self.column_group.text_column_group >> self.tokenizer
             else:
-                outputs += self.column_group.get_tagged(Tag.TEXT) >> ops.TokenizeText(
+                outputs += self.column_group.text_column_group >> ops.TokenizeText(
                     self.tokenizer,
                     max_length=200,
                     do_lower=False,
                     cache_dir=os.path.join(self.data_dir, "tokenizers"),
                     do_truncate=True)
         else:
-            outputs += self.column_group.get_tagged(Tag.TEXT)
+            outputs += self.column_group.text_column_group
 
         return outputs
 

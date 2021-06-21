@@ -24,9 +24,11 @@ class Criteo(TabularDataset):
         return outputs
 
     def create_default_transformations(self, data) -> ColumnGroup:
-        outputs = self.column_group.targets()
-        outputs += self.column_group.categorical(column_group=True) >> ops.Categorify(max_size=10000000)
-        outputs += (self.column_group.continuous(column_group=True)
+        outputs = self.column_group.targets_column_group
+        outputs += self.column_group.categorical_column_group >> ops.Categorify(
+            out_path=os.path.join(self.data_dir, "categories"),
+            max_size=10000000)
+        outputs += (self.column_group.continuous_column_group
                     >> ops.FillMissing()
                     >> ops.Clip(min_value=0)
                     >> ops.Normalize()
@@ -94,10 +96,8 @@ class Criteo(TabularDataset):
 
         parquet_files = [os.path.join(self.parquet_dir, f"day_{i}.parquet") for i in range(0, self.num_days)]
 
-        return DatasetCollection.from_splits(Dataset(parquet_files[:-1], engine="parquet", client=self.client,
-                                                     **kwargs),
-                                             eval=Dataset(parquet_files[-1], engine="parquet", client=self.client,
-                                                          **kwargs))
+        return DatasetCollection.from_splits(Dataset(parquet_files[:-1], engine="parquet", **kwargs),
+                                             eval=Dataset(parquet_files[-1], engine="parquet", **kwargs))
 
     def name(self):
         return f"criteo"

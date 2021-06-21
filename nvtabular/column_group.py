@@ -246,26 +246,61 @@ class ColumnGroup:
 
         return child
 
-    def targets(self, column_group=False):
-        return self.get_tagged(Tag.TARGETS, output_list=not column_group)
+    @property
+    def targets_columns(self):
+        return self.get_tagged(Tag.TARGETS, output_list=True)
 
-    def targets_binary(self, column_group=False):
-        return self.get_tagged(Tag.TARGETS_BINARY, output_list=not column_group)
+    @property
+    def targets_column_group(self):
+        return self.get_tagged(Tag.TARGETS, output_list=False)
 
-    def targets_regression(self, column_group=False):
-        return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=not column_group)
+    @property
+    def binary_targets_columns(self):
+        return self.get_tagged(Tag.TARGETS_BINARY, output_list=True)
 
-    def continuous(self, column_group=False):
-        return self.get_tagged(Tag.CONTINUOUS, output_list=not column_group)
+    @property
+    def binary_targets_column_group(self):
+        return self.get_tagged(Tag.TARGETS_BINARY, output_list=False)
 
-    def categorical(self, column_group=False):
-        return self.get_tagged(Tag.CATEGORICAL, output_list=not column_group)
+    @property
+    def regression_targets_columns(self):
+        return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=True)
 
-    def text(self, column_group=False):
-        return self.get_tagged(Tag.TEXT, output_list=not column_group)
+    @property
+    def regression_targets_column_group(self):
+        return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=False)
 
-    def text_tokenized(self, column_group=False):
-        return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=not column_group)
+    @property
+    def continuous_columns(self):
+        return self.get_tagged(Tag.CONTINUOUS, output_list=True)
+
+    @property
+    def continuous_column_group(self):
+        return self.get_tagged(Tag.CONTINUOUS, output_list=False)
+
+    @property
+    def categorical_columns(self):
+        return self.get_tagged(Tag.CATEGORICAL, output_list=True)
+
+    @property
+    def categorical_column_group(self):
+        return self.get_tagged(Tag.CATEGORICAL, output_list=False)
+
+    @property
+    def text_columns(self):
+        return self.get_tagged(Tag.TEXT, output_list=True)
+
+    @property
+    def text_column_group(self):
+        return self.get_tagged(Tag.TEXT, output_list=False)
+
+    @property
+    def text_tokenized_columns(self):
+        return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=True)
+
+    @property
+    def text_tokenized_column_group(self):
+        return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=False)
 
     def embedding_sizes(self):
         queue = [self]

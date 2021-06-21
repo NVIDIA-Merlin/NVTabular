@@ -1085,13 +1085,19 @@ class DatasetCollection(SimpleNamespace):
             if not os.path.exists(dataset_dir) or overwrite:
                 dataset.to_parquet(dataset_dir, **kwargs)
 
-    def load_transformed_from_dir(self, directory, workflow, format="parquet") -> Optional["DatasetCollection"]:
+    def load_transformed_from_dir(self, directory, workflow, format="parquet", **kwargs) -> Optional["DatasetCollection"]:
+        from nvtabular.workflow import Workflow
+
         outputs = {}
+        loaded_workflow = None
         for name, dataset in self.items():
             transformed_id = workflow.transformed_dataset_id(dataset)
             path = os.path.join(directory, transformed_id)
             if os.path.exists(path):
-                outputs[name] = Dataset.from_pattern(path, f"*.{format}", workflow=workflow)
+                if not loaded_workflow:
+                    loaded_workflow = Workflow.load(directory)
+                outputs[name] = Dataset.from_pattern(path, f"*.{format}", workflow=loaded_workflow, id=transformed_id,
+                                                     **kwargs)
 
         if not outputs:
             return None

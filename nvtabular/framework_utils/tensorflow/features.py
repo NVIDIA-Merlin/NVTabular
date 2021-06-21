@@ -47,6 +47,7 @@ class StackFeatures(tf.keras.layers.Layer):
     def __init__(self, axis=-1, trainable=False, name=None, dtype=None, dynamic=False, **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
         self.axis = axis
+        self.flatten = tf.keras.layers.Flatten()
 
     def call(self, inputs, **kwargs):
         return tf.stack(tf.nest.flatten(tf.nest.map_structure(self.flatten, inputs), axis=self.axis))
