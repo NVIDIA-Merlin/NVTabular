@@ -5,6 +5,7 @@ import tensorflow as tf
 from . import tfrs
 
 from nvtabular.column_group import ColumnGroup, Tag
+from .tfrs import Model
 
 
 class Task(tfrs.Task):
@@ -98,7 +99,7 @@ class MultiTaskHead(tf.keras.layers.Layer):
         outputs = {}
 
         for name, task in self._tasks.items():
-            predictions = self._tasks_prepares[name](logits) if name in self._tasks_prepares else logits
+            predictions = self._tasks_prepares[name](logits, **kwargs) if name in self._tasks_prepares else logits
 
             outputs[name] = predictions
 
@@ -115,3 +116,22 @@ class MultiTaskHead(tf.keras.layers.Layer):
             losses.append(self._tasks[name](target, predictions, **kwargs) * self._task_weights[name])
 
         return tf.reduce_sum(losses)
+
+
+class ModelWithHead(Model):
+    def __init__(self, model, head, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = model
+        self.head = head
+
+    def call(self, inputs, **kwargs):
+        return self.head(self.model(inputs, **kwargs), **kwargs)
+
+    def compute_loss(self, inputs, training: bool = False) -> tf.Tensor:
+        targets = self.heads.pop_labels(inputs)
+        logits = self(inputs, training=training)
+
+        return self.heads.compute_loss(targets, logits)
+
+    def get_config(self):
+        pass
