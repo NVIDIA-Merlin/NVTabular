@@ -9,7 +9,7 @@ from nvtabular.framework_utils.tensorflow.tfrs import Model
 
 
 class BlockMixin:
-    def with_head(self, head: Head, **kwargs):
+    def to_model(self, head: Head, **kwargs):
         return BlockWithHead(self, head, **kwargs)
 
 
