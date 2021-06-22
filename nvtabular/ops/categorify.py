@@ -37,7 +37,6 @@ from nvtabular.dispatch import (
     _encode_list_column,
     _flatten_list_column,
     _from_host,
-    _get_list_dtype,
     _hash_series,
     _is_list_dtype,
     _parquet_writer_dispatch,
@@ -465,7 +464,7 @@ def get_embedding_sizes(workflow):
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
     for column in output:
-        if isinstance(workflow.output_dtypes[column], _get_list_dtype()):
+        if _is_list_dtype(workflow.output_dtypes[column]):
             # multi hot so remove from output and add to multihot
             multihot_columns.add(column)
     # TODO: returning differnt return types like this (based off the presence

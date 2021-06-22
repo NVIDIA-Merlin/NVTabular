@@ -59,12 +59,16 @@ class ExtData(enum.Enum):
 def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
+    if cudf is None:
+        return isinstance(x, pd.DataFrame)
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
 
 def _is_series_object(x):
     # Simple check if object is a cudf or pandas
     # Series object
+    if cudf is None:
+        return isinstance(x, pd.Series)
     return isinstance(x, (cudf.Series, pd.Series))
 
 
@@ -80,16 +84,16 @@ def _hex_to_int(s, dtype=None):
             return pd.NA
         return int(x, 16)
 
-    if isinstance(s, cudf.Series):
-        # CuDF Version
-        if s.dtype == "object":
-            s = s.str.htoi()
-        return s.astype(dtype or np.int32)
-    else:
+    if isinstance(s, pd.Series):
         # Pandas Version
         if s.dtype == "object":
             s = s.apply(_pd_convert_hex)
         return s.astype("Int64").astype(dtype or "Int32")
+    else:
+        # CuDF Version
+        if s.dtype == "object":
+            s = s.str.htoi()
+        return s.astype(dtype or np.int32)
 
 
 def _random_state(seed, like_df=None):
@@ -265,24 +269,24 @@ def _pull_apart_list(original):
 
 def _to_arrow(x):
     """Move data to arrow format"""
-    if isinstance(x, cudf.DataFrame):
-        return x.to_arrow()
-    else:
+    if isinstance(x, pd.DataFrame):
         return pa.Table.from_pandas(x, preserve_index=False)
+    else:
+        return x.to_arrow()
 
 
 def _concat(objs, **kwargs):
-    if isinstance(objs[0], (cudf.DataFrame, cudf.Series)):
-        return cudf.core.reshape.concat(objs, **kwargs)
-    else:
+    if isinstance(objs[0], (pd.DataFrame, pd.Series)):
         return pd.concat(objs, **kwargs)
+    else:
+        return cudf.core.reshape.concat(objs, **kwargs)
 
 
 def _make_df(_like_df=None, device=None):
-    if isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
-        return cudf.DataFrame(_like_df)
-    elif isinstance(_like_df, (pd.DataFrame, pd.Series)):
+    if isinstance(_like_df, (pd.DataFrame, pd.Series)):
         return pd.DataFrame(_like_df)
+    elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
+        return cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame()
     return cudf.DataFrame()
@@ -295,15 +299,15 @@ def _detect_format(data):
     if isinstance(data, Dataset):
         return ExtData.DATASET
     elif isinstance(data, dd.DataFrame):
-        if isinstance(data._meta, cudf.DataFrame):
-            return ExtData.DASK_CUDF
-        return ExtData.DASK_PANDAS
-    elif isinstance(data, cudf.DataFrame):
-        return ExtData.CUDF
+        if isinstance(data._meta, pd.DataFrame):
+            return ExtData.DASK_PANDAS
+        return ExtData.DASK_CUDF
     elif isinstance(data, pd.DataFrame):
         return ExtData.PANDAS
     elif isinstance(data, pa.Table):
         return ExtData.ARROW
+    elif isinstance(data, cudf.DataFrame):
+        return ExtData.CUDF
     else:
         mapping = {
             "pq": ExtData.PARQUET,
@@ -372,24 +376,24 @@ def _to_host(x):
 
     All other data will pass through unchanged.
     """
-    if isinstance(x, cudf.DataFrame):
-        return x.to_arrow()
-    else:
+    if isinstance(x, (pd.DataFrame, dd.DataFrame)):
         return x
+    else:
+        return x.to_arrow()
 
 
 def _from_host(x):
-    if isinstance(x, cudf.DataFrame):
+    if cudf is None:
+        return x
+    elif isinstance(x, cudf.DataFrame):
         return x
     else:
         return cudf.DataFrame.from_arrow(x)
 
 
-def _get_list_dtype():
-    return cudf.core.dtypes.ListDtype
-
-
-def _build_column(new_elements, new_offsets):
+def _build_cudf_list_column(new_elements, new_offsets):
+    if cudf is None:
+        return []
     return build_column(
         None,
         dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),

@@ -18,7 +18,7 @@ import numba.cuda
 import numpy as np
 from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _build_column, _is_cpu_object
+from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object
 
 from .operator import ColumnNames, Operator
 
@@ -83,7 +83,7 @@ class ListSlice(Operator):
                     )
 
                 # build up a list column with the sliced values
-                ret[col] = _build_column(new_elements, new_offsets)
+                ret[col] = _build_cudf_list_column(new_elements, new_offsets)
 
         return ret
 
