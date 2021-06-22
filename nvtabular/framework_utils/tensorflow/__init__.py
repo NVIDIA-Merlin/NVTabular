@@ -19,7 +19,7 @@ from .feature_column_utils import make_feature_column_workflow
 from .features import (FilterFeatures, ConcatFeatures, SequentialLayer, StackFeatures, TabularLayer, AsSparseLayer,
                        AsDenseLayer, ParseTokenizedText, AsTabular, right_shift_layer)
 from .layers.inputs import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures, DLRMLayer
-from .heads import MultiTaskHead, Task, ModelWithHead
+from .heads import Head, Task, ModelWithHead
 from . import tfrs
 from tensorflow.keras.layers import Layer
 

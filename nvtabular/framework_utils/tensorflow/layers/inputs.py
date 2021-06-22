@@ -30,7 +30,8 @@ from tensorflow.python.tpu.tpu_embedding_v2_utils import (
 )
 
 from nvtabular.column_group import ColumnGroup
-from nvtabular.framework_utils.tensorflow.features import TabularLayer, AsSparseLayer, ParseTokenizedText
+from nvtabular.framework_utils.tensorflow.features import TabularLayer, AsSparseLayer, ParseTokenizedText, \
+    FilterFeatures
 from nvtabular.ops import get_embedding_sizes
 from nvtabular.tag import Tag
 from nvtabular.workflow import Workflow
@@ -145,6 +146,7 @@ class EmbeddingsLayer(TabularLayer):
         super().__init__(**kwargs)
         self.feature_config = feature_config
         self.convert_to_sparse = AsSparseLayer()
+        self.filter_features = FilterFeatures(list(feature_config.keys()))
 
     def build(self, input_shapes):
         self.embedding_tables = {}
@@ -175,12 +177,22 @@ class EmbeddingsLayer(TabularLayer):
         # embedded_outputs[name] = tf.gather(table_var, tf.cast(val, tf.int32))
         return tf.gather(table_var, tf.cast(val, tf.int32)[:, 0])
 
+    def compute_output_shape(self, input_shapes):
+        input_shapes = self.filter_features.compute_output_shape(input_shapes)
+        batch_size = self.calculate_batch_size_from_input_shapes(input_shapes)
+
+        output_shapes = {}
+
+        for name, val in input_shapes.items():
+            output_shapes[name] = tf.TensorShape([batch_size, self.feature_config[name].table.dim])
+
+        return super().compute_output_shape(output_shapes)
+
     def call(self, inputs, **kwargs):
         embedded_outputs = {}
-        sparse_inputs = self.convert_to_sparse(inputs)
+        sparse_inputs = self.convert_to_sparse(self.filter_features(inputs))
         for name, val in sparse_inputs.items():
-            if name in self.feature_config:
-                embedded_outputs[name] = self.lookup_feature(name, val)
+            embedded_outputs[name] = self.lookup_feature(name, val)
 
         return embedded_outputs
 
@@ -236,9 +248,9 @@ class EmbeddingsLayer(TabularLayer):
 
 
 class TransformersTextEmbedding(TabularLayer):
-    def __init__(self, transformer_model, output="pooler_output", **kwargs):
-        super().__init__(**kwargs)
-        self.parse_tokens = ParseTokenizedText()
+    def __init__(self, transformer_model, max_text_length=None, output="pooler_output", trainable=False, **kwargs):
+        super().__init__(trainable=trainable, **kwargs)
+        self.parse_tokens = ParseTokenizedText(max_text_length=max_text_length)
         self.transformer_model = transformer_model
         self.transformer_output = output
 
@@ -255,15 +267,42 @@ class TransformersTextEmbedding(TabularLayer):
 
         return outputs
 
+    def compute_output_shape(self, input_shapes):
+        batch_size = self.calculate_batch_size_from_input_shapes(input_shapes)
+
+        # TODO: Handle all transformer output modes
+
+        output_shapes, text_column_names = {}, []
+        for name, val in input_shapes.items():
+            if isinstance(val, tuple) and name.endswith(("/tokens", "/attention_mask")):
+                text_column_names.append("/".join(name.split("/")[:-1]))
+
+        for text_col in set(text_column_names):
+            output_shapes[text_col] = tf.TensorShape([batch_size, self.transformer_model.config.hidden_size])
+
+        return super().compute_output_shape(output_shapes)
+
 
 class InputFeatures(TabularLayer):
-    def __init__(self, continuous_layer, categorical_layer, **kwargs):
-        super(InputFeatures, self).__init__(**kwargs)
-        self.categorical_layer = categorical_layer or tf.keras.layers.Layer()
-        self.continuous_layer = continuous_layer or tf.keras.layers.Layer()
+    def __init__(self, continuous_layer=None, categorical_layer=None, text_embedding_layer=None, aggregation=None,
+                 **kwargs):
+        super(InputFeatures, self).__init__(aggregation=aggregation, **kwargs)
+        self.categorical_layer = categorical_layer
+        self.continuous_layer = continuous_layer
+        self.text_embedding_layer = text_embedding_layer
+
+        self.to_apply = []
+        if continuous_layer:
+            self.to_apply.append(continuous_layer)
+        if categorical_layer:
+            self.to_apply.append(categorical_layer)
+        if text_embedding_layer:
+            self.to_apply.append(text_embedding_layer)
+
+        assert (self.to_apply is not []), "Please provide at least one input layer"
 
     def call(self, inputs, **kwargs):
-        return self.categorical_layer(inputs, merge_with=self.continuous_layer)
+        return self.to_apply[0](inputs, merge_with=self.to_apply[1:] if len(self.to_apply) > 1 else None)
 
     @classmethod
     def from_column_group(cls,
@@ -272,17 +311,44 @@ class InputFeatures(TabularLayer):
                           continuous_tags_to_filter=None,
                           categorical_tags=Tag.CATEGORICAL,
                           categorical_tags_to_filter=None,
+                          text_model=None,
+                          text_tags=Tag.TEXT_TOKENIZED,
+                          text_tags_to_filter=None,
+                          max_text_length=None,
+                          aggregation=None,
                           **kwargs):
-        continuous_layer = TabularLayer.from_column_group(
-            column_group,
-            tags=continuous_tags,
-            tags_to_filter=continuous_tags_to_filter)
-        categorical_layer = EmbeddingsLayer.from_column_group(
-            column_group,
-            tags=categorical_tags,
-            tags_to_filter=categorical_tags_to_filter)
+        continuous_layer, categorical_layer = None, None
+        if continuous_tags:
+            continuous_layer = TabularLayer.from_column_group(
+                column_group,
+                tags=continuous_tags,
+                tags_to_filter=continuous_tags_to_filter)
+        if categorical_tags:
+            categorical_layer = EmbeddingsLayer.from_column_group(
+                column_group,
+                tags=categorical_tags,
+                tags_to_filter=categorical_tags_to_filter)
 
-        return cls(continuous_layer, categorical_layer, **kwargs)
+        if text_model and not isinstance(text_model, TransformersTextEmbedding):
+            text_model = TransformersTextEmbedding.from_column_group(
+                column_group,
+                tags=text_tags,
+                tags_to_filter=text_tags_to_filter,
+                transformer_model=text_model,
+                max_text_length=max_text_length)
+
+        return cls(continuous_layer=continuous_layer,
+                   categorical_layer=categorical_layer,
+                   text_embedding_layer=text_model,
+                   aggregation=aggregation,
+                   **kwargs)
+
+    def compute_output_shape(self, input_shapes):
+        output_shapes = {}
+        for in_layer in self.to_apply:
+            output_shapes.update(in_layer.compute_output_shape(input_shapes))
+
+        return super().compute_output_shape(output_shapes)
 
 
 class DLRMLayer(tf.keras.layers.Layer):

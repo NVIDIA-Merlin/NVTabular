@@ -35,7 +35,7 @@ class Task(tfrs.Task):
         )
 
 
-class MultiTaskHead(tf.keras.layers.Layer):
+class Head(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._tasks = {}
@@ -119,7 +119,7 @@ class MultiTaskHead(tf.keras.layers.Layer):
 
 
 class ModelWithHead(Model):
-    def __init__(self, model, head, *args, **kwargs):
+    def __init__(self, model: Model, head: Head, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = model
         self.head = head
@@ -128,10 +128,10 @@ class ModelWithHead(Model):
         return self.head(self.model(inputs, **kwargs), **kwargs)
 
     def compute_loss(self, inputs, training: bool = False) -> tf.Tensor:
-        targets = self.heads.pop_labels(inputs)
+        targets = self.head.pop_labels(inputs)
         logits = self(inputs, training=training)
 
-        return self.heads.compute_loss(targets, logits)
+        return self.head.compute_loss(targets, logits)
 
     def get_config(self):
         pass

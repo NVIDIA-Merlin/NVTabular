@@ -86,12 +86,12 @@ def create_multi_gpu_dask_client(gpu_ids=None,
     part_size = int(part_mem_frac * device_size)
     visible_devices = ",".join([str(n) for n in gpu_ids])
 
-    # Check if any device memory is already occupied
-    for dev in visible_devices.split(","):
-        fmem = _pynvml_mem_size(kind="free", index=int(dev))
-        used = (device_size - fmem) / 1e9
-        if used > 1.0:
-            warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
+    # # Check if any device memory is already occupied
+    # for dev in visible_devices.split(","):
+    #     fmem = _pynvml_mem_size(kind="free", index=int(dev))
+    #     used = (device_size - fmem) / 1e9
+    #     if used > 1.0:
+    #         warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
 
     cluster = None  # (Optional) Specify existing scheduler port
     if cluster is None:

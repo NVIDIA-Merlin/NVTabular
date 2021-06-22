@@ -21,6 +21,9 @@ class FilterFeatures(tf.keras.layers.Layer):
 
         return outputs
 
+    def compute_output_shape(self, input_shape):
+        return {k: v for k, v in input_shape.items() if k in self.columns}
+
     def get_config(self):
         return {
             "columns": self.columns,
@@ -111,15 +114,15 @@ class TabularLayer(tf.keras.layers.Layer):
         return None
 
     def compute_output_shape(self, input_shapes):
-        batch_size = [i for i in input_shapes.values()][0][0]
+        batch_size = self.calculate_batch_size_from_input_shapes(input_shapes)
         if self.aggregation == "concat":
             return batch_size, sum([i[1] for i in input_shapes.values()])
         elif self.aggregation == "stack":
             last_dim = [i for i in input_shapes.values()][0][-1]
 
             return batch_size, len(input_shapes), last_dim
-        else:
-            return super(TabularLayer, self).compute_output_shape(input_shapes)
+
+        return input_shapes
 
     def call_on_cols(self, inputs, columns_to_include):
         return self(inputs, pre=FilterFeatures(columns_to_include))
@@ -136,6 +139,9 @@ class TabularLayer(tf.keras.layers.Layer):
         outputs = tf.nest.map_structure(self, inputs)
 
         return outputs
+
+    def calculate_batch_size_from_input_shapes(self, input_shapes):
+        return [i for i in input_shapes.values() if not isinstance(i, tuple)][0][0]
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs):
@@ -308,6 +314,11 @@ class AsDenseLayer(TabularLayer):
 
 
 class ParseTokenizedText(TabularLayer):
+    def __init__(self, max_text_length=None, aggregation=None, trainable=True, name=None, dtype=None, dynamic=False,
+                 **kwargs):
+        super().__init__(aggregation, trainable, name, dtype, dynamic, **kwargs)
+        self.max_text_length = max_text_length
+
     def call(self, inputs, **kwargs):
         outputs, text_tensors, text_column_names = {}, {}, []
         for name, val in inputs.items():
@@ -324,6 +335,21 @@ class ParseTokenizedText(TabularLayer):
                                      attention_mask=tf.cast(text_tensors[text_col + "/attention_mask"], tf.int32))
 
         return outputs
+
+    def compute_output_shape(self, input_shapes):
+        assert(self.max_text_length is not None)
+
+        output_shapes, text_column_names = {}, []
+        batch_size = self.calculate_batch_size_from_input_shapes(input_shapes)
+        for name, val in input_shapes.items():
+            if isinstance(val, tuple) and name.endswith(("/tokens", "/attention_mask")):
+                text_column_names.append("/".join(name.split("/")[:-1]))
+
+        for text_col in set(text_column_names):
+            output_shapes[text_col] = dict(input_ids=tf.TensorShape([batch_size, self.max_text_length]),
+                                           attention_mask=tf.TensorShape([batch_size, self.max_text_length]))
+
+        return output_shapes
 
 
 def right_shift_layer(self, other):
