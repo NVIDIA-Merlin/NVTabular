@@ -123,11 +123,6 @@ class ColumnGroup:
     def __rshift__(self, operator):
         return self.__call__(operator)
 
-    def to_feature_group(self):
-        from nvtabular.feature_group import FeatureGroup
-
-        return FeatureGroup(self.columns)
-
     def __add__(self, other):
         """Adds columns from this ColumnGroup with another to return a new ColumnGroup
 

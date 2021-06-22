@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from .embedding import DenseFeatures, LinearFeatures
+from .inputs import DenseFeatures, LinearFeatures
 from .interaction import DotProductInteraction
 from .outer_product import XDeepFmOuterProduct
 

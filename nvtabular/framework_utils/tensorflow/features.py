@@ -3,7 +3,6 @@ import copy
 import tensorflow as tf
 
 from nvtabular.column_group import ColumnGroup
-from nvtabular.feature_group import FeatureGroup
 
 
 class FilterFeatures(tf.keras.layers.Layer):
@@ -149,6 +148,9 @@ class TabularLayer(tf.keras.layers.Layer):
     def from_features(cls, features, **kwargs):
         return features >> cls(**kwargs)
 
+    def __rrshift__(self, other):
+        return right_shift_layer(self, other)
+
 
 class SequentialLayer(TabularLayer):
     """The SequentialLayer represents a sequence of Keras layers.
@@ -270,6 +272,12 @@ class SequentialLayer(TabularLayer):
         ]
         return cls(layers)
 
+    def __rrshift__(self, other):
+        return right_shift_layer(self, other)
+
+    def __rshift__(self, other):
+        return right_shift_layer(other, self)
+
 
 class AsSparseLayer(TabularLayer):
     def call(self, inputs, **kwargs):
@@ -318,7 +326,7 @@ class ParseTokenizedText(TabularLayer):
         return outputs
 
 
-def right_shift(self, other):
+def right_shift_layer(self, other):
     if isinstance(other, list):
         left_side = [FilterFeatures(other)]
     else:
@@ -326,10 +334,3 @@ def right_shift(self, other):
     right_side = self.layers if isinstance(self, SequentialLayer) else [self]
 
     return SequentialLayer(left_side + right_side)
-
-
-tf.keras.layers.Layer.__rrshift__ = right_shift
-
-# class TFFeatureGroup(FeatureGroup):
-#     def __call__(self, operator, **kwargs):
-#         pass
