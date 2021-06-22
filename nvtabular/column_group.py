@@ -21,6 +21,7 @@ from dask.core import flatten
 
 from nvtabular.ops import LambdaOp, Operator
 from nvtabular.tag import Tag, TagAs, DefaultTags
+from pandas.core.common import flatten
 
 
 class ColumnGroup:
@@ -103,7 +104,17 @@ class ColumnGroup:
         child.parents = [self]
         self.children.append(child)
         child.op = operator
-        child.tags = operator.output_tags()
+
+        # Parse output tags
+        op_tags = operator.output_tags()
+        if op_tags:
+            child_tags = []
+            for t in list(flatten(op_tags)):
+                if isinstance(t, DefaultTags):
+                    child_tags.extend(t.value)
+                else:
+                    child_tags.append(t)
+            child.tags = child_tags
 
         dependencies = operator.dependencies()
         if dependencies:
@@ -221,13 +232,9 @@ class ColumnGroup:
         if not isinstance(tags, list):
             tags = [tags]
         output_cols = []
-        column_group = _merge_add_nodes(self)
-
-        # get all the nodes from parents of this columngroup
-        # and add edges between each of them
-        allnodes = list(set(iter_nodes([column_group])))
-        for node in allnodes:
-            if all(x in node.tags for x in tags):
+        for node in self.nodes:
+            node_tags = list(flatten([t.value if isinstance(t, DefaultTags) else [t] for t in node.tags]))
+            if all([x in node_tags for x in tags]):
                 output_cols.extend(node.columns)
 
         columns = list(set(output_cols) - set(columns_to_filter))
@@ -240,6 +247,23 @@ class ColumnGroup:
         child.kind = f"tagged={self._tags_repr} " + self._cols_repr
 
         return child
+
+    def tags_by_column(self):
+        outputs = {}
+
+        for node in self.nodes:
+            if node.tags:
+                for col in node.columns:
+                    if col not in outputs:
+                        outputs[col] = []
+
+                    for t in list(node.tags):
+                        tags = t.value if isinstance(t, DefaultTags) else [t]
+                        for tag in tags:
+                            if tag not in outputs[col]:
+                                outputs[col].append(tag)
+
+        return outputs
 
     @property
     def targets_columns(self):
