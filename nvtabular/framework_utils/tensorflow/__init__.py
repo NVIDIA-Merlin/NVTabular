@@ -16,10 +16,11 @@
 
 # flake8: noqa
 from .feature_column_utils import make_feature_column_workflow
-from .features import (FilterFeatures, ConcatFeatures, SequentialLayer, StackFeatures, TabularLayer, AsSparseLayer,
-                       AsDenseLayer, ParseTokenizedText, AsTabular, right_shift_layer)
+from .features import (FilterFeatures, ConcatFeatures, StackFeatures, TabularLayer, AsSparseLayer,
+                       AsDenseLayer, ParseTokenizedText, AsTabular)
+from .block import right_shift_layer, Block, BlockWithHead
 from .layers.inputs import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures, DLRMLayer
-from .heads import Head, Task, ModelWithHead
+from .heads import Head, Task
 from . import tfrs
 from tensorflow.keras.layers import Layer
 

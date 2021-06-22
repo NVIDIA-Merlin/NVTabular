@@ -1,7 +1,6 @@
 import os
 
 import cudf
-from kaggle import api as kaggle_api
 from sklearn.model_selection import train_test_split
 
 from nvtabular import ops
@@ -65,8 +64,6 @@ class MovieLens(TabularDataset):
         return "movielens"
 
     def prepare(self, frac_size=0.10) -> DatasetCollection:
-        kaggle_api.authenticate()
-
         if not os.path.exists(self.csv_dir):
             zip_path = os.path.join(self.data_dir, "ml-25m.zip")
             download_file("http://files.grouplens.org/datasets/movielens/ml-25m.zip", zip_path)

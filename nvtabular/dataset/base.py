@@ -49,7 +49,7 @@ class TabularDataset:
 
     def transform(self, workflow=None, overwrite=False, save=True, to_fit="train",
                   for_training=False, **kwargs) -> DatasetCollection:
-        splits = self.prepare(**kwargs)
+        splits: DatasetCollection = self.prepare(**kwargs)
         if not workflow:
             workflow = Workflow(self.create_default_transformations(splits), self.transformed_dir,
                                 client=self.client)

@@ -434,7 +434,7 @@ class Categorify(StatOperator):
         return self.mh_columns
 
     def output_tags(self):
-        return [Tag.CATEGORICAL]
+                return [Tag.CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
