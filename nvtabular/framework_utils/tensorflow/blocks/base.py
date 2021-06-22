@@ -8,7 +8,24 @@ from nvtabular.framework_utils.tensorflow.heads import Head
 from nvtabular.framework_utils.tensorflow.tfrs import Model
 
 
-class Block(features.TabularLayer):
+class BlockMixin:
+    def with_head(self, head: Head, **kwargs):
+        return BlockWithHead(self, head, **kwargs)
+
+
+class TabularBlock(features.TabularLayer, BlockMixin):
+    pass
+
+
+class Block(tf.keras.layers.Layer, BlockMixin):
+    def as_tabular(self, name=None):
+        if not name:
+            name = self.name
+
+        return self >> features.AsTabular(name)
+
+
+class SequentialBlock(TabularBlock):
     """The SequentialLayer represents a sequence of Keras layers.
     It is a Keras Layer that can be used instead of tf.keras.layers.Sequential,
     which is actually a Keras Model.  In contrast to keras Sequential, this
@@ -38,7 +55,7 @@ class Block(features.TabularLayer):
                     "Expected all layers to be instances of keras Layer, but saw: '{}'"
                         .format(layer))
 
-        super(Block, self).__init__(**kwargs)
+        super(SequentialBlock, self).__init__(**kwargs)
         self.filter_features = filter_features
         if filter_features:
             self.layers = [features.FilterFeatures(filter_features), *copy.copy(layers)]
@@ -134,9 +151,6 @@ class Block(features.TabularLayer):
     def __rshift__(self, other):
         return right_shift_layer(other, self)
 
-    def with_head(self, head: Head, **kwargs):
-        return BlockWithHead(self, head, **kwargs)
-
 
 BlockType = Union[tf.keras.layers.Layer, Block]
 
@@ -164,7 +178,7 @@ def right_shift_layer(self, other):
     if isinstance(other, list):
         left_side = [features.FilterFeatures(other)]
     else:
-        left_side = other.layers if isinstance(other, Block) else [other]
-    right_side = self.layers if isinstance(self, Block) else [self]
+        left_side = other.layers if isinstance(other, SequentialBlock) else [other]
+    right_side = self.layers if isinstance(self, SequentialBlock) else [self]
 
-    return Block(left_side + right_side)
+    return SequentialBlock(left_side + right_side)

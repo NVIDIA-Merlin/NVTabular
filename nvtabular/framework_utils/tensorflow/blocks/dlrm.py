@@ -4,10 +4,11 @@ import tensorflow as tf
 
 from nvtabular.column_group import ColumnGroup
 from nvtabular.framework_utils.tensorflow import EmbeddingsLayer
+from nvtabular.framework_utils.tensorflow.blocks.base import Block
 from nvtabular.framework_utils.tensorflow.features import TabularLayer
 
 
-class DLRMBlock(tf.keras.layers.Layer):
+class DLRMBlock(Block):
     def __init__(self,
                  continuous_features: Union[List[str], ColumnGroup, TabularLayer],
                  embedding_layer: EmbeddingsLayer,
