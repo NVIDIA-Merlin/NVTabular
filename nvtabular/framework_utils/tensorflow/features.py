@@ -153,7 +153,7 @@ class TabularLayer(tf.keras.layers.Layer):
         return features >> cls(**kwargs)
 
     def __rrshift__(self, other):
-        from nvtabular.framework_utils.tensorflow.block import right_shift_layer
+        from nvtabular.framework_utils.tensorflow.blocks.base import right_shift_layer
 
         return right_shift_layer(self, other)
 

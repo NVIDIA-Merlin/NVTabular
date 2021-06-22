@@ -18,8 +18,9 @@
 from .feature_column_utils import make_feature_column_workflow
 from .features import (FilterFeatures, ConcatFeatures, StackFeatures, TabularLayer, AsSparseLayer,
                        AsDenseLayer, ParseTokenizedText, AsTabular)
-from .block import right_shift_layer, Block, BlockWithHead
-from .layers.inputs import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures, DLRMLayer
+from .layers.inputs import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures
+from .blocks.base import right_shift_layer, Block, BlockWithHead
+from .blocks.dlrm import DLRMBlock
 from .heads import Head, Task
 from . import tfrs
 from tensorflow.keras.layers import Layer
