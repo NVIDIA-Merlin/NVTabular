@@ -22,7 +22,6 @@ from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
-from .. import Dataset
 from ..column_group import ColumnGroup
 from ..workflow import Workflow
 
@@ -39,7 +38,7 @@ class Schema(StatOperator):
         self.tags_by_column = column_group.tags_by_column()
 
     @classmethod
-    def calculate_on_dataset(cls, dataset: Dataset, column_group: ColumnGroup, output_path=None, client=None):
+    def calculate_on_dataset(cls, dataset, column_group: ColumnGroup, output_path=None, client=None):
         stats = cls(column_group, output_path=output_path)
 
         new_col_group = ColumnGroup([])
