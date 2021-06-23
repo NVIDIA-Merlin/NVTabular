@@ -1162,6 +1162,15 @@ class DatasetCollection(SimpleNamespace):
 
         return DatasetCollection(**outputs)
 
+    def can_load_transformed_from_dir(self, directory, workflow) -> bool:
+        for name, dataset in self.items():
+            transformed_id = workflow.transformed_dataset_id(dataset)
+            path = os.path.join(directory, transformed_id)
+            if not os.path.exists(path):
+                return False
+
+        return True
+
     @classmethod
     def load_from_path(cls, path, split_dict, format="parquet"):
         outputs = {}
