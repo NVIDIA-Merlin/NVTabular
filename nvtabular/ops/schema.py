@@ -31,8 +31,8 @@ class Schema(StatOperator):
         self.col_names = []
         self.col_types = []
         self.col_dtypes = []
-        self.schema = None
         self.tags_by_column = tags_by_column
+        self.schema = None
 
     @classmethod
     def calculate_on_dataset(cls, dataset, tags_by_column, output_path=None, client=None):
@@ -46,9 +46,10 @@ class Schema(StatOperator):
         for key, val in tags_by_column.items():
             col_group += ColumnGroup(key, tags=val)
 
-        col_group >> stats
-        workflow = Workflow(col_group, output_path, client=client)
-        workflow.fit(dataset)
+        print(col_group.columns)
+
+        workflow = Workflow(col_group >> stats, output_path, client=client)
+        workflow.fit(dataset, save_workflow=False)
 
         return stats.schema
 
@@ -70,23 +71,19 @@ class Schema(StatOperator):
             self.col_dtypes.append(dtype)
 
             # Identify column type
-            if np.issubdtype(dtype, np.floating):
-                col_type = "conts"
-            else:
-                col_type = "cats"
-            self.col_types.append(dtype)
+            # if np.issubdtype(dtype, np.floating):
+            #     col_type = "conts"
+            # else:
+            #     col_type = "cats"
+            # self.col_types.append(dtype)
 
-            # Get cardinality for cats
-            if col_type == "cats":
-                dask_stats[col]["cardinality"] = ddf[col].nunique()
+            # # Get cardinality for cats
+            # if col_type == "cats":
+            #     dask_stats[col]["cardinality"] = ddf[col].nunique()
 
             # if string, replace string for their lengths for the rest of the computations
-            if dtype == "object":
-                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
-            # Add list support when cudf supports it:
-            # https://github.com/rapidsai/cudf/issues/7157
-            # elif col_type == "cat_mh":
-            #    ddf[col] = ddf[col].map_partitions(lambda x: x.list.len())
+            # if dtype == "object":
+            #     ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
 
             # Get min,max, and mean
             dask_stats[col]["min"] = ddf[col].min()
@@ -98,10 +95,10 @@ class Schema(StatOperator):
         from tensorflow_metadata.proto.v0 import schema_pb2
         dask_stats = stats
 
-        schema = schema_pb2.Schema()
+        self.schema = schema_pb2.Schema()
 
         for i, col in enumerate(self.col_names):
-            feature = schema.feature.add()
+            feature = self.schema.feature.add()
             dtype = str(self.col_dtypes[i])
             tags = self.tags_by_column.get(col, [])
 
@@ -122,51 +119,14 @@ class Schema(StatOperator):
                 feature.type = 2
 
         if self.schema_path:
-            with open(self.schema_path, "wb") as f:
-                f.write(schema.SerializeToString())
-        self.schema = schema
+            self.save(self.schema)
 
     def clear(self):
-        self.output = {}
+        self.schema = None
 
-    # def save(self):
-    #     from tensorflow_metadata.proto.v0 import schema_pb2
-    #
-    #     column_group = self.workflow.column_group
-    #     tags_by_column = column_group.tags_by_column()
-    #
-    #     schema = schema_pb2.Schema()
-    #     ddf_dtypes = dict(ddf.dtypes)
-    #
-    #     for f in list(ddf.columns):
-    #         if f.startswith("Unnamed"):
-    #             continue
-    #
-    #         feature_dtype = ddf_dtypes[f]
-    #
-    #         feature = schema.feature.add()
-    #         feature.name = f
-    #         tags = tags_by_column.get(f, [])
-    #         feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
-    #
-    #         if feature_dtype == np.float32:
-    #             feature.float_domain.CopyFrom(schema_pb2.FloatDomain(
-    #                 name=f,
-    #                 min=ddf[f].min().compute(),
-    #                 max=ddf[f].max().compute()
-    #             ))
-    #             feature.type = 3
-    #         elif feature_dtype in [np.int32, np.int64]:
-    #             feature.int_domain.CopyFrom(schema_pb2.IntDomain(
-    #                 name=f,
-    #                 min=ddf[f].min().compute(),
-    #                 max=ddf[f].max().compute(),
-    #                 is_categorical="categorical" in tags
-    #             ))
-    #             feature.type = 2
-    #
-    #     with open(schema_file, "wb") as f:
-    #         f.write(schema.SerializeToString())
+    def save(self, schema):
+        with open(self.schema_path, "wb") as f:
+            f.write(schema.SerializeToString())
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

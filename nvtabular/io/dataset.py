@@ -1109,14 +1109,12 @@ class DatasetCollection(SimpleNamespace):
 
         for name, dataset in self.items():
             dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
-            schema_dir = os.path.join(dataset_dir, "schema")
 
-            if not os.path.exists(schema_dir):
-                os.makedirs(schema_dir)
+            if not os.path.exists(dataset_dir):
+                os.makedirs(dataset_dir)
 
-            if not os.path.exists(os.path.join(schema_dir, "schema.pb")) or overwrite:
-                # dataset.save_schema(dataset_dir)
-                Schema.calculate_on_dataset(dataset, tags_by_column, output_path=schema_dir, client=client)
+            if not os.path.exists(os.path.join(dataset_dir, "schema.pb")) or overwrite:
+                Schema.calculate_on_dataset(dataset, tags_by_column, output_path=dataset_dir, client=client)
 
     def to_parquet(self,
                    output_path,
