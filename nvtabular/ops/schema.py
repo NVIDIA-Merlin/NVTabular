@@ -95,8 +95,6 @@ class Schema(StatOperator):
 
         self.schema = schema_pb2.Schema()
 
-        print(self.col_names)
-
         for i, col in enumerate(self.col_names):
             dtype = str(self.col_dtypes[i])
             tags = self.tags_by_column.get(col, [])

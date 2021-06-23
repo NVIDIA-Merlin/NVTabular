@@ -88,19 +88,27 @@ def create_multi_gpu_dask_client_fn(gpu_ids=None,
                                     dask_dir=None,
                                     protocol="tcp",
                                     dashboard_port="8787"):
-    def client_fn():
-        device_size = device_mem_size(kind="total")
-        device_limit = int(device_limit_frac * device_size)
-        device_pool_size = int(device_pool_frac * device_size)
-        part_size = int(part_mem_frac * device_size)
-        visible_devices = ",".join([str(n) for n in gpu_ids])
+    device_size = device_mem_size(kind="total")
+    device_limit = int(device_limit_frac * device_size)
+    device_pool_size = int(device_pool_frac * device_size)
+    part_size = int(part_mem_frac * device_size)
+    visible_devices = ",".join([str(n) for n in gpu_ids])
 
+    def reinitialize_memory(self):
+        reinit = lambda: rmm.reinitialize(
+            pool_allocator=True,
+            initial_pool_size=(device_pool_size // 256) * 256,
+        )
+
+        self.run(reinit)
+
+    def client_fn():
         # # Check if any device memory is already occupied
-        # for dev in visible_devices.split(","):
-        #     fmem = _pynvml_mem_size(kind="free", index=int(dev))
-        #     used = (device_size - fmem) / 1e9
-        #     if used > 1.0:
-        #         warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
+        for dev in visible_devices.split(","):
+            fmem = _pynvml_mem_size(kind="free", index=int(dev))
+            used = (device_size - fmem) / 1e9
+            if used > 1.0:
+                warnings.warn(f"BEWARE - {used} GB is already occupied on device {int(dev)}!")
 
         cluster = None  # (Optional) Specify existing scheduler port
         if cluster is None:
@@ -113,20 +121,13 @@ def create_multi_gpu_dask_client_fn(gpu_ids=None,
                 dashboard_address="0.0.0.0:" + str(dashboard_port),
             )
 
-        def reinitialize_memory(self):
-            reinit = lambda: rmm.reinitialize(
-                pool_allocator=True,
-                initial_pool_size=(device_pool_size // 256) * 256,
-            )
-
-            self.run(reinit)
-
         # Create the distributed client
         client = Client(cluster)
-        client.part_size = part_size
-        client.device_pool_size = device_pool_size
-        Client.reinitialize_memory = reinitialize_memory
 
         return client
+
+    client_fn.part_size = part_size
+    client_fn.device_pool_size = device_pool_size
+    Client.reinitialize_memory = reinitialize_memory
 
     return client_fn
