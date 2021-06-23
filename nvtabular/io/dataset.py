@@ -867,6 +867,48 @@ class Dataset:
             self.cpu,
         )
 
+    def save_schema(self, output_path):
+        from tensorflow_metadata.proto.v0 import schema_pb2
+
+        schema_file = os.path.join(output_path, "schema.pb")
+
+        ddf = self.to_ddf()
+        column_group = self.workflow.column_group
+        tags_by_column = column_group.tags_by_column()
+
+        schema = schema_pb2.Schema()
+        ddf_dtypes = dict(ddf.dtypes)
+
+        for f in list(ddf.columns):
+            if f.startswith("Unnamed"):
+                continue
+
+            feature_dtype = ddf_dtypes[f]
+
+            feature = schema.feature.add()
+            feature.name = f
+            tags = tags_by_column.get(f, [])
+            feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
+
+            if feature_dtype == np.float32:
+                feature.float_domain.CopyFrom(schema_pb2.FloatDomain(
+                    name=f,
+                    min=ddf[f].min().compute(),
+                    max=ddf[f].max().compute()
+                ))
+                feature.type = 3
+            elif feature_dtype in [np.int32, np.int64]:
+                feature.int_domain.CopyFrom(schema_pb2.IntDomain(
+                    name=f,
+                    min=ddf[f].min().compute(),
+                    max=ddf[f].max().compute(),
+                    is_categorical="categorical" in tags
+                ))
+                feature.type = 2
+
+        with open(schema_file, "wb") as f:
+            f.write(schema.SerializeToString())
+
     def to_tf_dataset(self, batch_size, data_dir=None, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
                       separate_labels=True, named_labels=False, overwrite=False,
                       continuous_features=None, categorical_features=None, targets=None, **kwargs):
@@ -1059,6 +1101,12 @@ class DatasetCollection(SimpleNamespace):
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
+
+    def save_schema(self, output_path, by_id=True, overwrite=False):
+        for name, dataset in self.items():
+            dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
+            if not os.path.exists(dataset_dir) or overwrite:
+                dataset.save_schema(dataset_dir)
 
     def to_parquet(self,
                    output_path,

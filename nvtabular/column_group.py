@@ -21,7 +21,7 @@ from dask.core import flatten
 
 from nvtabular.ops import LambdaOp, Operator
 from nvtabular.tag import Tag, TagAs, DefaultTags
-from pandas.core.common import flatten
+# from pandas.core.common import flatten as p_flatten
 
 
 class ColumnGroup:
@@ -352,7 +352,7 @@ class ColumnGroup:
 
     @property
     def flattened_columns(self):
-        return list(flatten(self.columns, container=tuple))
+        return list(flatten(self.columns))
 
     @property
     def input_column_names(self):

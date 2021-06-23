@@ -220,6 +220,7 @@ class Workflow:
 
         if save:
             outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
+            outputs.save_schema(self.work_dir, overwrite=overwrite)
 
         return outputs
 
