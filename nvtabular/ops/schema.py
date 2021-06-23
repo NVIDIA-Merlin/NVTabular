@@ -22,33 +22,32 @@ from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
-from ..column_group import ColumnGroup
-from ..workflow import Workflow
 
 
 class Schema(StatOperator):
-    def __init__(self, column_group: ColumnGroup, output_path=None):
+    def __init__(self, tags_by_column, output_path=None):
         super().__init__()
         self.schema_path = os.path.join(output_path, "schema.pb") if output_path else None
         self.col_names = []
         self.col_types = []
         self.col_dtypes = []
         self.schema = None
-        self.column_group = column_group
-        self.tags_by_column = column_group.tags_by_column()
+        self.tags_by_column = tags_by_column
 
     @classmethod
-    def calculate_on_dataset(cls, dataset, column_group: ColumnGroup, output_path=None, client=None):
-        stats = cls(column_group, output_path=output_path)
+    def calculate_on_dataset(cls, dataset, tags_by_column, output_path=None, client=None):
+        from nvtabular.column_group import ColumnGroup
+        from ..workflow import Workflow
 
-        new_col_group = ColumnGroup([])
-        tags_by_column = column_group.tags_by_column()
+        stats = cls(tags_by_column, output_path=output_path)
+
+        col_group = ColumnGroup([])
 
         for key, val in tags_by_column.items():
-            new_col_group += ColumnGroup(key, tags=val)
+            col_group += ColumnGroup(key, tags=val)
 
-        new_col_group >> stats
-        workflow = Workflow(new_col_group, output_path, client=client)
+        col_group >> stats
+        workflow = Workflow(col_group, output_path, client=client)
         workflow.fit(dataset)
 
         return stats.schema

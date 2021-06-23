@@ -1104,11 +1104,14 @@ class DatasetCollection(SimpleNamespace):
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
-    def save_schema(self, output_path, by_id=True, overwrite=False):
+    def save_schema(self, output_path, tags_by_column, by_id=True, overwrite=False):
+        from nvtabular.ops import Schema
+
         for name, dataset in self.items():
             dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
             if not os.path.exists(os.path.join(dataset_dir, "schema.pb")) or overwrite:
-                dataset.save_schema(dataset_dir)
+                # dataset.save_schema(dataset_dir)
+                Schema.calculate_on_dataset(dataset, tags_by_column, dataset_dir)
 
     def to_parquet(self,
                    output_path,

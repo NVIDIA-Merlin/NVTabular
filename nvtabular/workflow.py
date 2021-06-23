@@ -31,7 +31,7 @@ from dask.core import flatten
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset, DatasetCollection
-from nvtabular.ops import StatOperator
+from nvtabular.ops import StatOperator, Schema
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
@@ -201,6 +201,9 @@ class Workflow:
 
         return transformed
 
+    def generate_schema(self, dataset, output_path=None):
+        return Schema.calculate_on_dataset(dataset, self.column_group.tags_by_column(), output_path=output_path)
+
     def fit_transform_collection(self, datasets: DatasetCollection, to_fit="train", save=False,
                                  overwrite=False, **kwargs) -> DatasetCollection:
         outputs = datasets.load_transformed_from_dir(self.work_dir, self)
@@ -220,7 +223,7 @@ class Workflow:
 
         if save:
             outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
-            # outputs.save_schema(self.work_dir, overwrite=overwrite)
+            outputs.save_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite)
 
         return outputs
 
