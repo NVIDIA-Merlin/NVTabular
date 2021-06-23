@@ -872,6 +872,8 @@ class Dataset:
 
         schema_file = os.path.join(output_path, "schema.pb")
 
+        LOG.info("Saving schema of dataset  in: " + schema_file)
+
         ddf = self.to_ddf()
         column_group = self.workflow.column_group
         tags_by_column = column_group.tags_by_column()
@@ -1105,7 +1107,7 @@ class DatasetCollection(SimpleNamespace):
     def save_schema(self, output_path, by_id=True, overwrite=False):
         for name, dataset in self.items():
             dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
-            if not os.path.exists(dataset_dir) or overwrite:
+            if not os.path.exists(os.path.join(dataset_dir, "schema.pb")) or overwrite:
                 dataset.save_schema(dataset_dir)
 
     def to_parquet(self,

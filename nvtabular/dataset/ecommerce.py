@@ -1,5 +1,4 @@
 import os
-from glob import glob
 
 import cudf
 from kaggle import api as kaggle_api
@@ -95,6 +94,6 @@ class ClothingReviews(TabularDataset):
             Dataset(eval).to_parquet(eval_path)
 
         return DatasetCollection.from_splits(
-            Dataset(glob(os.path.join(train_path, "*.parquet"))),
-            eval=Dataset(glob(os.path.join(eval_path, "*.parquet")))
+            Dataset.from_pattern(train_path),
+            eval=Dataset.from_pattern(eval_path)
         )
