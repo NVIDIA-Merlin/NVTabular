@@ -46,8 +46,6 @@ class Schema(StatOperator):
         for key, val in tags_by_column.items():
             col_group += ColumnGroup(key, tags=val)
 
-        print(col_group.columns)
-
         workflow = Workflow(col_group >> stats, output_path, client=client)
         workflow.fit(dataset, save_workflow=False)
 
@@ -97,10 +95,15 @@ class Schema(StatOperator):
 
         self.schema = schema_pb2.Schema()
 
+        print(self.col_names)
+
         for i, col in enumerate(self.col_names):
-            feature = self.schema.feature.add()
             dtype = str(self.col_dtypes[i])
             tags = self.tags_by_column.get(col, [])
+
+            feature = self.schema.feature.add()
+            feature.name = col
+            feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
 
             if dtype == np.float32:
                 feature.float_domain.CopyFrom(schema_pb2.FloatDomain(
