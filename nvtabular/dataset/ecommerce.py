@@ -16,9 +16,8 @@ class ClothingReviews(TabularDataset):
     ORIG_FILE_NAME = "Womens Clothing E-Commerce Reviews.csv"
     PARQUET_FILE_NAME = "Womens Clothing E-Commerce Reviews.parquet"
 
-    def __init__(self, work_dir, tokenizer=None, client=None, test_size=0.1, random_state=42):
-        super().__init__(os.path.join(work_dir, self.name()))
-        self.client = client
+    def __init__(self, work_dir, tokenizer=None, client_fn=None, test_size=0.1, random_state=42):
+        super().__init__(os.path.join(work_dir, self.name()), client_fn=client_fn)
         self.parquet_dir = os.path.join(self.input_dir, "parquet")
         self.data_parquet = os.path.join(self.parquet_dir, self.PARQUET_FILE_NAME)
         self.data_csv = os.path.join(self.input_dir, self.ORIG_FILE_NAME)

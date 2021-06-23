@@ -11,8 +11,8 @@ from nvtabular.utils import download_file
 
 
 class Criteo(TabularDataset):
-    def __init__(self, work_dir, num_days=2, client=None):
-        super().__init__(os.path.join(work_dir, self.name()), client=client)
+    def __init__(self, work_dir, num_days=2, client_fn=None):
+        super().__init__(os.path.join(work_dir, self.name()), client_fn=client_fn)
         self.num_days = num_days
         self.parquet_dir = os.path.join(self.input_dir, "parquet")
 

@@ -13,10 +13,9 @@ from nvtabular.utils import download_file
 
 
 class MovieLens(TabularDataset):
-    def __init__(self, work_dir, tokenizer=None, client=None, test_size=0.1, random_state=42):
-        super().__init__(os.path.join(work_dir, self.name()))
+    def __init__(self, work_dir, tokenizer=None, client_fn=None, test_size=0.1, random_state=42):
+        super().__init__(os.path.join(work_dir, self.name()), client_fn=client_fn)
         self.csv_dir = os.path.join(self.data_dir, "ml-25m")
-        self.client = client
 
         self.test_size = test_size
         self.random_state = random_state
