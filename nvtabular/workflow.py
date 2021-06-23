@@ -222,9 +222,9 @@ class Workflow:
                 outputs[split_name] = self.transform(dataset)
 
         if save:
-            outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
             outputs.save_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite,
                                 client=self.client)
+            outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
 
         return outputs
 
