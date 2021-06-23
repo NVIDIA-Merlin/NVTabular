@@ -35,6 +35,7 @@ from .logop import LogOp
 from .normalize import Normalize, NormalizeMinMax
 from .operator import Operator
 from .rename import Rename
+from .schema import Schema
 from .stat_operator import StatOperator
 from .target_encoding import TargetEncoding
 from .tokenize import TokenizeText
