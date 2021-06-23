@@ -1132,6 +1132,7 @@ class DatasetCollection(SimpleNamespace):
 
         for name, dataset in self.items():
             dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
+            dataset._dir = dataset_dir
             if not os.path.exists(dataset_dir) or overwrite:
                 dataset.to_parquet(dataset_dir, **kwargs)
 
@@ -1148,6 +1149,7 @@ class DatasetCollection(SimpleNamespace):
                     loaded_workflow = Workflow.load(directory)
                 outputs[name] = Dataset.from_pattern(path, f"*.{format}", workflow=loaded_workflow, id=transformed_id,
                                                      **kwargs)
+                outputs[name]._dir = path
 
         if not outputs:
             return None
@@ -1167,6 +1169,9 @@ class DatasetCollection(SimpleNamespace):
             return None
 
         return DatasetCollection(**outputs)
+
+    def get_dir(self, split_name):
+        return self[split_name]._dir
 
 
 # Bind (simple) Dask-Dataframe Methods

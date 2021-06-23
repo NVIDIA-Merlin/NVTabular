@@ -21,8 +21,10 @@ from .features import (FilterFeatures, ConcatFeatures, StackFeatures, TabularLay
 from .layers.inputs import EmbeddingsLayer, TransformersTextEmbedding, InputFeatures
 from .blocks.base import right_shift_layer, Block, BlockWithHead, TabularBlock, SequentialBlock
 from .blocks.dlrm import DLRMBlock
+from ...loader.tensorflow import KerasSequenceLoader
 from .heads import Head, Task
 from . import tfrs
 from tensorflow.keras.layers import Layer
+
 
 Layer.__rrshift__ = right_shift_layer

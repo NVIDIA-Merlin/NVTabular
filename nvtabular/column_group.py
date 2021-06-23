@@ -75,6 +75,20 @@ class ColumnGroup:
         else:
             self.columns = [_convert_col(col) for col in columns]
 
+    @classmethod
+    def from_schema(cls, schema_path) -> "ColumnGroup":
+        from tensorflow_metadata.proto.v0 import schema_pb2
+
+        with open(schema_path, "rb") as f:
+            schema = schema_pb2.Schema()
+            schema.ParseFromString(f.read())
+
+        output = cls([])
+        for feat in schema.feature:
+            output += cls(feat.name, tags=feat.annotation.tag)
+
+        return output
+
     def __call__(self, operator, **kwargs):
         """Transforms this ColumnGroup by applying an Operator
 
