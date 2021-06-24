@@ -17,7 +17,10 @@
 import contextlib
 import threading
 
-import cudf
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import fsspec
 import pyarrow as pa
 from dask.distributed import get_worker
