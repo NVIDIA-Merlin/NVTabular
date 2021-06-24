@@ -19,12 +19,16 @@ import math
 import os
 import shutil
 
-import cudf
-import dask_cudf
+try:
+    import cudf
+    import dask_cudf
+    from cudf.tests.utils import assert_eq
+except ImportError:
+    cudf = None
+    dask_cudf = None
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
@@ -57,8 +61,8 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
         workflow = None
 
         workflow = Workflow.load(workflow_dir, client=client if use_client else None)
-
-    def get_norms(tar: cudf.Series):
+    _lib = pd if cudf is None else cudf
+    def get_norms(tar: _lib.Series):
         gdf = tar.fillna(0)
         gdf = gdf * (gdf >= 0).astype("int")
         gdf = np.log(gdf + 1)
@@ -90,24 +94,26 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = _lib.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
+    num_rows, num_row_groups, col_names = _lib.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
 
 
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_dataset_iterator_csv(df, dataset, engine):
-    df_itr = cudf.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
+    _lib = pd if cudf is None else cudf
+    df_itr = _lib.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
 def test_spec_set(tmpdir, client):
-    gdf_test = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    gdf_test = _lib.DataFrame(
         {
             "ad_id": [1, 2, 2, 6, 6, 8, 3, 3],
             "source_id": [2, 4, 4, 7, 5, 2, 5, 2],
@@ -146,8 +152,9 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
         workflow = None
 
         workflow = Workflow.load(workflow_dir)
-
-    def get_norms(tar: cudf.Series):
+    
+    _lib = pd if cudf is None else cudf
+    def get_norms(tar: _lib.Series):
         gdf = tar.fillna(0)
         gdf = gdf * (gdf >= 0).astype("int")
         return gdf
@@ -174,14 +181,15 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
-
-    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    
+    _lib = pd if cudf is None else cudf
+    df_pp = _lib.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
+    num_rows, num_row_groups, col_names = _lib.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
 
 
@@ -218,7 +226,8 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
         workflow = Workflow.load(workflow_dir, client=client)
 
-    def get_norms(tar: cudf.Series):
+    _lib = pd if cudf is None else cudf
+    def get_norms(tar: _lib.Series):
         ser_median = tar.dropna().quantile(0.5, interpolation="linear")
         gdf = tar.fillna(ser_median)
         gdf = np.log(gdf + 1)
@@ -254,13 +263,13 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = cudf.concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = _lib.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
+    num_rows, num_row_groups, col_names = _lib.io.read_parquet_metadata(str(tmpdir) + "/_metadata")
     assert num_rows == len(df_pp)
 
 
@@ -294,7 +303,8 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     assert os.path.exists(meta_path)
 
     # Make sure _metadata makes sense
-    _metadata = cudf.io.read_parquet_metadata(meta_path)
+    _lib = pd if cudf is None else cudf
+    _metadata = _lib.io.read_parquet_metadata(meta_path)
     assert _metadata[0] == size
     assert _metadata[2] == columns
 
@@ -346,7 +356,8 @@ def test_join_external_workflow(tmpdir, df, dataset, engine):
 
 
 def test_chaining_1():
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "cont01": np.random.randint(1, 100, 100),
             "cont02": np.random.random(100) * 100,
@@ -367,7 +378,8 @@ def test_chaining_1():
 
 
 def test_chaining_2():
-    gdf = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    gdf = _lib.DataFrame(
         {
             "A": [1, 2, 2, 9, 6, np.nan, 3],
             "B": [2, np.nan, 4, 7, 7, 2, 5],
@@ -399,7 +411,8 @@ def test_chaining_2():
 
 
 def test_chaining_3():
-    gdf_test = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    gdf_test = _lib.DataFrame(
         {
             "ad_id": [1, 2, 2, 6, 6, 8, 3, 3],
             "source_id": [2, 4, 4, 7, 5, 2, 5, 2],
@@ -486,7 +499,8 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
 
     # Check dtypes
     for filename in glob.glob(os.path.join(out_path, "*.parquet")):
-        gdf = cudf.io.read_parquet(filename)
+        _lib = pd if cudf is None else cudf
+        gdf = _lib.io.read_parquet(filename)
         assert dict(gdf.dtypes) == dict_dtypes
 
 
@@ -496,7 +510,8 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
     path = str(tmpdir.join("simple.parquet"))
 
     # Stripped down dataset with geo_locaiton codes like in outbrains
-    df = cudf.DataFrame({"geo_location": ["US>CA", "CA>BC", "US>TN>659"]})
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame({"geo_location": ["US>CA", "CA>BC", "US>TN>659"]})
 
     # defining a simple workflow that strips out the country code from the first two digits of the
     # geo_location code and sticks in a new 'geo_location_country' field
@@ -523,7 +538,8 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
 
 
 def test_fit_simple():
-    data = cudf.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
+    _lib = pd if cudf is None else cudf
+    data = _lib.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
     dataset = Dataset(data)
 
     workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
@@ -531,13 +547,14 @@ def test_fit_simple():
     workflow.fit(dataset)
     transformed = workflow.transform(dataset).to_ddf().compute()
 
-    expected = cudf.DataFrame({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
+    expected = _lib.DataFrame({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
     assert_eq(expected, transformed)
 
 
 def test_transform_geolocation():
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
-    data = cudf.DataFrame({"geo_location": raw})
+    _lib = pd if cudf is None else cudf
+    data = _lib.DataFrame({"geo_location": raw})
 
     geo_location = ColumnGroup(["geo_location"])
     state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
@@ -548,7 +565,7 @@ def test_transform_geolocation():
     workflow = Workflow(geo_features)
     transformed = workflow.transform(Dataset(data)).to_ddf().compute()
 
-    expected = cudf.DataFrame()
+    expected = _lib.DataFrame()
     expected["geo_location_state"] = data["geo_location"].str.slice(0, 5).hash_values() % 100
     expected["geo_location_country"] = data["geo_location"].str.slice(0, 2).hash_values() % 100
     expected["geo_location"] = data["geo_location"].hash_values() % 100
@@ -557,7 +574,8 @@ def test_transform_geolocation():
 
 def test_workflow_move_saved(tmpdir):
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
-    data = cudf.DataFrame({"geo": raw})
+    _lib = pd if cudf is None else cudf
+    data = _lib.DataFrame({"geo": raw})
 
     geo_location = ColumnGroup(["geo"])
     state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
@@ -583,7 +601,8 @@ def test_workflow_move_saved(tmpdir):
 
 
 def test_workflow_input_output_dtypes():
-    df = cudf.DataFrame({"genre": ["drama", "comedy"], "user": ["a", "b"], "unneeded": [1, 2]})
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame({"genre": ["drama", "comedy"], "user": ["a", "b"], "unneeded": [1, 2]})
     features = [["genre", "user"], "genre"] >> ops.Categorify(encode_type="combo")
     workflow = Workflow(features)
     workflow.fit(Dataset(df))
@@ -594,8 +613,9 @@ def test_workflow_input_output_dtypes():
 
 
 def test_workflow_transform_ddf_dtypes():
+    _lib = pd if cudf is None else cudf
     # Inital Dataset
-    df = cudf.datasets.timeseries().reset_index()
+    df = _lib.datasets.timeseries().reset_index()
     ddf = dask_cudf.from_cudf(df, npartitions=2)
     dataset = Dataset(ddf)
 

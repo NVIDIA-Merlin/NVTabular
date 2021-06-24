@@ -17,9 +17,15 @@
 import glob
 import math
 import os
-
-import cudf
-import dask_cudf
+import pandas as pd
+try:
+    import cudf
+except ImportError:
+    cudf = None
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import read_parquet as dd_read_parquet
@@ -61,18 +67,23 @@ def test_dask_workflow_api_dlrm(
     shuffle,
     cpu,
 ):
+    # Skip test if it is for GPU and cudf is not installed
+    if not cpu and cudf is None:
+        pytest.skip("Test is for GPU and cudf is not installed")
+
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = sorted(paths)
+    _lib = pd if cpu else cudf
     if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+        df1 = _lib.read_parquet(paths[0])[mycols_pq]
+        df2 = _lib.read_parquet(paths[1])[mycols_pq]
     elif engine == "csv":
-        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], header=0)[mycols_csv]
     else:
-        df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
-    df0 = cudf.concat([df1, df2], axis=0)
+        df1 = _lib.read_csv(paths[0], names=allcols_csv)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], names=allcols_csv)[mycols_csv]
+    df0 = _lib.concat([df1, df2], axis=0)
     df0 = df0.to_pandas() if cpu else df0
 
     if engine == "parquet":
@@ -138,9 +149,10 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
 
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    df1 = cudf.read_parquet(paths[0])[mycols_pq]
-    df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    df0 = cudf.concat([df1, df2], axis=0)
+    _lib = pd if cudf is None else cudf
+    df1 = _lib.read_parquet(paths[0])[mycols_pq]
+    df2 = _lib.read_parquet(paths[1])[mycols_pq]
+    df0 = _lib.concat([df1, df2], axis=0)
 
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
@@ -199,11 +211,14 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
-
+    # Skip test if it is for GPU and cudf is not installed
+    if not cpu and cudf is None:
+        pytest.skip("Test is for GPU and cudf is not installed")
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
-    df1 = cudf.read_parquet(paths[0])[mycols_pq]
-    df2 = cudf.read_parquet(paths[1])[mycols_pq]
-    df0 = cudf.concat([df1, df2], axis=0)
+    _lib = pd if cpu else cudf
+    df1 = _lib.read_parquet(paths[0])[mycols_pq]
+    df2 = _lib.read_parquet(paths[1])[mycols_pq]
+    df0 = _lib.concat([df1, df2], axis=0)
 
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
@@ -233,17 +248,21 @@ def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
 @pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
+    # Skip test if it is for GPU and cudf is not installed
+    if not cpu and cudf is None:
+        pytest.skip("Test is for GPU and cudf is not installed")
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    _lib = pd if cpu else cudf
     if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+        df1 = _lib.read_parquet(paths[0])[mycols_pq]
+        df2 = _lib.read_parquet(paths[1])[mycols_pq]
     elif engine == "csv":
-        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], header=0)[mycols_csv]
     else:
-        df1 = cudf.read_csv(paths[0], names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], names=allcols_csv)[mycols_csv]
-    df0 = cudf.concat([df1, df2], axis=0)
+        df1 = _lib.read_csv(paths[0], names=allcols_csv)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], names=allcols_csv)[mycols_csv]
+    df0 = _lib.concat([df1, df2], axis=0)
 
     if engine in ("parquet", "csv"):
         dataset = Dataset(paths, part_size="1MB", cpu=cpu)

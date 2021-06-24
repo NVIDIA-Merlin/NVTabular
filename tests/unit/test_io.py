@@ -21,10 +21,16 @@ import os
 import warnings
 from distutils.version import LooseVersion
 
-import cudf
+try:
+    import cudf
+except ImportError:
+    cudf = None
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -42,20 +48,21 @@ from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 def test_shuffle_gpu(tmpdir, datasets, engine):
     num_files = 2
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    _lib = pd if cudf is None else cudf
     if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df1 = _lib.read_parquet(paths[0])[mycols_pq]
     else:
-        df1 = cudf.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
     shuf = GPUParquetWriter(tmpdir, num_out_files=num_files, shuffle=nvt.io.Shuffle.PER_PARTITION)
     shuf.add_data(df1)
     writer_files = shuf.data_paths
     shuf.close()
     if engine == "parquet":
-        df3 = cudf.read_parquet(writer_files[0])[mycols_pq]
-        df4 = cudf.read_parquet(writer_files[1])[mycols_pq]
+        df3 = _lib.read_parquet(writer_files[0])[mycols_pq]
+        df4 = _lib.read_parquet(writer_files[1])[mycols_pq]
     else:
-        df3 = cudf.read_parquet(writer_files[0])[mycols_csv]
-        df4 = cudf.read_parquet(writer_files[1])[mycols_csv]
+        df3 = _lib.read_parquet(writer_files[0])[mycols_csv]
+        df4 = _lib.read_parquet(writer_files[1])[mycols_csv]
     assert df1.shape[0] == df3.shape[0] + df4.shape[0]
 
 
@@ -63,10 +70,11 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
 @pytest.mark.parametrize("engine", ["csv", "parquet"])
 def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
+    _lib = pd if cudf is None else cudf
     if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
+        df1 = _lib.read_parquet(paths[0])[mycols_pq]
     else:
-        df1 = cudf.read_csv(paths[0], header=0, names=allcols_csv)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=0, names=allcols_csv)[mycols_csv]
     dtypes = {"id": np.int32}
     if engine == "parquet":
         columns = mycols_pq
@@ -90,6 +98,13 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 @pytest.mark.parametrize("num_files", [1, 2])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_dataset(datasets, engine, num_files, cpu):
+    # Skip test if it is for GPU and cudf is not installed
+    if not cpu and cudf is None:
+        pytest.skip("Test is for GPU and cudf is not installed")
+    # Skip test if it is for GPU and cudf is not installed
+    if cpu and cudf is None:
+        pytest.skip("Test is for CPU, but cudf is needed and cudf is not installed")
+
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = paths[:num_files]
     if engine == "parquet":
@@ -135,7 +150,12 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
 @pytest.mark.parametrize("origin", ["cudf", "dask_cudf", "pd", "dd"])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
-
+    # Skip test if it is for GPU and cudf is not installed
+    if not cpu and cudf is None:
+        pytest.skip("Test is for GPU and cudf is not installed")
+    # Skip test if it is for GPU and cudf is not installed
+    if cpu and cudf is None:
+        pytest.skip("Test is for CPU, but cudf is needed and cudf is not installed")
     # Generate a DataFrame-based input
     if origin in ("pd", "dd"):
         df = pd.DataFrame({"a": range(100)})
@@ -193,8 +213,9 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_datframe_methods(tmpdir, cpu):
     # Input DataFrame objects
-    df1 = cudf.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
-    df2 = cudf.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
+    _lib = pd if cpu else cudf
+    df1 = _lib.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
+    df2 = _lib.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
 
     # Initialize and merge Dataset objects
     ds1 = nvtabular.io.Dataset(df1, npartitions=3, cpu=cpu)
@@ -212,7 +233,7 @@ def test_dask_datframe_methods(tmpdir, cpu):
 
     # Check merge result
     result = ds3.compute().sort_values(["id", "x", "y"])
-    expect = cudf.DataFrame.merge(df1, df2, on="id", how="inner").sort_values(["id", "x", "y"])
+    expect = _lib.DataFrame.merge(df1, df2, on="id", how="inner").sort_values(["id", "x", "y"])
     assert_eq(result, expect, check_index=False)
 
 
@@ -292,7 +313,8 @@ def test_hugectr(
 
     # Make sure the columns in "_metadata.json" make sense
     if output_format == "parquet":
-        df_check = cudf.read_parquet(os.path.join(outdir, data_files[0]))
+        _lib = pd if cudf is None else cudf
+        df_check = _lib.read_parquet(os.path.join(outdir, data_files[0]))
         for i, name in enumerate(df_check.columns):
             if i in col_summary:
                 assert col_summary[i] == name
@@ -300,6 +322,12 @@ def test_hugectr(
 
 @pytest.mark.parametrize("inp_format", ["dask", "dask_cudf", "cudf", "pandas"])
 def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
+    # Skip test if dask_cudf is not installed
+    if inp_format == "dask_cudf" and not dask_cudf:
+        pytest.skip("Dask_cudf is required for this test")
+    # Skip test if cudf is not installed
+    if inp_format == "cudf" and not cudf:
+        pytest.skip("cudf is required for this test")
     paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
     ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
     df1 = ddf1.compute()
@@ -328,7 +356,8 @@ def test_dataset_partition_shuffle(tmpdir):
     # Shuffle
     df1 = ddf1.compute().reset_index(drop=True)
     df2_to_ddf = ds.to_ddf(shuffle=True).compute().reset_index(drop=True)
-    df2_to_iter = cudf.concat(list(ds.to_iter(columns=columns, shuffle=True))).reset_index(
+    _lib = pd if cudf is None else cudf
+    df2_to_iter = _lib.concat(list(ds.to_iter(columns=columns, shuffle=True))).reset_index(
         drop=True
     )
 
@@ -379,7 +408,8 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
         out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
 
     # Check that our output data is exactly the same
-    df_check = cudf.read_parquet(out_paths)
+    _lib = pd if cudf is None else cudf
+    df_check = _lib.read_parquet(out_paths)
     assert_eq(
         df_check[columns].sort_values(["x", "y"]),
         df[columns].sort_values(["x", "y"]),
@@ -398,8 +428,8 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     # check entirely after we've upgraded the CI container)
     if cudf.__version__.startswith("0+untagged"):
         pytest.skip("parquet lists support is flakey here without cudf0.18")
-
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -424,7 +454,7 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     )
 
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
-    df_out = cudf.read_parquet(out_paths)
+    df_out = _lib.read_parquet(out_paths)
     df_out = df_out.sort_values(by="Post", ascending=True)
     assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
 

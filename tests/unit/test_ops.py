@@ -15,16 +15,24 @@
 #
 import copy
 import math
+from nvtabular.io import dask
 import string
 
-import cudf
+try:
+    import cudf
+    from cudf.tests.utils import assert_eq
+except ImportError:
+    cudf = None
 import cupy as cp
 import dask.dataframe as dd
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
@@ -63,7 +71,8 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
 @pytest.mark.parametrize("fold_seed", [None, 42])
 @pytest.mark.parametrize("cpu", [True, False])
 def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
-    df = cudf.DataFrame(
+    _lib = pd if cpu else cudf
+    df = _lib.DataFrame(
         {
             "Author": list(string.ascii_uppercase),
             "Engaging-User": list(string.ascii_lowercase),
@@ -99,7 +108,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         else:
             name = "__fold___Author_Engaging-User"
             cols = ["__fold__", "Author", "Engaging-User"]
-        check = cudf.io.read_parquet(te_features.op.stats[name])
+        check = _lib.io.read_parquet(te_features.op.stats[name])
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
         assert_eq(check, df_out_check)
@@ -113,7 +122,8 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
-    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
+    _lib = pd if cpu else cudf
+    df = _lib.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     if cpu:
         df = dd.from_pandas(df.to_pandas(), npartitions=npartitions)
     else:
@@ -209,7 +219,8 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, c
 
 
 def test_hash_bucket_lists(tmpdir):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -298,7 +309,8 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("op_columns", [["x"]])
 def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_columns):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1, 0, 1, 0]}, dtype="float32"
     )
 
@@ -438,7 +450,8 @@ def test_lambdaop_misalign(cpu):
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", [False, True])
 def test_categorify_lists(tmpdir, freq_threshold, cpu):
-    df = cudf.DataFrame(
+    _lib = pd if cpu else cudf
+    df = _lib.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -560,8 +573,8 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
     if search_sort and cpu:
         # invalid combination - don't test
         return
-
-    df = cudf.DataFrame(
+    _lib = pd if cpu else cudf
+    df = _lib.DataFrame(
         {
             "Author": [
                 "User_A",
@@ -638,7 +651,8 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
 
 @pytest.mark.parametrize("cpu", [False, True])
 def test_categorify_hash_bucket(cpu):
-    df = cudf.DataFrame(
+    _lib = pd if cpu else cudf
+    df = _lib.DataFrame(
         {
             "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
             "Engaging_User": ["User_B", "User_B", "User_A", "User_D", "User_D"],
@@ -663,7 +677,8 @@ def test_categorify_hash_bucket(cpu):
 
 @pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
 def test_categorify_max_size(max_emb_size):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "Author": [
                 "User_A",
@@ -799,7 +814,12 @@ def test_joingroupby_multi(tmpdir, groups, cpu):
 @pytest.mark.parametrize("cpu", [True, False])
 @pytest.mark.parametrize("drop_duplicates", [True, False])
 def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, drop_duplicates):
-
+    # Skip if it is for cudf and cpu
+    if kind_ext == "cudf" and cudf is None:
+        pytest.skip("Test for cudf, but it is also cpu")
+    # Skip if it is for dask-cudf and cpu
+    if kind_ext == "dask-cudf" and dask_cudf is None:
+        pytest.skip("Test for dask_cudf, but it is also cpu")
     # Define "external" table
     shift = 100
     df_ext = df[["id"]].copy().sort_values("id")

@@ -19,11 +19,14 @@ import shutil
 import subprocess
 import time
 
-import cudf
+try:
+    import cudf
+    from cudf.tests.utils import assert_eq
+except ImportError:
+    cudf = None
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
@@ -62,7 +65,8 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "cat1": [1] * num_rows,
             "cat2": [2] * num_rows,
@@ -107,9 +111,10 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_file_iterator_ds(df, dataset, batch, engine):
-    df_itr = cudf.DataFrame()
+    _lib = pd if cudf is None else cudf
+    df_itr = _lib.DataFrame()
     for data_gd in dataset.to_iter(columns=mycols_csv):
-        df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
+        df_itr = _lib.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
 
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
@@ -333,9 +338,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     )
 
     columns = mycols_pq
-    df_test = cudf.read_parquet(tar_paths[0])[columns]
+    _lib = pd if cudf is None else cudf
+    df_test = _lib.read_parquet(tar_paths[0])[columns]
     df_test.columns = list(range(0, len(columns)))
-    num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
+    num_rows, num_row_groups, col_names = _lib.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
     for idx, chunk in enumerate(data_itr):
@@ -428,7 +434,8 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
 
 def test_mh_support(tmpdir):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -469,7 +476,8 @@ def test_mh_support(tmpdir):
 @pytest.mark.parametrize("sparse_dense", [False, True])
 def test_sparse_tensors(sparse_dense):
     # create small dataset, add values to sparse_list
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
             "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
@@ -505,7 +513,8 @@ def test_sparse_tensors(sparse_dense):
 
 
 def test_mh_model_support(tmpdir):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],

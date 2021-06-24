@@ -21,9 +21,12 @@ import subprocess
 import sys
 from os.path import dirname, realpath
 
-import cudf
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import pytest
-
+import pandas as pd
 import nvtabular.tools.data_gen as datagen
 from tests.conftest import get_cuda_cluster
 
@@ -286,7 +289,8 @@ def _get_random_criteo_data(rows):
     dtypes = {col: float for col in [f"I{x}" for x in range(1, 14)]}
     dtypes.update({col: int for col in [f"C{x}" for x in range(1, 27)]})
     dtypes["label"] = bool
-    ret = cudf.datasets.randomdata(rows, dtypes=dtypes)
+    _lib = pd if cudf is None else cudf
+    ret = _lib.datasets.randomdata(rows, dtypes=dtypes)
     # binarize the labels
     ret.label = ret.label.astype(int)
     return ret
@@ -387,7 +391,8 @@ def _get_random_rossmann_data(rows):
         }
     )  # noqa
     dtypes["StateHoliday"] = bool
-    return cudf.datasets.randomdata(rows, dtypes=dtypes)
+    _lib = pd if cudf is None else cudf
+    return _lib.datasets.randomdata(rows, dtypes=dtypes)
 
 
 def _get_random_movielens_data(tmpdir, rows, dataset="movie", valid=None):
@@ -439,7 +444,8 @@ def _get_random_movielens_data(tmpdir, rows, dataset="movie", valid=None):
     df_gen.full_df_create(rows, cols, output=target_path)
 
     if dataset == "movie":
-        movies_converted = cudf.read_parquet(os.path.join(tmpdir, "dataset_0.parquet"))
+        _lib = pd if cudf is None else cudf
+        movies_converted = _lib.read_parquet(os.path.join(tmpdir, "dataset_0.parquet"))
         movies_converted = movies_converted.drop_duplicates(["movieId"], keep="first")
         movies_converted.to_parquet(os.path.join(tmpdir, "movies_converted.parquet"))
 

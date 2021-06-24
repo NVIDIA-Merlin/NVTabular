@@ -17,11 +17,16 @@
 import os
 from io import BytesIO
 
-import cudf
+try:
+    import cudf
+    from cudf.tests.utils import assert_eq
+    from dask_cudf.io.tests import test_s3
+except ImportError:
+    cudf = None
+    
 import pytest
-from cudf.tests.utils import assert_eq
 from dask.dataframe.io.parquet.core import create_metadata_file
-from dask_cudf.io.tests import test_s3
+
 
 import nvtabular as nvt
 from nvtabular import ops
@@ -39,7 +44,9 @@ s3so = test_s3.s3so
 # @pytest.mark.parametrize("engine", ["parquet", "csv"])
 @pytest.mark.parametrize("engine", ["csv"])
 def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df):
-
+    # Skip if cudf is not installed
+    if cudf is None:
+        pytest.skip("If cudf is not installed, skip test")
     # Copy files to mock s3 bucket
     files = {}
     for i, path in enumerate(paths):

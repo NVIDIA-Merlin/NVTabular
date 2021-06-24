@@ -5,10 +5,13 @@ import subprocess
 import time
 from distutils.spawn import find_executable
 
-import cudf
+try:
+    import cudf
+    from cudf.tests.utils import assert_eq
+except ImportError:
+    cudf = None
 import pytest
-from cudf.tests.utils import assert_eq
-
+import pandas as pd
 import nvtabular as nvt
 import nvtabular.ops as ops
 
@@ -49,7 +52,8 @@ def run_triton_server(modelpath):
 
 @pytest.mark.skipif(_TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 def test_tritonserver_inference_string(tmpdir):
-    df = cudf.DataFrame({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
     features = ["user"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
 
@@ -65,12 +69,13 @@ def test_tritonserver_inference_string(tmpdir):
     with run_triton_server(tmpdir) as client:
         response = client.infer(model_name, inputs)
         user_features = response.as_numpy("user")
-        triton_df = cudf.DataFrame({"user": user_features.reshape(user_features.shape[0])})
+        triton_df = _lib.DataFrame({"user": user_features.reshape(user_features.shape[0])})
         assert_eq(triton_df, local_df)
 
 
 def test_generate_triton_multihot(tmpdir):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "userId": ["a", "a", "b"],
             "movieId": ["1", "2", "2"],

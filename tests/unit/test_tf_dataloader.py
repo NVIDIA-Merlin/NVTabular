@@ -18,7 +18,10 @@ import importlib
 import os
 import subprocess
 
-import cudf
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import numpy as np
 import pandas as pd
 import pytest
@@ -58,7 +61,7 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = cudf.DataFrame(
+    df = _lib.DataFrame(
         {
             "cat1": [1] * num_rows,
             "cat2": [2] * num_rows,
@@ -104,7 +107,7 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
 
 def test_tf_catname_ordering(tmpdir):
-    df = cudf.DataFrame(
+    df = _lib.DataFrame(
         {
             "cat1": [1] * 100,
             "cat2": [2] * 100,
@@ -140,7 +143,8 @@ def test_tf_catname_ordering(tmpdir):
 
 
 def test_tf_map(tmpdir):
-    df = cudf.DataFrame(
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(
         {
             "cat1": [1] * 100,
             "cat2": [2] * 100,
@@ -303,7 +307,8 @@ def test_mh_support(tmpdir, batch_size):
         ],
         "Post": [1, 2, 3, 4],
     }
-    df = cudf.DataFrame(data)
+    _lib = pd if cudf is None else cudf
+    df = _lib.DataFrame(data)
     cat_names = ["Authors", "Reviewers", "Engaging User"]
     cont_names = ["Embedding"]
     label_name = ["Post"]
@@ -351,8 +356,8 @@ def test_mh_support(tmpdir, batch_size):
 def test_validater(tmpdir, batch_size):
     n_samples = 9
     rand = np.random.RandomState(0)
-
-    gdf = cudf.DataFrame({"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)})
+    _lib = pd if cudf is None else cudf
+    gdf = _lib.DataFrame({"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)})
 
     dataloader = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(gdf),

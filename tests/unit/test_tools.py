@@ -2,11 +2,11 @@ import glob
 import json
 import os
 
-import cudf
+cudf = pytest.importorskip("cudf")
 import fsspec
 import numpy as np
 import pytest
-from cudf.utils.dtypes import is_string_dtype
+is_string_dtype = pytest.importorskip("cudf.utils.dtypes.is_string_dtype")
 
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
