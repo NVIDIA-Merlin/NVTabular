@@ -1,0 +1,33 @@
+name: "movielens_user_features"
+backend: "python"
+parameters {
+  key: "feast_repo_path"
+  value {
+    string_value: "/feast"
+  }
+}
+input {
+  name: "user_id"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_ids"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "genres"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "search_terms"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+
