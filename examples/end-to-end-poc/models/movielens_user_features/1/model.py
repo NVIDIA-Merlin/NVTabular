@@ -1,4 +1,3 @@
-
 import json
 import sys
 import traceback
@@ -7,6 +6,7 @@ import numpy as np
 import triton_python_backend_utils as pb_utils
 
 from feast import FeatureStore
+
 
 class TritonPythonModel:
     """Your Python model must use the same class name. Every Python model
@@ -52,7 +52,8 @@ class TritonPythonModel:
           be the same as `requests`
         """
 
-        output_dtype = pb_utils.triton_string_to_numpy("TYPE_INT32")
+        int32_dtype = pb_utils.triton_string_to_numpy("TYPE_INT32")
+        int64_dtype = pb_utils.triton_string_to_numpy("TYPE_INT64")
 
         responses = []
 
@@ -65,46 +66,71 @@ class TritonPythonModel:
         for request in requests:
             # Perform inference on the request and append it to responses list...
             try:
-              user_ids = pb_utils.get_input_tensor_by_name(request, "user_id").as_numpy()
+                user_ids = pb_utils.get_input_tensor_by_name(request, "user_id").as_numpy()
 
-              entity_rows = [{"user_id": int(user_id)} for user_id in user_ids]
+                entity_rows = [{"user_id": int(user_id)} for user_id in user_ids]
 
-              feature_vector = self.store.get_online_features(
-                  feature_refs=[
-                      'user_features:search_terms',
-                      'user_features:genres',
-                      'user_features:movie_ids'
-                  ],
-                  entity_rows=entity_rows
-              ).to_dict()
+                feature_vector = self.store.get_online_features(
+                    feature_refs=[
+                        "user_features:search_terms",
+                        "user_features:genres",
+                        "user_features:movie_ids",
+                    ],
+                    entity_rows=entity_rows,
+                ).to_dict()
 
-              movie_ids = pb_utils.Tensor("movie_ids",
-                            np.array(
-                              feature_vector["user_features__movie_ids"]
-                            ).astype(output_dtype)
-                          )
-
-              genres = pb_utils.Tensor("genres",
-                        np.array(
-                          feature_vector["user_features__genres"]
-                        ).astype(output_dtype)
-                      )
-
-              search_terms = pb_utils.Tensor("search_terms",
-                              np.array(
-                                  feature_vector["user_features__search_terms"]
-                              ).astype(output_dtype)
-                            )
-
-              responses.append(pb_utils.InferenceResponse(
-                output_tensors=[movie_ids, genres, search_terms]
-              ))
-            except Exception as e:
-              responses.append(pb_utils.InferenceResponse(
-                output_tensors=[], error=pb_utils.TritonError(
-                  str(traceback.format_tb(sys.exc_info()[-1])))
+                movie_id_count = pb_utils.Tensor(
+                    "movie_id_count",
+                    np.array([[len(feature_vector["user_features__movie_ids"])]]).astype(int32_dtype),
                 )
-              )
+
+                movie_ids_values = pb_utils.Tensor(
+                    "movie_ids__values",
+                    np.transpose(np.array(feature_vector["user_features__movie_ids"])).astype(int64_dtype),
+                )
+
+                movie_ids_nnzs = pb_utils.Tensor(
+                    "movie_ids__nnzs",
+                    np.array([[len(feature_vector["user_features__movie_ids"])]]).astype(int32_dtype),
+                )
+
+                genres_values = pb_utils.Tensor(
+                    "genres__values",
+                    np.transpose(np.array(feature_vector["user_features__genres"])).astype(int64_dtype)
+                )
+
+                genres_nnzs = pb_utils.Tensor(
+                    "genres__nnzs",
+                    np.array([[len(feature_vector["user_features__genres"])]]).astype(int32_dtype),
+                )
+
+                search_terms_values = pb_utils.Tensor(
+                    "search_terms__values",
+                    np.transpose(np.array(feature_vector["user_features__search_terms"])).astype(int64_dtype),
+                )
+
+                search_terms_nnzs = pb_utils.Tensor(
+                    "search_terms__nnzs",
+                    np.array([[len(feature_vector["user_features__search_terms"])]]).astype(int32_dtype),
+                )
+
+                responses.append(
+                    pb_utils.InferenceResponse(output_tensors=[
+                        movie_id_count,
+                        movie_ids_values, movie_ids_nnzs,
+                        genres_values, genres_nnzs,
+                        search_terms_values, search_terms_nnzs
+                    ])
+                )
+            except Exception as e:
+                exc = sys.exc_info()
+                formatted_tb = str(traceback.format_tb(exc[-1]))
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        output_tensors=[],
+                        error=pb_utils.TritonError(f"{exc[0]}, {exc[1]}, {formatted_tb}"),
+                    )
+                )
 
         # You must return a list of pb_utils.InferenceResponse. Length
         # of this list must match the length of `requests` list.
@@ -115,4 +141,4 @@ class TritonPythonModel:
         Implementing `finalize` function is optional. This function allows
         the model to perform any necessary clean ups before exit.
         """
-        print('Cleaning up...')
+        print("Cleaning up...")

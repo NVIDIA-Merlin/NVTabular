@@ -1,0 +1,88 @@
+name: "movielens"
+platform: "ensemble"
+input {
+  name: "user_id"
+  data_type: TYPE_INT64
+  dims: -1
+  dims: 1
+}
+output {
+  name: "user_vector"
+  data_type: TYPE_FP32
+  dims: -1
+  dims: 128
+}
+ensemble_scheduling {
+  step {
+    model_name: "movielens_user_features"
+    model_version: -1
+    input_map {
+      key: "user_id"
+      value: "user_id"
+    }
+    output_map {
+      key: "movie_id_count"
+      value: "movie_id_count"
+    }
+    output_map {
+      key: "movie_ids__values"
+      value: "movie_ids__values"
+    }
+    output_map {
+      key: "movie_ids__nnzs"
+      value: "movie_ids__nnzs"
+    }
+    output_map {
+      key: "genres__values"
+      value: "genres__values"
+    }
+    output_map {
+      key: "genres__nnzs"
+      value: "genres__nnzs"
+    }
+    output_map {
+      key: "search_terms__values"
+      value: "search_terms__values"
+    }
+    output_map {
+      key: "search_terms__nnzs"
+      value: "search_terms__nnzs"
+    }
+  }
+  step {
+    model_name: "movielens_retrieval_tf"
+    model_version: -1
+    input_map {
+      key: "movie_id_count"
+      value: "movie_id_count"
+    }
+    input_map {
+      key: "movie_ids__values"
+      value: "movie_ids__values"
+    }
+    input_map {
+      key: "movie_ids__nnzs"
+      value: "movie_ids__nnzs"
+    }
+    input_map {
+      key: "genres__values"
+      value: "genres__values"
+    }
+    input_map {
+      key: "genres__nnzs"
+      value: "genres__nnzs"
+    }
+    input_map {
+      key: "search_terms__values"
+      value: "search_terms__values"
+    }
+    input_map {
+      key: "search_terms__nnzs"
+      value: "search_terms__nnzs"
+    }
+    output_map {
+      key: "output_1"
+      value: "user_vector"
+    }
+  }
+}
