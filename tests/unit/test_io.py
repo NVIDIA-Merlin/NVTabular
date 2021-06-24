@@ -20,6 +20,7 @@ import math
 import os
 import warnings
 from distutils.version import LooseVersion
+import dask.dataframe as dd
 
 try:
     import cudf
@@ -83,7 +84,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
     size = 0
     ds = nvtabular.io.Dataset(
-        paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes
+        paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes, cpu= not cudf
     )
     my_iter = ds.to_iter(columns=columns)
     for chunk in my_iter:
@@ -96,14 +97,11 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
 @pytest.mark.parametrize("num_files", [1, 2])
-@pytest.mark.parametrize("cpu", [None, True])
+@pytest.mark.parametrize("cpu", [False, True])
 def test_dask_dataset(datasets, engine, num_files, cpu):
     # Skip test if it is for GPU and cudf is not installed
-    if not cpu and cudf is None:
-        pytest.skip("Test is for GPU and cudf is not installed")
-    # Skip test if it is for GPU and cudf is not installed
-    if cpu and cudf is None:
-        pytest.skip("Test is for CPU, but cudf is needed and cudf is not installed")
+    if cudf is None:
+        pytest.skip("cudf is needed for all the cases")
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = paths[:num_files]
@@ -151,11 +149,8 @@ def test_dask_dataset(datasets, engine, num_files, cpu):
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     # Skip test if it is for GPU and cudf is not installed
-    if not cpu and cudf is None:
-        pytest.skip("Test is for GPU and cudf is not installed")
-    # Skip test if it is for GPU and cudf is not installed
-    if cpu and cudf is None:
-        pytest.skip("Test is for CPU, but cudf is needed and cudf is not installed")
+    if cudf is None:
+        pytest.skip("cudf is needed for all the cases")
     # Generate a DataFrame-based input
     if origin in ("pd", "dd"):
         df = pd.DataFrame({"a": range(100)})
@@ -213,7 +208,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
 @pytest.mark.parametrize("cpu", [False, True])
 def test_dask_datframe_methods(tmpdir, cpu):
     # Skip if cpu and pandas not installed, we cannot generate the datasets
-    if cpu and cudf is None:
+    if cudf is None:
         pytest.skip("cudf is not installed, we cannot generate datasets")
     # Input DataFrame objects
     _lib = pd if cpu else cudf
@@ -268,6 +263,8 @@ def test_hugectr(
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
 
     workflow = nvt.Workflow(conts + cats + label_names)
+    if cudf is None:
+        dataset.to_cpu()
     transformed = workflow.fit_transform(dataset)
 
     if output_format == "hugectr":
@@ -335,17 +332,20 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     if inp_format == "cudf" and not cudf:
         pytest.skip("cudf is required for this test")
     paths = glob.glob(str(datasets["parquet"]) + "/*." + "parquet".split("-")[0])
-    ddf1 = dask_cudf.read_parquet(paths)[mycols_pq]
+    _lib = dd if dask_cudf is None else dask_cudf
+    ddf1 = _lib.read_parquet(paths)[mycols_pq]
     df1 = ddf1.compute()
+
     if inp_format == "dask":
-        ds = nvtabular.io.Dataset(ddf1.to_dask_dataframe())
+        ds = nvtabular.io.Dataset(ddf1, cpu=not cudf)
     elif inp_format == "dask_cudf":
         ds = nvtabular.io.Dataset(ddf1)
     elif inp_format == "cudf":
         ds = nvtabular.io.Dataset(df1)
     elif inp_format == "pandas":
-        ds = nvtabular.io.Dataset(df1.to_pandas())
-    assert_eq(df1, cudf.concat(list(ds.to_iter(columns=mycols_pq))))
+        ds = nvtabular.io.Dataset(df1, cpu =not cudf)
+    _lib = pd if cudf is None else cudf
+    assert_eq(df1, _lib.concat(list(ds.to_iter(columns=mycols_pq))))
 
 
 def test_dataset_partition_shuffle(tmpdir):
@@ -356,7 +356,7 @@ def test_dataset_partition_shuffle(tmpdir):
     # random failure is VERY unlikely (prob ~4e-19)
     assert ddf1.npartitions == 20
     columns = list(ddf1.columns)
-    ds = nvt.Dataset(ddf1)
+    ds = nvt.Dataset(ddf1, cpu=not cudf)
     ddf1 = ds.to_ddf()
 
     # Shuffle
@@ -389,7 +389,6 @@ def test_dataset_partition_shuffle(tmpdir):
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
 @pytest.mark.parametrize("file_map", [True, False])
 def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle, file_map):
-
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -397,7 +396,9 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     workflow = nvt.Workflow(nvt.ColumnGroup(columns))
 
     outdir = str(tmpdir.mkdir("out"))
-    transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
+    _func = dd.from_pandas if cudf is None else dask_cudf.from_cudf
+    #transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
+    transformed = workflow.transform(nvt.Dataset(_func(df, 2), cpu=not cudf))
     if file_map and nfiles:
         transformed.to_parquet(
             output_path=outdir, num_threads=num_io_threads, shuffle=shuffle, output_files=nfiles
@@ -432,7 +433,7 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     # to run this test frequently, whereas it works with later versions of cudf.
     # skip if we are running this specific version of cudf (and lets remove this
     # check entirely after we've upgraded the CI container)
-    if cudf.__version__.startswith("0+untagged"):
+    if cudf and cudf.__version__.startswith("0+untagged"):
         pytest.skip("parquet lists support is flakey here without cudf0.18")
     _lib = pd if cudf is None else cudf
     df = _lib.DataFrame(
@@ -452,7 +453,7 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     cats = cat_names >> ops.Categorify(out_path=str(output_dir))
     workflow = nvt.Workflow(cats + "Post")
 
-    transformed = workflow.fit_transform(nvt.Dataset(filename))
+    transformed = workflow.fit_transform(nvt.Dataset(filename, cpu=not cudf))
     transformed.to_parquet(
         output_path=output_dir,
         shuffle=shuffle,

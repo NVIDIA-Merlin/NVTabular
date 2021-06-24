@@ -14,6 +14,10 @@
 # limitations under the License.
 #
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import cupy
 import pytest
 
@@ -28,7 +32,7 @@ def test_dataloader_seeding(datasets, engine, batch_size):
     cat_names = ["name-string", "name-cat"]
     label_name = ["label"]
 
-    dataset = Dataset(str(datasets["parquet"]), engine=engine)
+    dataset = Dataset(str(datasets["parquet"]), engine=engine, cpu=not cudf)
 
     # Define a seed function that returns the same seed on all workers
     seed_fragments = []

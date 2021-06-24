@@ -107,6 +107,8 @@ def datasets(tmpdir_factory):
             "z": float,
         },
     ).reset_index()
+
+    df = df.compute()
     
     df["name-string"] = _lib.Series(np.random.choice(mynames, df.shape[0])).astype("O")
 

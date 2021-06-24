@@ -162,7 +162,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
         cont_cols=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
     )
 
-    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction, cpu=not cudf)
     workflow = Workflow(features + cat_names + cont_names + label_name, client=client)
     result = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
@@ -201,7 +201,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     )
 
     workflow = Workflow(cat_features + groupby_features, client=client)
-    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
+    dataset = Dataset(paths, part_mem_fraction=part_mem_fraction, cpu=not cudf)
     result = workflow.fit_transform(dataset).to_ddf().compute()
 
     assert "name-cat_x_sum" in result.columns
