@@ -26,16 +26,20 @@ from distutils.version import LooseVersion
 from io import BytesIO
 from uuid import uuid4
 
-import cudf
+try:
+    import cudf
+    from cudf.io.parquet import ParquetWriter as pwriter_cudf
+    import dask_cudf
+except ImportError:
+    cudf = None
+    dask_cudf = None
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import fsspec
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
-from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths

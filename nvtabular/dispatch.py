@@ -19,7 +19,6 @@ from typing import Callable, Union
 
 import cupy as cp
 import dask.dataframe as dd
-import dask_cudf
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -27,10 +26,12 @@ import pyarrow.parquet as pq
 
 try:
     import cudf
+    import dask_cudf
     from cudf.core.column import as_column, build_column
     from cudf.utils.dtypes import is_list_dtype
 except ImportError:
     cudf = None
+    dask_cudf = None
 
 try:
     # Dask >= 2021.5.1
@@ -39,8 +40,12 @@ except ImportError:
     # Dask < 2021.5.1
     from dask.dataframe.utils import hash_object_dispatch
 
-DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
-SeriesType = Union[pd.Series, cudf.Series]
+if cudf is None:
+    DataFrameType = Union[pd.DataFrame]
+    SeriesType = Union[pd.Series]
+else:
+    DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
+    SeriesType = Union[pd.Series, cudf.Series]
 
 
 class ExtData(enum.Enum):
@@ -162,6 +167,7 @@ def _series_has_nulls(s):
 
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
+    print(type(ser))
     if isinstance(ser, pd.Series):
         if not len(ser):  # pylint: disable=len-as-condition
             return False
@@ -182,7 +188,7 @@ def _concat_columns(args: list):
     if len(args) == 1:
         return args[0]
     else:
-        _lib = cudf if isinstance(args[0], cudf.DataFrame) else pd
+        _lib = cudf if cudf is not None and isinstance(args[0], cudf.DataFrame) else pd
         return _lib.concat(
             [a.reset_index(drop=True) for a in args],
             axis=1,
@@ -336,7 +342,7 @@ def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
         if isinstance(x, dd.DataFrame):
             # If input is a dask_cudf collection, convert
             # to a pandas-backed Dask collection
-            if not isinstance(x, dask_cudf.DataFrame):
+            if dask_cudf is None or not isinstance(x, dask_cudf.DataFrame):
                 # Already a Pandas-backed collection
                 return x
             # Convert cudf-backed collection to pandas-backed collection

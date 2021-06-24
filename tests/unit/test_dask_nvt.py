@@ -84,7 +84,7 @@ def test_dask_workflow_api_dlrm(
         df1 = _lib.read_csv(paths[0], names=allcols_csv)[mycols_csv]
         df2 = _lib.read_csv(paths[1], names=allcols_csv)[mycols_csv]
     df0 = _lib.concat([df1, df2], axis=0)
-    df0 = df0.to_pandas() if cpu else df0
+    #df0 = df0.to_pandas() if cpu else df0
 
     if engine == "parquet":
         cat_names = ["name-cat", "name-string"]

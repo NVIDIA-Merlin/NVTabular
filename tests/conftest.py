@@ -19,15 +19,19 @@ import os
 import platform
 import random
 import socket
+import pandas as pd
 
-import cudf
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import numpy as np
 import psutil
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
 from numba import cuda
-
+import dask
 import nvtabular
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
@@ -87,7 +91,9 @@ def get_cuda_cluster():
 
 @pytest.fixture(scope="session")
 def datasets(tmpdir_factory):
-    df = cudf.datasets.timeseries(
+    _lib = pd if cudf is None else cudf
+
+    df = dask.datasets.timeseries(
         start="2000-01-01",
         end="2000-01-04",
         freq="60s",
@@ -101,7 +107,8 @@ def datasets(tmpdir_factory):
             "z": float,
         },
     ).reset_index()
-    df["name-string"] = cudf.Series(np.random.choice(mynames, df.shape[0])).astype("O")
+    
+    df["name-string"] = _lib.Series(np.random.choice(mynames, df.shape[0])).astype("O")
 
     # Add two random null values to each column
     imax = len(df) - 1
@@ -153,19 +160,20 @@ def paths(engine, datasets):
 
 @pytest.fixture(scope="function")
 def df(engine, paths):
+    _lib = pd if cudf is None else cudf
     if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+        df1 = _lib.read_parquet(paths[0])[mycols_pq]
+        df2 = _lib.read_parquet(paths[1])[mycols_pq]
     elif engine == "csv-no-header":
-        df1 = cudf.read_csv(paths[0], header=None, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=None, names=allcols_csv)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=None, names=allcols_csv)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], header=None, names=allcols_csv)[mycols_csv]
     elif engine == "csv":
-        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], header=0)[mycols_csv]
     else:
         raise ValueError("unknown engine:" + engine)
 
-    gdf = cudf.concat([df1, df2], axis=0)
+    gdf = _lib.concat([df1, df2], axis=0)
     gdf["id"] = gdf["id"].astype("int64")
     return gdf
 
@@ -236,6 +244,7 @@ def get_cats(workflow, col, stat_name="categories"):
     if len(cats) != 1:
         raise RuntimeError(f"Found {len(cats)} categorical ops, expected 1")
     filename = cats[0].categories[col]
-    gdf = cudf.read_parquet(filename)
+    _lib = pd if cudf is None else cudf
+    gdf = _lib.read_parquet(filename)
     gdf.reset_index(drop=True, inplace=True)
     return gdf[col].values_host

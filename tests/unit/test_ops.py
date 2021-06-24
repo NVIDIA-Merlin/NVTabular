@@ -41,6 +41,8 @@ import nvtabular.io
 from nvtabular import ColumnGroup, ops
 from tests.conftest import mycols_csv, mycols_pq
 
+from nvtabular.dispatch import _hash_series
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
@@ -81,7 +83,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         }
     )
     if cpu:
-        df = dd.from_pandas(df.to_pandas(), npartitions=3)
+        df = dd.from_pandas(df, npartitions=3)
     else:
         df = dask_cudf.from_cudf(df, npartitions=3)
 
@@ -108,7 +110,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         else:
             name = "__fold___Author_Engaging-User"
             cols = ["__fold__", "Author", "Engaging-User"]
-        check = _lib.io.read_parquet(te_features.op.stats[name])
+        check = _lib.read_parquet(te_features.op.stats[name])
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
         assert_eq(check, df_out_check)
@@ -125,7 +127,7 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
     _lib = pd if cpu else cudf
     df = _lib.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     if cpu:
-        df = dd.from_pandas(df.to_pandas(), npartitions=npartitions)
+        df = dd.from_pandas(df, npartitions=npartitions)
     else:
         df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
@@ -641,11 +643,11 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
             if isinstance(buckets, dict) and isinstance(buckets, dict):
                 assert (
                     df_out["Author"].max()
-                    <= (df["Author"].hash_values() % buckets["Author"]).max() + 2 + 1
+                    <= (_hash_series(df["Author"]) % buckets["Author"]).max() + 2 + 1
                 )
                 assert (
                     df_out["Engaging User"].max()
-                    <= (df["Engaging User"].hash_values() % buckets["Engaging User"]).max() + 1 + 1
+                    <= (_hash_series(df["Engaging User"]) % buckets["Engaging User"]).max() + 1 + 1
                 )
 
 

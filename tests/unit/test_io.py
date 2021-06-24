@@ -210,12 +210,18 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     assert_eq(df, ddf_check, check_index=False)
 
 
-@pytest.mark.parametrize("cpu", [None, True])
+@pytest.mark.parametrize("cpu", [False, True])
 def test_dask_datframe_methods(tmpdir, cpu):
+    # Skip if cpu and pandas not installed, we cannot generate the datasets
+    if cpu and cudf is None:
+        pytest.skip("cudf is not installed, we cannot generate datasets")
     # Input DataFrame objects
     _lib = pd if cpu else cudf
-    df1 = _lib.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
-    df2 = _lib.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
+    df1 = cudf.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
+    df2 = cudf.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
+    if cpu:
+        df1 = df1.to_pandas()
+        df2 = df2.to_pandas()   
 
     # Initialize and merge Dataset objects
     ds1 = nvtabular.io.Dataset(df1, npartitions=3, cpu=cpu)
