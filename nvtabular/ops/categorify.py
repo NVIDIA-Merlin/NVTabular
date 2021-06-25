@@ -433,10 +433,33 @@ def _get_embedding_order(cat_names):
     return cat_names
 
 
-def get_embedding_sizes(workflow):
-    """Returns a dictionary of best embedding sizes from the workflow"""
+def get_embedding_sizes(source, output_dtypes=None):
+    """Returns a dictionary of embedding sizes from a workflow or column_group
+
+    Parameters
+    ----------
+    source : Workflow or ColumnGroup
+        Either a nvtabular Workflow or ColumnGroup object that we should use to find
+        embedding sizes
+    output_dtypes : dict, optional
+        Optional dictionary of column_name:dtype. If passing a workflow object dtypes
+        will be read from the workflow. This is used to figure out which columns
+        are multihot-categorical, which are split out by this function. If passed a column_group
+        and this parameter isn't set, you won't have multihot columns returned separately
+    """
     # TODO: do we need to distinguish multihot columns here?  (if so why? )
-    queue = [workflow.column_group]
+
+    # have to lazy import Workflow to avoid circular import errors
+    from nvtabular.workflow import Workflow
+
+    if isinstance(source, Workflow):
+        queue = [source.column_group]
+        output_dtypes = output_dtypes or source.output_dtypes
+    else:
+        # passed in a column group
+        queue = [source]
+        output_dtypes = output_dtypes or {}
+
     output = {}
     multihot_columns = set()
     while queue:
@@ -444,12 +467,13 @@ def get_embedding_sizes(workflow):
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.columns))
         elif not current.op:
-
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
             queue.extend(current.parents)
+
     for column in output:
-        if _is_list_dtype(workflow.output_dtypes[column]):
+        dtype = output_dtypes.get(column)
+        if dtype and _is_list_dtype(dtype):
             # multi hot so remove from output and add to multihot
             multihot_columns.add(column)
     # TODO: returning differnt return types like this (based off the presence
