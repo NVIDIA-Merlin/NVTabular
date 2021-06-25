@@ -717,11 +717,16 @@ def test_categorify_max_size(max_emb_size):
     # check encoded values after freq_hashing with fix emb size
     assert new_gdf["Author"].max() <= max_emb_size["Author"]
     assert new_gdf["Engaging_User"].max() <= max_emb_size["Engaging_User"]
+
     # check embedding size is less than max_size after hashing with fix emb size.
-    assert nvt.ops.get_embedding_sizes(processor)["Author"][0] <= max_emb_size["Author"]
-    assert (
-        nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] <= max_emb_size["Engaging_User"]
-    )
+    embedding_sizes = nvt.ops.get_embedding_sizes(processor)
+    assert embedding_sizes["Author"][0] <= max_emb_size["Author"]
+    assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
+
+    # make sure we can also get embedding sizes from the column_group
+    embedding_sizes = nvt.ops.get_embedding_sizes(cat_features)
+    assert embedding_sizes["Author"][0] <= max_emb_size["Author"]
+    assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
 
 
 @pytest.mark.parametrize("cpu", [True, False])
