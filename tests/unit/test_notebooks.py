@@ -25,8 +25,9 @@ try:
     import cudf
 except ImportError:
     cudf = None
-import pytest
 import pandas as pd
+import pytest
+
 import nvtabular.tools.data_gen as datagen
 from tests.conftest import get_cuda_cluster
 

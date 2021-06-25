@@ -19,19 +19,21 @@ import os
 import platform
 import random
 import socket
+
 import pandas as pd
 
 try:
     import cudf
 except ImportError:
     cudf = None
+import dask
 import numpy as np
 import psutil
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
 from numba import cuda
-import dask
+
 import nvtabular
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
@@ -92,8 +94,8 @@ def get_cuda_cluster():
 @pytest.fixture(scope="session")
 def datasets(tmpdir_factory):
     _lib = pd if cudf is None else cudf
-
-    df = dask.datasets.timeseries(
+    _datalib = cudf if cudf else dask
+    df = _datalib.datasets.timeseries(
         start="2000-01-01",
         end="2000-01-04",
         freq="60s",
@@ -107,9 +109,9 @@ def datasets(tmpdir_factory):
             "z": float,
         },
     ).reset_index()
+    if _datalib is dask:
+        df = df.compute()
 
-    df = df.compute()
-    
     df["name-string"] = _lib.Series(np.random.choice(mynames, df.shape[0])).astype("O")
 
     # Add two random null values to each column

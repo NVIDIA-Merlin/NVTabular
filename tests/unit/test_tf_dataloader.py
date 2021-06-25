@@ -61,6 +61,7 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
+    _lib = pd if cudf is None else cudf
     df = _lib.DataFrame(
         {
             "cat1": [1] * num_rows,
@@ -107,6 +108,7 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
 
 def test_tf_catname_ordering(tmpdir):
+    _lib = pd if cudf is None else cudf
     df = _lib.DataFrame(
         {
             "cat1": [1] * 100,

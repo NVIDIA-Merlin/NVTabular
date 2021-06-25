@@ -18,10 +18,11 @@ try:
 except ImportError:
     cudf = None
 import cupy
+import pandas as pd
 import pytest
 import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
-import pandas as pd
+
 import nvtabular
 from nvtabular.ops.column_similarity import ColumnSimilarity
 

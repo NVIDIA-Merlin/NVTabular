@@ -17,7 +17,7 @@ try:
     import cudf
 except ImportError:
     cudf = None
-import dask.dataframe as dd
+
 try:
     import dask_cudf
 except ImportError:

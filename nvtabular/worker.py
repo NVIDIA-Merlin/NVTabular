@@ -22,6 +22,7 @@ try:
 except ImportError:
     cudf = None
 import fsspec
+import pandas as pd
 import pyarrow as pa
 from dask.distributed import get_worker
 
@@ -68,6 +69,7 @@ def fetch_table_data(
     DataFrame to a cache if the element is missing).  Note that `cats_only=True`
     results in optimized logic for the `Categorify` transformation.
     """
+    _lib = pd if cudf is None else cudf
     reader = reader or cudf.io.read_parquet
     table = table_cache.get(path, None)
     cache_df = cache == "device"
@@ -77,12 +79,15 @@ def fetch_table_data(
         if cache in ("device", "disk"):
             table = reader(path, **use_kwargs)
         elif cache == "host":
-            if reader == cudf.io.read_parquet:  # pylint: disable=comparison-with-callable
+            if reader == _lib.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
                 # Cache as an Arrow table.
                 with fsspec.open(path, "rb") as f:
                     table = reader(f, **use_kwargs)
-                table_cache[path] = table.to_arrow()
+                if cudf is None:
+                    table_cache[path] = pa.Table.from_pandas(table)
+                else:
+                    table_cache[path] = table.to_arrow()
                 if columns is not None:
                     table = table[columns]
             else:
@@ -96,9 +101,12 @@ def fetch_table_data(
         if cache_df:
             table_cache[path] = table.copy(deep=False)
     elif isinstance(table, pa.Table):
+        if cudf is None:
+            df = table.to_pandas()
+        else:
+            df = cudf.DataFrame.from_arrow(table)
         if not cats_only:
-            return cudf.DataFrame.from_arrow(table)
-        df = cudf.DataFrame.from_arrow(table)
+            return df
         if columns is not None:
             df = df[columns]
         df.index.name = "labels"

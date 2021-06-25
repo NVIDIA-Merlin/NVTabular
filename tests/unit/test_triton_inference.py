@@ -10,8 +10,9 @@ try:
     from cudf.tests.utils import assert_eq
 except ImportError:
     cudf = None
-import pytest
 import pandas as pd
+import pytest
+
 import nvtabular as nvt
 import nvtabular.ops as ops
 

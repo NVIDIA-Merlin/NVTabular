@@ -23,10 +23,9 @@ try:
     from dask_cudf.io.tests import test_s3
 except ImportError:
     cudf = None
-    
+
 import pytest
 from dask.dataframe.io.parquet.core import create_metadata_file
-
 
 import nvtabular as nvt
 from nvtabular import ops

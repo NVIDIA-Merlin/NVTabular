@@ -15,7 +15,6 @@
 #
 import copy
 import math
-from nvtabular.io import dask
 import string
 
 try:
@@ -25,6 +24,7 @@ except ImportError:
     cudf = None
 import cupy as cp
 import dask.dataframe as dd
+
 try:
     import dask_cudf
 except ImportError:
@@ -39,9 +39,8 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnGroup, ops
-from tests.conftest import mycols_csv, mycols_pq
-
 from nvtabular.dispatch import _hash_series
+from tests.conftest import mycols_csv, mycols_pq
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

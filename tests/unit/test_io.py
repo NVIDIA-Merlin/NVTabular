@@ -20,7 +20,9 @@ import math
 import os
 import warnings
 from distutils.version import LooseVersion
+
 import dask.dataframe as dd
+import pyarrow as pa
 
 try:
     import cudf
@@ -31,7 +33,6 @@ try:
 except ImportError:
     dask_cudf = None
 import dask
-import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
@@ -41,7 +42,7 @@ from dask.dataframe.io.demo import names as name_list
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ops
-from nvtabular.io.parquet import GPUParquetWriter
+from nvtabular.io.parquet import CPUParquetWriter, GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 
@@ -53,8 +54,9 @@ def test_shuffle_gpu(tmpdir, datasets, engine):
     if engine == "parquet":
         df1 = _lib.read_parquet(paths[0])[mycols_pq]
     else:
-        df1 = _lib.read_csv(paths[0], header=False, names=allcols_csv)[mycols_csv]
-    shuf = GPUParquetWriter(tmpdir, num_out_files=num_files, shuffle=nvt.io.Shuffle.PER_PARTITION)
+        df1 = _lib.read_csv(paths[0], header=0, names=allcols_csv)[mycols_csv]
+    _class = CPUParquetWriter if cudf is None else GPUParquetWriter
+    shuf = _class(tmpdir, num_out_files=num_files, shuffle=nvt.io.Shuffle.PER_PARTITION)
     shuf.add_data(df1)
     writer_files = shuf.data_paths
     shuf.close()
@@ -84,7 +86,7 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
     size = 0
     ds = nvtabular.io.Dataset(
-        paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes, cpu= not cudf
+        paths[0], engine=engine, part_mem_fraction=gpu_memory_frac, dtypes=dtypes, cpu=not cudf
     )
     my_iter = ds.to_iter(columns=columns)
     for chunk in my_iter:
@@ -216,7 +218,7 @@ def test_dask_datframe_methods(tmpdir, cpu):
     df2 = cudf.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
     if cpu:
         df1 = df1.to_pandas()
-        df2 = df2.to_pandas()   
+        df2 = df2.to_pandas()
 
     # Initialize and merge Dataset objects
     ds1 = nvtabular.io.Dataset(df1, npartitions=3, cpu=cpu)
@@ -243,6 +245,7 @@ def test_dask_datframe_methods(tmpdir, cpu):
 @pytest.mark.parametrize("op_columns", [["x"], None])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
 @pytest.mark.parametrize("use_client", [True, False])
+@pytest.mark.skipif(cudf is None, reason="CPU Support for HugeCTR not available yet")
 def test_hugectr(
     tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
 ):
@@ -263,8 +266,7 @@ def test_hugectr(
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
 
     workflow = nvt.Workflow(conts + cats + label_names)
-    if cudf is None:
-        dataset.to_cpu()
+
     transformed = workflow.fit_transform(dataset)
 
     if output_format == "hugectr":
@@ -343,7 +345,7 @@ def test_ddf_dataset_itr(tmpdir, datasets, inp_format):
     elif inp_format == "cudf":
         ds = nvtabular.io.Dataset(df1)
     elif inp_format == "pandas":
-        ds = nvtabular.io.Dataset(df1, cpu =not cudf)
+        ds = nvtabular.io.Dataset(df1, cpu=not cudf)
     _lib = pd if cudf is None else cudf
     assert_eq(df1, _lib.concat(list(ds.to_iter(columns=mycols_pq))))
 
@@ -397,7 +399,7 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
 
     outdir = str(tmpdir.mkdir("out"))
     _func = dd.from_pandas if cudf is None else dask_cudf.from_cudf
-    #transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
+    # transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
     transformed = workflow.transform(nvt.Dataset(_func(df, 2), cpu=not cudf))
     if file_map and nfiles:
         transformed.to_parquet(
@@ -415,8 +417,10 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
         out_paths = glob.glob(os.path.join(outdir, "*.parquet"))
 
     # Check that our output data is exactly the same
-    _lib = pd if cudf is None else cudf
-    df_check = _lib.read_parquet(out_paths)
+    if cudf is None:
+        df_check = pd.concat(pd.read_parquet(path) for path in out_paths)
+    else:
+        df_check = cudf.read_parquet(out_paths)
     assert_eq(
         df_check[columns].sort_values(["x", "y"]),
         df[columns].sort_values(["x", "y"]),
@@ -461,9 +465,15 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     )
 
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
-    df_out = _lib.read_parquet(out_paths)
+    if cudf is None:
+        df_out = pd.concat(pd.read_parquet(path) for path in out_paths)
+    else:
+        df_out = cudf.read_parquet(out_paths)
     df_out = df_out.sort_values(by="Post", ascending=True)
-    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+    if cudf is None:
+        assert pa.Table.from_pandas(df_out)["Authors"].to_pylist() == [[1], [1, 4], [2, 3], [3]]
+    else:
+        assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
 
 
 @pytest.mark.parametrize("part_size", [None, "1KB"])
@@ -531,7 +541,7 @@ def test_validate_dataset(datasets, engine):
         warnings.simplefilter("ignore")
         paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
         if engine == "parquet":
-            dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine)
+            dataset = nvtabular.io.Dataset(str(datasets[engine]), engine=engine, cpu=not cudf)
 
             # Default file_min_size should result in failed validation
             assert not dataset.validate_dataset()
@@ -556,7 +566,7 @@ def test_validate_dataset_bad_schema(tmpdir):
         df.to_parquet(os.path.join(path, fn))
 
     # Initial dataset has mismatched schema and is missing a _metadata file.
-    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    dataset = nvtabular.io.Dataset(path, engine="parquet", cpu=not cudf)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         # Schema issue should cause validation failure, even if _metadata is ignored
@@ -567,7 +577,7 @@ def test_validate_dataset_bad_schema(tmpdir):
         assert len(glob.glob(os.path.join(path, "_metadata")))
 
         # New datset has a _metadata file, but the file size is still too small
-        dataset = nvtabular.io.Dataset(path, engine="parquet")
+        dataset = nvtabular.io.Dataset(path, engine="parquet", cpu=not cudf)
         assert not dataset.validate_dataset()
         # Ignore file size to get validation success
         assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
@@ -612,7 +622,9 @@ def test_validate_and_regenerate_dataset(tmpdir):
 @pytest.mark.parametrize("preserve_files", [True, False])
 @pytest.mark.parametrize("cpu", [True, False])
 def test_dataset_conversion(tmpdir, cpu, preserve_files):
-
+    # Skip if not cpu and not cudf
+    if not cudf:
+        pytest.skip("cudf not installed and required")
     # Generate toy dataset.
     # Include "hex" strings to mimic Criteo.
     size = 100
@@ -654,7 +666,7 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
     # Convert csv dataset to parquet.
     # Adding extra ds -> ds2 step to test `base_dataset` usage.
     pq_path = os.path.join(str(tmpdir), "pq_dataset")
-    ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds)
+    ds2 = nvt.Dataset(ds.to_ddf(), base_dataset=ds, cpu=cpu)
     ds2.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
 
     # Check output.

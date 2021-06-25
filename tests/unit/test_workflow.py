@@ -62,6 +62,7 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
 
         workflow = Workflow.load(workflow_dir, client=client if use_client else None)
     _lib = pd if cudf is None else cudf
+
     def get_norms(tar: _lib.Series):
         gdf = tar.fillna(0)
         gdf = gdf * (gdf >= 0).astype("int")
@@ -152,8 +153,9 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
         workflow = None
 
         workflow = Workflow.load(workflow_dir)
-    
+
     _lib = pd if cudf is None else cudf
+
     def get_norms(tar: _lib.Series):
         gdf = tar.fillna(0)
         gdf = gdf * (gdf >= 0).astype("int")
@@ -181,7 +183,7 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
     )
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
-    
+
     _lib = pd if cudf is None else cudf
     df_pp = _lib.concat(list(dataset_2.to_iter()), axis=0)
 
@@ -227,6 +229,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
         workflow = Workflow.load(workflow_dir, client=client)
 
     _lib = pd if cudf is None else cudf
+
     def get_norms(tar: _lib.Series):
         ser_median = tar.dropna().quantile(0.5, interpolation="linear")
         gdf = tar.fillna(ser_median)

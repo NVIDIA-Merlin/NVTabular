@@ -28,8 +28,8 @@ from uuid import uuid4
 
 try:
     import cudf
-    from cudf.io.parquet import ParquetWriter as pwriter_cudf
     import dask_cudf
+    from cudf.io.parquet import ParquetWriter as pwriter_cudf
 except ImportError:
     cudf = None
     dask_cudf = None
@@ -340,14 +340,16 @@ class ParquetDatasetEngine(DatasetEngine):
                     return meta_valid and size_valid  # Early return
 
                 # Collect the metadata with dask_cudf and then convert to pyarrow
-                metadata_bytes = dask_cudf.io.parquet.create_metadata_file(
+                _lib = dask_cudf.io.parquet if dask_cudf else dask.dataframe.io.parquet.core
+                metadata_bytes = _lib.create_metadata_file(
                     paths,
                     out_dir=False,
                 )
+                _lib = pq if cudf else pwriter_pyarrow
                 with BytesIO() as myio:
                     myio.write(memoryview(metadata_bytes))
                     myio.seek(0)
-                    metadata = pq.ParquetFile(myio).metadata
+                    metadata = _lib.ParquetFile(myio).metadata
 
                 if not add_metadata_file:
                     msg = (
@@ -663,17 +665,26 @@ def _write_data(data_list, output_path, fs, fn):
 
     # Initialize chunked writer
     path = fs.sep.join([output_path, fn])
-    writer = pwriter_cudf(path, compression=None)
+    if cudf is None:
+        writer = pwriter_pyarrow(
+            path, compression=None, schema=pa.Table.from_pandas(data_list[0]).schema
+        )
+    else:
+        writer = pwriter_cudf(path, compression=None)
     rows = 0
 
     # Loop over the data_list, convert to cudf,
     # and append to the file
     for data in data_list:
         rows += len(data)
-        writer.write_table(cudf.from_pandas(data))
+        if cudf is None:
+            writer.write_table(pa.Table.from_pandas(data))
+        else:
+            writer.write_table(cudf.from_pandas(data))
 
     # Return metadata and row-count in dict
-    return {fn: {"md": writer.close(metadata_file_path=fn), "rows": rows}}
+    md = writer.close(metadata_file_path=fn) if cudf else writer.close()
+    return {fn: {"md": md, "rows": rows}}
 
 
 class BaseParquetWriter(ThreadedWriter):

@@ -167,7 +167,10 @@ def _series_has_nulls(s):
 
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
-    if isinstance(ser, pd.Series):
+    # print(type(ser))
+    if isinstance(ser, pd.core.indexes.range.RangeIndex):
+        return False
+    elif isinstance(ser, (pd.DataFrame, pd.Series)):
         if not len(ser):  # pylint: disable=len-as-condition
             return False
         return pd.api.types.is_list_like(ser.values[0])
