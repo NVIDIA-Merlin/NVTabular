@@ -410,6 +410,7 @@ class Categorify(StatOperator):
                     encode_type=self.encode_type,
                     cat_names=cat_names,
                     max_size=self.max_size,
+                    dtype=self.dtype,
                 )
                 if self.dtype:
                     new_df[name] = new_df[name].astype(self.dtype, copy=False)
@@ -969,6 +970,7 @@ def _encode(
     encode_type="joint",
     cat_names=None,
     max_size=0,
+    dtype=None,
 ):
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
@@ -1055,7 +1057,7 @@ def _encode(
         labels[labels >= len(value[selection_r])] = na_sentinel
 
     if list_col:
-        labels = _encode_list_column(df[selection_l[0]], labels)
+        labels = _encode_list_column(df[selection_l[0]], labels, dtype=dtype)
 
     return labels
 

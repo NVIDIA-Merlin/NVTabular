@@ -437,7 +437,8 @@ def test_lambdaop_misalign(cpu):
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", [False, True])
-def test_categorify_lists(tmpdir, freq_threshold, cpu):
+@pytest.mark.parametrize("dtype", [np.int32])
+def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -448,7 +449,9 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu):
     cat_names = ["Authors", "Engaging User"]
     label_name = ["Post"]
 
-    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold)
+    cat_features = cat_names >> ops.Categorify(
+        out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype
+    )
 
     workflow = nvt.Workflow(cat_features + label_name)
     df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
