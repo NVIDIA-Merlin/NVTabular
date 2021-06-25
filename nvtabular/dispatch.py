@@ -234,7 +234,7 @@ def _parquet_writer_dispatch(df: DataFrameType, path=None, **kwargs):
     return ret
 
 
-def _encode_list_column(original, encoded):
+def _encode_list_column(original, encoded, dtype=None):
     """Convert `encoded` to be a list column with the
     same offsets as `original`
     """
@@ -244,15 +244,16 @@ def _encode_list_column(original, encoded):
         new_data = []
         for val in original.values:
             size = len(val)
-            new_data.append(list(encoded[offset : offset + size]))
+            new_data.append(np.array(encoded[offset : offset + size], dtype=dtype))
             offset += size
         return pd.Series(new_data)
     else:
         # CuDF version
-        encoded = as_column(encoded)
+        list_dtype = cudf.core.dtypes.ListDtype(encoded.dtype if dtype is None else dtype)
+        encoded = as_column(encoded).astype(dtype, copy=False)
         return build_column(
             None,
-            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
+            dtype=list_dtype,
             size=original.size,
             children=(original._column.offsets, encoded),
         )
