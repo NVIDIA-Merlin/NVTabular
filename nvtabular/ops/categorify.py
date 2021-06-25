@@ -248,7 +248,6 @@ class Categorify(StatOperator):
         self.encode_type = encode_type
         self.search_sorted = search_sorted
         self.categories = {}
-        self.mh_columns = []
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -333,24 +332,14 @@ class Categorify(StatOperator):
             max_size=self.max_size,
             num_buckets=self.num_buckets,
         )
-        # TODO: we can't check the dtypes on the ddf here since they are incorrect
-        # for cudf's list type. So, we're checking the first partition. fix.
-        return Delayed(key, dsk), ddf.partitions[0].map_partitions(
-            _is_list_dtype, meta=_is_list_dtype(ddf._meta.index)
-        )
+        return Delayed(key, dsk)
 
-    def fit_finalize(self, dask_stats):
-        _col_is_list = dask_stats[1]
-        self.mh_columns = [
-            col for col, _is_list in zip(_col_is_list.index, _col_is_list) if _is_list
-        ]
-        categories = dask_stats[0]
+    def fit_finalize(self, categories):
         for col in categories:
             self.categories[col] = categories[col]
 
     def clear(self):
         self.categories = {}
-        self.mh_columns = []
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = _copy_storage(self.categories, self.out_path, new_path, copy=copy)
@@ -427,9 +416,6 @@ class Categorify(StatOperator):
         return _get_embeddings_dask(
             self.categories, columns, self.num_buckets, self.freq_threshold, self.max_size
         )
-
-    def get_multihot_columns(self):
-        return self.mh_columns
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
