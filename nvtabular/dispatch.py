@@ -250,7 +250,7 @@ def _encode_list_column(original, encoded, dtype=None):
     else:
         # CuDF version
         list_dtype = cudf.core.dtypes.ListDtype(encoded.dtype if dtype is None else dtype)
-        encoded = as_column(encoded)
+        encoded = as_column(encoded).astype(dtype, copy=False)
         return build_column(
             None,
             dtype=list_dtype,
