@@ -444,7 +444,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     output_dtypes : dict, optional
         Optional dictionary of column_name:dtype. If passing a workflow object dtypes
         will be read from the workflow. This is used to figure out which columns
-        are categorical, which are split out by this function. If passed a column_group
+        are multihot-categorical, which are split out by this function. If passed a column_group
         and this parameter isn't set, you won't have multihot columns returned separately
     """
     # TODO: do we need to distinguish multihot columns here?  (if so why? )
