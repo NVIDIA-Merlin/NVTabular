@@ -15,7 +15,9 @@
 
 import os
 import warnings
+from dataclasses import dataclass
 from operator import getitem
+from typing import Optional, Union
 
 import dask.dataframe as dd
 import numpy as np
@@ -320,17 +322,19 @@ class Categorify(StatOperator):
         columns = [list(c) if isinstance(c, tuple) else c for c in columns]
         dsk, key = _category_stats(
             ddf,
-            columns,
-            [],
-            [],
-            self.out_path,
-            self.freq_threshold,
-            self.tree_width,
-            self.on_host,
-            concat_groups=self.encode_type == "joint",
-            name_sep=self.name_sep,
-            max_size=self.max_size,
-            num_buckets=self.num_buckets,
+            _FitOptions(
+                columns,
+                [],
+                [],
+                self.out_path,
+                self.freq_threshold,
+                self.tree_width,
+                self.on_host,
+                concat_groups=self.encode_type == "joint",
+                name_sep=self.name_sep,
+                max_size=self.max_size,
+                num_buckets=self.num_buckets,
+            ),
         )
         return Delayed(key, dsk)
 
@@ -520,26 +524,40 @@ def _make_name(*args, sep="_"):
     return sep.join(args)
 
 
+@dataclass
+class _FitOptions:
+    col_groups: list
+    agg_cols: list
+    agg_list: list
+    out_path: str
+    freq_limit: Union[int, dict]
+    tree_width: Union[int, dict]
+    on_host: bool
+    stat_name: str = "categories"
+    concat_groups: bool = False
+    name_sep: str = "-"
+    max_size: Optional[Union[int, dict]] = None
+    num_buckets: Optional[Union[int, dict]] = None
+
+
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(
-    df, cat_col_groups, tree_width, cont_cols, agg_list, on_host, concat_groups, name_sep
-):
-    sum_sq = "std" in agg_list or "var" in agg_list
-    calculate_min = "min" in agg_list
-    calculate_max = "max" in agg_list
+def _top_level_groupby(df, options: _FitOptions):
+    sum_sq = "std" in options.agg_list or "var" in options.agg_list
+    calculate_min = "min" in options.agg_list
+    calculate_max = "max" in options.agg_list
 
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
-    for i, cat_col_group in enumerate(cat_col_groups):
+    for i, cat_col_group in enumerate(options.col_groups):
         if isinstance(cat_col_group, tuple):
             cat_col_group = list(cat_col_group)
 
         if isinstance(cat_col_group, str):
             cat_col_group = [cat_col_group]
-        cat_col_group_str = _make_name(*cat_col_group, sep=name_sep)
+        cat_col_group_str = _make_name(*cat_col_group, sep=options.name_sep)
 
-        if concat_groups and len(cat_col_group) > 1:
+        if options.concat_groups and len(cat_col_group) > 1:
             # Concatenate columns and replace cat_col_group
             # with the single name
             df_gb = type(df)()
@@ -548,15 +566,15 @@ def _top_level_groupby(
             cat_col_group = [cat_col_group_str]
         else:
             # Compile aggregation dictionary and add "squared-sum"
-            # column(s) (necessary when `cont_cols` is non-empty)
-            df_gb = df[cat_col_group + cont_cols].copy(deep=False)
+            # column(s) (necessary when `agg_cols` is non-empty)
+            df_gb = df[cat_col_group + options.agg_cols].copy(deep=False)
 
         agg_dict = {}
         agg_dict[cat_col_group[0]] = ["count"]
-        for col in cont_cols:
+        for col in options.agg_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
-                name = _make_name(col, "pow2", sep=name_sep)
+                name = _make_name(col, "pow2", sep=options.name_sep)
                 df_gb[name] = df_gb[col].pow(2)
                 agg_dict[name] = ["sum"]
 
@@ -574,20 +592,20 @@ def _top_level_groupby(
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
         gb.columns = [
-            _make_name(*(tuple(cat_col_group) + name[1:]), sep=name_sep)
+            _make_name(*(tuple(cat_col_group) + name[1:]), sep=options.name_sep)
             if name[0] == cat_col_group[0]
-            else _make_name(*(tuple(cat_col_group) + name), sep=name_sep)
+            else _make_name(*(tuple(cat_col_group) + name), sep=options.name_sep)
             for name in gb.columns.to_flat_index()
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        nsplits = tree_width[cat_col_group_str]
+        nsplits = options.tree_width[cat_col_group_str]
         for j, split in shuffle_group(
             gb, cat_col_group, 0, nsplits, nsplits, True, nsplits
         ).items():
-            if on_host:
+            if options.on_host:
                 output[k] = split.to_arrow(preserve_index=False)
             else:
                 output[k] = split
@@ -597,18 +615,16 @@ def _top_level_groupby(
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(
-    dfs, col_group, cont_cols, agg_list, freq_limit, on_host, concat_groups, name_sep, max_emb_size
-):
+def _mid_level_groupby(dfs, col_group, freq_limit_val, options: _FitOptions):
     if isinstance(col_group, str):
         col_group = [col_group]
     elif isinstance(col_group, tuple):
         col_group = list(col_group)
 
-    if concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=name_sep)]
+    if options.concat_groups and len(col_group) > 1:
+        col_group = [_make_name(*col_group, sep=options.name_sep)]
 
-    if on_host:
+    if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
@@ -619,53 +635,53 @@ def _mid_level_groupby(
     gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
     gb.reset_index(drop=False, inplace=True)
 
-    name_count = _make_name(*(col_group + ["count"]), sep=name_sep)
-    if freq_limit and not max_emb_size:
-        gb = gb[gb[name_count] >= freq_limit]
+    name_count = _make_name(*(col_group + ["count"]), sep=options.name_sep)
+    if options.freq_limit and not options.max_size:
+        gb = gb[gb[name_count] >= freq_limit_val]
 
     required = col_group.copy()
-    if "count" in agg_list:
+    if "count" in options.agg_list:
         required.append(name_count)
 
     ddof = 1
-    for cont_col in cont_cols:
-        name_sum = _make_name(*(col_group + [cont_col, "sum"]), sep=name_sep)
-        if "sum" in agg_list:
+    for cont_col in options.agg_cols:
+        name_sum = _make_name(*(col_group + [cont_col, "sum"]), sep=options.name_sep)
+        if "sum" in options.agg_list:
             required.append(name_sum)
 
-        if "mean" in agg_list:
-            name_mean = _make_name(*(col_group + [cont_col, "mean"]), sep=name_sep)
+        if "mean" in options.agg_list:
+            name_mean = _make_name(*(col_group + [cont_col, "mean"]), sep=options.name_sep)
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
-        if "min" in agg_list:
-            name_min = _make_name(*(col_group + [cont_col, "min"]), sep=name_sep)
+        if "min" in options.agg_list:
+            name_min = _make_name(*(col_group + [cont_col, "min"]), sep=options.name_sep)
             required.append(name_min)
 
-        if "max" in agg_list:
-            name_max = _make_name(*(col_group + [cont_col, "max"]), sep=name_sep)
+        if "max" in options.agg_list:
+            name_max = _make_name(*(col_group + [cont_col, "max"]), sep=options.name_sep)
             required.append(name_max)
 
-        if "var" in agg_list or "std" in agg_list:
+        if "var" in options.agg_list or "std" in options.agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]), sep=name_sep)]
+            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]), sep=options.name_sep)]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 1] = 1
             result /= div
             result[(n - ddof) == 0] = np.nan
 
-            if "var" in agg_list:
-                name_var = _make_name(*(col_group + [cont_col, "var"]), sep=name_sep)
+            if "var" in options.agg_list:
+                name_var = _make_name(*(col_group + [cont_col, "var"]), sep=options.name_sep)
                 required.append(name_var)
                 gb[name_var] = result
-            if "std" in agg_list:
-                name_std = _make_name(*(col_group + [cont_col, "std"]), sep=name_sep)
+            if "std" in options.agg_list:
+                name_std = _make_name(*(col_group + [cont_col, "std"]), sep=options.name_sep)
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
-    if on_host:
+    if options.on_host:
         gb_pd = gb[required].to_arrow(preserve_index=False)
         del gb
         return gb_pd
@@ -682,18 +698,16 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(
-    dfs, base_path, col_group, on_host, concat_groups, name_sep, max_emb_size=None, nbuckets=None
-):
-    if concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=name_sep)]
+def _write_gb_stats(dfs, base_path, col_group, options: _FitOptions):
+    if options.concat_groups and len(col_group) > 1:
+        col_group = [_make_name(*col_group, sep=options.name_sep)]
     if isinstance(col_group, str):
         col_group = [col_group]
 
-    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=name_sep))
+    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
-    if not on_host and len(dfs):
+    if not options.on_host and len(dfs):
         # Want first non-empty df for schema (if there are any)
         _d = next((df for df in dfs if len(df)), dfs[0])
         pwriter = _parquet_writer_dispatch(_d, path=path, compression=None)
@@ -705,7 +719,7 @@ def _write_gb_stats(
     n_writes = 0
     for df in dfs:
         if len(df):
-            if on_host:
+            if options.on_host:
                 # Use pyarrow - df is already a pyarrow table
                 if pwriter is None:
                     pwriter = pq.ParquetWriter(path, df.schema, compression=None)
@@ -728,21 +742,19 @@ def _write_gb_stats(
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(
-    dfs, base_path, col_group, on_host, concat_groups, name_sep, max_emb_size=None, nbuckets=None
-):
-    if concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=name_sep)]
+def _write_uniques(dfs, base_path, col_group, options):
+    if options.concat_groups and len(col_group) > 1:
+        col_group = [_make_name(*col_group, sep=options.name_sep)]
     if isinstance(col_group, str):
         col_group = [col_group]
-    if on_host:
+    if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
         df = _from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
-    rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=name_sep))
+    rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
         # Make sure first category is Null
@@ -751,16 +763,17 @@ def _write_uniques(
         nulls_missing = False
         for col in col_group:
             name_count = col + "_count"
-            if max_emb_size:
-                if isinstance(max_emb_size, int):
-                    max_emb_size = {col: max_emb_size}
-                if nbuckets:
-                    if isinstance(nbuckets, int):
-                        nlargest = max_emb_size[col] - nbuckets - 1
+            if options.max_size:
+                max_emb_size = options.max_size
+                if isinstance(options.max_size, dict):
+                    max_emb_size = max_emb_size[col]
+                if options.num_buckets:
+                    if isinstance(options.num_buckets, int):
+                        nlargest = max_emb_size - options.num_buckets - 1
                     else:
-                        nlargest = max_emb_size[col] - nbuckets[col] - 1
+                        nlargest = max_emb_size - options.num_buckets[col] - 1
                 else:
-                    nlargest = max_emb_size[col] - 1
+                    nlargest = max_emb_size - 1
 
                 if nlargest <= 0:
                     raise ValueError("`nlargest` cannot be 0 or negative")
@@ -791,178 +804,112 @@ def _finish_labels(paths, cols):
     return {col: paths[i] for i, col in enumerate(cols)}
 
 
-def _groupby_to_disk(
-    ddf,
-    write_func,
-    col_groups,
-    agg_cols,
-    agg_list,
-    out_path,
-    freq_limit,
-    tree_width,
-    on_host,
-    stat_name="categories",
-    concat_groups=False,
-    name_sep="_",
-    max_size=None,
-    nbuckets=None,
-):
-    if not col_groups:
+def _groupby_to_disk(ddf, write_func, options: _FitOptions):
+    if not options.col_groups:
         return {}
 
-    if concat_groups:
-        if agg_list and agg_list != ["count"]:
+    if options.concat_groups:
+        if options.agg_list and options.agg_list != ["count"]:
             raise ValueError("Cannot use concat_groups=True with aggregations other than count")
-        if agg_cols:
+        if options.agg_cols:
             raise ValueError("Cannot aggregate continuous-column stats with concat_groups=True")
 
     # Update tree_width
     tw = {}
-    for col in col_groups:
+    for col in options.col_groups:
         col = [col] if isinstance(col, str) else col
         if isinstance(col, tuple):
             col = list(col)
 
-        col_str = _make_name(*col, sep=name_sep)
-        if tree_width is None:
+        col_str = _make_name(*col, sep=options.name_sep)
+        if options.tree_width is None:
             tw[col_str] = 8
-        elif isinstance(tree_width, int):
-            tw[col_str] = tree_width
+        elif isinstance(options.tree_width, int):
+            tw[col_str] = options.tree_width
         else:
-            tw[col_str] = tree_width.get(col_str, None) or 8
-    tree_width = tw
+            tw[col_str] = options.tree_width.get(col_str, None) or 8
+    options.tree_width = tw
 
     # Make dedicated output directory for the categories
-    fs = get_fs_token_paths(out_path)[0]
-    out_path = fs.sep.join([out_path, stat_name])
+    fs = get_fs_token_paths(options.out_path)[0]
+    out_path = fs.sep.join([options.out_path, options.stat_name])
     fs.mkdirs(out_path, exist_ok=True)
 
     dsk = {}
-    token = tokenize(ddf, col_groups, out_path, freq_limit, tree_width, on_host)
+    token = tokenize(
+        ddf,
+        options.col_groups,
+        options.out_path,
+        options.freq_limit,
+        options.tree_width,
+        options.on_host,
+    )
     level_1_name = "level_1-" + token
     split_name = "split-" + token
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
-    finalize_labels_name = stat_name + "-" + token
+    finalize_labels_name = options.stat_name + "-" + token
     for p in range(ddf.npartitions):
-        dsk[(level_1_name, p)] = (
-            _top_level_groupby,
-            (ddf._name, p),
-            col_groups,
-            tree_width,
-            agg_cols,
-            agg_list,
-            on_host,
-            concat_groups,
-            name_sep,
-        )
+        dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), options)
         k = 0
-        for c, col in enumerate(col_groups):
+        for c, col in enumerate(options.col_groups):
             col = [col] if isinstance(col, str) else col
-            col_str = _make_name(*col, sep=name_sep)
-            for s in range(tree_width[col_str]):
+            col_str = _make_name(*col, sep=options.name_sep)
+            for s in range(options.tree_width[col_str]):
                 dsk[(split_name, p, c, s)] = (getitem, (level_1_name, p), k)
                 k += 1
 
     col_groups_str = []
-    for c, col in enumerate(col_groups):
+    for c, col in enumerate(options.col_groups):
         col = [col] if isinstance(col, str) else col
-        col_str = _make_name(*col, sep=name_sep)
+        col_str = _make_name(*col, sep=options.name_sep)
         col_groups_str.append(col_str)
         freq_limit_val = None
-        if freq_limit:
-            freq_limit_val = freq_limit[col_str] if isinstance(freq_limit, dict) else freq_limit
-        for s in range(tree_width[col_str]):
+        if options.freq_limit:
+            freq_limit_val = (
+                options.freq_limit[col_str]
+                if isinstance(options.freq_limit, dict)
+                else options.freq_limit
+            )
+        for s in range(options.tree_width[col_str]):
             dsk[(level_2_name, c, s)] = (
                 _mid_level_groupby,
                 [(split_name, p, c, s) for p in range(ddf.npartitions)],
                 col,
-                agg_cols,
-                agg_list,
                 freq_limit_val,
-                on_host,
-                concat_groups,
-                name_sep,
-                max_size,
+                options,
             )
 
         dsk[(level_3_name, c)] = (
             write_func,
-            [(level_2_name, c, s) for s in range(tree_width[col_str])],
+            [(level_2_name, c, s) for s in range(options.tree_width[col_str])],
             out_path,
             col,
-            on_host,
-            concat_groups,
-            name_sep,
-            max_size,
-            nbuckets,
+            options,
         )
 
     dsk[finalize_labels_name] = (
         _finish_labels,
-        [(level_3_name, c) for c, col in enumerate(col_groups)],
+        [(level_3_name, c) for c, col in enumerate(options.col_groups)],
         col_groups_str,
     )
     graph = HighLevelGraph.from_collections(finalize_labels_name, dsk, dependencies=[ddf])
     return graph, finalize_labels_name
 
 
-def _category_stats(
-    ddf,
-    col_groups,
-    agg_cols,
-    agg_list,
-    out_path,
-    freq_limit,
-    tree_width,
-    on_host,
-    stat_name="categories",
-    concat_groups=False,
-    name_sep="_",
-    max_size=None,
-    num_buckets=None,
-):
+def _category_stats(ddf, options: _FitOptions):
     # Check if we only need categories
-    if agg_cols == [] and agg_list == []:
-        agg_list = ["count"]
-        return _groupby_to_disk(
-            ddf,
-            _write_uniques,
-            col_groups,
-            agg_cols,
-            agg_list,
-            out_path,
-            freq_limit,
-            tree_width,
-            on_host,
-            stat_name=stat_name,
-            concat_groups=concat_groups,
-            name_sep=name_sep,
-            max_size=max_size,
-            nbuckets=num_buckets,
-        )
+    if options.agg_cols == [] and options.agg_list == []:
+        options.agg_list = ["count"]
+        return _groupby_to_disk(ddf, _write_uniques, options)
 
     # Otherwise, getting category-statistics
-    if isinstance(agg_cols, str):
-        agg_cols = [agg_cols]
-    if agg_list == []:
-        agg_list = ["count"]
-    return _groupby_to_disk(
-        ddf,
-        _write_gb_stats,
-        col_groups,
-        agg_cols,
-        agg_list,
-        out_path,
-        freq_limit,
-        tree_width,
-        on_host,
-        stat_name=stat_name,
-        concat_groups=concat_groups,
-        name_sep=name_sep,
-        max_size=max_size,
-        nbuckets=num_buckets,
-    )
+    if isinstance(options.agg_cols, str):
+        options.agg_cols = [options.agg_cols]
+    if options.agg_list == []:
+        options.agg_list = ["count"]
+
+    return _groupby_to_disk(ddf, _write_gb_stats, options)
 
 
 def _encode(
