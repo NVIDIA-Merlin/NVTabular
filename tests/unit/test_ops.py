@@ -457,10 +457,13 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
     df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     # Columns are encoded independently
-    if not cpu:
+    if cpu:
+        assert df_out["Authors"][0].dtype == np.dtype(dtype)
+        compare = [list(row) for row in df_out["Authors"].tolist()]
+    else:
         assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype)
+        compare = df_out["Authors"].to_arrow().to_pylist()
 
-    compare = df_out["Authors"].to_list() if cpu else df_out["Authors"].to_arrow().to_pylist()
     if freq_threshold < 2:
         assert compare == [[1], [1, 4], [2, 3], [3]]
     else:

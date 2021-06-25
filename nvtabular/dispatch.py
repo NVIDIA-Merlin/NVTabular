@@ -244,7 +244,7 @@ def _encode_list_column(original, encoded, dtype=None):
         new_data = []
         for val in original.values:
             size = len(val)
-            new_data.append(list(encoded[offset : offset + size]))
+            new_data.append(np.array(encoded[offset : offset + size], dtype=dtype))
             offset += size
         return pd.Series(new_data)
     else:
