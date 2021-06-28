@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from ..dispatch import DataFrameType
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class Rename(Operator):

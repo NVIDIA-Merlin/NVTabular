@@ -24,7 +24,7 @@ from nvtx import annotate
 
 from nvtabular.dispatch import DataFrameType
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class ColumnSimilarity(Operator):

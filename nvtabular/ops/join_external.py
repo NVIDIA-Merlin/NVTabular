@@ -28,7 +28,7 @@ from nvtabular.dispatch import (
     _to_host,
 )
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class JoinExternal(Operator):

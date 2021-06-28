@@ -19,7 +19,7 @@ from nvtx import annotate
 
 from ..dispatch import DataFrameType
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 from .stat_operator import StatOperator
 from ..tag import Tag
 

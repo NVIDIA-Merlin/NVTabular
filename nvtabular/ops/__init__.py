@@ -33,7 +33,7 @@ from .lambdaop import LambdaOp
 from .list_slice import ListSlice
 from .logop import LogOp
 from .normalize import Normalize, NormalizeMinMax
-from .operator import Operator
+from .base import Operator
 from .rename import Rename
 from .schema import Schema
 from .stat_operator import StatOperator

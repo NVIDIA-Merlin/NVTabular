@@ -20,7 +20,7 @@ from nvtx import annotate
 
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series
 from .categorify import _emb_sz_rule, _get_embedding_order
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class HashBucket(Operator):
