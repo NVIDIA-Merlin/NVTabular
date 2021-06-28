@@ -45,7 +45,7 @@ from nvtabular.dispatch import (
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 from .stat_operator import StatOperator
 from ..tag import Tag
 
