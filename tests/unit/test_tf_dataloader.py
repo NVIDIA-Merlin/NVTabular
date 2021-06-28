@@ -49,7 +49,7 @@ def test_nested_list():
         }
     )
 
-    train_dataset = KerasSequenceLoader(
+    train_dataset = tf_dataloader.KerasSequenceLoader(
         Dataset(df),
         cont_names=["data", "data2"],
         label_names=["label"],
