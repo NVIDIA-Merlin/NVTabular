@@ -26,6 +26,7 @@ import pytest
 
 import nvtabular.tools.data_gen as datagen
 from tests.conftest import get_cuda_cluster
+from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
@@ -157,7 +158,10 @@ def test_movielens_example(tmpdir):
     _get_random_movielens_data(tmpdir, 10000, dataset="ratings")
     _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
 
+    triton_model_path = os.path.join(tmpdir, "models")
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+    os.environ["MODEL_PATH"] = triton_model_path
+
     notebook_path = os.path.join(
         dirname(TEST_PATH),
         "examples/getting-started-movielens/",
@@ -167,10 +171,14 @@ def test_movielens_example(tmpdir):
 
     def _modify_tf_nb(line):
         return line.replace(
-            # don't require grqphviz/pydot
+            # don't require graphviz/pydot
             "tf.keras.utils.plot_model(model)",
             "# tf.keras.utils.plot_model(model)",
         )
+
+    def _modify_tf_triton(line):
+        # models are already preloaded
+        return line.replace("triton_client.load_model", "# triton_client.load_model")
 
     notebooks = []
     try:
@@ -184,8 +192,10 @@ def test_movielens_example(tmpdir):
         import nvtabular.loader.tensorflow  # noqa
 
         notebooks.append("03-Training-with-TF.ipynb")
+        has_tf = True
+
     except Exception:
-        pass
+        has_tf = False
 
     for notebook in notebooks:
         notebook_path = os.path.join(
@@ -197,6 +207,21 @@ def test_movielens_example(tmpdir):
             _run_notebook(tmpdir, notebook_path, transform=_modify_tf_nb)
         else:
             _run_notebook(tmpdir, notebook_path)
+
+    # test out the TF inference movielens notebook if appropiate
+    if has_tf and TRITON_SERVER_PATH:
+        notebook = "04-Triton-Inference-with-TF.ipynb"
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/getting-started-movielens/",
+            notebook,
+        )
+        with run_triton_server(triton_model_path):
+            pass
+            # the notebook still doesn't work entirely, but this at least verifies
+            # that it will start, and would catch issues like
+            # https://github.com/NVIDIA/NVTabular/pull/912
+            # _run_notebook(tmpdir, notebook_path, transform=_modify_tf_triton)
 
 
 def test_rossman_example(tmpdir):
