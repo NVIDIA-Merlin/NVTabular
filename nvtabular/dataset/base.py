@@ -44,6 +44,12 @@ class TabularDataset:
     def column_group(self) -> ColumnGroup:
         return self.create_input_column_group()
 
+    def transformed_column_group(self, **kwargs):
+        return self.create_default_transformations(self.prepare(**kwargs))
+
+    def workflow(self, **kwargs):
+        return Workflow(self.transformed_column_group(**kwargs), self.transformed_dir)
+
     @contextlib.contextmanager
     def client(self):
         client = self.client_fn()
@@ -61,7 +67,7 @@ class TabularDataset:
         splits: DatasetCollection = self.prepare(**kwargs)
 
         if not workflow:
-            workflow = Workflow(self.create_default_transformations(splits), self.transformed_dir)
+            workflow = Workflow(self.transformed_column_group(**kwargs), self.transformed_dir)
         self.workflow = workflow
 
         splits = splits.splits if splits.get("splits") else splits
