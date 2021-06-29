@@ -1104,8 +1104,11 @@ class DatasetCollection(SimpleNamespace):
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
-    def save_schema(self, output_path, tags_by_column, by_id=True, overwrite=False, client=None):
+    def generate_schema(self, output_path, tags_by_column, by_id=True, overwrite=False, client=None):
         from nvtabular.ops import Schema
+        from tensorflow_metadata.proto.v0 import schema_pb2
+
+        schemas = {}
 
         for name, dataset in self.items():
             dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
@@ -1113,8 +1116,17 @@ class DatasetCollection(SimpleNamespace):
             if not os.path.exists(dataset_dir):
                 os.makedirs(dataset_dir)
 
-            if not os.path.exists(os.path.join(dataset_dir, "schema.pb")) or overwrite:
-                Schema.calculate_on_dataset(dataset, tags_by_column, output_path=dataset_dir, client=client)
+            schema_path = os.path.join(dataset_dir, Schema.SCHEMA_FILE_NAME)
+            if not os.path.exists(schema_path) or overwrite:
+                schema = Schema.calculate_on_dataset(dataset, tags_by_column, output_path=dataset_dir, client=client)
+            else:
+                schema = schema_pb2.Schema()
+                with open(schema_path, "rb") as f:
+                    schema.ParseFromString(f.read())
+
+            schemas[name] = schema
+
+        return SimpleNamespace(**schemas)
 
     def calculate_statistics(self, output_path=None, by_id=True, overwrite=False, client=None):
         from nvtabular.ops.statistics import Statistics, DatasetCollectionStatistics

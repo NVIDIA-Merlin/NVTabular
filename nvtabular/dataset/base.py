@@ -3,11 +3,13 @@ import os
 
 import abc
 import warnings
+from types import SimpleNamespace
 
 import rmm
 
 from ..column_group import ColumnGroup
 from ..io.dataset import DatasetCollection
+from ..ops.statistics import DatasetCollectionStatistics
 from ..workflow import Workflow
 from nvtabular.utils import device_mem_size, _pynvml_mem_size
 
@@ -61,6 +63,21 @@ class TabularDataset:
     @property
     def data(self):
         return self.prepare()
+
+    def calculate_statistics(self, transformed=False, **kwargs) -> DatasetCollectionStatistics:
+        data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
+        data_dir = self.transformed_dir if transformed else self.data_dir
+        stats = data.calculate_statistics(data_dir)
+        stats.save(data_dir)
+
+        return stats
+
+    def generate_schema(self, transformed=False, **kwargs) -> SimpleNamespace:
+        data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
+        data_dir = self.transformed_dir if transformed else self.data_dir
+        schemas = data.generate_schema(data_dir, self.workflow.column_group.tags_by_column())
+
+        return schemas
 
     def transform(self, workflow=None, overwrite=False, save=True, to_fit="train",
                   for_training=False, **kwargs) -> DatasetCollection:

@@ -223,8 +223,8 @@ class Workflow:
 
         if save:
             outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
-            outputs.save_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite,
-                                client=self.client)
+            outputs.generate_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite,
+                                    client=self.client)
 
         return outputs
 
