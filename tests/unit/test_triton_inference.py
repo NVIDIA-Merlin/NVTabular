@@ -93,7 +93,7 @@ def test_error_handling(tmpdir):
 
     model_name = "test_error_handling"
     triton.generate_nvtabular_model(
-        workflow, model_name, tmpdir + f"/{model_name}", backend="nvtabular"
+        workflow, model_name, tmpdir + f"/{model_name}", backend=BACKEND
     )
 
     with run_triton_server(tmpdir) as client:
