@@ -437,7 +437,7 @@ def test_lambdaop_misalign(cpu):
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", [False, True])
-@pytest.mark.parametrize("dtype", [np.int32, np.int64])
+@pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
 def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
     df = cudf.DataFrame(
         {
@@ -458,10 +458,10 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
 
     # Columns are encoded independently
     if cpu:
-        assert df_out["Authors"][0].dtype == np.dtype(dtype)
+        assert df_out["Authors"][0].dtype == np.dtype(dtype) if dtype else np.dtype("int64")
         compare = [list(row) for row in df_out["Authors"].tolist()]
     else:
-        assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype)
+        assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype if dtype else "int64")
         compare = df_out["Authors"].to_arrow().to_pylist()
 
     if freq_threshold < 2:
