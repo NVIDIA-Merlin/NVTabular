@@ -178,7 +178,9 @@ def test_movielens_example(tmpdir):
 
     def _modify_tf_triton(line):
         # models are already preloaded
-        return line.replace("triton_client.load_model", "# triton_client.load_model")
+        line = line.replace("triton_client.load_model", "# triton_client.load_model")
+        line = line.replace("triton_client.unload_model", "# triton_client.unload_model")
+        return line
 
     notebooks = []
     try:
@@ -217,11 +219,7 @@ def test_movielens_example(tmpdir):
             notebook,
         )
         with run_triton_server(triton_model_path):
-            pass
-            # the notebook still doesn't work entirely, but this at least verifies
-            # that it will start, and would catch issues like
-            # https://github.com/NVIDIA/NVTabular/pull/912
-            # _run_notebook(tmpdir, notebook_path, transform=_modify_tf_triton)
+            _run_notebook(tmpdir, notebook_path, transform=_modify_tf_triton)
 
 
 def test_rossman_example(tmpdir):

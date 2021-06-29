@@ -27,7 +27,12 @@ if os.path.exists("/opt/tritonserver/backends/nvtabular/libtriton_nvtabular.so")
 
 @contextlib.contextmanager
 def run_triton_server(modelpath):
-    cmdline = [TRITON_SERVER_PATH, "--model-repository", modelpath]
+    cmdline = [
+        TRITON_SERVER_PATH,
+        "--model-repository",
+        modelpath,
+        "--backend-config=tensorflow,version=2",
+    ]
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = "0"
     with subprocess.Popen(cmdline, env=env) as process:
