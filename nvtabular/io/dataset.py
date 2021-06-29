@@ -1138,6 +1138,7 @@ class DatasetCollection(SimpleNamespace):
                     d.ParseFromString(f.read())
                 dataset = d.datasets[0]
 
+
             dataset.name = name
             stats_dataset = statistics.datasets.add()
             stats_dataset.CopyFrom(dataset)
