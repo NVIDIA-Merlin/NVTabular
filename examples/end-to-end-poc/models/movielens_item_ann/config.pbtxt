@@ -1,0 +1,26 @@
+name: "movielens_item_ann"
+backend: "python"
+parameters {
+  key: "index_name"
+  value {
+    string_value: "item_vectors"
+  }
+}
+input {
+  name: "user_vector"
+  data_type: TYPE_FP32
+  dims: -1
+  dims: 128
+}
+output {
+  name: "candidate_ids"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "candidate_distances"
+  data_type: TYPE_FP32
+  dims: -1
+  dims: 1
+}
