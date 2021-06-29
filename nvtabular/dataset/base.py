@@ -75,7 +75,8 @@ class TabularDataset:
     def generate_schema(self, transformed=False, **kwargs) -> SimpleNamespace:
         data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
         data_dir = self.transformed_dir if transformed else self.data_dir
-        schemas = data.generate_schema(data_dir, self.workflow.column_group.tags_by_column())
+        col_group = self.transformed_column_group(**kwargs) if transformed else self.column_group
+        schemas = data.generate_schema(data_dir, col_group.tags_by_column())
 
         return schemas
 
