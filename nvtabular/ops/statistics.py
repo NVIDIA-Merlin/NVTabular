@@ -29,18 +29,12 @@ from .stat_operator import StatOperator
 
 
 class Statistics(Schema):
-    HTML_TEMPLATE = """
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js"></script>
-        <link rel="import" href="https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html" >
-        <facets-overview id="elem"></facets-overview>
-        <script>
-          document.querySelector("#elem").protoInput = "{protostr}";
-        </script>"""
+    STATS_FILE_NAME = "stats.pb"
 
     def __init__(self, output_path=None, name="data"):
         super(StatOperator, self).__init__()
         self.name = name
-        self.stats_path = os.path.join(output_path, "stats.pb") if output_path else None
+        self.stats_path = os.path.join(output_path, self.STATS_FILE_NAME) if output_path else None
         self.output_path = output_path
         self.col_names = []
         self.col_types = []
@@ -162,12 +156,12 @@ class Statistics(Schema):
                         statistics_pb2.RankHistogram.Bucket(low_rank=ind, high_rank=ind, label=val, sample_count=freq))
 
         if self.stats_path:
-            self.save()
+            self.stats_list().save(self.output_path)
 
     def clear(self):
         self.schema = None
 
-    def stats_list(self, others=None):
+    def stats_list(self, others=None) -> "DatasetCollectionStatistics":
         if not others:
             others = []
         from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -181,37 +175,52 @@ class Statistics(Schema):
             x = data.datasets.add()
             x.CopyFrom(d)
 
-        return data
-
-    def display(self, others=None):
-        from IPython.core.display import display, HTML
-
-        return display(HTML(self.to_html(others=others)))
-
-    def to_html(self, others=None):
-        protostr = self.to_proto_string(self.stats_list(others=others))
-        html = self.HTML_TEMPLATE.format(protostr=protostr)
-
-        return html
-
-    def save_to_html(self, output_dir, file_name="stats.html", others=None):
-        with open(os.path.join(output_dir, file_name), "w") as html_file:
-            html_file.write(self.to_html(others=others))
-
-    def to_proto_string(self, inputs):
-        return base64.b64encode(inputs.SerializeToString()).decode("utf-8")
+        return DatasetCollectionStatistics(data)
 
     def to_schema(self, tags_by_column):
         self.tags_by_column = tags_by_column
 
         return self.prepare_schema(self.stats)
 
-    def save(self, others=None):
-        with open(self.stats_path, "wb") as f:
-            f.write(self.stats_list(others=others).SerializeToString())
-
-        self.save_to_html(self.output_path, others=others)
-
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
+
+class DatasetCollectionStatistics(object):
+    HTML_TEMPLATE = """
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js"></script>
+<link rel="import" href="https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html" >
+<facets-overview id="elem"></facets-overview>
+<script>
+ document.querySelector("#elem").protoInput = "{protostr}";
+</script>"""
+
+    def __init__(self, dataset_feature_statistics_list) -> None:
+        super().__init__()
+        self.stats = dataset_feature_statistics_list
+
+    def display(self):
+        from IPython.core.display import display, HTML
+
+        return display(HTML(self.to_html()))
+
+    def to_html(self):
+        protostr = self.to_proto_string(self.stats)
+        html = self.HTML_TEMPLATE.format(protostr=protostr)
+
+        return html
+
+    def save_to_html(self, output_dir, file_name="stats.html"):
+        with open(os.path.join(output_dir, file_name), "w") as html_file:
+            html_file.write(self.to_html())
+
+    def to_proto_string(self, inputs):
+        return base64.b64encode(inputs.SerializeToString()).decode("utf-8")
+
+    def save(self, output_dir, file_name=Statistics.STATS_FILE_NAME):
+        out_path = os.path.join(output_dir, file_name)
+        with open(out_path, "wb") as f:
+            f.write(self.stats.SerializeToString())
+
+        self.save_to_html(output_dir)

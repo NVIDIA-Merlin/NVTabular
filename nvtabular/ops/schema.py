@@ -25,9 +25,11 @@ from .stat_operator import StatOperator
 
 
 class Schema(StatOperator):
+    SCHEMA_FILE_NAME = "schema.pb"
+
     def __init__(self, tags_by_column, output_path=None):
         super().__init__()
-        self.schema_path = os.path.join(output_path, "schema.pb") if output_path else None
+        self.schema_path = os.path.join(output_path, self.SCHEMA_FILE_NAME) if output_path else None
         self.col_names = []
         self.col_types = []
         self.col_dtypes = []
