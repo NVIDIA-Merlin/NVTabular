@@ -104,7 +104,8 @@ class Statistics(Schema):
         return num_examples, dask_stats
 
     def fit_finalize(self, stats):
-        from tensorflow_metadata.proto.v0 import statistics_pb2
+        from tensorflow_metadata.proto.v0 import statistics_pb2, path_pb2
+
         num_examples, dask_stats = stats
 
         self.stats = statistics_pb2.DatasetFeatureStatistics(name=self.name, num_examples=num_examples)
@@ -160,6 +161,21 @@ class Statistics(Schema):
                     b = ranks.buckets.add()
                     b.CopyFrom(
                         statistics_pb2.RankHistogram.Bucket(low_rank=ind, high_rank=ind, label=val, sample_count=freq))
+
+        if self.cross_columns:
+            corr, cov = dask_stats["corr"], dask_stats["cov"]
+            for (path_x, cov_val), (_, corr_val) in zip(cov.items(), corr.items()):
+                for (path_y, covariance), correlation in zip(cov_val.items(), corr_val):
+                    cross = statistics_pb2.CrossFeatureStatistics(
+                        path_x=path_pb2.Path(step=[path_x]),
+                        path_y=path_pb2.Path(step=[path_y]),
+                        num_cross_stats=statistics_pb2.NumericCrossStatistics(
+                            correlation=float(correlation),
+                            covariance=float(covariance)
+                        )
+                    )
+                    c = self.stats.cross_features.add()
+                    c.CopyFrom(cross)
 
         if self.stats_path:
             self.stats_list().save(self.output_path)
