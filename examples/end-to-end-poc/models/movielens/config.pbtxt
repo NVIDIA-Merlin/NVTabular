@@ -2,7 +2,7 @@ name: "movielens"
 platform: "ensemble"
 input {
   name: "user_id"
-  data_type: TYPE_INT64
+  data_type: TYPE_INT32
   dims: -1
   dims: 1
 }
@@ -22,31 +22,31 @@ ensemble_scheduling {
     }
     output_map {
       key: "movie_id_count"
-      value: "movie_id_count"
+      value: "movie_id_count_uf"
     }
     output_map {
       key: "movie_ids__values"
-      value: "movie_ids__values"
+      value: "movie_ids_values_uf"
     }
     output_map {
       key: "movie_ids__nnzs"
-      value: "movie_ids__nnzs"
+      value: "movie_ids_nnzs_uf"
     }
     output_map {
       key: "genres__values"
-      value: "genres__values"
+      value: "genres_values_uf"
     }
     output_map {
       key: "genres__nnzs"
-      value: "genres__nnzs"
+      value: "genres_nnzs_uf"
     }
     output_map {
       key: "search_terms__values"
-      value: "search_terms__values"
+      value: "search_terms_values_uf"
     }
     output_map {
       key: "search_terms__nnzs"
-      value: "search_terms__nnzs"
+      value: "search_terms_nnzs_uf"
     }
   }
   step {
@@ -54,31 +54,31 @@ ensemble_scheduling {
     model_version: -1
     input_map {
       key: "movie_id_count"
-      value: "movie_id_count"
+      value: "movie_id_count_uf"
     }
     input_map {
-      key: "movie_ids__values"
-      value: "movie_ids__values"
+      key: "movie_ids_1"
+      value: "movie_ids_values_uf"
     }
     input_map {
-      key: "movie_ids__nnzs"
-      value: "movie_ids__nnzs"
+      key: "movie_ids_2"
+      value: "movie_ids_nnzs_uf"
     }
     input_map {
-      key: "genres__values"
-      value: "genres__values"
+      key: "genres_1"
+      value: "genres_values_uf"
     }
     input_map {
-      key: "genres__nnzs"
-      value: "genres__nnzs"
+      key: "genres_2"
+      value: "genres_nnzs_uf"
     }
     input_map {
-      key: "search_terms__values"
-      value: "search_terms__values"
+      key: "search_terms_1"
+      value: "search_terms_values_uf"
     }
     input_map {
-      key: "search_terms__nnzs"
-      value: "search_terms__nnzs"
+      key: "search_terms_2"
+      value: "search_terms_nnzs_uf"
     }
     output_map {
       key: "output_1"

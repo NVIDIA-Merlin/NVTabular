@@ -8,37 +8,37 @@ input {
   dims: 1
 }
 input {
-  name: "movie_ids__values"
-  data_type: TYPE_INT64
-  dims: -1
-  dims: 1
-}
-input {
-  name: "movie_ids__nnzs"
+  name: "movie_ids_1"
   data_type: TYPE_INT32
   dims: -1
   dims: 1
 }
 input {
-  name: "genres__values"
-  data_type: TYPE_INT64
-  dims: -1
-  dims: 1
-}
-input {
-  name: "genres__nnzs"
+  name: "movie_ids_2"
   data_type: TYPE_INT32
   dims: -1
   dims: 1
 }
 input {
-  name: "search_terms__values"
-  data_type: TYPE_INT64
+  name: "genres_1"
+  data_type: TYPE_INT32
   dims: -1
   dims: 1
 }
 input {
-  name: "search_terms__nnzs"
+  name: "genres_2"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "search_terms_1"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "search_terms_2"
   data_type: TYPE_INT32
   dims: -1
   dims: 1

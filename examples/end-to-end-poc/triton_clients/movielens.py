@@ -8,7 +8,7 @@ model_name = "movielens"
 shape = (1, 1)
 
 with httpclient.InferenceServerClient("0.0.0.0:8000") as client:
-    user_id_data = np.random.randint(1, 1000, shape).astype(np.int64)
+    user_id_data = np.random.randint(1, 1000, shape).astype(np.int32)
     inputs = [
         httpclient.InferInput(
             "user_id", user_id_data.shape, np_to_triton_dtype(user_id_data.dtype)

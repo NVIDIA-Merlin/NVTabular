@@ -53,7 +53,7 @@ class TritonPythonModel:
         """
 
         int32_dtype = pb_utils.triton_string_to_numpy("TYPE_INT32")
-        int64_dtype = pb_utils.triton_string_to_numpy("TYPE_INT64")
+        # int64_dtype = pb_utils.triton_string_to_numpy("TYPE_INT64")
 
         responses = []
 
@@ -79,48 +79,61 @@ class TritonPythonModel:
                     entity_rows=entity_rows,
                 ).to_dict()
 
+                movie_ids = (
+                    np.array(feature_vector["user_features__movie_ids"]).astype(int32_dtype).T
+                )
+                genres = np.array(feature_vector["user_features__genres"]).astype(int32_dtype).T
+                search_terms = (
+                    np.array(feature_vector["user_features__search_terms"]).astype(int32_dtype).T
+                )
+
                 movie_id_count = pb_utils.Tensor(
                     "movie_id_count",
-                    np.array([[len(feature_vector["user_features__movie_ids"])]]).astype(int32_dtype),
+                    np.array([[len(movie_ids)]], dtype=np.int32),
                 )
 
                 movie_ids_values = pb_utils.Tensor(
                     "movie_ids__values",
-                    np.transpose(np.array(feature_vector["user_features__movie_ids"])).astype(int64_dtype),
+                    movie_ids,
                 )
 
                 movie_ids_nnzs = pb_utils.Tensor(
                     "movie_ids__nnzs",
-                    np.array([[len(feature_vector["user_features__movie_ids"])]]).astype(int32_dtype),
+                    np.array([[len(movie_ids)]], dtype=np.int32),
                 )
 
                 genres_values = pb_utils.Tensor(
                     "genres__values",
-                    np.transpose(np.array(feature_vector["user_features__genres"])).astype(int64_dtype)
+                    genres,
                 )
 
                 genres_nnzs = pb_utils.Tensor(
                     "genres__nnzs",
-                    np.array([[len(feature_vector["user_features__genres"])]]).astype(int32_dtype),
+                    np.array([[len(genres)]], dtype=np.int32),
                 )
 
                 search_terms_values = pb_utils.Tensor(
                     "search_terms__values",
-                    np.transpose(np.array(feature_vector["user_features__search_terms"])).astype(int64_dtype),
+                    search_terms,
                 )
 
                 search_terms_nnzs = pb_utils.Tensor(
                     "search_terms__nnzs",
-                    np.array([[len(feature_vector["user_features__search_terms"])]]).astype(int32_dtype),
+                    np.array([[len(search_terms)]], dtype=np.int32),
                 )
 
                 responses.append(
-                    pb_utils.InferenceResponse(output_tensors=[
-                        movie_id_count,
-                        movie_ids_values, movie_ids_nnzs,
-                        genres_values, genres_nnzs,
-                        search_terms_values, search_terms_nnzs
-                    ])
+                    pb_utils.InferenceResponse(
+                        output_tensors=[
+                            movie_id_count,
+                            movie_ids_values,
+                            movie_ids_nnzs,
+                            genres_values,
+                            genres_nnzs,
+                            search_terms_values,
+                            search_terms_nnzs,
+                        ]
+                    )
                 )
             except Exception as e:
                 exc = sys.exc_info()
