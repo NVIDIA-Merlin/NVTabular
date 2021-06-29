@@ -47,7 +47,7 @@ class TabularDataset:
     def transformed_column_group(self, **kwargs):
         return self.create_default_transformations(self.prepare(**kwargs))
 
-    def workflow(self, **kwargs):
+    def create_workflow(self, **kwargs):
         return Workflow(self.transformed_column_group(**kwargs), self.transformed_dir)
 
     @contextlib.contextmanager

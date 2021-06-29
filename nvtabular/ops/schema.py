@@ -54,7 +54,7 @@ class Schema(StatOperator):
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         return df
 
-    @annotate("DataStats_fit", color="green", domain="nvt_python")
+    @annotate("Schema_fit", color="green", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         dask_stats = {}
 
@@ -80,8 +80,8 @@ class Schema(StatOperator):
             #     dask_stats[col]["cardinality"] = ddf[col].nunique()
 
             # if string, replace string for their lengths for the rest of the computations
-            # if dtype == "object":
-            #     ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
+            if dtype == np.object:
+                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
 
             # Get min,max, and mean
             dask_stats[col]["min"] = ddf[col].min()
@@ -90,6 +90,9 @@ class Schema(StatOperator):
         return dask_stats
 
     def fit_finalize(self, stats):
+        return self.prepare_schema(stats)
+
+    def prepare_schema(self, stats):
         from tensorflow_metadata.proto.v0 import schema_pb2
         dask_stats = stats
 

@@ -36,6 +36,7 @@ from .normalize import Normalize, NormalizeMinMax
 from .base import Operator
 from .rename import Rename
 from .schema import Schema
+from .statistics import Statistics
 from .stat_operator import StatOperator
 from .target_encoding import TargetEncoding
 from .tokenize import TokenizeText
