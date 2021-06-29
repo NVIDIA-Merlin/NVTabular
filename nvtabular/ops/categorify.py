@@ -322,7 +322,7 @@ class Categorify(StatOperator):
         columns = [list(c) if isinstance(c, tuple) else c for c in columns]
         dsk, key = _category_stats(
             ddf,
-            _FitOptions(
+            FitOptions(
                 columns,
                 [],
                 [],
@@ -525,7 +525,41 @@ def _make_name(*args, sep="_"):
 
 
 @dataclass
-class _FitOptions:
+class FitOptions:
+    """Contains options on how to fit statistics.
+
+    Parameters
+    ----------
+        col_groups: list
+            Columns to group by
+        agg_cols: list
+            For groupby statistics, this is the list of continuous columns to calculate statistics
+            for
+        agg_list: list
+            List of operations (sum/max/...) to perform on the grouped continuous columns
+        out_path: str
+            Where to write statistics in parquet format
+        freq_limit: int or dict
+            Categories with a count/frequency below this threshold will be
+            ommited from the encoding and corresponding data will be mapped
+            to the "null" category.
+        tree_width:
+           Tree width of the hash-based groupby reduction for each categorical column.
+        on_host:
+            Whether to convert cudf data to pandas between tasks in the groupby reduction.
+        stat_name:
+            Name of statistic to use when writing out statistics
+        concat_groups:
+            Whether to use a 'joint' vocabulary between columns
+        name_sep:
+            Delimiter to use for concatenating columns into a string
+        max_size:
+            The maximum size of an embedding table
+        num_buckets:
+            If specified will also do hashing operation for values that would otherwise be mapped
+            to as unknown (by freq_limit or max_size parameters)
+    """
+
     col_groups: list
     agg_cols: list
     agg_list: list
@@ -541,7 +575,7 @@ class _FitOptions:
 
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
-def _top_level_groupby(df, options: _FitOptions):
+def _top_level_groupby(df, options: FitOptions):
     sum_sq = "std" in options.agg_list or "var" in options.agg_list
     calculate_min = "min" in options.agg_list
     calculate_max = "max" in options.agg_list
@@ -615,7 +649,7 @@ def _top_level_groupby(df, options: _FitOptions):
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col_group, freq_limit_val, options: _FitOptions):
+def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
     if isinstance(col_group, str):
         col_group = [col_group]
     elif isinstance(col_group, tuple):
@@ -698,7 +732,7 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_group, options: _FitOptions):
+def _write_gb_stats(dfs, base_path, col_group, options: FitOptions):
     if options.concat_groups and len(col_group) > 1:
         col_group = [_make_name(*col_group, sep=options.name_sep)]
     if isinstance(col_group, str):
@@ -804,7 +838,7 @@ def _finish_labels(paths, cols):
     return {col: paths[i] for i, col in enumerate(cols)}
 
 
-def _groupby_to_disk(ddf, write_func, options: _FitOptions):
+def _groupby_to_disk(ddf, write_func, options: FitOptions):
     if not options.col_groups:
         return {}
 
@@ -897,7 +931,7 @@ def _groupby_to_disk(ddf, write_func, options: _FitOptions):
     return graph, finalize_labels_name
 
 
-def _category_stats(ddf, options: _FitOptions):
+def _category_stats(ddf, options: FitOptions):
     # Check if we only need categories
     if options.agg_cols == [] and options.agg_list == []:
         options.agg_list = ["count"]

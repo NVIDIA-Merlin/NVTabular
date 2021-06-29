@@ -190,7 +190,7 @@ class TargetEncoding(StatOperator):
 
         dsk, key = nvt_cat._category_stats(
             ddf,
-            nvt_cat._FitOptions(
+            nvt_cat.FitOptions(
                 col_groups,
                 self.target,
                 ["count", "sum"],

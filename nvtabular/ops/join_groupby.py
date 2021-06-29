@@ -122,7 +122,7 @@ class JoinGroupby(StatOperator):
 
         dsk, key = nvt_cat._category_stats(
             ddf,
-            nvt_cat._FitOptions(
+            nvt_cat.FitOptions(
                 columns,
                 self.cont_names,
                 self.stats,
