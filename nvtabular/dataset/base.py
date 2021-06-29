@@ -67,7 +67,8 @@ class TabularDataset:
     def calculate_statistics(self, transformed=False, **kwargs) -> DatasetCollectionStatistics:
         data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
         data_dir = self.transformed_dir if transformed else self.data_dir
-        stats = data.calculate_statistics(data_dir)
+        client = self.client_fn() if self.client_fn else None
+        stats = data.calculate_statistics(data_dir, client=client)
         stats.save(data_dir)
 
         return stats

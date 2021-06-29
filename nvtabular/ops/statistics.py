@@ -31,8 +31,9 @@ from .stat_operator import StatOperator
 class Statistics(Schema):
     STATS_FILE_NAME = "stats.pb"
 
-    def __init__(self, output_path=None, name="data"):
+    def __init__(self, output_path=None, cross_columns=None, name="data"):
         super(StatOperator, self).__init__()
+        self.cross_columns = cross_columns
         self.name = name
         self.stats_path = os.path.join(output_path, self.STATS_FILE_NAME) if output_path else None
         self.output_path = output_path
@@ -42,11 +43,11 @@ class Statistics(Schema):
         self.stats = None
 
     @classmethod
-    def calculate_on_dataset(cls, dataset, column_group=None, output_path=None, client=None):
+    def calculate_on_dataset(cls, dataset, column_group=None, cross_columns=None, output_path=None, client=None):
         from nvtabular.workflow import Workflow
 
         column_group = column_group or list(dataset.to_ddf().columns)
-        stats = cls(output_path=output_path)
+        stats = cls(output_path=output_path, cross_columns=cross_columns)
 
         workflow = Workflow(column_group >> stats, output_path, client=client)
         workflow.fit(dataset, save_workflow=False)
@@ -95,6 +96,10 @@ class Statistics(Schema):
                 h, bins = da.histogram(ddf[col].to_dask_array(), 10, range=[ddf[col].min(), ddf[col].max()])
                 dask_stats[col]["histogram"] = h
                 dask_stats[col]["histogram_bins"] = bins
+
+            if self.cross_columns:
+                dask_stats["corr"] = ddf[self.cross_columns].corr()
+                dask_stats["cov"] = ddf[self.cross_columns].cov()
 
         return num_examples, dask_stats
 
@@ -145,6 +150,7 @@ class Statistics(Schema):
                     avg_length=dask_stats[col]["avg_length"],
                     unique=dask_stats[col]["nunique"].item()
                 ))
+                feature.type = 2
 
                 ranks = feature.string_stats.rank_histogram
                 for ind, (val, freq) in enumerate(dask_stats[col]["top_values"].to_pandas().items()):
@@ -200,7 +206,7 @@ class DatasetCollectionStatistics(object):
         super().__init__()
         self.stats = dataset_feature_statistics_list
 
-    def display(self):
+    def display_overview(self):
         from IPython.core.display import display, HTML
 
         return display(HTML(self.to_html()))

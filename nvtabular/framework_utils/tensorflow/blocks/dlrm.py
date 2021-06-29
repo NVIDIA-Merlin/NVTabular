@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from nvtabular.column_group import ColumnGroup
 from nvtabular.framework_utils.tensorflow import EmbeddingsLayer
-from nvtabular.framework_utils.tensorflow.blocks.base import Block
+from nvtabular.framework_utils.tensorflow.blocks.base import Block, BlockType
 from nvtabular.framework_utils.tensorflow.features import TabularLayer
 
 
@@ -12,8 +12,8 @@ class DLRMBlock(Block):
     def __init__(self,
                  continuous_features: Union[List[str], ColumnGroup, TabularLayer],
                  embedding_layer: EmbeddingsLayer,
-                 bottom_mlp: tf.keras.layers.Layer,
-                 top_mlp: Optional[tf.keras.layers.Layer] = None,
+                 bottom_mlp: BlockType,
+                 top_mlp: Optional[BlockType] = None,
                  interaction_layer: Optional[tf.keras.layers.Layer] = None,
                  trainable=True,
                  name=None,
@@ -43,8 +43,8 @@ class DLRMBlock(Block):
     @classmethod
     def from_column_group(cls,
                           column_group: ColumnGroup,
-                          bottom_mlp: tf.keras.layers.Layer,
-                          top_mlp: Optional[tf.keras.layers.Layer] = None,
+                          bottom_mlp: BlockType,
+                          top_mlp: Optional[BlockType] = None,
                           **kwargs):
         embedding_layer = EmbeddingsLayer.from_column_group(
             column_group.categorical_column_group,
