@@ -64,11 +64,12 @@ class TabularDataset:
     def data(self):
         return self.prepare()
 
-    def calculate_statistics(self, transformed=False, **kwargs) -> DatasetCollectionStatistics:
+    def calculate_statistics(self, transformed=False, overwrite=False, cross_columns=None,
+                             **kwargs) -> DatasetCollectionStatistics:
         data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
         data_dir = self.transformed_dir if transformed else self.data_dir
         client = self.client_fn() if self.client_fn else None
-        stats = data.calculate_statistics(data_dir, client=client)
+        stats = data.calculate_statistics(data_dir, client=client, overwrite=overwrite, cross_columns=cross_columns)
         stats.save(data_dir)
 
         return stats

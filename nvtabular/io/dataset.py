@@ -1128,7 +1128,7 @@ class DatasetCollection(SimpleNamespace):
 
         return SimpleNamespace(**schemas)
 
-    def calculate_statistics(self, output_path=None, by_id=True, overwrite=False, client=None):
+    def calculate_statistics(self, output_path=None, by_id=True, overwrite=False, client=None, **kwargs):
         from nvtabular.ops.statistics import Statistics, DatasetCollectionStatistics
         from tensorflow_metadata.proto.v0 import statistics_pb2
 
@@ -1142,7 +1142,7 @@ class DatasetCollection(SimpleNamespace):
 
             stats_path = os.path.join(dataset_dir, Statistics.STATS_FILE_NAME)
             if not os.path.exists(stats_path) or overwrite:
-                stats = Statistics.calculate_on_dataset(dataset, output_path=dataset_dir, client=client)
+                stats = Statistics.calculate_on_dataset(dataset, output_path=dataset_dir, client=client, **kwargs)
                 dataset = stats.stats
             else:
                 d = statistics_pb2.DatasetFeatureStatisticsList()
