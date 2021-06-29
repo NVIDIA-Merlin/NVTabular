@@ -1116,6 +1116,34 @@ class DatasetCollection(SimpleNamespace):
             if not os.path.exists(os.path.join(dataset_dir, "schema.pb")) or overwrite:
                 Schema.calculate_on_dataset(dataset, tags_by_column, output_path=dataset_dir, client=client)
 
+    def calculate_statistics(self, output_path=None, by_id=True, overwrite=False, client=None):
+        from nvtabular.ops.statistics import Statistics, DatasetCollectionStatistics
+        from tensorflow_metadata.proto.v0 import statistics_pb2
+
+        statistics = statistics_pb2.DatasetFeatureStatisticsList()
+
+        for name, dataset in self.items():
+            dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
+
+            if not os.path.exists(dataset_dir):
+                os.makedirs(dataset_dir)
+
+            stats_path = os.path.join(dataset_dir, Statistics.STATS_FILE_NAME)
+            if not os.path.exists(stats_path) or overwrite:
+                stats = Statistics.calculate_on_dataset(dataset, output_path=dataset_dir, client=client)
+                dataset = stats.stats
+            else:
+                d = statistics_pb2.DatasetFeatureStatisticsList()
+                with open(stats_path, "rb") as f:
+                    d.ParseFromString(f.read())
+                dataset = dataset.datasets[0]
+
+            dataset.name = name
+            stats_dataset = statistics.datasets.add()
+            stats_dataset.CopyFrom(dataset)
+
+        return DatasetCollectionStatistics(statistics)
+
     def to_parquet(self,
                    output_path,
                    by_id=True,
