@@ -1141,19 +1141,16 @@ class DatasetCollection(SimpleNamespace):
                 os.makedirs(dataset_dir)
 
             stats_path = os.path.join(dataset_dir, Statistics.STATS_FILE_NAME)
+            stats_dataset = statistics.datasets.add()
+            stats_dataset.name = name
             if not os.path.exists(stats_path) or overwrite:
                 stats = Statistics.calculate_on_dataset(dataset, output_path=dataset_dir, client=client, **kwargs)
-                dataset = stats.stats
+                stats_dataset.CopyFrom(stats.stats)
             else:
                 d = statistics_pb2.DatasetFeatureStatisticsList()
                 with open(stats_path, "rb") as f:
                     d.ParseFromString(f.read())
-                dataset = d.datasets[0]
-
-
-            dataset.name = name
-            stats_dataset = statistics.datasets.add()
-            stats_dataset.CopyFrom(dataset)
+                stats_dataset.CopyFrom(d.datasets[0])
 
         return DatasetCollectionStatistics(statistics)
 
