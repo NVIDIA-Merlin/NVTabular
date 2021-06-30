@@ -257,11 +257,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     @classmethod
     def from_directory(cls, directory, batch_size, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
-                       separate_labels=True, named_labels=False,
+                       separate_labels=True, named_labels=False, schema_path=None,
                        continuous_features=None, categorical_features=None, targets=None):
         from nvtabular.column_group import ColumnGroup
 
-        schema_path = os.path.join(directory, "schema.pb")
+        schema_path = schema_path or os.path.join(directory, "schema.pb")
         if not os.path.exists(schema_path):
             raise ValueError("Can't load from directory without a schema.")
 

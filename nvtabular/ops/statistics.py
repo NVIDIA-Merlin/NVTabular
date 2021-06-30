@@ -84,7 +84,7 @@ class Statistics(Schema):
                 dask_stats[col]["avg_length"] = str_len.mean()
                 dask_stats[col]["top_values"] = ddf[col].value_counts().nlargest(n=50)
 
-            elif dtype in [np.int32, np.int64, np.float32]:
+            elif dtype in [np.int8, np.int32, np.int64, np.float32, np.float64]:
                 # Get various stats
                 dask_stats[col]["min"] = ddf[col].min()
                 dask_stats[col]["max"] = ddf[col].max()
@@ -124,7 +124,7 @@ class Statistics(Schema):
                 avg_num_values=1.0,
             )
 
-            if dtype in [np.int32, np.int64, np.float32]:
+            if dtype in [np.int8, np.int32, np.int64, np.float32, np.float64]:
                 hist = statistics_pb2.Histogram(type=0)
                 h, bins = dask_stats[col]["histogram"], dask_stats[col]["histogram_bins"]
                 for i in range(len(h)):
