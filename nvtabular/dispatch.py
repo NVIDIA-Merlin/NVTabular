@@ -267,6 +267,9 @@ def _pull_apart_list(original):
         offsets = pd.Series([0]).append(original.map(len).cumsum())
     else:
         offsets = original._column.offsets
+        elements = original._column.elements
+        if isinstance(elements, cudf.core.column.lists.ListColumn):
+            offsets = elements.list(parent=original.list._parent)._column.offsets[offsets]
     return values, offsets
 
 
