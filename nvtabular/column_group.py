@@ -86,12 +86,16 @@ class ColumnGroup:
         return schema
 
     @classmethod
-    def from_schema(cls, schema_path) -> "ColumnGroup":
-        schema = cls.read_schema(schema_path)
+    def from_schema(cls, schema) -> "ColumnGroup":
+        if isinstance(schema, str):
+            schema = cls.read_schema(schema)
 
         output = cls([])
         for feat in schema.feature:
-            output += cls(feat.name, tags=feat.annotation.tag)
+            tags = feat.annotation.tag
+            if feat.value_count:
+                tags = tags + Tag.LIST.value if tags else Tag.LIST.value
+            output += cls(feat.name, tags=tags)
 
         return output
 
