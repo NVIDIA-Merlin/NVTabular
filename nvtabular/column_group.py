@@ -87,6 +87,9 @@ class ColumnGroup:
 
         return schema
 
+    def set_schema(self, schema):
+        self._schema = schema
+
     @classmethod
     def from_schema(cls, schema) -> "ColumnGroup":
         if isinstance(schema, str):
@@ -97,7 +100,9 @@ class ColumnGroup:
             tags = feat.annotation.tag
             if feat.value_count:
                 tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
-            output += cls(feat.name, tags=tags, schema=schema)
+            output += cls(feat.name, tags=tags)
+
+        output.set_schema(schema)
 
         return output
 
