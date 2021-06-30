@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
-import numpy as np
 import os
 from nvtx import annotate
 
@@ -39,7 +38,7 @@ class Schema(StatOperator):
     @classmethod
     def calculate_on_dataset(cls, dataset, tags_by_column, output_path=None, client=None):
         from nvtabular.column_group import ColumnGroup
-        from ..workflow import Workflow
+        from nvtabular.workflow import Workflow
 
         stats = cls(tags_by_column, output_path=output_path)
 
@@ -68,28 +67,20 @@ class Schema(StatOperator):
             self.col_names.append(col)
             # Get dtype for all
             dtype = ddf_dtypes[col].dtype
-            self.col_dtypes.append(dtype)
+            self.col_dtypes.append(ddf_dtypes[col].dtype)
 
-            print(dtype)
+            domain = ddf[col]
 
-            # Identify column type
-            # if np.issubdtype(dtype, np.floating):
-            #     col_type = "conts"
-            # else:
-            #     col_type = "cats"
-            # self.col_types.append(dtype)
+            if str(dtype) == "list":
+                domain = ddf[col].map_partitions(lambda x: x.list.leaves, meta=("x", int))
+                lengths = ddf[col].map_partitions(lambda x: x.list.len(), meta=("x", int))
+                dask_stats[col]["min_length"] = lengths.min()
+                dask_stats[col]["max_length"] = lengths.max()
+                dtype = dtype.leaf_type
 
-            # # Get cardinality for cats
-            # if col_type == "cats":
-            #     dask_stats[col]["cardinality"] = ddf[col].nunique()
-
-            # if string, replace string for their lengths for the rest of the computations
-            if dtype == np.object:
-                ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
-            elif dtype in [np.int32, np.int64, np.float32]:
-                # Get min,max, and mean
-                dask_stats[col]["min"] = ddf[col].min()
-                dask_stats[col]["max"] = ddf[col].max()
+            if str(dtype) in ["int8", "int32", "int64", "float32", "float64"]:
+                dask_stats[col]["min"] = domain.min()
+                dask_stats[col]["max"] = domain.max()
 
         return dask_stats
 
@@ -103,21 +94,36 @@ class Schema(StatOperator):
         self.schema = schema_pb2.Schema()
 
         for i, col in enumerate(self.col_names):
-            dtype = str(self.col_dtypes[i])
+            dtype = self.col_dtypes[i]
             tags = self.tags_by_column.get(col, [])
 
             feature = self.schema.feature.add()
             feature.name = col
             feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
 
-            if dtype == np.float32:
+            if str(dtype) == "list":
+                dtype = dtype.leaf_type
+                min_length = dask_stats[col]["min_length"].item()
+                max_length = dask_stats[col]["max_length"].item()
+                if min_length == max_length:
+                    shape = schema_pb2.FixedShape()
+                    dim = shape.dim.add()
+                    dim.size = min_length
+                    feature.shape.CopyFrom(shape)
+                else:
+                    feature.value_count.CopyFrom(schema_pb2.ValueCount(
+                        min=min_length,
+                        max=max_length
+                    ))
+
+            if str(dtype) in ["float32", "float64"]:
                 feature.float_domain.CopyFrom(schema_pb2.FloatDomain(
                     name=col,
                     min=dask_stats[col]["min"].item(),
                     max=dask_stats[col]["max"].item()
                 ))
                 feature.type = 3
-            elif dtype in [np.int32, np.int64]:
+            elif str(dtype) in ["int8", "int32", "int64"]:
                 feature.int_domain.CopyFrom(schema_pb2.IntDomain(
                     name=col,
                     min=dask_stats[col]["min"].item(),
