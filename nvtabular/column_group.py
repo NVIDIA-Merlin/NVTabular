@@ -38,7 +38,7 @@ class ColumnGroup:
         for feature crosses.
     """
 
-    def __init__(self, columns, tags=None):
+    def __init__(self, columns, tags=None, **kwargs):
         self.parents = []
         self.children = []
         self.op = None
@@ -53,6 +53,8 @@ class ColumnGroup:
 
         if isinstance(columns, str):
             columns = [columns]
+
+        self._schema = kwargs.get("schema", None)
 
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
@@ -95,7 +97,7 @@ class ColumnGroup:
             tags = feat.annotation.tag
             if feat.value_count:
                 tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
-            output += cls(feat.name, tags=tags)
+            output += cls(feat.name, tags=tags, schema=schema)
 
         return output
 

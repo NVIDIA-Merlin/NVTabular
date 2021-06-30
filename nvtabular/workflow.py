@@ -27,7 +27,6 @@ import dask
 import pandas as pd
 from dask.core import flatten
 
-
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset, DatasetCollection
@@ -223,8 +222,9 @@ class Workflow:
 
         if save:
             outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
-            outputs.generate_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite,
-                                    client=self.client)
+            schemas = outputs.generate_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite,
+                                              client=self.client)
+            self.column_group._schema = vars(schemas)[to_fit]
 
         return outputs
 
