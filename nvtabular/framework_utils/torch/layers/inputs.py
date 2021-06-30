@@ -192,5 +192,4 @@ class InputFeatures(TabularModule):
         return cls(continuous_layer=continuous_layer,
                    categorical_layer=categorical_layer,
                    text_embedding_layer=text_model,
-                   aggregation=aggregation,
-                   **kwargs)
+                   aggregation=aggregation)
