@@ -2,6 +2,7 @@ from typing import Optional, Callable, Text, Any, Dict
 
 import torch
 
+from nvtabular.column_group import ColumnGroup
 from nvtabular.framework_utils.torch import TabularModule, FilterFeatures
 
 
@@ -84,6 +85,36 @@ class EmbeddingsModule(TabularModule):
             embedding_tables[name] = torch.nn.EmbeddingBag(table.vocabulary_size, table.dim, mode=table.combiner)
 
         self.embedding_tables = torch.nn.ModuleDict(embedding_tables)
+
+    @classmethod
+    def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
+                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None, **kwargs):
+        if tags:
+            column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
+
+        if infer_embedding_sizes:
+            sizes = column_group.embedding_sizes()
+        else:
+            if not embedding_dims:
+                embedding_dims = {}
+            sizes = {}
+            cardinalities = column_group.cardinalities()
+            for key, cardinality in cardinalities.items():
+                embedding_size = embedding_dims.get(key, default_embedding_dim)
+                sizes[key] = (cardinality, embedding_size)
+
+        feature_config: Dict[str, FeatureConfig] = {}
+        for name, (vocab_size, dim) in sizes.items():
+            feature_config[name] = FeatureConfig(
+                TableConfig(
+                    vocabulary_size=vocab_size,
+                    dim=dim,
+                    name=name,
+                    combiner=combiner,
+                )
+            )
+
+        return cls(feature_config, **kwargs)
 
     def forward(self, inputs):
         embedded_outputs = {}
