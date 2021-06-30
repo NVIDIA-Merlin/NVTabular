@@ -4,6 +4,7 @@ import torch
 
 from nvtabular.column_group import ColumnGroup
 from nvtabular.framework_utils.torch import TabularModule, FilterFeatures
+from nvtabular.tag import Tag
 
 
 class TableConfig(object):
@@ -116,7 +117,7 @@ class EmbeddingsModule(TabularModule):
 
         return cls(feature_config, **kwargs)
 
-    def forward(self, inputs):
+    def forward(self, inputs, **kwargs):
         embedded_outputs = {}
         filtered_inputs = self.filter_features(inputs)
         for name, val in filtered_inputs.items():
@@ -133,3 +134,63 @@ class EmbeddingsModule(TabularModule):
                 embedded_outputs[name] = self.embedding_tables[name](val)
 
         return embedded_outputs
+
+
+class InputFeatures(TabularModule):
+    def __init__(self, continuous_layer=None, categorical_layer=None, text_embedding_layer=None, aggregation=None):
+        super(InputFeatures, self).__init__(aggregation=aggregation)
+        self.categorical_layer = categorical_layer
+        self.continuous_layer = continuous_layer
+        self.text_embedding_layer = text_embedding_layer
+
+        self.to_apply = []
+        if continuous_layer:
+            self.to_apply.append(continuous_layer)
+        if categorical_layer:
+            self.to_apply.append(categorical_layer)
+        if text_embedding_layer:
+            self.to_apply.append(text_embedding_layer)
+
+        assert (self.to_apply is not []), "Please provide at least one input layer"
+
+    def forward(self, inputs, **kwargs):
+        return self.to_apply[0](inputs, merge_with=self.to_apply[1:] if len(self.to_apply) > 1 else None)
+
+    @classmethod
+    def from_column_group(cls,
+                          column_group: ColumnGroup,
+                          continuous_tags=Tag.CONTINUOUS,
+                          continuous_tags_to_filter=None,
+                          categorical_tags=Tag.CATEGORICAL,
+                          categorical_tags_to_filter=None,
+                          text_model=None,
+                          text_tags=Tag.TEXT_TOKENIZED,
+                          text_tags_to_filter=None,
+                          max_text_length=None,
+                          aggregation=None,
+                          **kwargs):
+        continuous_layer, categorical_layer = None, None
+        if continuous_tags:
+            continuous_layer = TabularModule.from_column_group(
+                column_group,
+                tags=continuous_tags,
+                tags_to_filter=continuous_tags_to_filter)
+        if categorical_tags:
+            categorical_layer = EmbeddingsModule.from_column_group(
+                column_group,
+                tags=categorical_tags,
+                tags_to_filter=categorical_tags_to_filter)
+
+        # if text_model and not isinstance(text_model, TransformersTextEmbedding):
+        #     text_model = TransformersTextEmbedding.from_column_group(
+        #         column_group,
+        #         tags=text_tags,
+        #         tags_to_filter=text_tags_to_filter,
+        #         transformer_model=text_model,
+        #         max_text_length=max_text_length)
+
+        return cls(continuous_layer=continuous_layer,
+                   categorical_layer=categorical_layer,
+                   text_embedding_layer=text_model,
+                   aggregation=aggregation,
+                   **kwargs)

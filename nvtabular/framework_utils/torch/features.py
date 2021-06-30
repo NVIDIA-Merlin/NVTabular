@@ -107,6 +107,9 @@ class TabularModule(TabularMixin, torch.nn.Module):
     def from_features(cls, features, **kwargs):
         return features >> cls(**kwargs)
 
+    def forward(self, x, *args, **kwargs):
+        return x
+
     def __rrshift__(self, other):
         from nvtabular.framework_utils.torch import right_shift_module
         return right_shift_module(self, other)
