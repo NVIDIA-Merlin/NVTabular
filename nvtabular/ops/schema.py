@@ -84,10 +84,10 @@ class Schema(StatOperator):
             # if string, replace string for their lengths for the rest of the computations
             if dtype == np.object:
                 ddf[col] = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
-
-            # Get min,max, and mean
-            dask_stats[col]["min"] = ddf[col].min()
-            dask_stats[col]["max"] = ddf[col].max()
+            elif dtype in [np.int32, np.int64, np.float32]:
+                # Get min,max, and mean
+                dask_stats[col]["min"] = ddf[col].min()
+                dask_stats[col]["max"] = ddf[col].max()
 
         return dask_stats
 

@@ -165,7 +165,7 @@ class Statistics(Schema):
         if self.cross_columns:
             corr, cov = dask_stats["corr"], dask_stats["cov"]
             for (path_x, cov_val), (_, corr_val) in zip(cov.items(), corr.items()):
-                for (path_y, covariance), correlation in zip(cov_val.items(), corr_val):
+                for (path_y, covariance), correlation in zip(cov_val.items(), corr_val.items()):
                     cross = statistics_pb2.CrossFeatureStatistics(
                         path_x=path_pb2.Path(step=[path_x]),
                         path_y=path_pb2.Path(step=[path_y]),
