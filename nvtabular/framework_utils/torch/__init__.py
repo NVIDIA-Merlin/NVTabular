@@ -13,8 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from .features import FilterFeatures, StackFeatures, ConcatFeatures, AsTabular, TabularModule
 from nvtabular.framework_utils.torch.models import Model
 from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import TorchAsyncItr
+from nvtabular.framework_utils.torch.blocks.base import right_shift_module
 
-__all__ = ["TorchAsyncItr", "Model", "process_epoch"]
+from torch.nn import Module
+
+
+Module.__rrshift__ = right_shift_module
+
+# __all__ = ["TorchAsyncItr", "Model", "process_epoch"]
