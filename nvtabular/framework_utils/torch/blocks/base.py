@@ -15,8 +15,8 @@ def right_shift_module(self, other):
     if isinstance(other, list):
         left_side = [features.FilterFeatures(other)]
     else:
-        left_side = other.layers if isinstance(other, SequentialBlock) else [other]
-    right_side = self.layers if isinstance(self, SequentialBlock) else [self]
+        left_side = list(other) if isinstance(other, SequentialBlock) else [other]
+    right_side = list(self) if isinstance(self, SequentialBlock) else [self]
 
     sequential = left_side + right_side
     return SequentialBlock(*sequential)
