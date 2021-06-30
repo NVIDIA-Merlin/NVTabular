@@ -31,15 +31,25 @@ DatasetCollection = io.dataset.DatasetCollection
 TagAs = column_group.TagAs
 Tag = column_group.Tag
 
+
+__all__ = ["Workflow", "Dataset", "ColumnGroup", "dataset"]
+
+
 # Tensorflow specific
 try:
     from .framework_utils import tensorflow
     tf = tensorflow
+    __all__.append("tf")
 except ImportError:
     pass
 
-
-__all__ = ["Workflow", "Dataset", "ColumnGroup", "dataset"]
+# Torch specific
+try:
+    from .framework_utils import torch as t
+    torch = t
+    __all__.append("torch")
+except ImportError:
+    pass
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")
