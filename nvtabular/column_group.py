@@ -360,7 +360,7 @@ class ColumnGroup:
 
             from nvtabular.ops.categorify import _emb_sz_rule
 
-            return {key: (val, _emb_sz_rule(val)) for key, val in cardinalities.items()}
+            return {key: _emb_sz_rule(val) for key, val in cardinalities.items()}
 
         return self._embedding_sizes_from_op()
 
