@@ -249,8 +249,10 @@ def _encode_list_column(original, encoded, dtype=None):
         return pd.Series(new_data)
     else:
         # CuDF version
+        encoded = as_column(encoded)
+        if dtype:
+            encoded = encoded.astype(dtype, copy=False)
         list_dtype = cudf.core.dtypes.ListDtype(encoded.dtype if dtype is None else dtype)
-        encoded = as_column(encoded).astype(dtype, copy=False)
         return build_column(
             None,
             dtype=list_dtype,
@@ -265,6 +267,9 @@ def _pull_apart_list(original):
         offsets = pd.Series([0]).append(original.map(len).cumsum())
     else:
         offsets = original._column.offsets
+        elements = original._column.elements
+        if isinstance(elements, cudf.core.column.lists.ListColumn):
+            offsets = elements.list(parent=original.list._parent)._column.offsets[offsets]
     return values, offsets
 
 
