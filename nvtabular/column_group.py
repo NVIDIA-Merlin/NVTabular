@@ -94,7 +94,7 @@ class ColumnGroup:
         for feat in schema.feature:
             tags = feat.annotation.tag
             if feat.value_count:
-                tags = tags + Tag.LIST.value if tags else Tag.LIST.value
+                tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
             output += cls(feat.name, tags=tags)
 
         return output
