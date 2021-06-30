@@ -3,7 +3,7 @@ import torch
 from nvtabular.framework_utils.torch import features
 
 
-class SequentialBlock(torch.nn.Sequential, features.TabularMixin):
+class SequentialBlock(features.TabularMixin, torch.nn.Sequential):
     def __rrshift__(self, other):
         return right_shift_module(self, other)
 
