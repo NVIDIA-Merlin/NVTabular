@@ -19,6 +19,7 @@ from nvtabular.framework_utils.torch.models import Model
 from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import TorchAsyncItr
 from nvtabular.framework_utils.torch.blocks.base import right_shift_module, SequentialBlock
+from .layers.inputs import EmbeddingsModule, TableConfig, FeatureConfig
 
 from torch.nn import Module
 
