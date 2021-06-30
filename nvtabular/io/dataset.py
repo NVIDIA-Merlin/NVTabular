@@ -1139,7 +1139,7 @@ class DatasetCollection(SimpleNamespace):
         schemas = {}
 
         for name, dataset in self.items():
-            dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
+            dataset_dir = os.path.join(output_path, getattr(dataset, "id", name) if by_id else name)
 
             if not os.path.exists(dataset_dir):
                 os.makedirs(dataset_dir)
