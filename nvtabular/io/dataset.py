@@ -28,6 +28,7 @@ import shutil
 
 import dask
 import numpy as np
+import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -1111,6 +1112,25 @@ class DatasetCollection(SimpleNamespace):
                 outputs[name] = dataset
 
         return self.__class__(**outputs)
+
+    def flatten(self):
+        outputs = self.to_dict(flattened=True)
+
+        return self.__class__(**outputs)
+
+    def to_dict(self, flattened=False):
+        outputs = {}
+        for name, dataset in self.items():
+            if isinstance(dataset, DatasetCollection):
+                outputs[name] = dataset.to_dict(flattened=flattened)
+            else:
+                outputs[name] = dataset
+
+        if flattened:
+            df = pd.json_normalize(outputs, sep='/')
+            outputs = df.to_dict(orient='records')[0]
+
+        return outputs
 
     def generate_schema(self, output_path, tags_by_column, by_id=True, overwrite=False, client=None):
         from nvtabular.ops import Schema
