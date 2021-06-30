@@ -55,12 +55,8 @@ class AsTabular(torch.nn.Module):
         return {self.output_name: inputs}
 
 
-class TabularModule(torch.nn.Module):
-    def __init__(self, aggregation=None):
-        super().__init__()
-        self.aggregation = aggregation
-
-    def forward(self, inputs, pre=None, post=None, merge_with=None, stack_outputs=False, concat_outputs=False,
+class TabularMixin:
+    def __call__(self, inputs, *args, pre=None, post=None, merge_with=None, stack_outputs=False, concat_outputs=False,
                  filter_columns=None, **kwargs):
         post_op = self.maybe_aggregate()
         if concat_outputs:
@@ -71,7 +67,7 @@ class TabularModule(torch.nn.Module):
             pre = FilterFeatures(filter_columns)
         if pre:
             inputs = pre(inputs)
-        outputs = super().__call__(inputs, **kwargs)
+        outputs = super().__call__(inputs, *args, **kwargs)
 
         if merge_with:
             if not isinstance(merge_with, list):
@@ -86,13 +82,19 @@ class TabularModule(torch.nn.Module):
         return outputs
 
     def maybe_aggregate(self):
-        if self.aggregation == "concat":
+        if getattr(self, "aggregation", None) == "concat":
             return ConcatFeatures()
 
-        if self.aggregation == "stack":
+        if getattr(self, "aggregation", None) == "stack":
             return StackFeatures()
 
         return None
+
+
+class TabularModule(torch.nn.Module, TabularMixin):
+    def __init__(self, aggregation=None):
+        super().__init__()
+        self.aggregation = aggregation
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs):
@@ -106,6 +108,5 @@ class TabularModule(torch.nn.Module):
         return features >> cls(**kwargs)
 
     def __rrshift__(self, other):
-        from nvtabular.framework_utils.tensorflow.blocks.base import right_shift_layer
-
-        return right_shift_layer(self, other)
+        from nvtabular.framework_utils.torch import right_shift_module
+        return right_shift_module(self, other)
