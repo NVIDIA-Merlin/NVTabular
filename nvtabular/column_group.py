@@ -21,6 +21,8 @@ from dask.core import flatten
 
 from nvtabular.ops import LambdaOp, Operator
 from nvtabular.tag import Tag, TagAs, DefaultTags
+
+
 # from pandas.core.common import flatten as p_flatten
 
 
@@ -353,6 +355,27 @@ class ColumnGroup:
         return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=False)
 
     def embedding_sizes(self):
+        if self._schema:
+            cardinalities = self.cardinalities()
+
+            from nvtabular.ops.categorify import _emb_sz_rule
+
+            return {key: (val, _emb_sz_rule(val)) for key, val in cardinalities.items()}
+
+        return self._embedding_sizes_from_op()
+
+    def cardinalities(self):
+        if self._schema:
+            outputs = {}
+            for feature in self._schema.feature:
+                if feature.int_domain and feature.int_domain.is_categorical:
+                    outputs[feature.name] = feature.int_domain.max
+
+            return outputs
+        else:
+            return {k: v[0] for k, v in self._embedding_sizes_from_op().items()}
+
+    def _embedding_sizes_from_op(self):
         queue = [self]
         output = {}
         while queue:
@@ -368,9 +391,6 @@ class ColumnGroup:
         output = {k: v for k, v in output.items() if k in self.columns}
 
         return output
-
-    def cardinalities(self):
-        return {k: v[0] for k, v in self.embedding_sizes().items()}
 
     def remove_tagged(self, tags):
         to_remove = self.get_tagged(tags)
