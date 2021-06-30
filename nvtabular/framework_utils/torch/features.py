@@ -91,7 +91,7 @@ class TabularMixin:
         return None
 
 
-class TabularModule(torch.nn.Module, TabularMixin):
+class TabularModule(TabularMixin, torch.nn.Module):
     def __init__(self, aggregation=None):
         super().__init__()
         self.aggregation = aggregation
