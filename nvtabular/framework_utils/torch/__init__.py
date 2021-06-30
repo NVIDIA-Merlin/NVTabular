@@ -17,7 +17,7 @@ from .features import FilterFeatures, StackFeatures, ConcatFeatures, AsTabular, 
 from nvtabular.framework_utils.torch.models import Model
 from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import TorchAsyncItr
-from nvtabular.framework_utils.torch.blocks.base import right_shift_module
+from nvtabular.framework_utils.torch.blocks.base import right_shift_module, SequentialBlock
 
 from torch.nn import Module
 
