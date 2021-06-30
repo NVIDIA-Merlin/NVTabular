@@ -75,13 +75,19 @@ class ColumnGroup:
         else:
             self.columns = [_convert_col(col) for col in columns]
 
-    @classmethod
-    def from_schema(cls, schema_path) -> "ColumnGroup":
+    @staticmethod
+    def read_schema(schema_path):
         from tensorflow_metadata.proto.v0 import schema_pb2
 
         with open(schema_path, "rb") as f:
             schema = schema_pb2.Schema()
             schema.ParseFromString(f.read())
+
+        return schema
+
+    @classmethod
+    def from_schema(cls, schema_path) -> "ColumnGroup":
+        schema = cls.read_schema(schema_path)
 
         output = cls([])
         for feat in schema.feature:

@@ -89,7 +89,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
-        column_group=None
+        column_group=None,
+        schema=None
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -114,11 +115,12 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_as_dense=sparse_as_dense,
         )
         self._column_group = column_group
+        self.schema = schema
 
     @classmethod
     def from_directory(cls, directory, batch_size, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
                        separate_labels=True, named_labels=False, schema_path=None,
-                       continuous_features=None, categorical_features=None, targets=None):
+                       continuous_features=None, categorical_features=None, targets=None, **kwargs):
         from nvtabular.column_group import ColumnGroup
 
         schema_path = schema_path or os.path.join(directory, "schema.pb")
@@ -141,7 +143,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             shuffle=shuffle,
             buffer_size=buffer_size,  # how many batches to load at once
             parts_per_chunk=parts_per_chunk,
-            column_group=col_group
+            column_group=col_group,
+            schema=ColumnGroup.read_schema(schema_path),
+            **kwargs
         )
 
         # if named_labels and separate_labels:
