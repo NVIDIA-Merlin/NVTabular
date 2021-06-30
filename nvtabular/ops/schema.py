@@ -70,6 +70,8 @@ class Schema(StatOperator):
             dtype = ddf_dtypes[col].dtype
             self.col_dtypes.append(dtype)
 
+            print(dtype)
+
             # Identify column type
             # if np.issubdtype(dtype, np.floating):
             #     col_type = "conts"
