@@ -29,6 +29,7 @@ import os
 from typing import List
 
 import cudf
+import numpy as np
 from cudf.core.column import as_column, build_column
 from cudf.utils.dtypes import is_list_dtype
 from triton_python_backend_utils import (
@@ -41,7 +42,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.inference.triton import _convert_tensor
+from nvtabular.inference.triton import _convert_tensor, get_column_types
 
 
 class TritonPythonModel:
@@ -53,6 +54,7 @@ class TritonPythonModel:
         )
         self.workflow = nvtabular.Workflow.load(workflow_path)
         self.model_config = json.loads(args["model_config"])
+        self.output_model = self.model_config["parameters"]["output_model"]["string_value"]
 
         self.input_dtypes = {
             col: dtype
@@ -68,8 +70,19 @@ class TritonPythonModel:
             if not is_list_dtype(dtype):
                 self._set_output_dtype(name)
             else:
+                # pytorch + hugectr don't support multihot output features at inference
+                if self.output_model in {"hugectr", "pytorch"}:
+                    raise ValueError(f"{self.output_model} doesn't yet support multihot features")
                 self._set_output_dtype(name + "__nnzs")
                 self._set_output_dtype(name + "__values")
+
+        if self.output_model == "hugectr":
+            self.column_types = get_column_types(workflow_path)
+            self.offsets = get_hugectr_offsets(workflow_path)
+            if self.offsets is None and "cats" in self.column_types:
+                raise Exception("slot_size_array.json could not be found to read the slot sizes")
+        else:
+            self.column_types = self.offsets = None
 
     def _set_output_dtype(self, name):
         conf = get_output_config_by_name(self.model_config, name)
@@ -106,28 +119,83 @@ class TritonPythonModel:
             )
 
             # convert back to a triton response
-            output_tensors = []
-            for name in output_df.columns:
-                col = output_df[name]
-                if is_list_dtype(col.dtype):
-                    # convert list values to match TF dataloader
-                    values = col.list.leaves.values_host.astype(
-                        self.output_dtypes[name + "__values"]
-                    )
-                    values = values.reshape(len(values), 1)
-                    output_tensors.append(Tensor(name + "__values", values))
-
-                    offsets = col._column.offsets.values_host.astype(
-                        self.output_dtypes[name + "__nnzs"]
-                    )
-                    nnzs = offsets[1:] - offsets[:-1]
-                    nnzs = nnzs.reshape(len(nnzs), 1)
-                    output_tensors.append(Tensor(name + "__nnzs", nnzs))
-                else:
-                    d = col.values_host.astype(self.output_dtypes[name])
-                    d = d.reshape(len(d), 1)
-                    output_tensors.append(Tensor(name, d))
-
-            responses.append(InferenceResponse(output_tensors))
+            if self.output_model == "hugectr":
+                response = self._transform_hugectr_outputs(output_df)
+            else:
+                response = self._transform_outputs(output_df)
+            responses.append(response)
 
         return responses
+
+    def _transform_outputs(self, output_df):
+        """ transforms outputs for both pytorch and tensorflow """
+        output_tensors = []
+        for name in output_df.columns:
+            col = output_df[name]
+            if is_list_dtype(col.dtype):
+                # convert list values to match TF dataloader
+                values = col.list.leaves.values_host.astype(self.output_dtypes[name + "__values"])
+                values = values.reshape(len(values), 1)
+                output_tensors.append(Tensor(name + "__values", values))
+
+                offsets = col._column.offsets.values_host.astype(
+                    self.output_dtypes[name + "__nnzs"]
+                )
+                nnzs = offsets[1:] - offsets[:-1]
+                nnzs = nnzs.reshape(len(nnzs), 1)
+                output_tensors.append(Tensor(name + "__nnzs", nnzs))
+            else:
+                d = col.values_host.astype(self.output_dtypes[name])
+                d = d.reshape(len(d), 1)
+                output_tensors.append(Tensor(name, d))
+        return InferenceResponse(output_tensors)
+
+    def _transform_hugectr_outputs(self, output_df):
+        output_tensors = []
+        if "conts" in self.column_types:
+            output_tensors.append(
+                Tensor(
+                    "DES",
+                    _convert_to_hugectr(output_df[self.column_types["conts"]], np.float32),
+                )
+            )
+        else:
+            output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
+
+        if "cats" in self.column_types:
+            output_df[self.column_types["cats"]] += self.offsets
+            cats_np = _convert_to_hugectr(output_df[self.column_types["cats"]], np.int64)
+            output_tensors.append(
+                Tensor(
+                    "CATCOLUMN",
+                    cats_np,
+                )
+            )
+        else:
+            output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
+
+        len_cats_np = cats_np.shape[1]
+        row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
+        output_tensors.append(Tensor("ROWINDEX", row_index))
+
+        return InferenceResponse(output_tensors)
+
+
+def _convert_to_hugectr(df, dtype):
+    """ converts a dataframe to a numpy input compatible with hugectr """
+    d = np.empty(df.shape)
+    for i, name in enumerate(df.columns):
+        d[:, i] = df[name].values_host
+
+    return d.reshape(1, df.shape[0] * df.shape[1]).astype(dtype)
+
+
+def get_hugectr_offsets(path):
+    if os.path.exists(path):
+        slot_sizes = json.load(open(os.path.join(path, "slot_size_array.json")))
+        slot_sizes = slot_sizes["slot_size_array"]
+        slot_sizes.insert(0, 0)
+        slot_sizes.pop()
+        return np.cumsum(np.array(slot_sizes)).tolist()
+    else:
+        return None

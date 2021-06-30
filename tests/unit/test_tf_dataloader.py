@@ -35,6 +35,48 @@ tf = pytest.importorskip("tensorflow")
 tf_dataloader = pytest.importorskip("nvtabular.loader.tensorflow")
 
 
+def test_nested_list():
+    num_rows = 100
+    batch_size = 12
+
+    df = pd.DataFrame(
+        {
+            "data": [
+                np.random.rand(np.random.randint(10) + 1, 3).tolist() for i in range(num_rows)
+            ],
+            "data2": [np.random.rand(np.random.randint(10) + 1).tolist() for i in range(num_rows)],
+            "label": [np.random.rand() for i in range(num_rows)],
+        }
+    )
+
+    train_dataset = tf_dataloader.KerasSequenceLoader(
+        Dataset(df),
+        cont_names=["data", "data2"],
+        label_names=["label"],
+        batch_size=batch_size,
+        shuffle=False,
+    )
+
+    batch = next(iter(train_dataset))
+
+    pad_data_col = tf.RaggedTensor.from_row_lengths(
+        batch[0]["data"][0][:, 0], batch[0]["data"][1][:, 0]
+    ).to_tensor()
+    true_data_col = tf.reshape(
+        tf.ragged.constant(df.iloc[:batch_size, 0].tolist()).to_tensor(), [batch_size, -1]
+    )
+
+    pad_data2_col = tf.RaggedTensor.from_row_lengths(
+        batch[0]["data2"][0][:, 0], batch[0]["data2"][1][:, 0]
+    ).to_tensor()
+    true_data2_col = tf.reshape(
+        tf.ragged.constant(df.iloc[:batch_size, 1].tolist()).to_tensor(), [batch_size, -1]
+    )
+
+    assert np.allclose(pad_data_col.numpy(), true_data_col.numpy())
+    assert np.allclose(pad_data2_col.numpy(), true_data2_col.numpy())
+
+
 def test_shuffling():
     num_rows = 10000
     batch_size = 10000
