@@ -303,23 +303,17 @@ def generate_nvtabular_model(
 
     if output_model == "hugectr":
         _generate_column_types(os.path.join(output_path, str(version), "workflow"), cats, conts)
-        copyfile(
-            os.path.join(os.path.dirname(__file__), "model_hugectr.py"),
-            os.path.join(output_path, str(version), "model.py"),
-        )
     elif output_model == "pytorch":
         _generate_column_types_pytorch(
             os.path.join(output_path, str(version), "workflow"), output_info=output_info
         )
-        copyfile(
-            os.path.join(os.path.dirname(__file__), "model_pytorch.py"),
-            os.path.join(output_path, str(version), "model.py"),
-        )
-    else:
-        copyfile(
-            os.path.join(os.path.dirname(__file__), "model.py"),
-            os.path.join(output_path, str(version), "model.py"),
-        )
+
+    # copy the model file over. note that this isn't necessary with the c++ backend, but
+    # does provide us to use the python backend with just changing the 'backend' parameter
+    copyfile(
+        os.path.join(os.path.dirname(__file__), "model.py"),
+        os.path.join(output_path, str(version), "model.py"),
+    )
 
     return config
 
@@ -394,6 +388,9 @@ def _generate_nvtabular_config(
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
     config = model_config.ModelConfig(name=name, backend=backend, max_batch_size=max_batch_size)
+
+    config.parameters["python_module"].string_value = "nvtabular.inference.triton.model"
+    config.parameters["output_model"].string_value = output_model if output_model else ""
 
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
