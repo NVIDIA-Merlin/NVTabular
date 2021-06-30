@@ -65,8 +65,12 @@ class TabularDataset:
         return self.prepare()
 
     def calculate_statistics(self, transformed=False, overwrite=False, cross_columns=None,
-                             **kwargs) -> DatasetCollectionStatistics:
+                             split_names=("train", "test"),  **kwargs) -> DatasetCollectionStatistics:
         data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
+        if split_names:
+            if not isinstance(split_names, (list, tuple)):
+                split_names = [split_names]
+            data = data.filter_keys(*split_names)
         data_dir = self.transformed_dir if transformed else self.data_dir
         client = self.client_fn() if self.client_fn else None
         stats = data.calculate_statistics(data_dir, client=client, overwrite=overwrite, cross_columns=cross_columns)

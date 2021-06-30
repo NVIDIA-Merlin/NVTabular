@@ -1104,6 +1104,14 @@ class DatasetCollection(SimpleNamespace):
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
+    def filter_keys(self, *keys):
+        outputs = {}
+        for name, dataset in self.items():
+            if name in keys:
+                outputs[name] = dataset
+
+        return self.__class__(**outputs)
+
     def generate_schema(self, output_path, tags_by_column, by_id=True, overwrite=False, client=None):
         from nvtabular.ops import Schema
         from tensorflow_metadata.proto.v0 import schema_pb2
