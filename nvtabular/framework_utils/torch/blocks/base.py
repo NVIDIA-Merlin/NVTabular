@@ -76,8 +76,7 @@ class BlockWithHead(torch.nn.Module):
         return self.head(self.block(inputs, *args, **kwargs), **kwargs)
 
     def compute_loss(self, inputs, targets) -> torch.Tensor:
-        block_outputs = self.forward(inputs)
-        print(block_outputs)
+        block_outputs = self.block(inputs)
         return self.head.compute_loss(block_outputs, targets)
 
     def to_lightning(self):
