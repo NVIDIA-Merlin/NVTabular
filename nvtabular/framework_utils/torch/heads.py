@@ -143,12 +143,11 @@ class Head(torch.nn.Module):
 
         return outputs
 
-    def compute_loss(self, targets: Dict[Text, torch.Tensor], logits: Dict[Text, torch.Tensor],
-                     **kwargs) -> torch.Tensor:
+    def compute_loss(self, inputs, targets, **kwargs) -> torch.Tensor:
         losses = []
 
         for name, task in self.tasks.items():
-            target, predictions = targets[name], logits[name] if isinstance(logits, dict) else logits
-            losses.append(self.tasks[name].compute_loss(target, predictions, **kwargs) * self._task_weights[name])
+            loss = task.compute_loss(inputs, targets)
+            losses.append(loss * self._task_weights[name])
 
         return torch.sum(*losses)
