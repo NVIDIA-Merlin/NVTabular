@@ -8,7 +8,6 @@ from nvtabular.column_group import ColumnGroup, Tag
 import torchmetrics as tm
 
 
-
 class Task(torch.nn.Module):
     def __init__(self, loss, metrics=None, body=Optional[torch.nn.Module], pre=Optional[torch.nn.Module]):
         super().__init__()
@@ -66,11 +65,17 @@ class Task(torch.nn.Module):
 
 
 class Head(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, input_size=None):
         super().__init__()
+        self.input_size = input_size
         self._tasks = {}
         self._tasks_prepares = {}
         self._task_weights = defaultdict(lambda: 1)
+
+    def build(self, input_size, device=None):
+        if device:
+            self.to(device)
+        self.input_size = input_size
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, add_logits=True, task_weights=None):

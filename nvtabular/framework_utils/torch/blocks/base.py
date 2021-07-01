@@ -103,4 +103,16 @@ def right_shift_module(self, other):
     right_side = list(self) if isinstance(self, SequentialBlock) else [self]
     sequential = left_side + right_side
 
-    return SequentialBlock(*sequential)
+    check_gpu = lambda x: next(x.parameters()).is_cuda
+    need_moving_to_gpu = False
+    if isinstance(self, torch.nn.Module):
+        need_moving_to_gpu = need_moving_to_gpu or check_gpu(self)
+    if isinstance(other, torch.nn.Module):
+        need_moving_to_gpu = need_moving_to_gpu or check_gpu(other)
+
+    out = SequentialBlock(*sequential)
+
+    if need_moving_to_gpu:
+        out.to("cuda")
+
+    return out
