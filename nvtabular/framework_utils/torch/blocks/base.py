@@ -98,7 +98,8 @@ class BlockWithHead(torch.nn.Module):
                 return loss
 
             def configure_optimizers(self):
-                optimizer = self.parent.optimizer(self.parameters(), lr=1e-3)
+                optimizer = self.parent.optimizer(self.parent.parameters(), lr=1e-3)
+
                 return optimizer
 
         return BlockWithHeadLightning()
