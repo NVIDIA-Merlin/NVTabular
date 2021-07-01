@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 import math
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -217,7 +217,8 @@ class EmbeddingsLayer(TabularLayer):
 
     @classmethod
     def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
-                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None, **kwargs):
+                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None,
+                          **kwargs) -> Optional["EmbeddingsLayer"]:
         if tags:
             column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
 
@@ -243,6 +244,9 @@ class EmbeddingsLayer(TabularLayer):
                     initializer=init_ops_v2.TruncatedNormal(mean=0.0, stddev=1 / math.sqrt(dim)),
                 )
             )
+
+        if not feature_config:
+            return None
 
         return cls(feature_config, **kwargs)
 
@@ -317,14 +321,14 @@ class InputFeatures(TabularLayer):
                           max_text_length=None,
                           aggregation=None,
                           **kwargs):
-        continuous_layer, categorical_layer = None, None
+        maybe_continuous_layer, maybe_categorical_layer = None, None
         if continuous_tags:
-            continuous_layer = TabularLayer.from_column_group(
+            maybe_continuous_layer = TabularLayer.from_column_group(
                 column_group,
                 tags=continuous_tags,
                 tags_to_filter=continuous_tags_to_filter)
         if categorical_tags:
-            categorical_layer = EmbeddingsLayer.from_column_group(
+            maybe_categorical_layer = EmbeddingsLayer.from_column_group(
                 column_group,
                 tags=categorical_tags,
                 tags_to_filter=categorical_tags_to_filter)
@@ -337,8 +341,8 @@ class InputFeatures(TabularLayer):
                 transformer_model=text_model,
                 max_text_length=max_text_length)
 
-        return cls(continuous_layer=continuous_layer,
-                   categorical_layer=categorical_layer,
+        return cls(continuous_layer=maybe_continuous_layer,
+                   categorical_layer=maybe_categorical_layer,
                    text_embedding_layer=text_model,
                    aggregation=aggregation,
                    **kwargs)

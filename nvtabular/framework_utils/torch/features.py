@@ -97,9 +97,13 @@ class TabularModule(TabularMixin, torch.nn.Module):
         self.aggregation = aggregation
 
     @classmethod
-    def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs):
+    def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs) -> Optional[
+        "TabularModule"]:
         if tags:
             column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
+
+        if not column_group.columns:
+            return None
 
         return cls.from_features(column_group.columns, **kwargs)
 

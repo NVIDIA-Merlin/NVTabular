@@ -1,3 +1,5 @@
+from typing import Optional
+
 import tensorflow as tf
 
 from nvtabular.column_group import ColumnGroup
@@ -142,9 +144,13 @@ class TabularLayer(tf.keras.layers.Layer):
         return [i for i in input_shapes.values() if not isinstance(i, tuple)][0][0]
 
     @classmethod
-    def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs):
+    def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None,
+                          **kwargs) -> Optional["TabularLayer"]:
         if tags:
             column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
+
+        if not column_group.columns:
+            return None
 
         return cls.from_features(column_group.columns, **kwargs)
 
