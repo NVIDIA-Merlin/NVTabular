@@ -23,7 +23,7 @@ class Block(BlockMixin, torch.nn.Module):
         return self >> features.AsTabular(name)
 
 
-class SequentialBlock(features.TabularMixin, torch.nn.Sequential):
+class SequentialBlock(features.TabularMixin, BlockMixin, torch.nn.Sequential):
     def __rrshift__(self, other):
         return right_shift_module(self, other)
 
