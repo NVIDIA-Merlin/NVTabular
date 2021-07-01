@@ -32,6 +32,11 @@ class TritonPythonModel:
         self.model_config = json.loads(args["model_config"])
         repo_path = self.model_config["parameters"]["feast_repo_path"]["string_value"]
 
+        self.entity_id = "user_id"
+        self.entity_view = "user_features"
+        self.features = ["movie_id_count"]
+        self.mh_features = ["movie_ids", "genres", "search_terms"]
+
         self.store = FeatureStore(repo_path=repo_path)
 
     def execute(self, requests):
@@ -66,75 +71,44 @@ class TritonPythonModel:
         for request in requests:
             # Perform inference on the request and append it to responses list...
             try:
-                user_ids = pb_utils.get_input_tensor_by_name(request, "user_id").as_numpy()
+                entity_ids = pb_utils.get_input_tensor_by_name(request, self.entity_id).as_numpy()
+                entity_rows = [{self.entity_id: int(entity_id)} for entity_id in entity_ids]
 
-                entity_rows = [{"user_id": int(user_id)} for user_id in user_ids]
+                feature_names = self.features + self.mh_features
+                feature_refs = [
+                    ":".join([self.entity_view, feature_name]) for feature_name in feature_names
+                ]
 
-                feature_vector = self.store.get_online_features(
-                    feature_refs=[
-                        "user_features:search_terms",
-                        "user_features:genres",
-                        "user_features:movie_ids",
-                    ],
+                features = self.store.get_online_features(
+                    feature_refs=feature_refs,
                     entity_rows=entity_rows,
                 ).to_dict()
 
-                movie_ids = (
-                    np.array(feature_vector["user_features__movie_ids"]).astype(int32_dtype).T
-                )
-                genres = np.array(feature_vector["user_features__genres"]).astype(int32_dtype).T
-                search_terms = (
-                    np.array(feature_vector["user_features__search_terms"]).astype(int32_dtype).T
-                )
+                output_tensors = []
 
-                movie_id_count = pb_utils.Tensor(
-                    "movie_id_count",
-                    np.array([[len(movie_ids)]], dtype=np.int32),
-                )
+                # Numerical and single-hot categorical
+                for feature_name in self.features:
+                    feature_value = features["__".join([self.entity_view, feature_name])]
+                    feature_array = np.array(feature_value).astype(int32_dtype).T
 
-                movie_ids_values = pb_utils.Tensor(
-                    "movie_ids__values",
-                    movie_ids,
-                )
+                    output_tensors.append(pb_utils.Tensor(feature_name, feature_array))
 
-                movie_ids_nnzs = pb_utils.Tensor(
-                    "movie_ids__nnzs",
-                    np.array([[len(movie_ids)]], dtype=np.int32),
-                )
+                # Multi-hot categorical
+                for feature_name in self.mh_features:
+                    feature_value = features["__".join([self.entity_view, feature_name])]
+                    feature_array = np.array(feature_value).astype(int32_dtype).T
 
-                genres_values = pb_utils.Tensor(
-                    "genres__values",
-                    genres,
-                )
-
-                genres_nnzs = pb_utils.Tensor(
-                    "genres__nnzs",
-                    np.array([[len(genres)]], dtype=np.int32),
-                )
-
-                search_terms_values = pb_utils.Tensor(
-                    "search_terms__values",
-                    search_terms,
-                )
-
-                search_terms_nnzs = pb_utils.Tensor(
-                    "search_terms__nnzs",
-                    np.array([[len(search_terms)]], dtype=np.int32),
-                )
-
-                responses.append(
-                    pb_utils.InferenceResponse(
-                        output_tensors=[
-                            movie_id_count,
-                            movie_ids_values,
-                            movie_ids_nnzs,
-                            genres_values,
-                            genres_nnzs,
-                            search_terms_values,
-                            search_terms_nnzs,
-                        ]
+                    output_tensors.append(
+                        pb_utils.Tensor("__".join([feature_name, "values"]), feature_array)
                     )
-                )
+                    output_tensors.append(
+                        pb_utils.Tensor(
+                            "__".join([feature_name, "nnzs"]),
+                            np.array([[len(feature_array)]], dtype=np.int32),
+                        )
+                    )
+
+                responses.append(pb_utils.InferenceResponse(output_tensors=output_tensors))
             except Exception as e:
                 exc = sys.exc_info()
                 formatted_tb = str(traceback.format_tb(exc[-1]))
