@@ -1,15 +1,18 @@
 from collections import defaultdict
-from typing import Optional, Dict, Text, Union
+from typing import Optional, Dict, Text
 
 import torch
-from torch.nn import functional as F
 
-from nvtabular.column_group import ColumnGroup, Tag
+from nvtabular.column_group import ColumnGroup
 import torchmetrics as tm
 
 
 class Task(torch.nn.Module):
-    def __init__(self, loss, metrics=None, body=Optional[torch.nn.Module], pre=Optional[torch.nn.Module]):
+    def __init__(self,
+                 loss,
+                 metrics=None,
+                 body: Optional[torch.nn.Module] = None,
+                 pre: Optional[torch.nn.Module] = None):
         super().__init__()
         self.metrics = metrics
         self.loss = loss
