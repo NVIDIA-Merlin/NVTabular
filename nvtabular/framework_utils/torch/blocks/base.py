@@ -70,8 +70,8 @@ class BlockWithHead(torch.nn.Module):
     def forward(self, inputs, *args, **kwargs):
         return self.head(self.block(inputs, *args, **kwargs), **kwargs)
 
-    def compute_loss(self, inputs, targets, training: bool = False) -> torch.Tensor:
-        logits = self(inputs, training=training)
+    def compute_loss(self, inputs, targets) -> torch.Tensor:
+        logits = self(inputs)
 
         return self.head.compute_loss(targets, logits)
 
@@ -89,7 +89,7 @@ class BlockWithHead(torch.nn.Module):
                 return self.parent(inputs, *args, **kwargs)
 
             def training_step(self, batch, batch_idx):
-                loss = self.parent.compute_loss(*batch, training=True)
+                loss = self.parent.compute_loss(*batch)
                 self.log('train_loss', loss)
 
                 return loss
