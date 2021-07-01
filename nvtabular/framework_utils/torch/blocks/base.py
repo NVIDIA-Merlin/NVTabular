@@ -1,3 +1,4 @@
+import abc
 from typing import Union
 
 import torch
@@ -20,6 +21,18 @@ class Block(BlockMixin, torch.nn.Module):
             name = self.name
 
         return self >> features.AsTabular(name)
+
+
+class BuildableBlock(abc.ABC):
+    @abc.abstractmethod
+    def build(self, input_shape) -> Union[TabularBlock, Block]:
+        raise NotImplementedError
+
+    def __rrshift__(self, other):
+        print("__rrshift__")
+
+    def __rshift__(self, other):
+        print("__rshift__")
 
 
 class SequentialBlock(features.TabularMixin, torch.nn.Sequential):

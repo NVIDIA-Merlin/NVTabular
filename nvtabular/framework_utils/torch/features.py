@@ -135,7 +135,9 @@ class TabularModule(TabularMixin, torch.nn.Module):
     def forward(self, x, *args, **kwargs):
         return x
 
-    def build(self, input_size):
+    def build(self, input_size, device=None):
+        if device:
+            self.to(device)
         self.input_size = input_size
 
     def forward_output_size(self, input_size):
