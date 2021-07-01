@@ -21,6 +21,9 @@ class FilterFeatures(torch.nn.Module):
 
         return outputs
 
+    def forward_output_shape(self, input_shape):
+        return {k: v for k, v in input_shape.items() if k in self.columns}
+
 
 class ConcatFeatures(torch.nn.Module):
     def __init__(self, axis=-1):
@@ -130,6 +133,20 @@ class TabularModule(TabularMixin, torch.nn.Module):
 
     def forward(self, x, *args, **kwargs):
         return x
+
+    def forward_output_size(self, input_size):
+        batch_size = self.calculate_batch_size_from_input_shapes(input_size)
+        if self.aggregation == "concat":
+            return batch_size, sum([i[1] for i in input_size.values()])
+        elif self.aggregation == "stack":
+            last_dim = [i for i in input_size.values()][0][-1]
+
+            return batch_size, len(input_size), last_dim
+
+        return input_size
+
+    def calculate_batch_size_from_input_size(self, input_size):
+        return [i for i in input_size.values() if not isinstance(i, tuple)][0][0]
 
     def __rrshift__(self, other):
         from nvtabular.framework_utils.torch import right_shift_module

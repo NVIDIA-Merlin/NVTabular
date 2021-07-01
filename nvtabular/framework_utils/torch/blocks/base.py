@@ -29,6 +29,12 @@ class SequentialBlock(features.TabularMixin, torch.nn.Sequential):
     def __rshift__(self, other):
         return right_shift_module(other, self)
 
+    def as_tabular(self, name=None):
+        if not name:
+            name = self.name
+
+        return self >> features.AsTabular(name)
+
 
 BlockType = Union[torch.nn.Module, Block]
 

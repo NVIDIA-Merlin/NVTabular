@@ -139,12 +139,13 @@ class EmbeddingsModule(TabularModule):
 
         return embedded_outputs
 
-    def forward_output_size(self, batch_size):
+    def forward_output_size(self, input_sizes):
         sizes = {}
+        batch_size = self.calculate_batch_size_from_input_shapes(input_sizes)
         for name, feature in self.feature_config.items():
             sizes[name] = torch.Size([batch_size, feature.table.dim])
 
-        return sizes
+        return super().forward_output_size(sizes)
 
 
 class InputFeatures(TabularModule):
@@ -204,3 +205,10 @@ class InputFeatures(TabularModule):
                    categorical_layer=maybe_categorical_layer,
                    text_embedding_layer=text_model,
                    aggregation=aggregation)
+
+    def forward_output_size(self, input_size):
+        output_sizes = {}
+        for in_layer in self.to_apply:
+            output_sizes.update(in_layer.forward_output_size(input_size))
+
+        return super().forward_output_size(output_sizes)
