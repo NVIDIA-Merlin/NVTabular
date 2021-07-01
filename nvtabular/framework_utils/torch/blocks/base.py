@@ -7,7 +7,13 @@ from nvtabular.framework_utils.torch import features
 
 
 class BlockMixin:
-    def to_model(self, head, optimizer=torch.optim.Adam, **kwargs):
+    def to_model(self, head, optimizer=torch.optim.Adam, block_output_size=None, **kwargs):
+        if not block_output_size:
+            if getattr(self, "input_size", None) and getattr(self, "forward_output_size", None):
+                block_output_size = self.forward_output_size(self.input_size)
+        if block_output_size:
+            self.output_size = block_output_size
+
         return BlockWithHead(self, head, optimizer=optimizer, **kwargs)
 
 

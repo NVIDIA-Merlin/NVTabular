@@ -69,7 +69,6 @@ class Head(torch.nn.Module):
         super().__init__()
         self.input_size = input_size
         self._tasks = {}
-        self._tasks_prepares = {}
         self._task_weights = defaultdict(lambda: 1)
 
     def build(self, input_size, device=None):
@@ -78,10 +77,10 @@ class Head(torch.nn.Module):
         self.input_size = input_size
 
     @classmethod
-    def from_column_group(cls, column_group: ColumnGroup, add_logits=True, task_weights=None):
+    def from_column_group(cls, column_group: ColumnGroup, add_logits=True, task_weights=None, input_size=None):
         if task_weights is None:
             task_weights = {}
-        to_return = cls()
+        to_return = cls(input_size=input_size)
 
         for binary_target in column_group.get_tagged(Tag.TARGETS_BINARY).columns:
             to_return = to_return.add_binary_classification_task(binary_target, add_logit_layer=add_logits,
@@ -106,9 +105,10 @@ class Head(torch.nn.Module):
 
     def add_binary_classification_task(self, target_name, add_logit_layer=True, task_weight=1):
         self._tasks[target_name] = Task.binary_classification()
+
         if add_logit_layer:
-            self._tasks_prepares[target_name] = tf.keras.layers.Dense(1, activation="sigmoid",
-                                                                      name=f"binary/{target_name}")
+            self._tasks[target_name].pre = torch.nn.Linear(self.input_size, 1)
+
         if task_weight:
             self._task_weights[target_name] = task_weight
 
@@ -117,7 +117,7 @@ class Head(torch.nn.Module):
     def add_regression_task(self, target_name, add_logit_layer=True, task_weight=1):
         self._tasks[target_name] = Task.regression()
         if add_logit_layer:
-            self._tasks_prepares[target_name] = tf.keras.layers.Dense(1, name=f"regression/{target_name}")
+            self._tasks[target_name].pre = torch.nn.Linear(self.input_size, 1)
         if task_weight:
             self._task_weights[target_name] = task_weight
 
@@ -134,9 +134,7 @@ class Head(torch.nn.Module):
         outputs = {}
 
         for name, task in self._tasks.items():
-            predictions = self._tasks_prepares[name](logits, **kwargs) if name in self._tasks_prepares else logits
-
-            outputs[name] = predictions
+            outputs[name] = task(logits, **kwargs)
 
         return outputs
 
@@ -146,9 +144,6 @@ class Head(torch.nn.Module):
 
         for name, task in self._tasks.items():
             target, predictions = targets[name], logits[name]
-            # predictions = self._tasks_prepares[name](logits) if name in self._tasks_prepares else logits
-            # print(predictions)
+            losses.append(self._tasks[name].compute_loss(target, predictions, **kwargs) * self._task_weights[name])
 
-            losses.append(self._tasks[name](target, predictions, **kwargs) * self._task_weights[name])
-
-        return tf.reduce_sum(losses)
+        return torch.sum(*losses)
