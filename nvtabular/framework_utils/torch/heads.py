@@ -148,7 +148,7 @@ class Head(torch.nn.Module):
         losses = []
 
         for name, task in self.tasks.items():
-            target, predictions = targets[name], logits[name]
+            target, predictions = targets[name], logits[name] if isinstance(logits, dict) else logits
             losses.append(self.tasks[name].compute_loss(target, predictions, **kwargs) * self._task_weights[name])
 
         return torch.sum(*losses)
