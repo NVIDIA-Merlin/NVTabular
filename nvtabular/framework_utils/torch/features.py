@@ -146,7 +146,7 @@ class TabularModule(TabularMixin, torch.nn.Module):
         return input_size
 
     def calculate_batch_size_from_input_size(self, input_size):
-        return [i for i in input_size.values() if not isinstance(i, tuple)][0][0]
+        return [i for i in input_size.values() if isinstance(i, torch.Size)][0][0]
 
     def __rrshift__(self, other):
         from nvtabular.framework_utils.torch import right_shift_module
