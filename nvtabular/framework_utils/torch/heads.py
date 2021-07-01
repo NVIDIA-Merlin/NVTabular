@@ -70,7 +70,7 @@ class Head(torch.nn.Module):
         if isinstance(input_size, int):
             input_size = [input_size]
         self.input_size = input_size
-        self._tasks = {}
+        self.tasks = torch.nn.ModuleDict()
         self._task_weights = defaultdict(lambda: 1)
 
     def build(self, input_size, device=None):
@@ -84,11 +84,11 @@ class Head(torch.nn.Module):
             task_weights = {}
         to_return = cls(input_size=input_size)
 
-        for binary_target in column_group.get_tagged(Tag.TARGETS_BINARY).columns:
+        for binary_target in column_group.binary_targets_columns:
             to_return = to_return.add_binary_classification_task(binary_target, add_logit_layer=add_logits,
                                                                  task_weight=task_weights.get(binary_target, 1))
 
-        for regression_target in column_group.get_tagged(Tag.TARGETS_REGRESSION).columns:
+        for regression_target in column_group.regression_targets_columns:
             to_return = to_return.add_regression_task(regression_target, add_logit_layer=add_logits,
                                                       task_weight=task_weights.get(regression_target, 1))
 
@@ -97,7 +97,7 @@ class Head(torch.nn.Module):
         return to_return
 
     def add_task(self, target_name, task: Task, pre: Optional[torch.nn.Module] = None, task_weight=1):
-        self._tasks[target_name] = task
+        self.tasks[target_name] = task
         if pre:
             self._tasks_prepares[target_name] = pre
         if task_weight:
@@ -106,10 +106,10 @@ class Head(torch.nn.Module):
         return self
 
     def add_binary_classification_task(self, target_name, add_logit_layer=True, task_weight=1):
-        self._tasks[target_name] = Task.binary_classification()
+        self.tasks[target_name] = Task.binary_classification()
 
         if add_logit_layer:
-            self._tasks[target_name].pre = torch.nn.Linear(self.input_size[-1], 1)
+            self.tasks[target_name].pre = torch.nn.Linear(self.input_size[-1], 1)
 
         if task_weight:
             self._task_weights[target_name] = task_weight
@@ -117,9 +117,9 @@ class Head(torch.nn.Module):
         return self
 
     def add_regression_task(self, target_name, add_logit_layer=True, task_weight=1):
-        self._tasks[target_name] = Task.regression()
+        self.tasks[target_name] = Task.regression()
         if add_logit_layer:
-            self._tasks[target_name].pre = torch.nn.Linear(self.input_size[-1], 1)
+            self.tasks[target_name].pre = torch.nn.Linear(self.input_size[-1], 1)
         if task_weight:
             self._task_weights[target_name] = task_weight
 
@@ -127,7 +127,7 @@ class Head(torch.nn.Module):
 
     def pop_labels(self, inputs: Dict[Text, torch.Tensor]):
         outputs = {}
-        for name in self._tasks.keys():
+        for name in self.tasks.keys():
             outputs[name] = inputs.pop(name)
 
         return outputs
@@ -135,7 +135,7 @@ class Head(torch.nn.Module):
     def forward(self, logits: torch.Tensor, **kwargs):
         outputs = {}
 
-        for name, task in self._tasks.items():
+        for name, task in self.tasks.items():
             outputs[name] = task(logits, **kwargs)
 
         return outputs
@@ -144,8 +144,8 @@ class Head(torch.nn.Module):
                      **kwargs) -> torch.Tensor:
         losses = []
 
-        for name, task in self._tasks.items():
+        for name, task in self.tasks.items():
             target, predictions = targets[name], logits[name]
-            losses.append(self._tasks[name].compute_loss(target, predictions, **kwargs) * self._task_weights[name])
+            losses.append(self.tasks[name].compute_loss(target, predictions, **kwargs) * self._task_weights[name])
 
         return torch.sum(*losses)
