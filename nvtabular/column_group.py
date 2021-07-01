@@ -279,6 +279,9 @@ class ColumnGroup:
         self.children.append(child)
         child.kind = f"tagged={self._tags_repr} " + self._cols_repr
 
+        if self._schema:
+            child._schema = self.filter_schema(columns)
+
         return child
 
     def tags_by_column(self):
@@ -297,6 +300,21 @@ class ColumnGroup:
                                 outputs[col].append(tag)
 
         return outputs
+
+    def filter_schema(self, columns):
+        if not self._schema:
+            return None
+
+        from tensorflow_metadata.proto.v0 import schema_pb2
+
+        schema = schema_pb2.Schema()
+
+        for feat in self._schema.feature:
+            if feat.name in columns:
+                f = schema.feature.add()
+                f.CopyFrom(feat)
+
+        return schema
 
     @property
     def targets_columns(self):
