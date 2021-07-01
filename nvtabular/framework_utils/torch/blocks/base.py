@@ -29,7 +29,10 @@ class BuildableBlock(abc.ABC):
         raise NotImplementedError
 
     def __rrshift__(self, other):
-        print("__rrshift__")
+        module = self.build(other.output_size())
+        print(module)
+
+        return right_shift_module(module, other)
 
     def __rshift__(self, other):
         print("__rshift__")
