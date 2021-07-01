@@ -100,6 +100,7 @@ class TabularModule(TabularMixin, torch.nn.Module):
     def __init__(self, aggregation=None):
         super().__init__()
         self.aggregation = aggregation
+        self.input_size = None
 
     @classmethod
     def from_column_group(cls,
@@ -134,6 +135,9 @@ class TabularModule(TabularMixin, torch.nn.Module):
     def forward(self, x, *args, **kwargs):
         return x
 
+    def build(self, input_size):
+        self.input_size = input_size
+
     def forward_output_size(self, input_size):
         batch_size = self.calculate_batch_size_from_input_size(input_size)
         if self.aggregation == "concat":
@@ -144,6 +148,13 @@ class TabularModule(TabularMixin, torch.nn.Module):
             return batch_size, len(input_size), last_dim
 
         return input_size
+
+    def output_size(self):
+        if not self.input_sizes:
+            # TODO: log warning here
+            pass
+
+        return self.forward_output_size(self.input_size)
 
     def calculate_batch_size_from_input_size(self, input_size):
         return [i for i in input_size.values() if isinstance(i, torch.Size)][0][0]

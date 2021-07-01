@@ -149,19 +149,19 @@ class EmbeddingsModule(TabularModule):
 
 
 class InputFeatures(TabularModule):
-    def __init__(self, continuous_layer=None, categorical_layer=None, text_embedding_layer=None, aggregation=None):
+    def __init__(self, continuous_module=None, categorical_module=None, text_embedding_module=None, aggregation=None):
         super(InputFeatures, self).__init__(aggregation=aggregation)
-        self.categorical_layer = categorical_layer
-        self.continuous_layer = continuous_layer
-        self.text_embedding_layer = text_embedding_layer
+        self.categorical_module = categorical_module
+        self.continuous_module = continuous_module
+        self.text_embedding_module = text_embedding_module
 
         self.to_apply = []
-        if continuous_layer:
-            self.to_apply.append(continuous_layer)
-        if categorical_layer:
-            self.to_apply.append(categorical_layer)
-        if text_embedding_layer:
-            self.to_apply.append(text_embedding_layer)
+        if continuous_module:
+            self.to_apply.append(continuous_module)
+        if categorical_module:
+            self.to_apply.append(categorical_module)
+        if text_embedding_module:
+            self.to_apply.append(text_embedding_module)
 
         assert (self.to_apply is not []), "Please provide at least one input layer"
 
@@ -181,14 +181,14 @@ class InputFeatures(TabularModule):
                           max_text_length=None,
                           aggregation=None,
                           **kwargs):
-        maybe_continuous_layer, maybe_categorical_layer = None, None
+        maybe_continuous_module, maybe_categorical_module = None, None
         if continuous_tags:
-            maybe_continuous_layer = TabularModule.from_column_group(
+            maybe_continuous_module = TabularModule.from_column_group(
                 column_group,
                 tags=continuous_tags,
                 tags_to_filter=continuous_tags_to_filter)
         if categorical_tags:
-            maybe_categorical_layer = EmbeddingsModule.from_column_group(
+            maybe_categorical_module = EmbeddingsModule.from_column_group(
                 column_group,
                 tags=categorical_tags,
                 tags_to_filter=categorical_tags_to_filter)
@@ -201,9 +201,9 @@ class InputFeatures(TabularModule):
         #         transformer_model=text_model,
         #         max_text_length=max_text_length)
 
-        return cls(continuous_layer=maybe_continuous_layer,
-                   categorical_layer=maybe_categorical_layer,
-                   text_embedding_layer=text_model,
+        return cls(continuous_module=maybe_continuous_module,
+                   categorical_module=maybe_categorical_module,
+                   text_embedding_module=text_model,
                    aggregation=aggregation)
 
     def forward_output_size(self, input_size):
