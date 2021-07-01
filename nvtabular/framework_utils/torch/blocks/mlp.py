@@ -20,7 +20,7 @@ class MLPBlock(BuildableBlock):
         self.dimensions = dimensions
 
     def build(self, input_shape) -> SequentialBlock:
-        layer_input_sizes = input_shape + self.dimensions[:-1]
+        layer_input_sizes = list(input_shape[-1]) + list(self.dimensions[:-1])
         layer_output_sizes = self.dimensions
         sequential = [
             self._create_layer(input_size, output_size)
