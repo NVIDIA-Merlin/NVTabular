@@ -141,7 +141,7 @@ class EmbeddingsModule(TabularModule):
 
     def forward_output_size(self, input_sizes):
         sizes = {}
-        batch_size = self.calculate_batch_size_from_input_shapes(input_sizes)
+        batch_size = self.calculate_batch_size_from_input_size(input_sizes)
         for name, feature in self.feature_config.items():
             sizes[name] = torch.Size([batch_size, feature.table.dim])
 
