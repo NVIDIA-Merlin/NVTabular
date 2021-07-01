@@ -14,7 +14,12 @@ class BlockMixin:
         if block_output_size:
             self.output_size = block_output_size
 
-        return BlockWithHead(self, head, optimizer=optimizer, **kwargs)
+        out = BlockWithHead(self, head, optimizer=optimizer, **kwargs)
+
+        if next(self.parameters()).is_cuda:
+            out.to("cuda")
+
+        return out
 
 
 class TabularBlock(features.TabularModule, BlockMixin):
