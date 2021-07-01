@@ -23,21 +23,6 @@ class Block(BlockMixin, torch.nn.Module):
         return self >> features.AsTabular(name)
 
 
-class BuildableBlock(abc.ABC):
-    @abc.abstractmethod
-    def build(self, input_shape) -> Union[TabularBlock, Block]:
-        raise NotImplementedError
-
-    def __rrshift__(self, other):
-        module = self.build(other.output_size())
-        print(module)
-
-        return right_shift_module(module, other)
-
-    def __rshift__(self, other):
-        print("__rshift__")
-
-
 class SequentialBlock(features.TabularMixin, torch.nn.Sequential):
     def __rrshift__(self, other):
         return right_shift_module(self, other)
@@ -50,6 +35,20 @@ class SequentialBlock(features.TabularMixin, torch.nn.Sequential):
             name = self.name
 
         return self >> features.AsTabular(name)
+
+
+class BuildableBlock(abc.ABC):
+    @abc.abstractmethod
+    def build(self, input_shape) -> Union[TabularBlock, Block, SequentialBlock]:
+        raise NotImplementedError
+
+    def __rrshift__(self, other):
+        module = self.build(other.output_size())
+
+        return right_shift_module(module, other)
+
+    def __rshift__(self, other):
+        print("__rshift__")
 
 
 BlockType = Union[torch.nn.Module, Block]
