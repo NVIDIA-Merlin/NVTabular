@@ -150,7 +150,7 @@ class TabularModule(TabularMixin, torch.nn.Module):
         return input_size
 
     def output_size(self):
-        if not self.input_sizes:
+        if not self.input_size:
             # TODO: log warning here
             pass
 
