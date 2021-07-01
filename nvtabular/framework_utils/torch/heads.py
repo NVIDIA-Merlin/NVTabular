@@ -67,6 +67,8 @@ class Task(torch.nn.Module):
 class Head(torch.nn.Module):
     def __init__(self, input_size=None):
         super().__init__()
+        if isinstance(input_size, int):
+            input_size = [input_size]
         self.input_size = input_size
         self._tasks = {}
         self._task_weights = defaultdict(lambda: 1)
@@ -107,7 +109,7 @@ class Head(torch.nn.Module):
         self._tasks[target_name] = Task.binary_classification()
 
         if add_logit_layer:
-            self._tasks[target_name].pre = torch.nn.Linear(self.input_size, 1)
+            self._tasks[target_name].pre = torch.nn.Linear(self.input_size[-1], 1)
 
         if task_weight:
             self._task_weights[target_name] = task_weight
@@ -117,7 +119,7 @@ class Head(torch.nn.Module):
     def add_regression_task(self, target_name, add_logit_layer=True, task_weight=1):
         self._tasks[target_name] = Task.regression()
         if add_logit_layer:
-            self._tasks[target_name].pre = torch.nn.Linear(self.input_size, 1)
+            self._tasks[target_name].pre = torch.nn.Linear(self.input_size[-1], 1)
         if task_weight:
             self._task_weights[target_name] = task_weight
 
