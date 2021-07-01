@@ -24,6 +24,8 @@ class Task(torch.nn.Module):
         if self.body:
             x = self.body(x)
         if self.pre:
+            print(x)
+            print(x.size())
             x = self.pre(x)
 
         return x
