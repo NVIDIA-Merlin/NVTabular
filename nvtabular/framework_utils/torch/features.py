@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 
 from nvtabular.column_group import ColumnGroup
@@ -97,8 +99,11 @@ class TabularModule(TabularMixin, torch.nn.Module):
         self.aggregation = aggregation
 
     @classmethod
-    def from_column_group(cls, column_group: ColumnGroup, tags=None, tags_to_filter=None, **kwargs) -> Optional[
-        "TabularModule"]:
+    def from_column_group(cls,
+                          column_group: ColumnGroup,
+                          tags=None,
+                          tags_to_filter=None,
+                          **kwargs) -> Optional["TabularModule"]:
         if tags:
             column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
 
