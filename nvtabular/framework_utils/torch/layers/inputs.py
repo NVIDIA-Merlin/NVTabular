@@ -3,7 +3,7 @@ from typing import Optional, Callable, Text, Any, Dict
 import torch
 
 from nvtabular.column_group import ColumnGroup
-from nvtabular.framework_utils.torch import TabularModule, FilterFeatures
+from nvtabular.framework_utils.torch.features import TabularModule, FilterFeatures
 from nvtabular.tag import Tag
 
 
@@ -138,6 +138,13 @@ class EmbeddingsModule(TabularModule):
                 embedded_outputs[name] = self.embedding_tables[name](val)
 
         return embedded_outputs
+
+    def forward_output_size(self, batch_size):
+        sizes = {}
+        for name, feature in self.feature_config.items():
+            sizes[name] = torch.Size([batch_size, feature.table.dim])
+
+        return sizes
 
 
 class InputFeatures(TabularModule):

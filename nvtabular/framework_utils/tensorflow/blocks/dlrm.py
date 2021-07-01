@@ -64,7 +64,4 @@ class DLRMBlock(Block):
         stacked = self.embedding_layer(inputs, merge_with=self.continuous_embedding)
         interactions = self.interaction_layer(stacked)
 
-        if not self.top_mlp:
-            return interactions
-
-        return self.top_mlp(interactions)
+        return interactions if not self.top_mlp else self.top_mlp(interactions)

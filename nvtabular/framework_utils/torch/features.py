@@ -113,6 +113,18 @@ class TabularModule(TabularMixin, torch.nn.Module):
         return cls.from_features(column_group.columns, **kwargs)
 
     @classmethod
+    def from_schema(cls,
+                    schema,
+                    tags=None,
+                    tags_to_filter=None,
+                    **kwargs) -> Optional["TabularModule"]:
+        from nvtabular.column_group import ColumnGroup
+
+        col_group = ColumnGroup.from_schema(schema)
+
+        return cls.from_column_group(col_group, tags=tags, tags_to_filter=tags_to_filter, **kwargs)
+
+    @classmethod
     def from_features(cls, features, **kwargs):
         return features >> cls(**kwargs)
 

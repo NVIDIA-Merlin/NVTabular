@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import os
+from typing import Dict
 
 import pandas as pd
 import torch
@@ -156,6 +157,21 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     @property
     def columns(self):
         return self._column_group
+
+    @property
+    def output_sizes(self) -> Dict[str, torch.Size]:
+        sizes = {}
+
+        for feature in self.schema.feature:
+            name = feature.name
+            if feature.HasField("value_count"):
+                sizes[name] = torch.Size([self.batch_size, feature.value_count.max])
+            elif feature.HasField("shape"):
+                sizes[name] = torch.Size([self.batch_size] + [d.size for d in feature.shape.dim])
+            else:
+                sizes[name] = torch.Size([self.batch_size, 1])
+
+        return sizes
 
     def __iter__(self):
         return DataLoader.__iter__(self)
