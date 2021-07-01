@@ -24,8 +24,8 @@ class Task(torch.nn.Module):
         if self.body:
             x = self.body(x)
         if self.pre:
-            print(x)
-            print(x.size())
+            # print(x)
+            # print(x.size())
             x = self.pre(x)
 
         return x
@@ -142,6 +142,9 @@ class Head(torch.nn.Module):
 
         for name, task in self.tasks.items():
             outputs[name] = task(logits, **kwargs)
+
+        if len(outputs) == 1:
+            return outputs[list(outputs.keys())[0]]
 
         return outputs
 
