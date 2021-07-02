@@ -13,11 +13,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-from torch.nn import Module
-
-
-Module.__rrshift__ = right_shift_module
-
-# __all__ = ["TorchAsyncItr", "Model", "process_epoch"]
