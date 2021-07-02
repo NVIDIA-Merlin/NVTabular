@@ -72,7 +72,7 @@ class Task(torch.nn.Module):
             tm.Precision(num_classes=2),
             tm.Recall(num_classes=2),
             tm.Accuracy(),
-            tm.AUC()
+            # tm.AUC()
         ]
 
     @classmethod
