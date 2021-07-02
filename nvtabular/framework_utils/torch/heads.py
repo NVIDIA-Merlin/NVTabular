@@ -43,7 +43,8 @@ class Task(torch.nn.Module):
 
         if compute_metrics:
             metric_dict = self.compute_metrics(predictions, targets, mode="train")
-            print(metric_dict)
+
+            return loss, metric_dict
 
         return loss
 
