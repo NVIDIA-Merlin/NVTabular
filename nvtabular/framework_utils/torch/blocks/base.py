@@ -3,7 +3,7 @@ from typing import Union
 
 import torch
 
-from nvtabular.framework_utils.torch import features
+from nvtabular.framework_utils.torch import features, Head
 
 
 class BlockMixin:
@@ -66,7 +66,7 @@ BlockType = Union[torch.nn.Module, Block]
 
 
 class BlockWithHead(torch.nn.Module):
-    def __init__(self, block: BlockType, head, optimizer=torch.optim.Adam, **kwargs):
+    def __init__(self, block: BlockType, head: Head, optimizer=torch.optim.Adam, **kwargs):
         super().__init__()
         self.block = block
         self.head = head

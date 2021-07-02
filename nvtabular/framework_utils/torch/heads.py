@@ -12,8 +12,10 @@ class Task(torch.nn.Module):
                  loss,
                  metrics=None,
                  body: Optional[torch.nn.Module] = None,
+                 forward_to_prediction_fn=lambda x: x,
                  pre: Optional[torch.nn.Module] = None):
         super().__init__()
+        self.forward_to_prediction_fn = forward_to_prediction_fn
         self.metrics = torch.nn.ModuleList(metrics)
         self.loss = loss
         self.body = body
@@ -48,9 +50,9 @@ class Task(torch.nn.Module):
 
     def calculate_metrics(self, predictions, labels, mode="val", forward=False) -> Dict[str, torch.Tensor]:
         outputs = {}
+        predictions = self.forward_to_prediction_fn(predictions)
         for metric in self.metrics:
             if isinstance(metric, tuple([type(x) for x in self.binary_classification_metrics()])):
-                predictions = torch.round(predictions).int()
                 labels = labels.int()
             outputs[f"{mode}_{metric.__class__.__name__.lower()}"] = metric(predictions, labels)
 
@@ -78,6 +80,7 @@ class Task(torch.nn.Module):
 
         return cls(
             loss=torch.nn.BCELoss(),
+            forward_to_prediction_fn=lambda x: torch.round(x),
             metrics=metrics,
         )
 
@@ -199,11 +202,11 @@ class Head(torch.nn.Module):
 
         return outputs
 
-    def compute_loss(self, inputs, targets, **kwargs) -> torch.Tensor:
+    def compute_loss(self, block_outputs, targets, **kwargs) -> torch.Tensor:
         losses = []
 
         for name, task in self.tasks.items():
-            loss = task.compute_loss(inputs, targets)
+            loss = task.compute_loss(block_outputs, targets)
             losses.append(loss * self._task_weights[name])
 
         return torch.sum(*losses)
