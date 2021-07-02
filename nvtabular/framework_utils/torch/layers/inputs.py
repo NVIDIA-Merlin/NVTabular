@@ -150,6 +150,7 @@ class EmbeddingsModule(TabularModule):
 
 class InputFeatures(TabularModule):
     def __init__(self, continuous_module=None, categorical_module=None, text_embedding_module=None, aggregation=None):
+        super(InputFeatures, self).__init__()
         self.categorical_module = categorical_module
         self.continuous_module = continuous_module
         self.text_embedding_module = text_embedding_module
@@ -163,7 +164,7 @@ class InputFeatures(TabularModule):
             self.to_apply.append(text_embedding_module)
 
         assert (self.to_apply is not []), "Please provide at least one input layer"
-        super(InputFeatures, self).__init__(aggregation=aggregation)
+        self.set_aggregation(aggregation)
 
     def forward(self, inputs, **kwargs):
         return self.to_apply[0](inputs, merge_with=self.to_apply[1:] if len(self.to_apply) > 1 else None)
