@@ -3,7 +3,8 @@ from typing import Union
 
 import torch
 
-from nvtabular.framework_utils.torch import features, Head
+from nvtabular.framework_utils.torch import features
+from nvtabular.framework_utils.torch.heads import Head
 
 
 class BlockMixin:
