@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 
+from .deepfm import DeepFM
+from .dlrm import DLRM
+from .simple_mlp import SimpleMLP
+from .wide_and_deep import WideAndDeep
+from .xdeepfm import xDeepFM
 
-from torch.nn import Module
-
-
-Module.__rrshift__ = right_shift_module
-
-# __all__ = ["TorchAsyncItr", "Model", "process_epoch"]
+__all__ = [DeepFM, DLRM, SimpleMLP, WideAndDeep, xDeepFM]

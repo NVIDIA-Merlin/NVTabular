@@ -14,10 +14,6 @@
 # limitations under the License.
 #
 
+from .youtube_dnn import YouTubeDNN
 
-from torch.nn import Module
-
-
-Module.__rrshift__ = right_shift_module
-
-# __all__ = ["TorchAsyncItr", "Model", "process_epoch"]
+__all__ = [YouTubeDNN]

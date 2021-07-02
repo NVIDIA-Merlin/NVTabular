@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,17 @@
 # limitations under the License.
 #
 
+import functools
 
-from torch.nn import Module
+import tensorflow as tf
 
 
-Module.__rrshift__ = right_shift_module
-
-# __all__ = ["TorchAsyncItr", "Model", "process_epoch"]
+def get_embedding_columns(categorical_columns, embedding_dim):
+    """
+    utility function for building a set of embedding_columns of the
+    with the same dimension
+    """
+    make_embedding_column = functools.partial(
+        tf.feature_column.embedding_column, dimension=embedding_dim
+    )
+    return list(map(make_embedding_column, categorical_columns))
