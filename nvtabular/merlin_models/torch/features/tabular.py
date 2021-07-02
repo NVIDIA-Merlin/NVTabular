@@ -1,9 +1,9 @@
 from nvtabular.column_group import ColumnGroup
 from nvtabular.tag import Tag
 
-from merlin_models.torch.base import TabularModule
-from merlin_models.torch.features.continuous import ContinuousFeatures
-from merlin_models.torch.features.embedding import EmbeddingFeatures
+from ..tabular import TabularModule
+from .continuous import ContinuousFeatures
+from .embedding import EmbeddingFeatures
 
 
 class TabularFeatures(TabularModule):

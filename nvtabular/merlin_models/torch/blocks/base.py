@@ -3,13 +3,13 @@ from typing import Union
 
 import torch
 
-from merlin_models.torch.base import TabularMixin, TabularModule, AsTabular, FilterFeatures
-from merlin_models.torch.heads import Head
+from ..tabular import TabularMixin, TabularModule, AsTabular, FilterFeatures
+from ..heads import Head
 
 
 class BlockMixin:
     def to_model(self, head: Head, optimizer=torch.optim.Adam, block_output_size=None, **kwargs):
-        from merlin_models.torch.blocks.with_head import BlockWithHead
+        from .with_head import BlockWithHead
 
         if not block_output_size:
             if getattr(self, "input_size", None) and getattr(self, "forward_output_size", None):

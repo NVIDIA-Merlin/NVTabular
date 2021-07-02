@@ -1,4 +1,4 @@
-from merlin_models.torch.tabular import TabularModule
+from ..tabular import TabularModule
 
 
 class ContinuousFeatures(TabularModule):

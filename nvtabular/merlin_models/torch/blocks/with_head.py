@@ -5,8 +5,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from merlin_models.torch.heads import Head
-from merlin_models.torch.blocks.base import BlockType
+from ..heads import Head
+from .base import BlockType
 
 
 class BlockWithHead(torch.nn.Module):

@@ -1,6 +1,6 @@
 import torch
 
-from merlin_models.torch.blocks.base import BuildableBlock, SequentialBlock
+from .base import BuildableBlock, SequentialBlock
 
 
 class MLPBlock(BuildableBlock):

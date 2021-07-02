@@ -3,7 +3,7 @@ from typing import Optional, Text, Dict
 import torch
 
 from nvtabular.column_group import ColumnGroup
-from merlin_models.torch.tabular import TabularModule, FilterFeatures
+from ..tabular import TabularModule, FilterFeatures
 
 
 class TableConfig(object):
