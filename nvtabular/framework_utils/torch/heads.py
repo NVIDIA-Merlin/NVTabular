@@ -6,11 +6,6 @@ import torch
 from nvtabular.column_group import ColumnGroup
 import torchmetrics as tm
 
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import Callback
-
-pl.Trainer
-
 
 class Task(torch.nn.Module):
     def __init__(self,
@@ -19,10 +14,17 @@ class Task(torch.nn.Module):
                  body: Optional[torch.nn.Module] = None,
                  pre: Optional[torch.nn.Module] = None):
         super().__init__()
-        self.metrics = metrics
+        self.metrics = torch.nn.ModuleList(*metrics)
         self.loss = loss
         self.body = body
         self.pre = pre
+
+    def build(self, input_size, device=None):
+        if device:
+            self.to(device)
+            for metric in self.metrics:
+                metric.to(device)
+        self.input_size = input_size
 
     def forward(self, inputs, **kwargs):
         x = inputs
@@ -114,6 +116,8 @@ class Head(torch.nn.Module):
     def build(self, input_size, device=None):
         if device:
             self.to(device)
+            for task in self.tasks.values():
+                task.build(input_size, device=device)
         self.input_size = input_size
 
     @classmethod
