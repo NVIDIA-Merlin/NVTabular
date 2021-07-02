@@ -14,7 +14,7 @@ class Task(torch.nn.Module):
                  body: Optional[torch.nn.Module] = None,
                  pre: Optional[torch.nn.Module] = None):
         super().__init__()
-        self.metrics = torch.nn.ModuleList(*metrics)
+        self.metrics = torch.nn.ModuleList(metrics)
         self.loss = loss
         self.body = body
         self.pre = pre
