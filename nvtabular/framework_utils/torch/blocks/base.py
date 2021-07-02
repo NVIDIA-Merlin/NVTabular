@@ -140,9 +140,9 @@ class BlockWithHead(torch.nn.Module):
                         optimizer.zero_grad()
                         loss.backward()
                         optimizer.step()
-            if verbose:
-                print(self.head.compute_metrics())
-            epoch_losses.append(np.mean(losses))
+                if verbose:
+                    print(self.head.compute_metrics())
+                epoch_losses.append(np.mean(losses))
 
         return np.array(epoch_losses)
 
