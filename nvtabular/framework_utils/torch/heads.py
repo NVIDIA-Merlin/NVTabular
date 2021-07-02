@@ -45,14 +45,16 @@ class Task(torch.nn.Module):
         loss = self.loss(predictions, targets)
 
         if compute_metrics:
-            self.calculate_metrics(predictions, targets, mode="train")
+            self.calculate_metrics(predictions, targets, mode="train", forward=False)
 
             return loss
 
         return loss
 
-    def calculate_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
+    def calculate_metrics(self, predictions, labels, mode="val", forward=True) -> Dict[str, torch.Tensor]:
         outputs = {}
+        if forward:
+            predictions = self(predictions)
         predictions = self.forward_to_prediction_fn(predictions)
         for metric in self.metrics:
             if isinstance(metric, tuple([type(x) for x in self.binary_classification_metrics()])):

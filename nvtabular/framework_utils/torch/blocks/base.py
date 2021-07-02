@@ -143,8 +143,7 @@ class BlockWithHead(torch.nn.Module):
                 batch_iterator = enumerate(iter(dataset))
                 if verbose:
                     batch_iterator = tqdm(batch_iterator)
-                for batch_idx, batch in batch_iterator:
-                    x, y = batch
+                for batch_idx, (x, y) in batch_iterator:
                     if amp:
                         with torch.cuda.amp.autocast():
                             loss = self.compute_loss(x, y)
@@ -175,8 +174,8 @@ class BlockWithHead(torch.nn.Module):
         if verbose:
             batch_iterator = tqdm(batch_iterator)
         self.reset_metrics()
-        for batch_idx, batch in batch_iterator:
-            self.calculate_metrics(*batch, mode=mode)
+        for batch_idx, (x, y) in batch_iterator:
+            self.calculate_metrics(x, y, mode=mode)
 
         return self.compute_metrics(mode=mode)
 
