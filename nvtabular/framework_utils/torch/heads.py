@@ -46,22 +46,38 @@ class Task(torch.nn.Module):
         return loss
 
     def compute_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
-        # Not required by all models. Only required for classification
-        return {f"{mode}_{metric.__class__.__name__.lower()}": metric(predictions, labels) for metric in self.metrics}
+        outputs = {}
+        for metric in self.metrics:
+            if isinstance(metric, tuple(self.binary_classification_metrics())):
+                predictions = predictions.int()
+                labels = labels.int()
+            outputs[f"{mode}_{metric.__class__.__name__.lower()}"] = metric(predictions, labels)
 
-    @classmethod
-    def binary_classification(cls, metrics=None):
-        metrics = metrics or [
+        return outputs
+
+    @staticmethod
+    def binary_classification_metrics():
+        return [
             tm.Precision(num_classes=2),
             tm.Recall(num_classes=2),
             tm.Accuracy(),
             tm.AUC()
         ]
 
+    @classmethod
+    def binary_classification(cls, metrics=None):
+        metrics = metrics or cls.binary_classification_metrics()
+
         return cls(
             loss=torch.nn.BCEWithLogitsLoss(),
             metrics=metrics,
         )
+
+    @staticmethod
+    def regression_metrics():
+        return [
+            tm.regression.MeanSquaredError()
+        ]
 
     @classmethod
     def regression(cls, metrics=None):
