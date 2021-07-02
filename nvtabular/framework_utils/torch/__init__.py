@@ -22,6 +22,7 @@ from nvtabular.framework_utils.torch.blocks.base import right_shift_module, Sequ
 from .layers.inputs import EmbeddingsModule, TableConfig, FeatureConfig, InputFeatures
 from .heads import Head
 from .blocks.mlp import MLPBlock
+from .blocks.with_head import BlockWithHead
 
 from torch.nn import Module
 
