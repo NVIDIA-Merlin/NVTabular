@@ -190,15 +190,17 @@ class TargetEncoding(StatOperator):
 
         dsk, key = nvt_cat._category_stats(
             ddf,
-            col_groups,
-            self.target,
-            ["count", "sum"],
-            self.out_path,
-            0,
-            self.tree_width,
-            self.on_host,
-            concat_groups=False,
-            name_sep=self.name_sep,
+            nvt_cat.FitOptions(
+                col_groups,
+                self.target,
+                ["count", "sum"],
+                self.out_path,
+                0,
+                self.tree_width,
+                self.on_host,
+                concat_groups=False,
+                name_sep=self.name_sep,
+            ),
         )
         return Delayed(key, dsk), moments
 

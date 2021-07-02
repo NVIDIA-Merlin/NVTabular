@@ -122,15 +122,17 @@ class JoinGroupby(StatOperator):
 
         dsk, key = nvt_cat._category_stats(
             ddf,
-            columns,
-            self.cont_names,
-            self.stats,
-            self.out_path,
-            0,
-            self.tree_width,
-            self.on_host,
-            concat_groups=False,
-            name_sep=self.name_sep,
+            nvt_cat.FitOptions(
+                columns,
+                self.cont_names,
+                self.stats,
+                self.out_path,
+                0,
+                self.tree_width,
+                self.on_host,
+                concat_groups=False,
+                name_sep=self.name_sep,
+            ),
         )
         return Delayed(key, dsk)
 
