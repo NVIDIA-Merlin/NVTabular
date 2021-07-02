@@ -21,3 +21,4 @@ from .features.tabular import TabularFeatures
 from .heads import Head
 from .blocks.mlp import MLPBlock
 from .blocks.with_head import BlockWithHead
+from .data import DataLoader
