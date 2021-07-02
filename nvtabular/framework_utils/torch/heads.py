@@ -31,8 +31,6 @@ class Task(torch.nn.Module):
         if self.body:
             x = self.body(x)
         if self.pre:
-            # print(x)
-            # print(x.size())
             x = self.pre(x)
 
         return x
@@ -42,13 +40,13 @@ class Task(torch.nn.Module):
         loss = self.loss(predictions, targets)
 
         if compute_metrics:
-            metric_dict = self.compute_metrics(predictions, targets, mode="train")
+            self.calculate_metrics(predictions, targets, mode="train")
 
-            return loss, metric_dict
+            return loss
 
         return loss
 
-    def compute_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
+    def calculate_metrics(self, predictions, labels, mode="val", forward=False) -> Dict[str, torch.Tensor]:
         outputs = {}
         for metric in self.metrics:
             if isinstance(metric, tuple([type(x) for x in self.binary_classification_metrics()])):
@@ -57,6 +55,13 @@ class Task(torch.nn.Module):
             outputs[f"{mode}_{metric.__class__.__name__.lower()}"] = metric(predictions, labels)
 
         return outputs
+
+    def compute_metrics(self):
+        return {f"{metric.__class__.__name__.lower()}": metric.compute() for metric in self.metrics}
+
+    def reset_metrics(self):
+        for metric in self.metrics:
+            metric.reset()
 
     @staticmethod
     def binary_classification_metrics():
@@ -201,3 +206,10 @@ class Head(torch.nn.Module):
             losses.append(loss * self._task_weights[name])
 
         return torch.sum(*losses)
+
+    def compute_metrics(self):
+        return {name: task.compute_metrics() for name, task in self.tasks.items()}
+
+    def reset_metrics(self):
+        for task in self.tasks.values():
+            task.reset_metrics()
