@@ -141,9 +141,9 @@ class TabularModule(TabularMixin, torch.nn.Module):
 
     def forward_output_size(self, input_size):
         batch_size = self.calculate_batch_size_from_input_size(input_size)
-        if self.aggregation == "concat":
+        if isinstance(self.aggregation, ConcatFeatures):
             return batch_size, sum([i[1] for i in input_size.values()])
-        elif self.aggregation == "stack":
+        elif isinstance(self.aggregation, StackFeatures):
             last_dim = [i for i in input_size.values()][0][-1]
 
             return batch_size, len(input_size), last_dim
