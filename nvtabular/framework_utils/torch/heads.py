@@ -78,7 +78,7 @@ class Task(torch.nn.Module):
         metrics = metrics or cls.binary_classification_metrics()
 
         return cls(
-            loss=torch.nn.BCEWithLogitsLoss(),
+            loss=torch.nn.BCELoss(),
             metrics=metrics,
         )
 
@@ -160,7 +160,7 @@ class Head(torch.nn.Module):
         if add_logit_layer:
             self.tasks[target_name].pre = torch.nn.Sequential(
                 torch.nn.Linear(self.input_size[-1], 1),
-                LambdaModule(lambda x: x.view(-1))
+                torch.nn.Sigmoid()
             )
 
         if task_weight:
