@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Optional, Dict, Text
+from typing import Optional, Dict, Text, Union
 
 import torch
 
@@ -16,7 +16,7 @@ class Task(torch.nn.Module):
                  pre: Optional[torch.nn.Module] = None):
         super().__init__()
         self.forward_to_prediction_fn = forward_to_prediction_fn
-        self.metrics = torch.nn.ModuleList(metrics)
+        self.set_metrics(metrics)
         self.loss = loss
         self.body = body
         self.pre = pre
@@ -37,6 +37,9 @@ class Task(torch.nn.Module):
 
         return x
 
+    def set_metrics(self, metrics):
+        self.metrics = torch.nn.ModuleList(metrics)
+
     def compute_loss(self, inputs, targets, training: bool = False, compute_metrics=True) -> torch.Tensor:
         predictions = self(inputs)
         loss = self.loss(predictions, targets)
@@ -48,7 +51,7 @@ class Task(torch.nn.Module):
 
         return loss
 
-    def calculate_metrics(self, predictions, labels, mode="val", forward=False) -> Dict[str, torch.Tensor]:
+    def calculate_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
         outputs = {}
         predictions = self.forward_to_prediction_fn(predictions)
         print(predictions)
@@ -212,9 +215,30 @@ class Head(torch.nn.Module):
 
         return torch.sum(*losses)
 
-    def compute_metrics(self):
-        return {name: task.compute_metrics() for name, task in self.tasks.items()}
+    def calculate_metrics(self,
+                          block_outputs,
+                          targets,
+                          mode="val") -> Dict[str, Union[Dict[str, torch.Tensor], torch.Tensor]]:
+        metrics = {}
+
+        for name, task in self.tasks.items():
+            metrics[name] = task.calculate_metrics(block_outputs, targets, mode=mode)
+
+        return _output_metrics(metrics)
+
+    def compute_metrics(self, mode=None):
+        name_fn = lambda x: "_".join([mode, x]) if mode else x
+        metrics = {name_fn(name): task.compute_metrics() for name, task in self.tasks.items()}
+
+        return _output_metrics(metrics)
 
     def reset_metrics(self):
         for task in self.tasks.values():
             task.reset_metrics()
+
+
+def _output_metrics(metrics):
+    if len(metrics) == 1:
+        return metrics[list(metrics.keys())[0]]
+
+    return metrics

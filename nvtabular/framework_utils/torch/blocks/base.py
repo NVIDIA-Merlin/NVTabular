@@ -1,6 +1,6 @@
 import abc
 import inspect
-from typing import Union
+from typing import Union, Dict
 
 import numpy as np
 import torch
@@ -83,6 +83,16 @@ class BlockWithHead(torch.nn.Module):
         block_outputs = self.block(inputs)
         return self.head.compute_loss(block_outputs, targets)
 
+    def calculate_metrics(self, inputs, targets, mode="val") -> Dict[str, torch.Tensor]:
+        block_outputs = self.block(inputs)
+        return self.head.calculate_metrics(block_outputs, targets, mode=mode)
+
+    def compute_metrics(self, mode=None):
+        return self.head.compute_metrics(mode=mode)
+
+    def reset_metrics(self):
+        return self.head.reset_metrics()
+
     def to_lightning(self):
         import pytorch_lightning as pl
 
@@ -109,7 +119,14 @@ class BlockWithHead(torch.nn.Module):
 
         return BlockWithHeadLightning()
 
-    def fit(self, dataloader, optimizer=torch.optim.Adam, num_epochs=1, amp=False, train=True, verbose=True):
+    def fit(self,
+            dataloader,
+            optimizer=torch.optim.Adam,
+            eval_dataloader=None,
+            num_epochs=1,
+            amp=False,
+            train=True,
+            verbose=True):
         if isinstance(dataloader, torch.utils.data.DataLoader):
             dataset = dataloader.dataset
         else:
@@ -141,10 +158,27 @@ class BlockWithHead(torch.nn.Module):
                         loss.backward()
                         optimizer.step()
                 if verbose:
-                    print(self.head.compute_metrics())
+                    print(self.compute_metrics(mode="train"))
+                    if eval_dataloader:
+                        print(self.evaluate(eval_dataloader, verbose=False))
                 epoch_losses.append(np.mean(losses))
 
         return np.array(epoch_losses)
+
+    def evaluate(self, dataloader, verbose=True, mode="eval"):
+        if isinstance(dataloader, torch.utils.data.DataLoader):
+            dataset = dataloader.dataset
+        else:
+            dataset = dataloader
+
+        batch_iterator = enumerate(iter(dataset))
+        if verbose:
+            batch_iterator = tqdm(batch_iterator)
+        self.reset_metrics()
+        for batch_idx, batch in batch_iterator:
+            self.calculate_metrics(*batch, mode=mode)
+
+        return self.compute_metrics(mode=mode)
 
 
 def right_shift_module(self, other):
