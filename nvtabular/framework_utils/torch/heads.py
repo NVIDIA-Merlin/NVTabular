@@ -40,7 +40,6 @@ class Task(torch.nn.Module):
         loss = self.loss(predictions, targets)
 
         if compute_metrics:
-            print(predictions.max())
             self.calculate_metrics(predictions, targets, mode="train")
 
             return loss
