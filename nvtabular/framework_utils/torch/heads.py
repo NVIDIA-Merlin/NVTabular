@@ -54,7 +54,6 @@ class Task(torch.nn.Module):
     def calculate_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
         outputs = {}
         predictions = self.forward_to_prediction_fn(predictions)
-        print(predictions)
         for metric in self.metrics:
             if isinstance(metric, tuple([type(x) for x in self.binary_classification_metrics()])):
                 labels = labels.int()
