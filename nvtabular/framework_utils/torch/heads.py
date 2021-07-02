@@ -158,7 +158,7 @@ class Head(torch.nn.Module):
 
         if add_logit_layer:
             self.tasks[target_name].pre = torch.nn.Sequential(
-                torch.nn.Linear(self.input_size[-1], 1),
+                torch.nn.Linear(self.input_size[-1], 1, bias=False),
                 torch.nn.Sigmoid(),
                 LambdaModule(lambda x: x.view(-1))
             )
