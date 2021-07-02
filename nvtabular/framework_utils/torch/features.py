@@ -61,9 +61,17 @@ class AsTabular(torch.nn.Module):
 
 
 class TabularMixin:
+    def set_aggregation(self, aggregation):
+        if aggregation == "concat":
+            self.aggregation = ConcatFeatures()
+        elif aggregation == "stack":
+            self.aggregation = StackFeatures()
+        else:
+            self.aggregation = None
+
     def __call__(self, inputs, *args, pre=None, post=None, merge_with=None, stack_outputs=False, concat_outputs=False,
                  filter_columns=None, **kwargs):
-        post_op = self.maybe_aggregate()
+        post_op = getattr(self, "aggregation", None)
         if concat_outputs:
             post_op = ConcatFeatures()
         if stack_outputs:
@@ -86,20 +94,11 @@ class TabularMixin:
 
         return outputs
 
-    def maybe_aggregate(self):
-        if getattr(self, "aggregation", None) == "concat":
-            return ConcatFeatures()
-
-        if getattr(self, "aggregation", None) == "stack":
-            return StackFeatures()
-
-        return None
-
 
 class TabularModule(TabularMixin, torch.nn.Module):
     def __init__(self, aggregation=None):
         super().__init__()
-        self.aggregation = aggregation
+        self.set_aggregation(aggregation)
         self.input_size = None
 
     @classmethod
