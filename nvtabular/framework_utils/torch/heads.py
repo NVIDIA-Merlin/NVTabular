@@ -68,8 +68,8 @@ class Task(torch.nn.Module):
     @staticmethod
     def binary_classification_metrics():
         return [
-            tm.Precision(num_classes=2),
-            tm.Recall(num_classes=2),
+            tm.Precision(),
+            tm.Recall(),
             tm.Accuracy(),
             tm.AUC()
         ]
