@@ -35,24 +35,25 @@ class Task(torch.nn.Module):
 
         return x
 
-    def calculate_metrics(self, inputs, targets):
-        outputs = {}
-        for metric in self.metrics:
-            outputs[metric.name] = metric(inputs, targets)
-
-        return outputs
-
-    def compute_loss(self, inputs, targets, training: bool = False) -> torch.Tensor:
+    def compute_loss(self, inputs, targets, training: bool = False, compute_metrics=True) -> torch.Tensor:
         predictions = self(inputs)
         loss = self.loss(predictions, targets)
 
+        if compute_metrics:
+            metric_dict = self.compute_metrics(predictions, targets, mode="train")
+            print(metric_dict)
+
         return loss
+
+    def compute_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
+        # Not required by all models. Only required for classification
+        return {f"{mode}_{k}": metric(predictions, labels) for k, metric in self.metrics.items()}
 
     @classmethod
     def binary_classification(cls, metrics=None):
         metrics = metrics or [
-            tm.Precision(),
-            tm.Recall(),
+            tm.Precision(num_classes=2),
+            tm.Recall(num_classes=2),
             tm.Accuracy(),
             tm.AUC()
         ]
