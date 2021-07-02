@@ -47,7 +47,7 @@ class Task(torch.nn.Module):
 
     def compute_metrics(self, predictions, labels, mode="val") -> Dict[str, torch.Tensor]:
         # Not required by all models. Only required for classification
-        return {f"{mode}_{metric.__name__.lower()}": metric(predictions, labels) for metric in self.metrics}
+        return {f"{mode}_{metric.__class__.__name__.lower()}": metric(predictions, labels) for metric in self.metrics}
 
     @classmethod
     def binary_classification(cls, metrics=None):
