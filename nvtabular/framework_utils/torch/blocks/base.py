@@ -1,7 +1,10 @@
 import abc
+import inspect
 from typing import Union
 
+import numpy as np
 import torch
+from tqdm import tqdm
 
 from nvtabular.framework_utils.torch import features
 from nvtabular.framework_utils.torch.heads import Head
@@ -105,6 +108,43 @@ class BlockWithHead(torch.nn.Module):
                 return optimizer
 
         return BlockWithHeadLightning()
+
+    def fit(self, dataloader, optimizer=torch.optim.Adam, num_epochs=1, amp=True, train=True, verbose=True):
+        if isinstance(dataloader, torch.utils.data.DataLoader):
+            dataset = dataloader.dataset
+        else:
+            dataset = dataloader
+
+        if inspect.isclass(optimizer):
+            optimizer = optimizer(self.parameters())
+
+        self.train(mode=train)
+        epoch_losses = []
+        with torch.set_grad_enabled(mode=train):
+            for epoch in range(num_epochs):
+                losses = []
+                batch_iterator = enumerate(iter(dataset))
+                if verbose:
+                    batch_iterator = tqdm(batch_iterator)
+                for batch_idx, batch in batch_iterator:
+                    x, y = batch
+                    if amp:
+                        with torch.cuda.amp.autocast():
+                            loss = self.compute_loss(x, y)
+                    else:
+                        loss = self.compute_loss(x, y)
+
+                    losses.append(float(loss))
+
+                    if train:
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+            if verbose:
+                print(self.head.compute_metrics())
+            epoch_losses.append(np.avg(losses))
+
+        return epoch_losses
 
 
 def right_shift_module(self, other):
