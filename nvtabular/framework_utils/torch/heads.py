@@ -50,7 +50,7 @@ class Task(torch.nn.Module):
         outputs = {}
         for metric in self.metrics:
             if isinstance(metric, tuple([type(x) for x in self.binary_classification_metrics()])):
-                predictions = predictions.int()
+                predictions = torch.round(predictions).int()
                 labels = labels.int()
             outputs[f"{mode}_{metric.__class__.__name__.lower()}"] = metric(predictions, labels)
 
