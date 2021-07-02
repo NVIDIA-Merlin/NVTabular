@@ -68,8 +68,8 @@ class Task(torch.nn.Module):
     @staticmethod
     def binary_classification_metrics():
         return [
-            tm.Precision(),
-            tm.Recall(),
+            tm.Precision(num_classes=2),
+            tm.Recall(num_classes=2),
             tm.Accuracy(),
             tm.AUC()
         ]
@@ -80,7 +80,7 @@ class Task(torch.nn.Module):
 
         return cls(
             loss=torch.nn.BCELoss(),
-            forward_to_prediction_fn=lambda x: torch.round(x),
+            forward_to_prediction_fn=lambda x: torch.round(x).int(),
             metrics=metrics,
         )
 
