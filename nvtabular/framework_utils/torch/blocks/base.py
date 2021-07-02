@@ -109,7 +109,7 @@ class BlockWithHead(torch.nn.Module):
 
         return BlockWithHeadLightning()
 
-    def fit(self, dataloader, optimizer=torch.optim.Adam, num_epochs=1, amp=True, train=True, verbose=True):
+    def fit(self, dataloader, optimizer=torch.optim.Adam, num_epochs=1, amp=False, train=True, verbose=True):
         if isinstance(dataloader, torch.utils.data.DataLoader):
             dataset = dataloader.dataset
         else:
@@ -142,9 +142,9 @@ class BlockWithHead(torch.nn.Module):
                         optimizer.step()
             if verbose:
                 print(self.head.compute_metrics())
-            epoch_losses.append(np.avg(losses))
+            epoch_losses.append(np.mean(losses))
 
-        return epoch_losses
+        return np.array(epoch_losses)
 
 
 def right_shift_module(self, other):
