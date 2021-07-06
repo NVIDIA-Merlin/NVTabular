@@ -24,12 +24,11 @@ import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import ColumnGroup, Dataset, Workflow, ops
-from tests.conftest import get_cats, mycols_csv
+from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
