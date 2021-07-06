@@ -1,9 +1,9 @@
 import cudf
 import pytest
-from cudf.tests.utils import assert_eq
 
 from nvtabular import ColumnGroup, Dataset, Workflow
 from nvtabular.ops import Categorify, Rename
+from tests.conftest import assert_eq
 
 
 def test_column_group_select():

@@ -30,6 +30,16 @@ from numba import cuda
 
 import nvtabular
 
+try:
+    import cudf.testing._utils
+
+    assert_eq = cudf.testing._utils.assert_eq
+except ImportError:
+    import cudf.tests.utils
+
+    assert_eq = cudf.tests.utils.assert_eq
+
+
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
 mycols_pq = ["name-cat", "name-string", "id", "label", "x", "y"]
