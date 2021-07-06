@@ -136,8 +136,8 @@ class NormalizeMinMax(StatOperator):
     @property
     def supports(self):
         return (
-            Supports.CPU_ARRAY
-            | Supports.GPU_ARRAY
+            Supports.CPU_DICT_ARRAY
+            | Supports.GPU_DICT_ARRAY
             | Supports.CPU_DATAFRAME
             | Supports.GPU_DATAFRAME
         )
