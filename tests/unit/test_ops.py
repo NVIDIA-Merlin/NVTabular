@@ -292,6 +292,14 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
         ]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
+    # our normalize op also works on dicts of cupy/numpy tensors. make sure this works like we'd
+    # expect
+    df = dataset.compute()
+    cupy_inputs = {col: df[col].values for col in op_columns}
+    cupy_outputs = cont_features.op.transform(op_columns, cupy_inputs)
+    for col in op_columns:
+        assert np.allclose(cupy_outputs[col], new_gdf[col].values)
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
