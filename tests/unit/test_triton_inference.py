@@ -8,10 +8,10 @@ from distutils.spawn import find_executable
 import cudf
 import numpy as np
 import pytest
-from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 grpcclient = pytest.importorskip("tritonclient.grpc")
