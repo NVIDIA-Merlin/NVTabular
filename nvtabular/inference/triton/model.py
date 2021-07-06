@@ -48,7 +48,10 @@ from nvtabular.inference.triton import _convert_tensor, get_column_types
 class TritonPythonModel:
     """Generic TritonPythonModel for nvtabular workflows"""
 
-    def _initialize_ops(self, column_group, initialized):
+    def _initialize_ops(self, column_group, visited=None):
+        if visited is None:
+            visited = set()
+
         if column_group.op:
             inference_op = column_group.op.inference_initialize(
                 column_group.columns, self.model_config
@@ -57,9 +60,9 @@ class TritonPythonModel:
                 column_group.op = inference_op
 
         for parent in column_group.parents:
-            if parent not in initialized:
-                initialized.add(parent)
-                self._initialize_ops(parent, initialized)
+            if parent not in visited:
+                visited.add(parent)
+                self._initialize_ops(parent, visited)
 
     def initialize(self, args):
         workflow_path = os.path.join(
@@ -70,8 +73,7 @@ class TritonPythonModel:
         self.output_model = self.model_config["parameters"]["output_model"]["string_value"]
 
         # recurse over all column groups, initializing operators for inference pipeline
-        initialized_column_groups = set()
-        self._initialize_ops(self.workflow.column_group, initialized_column_groups)
+        self._initialize_ops(self.workflow.column_group)
 
         self.input_dtypes = {
             col: dtype

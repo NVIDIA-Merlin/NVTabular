@@ -28,16 +28,16 @@ ColumnNames = List[Union[str, List[str]]]
 
 
 class Supports(Flag):
-    """ Indicates what type of data representation this operator supports. """
+    """ Indicates what type of data representation this operator supports for transformations """
 
     # cudf dataframe
     CPU_DATAFRAME = auto()
     # pandas dataframe
     GPU_DATAFRAME = auto()
     # dict of column name to numpy array
-    CPU_ARRAY = auto()
+    CPU_DICT_ARRAY = auto()
     # dict of column name to cupy array
-    GPU_ARRAY = auto()
+    GPU_DICT_ARRAY = auto()
 
 
 class Operator:
@@ -105,5 +105,5 @@ class Operator:
 
     def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
         """Configures this operator for use in inference. May return a different operator to use
-        instead of the one configured during training"""
+        instead of the one configured for use during training"""
         return None
