@@ -1,3 +1,5 @@
+import types
+
 import torch
 
 from .base import BuildableBlock, SequentialBlock
@@ -39,4 +41,11 @@ class MLPBlock(BuildableBlock):
         if self.dropout:
             out.append(torch.nn.Dropout(self.dropout))
             
-        return torch.nn.Sequential(*out)
+        output = torch.nn.Sequential(*out)
+
+        def _get_name(self):
+            return "DenseBlock"
+
+        output._get_name = types.MethodType(_get_name, output)
+
+        return output

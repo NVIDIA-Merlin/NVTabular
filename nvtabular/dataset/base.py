@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 
 import abc
@@ -15,6 +16,8 @@ from nvtabular.utils import device_mem_size, _pynvml_mem_size
 
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
+
+LOG = logging.getLogger("nvtabular")
 
 
 class TabularDataset:
@@ -46,6 +49,10 @@ class TabularDataset:
     def column_group(self) -> ColumnGroup:
         return self.create_input_column_group()
 
+    def prepare_data(self, **kwargs) -> DatasetCollection:
+        LOG.info("Preparing data...")
+        return self.prepare(**kwargs)
+
     def transformed_column_group(self, **kwargs):
         return self.create_default_transformations(self.prepare(**kwargs))
 
@@ -54,19 +61,21 @@ class TabularDataset:
 
     @contextlib.contextmanager
     def client(self):
+        LOG.info("Creating Dask-client...")
         client = self.client_fn()
         try:
             yield client
         finally:
+            LOG.info("Shutting down Dask-client...")
             client.shutdown()
 
     @property
     def data(self):
-        return self.prepare()
+        return self.prepare_data()
 
     def calculate_statistics(self, transformed=False, overwrite=False, cross_columns=None,
                              split_names=None, **kwargs) -> DatasetCollectionStatistics:
-        data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
+        data = self.transform(**kwargs) if transformed else self.prepare_data(**kwargs)
         if split_names:
             if not isinstance(split_names, (list, tuple)):
                 split_names = [split_names]
@@ -80,7 +89,7 @@ class TabularDataset:
         return stats
 
     def generate_schema(self, transformed=False, **kwargs) -> SimpleNamespace:
-        data = self.transform(**kwargs) if transformed else self.prepare(**kwargs)
+        data = self.transform(**kwargs) if transformed else self.prepare_data(**kwargs)
         data_dir = self.transformed_dir if transformed else self.data_dir
         col_group = self.transformed_column_group(**kwargs) if transformed else self.column_group
         schemas = data.generate_schema(data_dir, col_group.tags_by_column())
@@ -89,7 +98,7 @@ class TabularDataset:
 
     def transform(self, workflow=None, overwrite=False, save=True, to_fit="train",
                   for_training=False, **kwargs) -> DatasetCollection:
-        splits: DatasetCollection = self.prepare(**kwargs)
+        splits: DatasetCollection = self.prepare_data(**kwargs)
 
         if not workflow:
             workflow = Workflow(self.transformed_column_group(**kwargs), self.transformed_dir)
@@ -98,16 +107,19 @@ class TabularDataset:
         splits = splits.splits if splits.get("splits") else splits
 
         if splits.can_load_transformed_from_dir(self.transformed_dir, workflow):
-            self.transformed = splits.load_transformed_from_dir(self.transformed_dir, workflow)
-
-        if for_training and self.client_fn:
-            with self.client() as client:
-                self.workflow.client = client
-                workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite, save=save)
-                self.workflow.client = None
+            LOG.info("Loading transformed data from cache...")
             self.transformed = splits.load_transformed_from_dir(self.transformed_dir, workflow)
         else:
-            self.transformed = workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite, save=save)
+            LOG.info("Transforming dataset...")
+            if for_training and self.client_fn:
+                with self.client() as client:
+                    self.workflow.client = client
+                    workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite, save=save)
+                    self.workflow.client = None
+                self.transformed = splits.load_transformed_from_dir(self.transformed_dir, workflow)
+            else:
+                self.transformed = workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite,
+                                                                     save=save)
 
         return self.transformed
 
