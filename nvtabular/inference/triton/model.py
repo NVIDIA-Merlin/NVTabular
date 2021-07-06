@@ -42,7 +42,7 @@ from triton_python_backend_utils import (
 
 import nvtabular
 from nvtabular.dispatch import _concat_columns
-from nvtabular.inference.triton import get_column_types
+from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
 from nvtabular.ops.operator import Supports
 
@@ -119,14 +119,14 @@ class TritonPythonModel:
         for request in requests:
             # transform the triton tensors to a dict of name:numpy tensor
             input_tensors = {
-                name: get_input_tensor_by_name(request, name).as_numpy().squeeze()
+                name: _convert_tensor(get_input_tensor_by_name(request, name))
                 for name in self.input_dtypes
             }
 
             # multihots are represented as a tuple of (values, offsets)
             for name, dtype in self.input_multihots.items():
-                values = get_input_tensor_by_name(request, name + "__values").as_numpy().squeeze()
-                offsets = get_input_tensor_by_name(request, name + "__nnzs").as_numpy().squeeze()
+                values = _convert_tensor(get_input_tensor_by_name(request, name + "__values"))
+                offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
                 input_tensors[name] = (values, offsets)
 
             # use our NVTabular workflow to transform the dataframe
@@ -231,7 +231,7 @@ def _transform_tensors(input_tensors, column_group):
                     # we need to convert to a common format here first before concatentating.
                     op = column_group.op
                     target_kind = op.supports if op else Supports.CPU_DICT_ARRAY
-                    # note : the 2nd convert_tensors call needs to be stricter in what the kind is
+                    # note : the 2nd convert_format call needs to be stricter in what the kind is
                     # (exact match rather than a bitmask of values)
                     tensors, kind = convert_format(tensors, kind, target_kind)
                     transformed, _ = convert_format(transformed, transformed_kind, kind)
