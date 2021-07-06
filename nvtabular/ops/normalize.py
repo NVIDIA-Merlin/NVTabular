@@ -19,7 +19,7 @@ from nvtx import annotate
 
 from ..dispatch import DataFrameType
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnNames, Operator, Supports
 from .stat_operator import StatOperator
 
 
@@ -62,6 +62,15 @@ class Normalize(StatOperator):
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
                 new_df[name] = new_df[name].astype("float32")
         return new_df
+
+    @property
+    def supports(self):
+        return (
+            Supports.CPU_ARRAY
+            | Supports.GPU_ARRAY
+            | Supports.CPU_DATAFRAME
+            | Supports.GPU_DATAFRAME
+        )
 
     def clear(self):
         self.means = {}
@@ -123,6 +132,15 @@ class NormalizeMinMax(StatOperator):
     def clear(self):
         self.mins = {}
         self.maxs = {}
+
+    @property
+    def supports(self):
+        return (
+            Supports.CPU_ARRAY
+            | Supports.GPU_ARRAY
+            | Supports.CPU_DATAFRAME
+            | Supports.GPU_DATAFRAME
+        )
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
