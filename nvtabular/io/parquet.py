@@ -71,15 +71,19 @@ class ParquetDatasetEngine(DatasetEngine):
         self._pp_nrows = None
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
-            with self.fs.open(path0, "rb") as f0:
-                if cpu:
+            if cpu:
+                with self.fs.open(path0, "rb") as f0:
                     # Use pyarrow for CPU version.
                     # Pandas does not enable single-row-group access.
                     rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+            else:
+                if cudf.utils.ioutils._is_local_filesystem(self.fs):
+                    # Allow cudf to open the file if this is a local file
+                    # system (can be significantly faster in this case)
+                    rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0))
                 else:
-                    rg_byte_size_0 = _memory_usage(
-                        cudf.io.read_parquet(f0, row_groups=0, row_group=0)
-                    )
+                    with self.fs.open(path0, "rb") as f0:
+                        rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(f0, row_groups=0))
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
