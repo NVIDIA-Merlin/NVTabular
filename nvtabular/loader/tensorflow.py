@@ -26,7 +26,6 @@ from nvtabular.ops import _get_embedding_order
 
 from_dlpack = configure_tensorflow()
 
-
 # pylint has issues with TF array ops, so disable checks until fixed:
 # https://github.com/PyCQA/pylint/issues/3613
 # pylint: disable=no-value-for-parameter,unexpected-keyword-arg,redundant-keyword-arg
@@ -100,7 +99,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     Tensors via `dlpack <https://github.com/dmlc/dlpack>`_. Useful for training tabular models
     built in Keras and trained via
     `tf.keras.Model.fit <https://www.tensorflow.org/api_docs/python/tf/keras/Model>`_.
-
     The data loading scheme is implemented by loading, preprocessing, and
     batching data in an asynchronous thread. The amount of randomness in
     shuffling is controlled by the `buffer_size` and `parts_per_chunk`
@@ -117,7 +115,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     of reads and reducing throughput. The goal should be to maximize the
     total amount of memory utilized at once without going OOM and with
     the fewest number of reads to meet your epoch-level randomness needs.
-
     An important thing to note is that TensorFlow's default behavior
     is to claim all GPU memory for itself at initialziation time,
     which leaves none for NVTabular to load or preprocess data.
@@ -128,7 +125,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     memory on the given device. Otherwise, it will refer to an explicit
     allocation amount in MB. `TF_VISIBLE_DEVICE` should be an integer GPU
     index.
-
     Iterator output is of the form `(dict(features), list(labels))`,
     where each element of the features dict is a
     `feature_name: feature_tensor`  and each elemtn of the labels
@@ -138,11 +134,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     The underlying NVTabular `Dataset` object is stored in the `data`
     attribute, and should be used for updating NVTabular `Workflow`
     statistics::
-
         workflow = nvt.Workflow(...)
         dataset = KerasSequenceLoader(...)
         workflow.update_stats(dataset.data.to_iter(), record_stats=True)
-
     Parameters
     -------------
     - paths_or_dataset: str or list(str)
@@ -201,27 +195,26 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     _use_nnz = True
 
     def __init__(
-            self,
-            paths_or_dataset,
-            batch_size,
-            label_names,
-            feature_columns=None,
-            cat_names=None,
-            cont_names=None,
-            engine=None,
-            shuffle=True,
-            seed_fn=None,
-            buffer_size=0.1,
-            device=None,
-            parts_per_chunk=1,
-            reader_kwargs=None,
-            global_size=None,
-            global_rank=None,
-            drop_last=False,
-            sparse_names=None,
-            sparse_max=None,
-            sparse_as_dense=False,
-            column_group=None
+        self,
+        paths_or_dataset,
+        batch_size,
+        label_names,
+        feature_columns=None,
+        cat_names=None,
+        cont_names=None,
+        engine=None,
+        shuffle=True,
+        seed_fn=None,
+        buffer_size=0.1,
+        device=None,
+        parts_per_chunk=1,
+        reader_kwargs=None,
+        global_size=None,
+        global_rank=None,
+        drop_last=False,
+        sparse_names=None,
+        sparse_max=None,
+        sparse_as_dense=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -232,7 +225,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # (https://github.com/NVIDIA/NVTabular/issues/412)
         cat_names = _get_embedding_order(cat_names)
         cont_names = _get_embedding_order(cont_names)
-        self._column_group = column_group
 
         device = device or 0
         DataLoader.__init__(
@@ -255,40 +247,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         )
         self._map_fns = []
 
-    @classmethod
-    def from_directory(cls, directory, batch_size, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
-                       separate_labels=True, named_labels=False, schema_path=None,
-                       continuous_features=None, categorical_features=None, targets=None):
-        from nvtabular.column_group import ColumnGroup
-
-        schema_path = schema_path or os.path.join(directory, "schema.pb")
-        if not os.path.exists(schema_path):
-            raise ValueError("Can't load from directory without a schema.")
-
-        col_group = ColumnGroup.from_schema(schema_path)
-
-        categorical_features = categorical_features or col_group.categorical_columns
-        continuous_features = continuous_features or col_group.continuous_columns
-        targets = targets or col_group.targets_columns
-
-        tf_dataset = KerasSequenceLoader(
-            directory,
-            batch_size=batch_size,
-            label_names=targets if separate_labels else [],
-            cat_names=categorical_features if separate_labels else categorical_features + targets,
-            cont_names=continuous_features,
-            engine="parquet",
-            shuffle=shuffle,
-            buffer_size=buffer_size,  # how many batches to load at once
-            parts_per_chunk=parts_per_chunk,
-            column_group=col_group
-        )
-
-        if named_labels and separate_labels:
-            return tf_dataset.map(lambda X, y: (X, dict(zip(targets, y))))
-
-        return tf_dataset
-
     def __len__(self):
         """
         recreating since otherwise Keras yells at you
@@ -309,7 +267,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def map(self, fn):
         """
         Applying a function to each batch.
-
         This can for instance be used to add `sample_weight` to the model.
         """
         self._map_fns.append(fn)
@@ -341,29 +298,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         for api match.
         """
         return tf.split(tensor, idx, axis=axis)
-
-    def create_keras_inputs(self, sparse_columns=None):
-        if sparse_columns is None:
-            sparse_columns = []
-        inputs = {}
-
-        for col in self.cont_names:
-            inputs[col] = tf.keras.Input(name=col, dtype=tf.float32, shape=(None, 1))
-
-        for col in self.cat_names:
-            if col not in sparse_columns:
-                inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(None, 1))
-            else:
-                inputs[col] = (
-                    tf.keras.Input(name=f"{col}__values", dtype=tf.int64, shape=(1,)),
-                    tf.keras.Input(name=f"{col}__nnzs", dtype=tf.int64, shape=(1,))
-                )
-
-        return inputs
-
-    @property
-    def columns(self):
-        return self._column_group
 
     @property
     def _LONG_DTYPE(self):

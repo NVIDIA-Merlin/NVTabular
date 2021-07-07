@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import math
-from typing import Dict, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -23,18 +21,6 @@ from tensorflow.python.feature_column import feature_column_v2 as fc
 # pylint has issues with TF array ops, so disable checks until fixed:
 # https://github.com/PyCQA/pylint/issues/3613
 # pylint: disable=no-value-for-parameter, unexpected-keyword-arg
-from tensorflow.python.ops import init_ops_v2
-from tensorflow.python.tpu.tpu_embedding_v2_utils import (
-    FeatureConfig,
-    TableConfig,
-)
-
-from nvtabular.column_group import ColumnGroup
-from nvtabular.framework_utils.tensorflow.features import TabularLayer, AsSparseLayer, ParseTokenizedText, \
-    FilterFeatures
-from nvtabular.ops import get_embedding_sizes
-from nvtabular.tag import Tag
-from nvtabular.workflow import Workflow
 
 
 def _sort_columns(feature_columns):
@@ -138,259 +124,35 @@ def _handle_continuous_feature(inputs, feature_column):
     return inputs[feature_column.name]
 
 
-class EmbeddingsLayer(TabularLayer):
-    """Mimics the API of [TPUEmbedding-layer](https://github.com/tensorflow/recommenders/blob/main/tensorflow_recommenders/layers/embedding/tpu_embedding_layer.py#L221)
-    from TF-recommenders, use this for efficient embeddings on CPU or GPU."""
-
-    def __init__(self, feature_config: Dict[str, FeatureConfig], **kwargs):
-        super().__init__(**kwargs)
-        self.feature_config = feature_config
-        self.convert_to_sparse = AsSparseLayer()
-        self.filter_features = FilterFeatures(list(feature_config.keys()))
-
-    def build(self, input_shapes):
-        self.embedding_tables = {}
-        tables: Dict[str, TableConfig] = {}
-        for name, feature in self.feature_config.items():
-            table: TableConfig = feature.table
-            if table.name not in tables:
-                tables[table.name] = table
-
-        for name, table in tables.items():
-            shape = (table.vocabulary_size, table.dim)
-            self.embedding_tables[name] = self.add_weight(
-                name="{}/embedding_weights".format(name),
-                trainable=True,
-                initializer=table.initializer,
-                shape=shape,
-            )
-        super().build(input_shapes)
-
-    def lookup_feature(self, name, val):
-        table: TableConfig = self.feature_config[name].table
-        table_var = self.embedding_tables[table.name]
-        if isinstance(val, tf.SparseTensor):
-            return tf.nn.safe_embedding_lookup_sparse(
-                table_var, tf.cast(val, tf.int32), None, combiner=table.combiner
-            )
-
-        # embedded_outputs[name] = tf.gather(table_var, tf.cast(val, tf.int32))
-        return tf.gather(table_var, tf.cast(val, tf.int32)[:, 0])
-
-    def compute_output_shape(self, input_shapes):
-        input_shapes = self.filter_features.compute_output_shape(input_shapes)
-        batch_size = self.calculate_batch_size_from_input_shapes(input_shapes)
-
-        output_shapes = {}
-
-        for name, val in input_shapes.items():
-            output_shapes[name] = tf.TensorShape([batch_size, self.feature_config[name].table.dim])
-
-        return super().compute_output_shape(output_shapes)
-
-    def call(self, inputs, **kwargs):
-        embedded_outputs = {}
-        sparse_inputs = self.convert_to_sparse(self.filter_features(inputs))
-        for name, val in sparse_inputs.items():
-            embedded_outputs[name] = self.lookup_feature(name, val)
-
-        return embedded_outputs
-
-    @classmethod
-    def from_nvt_workflow(cls, workflow: Workflow, combiner="mean") -> "EmbeddingsLayer":
-        embedding_size = get_embedding_sizes(workflow)
-        if isinstance(embedding_size, tuple):
-            embedding_size = embedding_size[0]
-        feature_config: Dict[str, FeatureConfig] = {}
-        for name, (vocab_size, dim) in embedding_size.items():
-            feature_config[name] = FeatureConfig(
-                TableConfig(
-                    vocabulary_size=vocab_size,
-                    dim=dim,
-                    name=name,
-                    combiner=combiner,
-                    initializer=init_ops_v2.TruncatedNormal(mean=0.0, stddev=1 / math.sqrt(dim)),
-                )
-            )
-
-        return cls(feature_config)
-
-    @classmethod
-    def from_column_group(cls, column_group: ColumnGroup, embedding_dims=None, default_embedding_dim=64,
-                          infer_embedding_sizes=True, combiner="mean", tags=None, tags_to_filter=None,
-                          **kwargs) -> Optional["EmbeddingsLayer"]:
-        if tags:
-            column_group = column_group.get_tagged(tags, tags_to_filter=tags_to_filter)
-
-        if infer_embedding_sizes:
-            sizes = column_group.embedding_sizes()
-        else:
-            if not embedding_dims:
-                embedding_dims = {}
-            sizes = {}
-            cardinalities = column_group.cardinalities()
-            for key, cardinality in cardinalities.items():
-                embedding_size = embedding_dims.get(key, default_embedding_dim)
-                sizes[key] = (cardinality, embedding_size)
-
-        feature_config: Dict[str, FeatureConfig] = {}
-        for name, (vocab_size, dim) in sizes.items():
-            feature_config[name] = FeatureConfig(
-                TableConfig(
-                    vocabulary_size=vocab_size,
-                    dim=dim,
-                    name=name,
-                    combiner=combiner,
-                    initializer=init_ops_v2.TruncatedNormal(mean=0.0, stddev=1 / math.sqrt(dim)),
-                )
-            )
-
-        if not feature_config:
-            return None
-
-        return cls(feature_config, **kwargs)
-
-
-class TransformersTextEmbedding(TabularLayer):
-    def __init__(self, transformer_model, max_text_length=None, output="pooler_output", trainable=False, **kwargs):
-        super().__init__(trainable=trainable, **kwargs)
-        self.parse_tokens = ParseTokenizedText(max_text_length=max_text_length)
-        self.transformer_model = transformer_model
-        self.transformer_output = output
-
-    def call(self, inputs, **kwargs):
-        tokenized = self.parse_tokens(inputs)
-        outputs = {}
-        for key, val in tokenized.items():
-            if self.transformer_output == "pooler_output":
-                outputs[key] = self.transformer_model(**val).pooler_output
-            elif self.transformer_output == "last_hidden_state":
-                outputs[key] = self.transformer_model(**val).last_hidden_state
-            else:
-                outputs[key] = self.transformer_model(**val)
-
-        return outputs
-
-    def compute_output_shape(self, input_shapes):
-        batch_size = self.calculate_batch_size_from_input_shapes(input_shapes)
-
-        # TODO: Handle all transformer output modes
-
-        output_shapes, text_column_names = {}, []
-        for name, val in input_shapes.items():
-            if isinstance(val, tuple) and name.endswith(("/tokens", "/attention_mask")):
-                text_column_names.append("/".join(name.split("/")[:-1]))
-
-        for text_col in set(text_column_names):
-            output_shapes[text_col] = tf.TensorShape([batch_size, self.transformer_model.config.hidden_size])
-
-        return super().compute_output_shape(output_shapes)
-
-
-class InputFeatures(TabularLayer):
-    def __init__(self, continuous_layer=None, categorical_layer=None, text_embedding_layer=None, aggregation=None,
-                 **kwargs):
-        super(InputFeatures, self).__init__(aggregation=aggregation, **kwargs)
-        self.categorical_layer = categorical_layer
-        self.continuous_layer = continuous_layer
-        self.text_embedding_layer = text_embedding_layer
-
-        self.to_apply = []
-        if continuous_layer:
-            self.to_apply.append(continuous_layer)
-        if categorical_layer:
-            self.to_apply.append(categorical_layer)
-        if text_embedding_layer:
-            self.to_apply.append(text_embedding_layer)
-
-        assert (self.to_apply is not []), "Please provide at least one input layer"
-
-    def call(self, inputs, **kwargs):
-        return self.to_apply[0](inputs, merge_with=self.to_apply[1:] if len(self.to_apply) > 1 else None)
-
-    @classmethod
-    def from_column_group(cls,
-                          column_group: ColumnGroup,
-                          continuous_tags=Tag.CONTINUOUS,
-                          continuous_tags_to_filter=None,
-                          categorical_tags=Tag.CATEGORICAL,
-                          categorical_tags_to_filter=None,
-                          text_model=None,
-                          text_tags=Tag.TEXT_TOKENIZED,
-                          text_tags_to_filter=None,
-                          max_text_length=None,
-                          aggregation=None,
-                          **kwargs):
-        maybe_continuous_layer, maybe_categorical_layer = None, None
-        if continuous_tags:
-            maybe_continuous_layer = TabularLayer.from_column_group(
-                column_group,
-                tags=continuous_tags,
-                tags_to_filter=continuous_tags_to_filter)
-        if categorical_tags:
-            maybe_categorical_layer = EmbeddingsLayer.from_column_group(
-                column_group,
-                tags=categorical_tags,
-                tags_to_filter=categorical_tags_to_filter)
-
-        if text_model and not isinstance(text_model, TransformersTextEmbedding):
-            text_model = TransformersTextEmbedding.from_column_group(
-                column_group,
-                tags=text_tags,
-                tags_to_filter=text_tags_to_filter,
-                transformer_model=text_model,
-                max_text_length=max_text_length)
-
-        return cls(continuous_layer=maybe_continuous_layer,
-                   categorical_layer=maybe_categorical_layer,
-                   text_embedding_layer=text_model,
-                   aggregation=aggregation,
-                   **kwargs)
-
-    def compute_output_shape(self, input_shapes):
-        output_shapes = {}
-        for in_layer in self.to_apply:
-            output_shapes.update(in_layer.compute_output_shape(input_shapes))
-
-        return super().compute_output_shape(output_shapes)
-
-
 class DenseFeatures(tf.keras.layers.Layer):
     """
     Layer which maps a dictionary of input tensors to a dense, continuous
     vector digestible by a neural network. Meant to reproduce the API exposed
     by `tf.keras.layers.DenseFeatures` while reducing overhead for the
     case of one-hot categorical and scalar numeric features.
-
     Uses TensorFlow `feature_column` to represent inputs to the layer, but
     does not perform any preprocessing associated with those columns. As such,
     it should only be passed `numeric_column` objects and their subclasses,
     `embedding_column` and `indicator_column`. Preprocessing functionality should
     be moved to NVTabular.
-
     For multi-hot categorical or vector continuous data, represent the data for
     a feature with a dictionary entry `"<feature_name>__values"` corresponding
     to the flattened array of all values in the batch. For multi-hot categorical
     data, there should be a corresponding `"<feature_name>__nnzs"` entry that
     describes how many categories are present in each sample (and so has length
     `batch_size`).
-
     Note that categorical columns should be wrapped in embedding or
     indicator columns first, consistent with the API used by
     `tf.keras.layers.DenseFeatures`.
-
     Example usage::
-
         column_a = tf.feature_column.numeric_column("a", (1,))
         column_b = tf.feature_column.categorical_column_with_identity("b", 100)
         column_b_embedding = tf.feature_column.embedding_column(column_b, 4)
-
         inputs = {
             "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
             "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64)
         }
         x = DenseFeatures([column_a, column_b_embedding])(inputs)
-
     Parameters
     ----------
     feature_columns : list of `tf.feature_column`
@@ -507,27 +269,21 @@ class LinearFeatures(tf.keras.layers.Layer):
     Layer which implements a linear combination of one-hot categorical
     and scalar numeric features. Based on the "wide" branch of the Wide & Deep
     network architecture.
-
     Uses TensorFlow ``feature_column``s to represent inputs to the layer, but
     does not perform any preprocessing associated with those columns. As such,
     it should only be passed ``numeric_column`` and
     ``categorical_column_with_identity``. Preprocessing functionality should
     be moved to NVTabular.
-
     Also note that, unlike ScalarDenseFeatures, categorical columns should
     NOT be wrapped in embedding or indicator columns first.
-
     Example usage::
-
         column_a = tf.feature_column.numeric_column("a", (1,))
         column_b = tf.feature_column.categorical_column_with_identity("b", 100)
-
         inputs = {
             "a": tf.keras.Input(name="a", shape=(1,), dtype=tf.float32),
             "b": tf.keras.Input(name="b", shape=(1,), dtype=tf.int64)
         }
         x = ScalarLinearFeatures([column_a, column_b])(inputs)
-
     Parameters
     ----------
     feature_columns : list of tf.feature_column

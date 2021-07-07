@@ -13,15 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-from typing import Dict
-
 import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
 
 from .backend import DataLoader
-from .tensorflow import _validate_dataset
 
 
 class IterDL(torch.utils.data.IterableDataset):
@@ -44,7 +40,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     """This class creates batches of tensor. Each batch size is specified by the user.
     The data input requires an NVTabular dataset. Handles spillover to ensure all
     batches are the specified size until the final batch.
-
     Parameters
     -----------
     dataset : NVTabular dataset
@@ -72,14 +67,11 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
     def __init__(
         self,
-        paths_or_dataset,
+        dataset,
         cats=None,
         conts=None,
         labels=None,
         batch_size=1,
-        engine=None,
-        buffer_size=0.1,
-        reader_kwargs=None,
         shuffle=False,
         seed_fn=None,
         parts_per_chunk=1,
@@ -90,13 +82,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
-        column_group=None,
-        schema=None
     ):
-        dataset = _validate_dataset(
-            paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
-        )
-
         DataLoader.__init__(
             self,
             dataset,
@@ -115,63 +101,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_max=sparse_max,
             sparse_as_dense=sparse_as_dense,
         )
-        self._column_group = column_group
-        self.schema = schema
-
-    @classmethod
-    def from_directory(cls, directory, batch_size, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
-                       separate_labels=True, named_labels=False, schema_path=None,
-                       continuous_features=None, categorical_features=None, targets=None, **kwargs):
-        from nvtabular.column_group import ColumnGroup
-
-        schema_path = schema_path or os.path.join(directory, "schema.pb")
-        if not os.path.exists(schema_path):
-            raise ValueError("Can't load from directory without a schema.")
-
-        col_group = ColumnGroup.from_schema(schema_path)
-
-        categorical_features = categorical_features or col_group.categorical_columns
-        continuous_features = continuous_features or col_group.continuous_columns
-        targets = targets or col_group.targets_columns
-
-        torch_dataset = cls(
-            directory,
-            batch_size=batch_size,
-            labels=targets if separate_labels else [],
-            cats=categorical_features if separate_labels else categorical_features + targets,
-            conts=continuous_features,
-            engine="parquet",
-            shuffle=shuffle,
-            buffer_size=buffer_size,  # how many batches to load at once
-            parts_per_chunk=parts_per_chunk,
-            column_group=col_group,
-            schema=ColumnGroup.read_schema(schema_path),
-            **kwargs
-        )
-
-        # if named_labels and separate_labels:
-        #     return tf_dataset.map(lambda X, y: (X, dict(zip(targets, y))))
-
-        return torch_dataset
-
-    @property
-    def columns(self):
-        return self._column_group
-
-    @property
-    def output_sizes(self) -> Dict[str, torch.Size]:
-        sizes = {}
-
-        for feature in self.schema.feature:
-            name = feature.name
-            if feature.HasField("value_count"):
-                sizes[name] = torch.Size([self.batch_size, feature.value_count.max])
-            elif feature.HasField("shape"):
-                sizes[name] = torch.Size([self.batch_size] + [d.size for d in feature.shape.dim])
-            else:
-                sizes[name] = torch.Size([self.batch_size, 1])
-
-        return sizes
 
     def __iter__(self):
         return DataLoader.__iter__(self)
