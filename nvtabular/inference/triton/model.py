@@ -129,7 +129,7 @@ class TritonPythonModel:
                 offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
                 input_tensors[name] = (values, offsets)
 
-            # use our NVTabular workflow to transform the dataframe
+            # use our NVTabular workflow to transform the dataset
             transformed, kind = _transform_tensors(input_tensors, self.workflow.column_group)
 
             # if we don't have tensors in numpy format, convert back so that the we can return
@@ -198,7 +198,7 @@ class TritonPythonModel:
 
 
 def _convert_to_hugectr(columns, tensors, dtype):
-    """ converts a dataframe to a numpy input compatible with hugectr """
+    """ converts outputs to a numpy input compatible with hugectr """
     rows = max(len(tensors[name]) for name in columns)
     d = np.empty((rows, len(columns)), dtype=dtype)
     for i, name in enumerate(columns):
