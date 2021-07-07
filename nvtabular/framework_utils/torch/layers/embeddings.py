@@ -43,7 +43,7 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         self.dropout = torch.nn.Dropout(p=dropout)
 
     def forward(self, x):
-        if len(x.shape) == 1:
+        if len(x.shape) <= 1:
             x = x.unsqueeze(0)
         x = [layer(x[:, i]) for i, layer in enumerate(self.embedding_layers)]
         x = torch.cat(x, dim=1)
@@ -82,6 +82,10 @@ class MultiHotEmbeddings(torch.nn.Module):
         embs = []
         for n, key in enumerate(self.embedding_names):
             values, offsets = x[key]
+            values = torch.squeeze(values, -1)
+            # for the case where only one value in values
+            if len(values.shape) == 0:
+                values = values.unsqueeze(0)
             embs.append(self.embedding_layers[n](values, offsets[:, 0]))
         x = torch.cat(embs, dim=1)
         x = self.dropout(x)

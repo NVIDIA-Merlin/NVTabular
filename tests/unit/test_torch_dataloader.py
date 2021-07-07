@@ -23,13 +23,12 @@ import cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
 from nvtabular.io.dataset import Dataset
-from tests.conftest import mycols_csv, mycols_pq
+from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
@@ -130,6 +129,15 @@ json_sample = {
             "multi_max": 5,
             "multi_avg": 3,
         },
+        "cat_5": {
+            "dtype": None,
+            "cardinality": 50,
+            "min_entry_size": 1,
+            "max_entry_size": 5,
+            "multi_min": 2,
+            "multi_max": 5,
+            "multi_avg": 3,
+        },
         "cat_2": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
         "cat_3": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
         "cat_4": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
@@ -139,9 +147,9 @@ json_sample = {
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("cat_names", [["cat_2", "cat_3", "cat_4"], []])
-@pytest.mark.parametrize("cont_names", [["cont_1", "cont_2", "cont_3"], []])
-@pytest.mark.parametrize("mh_names", [["cat_1"], []])
+@pytest.mark.parametrize("cat_names", [["cat_2", "cat_3", "cat_4"], ["cat_2"], []])
+@pytest.mark.parametrize("cont_names", [["cont_1", "cont_2", "cont_3"], ["cont_1"], []])
+@pytest.mark.parametrize("mh_names", [["cat_5", "cat_1"], ["cat_1"], []])
 @pytest.mark.parametrize("label_name", [["lab_1"]])
 @pytest.mark.parametrize("num_rows", [1000, 100])
 def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name, num_rows):

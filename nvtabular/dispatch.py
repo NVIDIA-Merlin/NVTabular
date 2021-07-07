@@ -17,7 +17,6 @@ import enum
 import itertools
 from typing import Callable, Union
 
-import cudf
 import cupy as cp
 import dask.dataframe as dd
 import dask_cudf
@@ -25,8 +24,13 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from cudf.core.column import as_column, build_column
-from cudf.utils.dtypes import is_list_dtype
+
+try:
+    import cudf
+    from cudf.core.column import as_column, build_column
+    from cudf.utils.dtypes import is_list_dtype
+except ImportError:
+    cudf = None
 
 try:
     # Dask >= 2021.5.1
@@ -55,13 +59,23 @@ class ExtData(enum.Enum):
 def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
+    if cudf is None:
+        return isinstance(x, pd.DataFrame)
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
 
 def _is_series_object(x):
     # Simple check if object is a cudf or pandas
     # Series object
+    if cudf is None:
+        return isinstance(x, pd.Series)
     return isinstance(x, (cudf.Series, pd.Series))
+
+
+def _is_cpu_object(x):
+    # Simple check if object is a cudf or pandas
+    # DataFrame object
+    return isinstance(x, (pd.DataFrame, pd.Series))
 
 
 def _hex_to_int(s, dtype=None):
@@ -70,16 +84,16 @@ def _hex_to_int(s, dtype=None):
             return pd.NA
         return int(x, 16)
 
-    if isinstance(s, cudf.Series):
-        # CuDF Version
-        if s.dtype == "object":
-            s = s.str.htoi()
-        return s.astype(dtype or np.int32)
-    else:
+    if isinstance(s, pd.Series):
         # Pandas Version
         if s.dtype == "object":
             s = s.apply(_pd_convert_hex)
         return s.astype("Int64").astype(dtype or "Int32")
+    else:
+        # CuDF Version
+        if s.dtype == "object":
+            s = s.str.htoi()
+        return s.astype(dtype or np.int32)
 
 
 def _random_state(seed, like_df=None):
@@ -220,7 +234,7 @@ def _parquet_writer_dispatch(df: DataFrameType, path=None, **kwargs):
     return ret
 
 
-def _encode_list_column(original, encoded):
+def _encode_list_column(original, encoded, dtype=None):
     """Convert `encoded` to be a list column with the
     same offsets as `original`
     """
@@ -230,40 +244,55 @@ def _encode_list_column(original, encoded):
         new_data = []
         for val in original.values:
             size = len(val)
-            new_data.append(list(encoded[offset : offset + size]))
+            new_data.append(np.array(encoded[offset : offset + size], dtype=dtype))
             offset += size
         return pd.Series(new_data)
     else:
         # CuDF version
         encoded = as_column(encoded)
+        if dtype:
+            encoded = encoded.astype(dtype, copy=False)
+        list_dtype = cudf.core.dtypes.ListDtype(encoded.dtype if dtype is None else dtype)
         return build_column(
             None,
-            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
+            dtype=list_dtype,
             size=original.size,
             children=(original._column.offsets, encoded),
         )
 
 
+def _pull_apart_list(original):
+    values = _flatten_list_column(original)
+    if isinstance(original, pd.Series):
+        offsets = pd.Series([0]).append(original.map(len).cumsum())
+    else:
+        offsets = original._column.offsets
+        elements = original._column.elements
+        if isinstance(elements, cudf.core.column.lists.ListColumn):
+            offsets = elements.list(parent=original.list._parent)._column.offsets[offsets]
+    return values, offsets
+
+
 def _to_arrow(x):
     """Move data to arrow format"""
-    if isinstance(x, cudf.DataFrame):
-        return x.to_arrow()
-    else:
+    if isinstance(x, pd.DataFrame):
         return pa.Table.from_pandas(x, preserve_index=False)
+    else:
+        return x.to_arrow()
 
 
 def _concat(objs, **kwargs):
-    if isinstance(objs[0], (cudf.DataFrame, cudf.Series)):
-        return cudf.core.reshape.concat(objs, **kwargs)
-    else:
+    if isinstance(objs[0], (pd.DataFrame, pd.Series)):
         return pd.concat(objs, **kwargs)
+    else:
+        return cudf.core.reshape.concat(objs, **kwargs)
 
 
 def _make_df(_like_df=None, device=None):
-    if isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
-        return cudf.DataFrame(_like_df)
-    elif isinstance(_like_df, (pd.DataFrame, pd.Series)):
+    if isinstance(_like_df, (pd.DataFrame, pd.Series)):
         return pd.DataFrame(_like_df)
+    elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
+        return cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame()
     return cudf.DataFrame()
@@ -276,15 +305,15 @@ def _detect_format(data):
     if isinstance(data, Dataset):
         return ExtData.DATASET
     elif isinstance(data, dd.DataFrame):
-        if isinstance(data._meta, cudf.DataFrame):
-            return ExtData.DASK_CUDF
-        return ExtData.DASK_PANDAS
-    elif isinstance(data, cudf.DataFrame):
-        return ExtData.CUDF
+        if isinstance(data._meta, pd.DataFrame):
+            return ExtData.DASK_PANDAS
+        return ExtData.DASK_CUDF
     elif isinstance(data, pd.DataFrame):
         return ExtData.PANDAS
     elif isinstance(data, pa.Table):
         return ExtData.ARROW
+    elif isinstance(data, cudf.DataFrame):
+        return ExtData.CUDF
     else:
         mapping = {
             "pq": ExtData.PARQUET,
@@ -353,7 +382,27 @@ def _to_host(x):
 
     All other data will pass through unchanged.
     """
-    if isinstance(x, cudf.DataFrame):
-        return x.to_arrow()
-    else:
+    if isinstance(x, (pd.DataFrame, dd.DataFrame)):
         return x
+    else:
+        return x.to_arrow()
+
+
+def _from_host(x):
+    if cudf is None:
+        return x
+    elif isinstance(x, cudf.DataFrame):
+        return x
+    else:
+        return cudf.DataFrame.from_arrow(x)
+
+
+def _build_cudf_list_column(new_elements, new_offsets):
+    if cudf is None:
+        return []
+    return build_column(
+        None,
+        dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),
+        size=new_offsets.size - 1,
+        children=(as_column(new_offsets), as_column(new_elements)),
+    )

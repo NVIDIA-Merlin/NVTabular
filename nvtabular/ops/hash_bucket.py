@@ -15,10 +15,9 @@
 #
 from typing import Dict, Union
 
-from cudf.utils.dtypes import is_list_dtype
 from nvtx import annotate
 
-from ..dispatch import DataFrameType, _encode_list_column, _hash_series
+from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnNames, Operator
 
@@ -84,7 +83,7 @@ class HashBucket(Operator):
             num_buckets = self.num_buckets
 
         for col, nb in num_buckets.items():
-            if is_list_dtype(df[col].dtype):
+            if _is_list_dtype(df[col].dtype):
                 df[col] = _encode_list_column(df[col], _hash_series(df[col]) % nb)
             else:
                 df[col] = _hash_series(df[col]) % nb

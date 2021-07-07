@@ -24,14 +24,13 @@ import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnGroup, ops
-from tests.conftest import mycols_csv, mycols_pq
+from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -293,6 +292,14 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
         ]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
+    # our normalize op also works on dicts of cupy/numpy tensors. make sure this works like we'd
+    # expect
+    df = dataset.compute()
+    cupy_inputs = {col: df[col].values for col in op_columns}
+    cupy_outputs = cont_features.op.transform(op_columns, cupy_inputs)
+    for col in op_columns:
+        assert np.allclose(cupy_outputs[col], new_gdf[col].values)
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -437,7 +444,8 @@ def test_lambdaop_misalign(cpu):
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", [False, True])
-def test_categorify_lists(tmpdir, freq_threshold, cpu):
+@pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
+def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
     df = cudf.DataFrame(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -448,13 +456,21 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu):
     cat_names = ["Authors", "Engaging User"]
     label_name = ["Post"]
 
-    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), freq_threshold=freq_threshold)
+    cat_features = cat_names >> ops.Categorify(
+        out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype
+    )
 
     workflow = nvt.Workflow(cat_features + label_name)
     df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     # Columns are encoded independently
-    compare = df_out["Authors"].to_list() if cpu else df_out["Authors"].to_arrow().to_pylist()
+    if cpu:
+        assert df_out["Authors"][0].dtype == np.dtype(dtype) if dtype else np.dtype("int64")
+        compare = [list(row) for row in df_out["Authors"].tolist()]
+    else:
+        assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype if dtype else "int64")
+        compare = df_out["Authors"].to_arrow().to_pylist()
+
     if freq_threshold < 2:
         assert compare == [[1], [1, 4], [2, 3], [3]]
     else:
@@ -708,11 +724,16 @@ def test_categorify_max_size(max_emb_size):
     # check encoded values after freq_hashing with fix emb size
     assert new_gdf["Author"].max() <= max_emb_size["Author"]
     assert new_gdf["Engaging_User"].max() <= max_emb_size["Engaging_User"]
+
     # check embedding size is less than max_size after hashing with fix emb size.
-    assert nvt.ops.get_embedding_sizes(processor)["Author"][0] <= max_emb_size["Author"]
-    assert (
-        nvt.ops.get_embedding_sizes(processor)["Engaging_User"][0] <= max_emb_size["Engaging_User"]
-    )
+    embedding_sizes = nvt.ops.get_embedding_sizes(processor)
+    assert embedding_sizes["Author"][0] <= max_emb_size["Author"]
+    assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
+
+    # make sure we can also get embedding sizes from the column_group
+    embedding_sizes = nvt.ops.get_embedding_sizes(cat_features)
+    assert embedding_sizes["Author"][0] <= max_emb_size["Author"]
+    assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
 
 
 @pytest.mark.parametrize("cpu", [True, False])
