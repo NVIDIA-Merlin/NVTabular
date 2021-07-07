@@ -12,15 +12,21 @@ input {
 #   dims: -1
 #   dims: 128
 # }
+# output {
+#   name: "candidate_ids"
+#   data_type: TYPE_INT32
+#   dims: -1
+#   dims: 1
+# }
+# output {
+#   name: "candidate_distances"
+#   data_type: TYPE_FP32
+#   dims: -1
+#   dims: 1
+# }
 output {
-  name: "candidate_ids"
+  name: "filtered_candidate_ids"
   data_type: TYPE_INT32
-  dims: -1
-  dims: 1
-}
-output {
-  name: "candidate_distances"
-  data_type: TYPE_FP32
   dims: -1
   dims: 1
 }
@@ -108,9 +114,25 @@ ensemble_scheduling {
       key: "candidate_ids"
       value: "candidate_ids"
     }
+    # output_map {
+    #   key: "candidate_distances"
+    #   value: "candidate_distances"
+    # }
+  }
+  step {
+    model_name: "movielens_session_filter"
+    model_version: -1
+    input_map {
+      key: "candidate_movie_ids"
+      value: "candidate_ids"
+    }
+    input_map {
+      key: "session_movie_ids"
+      value: "movie_ids_values_uf"
+    }
     output_map {
-      key: "candidate_distances"
-      value: "candidate_distances"
+      key: "filtered_movie_ids"
+      value: "filtered_candidate_ids"
     }
   }
 }

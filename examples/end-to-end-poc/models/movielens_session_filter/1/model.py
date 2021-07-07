@@ -5,9 +5,6 @@ import traceback
 import numpy as np
 import triton_python_backend_utils as pb_utils
 
-import pymilvus_orm
-from pymilvus_orm import schema, DataType, Collection
-
 
 class TritonPythonModel:
     """Your Python model must use the same class name. Every Python model
@@ -30,23 +27,7 @@ class TritonPythonModel:
           * model_version: Model version
           * model_name: Model name
         """
-        self.model_config = json.loads(args["model_config"])
-        self.index_name = self.model_config["parameters"]["index_name"]["string_value"]
-
-        self.milvus_client = pymilvus_orm.connections.connect(
-            host="milvus-standalone", port="19530")
-
-        dim = 128
-        default_fields = [
-            schema.FieldSchema(name="item_id", dtype=DataType.INT64, is_primary=True),
-            schema.FieldSchema(name="item_vector", dtype=DataType.FLOAT_VECTOR, dim=dim)
-        ]
-        default_schema = schema.CollectionSchema(
-            fields=default_fields, description="MovieLens item vectors")
-        self.milvus_collection = Collection(
-            name="movielens_retrieval_tf", data=None, schema=default_schema)
-
-        self.milvus_collection.load()
+        pass
 
     def execute(self, requests):
         """`execute` must be implemented in every Python model. `execute`
@@ -79,31 +60,19 @@ class TritonPythonModel:
         for request in requests:
             # Perform inference on the request and append it to responses list...
             try:
-                user_vector = pb_utils.get_input_tensor_by_name(
-                    request, "user_vector").as_numpy()
+                candidate_ids = pb_utils.get_input_tensor_by_name(
+                    request, "candidate_movie_ids").as_numpy()
 
-                # Normalize the user query vector
-                user_vector = user_vector / np.sqrt(np.sum(user_vector**2))
+                session_ids = pb_utils.get_input_tensor_by_name(
+                    request, "session_movie_ids").as_numpy()
 
-                topK = 100
-                search_params = {"metric_type": "IP", "params": {"nprobe": 10}}
-                result = self.milvus_collection.search(
-                    user_vector, "item_vector", search_params, topK)
-
-                # candidate_ids = [h.id for h in hits for hits in result]
-                # candidate_distances = [h.distance for h in hits for hits in result]
-
-                candidate_ids = (
-                    np.array([[h.id for hits in result for h in hits]]).astype(int32_dtype).T
-                )
-                candidate_distances = np.array(
-                    [[h.distance for hits in result for h in hits]]).astype(int32_dtype).T
+                filtered_movie_ids = np.array([candidate_ids[~np.isin(
+                    candidate_ids, session_ids)]]).astype(int32_dtype)
 
                 responses.append(
                     pb_utils.InferenceResponse(
                         output_tensors=[
-                            pb_utils.Tensor("candidate_ids", candidate_ids),
-                            pb_utils.Tensor("candidate_distances", candidate_distances),
+                            pb_utils.Tensor("filtered_movie_ids", filtered_movie_ids)
                         ]
                     )
                 )
@@ -126,4 +95,4 @@ class TritonPythonModel:
         Implementing `finalize` function is optional. This function allows
         the model to perform any necessary clean ups before exit.
         """
-        # self.milvus_client.disconnect()
+        pass

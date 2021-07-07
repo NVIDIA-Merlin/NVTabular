@@ -18,8 +18,8 @@ with httpclient.InferenceServerClient("0.0.0.0:8000") as client:
     inputs[0].set_data_from_numpy(user_id_data)
 
     outputs = [
-        httpclient.InferRequestedOutput("candidate_ids"),
-        httpclient.InferRequestedOutput("candidate_distances")
+        httpclient.InferRequestedOutput("filtered_candidate_ids"),
+        # httpclient.InferRequestedOutput("candidate_distances")
     ]
 
     response = client.infer(model_name, inputs, request_id=str(1), outputs=outputs)
@@ -27,9 +27,9 @@ with httpclient.InferenceServerClient("0.0.0.0:8000") as client:
     result = response.get_response()
 
     print(
-        "user_id:\n{}\n candidate_ids\n{}\n".format(
+        "user_id:\n{}\ncandidate_ids:\n{}\nlength:\n{}\n".format(
             user_id_data,
-            response.as_numpy("candidate_ids"),
-            # response.as_numpy("candidate_distances"),
+            response.as_numpy("filtered_candidate_ids"),
+            len(response.as_numpy("filtered_candidate_ids").T),
         )
     )

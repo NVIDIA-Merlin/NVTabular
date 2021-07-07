@@ -89,7 +89,7 @@ class TritonPythonModel:
                 # Numerical and single-hot categorical
                 for feature_name in self.features:
                     feature_value = features["__".join([self.entity_view, feature_name])]
-                    feature_array = np.array(feature_value).astype(int32_dtype).T
+                    feature_array = np.array([feature_value]).astype(int32_dtype).T
 
                     output_tensors.append(pb_utils.Tensor(feature_name, feature_array))
 
