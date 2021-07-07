@@ -1163,7 +1163,7 @@ class DatasetCollection(Namespace):
 
             schemas[name] = schema
 
-        return SimpleNamespace(**schemas)
+        return Namespace(**schemas)
 
     def calculate_statistics(
         self, output_path=None, by_id=True, overwrite=False, client=None, **kwargs

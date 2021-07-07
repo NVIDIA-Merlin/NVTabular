@@ -17,6 +17,7 @@ from nvtabular.utils import Namespace, _pynvml_mem_size, device_mem_size
 
 from ..column_group import ColumnGroup
 from ..io.dataset import DatasetCollection
+from ..ops import Schema
 from ..ops.statistics import DatasetCollectionStatistics, Statistics
 from ..workflow import Workflow
 
@@ -61,6 +62,14 @@ class ParquetPathCollection(Namespace):
                     return False
 
         return True
+
+    def schemas(self):
+        schemas = {}
+        for name, paths in self.items():
+            if isinstance(paths, str) and os.path.isdir(paths):
+                schemas[name] = Schema.load(paths)
+
+        return Namespace(**schemas)
 
     @classmethod
     def from_splits(cls, train, eval=None, test=None):
@@ -151,7 +160,12 @@ class TabularDataset:
 
         return stats
 
-    def generate_schema(self, transformed=False, **kwargs) -> SimpleNamespace:
+    def generate_schema(self, transformed=False, **kwargs) -> Namespace:
+        data_paths = self.transform_paths() if transformed else self.prepare()
+        maybe_schemas = data_paths.schemas()
+        if sorted(list(vars(maybe_schemas).keys())) == sorted(list(vars(data_paths).keys())):
+            return maybe_schemas
+
         data = self.transform(**kwargs) if transformed else self.prepare_data()
         data_dir = self.transformed_dir if transformed else self.data_dir
         col_group = self.transformed_column_group(**kwargs) if transformed else self.column_group
