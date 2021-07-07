@@ -16,15 +16,17 @@
 import os
 import subprocess
 import sys
+from distutils.command.build_py import build_py as _build_py
 from distutils.spawn import find_executable
 
+from pybind11.setup_helpers import Pybind11Extension
+from pybind11.setup_helpers import build_ext as build_pybind11
 from setuptools import find_packages, setup
-from setuptools.command.build_ext import build_ext
 
 import versioneer
 
 
-class build_proto(build_ext):
+class build_proto(_build_py):
     def run(self):
         protoc = None
         if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
@@ -49,12 +51,27 @@ class build_proto(build_ext):
                 cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
                 subprocess.check_call(cmd, env=env)
 
-        # Run original build_ext command
-        build_ext.run(self)
+        _build_py.run(self)
+
+
+ext_modules = [
+    Pybind11Extension(
+        "nvtabular_cpp",
+        [
+            "cpp/nvtabular/__init__.cc",
+            "cpp/nvtabular/inference/__init__.cc",
+            "cpp/nvtabular/inference/categorify.cc",
+            "cpp/nvtabular/inference/fill.cc",
+        ],
+        define_macros=[("VERSION_INFO", versioneer.get_version())],
+        include_dirs=["./cpp/"],
+    ),
+]
 
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = build_proto
+cmdclass["build_ext"] = build_pybind11
+cmdclass["build_py"] = build_proto
 
 
 setup(
@@ -75,4 +92,6 @@ setup(
         "Topic :: Scientific/Engineering",
     ],
     cmdclass=cmdclass,
+    ext_modules=ext_modules,
+    zip_safe=False,
 )

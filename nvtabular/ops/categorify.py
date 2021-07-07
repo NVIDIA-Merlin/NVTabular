@@ -41,7 +41,6 @@ from nvtabular.dispatch import (
     _from_host,
     _hash_series,
     _is_list_dtype,
-    _make_df,
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
@@ -422,13 +421,14 @@ class Categorify(StatOperator):
             self.categories, columns, self.num_buckets, self.freq_threshold, self.max_size
         )
 
-    def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
-        # on the first transform call we load up categories from disk, which can
-        # take multiple seconds. preload this data by running an empty dataframe through
-        df = _make_df()
-        for column in columns:
-            df[column] = []
-        self.transform(columns, df)
+    def inference_initialize(self, columns, inference_config):
+        # we don't currently support 'combo'
+        if self.encode_type == "combo":
+            warnings.warn("Falling back to unoptimized inference path for encode_type 'combo' ")
+            return None
+        import nvtabular_cpp
+
+        return nvtabular_cpp.inference.CategorifyTransform(self)
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

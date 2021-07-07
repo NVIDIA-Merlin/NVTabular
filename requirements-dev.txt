@@ -26,3 +26,4 @@ graphviz
 # needed for test_s3
 flask
 flask_cors
+cpplint
