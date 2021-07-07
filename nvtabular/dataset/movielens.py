@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
-from nvtabular.dataset.base import TabularDataset
+from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
 from nvtabular.io.dataset import DatasetCollection
 from nvtabular.tag import TagAs
@@ -27,33 +27,37 @@ class MovieLens(TabularDataset):
     def create_input_column_group(self):
         columns = ColumnGroup([])
         columns += ColumnGroup(["Title", "Review Text"], tags=Tag.TEXT)
-        columns += ColumnGroup(["Division Name", "Department Name", "Class Name", "Clothing ID"],
-                               tags=Tag.CATEGORICAL)
+        columns += ColumnGroup(
+            ["Division Name", "Department Name", "Class Name", "Clothing ID"], tags=Tag.CATEGORICAL
+        )
         columns += ColumnGroup(["Positive Feedback Count", "Age"], tags=Tag.CONTINUOUS)
 
-        columns += (ColumnGroup(["Recommended IND"])
-                    >> ops.Rename(f=lambda x: x.replace(" IND", ""))
-                    >> TagAs(Tag.TARGETS_BINARY)
-                    )
+        columns += (
+            ColumnGroup(["Recommended IND"])
+            >> ops.Rename(f=lambda x: x.replace(" IND", ""))
+            >> TagAs(Tag.TARGETS_BINARY)
+        )
         columns += ColumnGroup(["Rating"], tags=Tag.TARGETS_REGRESSION)
 
         return columns
 
-    def create_default_transformations(self, data) -> ColumnGroup:
+    def create_default_transformations(self, data: ParquetPathCollection) -> ColumnGroup:
         user_id = ColumnGroup(["userId"], tags=Tag.USER)
         item_id = ColumnGroup(["movieId"], tags=Tag.ITEM)
 
-        cat_features = (user_id + item_id
-                        >> ops.JoinExternal(data.movies, on=["movieId"])
-                        >> ops.Categorify()
-                        )
+        cat_features = (
+            user_id + item_id
+            >> ops.JoinExternal(data.parquet_files("movies"), on=["movieId"])
+            >> ops.Categorify()
+        )
 
         # Make rating a binary target
-        rating_binary = (ColumnGroup(["rating"])
-                         >> (lambda col: (col > 3).astype("int8"))
-                         >> ops.Rename(postfix="_binary")
-                         >> TagAs(is_binary_target=True)
-                         )
+        rating_binary = (
+            ColumnGroup(["rating"])
+            >> (lambda col: (col > 3).astype("int8"))
+            >> ops.Rename(postfix="_binary")
+            >> TagAs(is_binary_target=True)
+        )
 
         rating = ColumnGroup(["rating"]) >> TagAs(is_regression_target=True)
 
@@ -62,7 +66,7 @@ class MovieLens(TabularDataset):
     def name(self) -> str:
         return "movielens"
 
-    def prepare(self, frac_size=0.10) -> DatasetCollection:
+    def prepare(self, frac_size=0.10) -> ParquetPathCollection:
         if not os.path.exists(self.csv_dir):
             zip_path = os.path.join(self.data_dir, "ml-25m.zip")
             download_file("http://files.grouplens.org/datasets/movielens/ml-25m.zip", zip_path)
@@ -84,10 +88,6 @@ class MovieLens(TabularDataset):
             movies = movies.drop("title", axis=1)
             Dataset(movies).to_parquet(movies_path)
 
-        return DatasetCollection(
-            splits=DatasetCollection(
-                train=Dataset.from_pattern(train_path),
-                eval=Dataset.from_pattern(eval_path)
-            ),
-            movies=Dataset.from_pattern(movies_path)
+        return ParquetPathCollection(
+            splits=ParquetPathCollection(train=train_path, eval=eval_path), movies=movies_path
         )

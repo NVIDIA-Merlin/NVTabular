@@ -1,13 +1,16 @@
+import logging
 import os
 
 import numpy as np
 
 from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
-from nvtabular.dataset.base import TabularDataset
+from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
 from nvtabular.io.dataset import DatasetCollection
 from nvtabular.utils import download_file
+
+LOG = logging.getLogger("nvtabular")
 
 
 class Criteo(TabularDataset):
@@ -26,13 +29,14 @@ class Criteo(TabularDataset):
     def create_default_transformations(self, data) -> ColumnGroup:
         outputs = self.column_group.targets_column_group
         outputs += self.column_group.categorical_column_group >> ops.Categorify(
-            out_path=os.path.join(self.data_dir, "categories"),
-            max_size=10000000)
-        outputs += (self.column_group.continuous_column_group
-                    >> ops.FillMissing()
-                    >> ops.Clip(min_value=0)
-                    >> ops.Normalize()
-                    )
+            out_path=os.path.join(self.data_dir, "categories"), max_size=10000000
+        )
+        outputs += (
+            self.column_group.continuous_column_group
+            >> ops.FillMissing()
+            >> ops.Clip(min_value=0)
+            >> ops.Normalize()
+        )
 
         return outputs
 
@@ -64,7 +68,7 @@ class Criteo(TabularDataset):
 
         dataset.to_parquet(self.parquet_dir, preserve_files=True)
 
-    def prepare(self, **kwargs) -> DatasetCollection:
+    def prepare(self) -> ParquetPathCollection:
         orig_files = []
         # Iterate over days
         for i in range(0, self.num_days):
@@ -72,11 +76,9 @@ class Criteo(TabularDataset):
             orig_files.append(file.replace(".gz", ""))
             # Download file, if there is no .gz, .csv or .parquet file
             if not (
-                    os.path.exists(file)
-                    or os.path.exists(
-                file.replace(".gz", ".parquet").replace("orig", "orig/parquet/")
-            )
-                    or os.path.exists(file.replace(".gz", ""))
+                os.path.exists(file)
+                or os.path.exists(file.replace(".gz", ".parquet").replace("orig", "orig/parquet/"))
+                or os.path.exists(file.replace(".gz", ""))
             ):
                 download_file(
                     "http://azuremlsampleexperiments.blob.core.windows.net/criteo/day_"
@@ -94,10 +96,11 @@ class Criteo(TabularDataset):
         if files_to_convert:
             self.convert_files_to_parquet(files_to_convert)
 
-        parquet_files = [os.path.join(self.parquet_dir, f"day_{i}.parquet") for i in range(0, self.num_days)]
+        parquet_files = [
+            os.path.join(self.parquet_dir, f"day_{i}.parquet") for i in range(0, self.num_days)
+        ]
 
-        return DatasetCollection.from_splits(Dataset(parquet_files[:-1], engine="parquet", **kwargs),
-                                             eval=Dataset(parquet_files[-1], engine="parquet", **kwargs))
+        return ParquetPathCollection.from_splits(parquet_files[:-1], eval=parquet_files[-1])
 
     def name(self):
         return f"criteo"

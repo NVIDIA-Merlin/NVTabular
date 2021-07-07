@@ -17,16 +17,16 @@
 import collections
 import logging
 import math
-import random
-import warnings
-from types import SimpleNamespace
-from typing import Optional, Any
-from glob import glob
 import os
-import joblib
+import random
 import shutil
+import warnings
+from glob import glob
+from types import SimpleNamespace
+from typing import Any, Optional
 
 import dask
+import joblib
 import numpy as np
 import pandas as pd
 from dask.base import tokenize
@@ -38,9 +38,9 @@ from fsspec.utils import stringify_path
 
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
-from ..tag import Tag
 
-from ..utils import device_mem_size
+from ..tag import Tag
+from ..utils import Namespace, device_mem_size
 from .csv import CSVDatasetEngine
 from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
@@ -200,19 +200,19 @@ class Dataset:
     """
 
     def __init__(
-            self,
-            path_or_source,
-            engine=None,
-            npartitions=None,
-            part_size=None,
-            part_mem_fraction=None,
-            storage_options=None,
-            dtypes=None,
-            client=None,
-            cpu=None,
-            base_dataset=None,
-            workflow=None,
-            **kwargs,
+        self,
+        path_or_source,
+        engine=None,
+        npartitions=None,
+        part_size=None,
+        part_mem_fraction=None,
+        storage_options=None,
+        dtypes=None,
+        client=None,
+        cpu=None,
+        base_dataset=None,
+        workflow=None,
+        **kwargs,
     ):
         self.dtypes = dtypes
         self.client = client
@@ -234,7 +234,7 @@ class Dataset:
 
         npartitions = npartitions or 1
         if isinstance(path_or_source, dask.dataframe.DataFrame) or _is_dataframe_object(
-                path_or_source
+            path_or_source
         ):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
@@ -460,8 +460,8 @@ class Dataset:
                 target_mapping.reset_index(drop=False, inplace=True)
                 plan = (
                     hive_mapping.reset_index()
-                        .merge(target_mapping, on=cols, how="left")
-                        .sort_values("_sort")["_partition"]
+                    .merge(target_mapping, on=cols, how="left")
+                    .sort_values("_sort")["_partition"]
                 )
 
                 if hasattr(plan, "to_pandas"):
@@ -506,8 +506,8 @@ class Dataset:
         """
         return Dataset(
             self.to_ddf()
-                .clear_divisions()
-                .repartition(
+            .clear_divisions()
+            .repartition(
                 npartitions=npartitions,
                 partition_size=partition_size,
             )
@@ -545,8 +545,8 @@ class Dataset:
 
         return cls(
             left.to_ddf()
-                .clear_divisions()
-                .merge(
+            .clear_divisions()
+            .merge(
                 _right.to_ddf().clear_divisions(),
                 **kwargs,
             )
@@ -613,19 +613,19 @@ class Dataset:
         )
 
     def to_parquet(
-            self,
-            output_path,
-            shuffle=None,
-            preserve_files=False,
-            output_files=None,
-            out_files_per_proc=None,
-            num_threads=0,
-            dtypes=None,
-            cats=None,
-            conts=None,
-            labels=None,
-            suffix=".parquet",
-            partition_on=None,
+        self,
+        output_path,
+        shuffle=None,
+        preserve_files=False,
+        output_files=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+        cats=None,
+        conts=None,
+        labels=None,
+        suffix=".parquet",
+        partition_on=None,
     ):
         """Writes out to a parquet dataset
 
@@ -782,16 +782,16 @@ class Dataset:
         )
 
     def to_hugectr(
-            self,
-            output_path,
-            cats,
-            conts,
-            labels,
-            shuffle=None,
-            file_partition_map=None,
-            out_files_per_proc=None,
-            num_threads=0,
-            dtypes=None,
+        self,
+        output_path,
+        cats,
+        conts,
+        labels,
+        shuffle=None,
+        file_partition_map=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
     ):
         """Writes out to a parquet dataset
 
@@ -894,27 +894,41 @@ class Dataset:
             feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
 
             if feature_dtype == np.float32:
-                feature.float_domain.CopyFrom(schema_pb2.FloatDomain(
-                    name=f,
-                    min=ddf[f].min().compute(),
-                    max=ddf[f].max().compute()
-                ))
+                feature.float_domain.CopyFrom(
+                    schema_pb2.FloatDomain(
+                        name=f, min=ddf[f].min().compute(), max=ddf[f].max().compute()
+                    )
+                )
                 feature.type = 3
             elif feature_dtype in [np.int32, np.int64]:
-                feature.int_domain.CopyFrom(schema_pb2.IntDomain(
-                    name=f,
-                    min=ddf[f].min().compute(),
-                    max=ddf[f].max().compute(),
-                    is_categorical="categorical" in tags
-                ))
+                feature.int_domain.CopyFrom(
+                    schema_pb2.IntDomain(
+                        name=f,
+                        min=ddf[f].min().compute(),
+                        max=ddf[f].max().compute(),
+                        is_categorical="categorical" in tags,
+                    )
+                )
                 feature.type = 2
 
         with open(schema_file, "wb") as f:
             f.write(schema.SerializeToString())
 
-    def to_tf_dataset(self, batch_size, data_dir=None, shuffle=True, buffer_size=0.06, parts_per_chunk=1,
-                      separate_labels=True, named_labels=False, overwrite=False,
-                      continuous_features=None, categorical_features=None, targets=None, **kwargs):
+    def to_tf_dataset(
+        self,
+        batch_size,
+        data_dir=None,
+        shuffle=True,
+        buffer_size=0.06,
+        parts_per_chunk=1,
+        separate_labels=True,
+        named_labels=False,
+        overwrite=False,
+        continuous_features=None,
+        categorical_features=None,
+        targets=None,
+        **kwargs,
+    ):
         from nvtabular.loader.tensorflow import KerasSequenceLoader
 
         data_dir = data_dir or os.path.join(self.workflow.work_dir, self.id)
@@ -941,7 +955,7 @@ class Dataset:
             shuffle=shuffle,
             buffer_size=buffer_size,  # how many batches to load at once
             parts_per_chunk=parts_per_chunk,
-            column_group=getattr(self.workflow, "column_group", None)
+            column_group=getattr(self.workflow, "column_group", None),
         )
 
         if named_labels and separate_labels:
@@ -1002,12 +1016,12 @@ class Dataset:
         return self.engine.validate_dataset(**kwargs)
 
     def regenerate_dataset(
-            self,
-            output_path,
-            columns=None,
-            output_format="parquet",
-            compute=True,
-            **kwargs,
+        self,
+        output_path,
+        columns=None,
+        output_format="parquet",
+        compute=True,
+        **kwargs,
     ):
         """EXPERIMENTAL:
         Regenerate an NVTabular Dataset for efficient processing by writing
@@ -1073,7 +1087,7 @@ class Dataset:
         setattr(cls, name, meth)
 
 
-class DatasetCollection(SimpleNamespace):
+class DatasetCollection(Namespace):
     def __init__(self, **kwargs: Any) -> None:
         splits = {}
         for key, val in kwargs.items():
@@ -1081,7 +1095,9 @@ class DatasetCollection(SimpleNamespace):
                 LOG.warning(f"{key} is emtpy, remove it from the collection")
             else:
                 splits[key] = val
-        assert all([isinstance(dataset, (Dataset, DatasetCollection)) for dataset in kwargs.values()])
+        assert all(
+            [isinstance(dataset, (Dataset, DatasetCollection)) for dataset in kwargs.values()]
+        )
         super().__init__(**kwargs)
 
     @classmethod
@@ -1092,18 +1108,6 @@ class DatasetCollection(SimpleNamespace):
         if test:
             splits["test"] = test
         return cls(**splits)
-
-    def get(self, name):
-        return vars(self).get(name)
-
-    def items(self):
-        return vars(self).items()
-
-    def __getitem__(self, name):
-        return vars(self)[name]
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
 
     def filter_keys(self, *keys):
         outputs = {}
@@ -1127,14 +1131,17 @@ class DatasetCollection(SimpleNamespace):
                 outputs[name] = dataset
 
         if flattened:
-            df = pd.json_normalize(outputs, sep='/')
-            outputs = df.to_dict(orient='records')[0]
+            df = pd.json_normalize(outputs, sep="/")
+            outputs = df.to_dict(orient="records")[0]
 
         return outputs
 
-    def generate_schema(self, output_path, tags_by_column, by_id=True, overwrite=False, client=None):
-        from nvtabular.ops import Schema
+    def generate_schema(
+        self, output_path, tags_by_column, by_id=True, overwrite=False, client=None
+    ):
         from tensorflow_metadata.proto.v0 import schema_pb2
+
+        from nvtabular.ops import Schema
 
         schemas = {}
 
@@ -1146,7 +1153,9 @@ class DatasetCollection(SimpleNamespace):
 
             schema_path = os.path.join(dataset_dir, Schema.SCHEMA_FILE_NAME)
             if not os.path.exists(schema_path) or overwrite:
-                schema = Schema.calculate_on_dataset(dataset, tags_by_column, output_path=dataset_dir, client=client)
+                schema = Schema.calculate_on_dataset(
+                    dataset, tags_by_column, output_path=dataset_dir, client=client
+                )
             else:
                 schema = schema_pb2.Schema()
                 with open(schema_path, "rb") as f:
@@ -1156,9 +1165,12 @@ class DatasetCollection(SimpleNamespace):
 
         return SimpleNamespace(**schemas)
 
-    def calculate_statistics(self, output_path=None, by_id=True, overwrite=False, client=None, **kwargs):
-        from nvtabular.ops.statistics import Statistics, DatasetCollectionStatistics
+    def calculate_statistics(
+        self, output_path=None, by_id=True, overwrite=False, client=None, **kwargs
+    ):
         from tensorflow_metadata.proto.v0 import statistics_pb2
+
+        from nvtabular.ops.statistics import DatasetCollectionStatistics, Statistics
 
         statistics = statistics_pb2.DatasetFeatureStatisticsList()
 
@@ -1171,9 +1183,12 @@ class DatasetCollection(SimpleNamespace):
             stats_path = os.path.join(dataset_dir, Statistics.STATS_FILE_NAME)
             stats_dataset = statistics.datasets.add()
             if not os.path.exists(stats_path) or overwrite:
-                stats = Statistics.calculate_on_dataset(dataset, output_path=dataset_dir, client=client, **kwargs)
+                stats = Statistics.calculate_on_dataset(
+                    dataset, output_path=dataset_dir, client=client, **kwargs
+                )
                 stats_dataset.CopyFrom(stats.stats)
             else:
+                LOG.info("Loading statistics from cache...")
                 d = statistics_pb2.DatasetFeatureStatisticsList()
                 with open(stats_path, "rb") as f:
                     d.ParseFromString(f.read())
@@ -1182,21 +1197,23 @@ class DatasetCollection(SimpleNamespace):
 
         return DatasetCollectionStatistics(statistics)
 
-    def to_parquet(self,
-                   output_path,
-                   by_id=True,
-                   overwrite=False,
-                   shuffle=None,
-                   preserve_files=False,
-                   output_files=None,
-                   out_files_per_proc=None,
-                   num_threads=0,
-                   dtypes=None,
-                   cats=None,
-                   conts=None,
-                   labels=None,
-                   suffix=".parquet",
-                   partition_on=None):
+    def to_parquet(
+        self,
+        output_path,
+        by_id=True,
+        overwrite=False,
+        shuffle=None,
+        preserve_files=False,
+        output_files=None,
+        out_files_per_proc=None,
+        num_threads=0,
+        dtypes=None,
+        cats=None,
+        conts=None,
+        labels=None,
+        suffix=".parquet",
+        partition_on=None,
+    ):
         kwargs = locals()
         by_id, overwrite = kwargs.pop("by_id"), kwargs.pop("overwrite")
         for key in ["self", "output_path"]:
@@ -1206,9 +1223,12 @@ class DatasetCollection(SimpleNamespace):
             dataset_dir = os.path.join(output_path, dataset.id if by_id else name)
             dataset._dir = dataset_dir
             if not os.path.exists(dataset_dir) or overwrite:
+                LOG.info(f"Saving to {dataset_dir}")
                 dataset.to_parquet(dataset_dir, **kwargs)
 
-    def load_transformed_from_dir(self, directory, workflow, format="parquet", **kwargs) -> Optional["DatasetCollection"]:
+    def load_transformed_from_dir(
+        self, directory, workflow, format="parquet", **kwargs
+    ) -> Optional["DatasetCollection"]:
         from nvtabular.workflow import Workflow
 
         outputs = {}
@@ -1219,8 +1239,10 @@ class DatasetCollection(SimpleNamespace):
             if os.path.exists(path):
                 if not loaded_workflow:
                     loaded_workflow = Workflow.load(directory)
-                outputs[name] = Dataset.from_pattern(path, f"*.{format}", workflow=loaded_workflow, id=transformed_id,
-                                                     **kwargs)
+                LOG.info(f"Loading from: {path}")
+                outputs[name] = Dataset.from_pattern(
+                    path, f"*.{format}", workflow=loaded_workflow, id=transformed_id, **kwargs
+                )
                 outputs[name]._dir = path
 
         if not outputs:

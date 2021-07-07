@@ -32,14 +32,16 @@ class ClothingReviews(TabularDataset):
     def create_input_column_group(self):
         columns = ColumnGroup([])
         columns += ColumnGroup(["Title", "Review Text"], tags=Tag.TEXT)
-        columns += ColumnGroup(["Division Name", "Department Name", "Class Name", "Clothing ID"],
-                               tags=Tag.CATEGORICAL)
+        columns += ColumnGroup(
+            ["Division Name", "Department Name", "Class Name", "Clothing ID"], tags=Tag.CATEGORICAL
+        )
         columns += ColumnGroup(["Positive Feedback Count", "Age"], tags=Tag.CONTINUOUS)
 
-        columns += (ColumnGroup(["Recommended IND"])
-                    >> ops.Rename(f=lambda x: x.replace(" IND", ""))
-                    >> TagAs(Tag.TARGETS_BINARY)
-                    )
+        columns += (
+            ColumnGroup(["Recommended IND"])
+            >> ops.Rename(f=lambda x: x.replace(" IND", ""))
+            >> TagAs(Tag.TARGETS_BINARY)
+        )
         columns += ColumnGroup(["Rating"], tags=Tag.TARGETS_REGRESSION)
 
         return columns
@@ -58,7 +60,8 @@ class ClothingReviews(TabularDataset):
                     max_length=200,
                     do_lower=False,
                     cache_dir=os.path.join(self.data_dir, "tokenizers"),
-                    do_truncate=True)
+                    do_truncate=True,
+                )
         else:
             outputs += self.column_group.text_column_group
 
@@ -72,8 +75,9 @@ class ClothingReviews(TabularDataset):
 
         if not os.path.exists(self.data_parquet):
             if not os.path.exists(self.data_csv):
-                kaggle_api.dataset_download_files("nicapotato/womens-ecommerce-clothing-reviews", path=self.input_dir,
-                                                  unzip=True)
+                kaggle_api.dataset_download_files(
+                    "nicapotato/womens-ecommerce-clothing-reviews", path=self.input_dir, unzip=True
+                )
 
             dataset = Dataset(
                 self.data_csv,
@@ -88,11 +92,12 @@ class ClothingReviews(TabularDataset):
 
         if not os.path.exists(train_path) or not os.path.exists(eval_path):
             df = cudf.read_parquet(self.data_parquet)
-            train, eval = train_test_split(df, test_size=self.test_size, random_state=self.random_state)
+            train, eval = train_test_split(
+                df, test_size=self.test_size, random_state=self.random_state
+            )
             Dataset(train).to_parquet(train_path)
             Dataset(eval).to_parquet(eval_path)
 
         return DatasetCollection.from_splits(
-            Dataset.from_pattern(train_path),
-            eval=Dataset.from_pattern(eval_path)
+            Dataset.from_pattern(train_path), eval=Dataset.from_pattern(eval_path)
         )

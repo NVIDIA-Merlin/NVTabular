@@ -27,10 +27,10 @@ import dask
 import pandas as pd
 from dask.core import flatten
 
-from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes, Tag
+from nvtabular.column_group import ColumnGroup, Tag, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset, DatasetCollection
-from nvtabular.ops import StatOperator, Schema
+from nvtabular.ops import Schema, StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
@@ -69,7 +69,9 @@ class Workflow:
         The Dask distributed client to use for multi-gpu processing and multi-node processing
     """
 
-    def __init__(self, column_group: ColumnGroup, work_dir, client: Optional["distributed.Client"] = None):
+    def __init__(
+        self, column_group: ColumnGroup, work_dir, client: Optional["distributed.Client"] = None
+    ):
         self.column_group = _merge_add_nodes(column_group)
         self.client = client
         self.work_dir = work_dir
@@ -100,7 +102,7 @@ class Workflow:
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
             workflow=self,
-            id=self.transformed_dataset_id(dataset)
+            id=self.transformed_dataset_id(dataset),
         )
 
         return output
@@ -201,10 +203,13 @@ class Workflow:
         return transformed
 
     def generate_schema(self, dataset, output_path=None):
-        return Schema.calculate_on_dataset(dataset, self.column_group.tags_by_column(), output_path=output_path)
+        return Schema.calculate_on_dataset(
+            dataset, self.column_group.tags_by_column(), output_path=output_path
+        )
 
-    def fit_transform_collection(self, datasets: DatasetCollection, to_fit="train", save=False,
-                                 overwrite=False, **kwargs) -> DatasetCollection:
+    def fit_transform_collection(
+        self, datasets: DatasetCollection, to_fit="train", save=False, overwrite=False, **kwargs
+    ) -> DatasetCollection:
         outputs = datasets.load_transformed_from_dir(self.work_dir, self)
 
         if outputs:
@@ -222,8 +227,12 @@ class Workflow:
 
         if save:
             outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
-            schemas = outputs.generate_schema(self.work_dir, self.column_group.tags_by_column(), overwrite=overwrite,
-                                              client=self.client)
+            schemas = outputs.generate_schema(
+                self.work_dir,
+                self.column_group.tags_by_column(),
+                overwrite=overwrite,
+                client=self.client,
+            )
             self.column_group._schema = vars(schemas)[to_fit]
 
         return outputs

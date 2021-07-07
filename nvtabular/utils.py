@@ -20,6 +20,7 @@ import tarfile
 import urllib.request
 import warnings
 import zipfile
+from types import SimpleNamespace
 
 import dask
 from dask.dataframe.optimize import optimize as dd_optimize
@@ -156,3 +157,26 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
     # Return optimized ddf
     ddf.dask = dsk
     return ddf
+
+
+class Namespace(SimpleNamespace):
+    @classmethod
+    def from_splits(cls, train, eval=None, test=None):
+        splits = dict(train=train)
+        if eval:
+            splits["eval"] = eval
+        if test:
+            splits["test"] = test
+        return cls(**splits)
+
+    def get(self, name):
+        return vars(self).get(name)
+
+    def items(self):
+        return vars(self).items()
+
+    def __getitem__(self, name):
+        return vars(self)[name]
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)

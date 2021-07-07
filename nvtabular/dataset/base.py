@@ -1,23 +1,79 @@
+import abc
 import contextlib
 import logging
 import os
-
-import abc
 import warnings
+from glob import glob
 from types import SimpleNamespace
+from typing import Any, Optional, Union
 
+import joblib
 import rmm
-
-from ..column_group import ColumnGroup
-from ..io.dataset import DatasetCollection
-from ..ops.statistics import DatasetCollectionStatistics
-from ..workflow import Workflow
-from nvtabular.utils import device_mem_size, _pynvml_mem_size
-
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 
+from nvtabular.io import Dataset
+from nvtabular.utils import Namespace, _pynvml_mem_size, device_mem_size
+
+from ..column_group import ColumnGroup
+from ..io.dataset import DatasetCollection
+from ..ops.statistics import DatasetCollectionStatistics, Statistics
+from ..workflow import Workflow
+
 LOG = logging.getLogger("nvtabular")
+
+
+class ParquetPathCollection(Namespace):
+    def load(self, transformed=True, **kwargs) -> Optional["DatasetCollection"]:
+        outputs = {}
+        for name, paths in self.items():
+            if isinstance(paths, ParquetPathCollection):
+                outputs[name] = paths.load(transformed=transformed, **kwargs)
+            else:
+                id = None
+                if transformed:
+                    if isinstance(paths, list):
+                        id = paths[0].split("/")[-1]
+                    else:
+                        id = paths.split("/")[-1]
+                if isinstance(paths, list) or not os.path.isdir(paths):
+                    outputs[name] = Dataset(paths, id=id, **kwargs)
+                else:
+                    outputs[name] = Dataset.from_pattern(paths, id=id, **kwargs)
+                    outputs[name]._dir = paths
+
+        if not outputs:
+            return None
+
+        return DatasetCollection(**outputs)
+
+    @property
+    def exists(self) -> bool:
+        for name, paths in self.items():
+            if isinstance(paths, list):
+                if not all([os.path.exists(path) for path in paths]):
+                    return False
+            elif isinstance(paths, ParquetPathCollection):
+                if not paths.exists:
+                    return False
+            else:
+                if not os.path.exists(paths):
+                    return False
+
+        return True
+
+    @classmethod
+    def from_splits(cls, train, eval=None, test=None):
+        splits = dict(train=train)
+        if eval:
+            splits["eval"] = eval
+        if test:
+            splits["test"] = test
+
+        return cls(**splits)
+
+    def parquet_files(self, name):
+        return glob(os.path.join(vars(self)[name], "*.parquet"))
 
 
 class TabularDataset:
@@ -38,11 +94,11 @@ class TabularDataset:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def create_default_transformations(self, data) -> ColumnGroup:
+    def create_default_transformations(self, prepared_paths) -> ColumnGroup:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def prepare(self, **kwargs) -> DatasetCollection:
+    def prepare(self) -> ParquetPathCollection:
         raise NotImplementedError()
 
     @property
@@ -51,13 +107,15 @@ class TabularDataset:
 
     def prepare_data(self, **kwargs) -> DatasetCollection:
         LOG.info("Preparing data...")
-        return self.prepare(**kwargs)
+        return self.prepare().load(transformed=False, **kwargs)
 
-    def transformed_column_group(self, **kwargs):
-        return self.create_default_transformations(self.prepare(**kwargs))
+    def transformed_column_group(self, prepared_paths=None):
+        if not prepared_paths:
+            prepared_paths = self.prepare()
+        return self.create_default_transformations(prepared_paths)
 
     def create_workflow(self, **kwargs):
-        return Workflow(self.transformed_column_group(**kwargs), self.transformed_dir)
+        return Workflow(self.transformed_column_group(), self.transformed_dir)
 
     @contextlib.contextmanager
     def client(self):
@@ -69,68 +127,102 @@ class TabularDataset:
             LOG.info("Shutting down Dask-client...")
             client.shutdown()
 
-    @property
-    def data(self):
-        return self.prepare_data()
+    def calculate_statistics(
+        self, transformed=False, overwrite=False, cross_columns=None, split_names=None, **kwargs
+    ) -> DatasetCollectionStatistics:
+        data_dir = self.transformed_dir if transformed else self.data_dir
 
-    def calculate_statistics(self, transformed=False, overwrite=False, cross_columns=None,
-                             split_names=None, **kwargs) -> DatasetCollectionStatistics:
-        data = self.transform(**kwargs) if transformed else self.prepare_data(**kwargs)
+        maybe_cached = Statistics.load(data_dir)
+        if maybe_cached:
+            return maybe_cached
+
+        data = self.transform(**kwargs) if transformed else self.prepare_data()
         if split_names:
             if not isinstance(split_names, (list, tuple)):
                 split_names = [split_names]
             data = data.filter_keys(*split_names)
         data = data.flatten()
-        data_dir = self.transformed_dir if transformed else self.data_dir
+
         client = self.client_fn() if self.client_fn else None
-        stats = data.calculate_statistics(data_dir, client=client, overwrite=overwrite, cross_columns=cross_columns)
+        stats = data.calculate_statistics(
+            data_dir, client=client, overwrite=overwrite, cross_columns=cross_columns
+        )
         stats.save(data_dir)
 
         return stats
 
     def generate_schema(self, transformed=False, **kwargs) -> SimpleNamespace:
-        data = self.transform(**kwargs) if transformed else self.prepare_data(**kwargs)
+        data = self.transform(**kwargs) if transformed else self.prepare_data()
         data_dir = self.transformed_dir if transformed else self.data_dir
         col_group = self.transformed_column_group(**kwargs) if transformed else self.column_group
         schemas = data.generate_schema(data_dir, col_group.tags_by_column())
 
         return schemas
 
-    def transform(self, workflow=None, overwrite=False, save=True, to_fit="train",
-                  for_training=False, **kwargs) -> DatasetCollection:
-        splits: DatasetCollection = self.prepare_data(**kwargs)
-
+    def transform_paths(self, workflow=None) -> ParquetPathCollection:
+        prepared_paths = self.prepare()
+        split_paths = prepared_paths.splits if prepared_paths.get("splits") else prepared_paths
         if not workflow:
-            workflow = Workflow(self.transformed_column_group(**kwargs), self.transformed_dir)
+            workflow = Workflow(self.transformed_column_group(), self.transformed_dir)
+
+        transformed_paths = {}
+
+        for name in vars(split_paths).keys():
+            transformed_id = "_".join(
+                [joblib.hash(split_paths.parquet_files(name)), workflow.column_group.id]
+            )
+            transformed_paths[name] = os.path.join(self.transformed_dir, transformed_id)
+
+        return ParquetPathCollection(**transformed_paths)
+
+    def transform(
+        self,
+        workflow=None,
+        overwrite=False,
+        save=True,
+        to_fit="train",
+        for_training=False,
+        **kwargs,
+    ) -> Union[DatasetCollection, ParquetPathCollection]:
+        client = self.client_fn() if self.client_fn else None
+        if not workflow:
+            workflow = Workflow(self.transformed_column_group(), self.transformed_dir)
         self.workflow = workflow
 
+        output_paths = self.transform_paths(workflow)
+        if output_paths.exists:
+            LOG.info("Loading Transforming dataset from cache...")
+            if for_training:
+                return output_paths
+
+            return output_paths.load(client=client, **kwargs)
+
+        splits: DatasetCollection = self.prepare_data(client=client, **kwargs)
         splits = splits.splits if splits.get("splits") else splits
 
-        if splits.can_load_transformed_from_dir(self.transformed_dir, workflow):
-            LOG.info("Loading transformed data from cache...")
-            self.transformed = splits.load_transformed_from_dir(self.transformed_dir, workflow)
-        else:
-            LOG.info("Transforming dataset...")
-            if for_training and self.client_fn:
-                with self.client() as client:
-                    self.workflow.client = client
-                    workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite, save=save)
-                    self.workflow.client = None
-                self.transformed = splits.load_transformed_from_dir(self.transformed_dir, workflow)
-            else:
-                self.transformed = workflow.fit_transform_collection(splits, to_fit=to_fit, overwrite=overwrite,
-                                                                     save=save)
+        LOG.info("Transforming dataset...")
+        self.workflow.client = client
+        transformed = workflow.fit_transform_collection(
+            splits, to_fit=to_fit, overwrite=overwrite, save=save
+        )
+        if for_training:
+            self.workflow.client = None
+            client.shutdown()
+            return output_paths
 
-        return self.transformed
+        return transformed
 
 
-def create_multi_gpu_dask_client_fn(gpu_ids=None,
-                                    device_limit_frac=0.7,  # Spill GPU-Worker memory to host at this limit.
-                                    device_pool_frac=0.8,
-                                    part_mem_frac=0.15,
-                                    dask_dir=None,
-                                    protocol="tcp",
-                                    dashboard_port="8787"):
+def create_multi_gpu_dask_client_fn(
+    gpu_ids=None,
+    device_limit_frac=0.7,
+    # Spill GPU-Worker memory to host at this limit.
+    device_pool_frac=0.8,
+    part_mem_frac=0.15,
+    dask_dir=None,
+    protocol="tcp",
+    dashboard_port="8787",
+):
     device_size = device_mem_size(kind="total")
     device_limit = int(device_limit_frac * device_size)
     device_pool_size = int(device_pool_frac * device_size)

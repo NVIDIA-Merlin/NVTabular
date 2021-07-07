@@ -13,14 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dask.dataframe as dd
+import logging
 import os
+
+import dask.dataframe as dd
 from nvtx import annotate
 
 from nvtabular.dispatch import DataFrameType
 
 from .base import ColumnNames, Operator
 from .stat_operator import StatOperator
+
+LOG = logging.getLogger("nvtabular")
 
 
 class Schema(StatOperator):
@@ -51,6 +55,23 @@ class Schema(StatOperator):
         workflow.fit(dataset, save_workflow=False)
 
         return stats.schema
+
+    @classmethod
+    def load(cls, dir):
+        from tensorflow_metadata.proto.v0 import schema_pb2
+
+        schema_file = os.path.join(dir, cls.SCHEMA_FILE_NAME)
+
+        LOG.info(f"Loading schema from {schema_file}")
+
+        if not os.path.exists(schema_file):
+            return None
+
+        schema = schema_pb2.Schema()
+        with open(schema_file, "rb") as f:
+            schema.ParseFromString(f.read())
+
+        return schema
 
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         return df
@@ -89,6 +110,7 @@ class Schema(StatOperator):
 
     def prepare_schema(self, stats):
         from tensorflow_metadata.proto.v0 import schema_pb2
+
         dask_stats = stats
 
         self.schema = schema_pb2.Schema()
@@ -111,25 +133,28 @@ class Schema(StatOperator):
                     dim.size = min_length
                     feature.shape.CopyFrom(shape)
                 else:
-                    feature.value_count.CopyFrom(schema_pb2.ValueCount(
-                        min=min_length,
-                        max=max_length
-                    ))
+                    feature.value_count.CopyFrom(
+                        schema_pb2.ValueCount(min=min_length, max=max_length)
+                    )
 
             if str(dtype) in ["float32", "float64"]:
-                feature.float_domain.CopyFrom(schema_pb2.FloatDomain(
-                    name=col,
-                    min=dask_stats[col]["min"].item(),
-                    max=dask_stats[col]["max"].item()
-                ))
+                feature.float_domain.CopyFrom(
+                    schema_pb2.FloatDomain(
+                        name=col,
+                        min=dask_stats[col]["min"].item(),
+                        max=dask_stats[col]["max"].item(),
+                    )
+                )
                 feature.type = 3
             elif str(dtype) in ["int8", "int32", "int64"]:
-                feature.int_domain.CopyFrom(schema_pb2.IntDomain(
-                    name=col,
-                    min=dask_stats[col]["min"].item(),
-                    max=dask_stats[col]["max"].item(),
-                    is_categorical="categorical" in tags
-                ))
+                feature.int_domain.CopyFrom(
+                    schema_pb2.IntDomain(
+                        name=col,
+                        min=dask_stats[col]["min"].item(),
+                        max=dask_stats[col]["max"].item(),
+                        is_categorical="categorical" in tags,
+                    )
+                )
                 feature.type = 2
 
         if self.schema_path:

@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import base64
+import logging
 import os
 
 import dask.array as da
@@ -22,10 +23,12 @@ import numpy as np
 from nvtx import annotate
 
 from nvtabular.dispatch import DataFrameType
-from .schema import Schema
 
 from .base import ColumnNames, Operator
+from .schema import Schema
 from .stat_operator import StatOperator
+
+LOG = logging.getLogger("nvtabular")
 
 
 class Statistics(Schema):
@@ -43,7 +46,9 @@ class Statistics(Schema):
         self.stats = None
 
     @classmethod
-    def calculate_on_dataset(cls, dataset, column_group=None, cross_columns=None, output_path=None, client=None):
+    def calculate_on_dataset(
+        cls, dataset, column_group=None, cross_columns=None, output_path=None, client=None
+    ):
         from nvtabular.workflow import Workflow
 
         column_group = column_group or list(dataset.to_ddf().columns)
@@ -53,6 +58,22 @@ class Statistics(Schema):
         workflow.fit(dataset, save_workflow=False)
 
         return stats
+
+    @classmethod
+    def load(cls, dir):
+        from tensorflow_metadata.proto.v0 import statistics_pb2
+
+        stats_file = os.path.join(dir, cls.STATS_FILE_NAME)
+
+        if not os.path.exists(stats_file):
+            return None
+
+        LOG.info(f"Loading stats from {stats_file}")
+        d = statistics_pb2.DatasetFeatureStatisticsList()
+        with open(stats_file, "rb") as f:
+            d.ParseFromString(f.read())
+
+        return DatasetCollectionStatistics(d)
 
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         return df
@@ -93,7 +114,9 @@ class Statistics(Schema):
 
                 dask_stats[col]["num_zeroes"] = (ddf[col] == 0).sum()
 
-                h, bins = da.histogram(ddf[col].to_dask_array(), 10, range=[ddf[col].min(), ddf[col].max()])
+                h, bins = da.histogram(
+                    ddf[col].to_dask_array(), 10, range=[ddf[col].min(), ddf[col].max()]
+                )
                 dask_stats[col]["histogram"] = h
                 dask_stats[col]["histogram_bins"] = bins
 
@@ -104,11 +127,13 @@ class Statistics(Schema):
         return num_examples, dask_stats
 
     def fit_finalize(self, stats):
-        from tensorflow_metadata.proto.v0 import statistics_pb2, path_pb2
+        from tensorflow_metadata.proto.v0 import path_pb2, statistics_pb2
 
         num_examples, dask_stats = stats
 
-        self.stats = statistics_pb2.DatasetFeatureStatistics(name=self.name, num_examples=num_examples)
+        self.stats = statistics_pb2.DatasetFeatureStatistics(
+            name=self.name, num_examples=num_examples
+        )
 
         for i, col in enumerate(self.col_names):
             dtype = self.col_dtypes[i]
@@ -133,34 +158,43 @@ class Statistics(Schema):
                     bucket.high_value = bins[i + 1]
                     bucket.sample_count = float(h[i])
 
-                feature.num_stats.CopyFrom(statistics_pb2.NumericStatistics(
-                    min=dask_stats[col]["min"].item(),
-                    max=dask_stats[col]["max"].item(),
-                    histograms=[hist],
-                    common_stats=common_stats,
-                    #                     median=1.0,
-                    #                     median=float(dask_stats[col]["median"]),
-                    mean=dask_stats[col]["mean"].item(),
-                    std_dev=dask_stats[col]["std"].item(),
-                    num_zeros=dask_stats[col]["num_zeroes"].item(),
-                ))
+                feature.num_stats.CopyFrom(
+                    statistics_pb2.NumericStatistics(
+                        min=dask_stats[col]["min"].item(),
+                        max=dask_stats[col]["max"].item(),
+                        histograms=[hist],
+                        common_stats=common_stats,
+                        #                     median=1.0,
+                        #                     median=float(dask_stats[col]["median"]),
+                        mean=dask_stats[col]["mean"].item(),
+                        std_dev=dask_stats[col]["std"].item(),
+                        num_zeros=dask_stats[col]["num_zeroes"].item(),
+                    )
+                )
                 feature.type = 1 if np.issubdtype(dtype, np.floating) else 0
             elif dtype == np.object:
-                feature.string_stats.CopyFrom(statistics_pb2.StringStatistics(
-                    common_stats=common_stats,
-                    avg_length=dask_stats[col]["avg_length"],
-                    unique=dask_stats[col]["nunique"].item()
-                ))
+                feature.string_stats.CopyFrom(
+                    statistics_pb2.StringStatistics(
+                        common_stats=common_stats,
+                        avg_length=dask_stats[col]["avg_length"],
+                        unique=dask_stats[col]["nunique"].item(),
+                    )
+                )
                 feature.type = 2
 
                 ranks = feature.string_stats.rank_histogram
-                for ind, (val, freq) in enumerate(dask_stats[col]["top_values"].to_pandas().items()):
+                for ind, (val, freq) in enumerate(
+                    dask_stats[col]["top_values"].to_pandas().items()
+                ):
                     f = feature.string_stats.top_values.add()
                     f.value = val
                     f.frequency = freq
                     b = ranks.buckets.add()
                     b.CopyFrom(
-                        statistics_pb2.RankHistogram.Bucket(low_rank=ind, high_rank=ind, label=val, sample_count=freq))
+                        statistics_pb2.RankHistogram.Bucket(
+                            low_rank=ind, high_rank=ind, label=val, sample_count=freq
+                        )
+                    )
 
         if self.cross_columns:
             corr, cov = dask_stats["corr"], dask_stats["cov"]
@@ -170,9 +204,8 @@ class Statistics(Schema):
                         path_x=path_pb2.Path(step=[path_x]),
                         path_y=path_pb2.Path(step=[path_y]),
                         num_cross_stats=statistics_pb2.NumericCrossStatistics(
-                            correlation=float(correlation),
-                            covariance=float(covariance)
-                        )
+                            correlation=float(correlation), covariance=float(covariance)
+                        ),
                     )
                     c = self.stats.cross_features.add()
                     c.CopyFrom(cross)
@@ -223,7 +256,7 @@ class DatasetCollectionStatistics(object):
         self.stats = dataset_feature_statistics_list
 
     def display_overview(self):
-        from IPython.core.display import display, HTML
+        from IPython.core.display import HTML, display
 
         return display(HTML(self.to_html()))
 
