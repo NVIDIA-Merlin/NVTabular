@@ -26,7 +26,11 @@ converting all the parquet files. If the schema is inconsistent across all files
 raise an exception. For additional information, see [this
 issue](https://github.com/NVIDIA/NVTabular/issues/429).
 
-## Setting the Row Group Size for the Parquet Files
+## Reducing Memory Consumption for NVTabular Workflows
+
+NVTabular is designed to scale to larger than GPU or host memory datasets. In our experiments, we are able to [scale to 1.3TB of uncompressed click logs](https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo). However, some workflows can result in OOM errors `cudaErrorMemoryAllocation out of memory`, which can be addressed by small configuration changes.
+
+### 1. Setting the Row Group Size for the Parquet Files
 
 You can use most Data Frame frameworks to set the row group size (number of rows) for your parquet files. In the following Pandas and cuDF examples, the ```row_group_size``` is the number of rows that will be stored in each row group (internal structure within the parquet file):
 ```python
@@ -54,4 +58,22 @@ def _memory_usage(df):
             size += col._memory_usage(deep=True)
     size += df.index.memory_usage(deep=True)
     return size
+```
+
+### 2. Initializing a Dask CUDA Cluster
+
+Even if you execute the NVTabular workflow with only a single GPU, using a dask CUDA cluster can optimize your memory usage. If there is no CUDA cluster initialized, NVTabular executes the workflow on workers of a dask cluster. Dask CUDA cluster provides different memory spilling strategies for GPUs and in our experiment, we could resolve OOM errors by initializing a dask CUDA cluster, first. It is easy to provide NVTabular with a dask CUDA cluster by using `LocalCUDACluster`.
+
+```python
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
+
+import nvtabular as nvt
+
+cluster = LocalCUDACluster()
+client = Client(cluster)
+
+features = ['col'] >> nvt.ops.Normalize()
+
+workflow = nvt.Workflow(features, client=client)
 ```
