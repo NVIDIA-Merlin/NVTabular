@@ -138,7 +138,6 @@ class TritonPythonModel:
                 transformed, kind = convert_format(transformed, kind, Supports.CPU_DICT_ARRAY)
 
             # convert to the format expected by the DL models
-            response = self._transform_outputs(transformed)
             if self.output_model == "hugectr":
                 response = self._transform_hugectr_outputs(transformed)
             else:

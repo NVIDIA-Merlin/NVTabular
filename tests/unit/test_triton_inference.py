@@ -226,7 +226,6 @@ def test_convert_format(_from, _to):
 
     start, kind = convert_format(df, Supports.CPU_DATAFRAME, _from)
     assert kind == _from
-    print(start, kind, _to)
     mid, kind = convert_format(start, kind, _to)
     assert kind == _to
     final, kind = convert_format(mid, kind, Supports.CPU_DATAFRAME)
