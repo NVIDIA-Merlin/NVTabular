@@ -22,7 +22,11 @@ import warnings
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
-import cudf
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import dask
 import pandas as pd
 from dask.core import flatten
@@ -75,6 +79,7 @@ class Workflow:
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
+        self.lib = cudf if cudf else pd
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -205,7 +210,7 @@ class Workflow:
                 {
                     "versions": {
                         "nvtabular": nvt_version,
-                        "cudf": cudf.__version__,
+                        self.lib.__name__: self.lib.__version__,
                         "python": sys.version,
                     },
                     "generated_timestamp": int(time.time()),
@@ -250,9 +255,10 @@ class Workflow:
 
         # make sure we don't have any major/minor version conflicts between the stored worklflow
         # and the current environment
+        lib = cudf if cudf else pd
         versions = meta["versions"]
         check_version(versions["nvtabular"], nvt_version, "nvtabular")
-        check_version(versions["cudf"], cudf.__version__, "cudf")
+        check_version(versions[lib.__name__], lib.__version__, lib.__name__)
         check_version(versions["python"], sys.version, "python")
 
         # load up the workflow object di

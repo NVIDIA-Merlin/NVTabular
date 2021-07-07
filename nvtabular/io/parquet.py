@@ -26,16 +26,19 @@ from distutils.version import LooseVersion
 from io import BytesIO
 from uuid import uuid4
 
-import cudf
+try:
+    import cudf
+    import dask_cudf
+    from cudf.io.parquet import ParquetWriter as pwriter_cudf
+except ImportError:
+    cudf = None
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import fsspec
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
-from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
@@ -874,7 +877,7 @@ class CPUParquetWriter(BaseParquetWriter):
         _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
         for writer, fn in zip(self.data_writers, _fns):
             writer.close()
-            _path = self.fs.sep.join([self.out_dir, fn])
+            _path = self.fs.sep.join([str(self.out_dir), fn])
             self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 
