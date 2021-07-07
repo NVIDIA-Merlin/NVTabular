@@ -167,10 +167,10 @@ class TabularDataset:
 
         transformed_paths = {}
 
-        for name in vars(split_paths).keys():
-            transformed_id = "_".join(
-                [joblib.hash(split_paths.parquet_files(name)), workflow.column_group.id]
-            )
+        for name, paths in split_paths.items():
+            if isinstance(paths, str):
+                paths = split_paths.parquet_files(name)
+            transformed_id = "_".join([joblib.hash(paths), workflow.column_group.id])
             transformed_paths[name] = os.path.join(self.transformed_dir, transformed_id)
 
         return ParquetPathCollection(**transformed_paths)

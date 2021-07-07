@@ -100,7 +100,7 @@ class Criteo(TabularDataset):
             os.path.join(self.parquet_dir, f"day_{i}.parquet") for i in range(0, self.num_days)
         ]
 
-        return ParquetPathCollection.from_splits(parquet_files[:-1], eval=parquet_files[-1])
+        return ParquetPathCollection.from_splits(parquet_files[:-1], eval=[parquet_files[-1]])
 
     def name(self):
         return f"criteo"
