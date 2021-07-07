@@ -1,6 +1,6 @@
-# Inference with HugeCTR Model
+# Training and Inference with HugeCTR Model
 
-In this folder, we provide two example notebooks, [movielens-HugeCTR](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-HugeCR.ipynb) and [movielens-HugeCTR-inference](https://github.com/NVIDIA/NVTabular/tree/main/examples/inference_triton/inference-HugeCTR/movielens-inference.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
+In this folder, we provide two example notebooks, [Training-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Training-with-HugeCTR.ipynb) and [Triton-Inference-with-HugeCTR](https://github.com/NVIDIA/NVTabular/blob/main/examples/getting-started-movielens/inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb), and explain the steps to do inference with Merlin Inference API after training a model with HugeCTR framework. 
 
 ## Getting Started 
 
@@ -23,7 +23,7 @@ Merlin containers are available in the NVIDIA container repository at the follow
 You can pull the `Merlin-Training` container by running the following command:
 
 ```
-docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.5.1 /bin/bash
+docker run --gpus=all -it -v ${PWD}:/model/ -p 8888:8888 -p 8797:8787 -p 8796:8786 --ipc=host nvcr.io/nvidia/merlin/merlin-training:0.5.2 /bin/bash
 ```
 
 The container will open a shell when the run command execution is completed. You'll have to start the jupyter lab on the Docker container. It should look similar to this:
@@ -62,7 +62,7 @@ cd <path to nvt_triton>
 
 2) Launch Merlin Triton Inference Server container:
 ```
-docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5.1
+docker run -it --gpus=all --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 -p 8000:8000 -p 8001:8001 -p 8002:8002 -v ${PWD}:/model/ nvcr.io/nvidia/merlin/merlin-inference:0.5.2
 
 ```
 The container will open a shell when the run command execution is completed. It should look similar to this:
@@ -70,7 +70,7 @@ The container will open a shell when the run command execution is completed. It 
 root@02d56ff0738f:/opt/tritonserver# 
 ```
 
-3) Your saved model should be in the `/model` directory. Navigate to the `model` working directory inside the triton server container to check the saved models:
+3) Your saved models should be in the `/model` directory. Navigate to the `model` working directory inside the triton server container to check the saved models:
 ```
 cd /model
 ```

@@ -16,4 +16,3 @@ as the later ones expect some prior knowledge.
    Scaling to Large Datasets with Criteo <scaling-criteo/index>
    Winning Solution of the RecSys2020 Competition <winning-solution-recsys2020-twitter/01-02-04-Download-Convert-ETL-with-NVTabular-Training-with-XGBoost>
    Tabular Data with Rossmann <tabular-data-rossmann/index>
-   Multi-GPU Example <multi-gpu-toy-example/multi-gpu_dask>

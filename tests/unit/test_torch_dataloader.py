@@ -20,17 +20,15 @@ import subprocess
 import time
 
 import cudf
-import numba.cuda
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
 from nvtabular.io.dataset import Dataset
-from tests.conftest import mycols_csv, mycols_pq
+from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
@@ -38,8 +36,6 @@ torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
 from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
 from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
-
-GPU_DEVICE_IDS = [d.id for d in numba.cuda.gpus]
 
 
 def test_shuffling():
@@ -54,7 +50,7 @@ def test_shuffling():
 
     batch = next(iter(train_dataset))
 
-    first_batch = batch[1].cpu()
+    first_batch = batch[0]["a"].cpu()
     in_order = torch.arange(0, batch_size)
 
     assert (first_batch != in_order).any()
@@ -93,14 +89,13 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
     all_len = len(data_itr) if drop_last else len(data_itr) - 1
     all_rows = 0
+    df_cols = df.columns.to_list()
     for idx, chunk in enumerate(data_itr):
-        all_rows += len(chunk[0])
+        all_rows += len(chunk[0]["cat1"])
         if idx < all_len:
-            for sub in chunk[:2]:
-                sub = sub.cpu()
-                assert list(sub[:, 0].numpy()) == [1] * batch_size
-                assert list(sub[:, 1].numpy()) == [2] * batch_size
-                assert list(sub[:, 2].numpy()) == [3] * batch_size
+            for col in df_cols:
+                if col in chunk[0].keys():
+                    assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -118,18 +113,58 @@ def test_gpu_file_iterator_ds(df, dataset, batch, engine):
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
-@pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("cat_names", [["name-cat", "name-string"], []])
-@pytest.mark.parametrize("cont_names", [["x", "y", "id"], []])
-@pytest.mark.parametrize("label_name", [["label"], []])
-def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_name):
+json_sample = {
+    "conts": {
+        "cont_1": {"dtype": np.float, "min_val": 0, "max_val": 1},
+        "cont_2": {"dtype": np.float, "min_val": 0, "max_val": 1},
+        "cont_3": {"dtype": np.float, "min_val": 0, "max_val": 1},
+    },
+    "cats": {
+        "cat_1": {
+            "dtype": None,
+            "cardinality": 50,
+            "min_entry_size": 1,
+            "max_entry_size": 5,
+            "multi_min": 2,
+            "multi_max": 5,
+            "multi_avg": 3,
+        },
+        "cat_5": {
+            "dtype": None,
+            "cardinality": 50,
+            "min_entry_size": 1,
+            "max_entry_size": 5,
+            "multi_min": 2,
+            "multi_max": 5,
+            "multi_avg": 3,
+        },
+        "cat_2": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
+        "cat_3": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
+        "cat_4": {"dtype": None, "cardinality": 50, "min_entry_size": 1, "max_entry_size": 5},
+    },
+    "labels": {"lab_1": {"dtype": None, "cardinality": 2}},
+}
 
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("cat_names", [["cat_2", "cat_3", "cat_4"], ["cat_2"], []])
+@pytest.mark.parametrize("cont_names", [["cont_1", "cont_2", "cont_3"], ["cont_1"], []])
+@pytest.mark.parametrize("mh_names", [["cat_5", "cat_1"], ["cat_1"], []])
+@pytest.mark.parametrize("label_name", [["lab_1"]])
+@pytest.mark.parametrize("num_rows", [1000, 100])
+def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name, num_rows):
+    json_sample["num_rows"] = num_rows
+
+    cols = datagen._get_cols_from_schema(json_sample)
+
+    df_gen = datagen.DatasetGen(datagen.PowerLawDistro(0.1))
+    dataset = df_gen.create_df(num_rows, cols)
+    dataset = nvt.Dataset(dataset)
     features = []
     if cont_names:
         features.append(cont_names >> ops.FillMedian() >> ops.Normalize())
-    if cat_names:
-        features.append(cat_names >> ops.Categorify())
-
+    if cat_names or mh_names:
+        features.append(cat_names + mh_names >> ops.Categorify())
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
     graph = sum(features, nvt.ColumnGroup(label_name))
@@ -145,17 +180,54 @@ def test_empty_cols(tmpdir, df, dataset, engine, cat_names, cont_names, label_na
     df_out = processor.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df_out), cats=cat_names, conts=cont_names, labels=label_name, batch_size=1
+        nvt.Dataset(df_out),
+        cats=cat_names + mh_names,
+        conts=cont_names,
+        labels=label_name,
+        batch_size=2,
     )
 
     for nvt_batch in data_itr:
-        cats, conts, labels = nvt_batch
+        cats_conts, labels = nvt_batch
         if cat_names:
-            assert cats.shape[-1] == len(cat_names)
+            assert set(cat_names).issubset(set(list(cats_conts.keys())))
         if cont_names:
-            assert conts.shape[-1] == len(cont_names)
-        if label_name:
-            assert labels.shape[-1] == len(label_name)
+            assert set(cont_names).issubset(set(list(cats_conts.keys())))
+
+    if cat_names or cont_names or mh_names:
+        emb_sizes = nvt.ops.get_embedding_sizes(processor)
+
+        EMBEDDING_DROPOUT_RATE = 0.04
+        DROPOUT_RATES = [0.001, 0.01]
+        HIDDEN_DIMS = [1000, 500]
+        LEARNING_RATE = 0.001
+        model = Model(
+            embedding_table_shapes=emb_sizes,
+            num_continuous=len(cont_names),
+            emb_dropout=EMBEDDING_DROPOUT_RATE,
+            layer_hidden_dims=HIDDEN_DIMS,
+            layer_dropout_rates=DROPOUT_RATES,
+        ).cuda()
+        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+        def rmspe_func(y_pred, y):
+            "Return y_pred and y to non-log space and compute RMSPE"
+            y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
+            pct_var = (y_pred - y) / y
+            return (pct_var ** 2).mean().pow(0.5)
+
+        train_loss, y_pred, y = process_epoch(
+            data_itr,
+            model,
+            train=True,
+            optimizer=optimizer,
+            amp=False,
+        )
+        train_rmspe = None
+        train_rmspe = rmspe_func(y_pred, y)
+        assert train_rmspe is not None
+        assert len(y_pred) > 0
+        assert len(y) > 0
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
@@ -222,7 +294,7 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
 @pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("device", [None, 0])
+@pytest.mark.parametrize("device", [None, "cpu"])
 def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, device):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
@@ -246,7 +318,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
         os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
     ]
 
-    nvt_data = nvt.Dataset(tar_paths[0], engine="parquet", part_mem_fraction=part_mem_fraction)
+    cpu_true = device == "cpu"
+    nvt_data = nvt.Dataset(
+        tar_paths[0], cpu=cpu_true, engine="parquet", part_mem_fraction=part_mem_fraction
+    )
     data_itr = torch_dataloader.TorchAsyncItr(
         nvt_data,
         batch_size=batch_size,
@@ -262,11 +337,10 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
-
     for idx, chunk in enumerate(data_itr):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
-        rows += len(chunk[0])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["name-cat"][0])
+        rows += len(chunk[0]["x"])
         del chunk
 
     # accounts for incomplete batches at the end of chunks
@@ -275,7 +349,7 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
 
     def gen_col(batch):
         batch = batch[0]
-        return batch[0], batch[1], batch[2]
+        return (batch[0]), batch[1]
 
     t_dl = torch_dataloader.DLDataLoader(
         data_itr, collate_fn=gen_col, pin_memory=False, num_workers=0
@@ -283,8 +357,9 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     rows = 0
     for idx, chunk in enumerate(t_dl):
         if device is None:
-            assert float(df_test.iloc[rows][0]) == float(chunk[0][0][0])
-        rows += len(chunk[0])
+            assert float(df_test.iloc[rows][0]) == float(chunk[0]["name-cat"][0])
+
+        rows += len(chunk[0]["x"])
 
     if os.path.exists(output_train):
         shutil.rmtree(output_train)
@@ -380,12 +455,52 @@ def test_mh_support(tmpdir):
     idx = 0
     for batch in data_itr:
         idx = idx + 1
-        cats, conts, labels = batch
-        cats, mh = cats
+        cats_conts, labels = batch
+        assert "Reviewers" in cats_conts
+        # check it is multihot
+        assert isinstance(cats_conts["Reviewers"], tuple)
         # mh is a tuple of dictionaries {Column name: (values, offsets)}
-        assert len(mh) == len(cat_names)
-        assert not cats
+        assert "Authors" in cats_conts
+        assert isinstance(cats_conts["Authors"], tuple)
     assert idx > 0
+
+
+@pytest.mark.parametrize("sparse_dense", [False, True])
+def test_sparse_tensors(sparse_dense):
+    # create small dataset, add values to sparse_list
+    df = cudf.DataFrame(
+        {
+            "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
+            "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
+        }
+    )
+    spa_lst = ["spar1", "spar2"]
+    spa_mx = {"spar1": 5, "spar2": 6}
+    batch_size = 2
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df),
+        cats=spa_lst,
+        conts=[],
+        labels=[],
+        batch_size=batch_size,
+        sparse_names=spa_lst,
+        sparse_max=spa_mx,
+        sparse_as_dense=sparse_dense,
+    )
+    for batch in data_itr:
+        feats, labs = batch
+        for col in spa_lst:
+            feature_tensor = feats[col]
+            if not sparse_dense:
+                assert list(feature_tensor.shape) == [batch_size, spa_mx[col]]
+                assert feature_tensor.is_sparse
+            else:
+                assert feature_tensor.shape[1] == spa_mx[col]
+                assert not feature_tensor.is_sparse
+
+    # add dict sparse_max entry for each target
+    # iterate dataloader grab sparse columns
+    # ensure they are correct structurally
 
 
 def test_mh_model_support(tmpdir):
@@ -394,14 +509,14 @@ def test_mh_model_support(tmpdir):
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
-            "Null User": ["User_B", "User_B", "User_A", "User_D"],
+            "Null_User": ["User_B", "User_B", "User_A", "User_D"],
             "Post": [1, 2, 3, 4],
             "Cont1": [0.3, 0.4, 0.5, 0.6],
             "Cont2": [0.3, 0.4, 0.5, 0.6],
             "Cat1": ["A", "B", "A", "C"],
         }
     )
-    cat_names = ["Cat1", "Null User", "Authors", "Reviewers"]  # , "Engaging User"]
+    cat_names = ["Cat1", "Null_User", "Authors", "Reviewers"]  # , "Engaging User"]
     cont_names = ["Cont1", "Cont2"]
     label_name = ["Post"]
     out_path = os.path.join(tmpdir, "train/")
@@ -448,7 +563,7 @@ def test_mh_model_support(tmpdir):
         model,
         train=True,
         optimizer=optimizer,
-        # transform=batch_transform,
+        # transform=DictTransform(data_itr).transform,
         amp=False,
     )
     train_rmspe = None

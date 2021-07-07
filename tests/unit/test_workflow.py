@@ -20,15 +20,15 @@ import os
 import shutil
 
 import cudf
+import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import ColumnGroup, Dataset, Workflow, ops
-from tests.conftest import get_cats, mycols_csv
+from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
@@ -590,3 +590,25 @@ def test_workflow_input_output_dtypes():
     assert "unneeded" not in workflow.input_dtypes
     assert set(workflow.input_dtypes.keys()) == {"genre", "user"}
     assert set(workflow.output_dtypes.keys()) == {"genre_user", "genre"}
+
+
+def test_workflow_transform_ddf_dtypes():
+    # Inital Dataset
+    df = cudf.datasets.timeseries().reset_index()
+    ddf = dask_cudf.from_cudf(df, npartitions=2)
+    dataset = Dataset(ddf)
+
+    # Create and Execute Workflow
+    cols = ["name", "x", "y", "timestamp"]
+    cat_cols = ["id"] >> ops.Normalize()
+    workflow = Workflow(cols + cat_cols)
+    workflow.fit(dataset)
+    transformed_ddf = workflow.transform(dataset).to_ddf()
+
+    # no transforms on the pass through cols, should have original dtypes
+    for col in cols:
+        assert_eq(ddf.dtypes[col], transformed_ddf.dtypes[col])
+
+    # Followup dask-cudf sorting used to thow an exception  because of dtype issues,
+    # check that it works now
+    transformed_ddf.sort_values(["id", "timestamp"]).compute()

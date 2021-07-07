@@ -13,15 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
 import cupy as cp
 import numba.cuda
 import numpy as np
-import pandas as pd
-from cudf.core.column import as_column, build_column
 from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object
 
 from .operator import ColumnNames, Operator
 
@@ -57,8 +54,8 @@ class ListSlice(Operator):
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        on_cpu = isinstance(df, pd.DataFrame)
-        ret = pd.DataFrame() if on_cpu else cudf.DataFrame()
+        on_cpu = _is_cpu_object(df)
+        ret = type(df)()
         for col in columns:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
@@ -86,12 +83,7 @@ class ListSlice(Operator):
                     )
 
                 # build up a list column with the sliced values
-                ret[col] = build_column(
-                    None,
-                    dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),
-                    size=new_offsets.size - 1,
-                    children=(as_column(new_offsets), as_column(new_elements)),
-                )
+                ret[col] = _build_cudf_list_column(new_elements, new_offsets)
 
         return ret
 
