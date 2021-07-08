@@ -137,7 +137,6 @@ def test_dense_embedding_layer(aggregation, combiner):
         assert y_hat.shape[1] == (len(x))
         assert y_hat.shape[2] == 100
         np.testing.assert_allclose(y_hat[:, 0], multi_hot_embedding_rows, rtol=1e-05)
-        #assert (y_hat[:, 0] == multi_hot_embedding_rows).all()
         y_c = y_hat[:, 1]
 
     elif aggregation == "concat":
@@ -147,7 +146,6 @@ def test_dense_embedding_layer(aggregation, combiner):
         assert (y_hat[:, 108] == scalar).all()
         assert (y_hat[:, 109:] == vector).all()
         np.testing.assert_allclose(y_hat[:, :8], multi_hot_embedding_rows, rtol=1e-05)
-        #assert (y_hat[:, :8] == multi_hot_embedding_rows).all()
 
         y_c = y_hat[:, 8:108]
 
