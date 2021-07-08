@@ -79,7 +79,6 @@ class Workflow:
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
-        self.lib = cudf if cudf else pd
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -205,12 +204,13 @@ class Workflow:
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
+        lib = cudf if cudf else pd
         with open(os.path.join(path, "metadata.json"), "w") as o:
             json.dump(
                 {
                     "versions": {
                         "nvtabular": nvt_version,
-                        self.lib.__name__: self.lib.__version__,
+                        lib.__name__: lib.__version__,
                         "python": sys.version,
                     },
                     "generated_timestamp": int(time.time()),
