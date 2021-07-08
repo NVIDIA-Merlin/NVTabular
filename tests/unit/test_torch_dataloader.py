@@ -23,13 +23,12 @@ import cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
 from nvtabular.io.dataset import Dataset
-from tests.conftest import mycols_csv, mycols_pq
+from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line

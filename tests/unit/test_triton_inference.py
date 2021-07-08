@@ -7,13 +7,17 @@ from distutils.spawn import find_executable
 
 import cudf
 import numpy as np
+import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from nvtabular.ops.operator import Supports
+from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")
+data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
+
 grpcclient = pytest.importorskip("tritonclient.grpc")
 tritonclient = pytest.importorskip("tritonclient")
 
@@ -201,3 +205,29 @@ def test_generate_triton_model(tmpdir, engine, df):
     transformed = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
 
     assert_eq(expected, transformed)
+
+
+# lets test the data format conversion function on the full cartesian product
+# of the Support flags
+@pytest.mark.parametrize("_from", list(Supports))
+@pytest.mark.parametrize("_to", list(Supports))
+def test_convert_format(_from, _to):
+    convert_format = data_conversions.convert_format
+
+    # we want to test conversion from '_from' to '_to' but this requires us roundtripping
+    # from a known format. I'm picking pd -> _from -> _to -> pandas somewhat arbitrarily
+    df = pd.DataFrame(
+        {"float": [0.0, 1.0, 2.0], "int": [10, 11, 12], "multihot": [[0, 1, 2, 3], [3, 4], [5]]}
+    )
+
+    if _from != Supports.GPU_DICT_ARRAY and _to != Supports.GPU_DICT_ARRAY:
+        df["string"] = ["aa", "bb", "cc"]
+        df["multihot_string"] = [["aaaa", "bb", "cc"], ["dd", "ee"], ["fffffff"]]
+
+    start, kind = convert_format(df, Supports.CPU_DATAFRAME, _from)
+    assert kind == _from
+    mid, kind = convert_format(start, kind, _to)
+    assert kind == _to
+    final, kind = convert_format(mid, kind, Supports.CPU_DATAFRAME)
+    assert kind == Supports.CPU_DATAFRAME
+    assert_eq(df, final)
