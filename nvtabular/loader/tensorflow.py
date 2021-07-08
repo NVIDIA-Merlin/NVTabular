@@ -429,6 +429,9 @@ class KerasSequenceValidater(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs if logs is not None else {}
+        # reset states of train metrics to compute evaluation ones 
+        for metric in self.model.metrics:
+            metric.reset_state()
         for X, y_true in self.dataloader:
             y_pred = self.model(X)
 
