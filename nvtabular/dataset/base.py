@@ -228,7 +228,8 @@ class TabularDataset:
         )
         if for_training:
             self.workflow.client = None
-            client.shutdown()
+            if client:
+                client.shutdown()
             return output_paths
 
         return transformed

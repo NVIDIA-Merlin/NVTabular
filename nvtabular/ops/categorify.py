@@ -45,9 +45,10 @@ from nvtabular.dispatch import (
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
+from ..column import Columns
+from ..tag import Tag
 from .base import ColumnNames, Operator
 from .stat_operator import StatOperator
-from ..tag import Tag
 
 
 class Categorify(StatOperator):
@@ -425,6 +426,13 @@ class Categorify(StatOperator):
             return cat_names
         return list(flatten(columns, container=tuple))
 
+    def output_columns(self, columns: Columns) -> Columns:
+        if self.encode_type == "combo":
+            raise NotImplementedError("TODO: implement this")
+        columns = list(flatten(columns, container=tuple))
+
+        return [col.add_tags(Tag.CATEGORICAL.value) for col in columns]
+
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
             self.categories, columns, self.num_buckets, self.freq_threshold, self.max_size
@@ -432,9 +440,6 @@ class Categorify(StatOperator):
 
     def get_multihot_columns(self):
         return self.mh_columns
-
-    def output_tags(self):
-                return [Tag.CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

@@ -14,7 +14,6 @@ from nvtabular.dataset.utils import (
     remove_consecutive_interactions,
 )
 from nvtabular.io import Dataset
-from nvtabular.tag import TagAs
 
 LOG = logging.getLogger("nvtabular")
 

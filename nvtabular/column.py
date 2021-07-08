@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Text, Union
 
+from nvtabular.tag import DefaultTags
+
 
 @dataclass(frozen=True)
 class Column:
@@ -14,13 +16,31 @@ class Column:
         return self.name
 
     def add_tags(self, tags):
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
         if not tags:
             return self
 
-        return Column(self.name, tags=self.tags + tags, properties=self.properties)
+        return Column(
+            self.name, tags=list(set(list(self.tags) + list(tags))), properties=self.properties
+        )
+
+    def add_tag(self, tag):
+        return self.add_tags([tag])
+
+    def update_name(self, name):
+        return Column(name, tags=self.tags, properties=self.properties)
 
     def add_properties(self, **properties):
         if not properties:
             return self
 
         return Column(self.name, tags=self.tags, properties={**self.properties, **properties})
+
+
+Columns = List[
+    Union[
+        Column,
+        List[Column],
+    ]
+]

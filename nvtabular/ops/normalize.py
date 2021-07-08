@@ -17,11 +17,12 @@
 import dask.dataframe as dd
 from nvtx import annotate
 
+from ..column import Columns
 from ..dispatch import DataFrameType
-from .moments import _custom_moments
-from .base import ColumnNames, Operator
-from .stat_operator import StatOperator
 from ..tag import Tag
+from .base import ColumnNames, Operator
+from .moments import _custom_moments
+from .stat_operator import StatOperator
 
 
 class Normalize(StatOperator):
@@ -68,8 +69,8 @@ class Normalize(StatOperator):
         self.means = {}
         self.stds = {}
 
-    def output_tags(self):
-        return [Tag.CONTINUOUS]
+    def output_columns(self, columns: Columns) -> Columns:
+        return [col.add_tags(Tag.CONTINUOUS) for col in columns]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -123,6 +124,9 @@ class NormalizeMinMax(StatOperator):
         for col in cols:
             self.mins[col] = dask_stats["mins"][col]
             self.maxs[col] = dask_stats["maxs"][col]
+
+    def output_columns(self, columns: Columns) -> Columns:
+        return [col.add_tags(Tag.CONTINUOUS) for col in columns]
 
     def clear(self):
         self.mins = {}

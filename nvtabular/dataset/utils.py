@@ -27,7 +27,7 @@ def create_session_groupby_aggs(column_group, default_agg="list", extra_aggs=Non
     if not to_ignore:
         to_ignore = []
 
-    aggs = {col: [default_agg] for col in column_group.columns if col not in to_ignore}
+    aggs = {col: [default_agg] for col in column_group.column_names if col not in to_ignore}
     for key, val in extra_aggs.items():
         if key in aggs:
             if isinstance(val, list):

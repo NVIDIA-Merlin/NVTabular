@@ -75,9 +75,6 @@ class Operator:
         """
         return None
 
-    def output_tags(self):
-        return []
-
     def __rrshift__(self, other) -> ColumnGroup:
         import nvtabular
 

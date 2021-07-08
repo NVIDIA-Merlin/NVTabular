@@ -41,8 +41,8 @@ class ColumnGroup:
 
     def __init__(
         self,
-        columns: Union[Text, Column, "ColumnGroup"],
-        tags: Optional[List[Text]] = None,
+        columns: Union[Text, List[Text], Column, List[Column], "ColumnGroup"],
+        tags: Optional[Union[List[Text], DefaultTags]] = None,
         properties: Optional[Dict[Text, Text]] = None,
         **kwargs,
     ):
@@ -56,6 +56,14 @@ class ColumnGroup:
             columns = [columns]
 
         self._schema = kwargs.get("schema", None)
+
+        if not tags:
+            tags = []
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+
+        self.tags = tags
+        self.properties = properties
 
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
@@ -77,12 +85,6 @@ class ColumnGroup:
 
         else:
             self.columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
-
-        if not tags:
-            tags = []
-        if isinstance(tags, DefaultTags):
-            tags = tags.value
-        self.tags = tags
 
     @property
     def column_names(self):
@@ -106,13 +108,14 @@ class ColumnGroup:
         if isinstance(schema, str):
             schema = cls.read_schema(schema)
 
-        output = cls([])
+        columns = []
         for feat in schema.feature:
             tags = feat.annotation.tag
-            if feat.value_count:
+            if feat.HasField("value_count"):
                 tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
-            output += cls(feat.name, tags=tags)
+            columns.append(Column(feat.name, tags=tags))
 
+        output = cls(columns)
         output.set_schema(schema)
 
         return output
@@ -135,28 +138,22 @@ class ColumnGroup:
             # implicit lambdaop conversion.
             operator = LambdaOp(operator)
         elif isinstance(operator, TagAs):
-            self.tags.extend(operator.tags)
+            self.columns = [col.add_tags(operator.tags) for col in self.columns]
+            # self.tags.extend(operator.tags)
 
             return self
 
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
+        if getattr(operator, "output_columns", None):
+            child_columns = operator.output_columns(self.columns)
+        else:
+            child_columns = operator.output_column_names(self.column_names)
 
-        child = ColumnGroup(operator.output_column_names(self.column_names))
+        child = ColumnGroup(child_columns)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
-
-        # Parse output tags
-        op_tags = operator.output_tags()
-        if op_tags:
-            child_tags = []
-            for t in list(flatten(op_tags)):
-                if isinstance(t, DefaultTags):
-                    child_tags.extend(t.value)
-                else:
-                    child_tags.append(t)
-            child.tags = child_tags
 
         dependencies = operator.dependencies()
         if dependencies:
@@ -266,8 +263,8 @@ class ColumnGroup:
     def filter_by_namespace(self, namespace):
         return self.filter_columns(lambda c: c.startswith(namespace))
 
-    def get_tagged(self, tags, output_list=False, tags_to_filter=None, add_intermediary=False):
-        columns_to_filter = (
+    def get_tagged(self, tags, output_list=False, tags_to_filter=None):
+        column_names_to_filter = (
             self.get_tagged(tags_to_filter, output_list=True) if tags_to_filter else []
         )
 
@@ -276,45 +273,51 @@ class ColumnGroup:
         if not isinstance(tags, list):
             tags = [tags]
         output_cols = []
-        for node in self.nodes:
-            node_tags = list(
-                flatten([t.value if isinstance(t, DefaultTags) else [t] for t in node.tags])
-            )
-            if all([x in node_tags for x in tags]):
-                output_cols.extend(node.column_names)
 
-        columns = list(set(output_cols) - set(columns_to_filter))
-        if not add_intermediary:
-            columns = [c for c in columns if c in self.column_names]
+        for column in self.flattened_columns:
+            if all([x in column.tags for x in tags]):
+                output_cols.append(column)
+
+        # for node in self.nodes:
+        #     node_tags = list(
+        #         flatten([t.value if isinstance(t, DefaultTags) else [t] for t in node.tags])
+        #     )
+        #     if all([x in node_tags for x in tags]):
+        #         output_cols.extend(node.column_names)
+
+        columns = [col for col in output_cols if col.name not in column_names_to_filter]
 
         if output_list:
-            return columns
+            return [col.name for col in columns]
 
-        child = ColumnGroup(columns)
+        child = ColumnGroup(columns, tags=tags)
         child.parents = [self]
         self.children.append(child)
-        child.kind = f"tagged={self._tags_repr} " + self._cols_repr
+        child.kind = f"tagged={child._tags_repr} " + self._cols_repr
 
         if self._schema:
-            child._schema = self.filter_schema(columns)
+            child._schema = self.filter_schema(child.column_names)
 
         return child
 
     def tags_by_column(self, add_intermediary=False):
         outputs = {}
 
-        for node in self.nodes:
-            if node.tags:
-                for col in node.column_names:
-                    if add_intermediary or col in self.column_names:
-                        if col not in outputs:
-                            outputs[col] = []
+        for col in self.flattened_columns:
+            outputs[col.name] = col.tags
 
-                        for t in list(node.tags):
-                            tags = t.value if isinstance(t, DefaultTags) else [t]
-                            for tag in tags:
-                                if tag not in outputs[col]:
-                                    outputs[col].append(tag)
+        # for node in self.nodes:
+        #     if node.tags:
+        #         for col in node.column_names:
+        #             if add_intermediary or col in self.column_names:
+        #                 if col not in outputs:
+        #                     outputs[col] = []
+        #
+        #                 for t in list(node.tags):
+        #                     tags = t.value if isinstance(t, DefaultTags) else [t]
+        #                     for tag in tags:
+        #                         if tag not in outputs[col]:
+        #                             outputs[col].append(tag)
 
         return outputs
 
@@ -439,6 +442,10 @@ class ColumnGroup:
     @property
     def flattened_column_names(self):
         return list(flatten(self.column_names))
+
+    @property
+    def flattened_columns(self):
+        return list(flatten(self.columns))
 
     @property
     def input_column_names(self):

@@ -134,8 +134,27 @@ class Groupby(Operator):
 
         return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
 
-    def output_tags(self):
-        return ["list"]
+    def output_columns(self, columns):
+        output_names = self.output_column_names([col.name for col in columns])
+        orig_to_new = {}
+        for name in output_names:
+            if name in self.groupby_cols:
+                orig_to_new[name] = name
+            else:
+                agg = name.split(self.name_sep)[-1]
+                orig_to_new[name[: -(len(agg) + len(self.name_sep))]] = name
+
+        output_columns = []
+        for col in columns:
+            new_name = orig_to_new[col.name]
+            if col.name in self.groupby_cols:
+                to_add = col.update_name(new_name).add_tags(["groupby_col"])
+            else:
+                agg = new_name.split(self.name_sep)[-1]
+                to_add = col.update_name(new_name).add_tags([agg])
+            output_columns.append(to_add)
+
+        return output_columns
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
