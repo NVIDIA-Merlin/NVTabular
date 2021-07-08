@@ -16,6 +16,7 @@
 
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
+from .base import Operator, OperatorBlock
 from .bucketize import Bucketize
 from .categorify import Categorify, _get_embedding_order, get_embedding_sizes
 from .clip import Clip
@@ -27,16 +28,17 @@ from .filter import Filter
 from .groupby import Groupby
 from .hash_bucket import HashBucket
 from .hashed_cross import HashedCross
+from .item_recency import ItemRecency
 from .join_external import JoinExternal
 from .join_groupby import JoinGroupby
 from .lambdaop import LambdaOp
 from .list_slice import ListSlice
 from .logop import LogOp
 from .normalize import Normalize, NormalizeMinMax
-from .base import Operator
 from .rename import Rename
 from .schema import Schema
-from .statistics import Statistics
 from .stat_operator import StatOperator
+from .statistics import Statistics
 from .target_encoding import TargetEncoding
+from .time import TimestampFeatures
 from .tokenize import TokenizeText

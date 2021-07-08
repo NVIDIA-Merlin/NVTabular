@@ -139,6 +139,7 @@ class OperatorBlock(object):
 
         if self.auto_renaming:
             from nvtabular.ops import Rename
+
             x = x >> Rename(postfix="/" + "/".join(name_parts))
 
         if add:
@@ -150,7 +151,9 @@ class OperatorBlock(object):
         return self.__call__(other)
 
     def copy(self):
-        to_return = OperatorBlock(*self._ops, auto_renaming=self.auto_renaming, sequential=self.sequential)
+        to_return = OperatorBlock(
+            *self._ops, auto_renaming=self.auto_renaming, sequential=self.sequential
+        )
         to_return._ops_by_name = self._ops_by_name
 
         return to_return

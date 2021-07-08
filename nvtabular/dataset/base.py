@@ -4,13 +4,14 @@ import logging
 import os
 import warnings
 from glob import glob
-from types import SimpleNamespace
 from typing import Any, Optional, Union
 
+import cudf
 import joblib
 import rmm
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
+from sklearn.model_selection import train_test_split
 
 from nvtabular.io import Dataset
 from nvtabular.utils import Namespace, _pynvml_mem_size, device_mem_size
@@ -25,23 +26,29 @@ LOG = logging.getLogger("nvtabular")
 
 
 class ParquetPathCollection(Namespace):
+    def load_single(self, name, transformed=True, **kwargs):
+        paths = vars(self)[name]
+        id = None
+        if transformed:
+            if isinstance(paths, list):
+                id = paths[0].split("/")[-1]
+            else:
+                id = paths.split("/")[-1]
+        if isinstance(paths, list) or not os.path.isdir(paths):
+            output = Dataset(paths, id=id, **kwargs)
+        else:
+            output = Dataset.from_pattern(paths, id=id, **kwargs)
+            output._dir = paths
+
+        return output
+
     def load(self, transformed=True, **kwargs) -> Optional["DatasetCollection"]:
         outputs = {}
         for name, paths in self.items():
             if isinstance(paths, ParquetPathCollection):
                 outputs[name] = paths.load(transformed=transformed, **kwargs)
             else:
-                id = None
-                if transformed:
-                    if isinstance(paths, list):
-                        id = paths[0].split("/")[-1]
-                    else:
-                        id = paths.split("/")[-1]
-                if isinstance(paths, list) or not os.path.isdir(paths):
-                    outputs[name] = Dataset(paths, id=id, **kwargs)
-                else:
-                    outputs[name] = Dataset.from_pattern(paths, id=id, **kwargs)
-                    outputs[name]._dir = paths
+                outputs[name] = self.load_single(name, transformed=transformed, **kwargs)
 
         if not outputs:
             return None
@@ -225,6 +232,19 @@ class TabularDataset:
             return output_paths
 
         return transformed
+
+    def maybe_create_splits_with_cudf(self, input_dir, output_dir, test_size=0.1, random_state=42):
+        train_path = os.path.join(output_dir, "train")
+        eval_path = os.path.join(output_dir, "eval")
+
+        if not os.path.exists(train_path) or not os.path.exists(eval_path):
+            LOG.info("Creating train & eval split...")
+            df = cudf.read_parquet(input_dir)
+            train, eval = train_test_split(df, test_size=test_size, random_state=random_state)
+            Dataset(train).to_parquet(train_path)
+            Dataset(eval).to_parquet(eval_path)
+
+        return train_path, eval_path
 
 
 def create_multi_gpu_dask_client_fn(

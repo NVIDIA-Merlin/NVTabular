@@ -1,13 +1,11 @@
 import os
 
 import cudf
-from sklearn.model_selection import train_test_split
 
 from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
 from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
-from nvtabular.io.dataset import DatasetCollection
 from nvtabular.tag import TagAs
 from nvtabular.utils import download_file
 
@@ -71,16 +69,13 @@ class MovieLens(TabularDataset):
             zip_path = os.path.join(self.data_dir, "ml-25m.zip")
             download_file("http://files.grouplens.org/datasets/movielens/ml-25m.zip", zip_path)
 
-        train_path = os.path.join(self.splits_dir, "train")
-        eval_path = os.path.join(self.splits_dir, "eval")
         movies_path = os.path.join(self.splits_dir, "movies")
 
-        if not os.path.exists(train_path) or not os.path.exists(eval_path):
-            ratings = cudf.read_csv(os.path.join(self.csv_dir, "ratings.csv"))
-            ratings = ratings.drop("timestamp", axis=1)
-            train, valid = train_test_split(ratings, test_size=0.2, random_state=42)
-            Dataset(train).to_parquet(train_path)
-            Dataset(valid).to_parquet(eval_path)
+        train_path, eval_path = self.maybe_create_splits_with_cudf(
+            input_dir=os.path.join(self.csv_dir, "ratings.csv"),
+            output_dir=self.splits_dir,
+            test_size=0.2,
+        )
 
         if not os.path.exists(movies_path):
             movies = cudf.read_csv(os.path.join(self.csv_dir, "movies.csv"))

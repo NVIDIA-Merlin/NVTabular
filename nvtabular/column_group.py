@@ -15,15 +15,14 @@
 #
 import collections.abc
 from operator import attrgetter
+from typing import Dict, List, Optional, Text, Union
 
 import joblib
 from dask.core import flatten
 
+from nvtabular.column import Column
 from nvtabular.ops import LambdaOp, Operator
-from nvtabular.tag import Tag, TagAs, DefaultTags
-
-
-# from pandas.core.common import flatten as p_flatten
+from nvtabular.tag import DefaultTags, Tag, TagAs
 
 
 class ColumnGroup:
@@ -40,18 +39,18 @@ class ColumnGroup:
         for feature crosses.
     """
 
-    def __init__(self, columns, tags=None, **kwargs):
+    def __init__(
+        self,
+        columns: Union[Text, Column, "ColumnGroup"],
+        tags: Optional[List[Text]] = None,
+        properties: Optional[Dict[Text, Text]] = None,
+        **kwargs,
+    ):
         self.parents = []
         self.children = []
         self.op = None
         self.kind = None
         self.dependencies = None
-
-        if not tags:
-            tags = []
-        if isinstance(tags, DefaultTags):
-            tags = tags.value
-        self.tags = tags
 
         if isinstance(columns, str):
             columns = [columns]
@@ -69,7 +68,7 @@ class ColumnGroup:
                 else:
                     # we can't handle nesting arbitrarily deep here
                     # only accept non-nested (str) columns here
-                    if any(not isinstance(c, str) for c in col.columns):
+                    if any(not isinstance(c, Column) for c in col.columns):
                         raise ValueError("Can't handle more than 1 level of nested columns")
 
                 col.children.append(self)
@@ -77,7 +76,17 @@ class ColumnGroup:
                 self.columns.append(tuple(col.columns))
 
         else:
-            self.columns = [_convert_col(col) for col in columns]
+            self.columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
+
+        if not tags:
+            tags = []
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+        self.tags = tags
+
+    @property
+    def column_names(self):
+        return [str(c) for c in self.columns]
 
     @staticmethod
     def read_schema(schema_path):
@@ -133,7 +142,7 @@ class ColumnGroup:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        child = ColumnGroup(operator.output_column_names(self.columns))
+        child = ColumnGroup(operator.output_column_names(self.column_names))
         child.parents = [self]
         self.children.append(child)
         child.op = operator
@@ -184,7 +193,7 @@ class ColumnGroup:
             other = ColumnGroup(other)
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.columns).intersection(other.columns)
+        overlap = set(self.column_names).intersection(other.column_names)
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
@@ -257,8 +266,10 @@ class ColumnGroup:
     def filter_by_namespace(self, namespace):
         return self.filter_columns(lambda c: c.startswith(namespace))
 
-    def get_tagged(self, tags, output_list=False, tags_to_filter=None):
-        columns_to_filter = self.get_tagged(tags_to_filter, output_list=True) if tags_to_filter else []
+    def get_tagged(self, tags, output_list=False, tags_to_filter=None, add_intermediary=False):
+        columns_to_filter = (
+            self.get_tagged(tags_to_filter, output_list=True) if tags_to_filter else []
+        )
 
         if isinstance(tags, DefaultTags):
             tags = tags.value
@@ -266,11 +277,16 @@ class ColumnGroup:
             tags = [tags]
         output_cols = []
         for node in self.nodes:
-            node_tags = list(flatten([t.value if isinstance(t, DefaultTags) else [t] for t in node.tags]))
+            node_tags = list(
+                flatten([t.value if isinstance(t, DefaultTags) else [t] for t in node.tags])
+            )
             if all([x in node_tags for x in tags]):
-                output_cols.extend(node.columns)
+                output_cols.extend(node.column_names)
 
         columns = list(set(output_cols) - set(columns_to_filter))
+        if not add_intermediary:
+            columns = [c for c in columns if c in self.column_names]
+
         if output_list:
             return columns
 
@@ -284,20 +300,21 @@ class ColumnGroup:
 
         return child
 
-    def tags_by_column(self):
+    def tags_by_column(self, add_intermediary=False):
         outputs = {}
 
         for node in self.nodes:
             if node.tags:
-                for col in node.columns:
-                    if col not in outputs:
-                        outputs[col] = []
+                for col in node.column_names:
+                    if add_intermediary or col in self.column_names:
+                        if col not in outputs:
+                            outputs[col] = []
 
-                    for t in list(node.tags):
-                        tags = t.value if isinstance(t, DefaultTags) else [t]
-                        for tag in tags:
-                            if tag not in outputs[col]:
-                                outputs[col].append(tag)
+                        for t in list(node.tags):
+                            tags = t.value if isinstance(t, DefaultTags) else [t]
+                            for tag in tags:
+                                if tag not in outputs[col]:
+                                    outputs[col].append(tag)
 
         return outputs
 
@@ -420,15 +437,18 @@ class ColumnGroup:
         return f"<ColumnGroup {self.label}{output}>"
 
     @property
-    def flattened_columns(self):
-        return list(flatten(self.columns))
+    def flattened_column_names(self):
+        return list(flatten(self.column_names))
 
     @property
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
-            col for parent in self.parents for col in parent.columns if parent not in dependencies
+            col
+            for parent in self.parents
+            for col in parent.column_names
+            if parent not in dependencies
         ]
 
     @property
@@ -452,8 +472,8 @@ class ColumnGroup:
 
     @property
     def _cols_repr(self):
-        cols = ", ".join(map(str, self.columns[:3]))
-        if len(self.columns) > 3:
+        cols = ", ".join(map(str, self.column_names[:3]))
+        if len(self.column_names) > 3:
             cols += "..."
         return cols
 
@@ -470,7 +490,7 @@ class ColumnGroup:
 
     @property
     def nodes(self):
-        return sorted(list(set(iter_nodes([self]))), key=attrgetter('is_transformation', 'label'))
+        return sorted(list(set(iter_nodes([self]))), key=attrgetter("is_transformation", "label"))
 
 
 def iter_nodes(nodes):
@@ -540,10 +560,14 @@ def _merge_add_nodes(graph):
     return graph
 
 
-def _convert_col(col):
-    if isinstance(col, (str, tuple)):
-        return col
-    elif isinstance(col, list):
-        return tuple(col)
+def _convert_col(col, tags=None, properties=None):
+    if not properties:
+        properties = {}
+    if isinstance(col, Column):
+        return col.add_tags(tags).add_properties(**properties)
+    elif isinstance(col, str):
+        return Column(col, tags=tags, properties=properties)
+    elif isinstance(col, (tuple, list)):
+        return tuple([_convert_col(c, tags=tags, properties=properties) for c in col])
     else:
         raise ValueError(f"Invalid column value for ColumnGroup: {col}")
