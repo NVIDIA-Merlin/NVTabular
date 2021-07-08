@@ -389,6 +389,7 @@ class Categorify(StatOperator):
                     use_name = list(use_name)
 
                 path = self.categories[storage_name]
+                print(path)
                 new_df[name] = _encode(
                     use_name,
                     storage_name,
