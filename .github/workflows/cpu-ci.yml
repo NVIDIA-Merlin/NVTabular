@@ -22,7 +22,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install Ubuntu packages
       run: |
-        sudo apt -get install -y protobuf-compiler
+        sudo apt-get install -y protobuf-compiler
     - name: Set requirements
       run: |
         sed -i '1,2d' requirements.txt
