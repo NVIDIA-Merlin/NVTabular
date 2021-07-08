@@ -24,6 +24,7 @@ jobs:
       run: |
         sed -i '1,2d' requirements.txt
         sed -i '3d' requirements.txt
+        echo "protobuf" >> requirements.txt
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
