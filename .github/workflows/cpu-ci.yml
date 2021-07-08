@@ -30,6 +30,7 @@ jobs:
         sed -i '1,2d' requirements.txt
         echo "pandas" >> requirements.txt
         echo "nvtx" >> requirements.txt
+        echo "pyarrow" >> requirements.txt
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel 
