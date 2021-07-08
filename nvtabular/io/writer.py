@@ -26,6 +26,7 @@ except ImportError:
 
 import numpy as np
 from fsspec.core import get_fs_token_paths
+
 from nvtabular.dispatch import annotate
 
 from .shuffle import _shuffle_df

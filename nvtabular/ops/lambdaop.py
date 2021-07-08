@@ -15,7 +15,6 @@
 #
 from inspect import getsourcelines, signature
 
-
 from ..dispatch import DataFrameType, annotate
 from .operator import ColumnNames, Operator
 
