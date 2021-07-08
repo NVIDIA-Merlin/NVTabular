@@ -16,7 +16,11 @@
 import functools
 
 import dask.dataframe as dd
-import dask_cudf
+
+try:
+    import dask_cudf
+except ImportError:
+    dask_cudf = None
 import numpy as np
 from dask.bytes import read_bytes
 from dask.utils import parse_bytes
