@@ -28,7 +28,6 @@ jobs:
     - name: Set requirements
       run: |
         sed -i '1,2d' requirements.txt
-        sed -i '3d' requirements.txt
         echo "pandas" >> requirements.txt
         echo "nvtx" >> requirements.txt
     - name: Install dependencies
