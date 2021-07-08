@@ -36,6 +36,7 @@ try:
         assert_eq = cudf.tests.utils.assert_eq
 except ImportError:
     cudf = None
+
 import numpy as np
 import psutil
 import pytest
@@ -44,18 +45,6 @@ from dask.distributed import Client, LocalCluster
 from numba import cuda
 
 import nvtabular
-
-try:
-    import cudf.testing._utils
-
-    assert_eq = cudf.testing._utils.assert_eq
-except ImportError:
-    if cudf:
-        import cudf.tests.utils
-
-        assert_eq = cudf.tests.utils.assert_eq
-    else:
-        assert_eq = None
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
