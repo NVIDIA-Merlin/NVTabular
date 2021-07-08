@@ -70,7 +70,10 @@ class Workflow:
     """
 
     def __init__(
-        self, column_group: ColumnGroup, work_dir, client: Optional["distributed.Client"] = None
+        self,
+        column_group: ColumnGroup,
+        work_dir=None,
+        client: Optional["distributed.Client"] = None,
     ):
         self.column_group = _merge_add_nodes(column_group)
         self.client = client
@@ -208,27 +211,31 @@ class Workflow:
         )
 
     def fit_transform_collection(
-        self, datasets: DatasetCollection, to_fit="train", save=False, overwrite=False, **kwargs
+        self,
+        datasets: DatasetCollection,
+        to_fit="train",
+        save=False,
+        overwrite=False,
+        work_dir=None,
+        **kwargs,
     ) -> DatasetCollection:
-        outputs = datasets.load_transformed_from_dir(self.work_dir, self)
+        if save and not self.work_dir and not work_dir:
+            raise ValueError("Please provide `work_dir` in order to save.")
+        if not work_dir:
+            work_dir = self.work_dir
 
-        if outputs:
-            for split_name, dataset in datasets.items():
-                if not outputs.get(split_name):
-                    outputs[split_name] = self.transform(dataset)
-        else:
-            outputs = DatasetCollection()
-            LOG.info("Fitting dataset...")
-            self.fit(datasets[to_fit])
+        outputs = DatasetCollection()
+        LOG.info("Fitting dataset...")
+        self.fit(datasets[to_fit])
 
-            for split_name, dataset in datasets.items():
-                LOG.info(f"Transforming {split_name}...")
-                outputs[split_name] = self.transform(dataset)
+        for split_name, dataset in datasets.items():
+            LOG.info(f"Transforming {split_name}...")
+            outputs[split_name] = self.transform(dataset)
 
         if save:
-            outputs.to_parquet(self.work_dir, overwrite=overwrite, **kwargs)
+            outputs.to_parquet(work_dir, overwrite=overwrite, **kwargs)
             schemas = outputs.generate_schema(
-                self.work_dir,
+                work_dir,
                 self.column_group.tags_by_column(),
                 overwrite=overwrite,
                 client=self.client,

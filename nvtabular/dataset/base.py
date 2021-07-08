@@ -136,7 +136,7 @@ class TabularDataset:
             LOG.info("Shutting down Dask-client...")
             client.shutdown()
 
-    def calculate_statistics(
+    def statistics(
         self, transformed=False, overwrite=False, cross_columns=None, split_names=None, **kwargs
     ) -> DatasetCollectionStatistics:
         data_dir = self.transformed_dir if transformed else self.data_dir
@@ -160,7 +160,7 @@ class TabularDataset:
 
         return stats
 
-    def generate_schema(self, transformed=False, **kwargs) -> Namespace:
+    def schema(self, transformed=False, **kwargs) -> Namespace:
         data_paths = self.transform_paths() if transformed else self.prepare()
         maybe_schemas = data_paths.schemas()
         if sorted(list(vars(maybe_schemas).keys())) == sorted(list(vars(data_paths).keys())):

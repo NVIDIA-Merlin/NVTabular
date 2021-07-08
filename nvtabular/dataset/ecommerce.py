@@ -6,9 +6,8 @@ from sklearn.model_selection import train_test_split
 
 from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
-from nvtabular.dataset.base import TabularDataset
+from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
-from nvtabular.io.dataset import DatasetCollection
 from nvtabular.tag import TagAs
 
 
@@ -70,7 +69,7 @@ class ClothingReviews(TabularDataset):
     def name(self) -> str:
         return "clothing_reviews"
 
-    def prepare(self, frac_size=0.10) -> DatasetCollection:
+    def prepare(self, frac_size=0.10) -> ParquetPathCollection:
         kaggle_api.authenticate()
 
         if not os.path.exists(self.data_parquet):
@@ -98,6 +97,4 @@ class ClothingReviews(TabularDataset):
             Dataset(train).to_parquet(train_path)
             Dataset(eval).to_parquet(eval_path)
 
-        return DatasetCollection.from_splits(
-            Dataset.from_pattern(train_path), eval=Dataset.from_pattern(eval_path)
-        )
+        return ParquetPathCollection.from_splits(train_path, eval=eval_path)
