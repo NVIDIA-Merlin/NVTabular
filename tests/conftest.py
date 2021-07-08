@@ -25,11 +25,14 @@ import pandas as pd
 
 try:
     import cudf
+
     try:
         import cudf.testing._utils
+
         assert_eq = cudf.testing._utils.assert_eq
     except ImportError:
         import cudf.tests.utils
+
         assert_eq = cudf.tests.utils.assert_eq
 except ImportError:
     cudf = None
