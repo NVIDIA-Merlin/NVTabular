@@ -15,7 +15,13 @@
 #
 from typing import Callable, Union
 
-from nvtabular.dispatch import DataFrameType, SeriesType, _is_dataframe_object, _is_series_object, annotate
+from nvtabular.dispatch import (
+    DataFrameType,
+    SeriesType,
+    _is_dataframe_object,
+    _is_series_object,
+    annotate,
+)
 
 from .operator import ColumnNames, Operator
 

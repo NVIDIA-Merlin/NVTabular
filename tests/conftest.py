@@ -38,10 +38,12 @@ import nvtabular
 
 try:
     import cudf.testing._utils
+
     assert_eq = cudf.testing._utils.assert_eq
 except ImportError:
     if cudf:
         import cudf.tests.utils
+
         assert_eq = cudf.tests.utils.assert_eq
     else:
         assert_eq = None
