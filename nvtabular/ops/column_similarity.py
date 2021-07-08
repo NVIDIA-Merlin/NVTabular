@@ -13,16 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cupy
-import cupy.sparse
+try:
+    import cupy
+    import cupy.sparse
+except ImportError:
+    cupy = None
+
 import numba
 import numpy
 import pandas as pd
 import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnNames, Operator
 

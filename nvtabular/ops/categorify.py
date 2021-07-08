@@ -30,7 +30,6 @@ from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
-from nvtx import annotate
 from pyarrow import parquet as pq
 
 from nvtabular.dispatch import (
@@ -45,6 +44,7 @@ from nvtabular.dispatch import (
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
+    annotate,
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 

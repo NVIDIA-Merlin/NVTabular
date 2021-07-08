@@ -19,10 +19,15 @@ import queue
 import threading
 from typing import Optional
 
-import cupy as cp
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
 import numpy as np
 from fsspec.core import get_fs_token_paths
-from nvtx import annotate
+
+from nvtabular.dispatch import annotate
 
 from .shuffle import _shuffle_df
 

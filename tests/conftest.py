@@ -41,10 +41,12 @@ try:
 
     assert_eq = cudf.testing._utils.assert_eq
 except ImportError:
-    import cudf.tests.utils
+    if cudf:
+        import cudf.tests.utils
 
-    assert_eq = cudf.tests.utils.assert_eq
-
+        assert_eq = cudf.tests.utils.assert_eq
+    else:
+        assert_eq = None
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
