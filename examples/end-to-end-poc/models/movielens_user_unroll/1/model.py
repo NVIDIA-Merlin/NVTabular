@@ -63,16 +63,50 @@ class TritonPythonModel:
                 candidate_ids = pb_utils.get_input_tensor_by_name(
                     request, "candidate_movie_ids").as_numpy()
 
-                session_ids = pb_utils.get_input_tensor_by_name(
-                    request, "session_movie_ids").as_numpy()
+                # Parse the user feature inputs
+                movie_id_count = pb_utils.get_input_tensor_by_name(
+                    request, "movie_id_count").as_numpy()
 
-                filtered_movie_ids = np.array([candidate_ids[~np.isin(
-                    candidate_ids, session_ids)]]).astype(int32_dtype).T
+                movie_ids_values = pb_utils.get_input_tensor_by_name(
+                    request, "movie_ids__values").as_numpy()
 
+                movie_ids_nnzs = pb_utils.get_input_tensor_by_name(
+                    request, "movie_ids__nnzs").as_numpy()
+
+                genres_values = pb_utils.get_input_tensor_by_name(
+                    request, "genres__values").as_numpy()
+
+                genres_nnzs = pb_utils.get_input_tensor_by_name(
+                    request, "genres__nnzs").as_numpy()
+
+                search_terms_values = pb_utils.get_input_tensor_by_name(
+                    request, "search_terms__values").as_numpy()
+
+                search_terms_nnzs = pb_utils.get_input_tensor_by_name(
+                    request, "search_terms__nnzs").as_numpy()
+
+                # Repeat the user features to match the size of the candidate ids
+                num_items = candidate_ids.shape[0]
+
+                movie_id_count_ur = np.repeat(movie_id_count, num_items, axis=0)
+                movie_ids_values_ur = np.repeat(movie_ids_values, num_items, axis=0)
+                movie_ids_nnzs_ur = np.repeat(movie_ids_nnzs, num_items, axis=0)
+                genres_values_ur = np.repeat(genres_values, num_items, axis=0)
+                genres_nnzs_ur = np.repeat(genres_nnzs, num_items, axis=0)
+                search_terms_values_ur = np.repeat(search_terms_values, num_items, axis=0)
+                search_terms_nnzs_ur = np.repeat(search_terms_nnzs, num_items, axis=0)
+
+                # Return the repeated versions of the user features
                 responses.append(
                     pb_utils.InferenceResponse(
                         output_tensors=[
-                            pb_utils.Tensor("filtered_movie_ids", filtered_movie_ids)
+                            pb_utils.Tensor("movie_id_count_ur", movie_id_count_ur),
+                            pb_utils.Tensor("movie_ids_values_ur", movie_ids_values_ur),
+                            pb_utils.Tensor("movie_ids_nnzs_ur", movie_ids_nnzs_ur),
+                            pb_utils.Tensor("genres_values_ur", genres_values_ur),
+                            pb_utils.Tensor("genres_nnzs_ur", genres_nnzs_ur),
+                            pb_utils.Tensor("search_terms_values_ur", search_terms_values_ur),
+                            pb_utils.Tensor("search_terms_nnzs_ur", search_terms_nnzs_ur),
                         ]
                     )
                 )
