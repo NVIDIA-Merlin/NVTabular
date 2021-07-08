@@ -23,6 +23,7 @@ jobs:
     - name: Set requirements
       run: |
         sed -i '1,2d' requirements.txt
+        sed -i '5d' requirements.txt
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
