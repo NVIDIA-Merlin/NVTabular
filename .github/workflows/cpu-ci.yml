@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.8]
         os: [ubuntu-latest]
 
     steps:
@@ -22,6 +22,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install Ubuntu packages
       run: |
+        sudo apt-get update -y
+        sudo apt-get install -y nvidia-cuda-toolkit
         sudo apt-get install -y protobuf-compiler
     - name: Set requirements
       run: |
