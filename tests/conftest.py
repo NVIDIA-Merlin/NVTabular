@@ -25,11 +25,14 @@ import pandas as pd
 
 try:
     import cudf
+
     try:
         import cudf.testing._utils
+
         assert_eq = cudf.testing._utils.assert_eq
     except ImportError:
         import cudf.tests.utils
+
         assert_eq = cudf.tests.utils.assert_eq
 except ImportError:
     cudf = None
@@ -41,7 +44,6 @@ from dask.distributed import Client, LocalCluster
 from numba import cuda
 
 import nvtabular
-
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
