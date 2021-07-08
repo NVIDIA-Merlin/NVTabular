@@ -16,7 +16,11 @@
 import enum
 import warnings
 
-import cupy as cp
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
 import numpy as np
 import pandas as pd
 

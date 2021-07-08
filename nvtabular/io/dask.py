@@ -21,10 +21,10 @@ from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from nvtx import annotate
 
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache, get_worker_cache
+from nvtabular.dispatch import annotate
 
 from .shuffle import Shuffle
 from .writer_factory import _writer_cls_factory, writer_factory

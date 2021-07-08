@@ -15,9 +15,8 @@
 #
 from inspect import getsourcelines, signature
 
-from nvtx import annotate
 
-from ..dispatch import DataFrameType
+from ..dispatch import DataFrameType, annotate
 from .operator import ColumnNames, Operator
 
 
