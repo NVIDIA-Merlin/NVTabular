@@ -16,6 +16,7 @@
 
 import os
 import warnings
+from distutils.spawn import find_executable
 
 import cudf
 import cupy as cp
@@ -25,9 +26,12 @@ import tritonclient.grpc as grpcclient
 from tritonclient.utils import np_to_triton_dtype
 
 import nvtabular as nvt
+import tests.conftest as test_utils
 
 MODEL_DIR = "~/nvt-examples/models/"
 DATA_DIR = "~/nvt-examples/data/"
+
+TRITON_SERVER_PATH = find_executable("tritonserver")
 
 
 # Update TEST_N_ROWS param in test_nvt_tf_trainin.py to test larger sizes
@@ -91,7 +95,7 @@ def test_nvt_tf_rossmann_inference(n_rows, err_tol):
 
     outputs = [grpcclient.InferRequestedOutput("tf.math.multiply_1")]
 
-    with grpcclient.InferenceServerClient("localhost:8001") as client:
+    with test_utils.run_triton_server(os.path.expanduser(MODEL_DIR), TRITON_SERVER_PATH) as client:
         response = client.infer("rossmann", inputs, request_id="1", outputs=outputs)
 
     output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)

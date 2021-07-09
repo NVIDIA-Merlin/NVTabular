@@ -18,7 +18,10 @@ import glob
 import os
 import platform
 import random
+import signal
 import socket
+import subprocess
+import time
 
 import cudf
 import numpy as np
@@ -29,6 +32,9 @@ from dask.distributed import Client, LocalCluster
 from numba import cuda
 
 import nvtabular
+
+tritonclient = pytest.importorskip("tritonclient")
+grpcclient = pytest.importorskip("tritonclient.grpc")
 
 try:
     import cudf.testing._utils
@@ -249,3 +255,39 @@ def get_cats(workflow, col, stat_name="categories"):
     gdf = cudf.read_parquet(filename)
     gdf.reset_index(drop=True, inplace=True)
     return gdf[col].values_host
+
+
+@contextlib.contextmanager
+def run_triton_server(modelpath, triton_server_path):
+    cmdline = [
+        triton_server_path,
+        "--model-repository",
+        modelpath,
+        "--backend-config=tensorflow,version=2",
+    ]
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = "0"
+    with subprocess.Popen(cmdline, env=env) as process:
+        try:
+            with grpcclient.InferenceServerClient("localhost:8001") as client:
+                # wait until server is ready
+                for _ in range(60):
+                    if process.poll() is not None:
+                        retcode = process.returncode
+                        raise RuntimeError(f"Tritonserver failed to start (ret={retcode})")
+
+                    try:
+                        ready = client.is_server_ready()
+                    except tritonclient.utils.InferenceServerException:
+                        ready = False
+
+                    if ready:
+                        yield client
+                        return
+
+                    time.sleep(1)
+
+                raise RuntimeError("Timed out waiting for tritonserver to become ready")
+        finally:
+            # signal triton to shutdown
+            process.send_signal(signal.SIGINT)
