@@ -26,6 +26,9 @@ from tritonclient.utils import np_to_triton_dtype
 
 import nvtabular as nvt
 
+MODEL_DIR = "~/nvt-examples/models/"
+DATA_DIR = "~/nvt-examples/data/"
+
 
 # Update TEST_N_ROWS param in test_nvt_tf_trainin.py to test larger sizes
 @pytest.mark.parametrize("n_rows", [64, 45, 32, 14, 7, 1])
@@ -67,16 +70,15 @@ def test_nvt_tf_movielens_inference(n_rows, err_tol):
     assert (diff < err_tol).all()
 
 
-@pytest.mark.parametrize("n_rows", [64, 45, 32, 14, 7, 1])
+@pytest.mark.parametrize("n_rows", [64, 35, 16, 5])
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_rossmann_inference(n_rows, err_tol):
+    workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_nvt/1/workflow")
+    data_path = os.path.join(os.path.expanduser(DATA_DIR), "test_inference_rossmann_data.csv")
+    actual_output_filename = os.path.join(os.path.expanduser(DATA_DIR), "rossmann_predictions.csv")
 
-    workflow = nvt.Workflow.load(
-        os.path.expanduser("~/nvt-examples/models/test_rossmann_tf_nvt/1/workflow/")
-    )
-    batch = cudf.read_csv(
-        os.path.expanduser("~/nvt-examples/rossmann/input/test_data.csv"), nrows=n_rows
-    )[workflow.column_group.input_column_names]
+    workflow = nvt.Workflow.load(workflow_path)
+    batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
 
     columns = [(col, batch[col]) for col in batch.columns]
 
@@ -90,15 +92,11 @@ def test_nvt_tf_rossmann_inference(n_rows, err_tol):
     outputs = [grpcclient.InferRequestedOutput("tf.math.multiply_1")]
 
     with grpcclient.InferenceServerClient("localhost:8001") as client:
-        response = client.infer("test_rossmann_tf", inputs, request_id="1", outputs=outputs)
+        response = client.infer("rossmann", inputs, request_id="1", outputs=outputs)
 
-    output_actual = cudf.read_csv(
-        os.path.expanduser("~/nvt-examples/rossmann/input/output.csv"), nrows=n_rows
-    )
+    output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
     output_actual = cp.asnumpy(output_actual["0"].values)
     output_predict = response.as_numpy("tf.math.multiply_1")
 
     diff = abs(output_actual - output_predict[:, 0])
-    assert (diff < err_tol).all()
-
     assert (diff < err_tol).all()
