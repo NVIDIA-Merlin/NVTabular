@@ -18,7 +18,7 @@ from nvtx import annotate
 
 from nvtabular.dispatch import DataFrameType, _natural_log
 
-from .base import ColumnNames, Operator
+from .base import ColumnNames, Operator, OperatorBlock
 
 
 class LogOp(Operator):
@@ -39,3 +39,11 @@ class LogOp(Operator):
         return _natural_log(df[columns].astype(np.float32) + 1)
 
     transform.__doc__ = Operator.transform.__doc__
+
+
+class LogNormalize(OperatorBlock):
+    def __init__(self, auto_renaming=False):
+        from nvtabular.ops import Normalize
+
+        ops = [LogOp(), Normalize()]
+        super().__init__(*ops, auto_renaming=auto_renaming, sequential=True)

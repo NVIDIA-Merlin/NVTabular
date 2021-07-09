@@ -12,30 +12,30 @@ class Column:
     tags: Optional[List[Text]] = field(default_factory=list)
     properties: Optional[Dict[Text, Text]] = field(default_factory=dict)
 
+    def __post_init__(self):
+        if isinstance(self.tags, DefaultTags):
+            object.__setattr__(self, "tags", self.tags.value)
+
     def __str__(self) -> str:
         return self.name
 
-    def add_tags(self, tags):
+    def with_tags(self, tags, add=True):
         if isinstance(tags, DefaultTags):
             tags = tags.value
         if not tags:
             return self
 
-        return Column(
-            self.name, tags=list(set(list(self.tags) + list(tags))), properties=self.properties
-        )
-
-    def add_tag(self, tag):
-        return self.add_tags([tag])
+        tags = list(set(list(self.tags) + list(tags))) if add else tags
+        return Column(self.name, tags=tags, properties=self.properties)
 
     def update_name(self, name):
         return Column(name, tags=self.tags, properties=self.properties)
 
-    def add_properties(self, **properties):
+    def with_properties(self, add=True, **properties):
         if not properties:
             return self
-
-        return Column(self.name, tags=self.tags, properties={**self.properties, **properties})
+        properties = {**self.properties, **properties} if add else properties
+        return Column(self.name, tags=self.tags, properties=properties)
 
 
 Columns = List[

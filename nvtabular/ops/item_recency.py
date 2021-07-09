@@ -15,15 +15,19 @@ class ItemRecency(Operator):
 
     @classmethod
     def add_first_seen_col_to_df(
-        cls, df, item_id_column="item_id", first_seen_column_name=FIRST_SEEN_ITEM_COL_NAME
+        cls,
+        df,
+        item_id_column="item_id",
+        timestamp_column="timestamp",
+        first_seen_column_name=FIRST_SEEN_ITEM_COL_NAME,
     ):
         items_first_ts_df = (
             df.groupby(item_id_column)
-            .agg({"timestamp": "min"})
+            .agg({timestamp_column: "min"})
             .reset_index()
-            .rename(columns={"timestamp": first_seen_column_name})
+            .rename(columns={timestamp_column: first_seen_column_name})
         )
-        merged_df = df.merge(items_first_ts_df, on=["item_id"], how="left")
+        merged_df = df.merge(items_first_ts_df, on=[item_id_column], how="left")
 
         return merged_df
 

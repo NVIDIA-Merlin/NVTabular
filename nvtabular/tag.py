@@ -9,10 +9,12 @@ class DefaultTags(Enum):
     IMAGE = ["image"]
     TEXT = ["text"]
     TEXT_TOKENIZED = ["text_tokenized"]
+    TIME = ["time"]
 
     # Feature context
     USER = ["user"]
     ITEM = ["item"]
+    ITEM_ID = ["item", "item_id"]
     CONTEXT = ["context"]
 
     # Target related
@@ -29,10 +31,12 @@ class Tag:
     IMAGE = DefaultTags.IMAGE
     TEXT = DefaultTags.TEXT
     TEXT_TOKENIZED = DefaultTags.TEXT_TOKENIZED
+    TIME = DefaultTags.TIME
 
     # Feature context
     USER = DefaultTags.USER
     ITEM = DefaultTags.ITEM
+    ITEM_ID = DefaultTags.ITEM_ID
     CONTEXT = DefaultTags.CONTEXT
 
     # Target related
@@ -52,24 +56,3 @@ class Tag:
             return Tag(tag.value)
         elif isinstance(tag, Tag):
             return tag
-
-
-class TagAs:
-    def __init__(self, tags=None, is_target=False, is_regression_target=False, is_binary_target=False,
-                 is_multi_class_target=False):
-        if isinstance(tags, DefaultTags):
-            tags = tags.value
-        if not tags:
-            tags = []
-        if not isinstance(tags, list):
-            tags = [tags]
-        if is_target:
-            tags.extend(DefaultTags.TARGETS.value)
-        if is_regression_target:
-            tags.extend(DefaultTags.TARGETS_REGRESSION.value)
-        if is_multi_class_target:
-            tags.extend(DefaultTags.TARGETS_MULTI_CLASS.value)
-        if is_binary_target:
-            tags.extend(DefaultTags.TARGETS_BINARY.value)
-
-        self.tags = list(set(tags))

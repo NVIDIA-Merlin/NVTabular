@@ -6,6 +6,7 @@ import cudf
 from kaggle import api as kaggle_api
 
 from nvtabular import ops
+from nvtabular.column import Column
 from nvtabular.column_group import ColumnGroup, Tag
 from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.dataset.utils import (
@@ -16,8 +17,6 @@ from nvtabular.dataset.utils import (
 from nvtabular.io import Dataset
 
 LOG = logging.getLogger("nvtabular")
-
-LogNormalize = ops.OperatorBlock(ops.LogOp(), ops.Normalize(), auto_renaming=True)
 
 
 class YooChoose(TabularDataset):
@@ -48,15 +47,18 @@ class YooChoose(TabularDataset):
         return ColumnGroup([])
 
     def create_default_transformations(self, data) -> ColumnGroup:
-        features = ["session_id", "timestamp"]
+        features = ColumnGroup(["session_id", "timestamp"])
 
         # Temporal features
         features += ["timestamp"] >> ops.ItemRecency()
-        features += ["timestamp"] >> ops.LogOp() >> ops.Normalize() >> ops.Rename(postfix="/norm")
-        features += ops.TimestampFeatures(add_cycled=True, delimiter="/")(["timestamp"])
+        features += features["timestamp/age_days"] >> ops.LogNormalize(auto_renaming=True)
+        features += ["timestamp"] >> ops.TimestampFeatures(add_cycled=True, delimiter="/")
 
         # Categorical features
-        features += ["item_id", "category"] >> ops.Categorify()
+        features += [
+            Column("item_id", tags=Tag.ITEM_ID),
+            Column("category", tags=Tag.ITEM),
+        ] >> ops.Categorify()
 
         # Group-by session
         session_features = features >> ops.Groupby(
@@ -69,10 +71,10 @@ class YooChoose(TabularDataset):
             ),
             name_sep="/",
         )
-        rename_cols = {"item_id/count": "session_size"}
+        rename_cols = {"item_id/count": "session_size", "timestamp/first": "session_start"}
         session_features = session_features >> ops.Rename(lambda col: rename_cols.get(col, col))
-        timestamp_first = session_features.filter_columns(lambda x: x == "timestamp/first")
-        # session_features += SessionDay()(timestamp_first)
+        timestamp_first = session_features.filter_columns(lambda x: x == "session_start")
+        session_features += timestamp_first >> SessionDay()
 
         filtered_sessions = session_features >> ops.Filter(
             f=lambda df: df["session_size"] >= self.minimum_session_length
@@ -81,7 +83,7 @@ class YooChoose(TabularDataset):
         return filtered_sessions
 
     def name(self) -> str:
-        return "youchoose"
+        return "yoochoose"
 
     @staticmethod
     def _process_clicks(data_path):

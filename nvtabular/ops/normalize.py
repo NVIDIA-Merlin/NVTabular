@@ -70,7 +70,9 @@ class Normalize(StatOperator):
         self.stds = {}
 
     def output_columns(self, columns: Columns) -> Columns:
-        return [col.add_tags(Tag.CONTINUOUS) for col in columns]
+        cols = [col.with_tags(Tag.CONTINUOUS) for col in columns]
+
+        return cols
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -126,7 +128,7 @@ class NormalizeMinMax(StatOperator):
             self.maxs[col] = dask_stats["maxs"][col]
 
     def output_columns(self, columns: Columns) -> Columns:
-        return [col.add_tags(Tag.CONTINUOUS) for col in columns]
+        return [col.with_tags(Tag.CONTINUOUS) for col in columns]
 
     def clear(self):
         self.mins = {}

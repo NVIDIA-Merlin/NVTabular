@@ -6,7 +6,6 @@ from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
 from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
-from nvtabular.tag import TagAs
 from nvtabular.utils import download_file
 
 
@@ -33,7 +32,7 @@ class MovieLens(TabularDataset):
         columns += (
             ColumnGroup(["Recommended IND"])
             >> ops.Rename(f=lambda x: x.replace(" IND", ""))
-            >> TagAs(Tag.TARGETS_BINARY)
+            >> ops.AddMetadata(tags=Tag.TARGETS_BINARY)
         )
         columns += ColumnGroup(["Rating"], tags=Tag.TARGETS_REGRESSION)
 
@@ -54,12 +53,12 @@ class MovieLens(TabularDataset):
             ColumnGroup(["rating"])
             >> (lambda col: (col > 3).astype("int8"))
             >> ops.Rename(postfix="_binary")
-            >> TagAs(is_binary_target=True)
+            >> ops.AddMetadata(is_binary_target=True)
         )
 
-        rating = ColumnGroup(["rating"]) >> TagAs(is_regression_target=True)
+        rating = ColumnGroup(["rating"]) >> ops.AddMetadata(is_regression_target=True)
 
-        return cat_features + rating_binary + rating
+        return cat_features + rating + rating_binary
 
     def name(self) -> str:
         return "movielens"

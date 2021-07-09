@@ -431,7 +431,7 @@ class Categorify(StatOperator):
             raise NotImplementedError("TODO: implement this")
         columns = list(flatten(columns, container=tuple))
 
-        return [col.add_tags(Tag.CATEGORICAL.value) for col in columns]
+        return [col.with_tags(Tag.CATEGORICAL.value) for col in columns]
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(

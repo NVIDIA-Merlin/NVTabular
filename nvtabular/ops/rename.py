@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from ..column import Column
 from ..dispatch import DataFrameType
 from .base import ColumnNames, Operator
 
@@ -53,6 +54,19 @@ class Rename(Operator):
         return df
 
     transform.__doc__ = Operator.transform.__doc__
+
+    def output_columns(self, columns):
+        if self.f:
+            return [col.update_name(self.f(col.name)) for col in columns]
+        elif self.postfix:
+            return [col.update_name(col.name + self.postfix) for col in columns]
+        elif self.name:
+            if len(columns) == 1:
+                return Column(self.name)
+            else:
+                raise RuntimeError("Single column name provided for renaming multiple columns")
+        else:
+            raise RuntimeError("The Rename op requires one of f, postfix, or name to be provided")
 
     def output_column_names(self, columns):
         if self.f:

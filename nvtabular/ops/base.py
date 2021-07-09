@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from nvtabular.dispatch import DataFrameType
+from nvtabular.tag import DefaultTags
 
 if TYPE_CHECKING:
     # avoid circular references
@@ -85,6 +86,42 @@ class Operator:
         return self.__class__.__name__
 
 
+class AddMetadata(Operator):
+    def __init__(
+        self,
+        tags=None,
+        properties=None,
+        is_target=False,
+        is_regression_target=False,
+        is_binary_target=False,
+        is_multi_class_target=False,
+    ):
+        super().__init__()
+        self.properties = properties or {}
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+        if not tags:
+            tags = []
+        if not isinstance(tags, list):
+            tags = [tags]
+        if is_target:
+            tags.extend(DefaultTags.TARGETS.value)
+        if is_regression_target:
+            tags.extend(DefaultTags.TARGETS_REGRESSION.value)
+        if is_multi_class_target:
+            tags.extend(DefaultTags.TARGETS_MULTI_CLASS.value)
+        if is_binary_target:
+            tags.extend(DefaultTags.TARGETS_BINARY.value)
+
+        self.tags = list(set(tags))
+
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        return df
+
+    def output_columns(self, columns):
+        return [col.with_tags(self.tags).with_properties(**self.properties) for col in columns]
+
+
 class OperatorBlock(object):
     def __init__(self, *ops, auto_renaming=False, sequential=True):
         self._ops = list(ops) if ops else []
@@ -113,6 +150,11 @@ class OperatorBlock(object):
     @property
     def ops(self):
         return self._ops
+
+    def __rrshift__(self, other) -> ColumnGroup:
+        import nvtabular
+
+        return self(nvtabular.ColumnGroup(other))
 
     def __call__(self, col_or_cols, add=False):
         x = col_or_cols
@@ -143,9 +185,6 @@ class OperatorBlock(object):
             return col_or_cols + x
 
         return x
-
-    def __rrshift__(self, other):
-        return self.__call__(other)
 
     def copy(self):
         to_return = OperatorBlock(

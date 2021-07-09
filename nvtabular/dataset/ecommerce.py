@@ -8,7 +8,6 @@ from nvtabular import ops
 from nvtabular.column_group import ColumnGroup, Tag
 from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
-from nvtabular.tag import TagAs
 
 
 class ClothingReviews(TabularDataset):
@@ -39,7 +38,7 @@ class ClothingReviews(TabularDataset):
         columns += (
             ColumnGroup(["Recommended IND"])
             >> ops.Rename(f=lambda x: x.replace(" IND", ""))
-            >> TagAs(Tag.TARGETS_BINARY)
+            >> ops.AddMetadata(tags=Tag.TARGETS_BINARY)
         )
         columns += ColumnGroup(["Rating"], tags=Tag.TARGETS_REGRESSION)
 

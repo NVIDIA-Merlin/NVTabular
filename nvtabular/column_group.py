@@ -21,8 +21,8 @@ import joblib
 from dask.core import flatten
 
 from nvtabular.column import Column
-from nvtabular.ops import LambdaOp, Operator
-from nvtabular.tag import DefaultTags, Tag, TagAs
+from nvtabular.ops import LambdaOp, Operator, OperatorBlock
+from nvtabular.tag import DefaultTags, Tag
 
 
 class ColumnGroup:
@@ -134,14 +134,11 @@ class ColumnGroup:
         if isinstance(operator, type) and issubclass(operator, Operator):
             # handle case where an operator class is passed
             operator = operator()
+        elif isinstance(operator, OperatorBlock):
+            return operator(self)
         elif callable(operator):
             # implicit lambdaop conversion.
             operator = LambdaOp(operator)
-        elif isinstance(operator, TagAs):
-            self.columns = [col.add_tags(operator.tags) for col in self.columns]
-            # self.tags.extend(operator.tags)
-
-            return self
 
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
@@ -217,14 +214,14 @@ class ColumnGroup:
         ColumnGroup
         """
         if isinstance(other, ColumnGroup):
-            to_remove = set(other.columns)
+            to_remove = set(other.column_names)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
             raise ValueError(f"Expected ColumnGroup, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.columns if c not in to_remove]
+        new_columns = [c for c in self.columns if c.name not in to_remove]
         child = ColumnGroup(new_columns)
         child.parents = [self]
         self.children.append(child)
@@ -246,17 +243,21 @@ class ColumnGroup:
         """
         if isinstance(columns, str):
             columns = [columns]
-        if Tag.parse(columns):
-            return self.get_tagged(columns)
+        if isinstance(columns, int):
+            return self.column_names[columns]
 
-        child = ColumnGroup(columns)
+        filtered_columns = [col for col in _convert_col(columns) if col.name in self.column_names]
+        child = ColumnGroup(filtered_columns)
         child.parents = [self]
         self.children.append(child)
         child.kind = str(columns)
         return child
 
-    def filter_columns(self, filter_fn):
-        filtered = [c for c in self.columns if filter_fn(c)]
+    def filter_columns(self, filter_fn, by_name=True):
+        if by_name:
+            filtered = [c for c in self.columns if filter_fn(c.name)]
+        else:
+            filtered = [c for c in self.columns if filter_fn(c)]
 
         return self[filtered]
 
@@ -278,13 +279,6 @@ class ColumnGroup:
             if all([x in column.tags for x in tags]):
                 output_cols.append(column)
 
-        # for node in self.nodes:
-        #     node_tags = list(
-        #         flatten([t.value if isinstance(t, DefaultTags) else [t] for t in node.tags])
-        #     )
-        #     if all([x in node_tags for x in tags]):
-        #         output_cols.extend(node.column_names)
-
         columns = [col for col in output_cols if col.name not in column_names_to_filter]
 
         if output_list:
@@ -300,24 +294,11 @@ class ColumnGroup:
 
         return child
 
-    def tags_by_column(self, add_intermediary=False):
+    def tags_by_column(self):
         outputs = {}
 
         for col in self.flattened_columns:
             outputs[col.name] = col.tags
-
-        # for node in self.nodes:
-        #     if node.tags:
-        #         for col in node.column_names:
-        #             if add_intermediary or col in self.column_names:
-        #                 if col not in outputs:
-        #                     outputs[col] = []
-        #
-        #                 for t in list(node.tags):
-        #                     tags = t.value if isinstance(t, DefaultTags) else [t]
-        #                     for tag in tags:
-        #                         if tag not in outputs[col]:
-        #                             outputs[col].append(tag)
 
         return outputs
 
@@ -419,7 +400,7 @@ class ColumnGroup:
         while queue:
             current = queue.pop()
             if current.op and hasattr(current.op, "get_embedding_sizes"):
-                output.update(current.op.get_embedding_sizes(current.columns))
+                output.update(current.op.get_embedding_sizes(current.column_names))
             elif not current.op:
 
                 # only follow parents if its not an operator node (which could
@@ -571,10 +552,10 @@ def _convert_col(col, tags=None, properties=None):
     if not properties:
         properties = {}
     if isinstance(col, Column):
-        return col.add_tags(tags).add_properties(**properties)
+        return col.with_tags(tags).with_properties(**properties)
     elif isinstance(col, str):
         return Column(col, tags=tags, properties=properties)
     elif isinstance(col, (tuple, list)):
         return tuple([_convert_col(c, tags=tags, properties=properties) for c in col])
     else:
-        raise ValueError(f"Invalid column value for ColumnGroup: {col}")
+        raise ValueError(f"Invalid column value for ColumnGroup: {col} (type: {type(col)})")

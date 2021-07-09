@@ -58,4 +58,7 @@ class Filter(Operator):
         new_df.reset_index(drop=True, inplace=True)
         return new_df
 
+    def output_columns(self, columns):
+        return columns
+
     transform.__doc__ = Operator.transform.__doc__
