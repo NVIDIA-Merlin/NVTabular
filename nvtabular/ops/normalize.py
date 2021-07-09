@@ -15,9 +15,8 @@
 #
 
 import dask.dataframe as dd
-from nvtx import annotate
 
-from ..dispatch import DataFrameType
+from ..dispatch import DataFrameType, annotate
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator, Supports
 from .stat_operator import StatOperator

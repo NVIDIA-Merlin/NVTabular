@@ -14,9 +14,8 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
