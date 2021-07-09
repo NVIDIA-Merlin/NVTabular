@@ -147,7 +147,7 @@ class TritonPythonModel:
         return responses
 
     def _transform_outputs(self, tensors):
-        """ transforms outputs for both pytorch and tensorflow """
+        """transforms outputs for both pytorch and tensorflow"""
         output_tensors = []
         for name, value in tensors.items():
             if isinstance(value, tuple):
@@ -198,7 +198,7 @@ class TritonPythonModel:
 
 
 def _convert_to_hugectr(columns, tensors, dtype):
-    """ converts outputs to a numpy input compatible with hugectr """
+    """converts outputs to a numpy input compatible with hugectr"""
     rows = max(len(tensors[name]) for name in columns)
     d = np.empty((rows, len(columns)), dtype=dtype)
     for i, name in enumerate(columns):
