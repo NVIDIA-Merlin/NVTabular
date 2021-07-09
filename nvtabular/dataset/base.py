@@ -144,7 +144,13 @@ class TabularDataset:
             client.shutdown()
 
     def statistics(
-        self, transformed=False, overwrite=False, cross_columns=None, split_names=None, **kwargs
+        self,
+        transformed=False,
+        overwrite=False,
+        cross_columns=None,
+        split_names=None,
+        save=True,
+        **kwargs,
     ) -> DatasetCollectionStatistics:
         data_dir = self.transformed_dir if transformed else self.data_dir
 
@@ -159,11 +165,13 @@ class TabularDataset:
             data = data.filter_keys(*split_names)
         data = data.flatten()
 
+        LOG.info("Calculating statistics...")
         client = self.client_fn() if self.client_fn else None
         stats = data.calculate_statistics(
-            data_dir, client=client, overwrite=overwrite, cross_columns=cross_columns
+            client=client, overwrite=overwrite, cross_columns=cross_columns
         )
-        stats.save(data_dir)
+        if save:
+            stats.save(data_dir)
 
         return stats
 

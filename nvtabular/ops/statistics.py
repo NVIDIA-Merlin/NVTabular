@@ -43,6 +43,7 @@ class Statistics(Schema):
         self.col_names = []
         self.col_types = []
         self.col_dtypes = []
+        self.col_is_lists = []
         self.stats = None
 
     @classmethod
@@ -92,33 +93,49 @@ class Statistics(Schema):
             dask_stats[col] = {}
             self.col_names.append(col)
             # Get dtype for all
-            dtype = ddf_dtypes[col].dtype
-            self.col_dtypes.append(dtype)
+            dtype = str(ddf_dtypes[col].dtype)
+            is_list = False
 
-            dask_stats[col]["num_missing"] = len(ddf[col][ddf[col].isnull()])
-            dask_stats[col]["num_non_missing"] = ddf[col].count()
+            domain = ddf[col]
+
+            if dtype == "list":
+                domain = ddf[col].map_partitions(lambda x: x.list.leaves, meta=("x", int))
+                lengths = ddf[col].map_partitions(lambda x: x.list.len(), meta=("x", int))
+                dask_stats[col]["min_length"] = lengths.min()
+                dask_stats[col]["max_length"] = lengths.max()
+                dask_stats[col]["mean_length"] = lengths.mean()
+                dtype = ddf_dtypes[col].dtype.leaf_type
+                is_list = True
+
+            self.col_dtypes.append(dtype)
+            self.col_is_lists.append(is_list)
+
+            dask_stats[col]["num_missing"] = len(domain[domain.isnull()])
+            dask_stats[col]["num_non_missing"] = domain.count()
 
             # Get cardinality for cats
-            if dtype == np.object:
-                dask_stats[col]["nunique"] = ddf[col].nunique()
-                str_len = ddf[col].map_partitions(lambda x: x.str.len(), meta=("x", int))
-                dask_stats[col]["avg_length"] = str_len.mean()
-                dask_stats[col]["top_values"] = ddf[col].value_counts().nlargest(n=50)
+            if dtype == "object":
+                dask_stats[col]["nunique"] = domain.nunique()
+                str_len = domain.map_partitions(lambda x: x.str.len(), meta=("x", int))
+                dask_stats[col]["avg_str_length"] = str_len.mean()
+                dask_stats[col]["top_values"] = domain.value_counts().nlargest(n=50)
 
-            elif dtype in [np.int8, np.int32, np.int64, np.float32, np.float64]:
+            elif dtype in ["int8", "int32", "int64", "float32", "float64"]:
                 # Get various stats
-                dask_stats[col]["min"] = ddf[col].min()
-                dask_stats[col]["max"] = ddf[col].max()
-                dask_stats[col]["mean"] = ddf[col].mean()
-                dask_stats[col]["std"] = ddf[col].std()
+                dask_stats[col]["min"] = domain.min()
+                dask_stats[col]["max"] = domain.max()
+                dask_stats[col]["mean"] = domain.mean()
+                dask_stats[col]["std"] = domain.std()
 
-                dask_stats[col]["num_zeroes"] = (ddf[col] == 0).sum()
+                dask_stats[col]["num_zeroes"] = (domain == 0).sum()
 
                 h, bins = da.histogram(
-                    ddf[col].to_dask_array(), 10, range=[ddf[col].min(), ddf[col].max()]
+                    domain.to_dask_array(), 10, range=[domain.min(), domain.max()]
                 )
                 dask_stats[col]["histogram"] = h
                 dask_stats[col]["histogram_bins"] = bins
+            else:
+                LOG.warning(f"{col} has unknown type: {dtype}")
 
             if self.cross_columns:
                 dask_stats["corr"] = ddf[self.cross_columns].corr()
@@ -137,6 +154,7 @@ class Statistics(Schema):
 
         for i, col in enumerate(self.col_names):
             dtype = self.col_dtypes[i]
+            is_list = self.col_is_lists[i]
 
             feature = self.stats.features.add()
             feature.name = col
@@ -144,12 +162,12 @@ class Statistics(Schema):
             common_stats = statistics_pb2.CommonStatistics(
                 num_non_missing=int(dask_stats[col]["num_non_missing"]),
                 num_missing=int(dask_stats[col]["num_missing"]),
-                min_num_values=1,
-                max_num_values=1,
-                avg_num_values=1.0,
+                min_num_values=int(dask_stats[col]["min_length"]) if is_list else 1,
+                max_num_values=int(dask_stats[col]["max_length"]) if is_list else 1,
+                avg_num_values=float(dask_stats[col]["mean_length"]) if is_list else 1.0,
             )
 
-            if dtype in [np.int8, np.int32, np.int64, np.float32, np.float64]:
+            if dtype in ["int8", "int32", "int64", "float32", "float64"]:
                 hist = statistics_pb2.Histogram(type=0)
                 h, bins = dask_stats[col]["histogram"], dask_stats[col]["histogram_bins"]
                 for i in range(len(h)):
@@ -172,11 +190,11 @@ class Statistics(Schema):
                     )
                 )
                 feature.type = 1 if np.issubdtype(dtype, np.floating) else 0
-            elif dtype == np.object:
+            elif dtype == "object":
                 feature.string_stats.CopyFrom(
                     statistics_pb2.StringStatistics(
                         common_stats=common_stats,
-                        avg_length=dask_stats[col]["avg_length"],
+                        avg_length=dask_stats[col]["avg_str_length"],
                         unique=dask_stats[col]["nunique"].item(),
                     )
                 )

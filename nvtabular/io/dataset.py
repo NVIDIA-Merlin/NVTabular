@@ -1175,14 +1175,18 @@ class DatasetCollection(Namespace):
         statistics = statistics_pb2.DatasetFeatureStatisticsList()
 
         for name, dataset in self.items():
-            dataset_dir = os.path.join(output_path, getattr(dataset, "id", name) if by_id else name)
+            stats_path, dataset_dir = None, None
+            if output_path:
+                dataset_dir = os.path.join(
+                    output_path, getattr(dataset, "id", name) if by_id else name
+                )
 
-            if not os.path.exists(dataset_dir):
-                os.makedirs(dataset_dir)
+                if not os.path.exists(dataset_dir):
+                    os.makedirs(dataset_dir)
 
-            stats_path = os.path.join(dataset_dir, Statistics.STATS_FILE_NAME)
+                stats_path = os.path.join(dataset_dir, Statistics.STATS_FILE_NAME)
             stats_dataset = statistics.datasets.add()
-            if not os.path.exists(stats_path) or overwrite:
+            if not output_path or not os.path.exists(stats_path) or overwrite:
                 stats = Statistics.calculate_on_dataset(
                     dataset, output_path=dataset_dir, client=client, **kwargs
                 )
