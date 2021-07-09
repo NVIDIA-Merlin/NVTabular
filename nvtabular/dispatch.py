@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 import enum
+import functools
 import itertools
 from typing import Callable, Union
 
-import cupy as cp
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -26,10 +26,12 @@ import pyarrow.parquet as pq
 
 try:
     import cudf
+    import cupy as cp
     import dask_cudf
     from cudf.core.column import as_column, build_column
     from cudf.utils.dtypes import is_list_dtype
 except ImportError:
+    cp = None
     cudf = None
 
 try:
@@ -38,6 +40,23 @@ try:
 except ImportError:
     # Dask < 2021.5.1
     from dask.dataframe.utils import hash_object_dispatch
+
+try:
+    import nvtx
+
+    annotate = nvtx.annotate
+except ImportError:
+    # don't have nvtx installed - don't annotate our functions
+    def annotate(*args, **kwargs):
+        def inner1(func):
+            @functools.wraps(func)
+            def inner2(*args, **kwargs):
+                return func(*args, **kwargs)
+
+            return inner2
+
+        return inner1
+
 
 if cudf is None:
     DataFrameType = Union[pd.DataFrame]

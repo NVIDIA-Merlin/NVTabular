@@ -15,9 +15,8 @@
 #
 import dask.dataframe as dd
 import numpy as np
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+from nvtabular.dispatch import DataFrameType, annotate
 
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
