@@ -49,4 +49,4 @@ jobs:
         python -m pip install -e .
     - name: Run unittests
       run: |
-        python -m pytest -svvtests/unit/test_cpu_workflow.py
+        python -m pytest -svv tests/unit/test_cpu_workflow.py
