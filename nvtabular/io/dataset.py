@@ -254,7 +254,7 @@ class Dataset:
                         "Using very large partitions sizes for Dask. "
                         "Memory-related errors are likely."
                     )
-                part_size = int(device_mem_size(kind="total") * part_mem_fraction)
+                part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
             paths = path_or_source

@@ -14,9 +14,8 @@
 # limitations under the License.
 #
 import numpy as np
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _natural_log
+from nvtabular.dispatch import DataFrameType, _natural_log, annotate
 
 from .operator import ColumnNames, Operator
 
