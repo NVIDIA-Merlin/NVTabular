@@ -15,6 +15,7 @@
 #
 
 import concurrent.futures
+import datetime as dt
 import glob
 import os
 import warnings
@@ -25,6 +26,8 @@ import cupy as cp
 import numpy as np
 import pytest
 import tritonclient.grpc as grpcclient
+
+# from benchmark_parsers import send_results
 from tritonclient.utils import np_to_triton_dtype
 
 import nvtabular as nvt
@@ -94,27 +97,30 @@ def _run_rossmann_query(client, n_rows, err_tol):
         inputs[i].set_data_from_numpy(d)
 
     outputs = [grpcclient.InferRequestedOutput("tf.math.multiply_1")]
+    time_start = dt.datetime.now()
     response = client.infer("rossmann", inputs, request_id="1", outputs=outputs)
+    run_time = dt.datetime.now() - time_start
 
     output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
     output_actual = cp.asnumpy(output_actual["0"].values)
     output_predict = response.as_numpy("tf.math.multiply_1")
 
     diff = abs(output_actual - output_predict[:, 0])
-    return diff
+    return diff, run_time
 
 
-@pytest.mark.parametrize("n_rows", [64, 35, 16, 5])
+@pytest.mark.parametrize("n_rows", [1024, 1000, 64, 35, 16, 5])
 @pytest.mark.parametrize("err_tol", [0.00001])
-def test_nvt_tf_rossmann_inference_triton(n_rows, err_tol):
+def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
     with test_utils.run_triton_server(os.path.expanduser(MODEL_DIR), TRITON_SERVER_PATH) as client:
-        diff = _run_rossmann_query(client, n_rows, err_tol)
+        diff, run_time = _run_rossmann_query(client, n_rows, err_tol)
     assert (diff < err_tol).all()
+    # send_results(asv_db, bench_info, "bench_results")
 
 
-@pytest.mark.parametrize("n_rows", [[64, 35, 16]])
+@pytest.mark.parametrize("n_rows", [[1024, 1000, 35, 16]])
 @pytest.mark.parametrize("err_tol", [0.00001])
-def test_nvt_tf_rossmann_inference_triton_mt(n_rows, err_tol):
+def test_nvt_tf_rossmann_inference_triton_mt(asv_db, bench_info, n_rows, err_tol):
     futures = []
     with test_utils.run_triton_server(os.path.expanduser(MODEL_DIR), TRITON_SERVER_PATH) as client:
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -122,8 +128,9 @@ def test_nvt_tf_rossmann_inference_triton_mt(n_rows, err_tol):
                 futures.append(executor.submit(_run_rossmann_query, client, n_row, err_tol))
 
     for future in concurrent.futures.as_completed(futures):
-        diff = future.result()
+        diff, run_time = future.result()
         assert (diff < err_tol).all()
+        # send_results(asv_db, bench_info, "bench_results")
 
 
 @pytest.mark.skipif(TEST_N_ROWS is None, reason="Requires TEST_N_ROWS")
