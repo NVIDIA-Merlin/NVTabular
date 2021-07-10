@@ -18,7 +18,10 @@ import glob
 import os
 import platform
 import random
+import signal
 import socket
+import subprocess
+import time
 
 import dask
 import pandas as pd
@@ -47,6 +50,10 @@ except ImportError:
         assert_eq = cudf.tests.utils.assert_eq
     else:
         assert_eq = None
+
+grpcclient = pytest.importorskip("tritonclient.grpc")
+tritonclient = pytest.importorskip("tritonclient")
+
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
@@ -269,7 +276,8 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
     else:
         return df[col]
 
- @contextlib.contextmanager
+
+@contextlib.contextmanager
 def run_triton_server(modelpath, triton_server_path):
     cmdline = [
         triton_server_path,
