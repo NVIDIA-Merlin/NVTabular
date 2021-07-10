@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 
-import os
-import glob
-import warnings
 import concurrent.futures
+import glob
+import os
+import warnings
 from distutils.spawn import find_executable
 
 import cudf
@@ -120,7 +120,7 @@ def test_nvt_tf_rossmann_inference_triton_mt(n_rows, err_tol):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for n_row in n_rows:
                 futures.append(executor.submit(_run_rossmann_query, client, n_row, err_tol))
-                
+
     for future in concurrent.futures.as_completed(futures):
         diff = future.result()
         assert (diff < err_tol).all()
@@ -132,6 +132,7 @@ def test_nvt_tf_rossmann_inference_triton_mt(n_rows, err_tol):
 def test_nvt_tf_rossmann_inference():
     import tensorflow as tf
     from tensorflow import keras
+
     from nvtabular.loader.tensorflow import KerasSequenceLoader
 
     workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_nvt/1/workflow")
@@ -223,8 +224,8 @@ def test_nvt_tf_rossmann_inference():
 
 
 def rmspe_tf(y_true, y_pred):
-    import tensorflow as tf 
-    
+    import tensorflow as tf
+
     y_true = tf.exp(y_true) - 1
     y_pred = tf.exp(y_pred) - 1
 
@@ -234,7 +235,7 @@ def rmspe_tf(y_true, y_pred):
 
 def _make_categorical_embedding_column(name, dictionary_size, embedding_dim):
     import tensorflow as tf
-    
+
     return tf.feature_column.embedding_column(
         tf.feature_column.categorical_column_with_identity(name, dictionary_size), embedding_dim
     )
