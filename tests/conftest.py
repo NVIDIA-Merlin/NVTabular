@@ -278,15 +278,18 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
 
 
 @contextlib.contextmanager
-def run_triton_server(modelpath, triton_server_path):
+def run_triton_server(modelpath, model_name, triton_server_path, device_id="0"):
     cmdline = [
         triton_server_path,
         "--model-repository",
         modelpath,
         "--backend-config=tensorflow,version=2",
+        "--model-control-mode=explicit",
+        "--load-model",
+        model_name,
     ]
     env = os.environ.copy()
-    env["CUDA_VISIBLE_DEVICES"] = "0"
+    env["CUDA_VISIBLE_DEVICES"] = device_id
     with subprocess.Popen(cmdline, env=env) as process:
         try:
             with grpcclient.InferenceServerClient("localhost:8001") as client:

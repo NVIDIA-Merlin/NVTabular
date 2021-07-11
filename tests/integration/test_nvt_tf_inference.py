@@ -18,12 +18,10 @@ import concurrent.futures
 import datetime as dt
 import glob
 import os
-import warnings
 from distutils.spawn import find_executable
 
 import cudf
 import cupy as cp
-import numpy as np
 import pytest
 import tritonclient.grpc as grpcclient
 
@@ -33,87 +31,105 @@ from tritonclient.utils import np_to_triton_dtype
 import nvtabular as nvt
 import tests.conftest as test_utils
 
+# from benchmark_parsers import send_results
+
+
 TEST_N_ROWS = 1024
 MODEL_DIR = "~/nvt-examples/models/"
 DATA_DIR = "~/nvt-examples/data/"
+DATA_DIR_MOVIELENS = "~/nvt-examples/movielens/data/"
 TRITON_SERVER_PATH = find_executable("tritonserver")
+TRITON_DEVICE_ID = "1"
 
 
 # Update TEST_N_ROWS param in test_nvt_tf_trainin.py to test larger sizes
-@pytest.mark.parametrize("n_rows", [64, 45, 32, 14, 7, 1])
+@pytest.mark.parametrize("n_rows", [1024, 1000, 64, 35, 16, 5])
 @pytest.mark.parametrize("err_tol", [0.00001])
-def test_nvt_tf_movielens_inference(n_rows, err_tol):
+def test_nvt_tf_movielens_inference_triton(n_rows, err_tol):
+    with test_utils.run_triton_server(
+        os.path.expanduser(MODEL_DIR), "movielens", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+    ) as client:
+        diff, run_time = _run_movielens_query(client, n_rows)
 
-    INPUT_DATA_DIR = os.path.expanduser("~/nvt-examples/movielens/data/")
-
-    warnings.simplefilter("ignore")
-
-    model_name = "test_movielens_tf"
-    col_names = ["userId", "movieId"]
-    # read in a batch of data to get transforms for
-    batch = cudf.read_csv(os.path.join(INPUT_DATA_DIR, "test_data.csv"), nrows=n_rows)[col_names]
-
-    # convert the batch to a triton inputs
-    columns = [(col, batch[col]) for col in col_names]
-    inputs = []
-
-    col_dtypes = [np.int64, np.int64]
-    for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(col_dtypes[i])
-        d = d.reshape(len(d), 1)
-        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col_dtypes[i])))
-        inputs[i].set_data_from_numpy(d)
-
-    # placeholder variables for the output
-    outputs = []
-    outputs.append(grpcclient.InferRequestedOutput("output"))
-    # make the request
-    with grpcclient.InferenceServerClient("localhost:8001") as client:
-        response = client.infer(model_name, inputs, request_id=str(1), outputs=outputs)
-
-    output_actual = cudf.read_csv(os.path.join(INPUT_DATA_DIR, "output.csv"), nrows=n_rows)
-    output_actual = cp.asnumpy(output_actual["0"].values)
-    output_predict = response.as_numpy("output")
-
-    diff = abs(output_actual - output_predict[:, 0])
     assert (diff < err_tol).all()
+    # send_results(asv_db, bench_info, str(run_time))
 
 
-def _run_rossmann_query(client, n_rows, err_tol):
-    workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_nvt/1/workflow")
-    data_path = os.path.join(os.path.expanduser(DATA_DIR), "test_inference_rossmann_data.csv")
-    actual_output_filename = os.path.join(os.path.expanduser(DATA_DIR), "rossmann_predictions.csv")
+@pytest.mark.parametrize("n_rows", [[1024, 1000, 35, 16]])
+@pytest.mark.parametrize("err_tol", [0.00001])
+def test_nvt_tf_movielens_inference_triton_mt(asv_db, bench_info, tmpdir, n_rows, err_tol):
+    futures = []
+    with test_utils.run_triton_server(
+        os.path.expanduser(MODEL_DIR), "movielens", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+    ) as client:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for n_row in n_rows:
+                futures.append(executor.submit(_run_movielens_query, client, n_row))
+
+    for future in concurrent.futures.as_completed(futures):
+        diff, run_time = future.result()
+        assert (diff < err_tol).all()
+        # send_results(asv_db, bench_info, str(run_time))
+
+
+@pytest.mark.skipif(TEST_N_ROWS is None, reason="Requires TEST_N_ROWS")
+@pytest.mark.skipif(MODEL_DIR is None, reason="Requires MODEL_DIR")
+@pytest.mark.skipif(DATA_DIR is None, reason="Requires DATA_DIR")
+def test_nvt_tf_movielens_inference():
+    from tensorflow import keras
+
+    from nvtabular.loader.tensorflow import KerasSequenceLoader
+
+    workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "movielens_nvt/1/workflow")
+    model_path = os.path.join(os.path.expanduser(MODEL_DIR), "movielens_tf/1/model.savedmodel")
+    data_path = os.path.join(os.path.expanduser(DATA_DIR_MOVIELENS), "valid.parquet")
+    output_dir = os.path.expanduser(DATA_DIR)
+    workflow_output_test_file_name = "test_inference_movielens_data.csv"
+    workflow_output_test_trans_file_name = "test_inference_movielens_data_trans.parquet"
+    prediction_file_name = "movielens_predictions.csv"
 
     workflow = nvt.Workflow.load(workflow_path)
-    batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
 
-    columns = [(col, batch[col]) for col in batch.columns]
+    sample_data = cudf.read_parquet(data_path, nrows=TEST_N_ROWS)
+    sample_data.to_csv(os.path.join(output_dir, workflow_output_test_file_name))
+    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
+    sample_data_trans.to_parquet(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
-    inputs = []
-    for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(col.dtype)
-        d = d.reshape(len(d), 1)
-        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
-        inputs[i].set_data_from_numpy(d)
+    CATEGORICAL_COLUMNS = ["movieId", "userId"]  # Single-hot
+    CATEGORICAL_MH_COLUMNS = ["genres"]  # Multi-hot
+    NUMERIC_COLUMNS = []
 
-    outputs = [grpcclient.InferRequestedOutput("tf.math.multiply_1")]
-    time_start = dt.datetime.now()
-    response = client.infer("rossmann", inputs, request_id="1", outputs=outputs)
-    run_time = dt.datetime.now() - time_start
+    test_data_trans_path = glob.glob(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
-    output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
-    output_actual = cp.asnumpy(output_actual["0"].values)
-    output_predict = response.as_numpy("tf.math.multiply_1")
+    train_dataset = KerasSequenceLoader(
+        test_data_trans_path,  # you could also use a glob pattern
+        batch_size=TEST_N_ROWS,
+        label_names=[],
+        cat_names=CATEGORICAL_COLUMNS + CATEGORICAL_MH_COLUMNS,
+        cont_names=NUMERIC_COLUMNS,
+        engine="parquet",
+        shuffle=False,
+        buffer_size=0.06,  # how many batches to load at once
+        parts_per_chunk=1,
+    )
 
-    diff = abs(output_actual - output_predict[:, 0])
-    return diff, run_time
+    tf_model = keras.models.load_model(model_path)
+
+    pred = tf_model.predict(train_dataset)
+    cudf_pred = cudf.DataFrame(pred)
+    cudf_pred.to_csv(os.path.join(output_dir, prediction_file_name))
+
+    os.remove(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
 
 @pytest.mark.parametrize("n_rows", [1024, 1000, 64, 35, 16, 5])
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
-    with test_utils.run_triton_server(os.path.expanduser(MODEL_DIR), TRITON_SERVER_PATH) as client:
-        diff, run_time = _run_rossmann_query(client, n_rows, err_tol)
+    with test_utils.run_triton_server(
+        os.path.expanduser(MODEL_DIR), "rossmann", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+    ) as client:
+        diff, run_time = _run_rossmann_query(client, n_rows)
+
     assert (diff < err_tol).all()
     # send_results(asv_db, bench_info, "bench_results")
 
@@ -122,10 +138,12 @@ def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_rossmann_inference_triton_mt(asv_db, bench_info, n_rows, err_tol):
     futures = []
-    with test_utils.run_triton_server(os.path.expanduser(MODEL_DIR), TRITON_SERVER_PATH) as client:
+    with test_utils.run_triton_server(
+        os.path.expanduser(MODEL_DIR), "rossmann", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+    ) as client:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for n_row in n_rows:
-                futures.append(executor.submit(_run_rossmann_query, client, n_row, err_tol))
+                futures.append(executor.submit(_run_rossmann_query, client, n_row))
 
     for future in concurrent.futures.as_completed(futures):
         diff, run_time = future.result()
@@ -228,6 +246,79 @@ def test_nvt_tf_rossmann_inference():
     cudf_pred.to_csv(os.path.join(output_dir, prediction_file_name))
 
     os.remove(os.path.join(output_dir, workflow_output_test_trans_file_name))
+
+
+def _run_query(
+    client,
+    n_rows,
+    model_name,
+    workflow_path,
+    data_path,
+    actual_output_filename,
+    output_name,
+    input_cols_name=None,
+):
+
+    workflow = nvt.Workflow.load(workflow_path)
+
+    if input_cols_name is None:
+        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
+    else:
+        batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
+
+    columns = [(col, batch[col]) for col in batch.columns]
+
+    inputs = []
+    for i, (name, col) in enumerate(columns):
+        d = col.values_host.astype(col.dtype)
+        d = d.reshape(len(d), 1)
+        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
+        inputs[i].set_data_from_numpy(d)
+
+    outputs = [grpcclient.InferRequestedOutput(output_name)]
+    time_start = dt.datetime.now()
+    response = client.infer(model_name, inputs, request_id="1", outputs=outputs)
+    run_time = dt.datetime.now() - time_start
+
+    output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
+    output_actual = cp.asnumpy(output_actual["0"].values)
+    output_predict = response.as_numpy(output_name)
+
+    diff = abs(output_actual - output_predict[:, 0])
+    return diff, run_time
+
+
+def _run_movielens_query(client, n_rows):
+    workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "movielens_nvt/1/workflow")
+    data_path = os.path.join(os.path.expanduser(DATA_DIR), "test_inference_movielens_data.csv")
+    actual_output_filename = os.path.join(os.path.expanduser(DATA_DIR), "movielens_predictions.csv")
+
+    input_col_names = ["movieId", "userId"]
+    return _run_query(
+        client,
+        n_rows,
+        "movielens",
+        workflow_path,
+        data_path,
+        actual_output_filename,
+        "output",
+        input_col_names,
+    )
+
+
+def _run_rossmann_query(client, n_rows):
+    workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_nvt/1/workflow")
+    data_path = os.path.join(os.path.expanduser(DATA_DIR), "test_inference_rossmann_data.csv")
+    actual_output_filename = os.path.join(os.path.expanduser(DATA_DIR), "rossmann_predictions.csv")
+    return _run_query(
+        client,
+        n_rows,
+        "rossmann",
+        workflow_path,
+        data_path,
+        actual_output_filename,
+        "tf.math.multiply_1",
+    )
 
 
 def rmspe_tf(y_true, y_pred):
