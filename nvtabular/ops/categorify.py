@@ -15,6 +15,7 @@
 
 import os
 import warnings
+from copy import deepcopy
 from dataclasses import dataclass
 from operator import getitem
 from typing import Optional, Union
@@ -39,6 +40,7 @@ from nvtabular.dispatch import (
     _flatten_list_column,
     _from_host,
     _hash_series,
+    _is_dataframe_object,
     _is_list_dtype,
     _make_df,
     _parquet_writer_dispatch,
@@ -199,6 +201,7 @@ class Categorify(StatOperator):
         name_sep="_",
         search_sorted=False,
         num_buckets=None,
+        vocabs=None,
         max_size=0,
     ):
 
@@ -239,7 +242,7 @@ class Categorify(StatOperator):
         if encode_type not in ("joint", "combo"):
             raise ValueError(f"encode_type={encode_type} not supported.")
 
-        # Other self-explanatory intialization
+        # Other self-explanatory initialization
         super().__init__()
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
@@ -250,7 +253,6 @@ class Categorify(StatOperator):
         self.cat_cache = cat_cache
         self.encode_type = encode_type
         self.search_sorted = search_sorted
-        self.categories = {}
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -284,6 +286,9 @@ class Categorify(StatOperator):
                 "expect Categorify to be consistent on GPU and CPU "
                 "with this num_buckets setting!"
             )
+
+        self.vocabs = self.process_vocabs(vocabs if vocabs is not None else {})
+        self.categories = deepcopy(self.vocabs)
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
     def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
@@ -320,23 +325,11 @@ class Categorify(StatOperator):
                 warnings.warn("Cannot use `search_sorted=True` for pandas-backed data.")
 
         # convert tuples to lists
-        columns = [list(c) if isinstance(c, tuple) else c for c in columns]
-        dsk, key = _category_stats(
-            ddf,
-            FitOptions(
-                columns,
-                [],
-                [],
-                self.out_path,
-                self.freq_threshold,
-                self.tree_width,
-                self.on_host,
-                concat_groups=self.encode_type == "joint",
-                name_sep=self.name_sep,
-                max_size=self.max_size,
-                num_buckets=self.num_buckets,
-            ),
-        )
+        cols_with_vocabs = list(self.categories.keys())
+        columns = [
+            list(c) if isinstance(c, tuple) else c for c in columns if c not in cols_with_vocabs
+        ]
+        dsk, key = _category_stats(ddf, self._create_fit_options_from_columns(columns))
         return Delayed(key, dsk)
 
     def fit_finalize(self, categories):
@@ -344,7 +337,57 @@ class Categorify(StatOperator):
             self.categories[col] = categories[col]
 
     def clear(self):
-        self.categories = {}
+        self.categories = deepcopy(self.vocabs)
+
+    def process_vocabs(self, vocabs):
+        categories = {}
+
+        if _is_dataframe_object(vocabs):
+            fit_options = self._create_fit_options_from_columns(list(vocabs.columns))
+            base_path = os.path.join(self.out_path, fit_options.stat_name)
+            os.makedirs(base_path, exist_ok=True)
+            for col in list(vocabs.columns):
+                col_df = vocabs[[col]]
+                if col_df[col].iloc[0] is not None:
+                    if isinstance(col_df, pd.DataFrame):
+                        col_df = pd.DataFrame(
+                            {col: pd.concat([pd.Series([None]), col_df[col]]).reset_index()[0]}
+                        )
+                    else:
+                        import cudf
+
+                        col_df = cudf.DataFrame(
+                            {col: cudf.concat([cudf.Series([None]), col_df[col]]).reset_index()[0]}
+                        )
+
+                save_path = os.path.join(base_path, f"unique.{col}.parquet")
+                col_df.to_parquet(save_path)
+                categories[col] = save_path
+        elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
+            categories = vocabs
+        else:
+            error = """Unrecognized vocab type,
+            please provide either a dictionary with paths to a parquet files
+            or a DataFrame that contains the vocabulary per column.
+            """
+            raise ValueError(error)
+
+        return categories
+
+    def _create_fit_options_from_columns(self, columns) -> "FitOptions":
+        return FitOptions(
+            columns,
+            [],
+            [],
+            self.out_path,
+            self.freq_threshold,
+            self.tree_width,
+            self.on_host,
+            concat_groups=self.encode_type == "joint",
+            name_sep=self.name_sep,
+            max_size=self.max_size,
+            num_buckets=self.num_buckets,
+        )
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = _copy_storage(self.categories, self.out_path, new_path, copy=copy)

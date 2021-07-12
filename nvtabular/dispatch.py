@@ -101,6 +101,10 @@ def _is_cpu_object(x):
     return isinstance(x, (pd.DataFrame, pd.Series))
 
 
+def is_series_or_dataframe_object(maybe_series_or_df):
+    return _is_series_object(maybe_series_or_df) or _is_dataframe_object(maybe_series_or_df)
+
+
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
         if pd.isnull(x):
