@@ -62,7 +62,7 @@ def _memory_usage(df):
 
 ### 2. Initializing a Dask CUDA Cluster
 
-Even if you execute the NVTabular workflow with only a single GPU, using a dask CUDA cluster can optimize your memory usage. If there is no CUDA cluster initialized, NVTabular executes the workflow on workers of a dask cluster. Dask CUDA cluster provides different memory spilling strategies for GPUs and in our experiment, we could resolve OOM errors by initializing a dask CUDA cluster, first. It is easy to provide NVTabular with a dask CUDA cluster by using `LocalCUDACluster`.
+Even if you only have a single GPU to work with, it is best practice to use a distributed Dask-CUDA cluster to execute memory-intensive NVTabular workflows. If there is no distributed `client` object passed to an NVTabular `Workflow`, it will fall back on Dask’s single-threaded “synchronous” scheduler at computation time. The primary advantage of using a Dask-CUDA cluster is that the Dask-CUDA workers enable GPU-aware memory spilling.  In our experience, many OOM errors can be resolved by initializing a dask-CUDA cluster with an appropriate `device_memory_limit` setting, and by passing a corresponding client to NVTabular.  It is easy to deploy a single-machine dask-CUDA cluster using `LocalCUDACluster`.
 
 ```python
 from dask_cuda import LocalCUDACluster
@@ -70,10 +70,17 @@ from dask.distributed import Client
 
 import nvtabular as nvt
 
-cluster = LocalCUDACluster()
+cluster = LocalCUDACluster(
+    n_workers=1,                        # Number of GPU workers
+    device_memory_limit=“24GB”,         # GPU->CPU spill threshold (~75% of GPU memory)
+    local_directory=“/nvme/scratch/”,   # Fast directory for disk spilling
+)
 client = Client(cluster)
 
 features = ['col'] >> nvt.ops.Normalize()
 
 workflow = nvt.Workflow(features, client=client)
+
+client.shutdown()
+client.close()
 ```
