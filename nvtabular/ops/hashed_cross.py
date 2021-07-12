@@ -15,9 +15,7 @@
 
 from typing import Dict, Union
 
-from nvtx import annotate
-
-from nvtabular.dispatch import DataFrameType, _hash_series
+from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
 from .operator import ColumnNames, Operator
 

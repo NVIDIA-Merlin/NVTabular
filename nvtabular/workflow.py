@@ -22,7 +22,11 @@ import warnings
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
-import cudf
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import dask
 import pandas as pd
 from dask.core import flatten
@@ -200,12 +204,13 @@ class Workflow:
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
+        lib = cudf if cudf else pd
         with open(os.path.join(path, "metadata.json"), "w") as o:
             json.dump(
                 {
                     "versions": {
                         "nvtabular": nvt_version,
-                        "cudf": cudf.__version__,
+                        lib.__name__: lib.__version__,
                         "python": sys.version,
                     },
                     "generated_timestamp": int(time.time()),
@@ -250,9 +255,10 @@ class Workflow:
 
         # make sure we don't have any major/minor version conflicts between the stored worklflow
         # and the current environment
+        lib = cudf if cudf else pd
         versions = meta["versions"]
         check_version(versions["nvtabular"], nvt_version, "nvtabular")
-        check_version(versions["cudf"], cudf.__version__, "cudf")
+        check_version(versions[lib.__name__], lib.__version__, lib.__name__)
         check_version(versions["python"], sys.version, "python")
 
         # load up the workflow object di

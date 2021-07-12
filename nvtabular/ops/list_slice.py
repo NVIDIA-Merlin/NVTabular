@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cupy as cp
 import numba.cuda
 import numpy as np
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 
 from .operator import ColumnNames, Operator
 
