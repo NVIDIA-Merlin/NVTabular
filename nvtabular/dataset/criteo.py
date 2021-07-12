@@ -9,13 +9,15 @@ from nvtabular.dataset.base import ParquetPathCollection, TabularDataset
 from nvtabular.io import Dataset
 from nvtabular.io.dataset import DatasetCollection
 from nvtabular.utils import download_file
+from nvtabular.workflow import Workflow
 
 LOG = logging.getLogger("nvtabular")
 
 
 class Criteo(TabularDataset):
-    def __init__(self, work_dir, num_days=2, client_fn=None):
+    def __init__(self, work_dir, num_days=2, fill_na=ops.FillMissing, client_fn=None):
         super().__init__(os.path.join(work_dir, self.name()), client_fn=client_fn)
+        self.fill_na = fill_na
         self.num_days = num_days
         self.parquet_dir = os.path.join(self.input_dir, "parquet")
 
@@ -55,6 +57,8 @@ class Criteo(TabularDataset):
         for x in cat_names:
             dtypes[x] = "hex"
 
+        LOG.info(f"Converting {', '.join(filenames)} to parquet...")
+
         # Create an NVTabular Dataset from a CSV-file glob
         dataset = Dataset(
             filenames,
@@ -65,6 +69,16 @@ class Criteo(TabularDataset):
             dtypes=dtypes,
             client=self.client,
         )
+
+        if self.fill_na:
+            LOG.info(f"Filling missing values using {self.fill_na}...")
+            column_group = self.column_group.targets_column_group
+            column_group += self.column_group.categorical_column_group
+            column_group += self.column_group.continuous_column_group >> self.fill_na()
+
+            workflow = Workflow(column_group)
+            workflow.fit(dataset, save_workflow=False)
+            dataset = workflow.transform(dataset)
 
         dataset.to_parquet(self.parquet_dir, preserve_files=True)
 

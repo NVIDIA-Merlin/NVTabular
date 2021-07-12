@@ -73,8 +73,7 @@ class YooChoose(TabularDataset):
         )
         rename_cols = {"item_id/count": "session_size", "timestamp/first": "session_start"}
         session_features = session_features >> ops.Rename(lambda col: rename_cols.get(col, col))
-        timestamp_first = session_features.filter_columns(lambda x: x == "session_start")
-        session_features += timestamp_first >> SessionDay()
+        session_features += session_features["session_start"] >> SessionDay()
 
         filtered_sessions = session_features >> ops.Filter(
             f=lambda df: df["session_size"] >= self.minimum_session_length

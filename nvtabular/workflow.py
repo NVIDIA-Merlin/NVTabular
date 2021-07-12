@@ -110,7 +110,7 @@ class Workflow:
 
         return output
 
-    def fit(self, dataset: Dataset, save_workflow=True):
+    def fit(self, dataset: Dataset, save_workflow=False):
         """Calculates statistics for this workflow on the input dataset
 
         Parameters

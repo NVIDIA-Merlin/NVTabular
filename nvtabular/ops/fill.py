@@ -65,6 +65,13 @@ class FillMissing(Operator):
             output_cols.extend([f"{col}_filled" for col in columns])
         return output_cols
 
+    def output_columns(self, columns):
+        output_cols = columns[:]
+        if self.add_binary_cols:
+            output_cols.extend([col.with_name(f"{col}_filled") for col in columns])
+
+        return output_cols
+
 
 class FillMedian(StatOperator):
     """
