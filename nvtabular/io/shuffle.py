@@ -15,8 +15,11 @@
 #
 import enum
 import warnings
+from distutils.version import LooseVersion
 
 import pandas as pd
+
+_IGNORE_INDEX_SUPPORTED = pd.__version__ >= LooseVersion("1.3.0")
 
 
 class Shuffle(enum.Enum):
@@ -52,6 +55,12 @@ def _shuffle_df(df, size=None, keep_index=False):
     ordered rows"""
     size = size or len(df)
     if isinstance(df, pd.DataFrame):
-        return df.sample(n=size, ignore_index=not keep_index)
+        if _IGNORE_INDEX_SUPPORTED:
+            return df.sample(n=size, ignore_index=not keep_index)
+        else:
+            # Pandas<1.3.0
+            if keep_index:
+                return df.sample(n=size)
+            return df.sample(n=size).reset_index(drop=True)
     else:
         return df.sample(n=size, keep_index=keep_index)
