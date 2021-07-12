@@ -20,6 +20,7 @@ with httpclient.InferenceServerClient("0.0.0.0:8000") as client:
     outputs = [
         httpclient.InferRequestedOutput("filtered_candidate_ids"),
         httpclient.InferRequestedOutput("predicted_scores"),
+        httpclient.InferRequestedOutput("ordered_movie_ids")
     ]
 
     response = client.infer(model_name, inputs, request_id=str(1), outputs=outputs)
@@ -27,9 +28,10 @@ with httpclient.InferenceServerClient("0.0.0.0:8000") as client:
     result = response.get_response()
 
     print(
-        "user_id:\n{}\ncandidate_ids:\n{}\ncandidate scores:\n{}\n".format(
-            user_id_data,
-            response.as_numpy("filtered_candidate_ids").T,
-            response.as_numpy("predicted_scores").T,
+        "user_id:\n{}\ncandidate_ids:\n{}\ncandidate scores:\n{}\nordered ids:\n{}\n".format(
+            user_id_data.reshape(-1),
+            response.as_numpy("filtered_candidate_ids").reshape(-1),
+            response.as_numpy("predicted_scores").reshape(-1),
+            response.as_numpy("ordered_movie_ids").reshape(-1),
         )
     )

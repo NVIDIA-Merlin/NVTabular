@@ -18,6 +18,12 @@ output {
   dims: -1
   dims: 1
 }
+output {
+  name: "ordered_movie_ids"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
 ensemble_scheduling {
   step {
     model_name: "movielens_user_features"
@@ -156,7 +162,7 @@ ensemble_scheduling {
     model_version: -1
     input_map {
       key: "candidate_movie_ids"
-      value: "candidate_ids"
+      value: "filtered_candidate_ids"
     }
     input_map {
       key: "movie_id_count"
@@ -273,6 +279,22 @@ ensemble_scheduling {
     output_map {
       key: "output_1"
       value: "predicted_scores"
+    }
+  }
+  step {
+    model_name: "movielens_order_policy"
+    model_version: -1
+    input_map {
+      key: "candidate_movie_ids"
+      value: "filtered_candidate_ids"
+    }
+    input_map {
+      key: "predicted_scores"
+      value: "predicted_scores"
+    }
+    output_map {
+      key: "ordered_ids"
+      value: "ordered_movie_ids"
     }
   }
 }
