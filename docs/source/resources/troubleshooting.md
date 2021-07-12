@@ -72,8 +72,8 @@ import nvtabular as nvt
 
 cluster = LocalCUDACluster(
     n_workers=1,                        # Number of GPU workers
-    device_memory_limit=“24GB”,         # GPU->CPU spill threshold (~75% of GPU memory)
-    local_directory=“/nvme/scratch/”,   # Fast directory for disk spilling
+    device_memory_limit="24GB",         # GPU->CPU spill threshold (~75% of GPU memory)
+    local_directory="/nvme/scratch/",   # Fast directory for disk spilling
 )
 client = Client(cluster)
 
