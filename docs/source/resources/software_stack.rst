@@ -233,7 +233,7 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | Container Operating System                          | Ubuntu version 20.04                                                   | 
 +-----------------------------------------------------+------------------------------------------------------------------------+
-| Base Container                                      | `nvcr.io/nvidia/pytorch:21.06-py3                                      |
+| Base Container                                      | `nvcr.io/nvidia/pytorch:21.07-py3                                      |
 |                                                     | <https://nvcr.io/nvidia/pytorch:21.06-py3>`_                           |
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | CUDA                                                | 11.4                                                                   | 
