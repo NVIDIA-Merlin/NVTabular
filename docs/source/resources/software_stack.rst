@@ -1,20 +1,24 @@
+Software Stack
+==============
+
 .. role:: raw-html(raw)
     :format: html
 
 We offer the following software stacks:
 
-* `Merlin Inference <table-1>`_: Allows you to deploy NVTabular workflows and HugeCTR or TensorFlow models to the Triton Inference server for production.
-* `Merlin Training <table-2>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with HugeCTR.
-* `Merlin TensorFlow Training <table-3>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with TensorFlow.
-* `Merlin PyTorch Training <table-4>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with PyTorch.
+* `Merlin Inference <#table-1>`_: Allows you to deploy NVTabular workflows and HugeCTR or TensorFlow models to the Triton Inference server for production.
+* `Merlin Training <#table-2>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with HugeCTR.
+* `Merlin TensorFlow Training <#table-3>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with TensorFlow.
+* `Merlin PyTorch Training <#table-4>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with PyTorch.
 
 The following tables provide the software and model versions that NVTabular version 0.6 supports.
 
 :raw-html:`<br/>`
 
 .. _table-1:
+
 :raw-html:`<p align="center"><b>Table 1: Software stack matrix for the Merlin Inference (merlin-inference) image</b></p>`
- 
+
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **DGX**                                                                                                                      |
 +-----------------------------------------------------+------------------------------------------------------------------------+
@@ -66,9 +70,11 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | NVTabular                                           | 0.6                                                                    | 
 +-----------------------------------------------------+------------------------------------------------------------------------+
+
 :raw-html:`<br />`
 
 .. _table-2:
+
 :raw-html:`<p align="center"><b>Table 2: Software stack matrix for the Merlin Training (merlin-training) image</b></p>`
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
@@ -122,9 +128,11 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | NVTabular                                           | 0.6                                                                    | 
 +-----------------------------------------------------+------------------------------------------------------------------------+
+
 :raw-html:`<br />`
 
 .. _table-3:
+
 :raw-html:`<p align="center"><b>Table 3: Software stack matrix for the Merlin TensorFlow Training (merlin-tensorflow-training) image</b></p>`
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
@@ -179,10 +187,14 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | NVTabular                                           | 0.6                                                                    | 
 +-----------------------------------------------------+------------------------------------------------------------------------+
+
 :raw-html:`<br />`
 
+
 .. _table-4:
+
 :raw-html:`<p align="center"><b>Table 4: Software stack matrix for the Merlin PyTorch Training (merlin-pytorch-training) image</b></p>`
+
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **DGX**                                                                                                                      |
