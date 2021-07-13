@@ -80,3 +80,4 @@ NVTabular support CPU using [pandas](https://pandas.pydata.org/), [pyarrow](http
 ```
 dataset = Dataset(path, cpu=True)
 ```
+Setting this option on the Dataset will cause all processing on that dataset to happen on the CPU. This includes feature engineering and preprocessing as well as training models on TensorFlow or PyTorch using NVTabular's dataloaders.
