@@ -172,7 +172,7 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | Container Operating System                          | Ubuntu version 20.04                                                   | 
 +-----------------------------------------------------+------------------------------------------------------------------------+
-| Base Container                                      | `nvcr.io/nvidia/tensorflow:21.06-tf2-py3                               |
+| Base Container                                      | `nvcr.io/nvidia/tensorflow:21.07-tf2-py3                               |
 |                                                     | <https://nvcr.io/nvidia/tensorflow:21.06-tf2-py3>`_                    |
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | CUDA                                                | 11.4                                                                   | 
