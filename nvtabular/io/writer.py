@@ -177,6 +177,8 @@ class ThreadedWriter(Writer):
             gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
         ):
             self.num_samples[x] += len(group)
+            if self.shuffle:
+                group = _shuffle_df(group)
             if self.num_threads > 1:
                 self.queue.put((x, group))
             else:
