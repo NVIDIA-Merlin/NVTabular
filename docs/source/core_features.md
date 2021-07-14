@@ -76,7 +76,7 @@ NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Clo
 
 ## CPU Support ##
 
-NVTabular supports CPU using [pandas](https://pandas.pydata.org/), [pyarrow](https://arrow.apache.org/docs/python/), and [dask dataframe](https://examples.dask.org/dataframe.html). To enable CPU, the dataset must be initialized with the `cpu` parameter as follows:
+NVTabular supports CPU using [pandas](https://pandas.pydata.org/), [pyarrow](https://arrow.apache.org/docs/python/), and [dask dataframe](https://examples.dask.org/dataframe.html). To enable CPU, the Dataset class must be initialized with the `cpu` parameter as follows:
 ```
 dataset = Dataset(path, cpu=True)
 ```
