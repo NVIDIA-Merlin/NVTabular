@@ -16,9 +16,8 @@
 from distutils.version import LooseVersion
 
 import numpy as np
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _array
+from nvtabular.dispatch import DataFrameType, _array, annotate
 
 from .operator import ColumnNames, Operator
 
