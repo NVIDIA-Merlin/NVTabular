@@ -320,9 +320,26 @@ def _make_df(_like_df=None, device=None):
         return pd.DataFrame(_like_df)
     elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, dict) and len(_like_df) > 0:
+        is_pandas = all(isinstance(v, pd.Series) for v in _like_df.values())
+
+        return pd.DataFrame(_like_df) if is_pandas else cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame()
     return cudf.DataFrame()
+
+
+def _add_to_series(series, to_add, prepend=True):
+    if isinstance(series, pd.Series):
+        series_2 = pd.Series(to_add)
+    elif isinstance(series, cudf.Series):
+        series_2 = cudf.Series(to_add)
+    else:
+        raise ValueError("Unrecognized series, please provide either a pandas a cudf series")
+
+    to_concat = [series, series_2] if prepend else [series_2, series]
+
+    return _concat(to_concat)
 
 
 def _detect_format(data):

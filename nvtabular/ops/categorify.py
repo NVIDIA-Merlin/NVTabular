@@ -33,21 +33,8 @@ from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
-from nvtabular.dispatch import (
-    DataFrameType,
-    _arange,
-    _encode_list_column,
-    _flatten_list_column,
-    _from_host,
-    _hash_series,
-    _is_dataframe_object,
-    _is_list_dtype,
-    _make_df,
-    _parquet_writer_dispatch,
-    _read_parquet_dispatch,
-    _series_has_nulls,
-    annotate,
-)
+from nvtabular import dispatch
+from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnNames, Operator
@@ -241,6 +228,8 @@ class Categorify(StatOperator):
         # Only support two kinds of multi-column encoding
         if encode_type not in ("joint", "combo"):
             raise ValueError(f"encode_type={encode_type} not supported.")
+        if encode_type == "joint" and vocabs:
+            raise ValueError("Passing in vocabs is not supported with a joint encoding.")
 
         # Other self-explanatory initialization
         super().__init__()
@@ -287,7 +276,9 @@ class Categorify(StatOperator):
                 "with this num_buckets setting!"
             )
 
-        self.vocabs = self.process_vocabs(vocabs if vocabs is not None else {})
+        self.vocabs = {}
+        if vocabs is not None:
+            self.vocabs = self.process_vocabs(vocabs)
         self.categories = deepcopy(self.vocabs)
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
@@ -342,23 +333,15 @@ class Categorify(StatOperator):
     def process_vocabs(self, vocabs):
         categories = {}
 
-        if _is_dataframe_object(vocabs):
+        if dispatch._is_dataframe_object(vocabs):
             fit_options = self._create_fit_options_from_columns(list(vocabs.columns))
             base_path = os.path.join(self.out_path, fit_options.stat_name)
             os.makedirs(base_path, exist_ok=True)
             for col in list(vocabs.columns):
                 col_df = vocabs[[col]]
                 if col_df[col].iloc[0] is not None:
-                    if isinstance(col_df, pd.DataFrame):
-                        col_df = pd.DataFrame(
-                            {col: pd.concat([pd.Series([None]), col_df[col]]).reset_index()[0]}
-                        )
-                    else:
-                        import cudf
-
-                        col_df = cudf.DataFrame(
-                            {col: cudf.concat([cudf.Series([None]), col_df[col]]).reset_index()[0]}
-                        )
+                    vals = {col: dispatch._add_to_series(col_df[col], [None]).reset_index()[0]}
+                    col_df = dispatch._make_df(vals)
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")
                 col_df.to_parquet(save_path)
@@ -468,7 +451,7 @@ class Categorify(StatOperator):
     def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
         # on the first transform call we load up categories from disk, which can
         # take multiple seconds. preload this data by running an empty dataframe through
-        df = _make_df()
+        df = dispatch._make_df()
         for column in columns:
             df[column] = []
         self.transform(columns, df)
@@ -529,7 +512,7 @@ def get_embedding_sizes(source, output_dtypes=None):
 
     for column in output:
         dtype = output_dtypes.get(column)
-        if dtype and _is_list_dtype(dtype):
+        if dtype and dispatch._is_list_dtype(dtype):
             # multi hot so remove from output and add to multihot
             multihot_columns.add(column)
     # TODO: returning differnt return types like this (based off the presence
@@ -673,7 +656,7 @@ def _top_level_groupby(df, options: FitOptions):
         # (flattening provides better cudf/pd support)
         if _is_list_col(cat_col_group, df_gb):
             # handle list columns by encoding the list values
-            df_gb = _flatten_list_column(df_gb[cat_col_group[0]])
+            df_gb = dispatch._flatten_list_column(df_gb[cat_col_group[0]])
 
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
@@ -714,7 +697,7 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
-        df = _from_host(df)
+        df = dispatch._from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
     groups = df.groupby(col_group, dropna=False)
@@ -796,7 +779,7 @@ def _write_gb_stats(dfs, base_path, col_group, options: FitOptions):
     if not options.on_host and len(dfs):
         # Want first non-empty df for schema (if there are any)
         _d = next((df for df in dfs if len(df)), dfs[0])
-        pwriter = _parquet_writer_dispatch(_d, path=path, compression=None)
+        pwriter = dispatch._parquet_writer_dispatch(_d, path=path, compression=None)
 
     # Loop over dfs and append to file
     # TODO: For high-cardinality columns, should support
@@ -837,7 +820,7 @@ def _write_uniques(dfs, base_path, col_group, options):
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
-        df = _from_host(df)
+        df = dispatch._from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
     rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
@@ -866,7 +849,7 @@ def _write_uniques(dfs, base_path, col_group, options):
 
                 if nlargest < len(df):
                     df = df.nlargest(n=nlargest, columns=name_count)
-            if not _series_has_nulls(df[col]):
+            if not dispatch._series_has_nulls(df[col]):
                 nulls_missing = True
                 new_cols[col] = _concat(
                     [df._constructor_sliced([None], dtype=df[col].dtype), df[col]],
@@ -1023,7 +1006,7 @@ def _encode(
     selection_r = name if isinstance(name, list) else [storage_name]
     list_col = _is_list_col(selection_l, df)
     if path:
-        read_pq_func = _read_parquet_dispatch(df)
+        read_pq_func = dispatch._read_parquet_dispatch(df)
         if cat_cache is not None:
             cat_cache = (
                 cat_cache if isinstance(cat_cache, str) else cat_cache.get(storage_name, "disk")
@@ -1055,10 +1038,10 @@ def _encode(
 
     if not search_sorted:
         if list_col:
-            codes = _flatten_list_column(df[selection_l[0]])
-            codes["order"] = _arange(len(codes), like_df=df)
+            codes = dispatch._flatten_list_column(df[selection_l[0]])
+            codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
-            codes = type(df)({"order": _arange(len(df), like_df=df)}, index=df.index)
+            codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
             for c in selection_l:
                 codes[c] = df[c].copy()
         if buckets and storage_name in buckets:
@@ -1098,7 +1081,7 @@ def _encode(
         labels[labels >= len(value[selection_r])] = na_sentinel
 
     if list_col:
-        labels = _encode_list_column(df[selection_l[0]], labels, dtype=dtype)
+        labels = dispatch._encode_list_column(df[selection_l[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
@@ -1131,7 +1114,7 @@ def _get_multicolumn_names(column_groups, df_columns, name_sep):
 
 
 def _is_list_col(column_group, df):
-    has_lists = any(_is_list_dtype(df[col]) for col in column_group)
+    has_lists = any(dispatch._is_list_dtype(df[col]) for col in column_group)
     if has_lists and len(column_group) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
@@ -1140,7 +1123,7 @@ def _is_list_col(column_group, df):
 def _hash_bucket(df, num_buckets, col, encode_type="joint"):
     if encode_type == "joint":
         nb = num_buckets[col[0]]
-        encoded = _hash_series(df[col[0]]) % nb
+        encoded = dispatch._hash_series(df[col[0]]) % nb
     elif encode_type == "combo":
         if len(col) > 1:
             name = _make_name(*tuple(col), sep="_")
@@ -1149,7 +1132,7 @@ def _hash_bucket(df, num_buckets, col, encode_type="joint"):
         nb = num_buckets[name]
         val = 0
         for column in col:
-            val ^= _hash_series(df[column])  # or however we want to do this aggregation
+            val ^= dispatch._hash_series(df[column])  # or however we want to do this aggregation
         val = val % nb
         encoded = val
     return encoded
