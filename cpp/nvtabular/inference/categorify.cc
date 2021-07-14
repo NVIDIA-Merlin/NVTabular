@@ -243,7 +243,7 @@ void export_categorify(py::module_ m) {
     // this operator currently only supports CPU arrays
     .def_property_readonly("supports", [](py::object self) {
       py::object supports = py::module_::import("nvtabular").attr("ops").attr("operator").attr("Supports");
-      return supports.attr("CPU_ARRAY");
+      return supports.attr("CPU_DICT_ARRAY");
     });
 }
 }  // namespace inference
