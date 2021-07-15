@@ -23,6 +23,7 @@ from setuptools.command.build_ext import build_ext
 
 import versioneer
 
+from pip.req import parse_requirements
 
 class build_proto(build_ext):
     def run(self):
@@ -56,6 +57,8 @@ class build_proto(build_ext):
 cmdclass = versioneer.get_cmdclass()
 cmdclass["build_ext"] = build_proto
 
+install_reqs = parse_requirements("./requirements.txt")
+reqs = [str(ir.req) for ir in install_reqs]
 
 setup(
     name="nvtabular",
@@ -75,4 +78,5 @@ setup(
         "Topic :: Scientific/Engineering",
     ],
     cmdclass=cmdclass,
+    install_requires=reqs,
 )
