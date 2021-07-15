@@ -214,6 +214,7 @@ class Dataset:
         self.client = client
 
         # Check if we are keeping data in cpu memory
+        self.cpu = cpu
         if self.cpu is None:
             self.cpu = False if cudf else True
 
