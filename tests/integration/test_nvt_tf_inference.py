@@ -24,6 +24,7 @@ import cudf
 import cupy as cp
 import pytest
 import tritonclient.grpc as grpcclient
+from benchmark_parsers import create_bench_result
 
 # from benchmark_parsers import send_results
 from tritonclient.utils import np_to_triton_dtype
@@ -35,9 +36,9 @@ import tests.conftest as test_utils
 
 
 TEST_N_ROWS = 1024
-MODEL_DIR = "~/nvt-examples/models/"
-DATA_DIR = "~/nvt-examples/data/"
-DATA_DIR_MOVIELENS = "~/nvt-examples/movielens/data/"
+MODEL_DIR = "/model/models/"
+DATA_DIR = "/raid/data/"
+DATA_DIR_MOVIELENS = "/raid/data/movielens/data/"
 TRITON_SERVER_PATH = find_executable("tritonserver")
 TRITON_DEVICE_ID = "1"
 
@@ -45,19 +46,24 @@ TRITON_DEVICE_ID = "1"
 # Update TEST_N_ROWS param in test_nvt_tf_trainin.py to test larger sizes
 @pytest.mark.parametrize("n_rows", [1024, 1000, 64, 35, 16, 5])
 @pytest.mark.parametrize("err_tol", [0.00001])
-def test_nvt_tf_movielens_inference_triton(n_rows, err_tol):
+def test_nvt_tf_movielens_inference_triton(asv_db, bench_info, n_rows, err_tol):
     with test_utils.run_triton_server(
         os.path.expanduser(MODEL_DIR), "movielens", TRITON_SERVER_PATH, TRITON_DEVICE_ID
     ) as client:
         diff, run_time = _run_movielens_query(client, n_rows)
 
-    assert (diff < err_tol).all()
-    # send_results(asv_db, bench_info, str(run_time))
+        assert (diff < err_tol).all()
+        benchmark_results = []
+        result = create_bench_result(
+            "test_nvt_tf_movielens_inference_triton", [("n_rows", n_rows)], run_time, "datetime"
+        )
+        benchmark_results.append(result)
+        # send_results(asv_db, bench_info, benchmark_results)
 
 
 @pytest.mark.parametrize("n_rows", [[1024, 1000, 35, 16]])
 @pytest.mark.parametrize("err_tol", [0.00001])
-def test_nvt_tf_movielens_inference_triton_mt(asv_db, bench_info, tmpdir, n_rows, err_tol):
+def test_nvt_tf_movielens_inference_triton_mt(asv_db, bench_info, n_rows, err_tol):
     futures = []
     with test_utils.run_triton_server(
         os.path.expanduser(MODEL_DIR), "movielens", TRITON_SERVER_PATH, TRITON_DEVICE_ID
@@ -69,7 +75,12 @@ def test_nvt_tf_movielens_inference_triton_mt(asv_db, bench_info, tmpdir, n_rows
     for future in concurrent.futures.as_completed(futures):
         diff, run_time = future.result()
         assert (diff < err_tol).all()
-        # send_results(asv_db, bench_info, str(run_time))
+        benchmark_results = []
+        result = create_bench_result(
+            "test_nvt_tf_movielens_inference_triton_mt", [("n_rows", n_rows)], run_time, "datetime"
+        )
+        benchmark_results.append(result)
+        # send_results(asv_db, bench_info, benchmark_results)
 
 
 @pytest.mark.skipif(TEST_N_ROWS is None, reason="Requires TEST_N_ROWS")
@@ -82,8 +93,8 @@ def test_nvt_tf_movielens_inference():
 
     workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "movielens_nvt/1/workflow")
     model_path = os.path.join(os.path.expanduser(MODEL_DIR), "movielens_tf/1/model.savedmodel")
-    data_path = os.path.join(os.path.expanduser(DATA_DIR_MOVIELENS), "valid.parquet")
-    output_dir = os.path.expanduser(DATA_DIR)
+    data_path = os.path.join(os.path.expanduser(DATA_DIR), "movielens/data/valid.parquet")
+    output_dir = os.path.join(os.path.expanduser(DATA_DIR), "movielens/")
     workflow_output_test_file_name = "test_inference_movielens_data.csv"
     workflow_output_test_trans_file_name = "test_inference_movielens_data_trans.parquet"
     prediction_file_name = "movielens_predictions.csv"
@@ -130,8 +141,13 @@ def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
     ) as client:
         diff, run_time = _run_rossmann_query(client, n_rows)
 
-    assert (diff < err_tol).all()
-    # send_results(asv_db, bench_info, "bench_results")
+        assert (diff < err_tol).all()
+        benchmark_results = []
+        result = create_bench_result(
+            "test_nvt_tf_rossmann_inference_triton", [("n_rows", n_rows)], run_time, "datetime"
+        )
+        benchmark_results.append(result)
+        # send_results(asv_db, bench_info, benchmark_results)
 
 
 @pytest.mark.parametrize("n_rows", [[1024, 1000, 35, 16]])
@@ -148,7 +164,12 @@ def test_nvt_tf_rossmann_inference_triton_mt(asv_db, bench_info, n_rows, err_tol
     for future in concurrent.futures.as_completed(futures):
         diff, run_time = future.result()
         assert (diff < err_tol).all()
-        # send_results(asv_db, bench_info, "bench_results")
+        benchmark_results = []
+        result = create_bench_result(
+            "test_nvt_tf_rossmann_inference_triton_mt", [("n_rows", n_rows)], run_time, "datetime"
+        )
+        benchmark_results.append(result)
+        # send_results(asv_db, bench_info, benchmark_results)
 
 
 @pytest.mark.skipif(TEST_N_ROWS is None, reason="Requires TEST_N_ROWS")
@@ -162,8 +183,8 @@ def test_nvt_tf_rossmann_inference():
 
     workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_nvt/1/workflow")
     model_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_tf/1/model.savedmodel")
-    data_path = os.path.join(os.path.expanduser(DATA_DIR), "valid.csv")
-    output_dir = os.path.expanduser(DATA_DIR)
+    data_path = os.path.join(os.path.expanduser(DATA_DIR), "rossman/input/valid.csv")
+    output_dir = os.path.join(os.path.expanduser(DATA_DIR), "rossman/")
     workflow_output_test_file_name = "test_inference_rossmann_data.csv"
     workflow_output_test_trans_file_name = "test_inference_rossmann_data_trans.parquet"
     prediction_file_name = "rossmann_predictions.csv"
@@ -290,8 +311,12 @@ def _run_query(
 
 def _run_movielens_query(client, n_rows):
     workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "movielens_nvt/1/workflow")
-    data_path = os.path.join(os.path.expanduser(DATA_DIR), "test_inference_movielens_data.csv")
-    actual_output_filename = os.path.join(os.path.expanduser(DATA_DIR), "movielens_predictions.csv")
+    data_path = os.path.join(
+        os.path.expanduser(DATA_DIR), "movielens/test_inference_movielens_data.csv"
+    )
+    actual_output_filename = os.path.join(
+        os.path.expanduser(DATA_DIR), "movielens/movielens_predictions.csv"
+    )
 
     input_col_names = ["movieId", "userId"]
     return _run_query(
@@ -308,8 +333,12 @@ def _run_movielens_query(client, n_rows):
 
 def _run_rossmann_query(client, n_rows):
     workflow_path = os.path.join(os.path.expanduser(MODEL_DIR), "rossmann_nvt/1/workflow")
-    data_path = os.path.join(os.path.expanduser(DATA_DIR), "test_inference_rossmann_data.csv")
-    actual_output_filename = os.path.join(os.path.expanduser(DATA_DIR), "rossmann_predictions.csv")
+    data_path = os.path.join(
+        os.path.expanduser(DATA_DIR), "rossman/test_inference_rossmann_data.csv"
+    )
+    actual_output_filename = os.path.join(
+        os.path.expanduser(DATA_DIR), "rossman/rossmann_predictions.csv"
+    )
     return _run_query(
         client,
         n_rows,
