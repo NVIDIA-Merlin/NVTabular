@@ -640,15 +640,19 @@ class Dataset:
             to each file. The same procedure is used if an integer is specified,
             but the file names will be written as "part_*". If anything is
             specified for `output_files`, the `output_files_per_proc` argument
-            will be interpretted as the desired number of output files to write
+            will be interpreted as the desired number of output files to write
             within the same task at run time (enabling input partitions to be
             shuffled into multiple output files). Also, if a dictionary is
             specified, excluded partition indices will not be written to disk.
+
+            Note that passing a file list or integer to `output_files` will
+            preserve the original ordering of the input data as long as
+            `out_files_per_proc` is set to `None` or `1`.
         out_files_per_proc : integer
             Number of files to create (per process) after shuffling the
             data. If an integer or list is specified for `output_files`,
             `out_files_per_proc` will not modify the total output-file count,
-            but will instead be interpretted as the number of files to write
+            but will instead be interpreted as the number of files to write
             out within the same task (i.e. process) at run time. This argument
             should not be specified if a dictionary is passed to `output_files`.
         num_threads : integer
