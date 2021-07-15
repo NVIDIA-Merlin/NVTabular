@@ -28,8 +28,18 @@ import pandas as pd
 
 try:
     import cudf
+
+    try:
+        import cudf.testing._utils
+
+        assert_eq = cudf.testing._utils.assert_eq
+    except ImportError:
+        import cudf.tests.utils
+
+        assert_eq = cudf.tests.utils.assert_eq
 except ImportError:
     cudf = None
+
 import numpy as np
 import psutil
 import pytest
@@ -39,21 +49,8 @@ from numba import cuda
 
 import nvtabular
 
-try:
-    import cudf.testing._utils
-
-    assert_eq = cudf.testing._utils.assert_eq
-except ImportError:
-    if cudf:
-        import cudf.tests.utils
-
-        assert_eq = cudf.tests.utils.assert_eq
-    else:
-        assert_eq = None
-
 grpcclient = pytest.importorskip("tritonclient.grpc")
 tritonclient = pytest.importorskip("tritonclient")
-
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]

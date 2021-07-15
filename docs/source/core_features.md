@@ -9,6 +9,7 @@ NVTabular supports the following core features:
 * [Multi-Hot Encoding and Pre-Existing Embeddings](#multi-hot-encoding-and-pre-existing-embeddings)
 * [Shuffling Datasets](#shuffling-datasets)
 * [Cloud Integration](#cloud-integration)
+* [CPU Support](#cpu-support)
 
 ## TensorFlow and PyTorch Interoperability ##
 
@@ -72,3 +73,11 @@ NVTabular makes it possible to shuffle during dataset creation. This creates a u
 ## Cloud Integration ##
 
 NVTabular offers cloud integration with Amazon Web Services (AWS) and Google Cloud Platform (GCP), giving you the ability to build, train, and deploy models on the cloud using datasets. For additional information, see [Amazon Web Services](./resources/cloud_integration.md#amazon-web-services) and [Google Cloud Platform](./resources/cloud_integration.md#google-cloud-platform).
+
+## CPU Support ##
+
+NVTabular support CPU using [pandas](https://pandas.pydata.org/), [pyarrow](https://arrow.apache.org/docs/python/), and [dask dataframe](https://examples.dask.org/dataframe.html). To enable CPU, the Dataset must be initialized with the `cpu` parameter as follows.
+```
+dataset = Dataset(path, cpu=True)
+```
+Setting this option on the Dataset will cause all processing on that dataset to happen on the CPU. This includes feature engineering and preprocessing as well as training models on TensorFlow or PyTorch using NVTabular's dataloaders.
