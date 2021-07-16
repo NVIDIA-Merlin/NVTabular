@@ -7,7 +7,8 @@ nvt_directory="$(dirname -- $ci_directory)"
 cd $nvt_directory
 
 echo "Installing NVTabular"
-pip install -e . --user
+pip install --user --upgrade pip
+pip install --user -e .
 
 # following checks requirement requirements-dev.txt to be installed
 echo "Running black --check"
