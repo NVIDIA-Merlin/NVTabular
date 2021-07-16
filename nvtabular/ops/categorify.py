@@ -30,6 +30,7 @@ from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
+from nvtx import annotate
 from pyarrow import parquet as pq
 
 from nvtabular.dispatch import (
@@ -44,7 +45,6 @@ from nvtabular.dispatch import (
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
-    annotate,
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -326,7 +326,7 @@ class Categorify(StatOperator):
             FitOptions(
                 columns,
                 [],
-                [],
+                ["count"],
                 self.out_path,
                 self.freq_threshold,
                 self.tree_width,
@@ -682,6 +682,8 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
     if options.freq_limit and not options.max_size:
         gb = gb[gb[name_count] >= freq_limit_val]
 
+    gb = gb.sort_values(name_count, ascending=False)
+    gb.reset_index(drop=False, inplace=True)
     required = col_group.copy()
     if "count" in options.agg_list:
         required.append(name_count)
