@@ -5,13 +5,13 @@
 #  merlin-pytorch-training, merlin-inference]
 
 # Get last NVTabular version
-#cd /nvtabular/
-#git pull origin main
+cd /nvtabular/
+git pull origin main
 
 # Run tests for all containers
 #pytest tests/integration/test_notebooks.py::test_criteo_example
-#pytest tests/integration/test_notebooks.py::test_rossman_example
-#pytest tests/integration/test_notebooks.py::test_movielens_example
+pytest tests/integration/test_notebooks.py::test_rossman_example
+pytest tests/integration/test_notebooks.py::test_movielens_example
 
 # Run tests for specific containers
 if [ "$1" == "merlin-training" ]; then
