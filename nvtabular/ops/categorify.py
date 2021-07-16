@@ -228,7 +228,7 @@ class Categorify(StatOperator):
         # Only support two kinds of multi-column encoding
         if encode_type not in ("joint", "combo"):
             raise ValueError(f"encode_type={encode_type} not supported.")
-        if encode_type == "joint" and vocabs:
+        if encode_type == "joint" and vocabs is not None:
             raise ValueError("Passing in vocabs is not supported with a joint encoding.")
 
         # Other self-explanatory initialization
