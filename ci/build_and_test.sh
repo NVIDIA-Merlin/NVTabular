@@ -7,7 +7,7 @@ nvt_directory="$(dirname -- $ci_directory)"
 cd $nvt_directory
 
 echo "Installing NVTabular"
-pip install --user --upgrade pip
+python -m pip install --user --upgrade pip setuptools wheel
 pip install --user -e .
 
 # following checks requirement requirements-dev.txt to be installed
