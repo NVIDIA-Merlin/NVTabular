@@ -40,7 +40,7 @@ def parse_args():
         "gpu_mem_frac", help="the amount of gpu memory to use for dataloader in fraction"
     )
     parser.add_argument("--shuffle", help="toggle shuffling", action="store_true")
-    parser.add_argument("--num_devices", help="number of GPUs to benchmark on", default=1)
+    parser.add_argument("--device-id", help="id of GPU device to benchmark on", default=0)
     parser.add_argument(
         "--batch_range",
         help=(
@@ -73,7 +73,7 @@ def main(args):
                 "cats": cat_names,
                 "conts": cont_names,
                 "labels": [label_name],
-                "devices": list(range(args.num_devices)),
+                "device": args.device_id,
             }
         else:
             kwargs = {"cat_names": cat_names, "cont_names": cont_names, "label_names": [label_name]}
