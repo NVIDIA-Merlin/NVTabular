@@ -56,8 +56,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         enable/disable shuffling of dataset
     parts_per_chunk : int
         number of partitions from the iterator, an NVTabular Dataset, to concatenate into a "chunk"
-    devices : [int]
-        list representing all available GPU IDs
+    device : int
+        device id of selected GPU
     sparse_list : [str]
         list with column names of columns that should be represented as sparse tensors
     sparse_max : {str: int}
