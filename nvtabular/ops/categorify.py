@@ -30,7 +30,6 @@ from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from fsspec.core import get_fs_token_paths
-from nvtx import annotate
 from pyarrow import parquet as pq
 
 from nvtabular.dispatch import (
@@ -45,6 +44,7 @@ from nvtabular.dispatch import (
     _parquet_writer_dispatch,
     _read_parquet_dispatch,
     _series_has_nulls,
+    annotate,
 )
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -682,8 +682,6 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
     if options.freq_limit and not options.max_size:
         gb = gb[gb[name_count] >= freq_limit_val]
 
-    gb = gb.sort_values(name_count, ascending=False)
-    gb.reset_index(drop=False, inplace=True)
     required = col_group.copy()
     if "count" in options.agg_list:
         required.append(name_count)
@@ -826,13 +824,19 @@ def _write_uniques(dfs, base_path, col_group, options):
                 if nlargest < len(df):
                     df = df.nlargest(n=nlargest, columns=name_count)
             if not _series_has_nulls(df[col]):
+                df = df.sort_values(name_count, ascending=False, ignore_index=True)
                 nulls_missing = True
                 new_cols[col] = _concat(
                     [df._constructor_sliced([None], dtype=df[col].dtype), df[col]],
                     ignore_index=True,
                 )
             else:
+                # ensure None aka "unknown" stays at index 0
+                df_0 = df[0]
+                df_1 = df[1:].sort_values(name_count, ascending=False, ignore_index=True)
+                df = _concat([df_0, df_1])
                 new_cols[col] = df[col].copy(deep=False)
+            new_cols[name_count] = df[name_count].copy(deep=False)
         if nulls_missing:
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
@@ -944,7 +948,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
 
 def _category_stats(ddf, options: FitOptions):
     # Check if we only need categories
-    if options.agg_cols == [] and options.agg_list == []:
+    if options.agg_cols == [] and (options.agg_list == [] or options.agg_list == ["count"]):
         options.agg_list = ["count"]
         return _groupby_to_disk(ddf, _write_uniques, options)
 
