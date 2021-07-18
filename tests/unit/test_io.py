@@ -419,12 +419,8 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
     df_out = cudf.read_parquet(out_paths)
     df_out = df_out.sort_values(by="Post", ascending=True)
-    lsts_test = [[1], [1, 4], [2, 3], [3]]
-    auths = df_out["Authors"].to_arrow().to_pylist()
-    for idx, x in enumerate(lsts_test):
-        import pdb; pdb.set_trace()
-        assert set(x) == set(auths[idx])
-        
+    # user C is encoded as 2 because of frequency
+    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [3, 2], [2]]
 
 
 @pytest.mark.parametrize("part_size", [None, "1KB"])

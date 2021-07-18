@@ -471,8 +471,9 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
         assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype if dtype else "int64")
         compare = df_out["Authors"].to_arrow().to_pylist()
 
+    # change values based on frequency "C" (2) comes before "B" (1)
     if freq_threshold < 2:
-        assert compare == [[1], [1, 4], [2, 3], [3]]
+        assert compare == [[1], [1, 4], [3, 2], [2]]
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
 
