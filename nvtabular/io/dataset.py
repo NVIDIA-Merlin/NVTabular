@@ -31,6 +31,7 @@ from fsspec.utils import stringify_path
 
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
+from nvtabular.utils import set_dask_client
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
@@ -211,7 +212,7 @@ class Dataset:
         **kwargs,
     ):
         self.dtypes = dtypes
-        self.client = client
+        self.client = set_dask_client(client)
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
@@ -637,31 +638,40 @@ class Dataset:
             Whether to preserve the original file-to-partition mapping of
             the base dataset. This option is only available if the base
             dataset is known, and if it corresponds to csv or parquet format.
-            If True, the `out_files_per_proc` option will be ignored, but the
-            `output_files` option will take precedence. Default is False.
+            If True, the `out_files_per_proc` option will be ignored. Default
+            is False.
         output_files : dict, list or int
-            Dictionary mapping of output file names to partition indices. To
-            map multiple output files to a range of input partitions, the keys
-            should correspond to a tuple of file names. If a list of file names
-            is specified, a contiguous range of output partitions will be mapped
-            to each file. The same procedure is used if an integer is specified,
-            but the file names will be written as "part_*". If anything is
-            specified for `output_files`, the `output_files_per_proc` argument
-            will be interpreted as the desired number of output files to write
-            within the same task at run time (enabling input partitions to be
-            shuffled into multiple output files). Also, if a dictionary is
-            specified, excluded partition indices will not be written to disk.
+            The total number of desired output files. The default value will
+            be the number of Dask workers, multiplied by `out_files_per_proc`.
+            For further output-file control, this argument may also be used to
+            pass a dictionary mapping the output file names to partition indices,
+            or a list of desired output-file names.
 
-            Note that passing a file list or integer to `output_files` will
-            preserve the original ordering of the input data as long as
-            `out_files_per_proc` is set to `None` or `1`.
+            NOTES:
+            (1) If a list of file names is specified, a contiguous range of output
+                partitions will be mapped to each file. The same procedure is used
+                if an integer is specified, but the file names will be written as
+                "part_*".
+            (2) When `output_files` is used, the `output_files_per_proc` argument
+                will be interpreted as the desired number of output files to write
+                within the same task at run time (enabling input partitions to be
+                shuffled into multiple output files).
+            (3) Passing a list or integer to `output_files` will preserve the
+                original ordering of the input data as long as `out_files_per_proc`
+                is set to `1` (or `None`), and `shuffle==None`.
+            (4) For legacy `to_parquet`/`out_files_per_proc` behavior, use
+                `output_files=False`.
+            (5) If a dictionary is specified, excluded partition indices will
+                not be written to disk.
+            (6) To map multiple output files to a range of input partitions,
+                dictionary-input keys should correspond to a tuple of file names.
         out_files_per_proc : integer
-            Number of files to create (per process) after shuffling the
-            data. If an integer or list is specified for `output_files`,
-            `out_files_per_proc` will not modify the total output-file count,
-            but will instead be interpreted as the number of files to write
-            out within the same task (i.e. process) at run time. This argument
-            should not be specified if a dictionary is passed to `output_files`.
+            Number of output files that each process will use to shuffle each input
+            partition. If `output_files` is not set to `False`, `out_files_per_proc`
+            will not modify the total output-file count, but will instead be
+            interpreted as the number of files to write out within the same task
+            (i.e. process) at run time. This argument should not be specified if
+            a dictionary is passed to `output_files`. Otherwise, the default is 1.
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
@@ -694,6 +704,20 @@ class Dataset:
 
         # Replace None/False suffix argument with ""
         suffix = suffix or ""
+
+        # Make sure the user is not trying to use both preserve_files
+        # and output_files at the same time
+        if preserve_files and output_files:
+            raise ValueError("Cannot specify both preserve_files and output_files.")
+
+        # Default behavior - Set output_files to the total
+        # number of workers, multiplied by out_files_per_proc
+        if output_files is None and not preserve_files:
+            try:
+                nworkers = len(self.client.cluster.workers)
+            except AttributeError:
+                nworkers = 1
+            output_files = nworkers * (out_files_per_proc or 1)
 
         # Convert `output_files` argument to a dict mapping
         if output_files:
