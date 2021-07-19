@@ -215,8 +215,8 @@ class Dataset:
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
-        if self.cpu is None:
-            self.cpu = False if cudf else True
+        if not self.cpu:
+            self.cpu = cudf is None
 
         # Keep track of base dataset (optional)
         self.base_dataset = base_dataset or self
