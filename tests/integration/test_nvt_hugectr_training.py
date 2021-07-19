@@ -236,7 +236,9 @@ def _run_model(slot_sizes, total_cardinality):
     )
     model.add(
         hugectr.DenseLayer(
-            layer_type=hugectr.Layer_t.ReLU, bottom_names=["fc1"], top_names=["relu1"],
+            layer_type=hugectr.Layer_t.ReLU,
+            bottom_names=["fc1"],
+            top_names=["relu1"],
         )
     )
     model.add(
@@ -249,7 +251,9 @@ def _run_model(slot_sizes, total_cardinality):
     )
     model.add(
         hugectr.DenseLayer(
-            layer_type=hugectr.Layer_t.ReLU, bottom_names=["fc2"], top_names=["relu2"],
+            layer_type=hugectr.Layer_t.ReLU,
+            bottom_names=["fc2"],
+            top_names=["relu2"],
         )
     )
     model.add(
