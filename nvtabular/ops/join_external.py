@@ -15,6 +15,11 @@
 #
 import warnings
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
 import dask.dataframe as dd
 import pandas as pd
 
@@ -104,6 +109,8 @@ class JoinExternal(Operator):
         self.kwargs = kwargs
         self.cpu = None
         self._ext_cache = None
+        if cudf is None:
+            self.cpu = True
         if self.how not in ("left", "inner"):
             raise ValueError("Only left join is currently supported.")
         if not isinstance(self.kind_ext, ExtData):
