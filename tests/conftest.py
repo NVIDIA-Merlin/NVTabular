@@ -49,7 +49,6 @@ from numba import cuda
 
 import nvtabular
 
-
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]
 mycols_pq = ["name-cat", "name-string", "id", "label", "x", "y"]
@@ -274,8 +273,8 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
 
 @contextlib.contextmanager
 def run_triton_server(modelpath, model_name, triton_server_path, device_id="0"):
-    import tritonclient.grpc as grpcclient
     import tritonclient
+    import tritonclient.grpc as grpcclient
 
     cmdline = [
         triton_server_path,
