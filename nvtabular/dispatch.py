@@ -79,6 +79,10 @@ class ExtData(enum.Enum):
     CSV = 7
 
 
+def get_lib():
+    return cudf if cudf else pd
+
+
 def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
