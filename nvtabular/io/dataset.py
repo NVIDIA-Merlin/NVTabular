@@ -38,6 +38,11 @@ from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
 LOG = logging.getLogger("nvtabular")
 
 
@@ -209,7 +214,9 @@ class Dataset:
         self.client = client
 
         # Check if we are keeping data in cpu memory
-        self.cpu = cpu or False
+        self.cpu = cpu
+        if not self.cpu:
+            self.cpu = cudf is None
 
         # Keep track of base dataset (optional)
         self.base_dataset = base_dataset or self
