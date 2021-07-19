@@ -342,7 +342,8 @@ class Categorify(StatOperator):
     def fit_finalize(self, categories):
         for col in categories:
             self.categories[col] = categories[col]
-#         import pdb; pdb.set_trace()
+
+    #         import pdb; pdb.set_trace()
 
     def clear(self):
         self.categories = {}
