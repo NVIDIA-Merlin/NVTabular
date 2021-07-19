@@ -90,9 +90,6 @@ class TritonPythonModel:
                 result = self.milvus_collection.search(
                     user_vector, "item_vector", search_params, topK)
 
-                # candidate_ids = [h.id for h in hits for hits in result]
-                # candidate_distances = [h.distance for h in hits for hits in result]
-
                 candidate_ids = (
                     np.array([[h.id for hits in result for h in hits]]).astype(int32_dtype).T
                 )

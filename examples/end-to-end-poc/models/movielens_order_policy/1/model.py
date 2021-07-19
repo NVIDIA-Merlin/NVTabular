@@ -60,6 +60,7 @@ class TritonPythonModel:
         for request in requests:
             # Perform inference on the request and append it to responses list...
             try:
+                # Extract parameters from the request
                 candidate_ids = pb_utils.get_input_tensor_by_name(
                     request, "candidate_movie_ids").as_numpy().reshape(-1)
 
@@ -75,20 +76,28 @@ class TritonPythonModel:
                 # As implented by Tim Vieira in "Algorithms for sampling without replacement"
                 # https://timvieira.github.io/blog/post/2019/09/16/algorithms-for-sampling-without-replacement/
 
-                # TODO: Extract k as a config parameter
+                # TODO: Extract k and theta as config parameters
                 k = 10
+                theta = 10.0
 
-                # TODO: Extract theta as a config parameter
-                weights = np.exp(predicted_scores * 10.0) / np.sum(predicted_scores)
+                # The weights for the sampling distribution are the softmax of the scores
+                weights = np.exp(theta * predicted_scores) / np.sum(predicted_scores)
 
+                # This is the core of the exponential sampling trick, which creates a
+                # set of values that depend on both the predicted scores and random
+                # variables, resulting in a set of values that will sort into an order
+                # that reflects sampling without replacement according to the weight
+                # distribution
                 num_items = candidate_ids.shape[0]
                 exponentials = -np.log(np.random.uniform(0, 1, size=(num_items,)))
                 exponentials /= weights
 
+                # This is just bookkeeping to produce the final ordered list of recs
                 sorted_indices = np.argsort(exponentials)
                 topk_movie_ids = candidate_ids[sorted_indices][:k]
                 ordered_movie_ids = topk_movie_ids.reshape(1, -1).astype(int32_dtype).T
 
+                # And return it to the client
                 responses.append(
                     pb_utils.InferenceResponse(
                         output_tensors=[

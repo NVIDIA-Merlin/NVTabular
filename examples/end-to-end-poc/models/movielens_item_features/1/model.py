@@ -99,10 +99,6 @@ class TritonPythonModel:
                 for feature_name in self.mh_features:
                     feature = features["__".join([self.entity_view, feature_name])]
 
-                    # TODO: Instead of trying to build one array, need to iterate though feature_value
-                    #       building values and nnzs for each entry
-                    # feature_array = np.array(feature_value).astype(int32_dtype).T
-
                     feature_values = []
                     feature_nnzs = []
 
