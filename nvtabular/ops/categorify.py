@@ -326,7 +326,7 @@ class Categorify(StatOperator):
             FitOptions(
                 columns,
                 [],
-                ["count"],
+                [],
                 self.out_path,
                 self.freq_threshold,
                 self.tree_width,
@@ -342,6 +342,7 @@ class Categorify(StatOperator):
     def fit_finalize(self, categories):
         for col in categories:
             self.categories[col] = categories[col]
+#         import pdb; pdb.set_trace()
 
     def clear(self):
         self.categories = {}
@@ -832,8 +833,8 @@ def _write_uniques(dfs, base_path, col_group, options):
                 )
             else:
                 # ensure None aka "unknown" stays at index 0
-                df_0 = df[0]
-                df_1 = df[1:].sort_values(name_count, ascending=False, ignore_index=True)
+                df_0 = df.iloc[0:1]
+                df_1 = df.iloc[1:].sort_values(name_count, ascending=False, ignore_index=True)
                 df = _concat([df_0, df_1])
                 new_cols[col] = df[col].copy(deep=False)
             new_cols[name_count] = df[name_count].copy(deep=False)
@@ -948,7 +949,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
 
 def _category_stats(ddf, options: FitOptions):
     # Check if we only need categories
-    if options.agg_cols == [] and (options.agg_list == [] or options.agg_list == ["count"]):
+    if options.agg_cols == [] and options.agg_list == []:
         options.agg_list = ["count"]
         return _groupby_to_disk(ddf, _write_uniques, options)
 
