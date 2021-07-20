@@ -44,6 +44,7 @@ class FillMissing(Operator):
         super().__init__()
         self.fill_val = fill_val
         self.add_binary_cols = add_binary_cols
+        self._inference_transform = None
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
     def transform(self, columns, df: DataFrameType) -> DataFrameType:
@@ -55,6 +56,14 @@ class FillMissing(Operator):
             df[columns] = df[columns].fillna(self.fill_val)
 
         return df
+
+    def inference_initialize(self, columns, inference_config):
+        """ load up extra configuration about this op.  """
+        if self.add_binary_cols:
+            return None
+        import nvtabular_cpp
+
+        return nvtabular_cpp.inference.FillTransform(self)
 
     transform.__doc__ = Operator.transform.__doc__
 

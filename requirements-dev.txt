@@ -27,3 +27,4 @@ graphviz
 flask
 flask_cors
 sklearn
+cpplint
