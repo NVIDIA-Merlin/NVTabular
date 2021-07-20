@@ -96,6 +96,7 @@ class TritonPythonModel:
                 # pytorch + hugectr don't support multihot output features at inference
                 if self.output_model in {"hugectr", "pytorch"}:
                     raise ValueError(f"{self.output_model} doesn't yet support multihot features")
+
                 self._set_output_dtype(name + "__nnzs")
                 self._set_output_dtype(name + "__values")
 
@@ -235,7 +236,7 @@ def _transform_tensors(input_tensors, column_group):
                     tensors, kind = convert_format(tensors, kind, target_kind)
                     transformed, _ = convert_format(transformed, transformed_kind, kind)
 
-                _concat_tensors([tensors, transformed], kind)
+                tensors = _concat_tensors([tensors, transformed], kind)
 
     else:
         tensors = {c: input_tensors[c] for c in column_group.columns}
