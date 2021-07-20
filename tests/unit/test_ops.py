@@ -444,7 +444,7 @@ def test_lambdaop_misalign(cpu):
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", [False, True])
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
-@pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ABCE"]})])
+@pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
 def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
     df = cudf.DataFrame(
         {
