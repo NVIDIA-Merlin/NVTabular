@@ -96,6 +96,7 @@ class TritonPythonModel:
                 # pytorch + hugectr don't support multihot output features at inference
                 if self.output_model in {"hugectr", "pytorch"}:
                     raise ValueError(f"{self.output_model} doesn't yet support multihot features")
+
                 self._set_output_dtype(name + "__nnzs")
                 self._set_output_dtype(name + "__values")
 
