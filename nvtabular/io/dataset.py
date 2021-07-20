@@ -195,6 +195,12 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    client : distributed.Client, optional
+        Optional Dask-Distributed Client object to use for graph
+        execution.  By default (None), an existing Dask client will
+        be detected automatically.  If a client is not detected, or if
+        `client` is set to `False`, Dask's single-threaded scheduler
+        will be used.
     """
 
     def __init__(

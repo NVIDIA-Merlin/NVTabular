@@ -72,6 +72,9 @@ class Workflow:
         The graph of operators this workflow should apply
     client: distributed.Client, optional
         The Dask distributed client to use for multi-gpu processing and multi-node processing
+        By default (None), an existing Dask client will be detected automatically.  If a client
+        is not detected, or if `client` is set to `False`, Dask's single-threaded scheduler
+        will be used.
     """
 
     def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
