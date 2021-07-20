@@ -18,7 +18,10 @@ import glob
 import os
 import platform
 import random
+import signal
 import socket
+import subprocess
+import time
 
 import dask
 import pandas as pd
@@ -266,3 +269,45 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
         return df[col].values_host
     else:
         return df[col]
+
+
+@contextlib.contextmanager
+def run_triton_server(modelpath, model_name, triton_server_path, device_id="0"):
+    import tritonclient
+    import tritonclient.grpc as grpcclient
+
+    cmdline = [
+        triton_server_path,
+        "--model-repository",
+        modelpath,
+        "--backend-config=tensorflow,version=2",
+        "--model-control-mode=explicit",
+        "--load-model",
+        model_name,
+    ]
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = device_id
+    with subprocess.Popen(cmdline, env=env) as process:
+        try:
+            with grpcclient.InferenceServerClient("localhost:8001") as client:
+                # wait until server is ready
+                for _ in range(60):
+                    if process.poll() is not None:
+                        retcode = process.returncode
+                        raise RuntimeError(f"Tritonserver failed to start (ret={retcode})")
+
+                    try:
+                        ready = client.is_server_ready()
+                    except tritonclient.utils.InferenceServerException:
+                        ready = False
+
+                    if ready:
+                        yield client
+                        return
+
+                    time.sleep(1)
+
+                raise RuntimeError("Timed out waiting for tritonserver to become ready")
+        finally:
+            # signal triton to shutdown
+            process.send_signal(signal.SIGINT)
