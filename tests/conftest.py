@@ -40,6 +40,13 @@ try:
 except ImportError:
     cudf = None
 
+    def assert_eq(a, b, *args, **kwargs):
+        if isinstance(a, pd.DataFrame):
+            return pd.testing.assert_frame_equal(a, b, *args, **kwargs)
+        else:
+            return pd.testing.assert_series_equal(a, b, *args, **kwargs)
+
+
 import numpy as np
 import psutil
 import pytest
