@@ -824,13 +824,22 @@ def _write_uniques(dfs, base_path, col_group, options):
                 if nlargest < len(df):
                     df = df.nlargest(n=nlargest, columns=name_count)
             if not _series_has_nulls(df[col]):
+                if name_count in df:
+                    df = df.sort_values(name_count, ascending=False, ignore_index=True)
                 nulls_missing = True
                 new_cols[col] = _concat(
                     [df._constructor_sliced([None], dtype=df[col].dtype), df[col]],
                     ignore_index=True,
                 )
             else:
+                # ensure None aka "unknown" stays at index 0
+                if name_count in df:
+                    df_0 = df.iloc[0:1]
+                    df_1 = df.iloc[1:].sort_values(name_count, ascending=False, ignore_index=True)
+                    df = _concat([df_0, df_1])
                 new_cols[col] = df[col].copy(deep=False)
+            if name_count in df:
+                new_cols[name_count] = df[name_count].copy(deep=False)
         if nulls_missing:
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)

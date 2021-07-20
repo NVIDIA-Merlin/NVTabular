@@ -471,8 +471,9 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
         assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype if dtype else "int64")
         compare = df_out["Authors"].to_arrow().to_pylist()
 
+    # change values based on frequency "C" (2) comes before "B" (1)
     if freq_threshold < 2:
-        assert compare == [[1], [1, 4], [2, 3], [3]]
+        assert compare == [[1], [1, 4], [3, 2], [2]]
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
 
@@ -510,8 +511,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 if cpu
                 else df_out["Engaging User"].to_arrow().to_pylist()
             )
-            assert compare_authors == [1, 5, 2, 3]
-            assert compare_engaging == [2, 2, 1, 4]
+            # again userB has highest frequency given lowest encoding
+            assert compare_authors == [2, 5, 1, 3]
+            assert compare_engaging == [1, 1, 2, 4]
         else:
             # Column combinations are encoded
             compare_engaging = (
@@ -531,7 +533,8 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
             else df_out["Engaging User"].to_arrow().to_pylist()
         )
         assert compare_authors == [1, 4, 2, 3]
-        assert compare_engaging == [2, 2, 1, 3]
+        # User B is first in frequency based ordering
+        assert compare_engaging == [1, 1, 2, 3]
 
 
 @pytest.mark.parametrize("cpu", [False, True])
@@ -564,7 +567,8 @@ def test_categorify_multi_combo(tmpdir, cpu):
         else df_out["Author_Engaging User"].to_arrow().to_pylist()
     )
     assert compare_a == [1, 4, 2, 3]
-    assert compare_e == [2, 2, 1, 3]
+    # here User B has more frequency so lower encode value
+    assert compare_e == [1, 1, 2, 3]
     assert compare_ae == [1, 4, 2, 3]
 
 
