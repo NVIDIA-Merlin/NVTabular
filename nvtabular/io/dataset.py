@@ -706,7 +706,7 @@ class Dataset:
             if isinstance(output_files, int):
                 required_npartitions = output_files
                 files_per_task = min(files_per_task, output_files)
-            elif isinstance(output_files, int):
+            elif isinstance(output_files, list):
                 required_npartitions = len(output_files)
                 files_per_task = min(files_per_task, len(output_files))
             elif out_files_per_proc:
