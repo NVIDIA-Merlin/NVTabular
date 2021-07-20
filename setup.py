@@ -63,7 +63,7 @@ ext_modules = [
             "cpp/nvtabular/inference/categorify.cc",
             "cpp/nvtabular/inference/fill.cc",
         ],
-        define_macros=[("VERSION_INFO", versioneer.get_versions())],
+        define_macros=[("VERSION_INFO", versioneer.get_version())],
         include_dirs=["./cpp/"],
     ),
 ]
@@ -84,7 +84,7 @@ install_reqs = parse_requirements("./requirements.txt")
 
 setup(
     name="nvtabular",
-    version=versioneer.get_versions(),
+    version=versioneer.get_version(),
     packages=find_packages(),
     url="https://github.com/NVIDIA/NVTabular",
     author="NVIDIA Corporation",
