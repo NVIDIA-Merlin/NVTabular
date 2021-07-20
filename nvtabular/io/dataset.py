@@ -640,18 +640,28 @@ class Dataset:
             If True, the `out_files_per_proc` option will be ignored, but the
             `output_files` option will take precedence. Default is False.
         output_files : dict, list or int
-            Dictionary mapping of output file names to partition indices.
-            If a list of file names is specified, a contiguous range of
-            output partitions will be mapped to each file. The same procedure
-            is used if an integer is specified, but the file names will be
-            written as "part_*". If anything is specified for `output_files`,
-            the `output_files_per_proc` argument will be ignored.  Also, if
-            a dictionary is specified, excluded partition indices will not
-            be written to disk.
+            Dictionary mapping of output file names to partition indices. To
+            map multiple output files to a range of input partitions, the keys
+            should correspond to a tuple of file names. If a list of file names
+            is specified, a contiguous range of output partitions will be mapped
+            to each file. The same procedure is used if an integer is specified,
+            but the file names will be written as "part_*". If anything is
+            specified for `output_files`, the `output_files_per_proc` argument
+            will be interpreted as the desired number of output files to write
+            within the same task at run time (enabling input partitions to be
+            shuffled into multiple output files). Also, if a dictionary is
+            specified, excluded partition indices will not be written to disk.
+
+            Note that passing a file list or integer to `output_files` will
+            preserve the original ordering of the input data as long as
+            `out_files_per_proc` is set to `None` or `1`.
         out_files_per_proc : integer
             Number of files to create (per process) after shuffling the
-            data. This option will be ignored if `output_files`
-            is specified.
+            data. If an integer or list is specified for `output_files`,
+            `out_files_per_proc` will not modify the total output-file count,
+            but will instead be interpreted as the number of files to write
+            out within the same task (i.e. process) at run time. This argument
+            should not be specified if a dictionary is passed to `output_files`.
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
@@ -688,24 +698,40 @@ class Dataset:
         # Convert `output_files` argument to a dict mapping
         if output_files:
 
-            # First, repartition ddf if necessary
+            # Use out_files_per_proc to calculate how
+            # many output files should be written within the
+            # same subgraph.  Note that we must a
+            files_per_task = out_files_per_proc or 1
             required_npartitions = ddf.npartitions
             if isinstance(output_files, int):
                 required_npartitions = output_files
+                files_per_task = min(files_per_task, output_files)
             elif isinstance(output_files, list):
                 required_npartitions = len(output_files)
+                files_per_task = min(files_per_task, len(output_files))
+            elif out_files_per_proc:
+                raise ValueError(
+                    "Cannot specify out_files_per_proc if output_files is "
+                    "defined as a dictionary mapping. Please define each "
+                    "key in output_files as a tuple of file names if you "
+                    "wish to have those files written by the same process."
+                )
+
+            # Repartition ddf if necessary
             if ddf.npartitions < required_npartitions:
                 ddf = ddf.clear_divisions().repartition(npartitions=required_npartitions)
 
+            # Construct an output_files dictionary if necessary
             if isinstance(output_files, int):
                 output_files = [f"part_{i}" + suffix for i in range(output_files)]
             if isinstance(output_files, list):
                 new = {}
                 split = math.ceil(ddf.npartitions / len(output_files))
-                for i, fn in enumerate(output_files):
+                for i in range(0, len(output_files), files_per_task):
+                    fns = output_files[i : i + files_per_task]
                     start = i * split
-                    stop = min(start + split, ddf.npartitions)
-                    new[fn] = np.arange(start, stop)
+                    stop = min(start + split * len(fns), ddf.npartitions)
+                    new[tuple(fns)] = np.arange(start, stop)
                 output_files = new
                 suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
