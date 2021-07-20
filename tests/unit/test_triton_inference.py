@@ -131,6 +131,23 @@ def test_large_strings(tmpdir):
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
+def test_concatenate_dataframe(tmpdir):
+    # we were seeing an issue in the rossmann workflow where we dropped certain columns,
+    # https://github.com/NVIDIA/NVTabular/issues/961
+    df = cudf.DataFrame(
+        {
+            "cat": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"],
+            "cont": [0.0, 1.0, 2.0, 3.0, 4.0, 5],
+        }
+    )
+    # this bug only happened with a dataframe representation: force this by using a lambda
+    cats = ["cat"] >> ops.LambdaOp(lambda col: col.hash_values() % 1000)
+    conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
+    workflow = nvt.Workflow(cats + conts)
+    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_concatenate_dataframe")
+
+
+@pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 def test_numeric_dtypes(tmpdir):
     dtypes = []
     for width in [8, 16, 32, 64]:
