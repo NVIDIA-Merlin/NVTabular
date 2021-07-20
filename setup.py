@@ -74,6 +74,14 @@ cmdclass["build_ext"] = build_pybind11
 cmdclass["build_py"] = build_proto
 
 
+def parse_requirements(filename):
+    """ load requirements from a pip requirements file """
+    lineiter = (line.strip() for line in open(filename))
+    return [line for line in lineiter if line and not line.startswith("#")]
+
+
+install_reqs = parse_requirements("./requirements.txt")
+
 setup(
     name="nvtabular",
     version=versioneer.get_version(),
@@ -94,4 +102,5 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     zip_safe=False,
+    install_requires=install_reqs,
 )
