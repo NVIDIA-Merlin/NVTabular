@@ -8,7 +8,7 @@ cd $nvt_directory
 
 echo "Installing NVTabular"
 python -m pip install --user --upgrade pip setuptools wheel
-pip install --user -e .
+python setup.py develop
 
 # following checks requirement requirements-dev.txt to be installed
 echo "Running black --check"
