@@ -117,7 +117,6 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
 @pytest.mark.parametrize("npartitions", [1, 2])
 @pytest.mark.parametrize("cpu", _CPU)
 def test_target_encode_multi(tmpdir, npartitions, cpu):
-
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
@@ -460,7 +459,8 @@ def test_lambdaop_misalign(cpu):
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
-def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
+@pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
+def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
     df = dispatch._make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -472,7 +472,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
     label_name = ["Post"]
 
     cat_features = cat_names >> ops.Categorify(
-        out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype
+        out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype, vocabs=vocabs
     )
 
     workflow = nvt.Workflow(cat_features + label_name)
@@ -486,8 +486,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
         assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype if dtype else "int64")
         compare = df_out["Authors"].to_arrow().to_pylist()
 
-    # change values based on frequency "C" (2) comes before "B" (1)
-    if freq_threshold < 2:
+    if freq_threshold < 2 or vocabs is not None:
         assert compare == [[1], [1, 4], [3, 2], [2]]
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
@@ -790,7 +789,6 @@ def test_joingroupby_dependency(tmpdir, cpu):
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups, cpu):
-
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_A", "User_A", "User_B"],
@@ -844,7 +842,6 @@ def test_joingroupby_multi(tmpdir, groups, cpu):
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("drop_duplicates", [True, False])
 def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, drop_duplicates):
-
     # Define "external" table
     shift = 100
     df_ext = df[["id"]].copy().sort_values("id")

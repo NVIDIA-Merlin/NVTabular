@@ -13,10 +13,9 @@
 # limitations under the License.
 #
 
-import os
 import warnings
 
-import cudf
+import pandas as pd
 import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
@@ -227,7 +226,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         features += features_replaced_buckets
 
     if len(categorifies) > 0:
-        features += categorifies.keys() >> Categorify()
+        features += categorifies.keys() >> Categorify(vocabs=pd.DataFrame(categorifies))
 
     if len(hashes) > 0:
         features += hashes.keys() >> HashBucket(hashes)
@@ -281,23 +280,5 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         features += [col.key for col in numeric_columns]
 
     workflow = nvt.Workflow(features)
-
-    # create stats for Categorify op if we need it
-    if len(categorifies) > 0:
-        if category_dir is None:
-            category_dir = "/tmp/categories"  # nosec
-        if not os.path.exists(category_dir):
-            os.makedirs(category_dir)
-
-        stats = {"categories": {}}
-        for feature_name, categories in categorifies.items():
-            categories.insert(0, None)
-            df = cudf.DataFrame({feature_name: categories})
-
-            save_path = os.path.join(category_dir, f"unique.{feature_name}.parquet")
-            df.to_parquet(save_path)
-            stats["categories"][feature_name] = save_path
-
-        workflow.stats = stats
 
     return workflow, numeric_columns + new_feature_columns
