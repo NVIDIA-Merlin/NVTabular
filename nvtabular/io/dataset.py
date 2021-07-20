@@ -31,7 +31,6 @@ from fsspec.utils import stringify_path
 
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
-from nvtabular.utils import set_dask_client
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
@@ -195,12 +194,6 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
-    client : distributed.Client, optional
-        Optional Dask-Distributed Client object to use for graph
-        execution.  By default (None), an existing Dask client will
-        be detected automatically.  If a client is not detected, or if
-        `client` is set to `False`, Dask's single-threaded scheduler
-        will be used.
     """
 
     def __init__(
@@ -218,7 +211,7 @@ class Dataset:
         **kwargs,
     ):
         self.dtypes = dtypes
-        self.client = set_dask_client(client)
+        self.client = client
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu

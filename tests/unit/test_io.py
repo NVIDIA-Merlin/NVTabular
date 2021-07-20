@@ -224,7 +224,7 @@ def test_dask_datframe_methods(tmpdir, cpu):
 def test_hugectr(
     tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
 ):
-    client = client if use_client else False
+    client = client if use_client else None
 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
@@ -240,7 +240,7 @@ def test_hugectr(
     conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
 
-    workflow = nvt.Workflow(conts + cats + label_names, client=client)
+    workflow = nvt.Workflow(conts + cats + label_names)
     transformed = workflow.fit_transform(dataset)
 
     if output_format == "hugectr":
