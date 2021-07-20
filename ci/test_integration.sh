@@ -9,7 +9,7 @@ cd /nvtabular/
 git pull origin main
 
 # Run tests for all containers
-#pytest tests/integration/test_notebooks.py::test_criteo_example
+pytest tests/integration/test_notebooks.py::test_criteo_example
 pytest tests/integration/test_notebooks.py::test_rossman_example
 pytest tests/integration/test_notebooks.py::test_movielens_example
 
