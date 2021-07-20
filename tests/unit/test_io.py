@@ -387,6 +387,55 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     )
 
 
+@pytest.mark.parametrize("output_files", [1, 6, None])
+@pytest.mark.parametrize("out_files_per_proc", [None, 4])
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, False])
+def test_to_parquet_output_files(tmpdir, datasets, output_files, out_files_per_proc, shuffle):
+    # Simple test to check that the `output_files` and `out_files_per_proc`
+    # arguments for `to_parquet` are interacting as expected.
+    path = str(datasets["parquet"])
+    outdir = str(tmpdir)
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    ddf0 = dataset.to_ddf(columns=mycols_pq)
+
+    if output_files is None:
+        # Test expected behavior when a dictionary
+        # is specified for output_files
+        output_files = {"file.parquet": range(ddf0.npartitions)}
+
+    if isinstance(output_files, dict) and out_files_per_proc:
+        # to_parquet should raise an error if we try to
+        # use `out_files_per_proc` when a dictionary
+        # is passed in for `output_files`
+        with pytest.raises(ValueError):
+            dataset.to_parquet(
+                outdir,
+                shuffle=shuffle,
+                output_files=output_files,
+                out_files_per_proc=out_files_per_proc,
+            )
+    else:
+        # Test normal/correct to_parquet usage
+        dataset.to_parquet(
+            outdir,
+            shuffle=shuffle,
+            output_files=output_files,
+            out_files_per_proc=out_files_per_proc,
+        )
+
+        # Check that the expected number of files has been written
+        written_files = glob.glob(os.path.join(outdir, "*.parquet"))
+        assert (
+            len(written_files) == output_files
+            if isinstance(output_files, int)
+            else len(output_files)
+        )
+
+        # Check that we didn't loose any data
+        ddf1 = dd.read_parquet(outdir, columns=mycols_pq)
+        assert len(ddf0) == len(ddf1)
+
+
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("out_files_per_proc", [None, 2])
