@@ -40,6 +40,11 @@ struct FillTransform {
       auto tensor = py::cast<py::array>(it.second);
 
       auto dtype = tensor.dtype();
+
+      if (!tensor.writeable()) {
+        tensor = tensor.attr("copy")();
+      }
+
       switch (dtype.kind()) {
         case 'f': {
           switch (dtype.itemsize()) {
@@ -71,9 +76,9 @@ struct FillTransform {
   }
 
   template <typename T>
-  void fill(T * values, size_t size) { 
+  void fill(T * values, size_t size) {
     T fill = static_cast<T>(fill_val);
-    for (size_t i = 0; i < size; ++i) { 
+    for (size_t i = 0; i < size; ++i) {
       if (isnan(values[i])) {
         values[i] = fill;
       }
