@@ -340,7 +340,8 @@ class Categorify(StatOperator):
             for col in list(vocabs.columns):
                 col_df = vocabs[[col]]
                 if col_df[col].iloc[0] is not None:
-                    vals = {col: dispatch._add_to_series(col_df[col], [None]).reset_index()[0]}
+                    with_empty = dispatch._add_to_series(col_df[col], [None]).reset_index()[0]
+                    vals = {col: with_empty}
                     col_df = dispatch._make_df(vals)
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")

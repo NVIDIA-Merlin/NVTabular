@@ -335,15 +335,15 @@ def _make_df(_like_df=None, device=None):
 
 def _add_to_series(series, to_add, prepend=True):
     if isinstance(series, pd.Series):
-        series_2 = pd.Series(to_add)
+        series_to_add = pd.Series(to_add)
     elif isinstance(series, cudf.Series):
-        series_2 = cudf.Series(to_add)
+        series_to_add = cudf.Series(to_add)
     else:
         raise ValueError("Unrecognized series, please provide either a pandas a cudf series")
 
-    to_concat = [series, series_2] if prepend else [series_2, series]
+    series_to_concat = [series_to_add, series] if prepend else [series, series_to_add]
 
-    return _concat(to_concat)
+    return _concat(series_to_concat)
 
 
 def _detect_format(data):
