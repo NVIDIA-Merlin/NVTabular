@@ -343,8 +343,6 @@ class Categorify(StatOperator):
         for col in categories:
             self.categories[col] = categories[col]
 
-    #         import pdb; pdb.set_trace()
-
     def clear(self):
         self.categories = {}
 
@@ -806,7 +804,6 @@ def _write_uniques(dfs, base_path, col_group, options):
         df = df.sort_values(col_group, na_position="first")
         new_cols = {}
         nulls_missing = False
-        #         import pdb; pdb.set_trace()
         for col in col_group:
             name_count = col + "_count"
             if options.max_size:
