@@ -521,7 +521,7 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 if cpu
                 else df_out["Author_Engaging User"].to_arrow().to_pylist()
             )
-            assert compare_engaging == [2, 4, 1, 3]
+            assert compare_engaging == [1, 4, 2, 3]
     else:
         # Columns are encoded independently
         compare_authors = (
@@ -567,7 +567,8 @@ def test_categorify_multi_combo(tmpdir, cpu):
         else df_out["Author_Engaging User"].to_arrow().to_pylist()
     )
     assert compare_a == [1, 4, 2, 3]
-    assert compare_e == [2, 2, 1, 3]
+    # here User B has more frequency so lower encode value
+    assert compare_e == [1, 1, 2, 3]
     assert compare_ae == [1, 4, 2, 3]
 
 
