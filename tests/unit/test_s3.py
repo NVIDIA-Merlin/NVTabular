@@ -32,11 +32,7 @@ s3_context = test_s3.s3_context
 s3so = test_s3.s3so
 
 
-# parquet reading isn't working with S3 right now due to issues with dask-cudf:
-# https://github.com/rapidsai/cudf/pull/8275
-# TODO: re-enable after the cudf 21.06 release
-# @pytest.mark.parametrize("engine", ["parquet", "csv"])
-@pytest.mark.parametrize("engine", ["csv"])
+@pytest.mark.parametrize("engine", ["parquet", "csv"])
 def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df):
 
     # Copy files to mock s3 bucket
