@@ -189,10 +189,11 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     cont_features = op_columns >> nvt.ops.LogOp()
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    new_gdf.index = df.index  # Make sure index is aligned for checks
+    new_df = processor.transform(dataset).to_ddf().compute()
     for col in op_columns:
-        assert_eq(new_gdf[col], np.log(df[col].astype(np.float32) + 1))
+        values = dispatch._array(new_df[col])
+        original = dispatch._array(df[col])
+        assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
