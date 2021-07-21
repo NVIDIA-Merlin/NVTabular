@@ -85,3 +85,11 @@ workflow = nvt.Workflow(features, client=client)
 client.shutdown()
 client.close()
 ```
+
+###  3. String Column Error
+
+If you run into a problem an error that states the size of your string column is too large, like:
+```
+Exception: RuntimeError('cuDF failure at: /opt/conda/envs/rapids/conda-bld/libcudf_1618503955512/work/cpp/src/copying/concatenate.cu:368: Total number of concatenated rows exceeds size_type range')
+```
+Is usually caused by string columns in parquet files. If you encounter this error, to fix it you need to decrease the size of the partitions of your dataset. If, after decreasing the size of the partitions, you get a warning about picking a partition size smaller than the row group size, you will need to reformat the dataset with a smaller row group size (refer to #1). There is a 2GB max size for concatenated string columns in cudf currently, for details refer to [this](https://github.com/rapidsai/cudf/issues/3958).   
