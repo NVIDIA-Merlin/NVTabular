@@ -101,5 +101,5 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     zip_safe=False,
-    #    install_requires=install_reqs,
+    install_requires=install_reqs,
 )
