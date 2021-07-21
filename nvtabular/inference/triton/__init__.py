@@ -18,12 +18,15 @@ import json
 import os
 from shutil import copyfile
 
-import tritonclient.grpc as grpcclient
-from google.protobuf import text_format
-from tritonclient.utils import np_to_triton_dtype
+# this needs to be before any modules that import protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
-import nvtabular.inference.triton.model_config_pb2 as model_config
-from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df
+import tritonclient.grpc as grpcclient  # noqa
+from google.protobuf import text_format  # noqa
+from tritonclient.utils import np_to_triton_dtype  # noqa
+
+import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
 
 
 def export_tensorflow_ensemble(
