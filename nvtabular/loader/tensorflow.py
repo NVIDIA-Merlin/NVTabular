@@ -16,6 +16,7 @@
 import contextlib
 import os
 
+import numpy as np
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
@@ -188,6 +189,12 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     - reader_kwargs: dict
         extra kwargs to pass when instantiating the underlying
         `nvtabular.Dataset`
+    sparse_list : list(str) or None
+        list with column names of columns that should be represented as sparse tensors
+    sparse_max : dict
+        dictionary of key: column_name + value: integer representing max sequence length for column
+    sparse_dense : bool
+        bool value to activate transforming sparse tensors to dense
     """
 
     _use_nnz = True
@@ -210,6 +217,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_names=None,
+        sparse_max=None,
+        sparse_as_dense=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -236,7 +246,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
+            sparse_names=sparse_names,
+            sparse_max=sparse_max,
+            sparse_as_dense=sparse_as_dense,
         )
+        self._map_fns = []
 
     def __len__(self):
         """
@@ -255,6 +269,16 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         return DataLoader.__next__(self)
 
+    def map(self, fn):
+        """
+        Applying a function to each batch.
+
+        This can for instance be used to add `sample_weight` to the model.
+        """
+        self._map_fns.append(fn)
+
+        return self
+
     @contextlib.contextmanager
     def _get_device_ctx(self, dev):
         # with tf.device("/device:GPU:{}".format(dev)) as tf_device:
@@ -265,9 +289,20 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # commenting out since device statements cause
         # RuntimeErrors when exiting if two dataloaders
         # are running at once (e.g. train and validation)
-        yield tf.device("/GPU:" + str(dev))
+        if dev != "cpu":
+            yield tf.device("/GPU:" + str(dev))
+        else:
+            # https://www.tensorflow.org/guide/gpu#manual_device_placement
+            yield tf.device("/device:CPU:0")
 
     def _split_fn(self, tensor, idx, axis=0):
+        return tf.split(tensor, idx, axis=axis)
+
+    def _tensor_split(self, tensor, idx, axis=0):
+        """
+        Same function as above but need this method
+        for api match.
+        """
         return tf.split(tensor, idx, axis=axis)
 
     @property
@@ -278,6 +313,20 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _FLOAT32_DTYPE(self):
         return tf.float32
 
+    def _pack(self, gdf):
+        if isinstance(gdf, np.ndarray):
+            return gdf
+        if hasattr(gdf, "to_dlpack") and callable(getattr(gdf, "to_dlpack")):
+            return gdf.to_dlpack()
+        elif hasattr(gdf, "to_numpy") and callable(getattr(gdf, "to_numpy")):
+            return gdf.to_numpy()
+        return gdf.toDlpack()
+
+    def _unpack(self, gdf):
+        if hasattr(gdf, "shape"):
+            return tf.convert_to_tensor(gdf)
+        return from_dlpack(gdf)
+
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
@@ -285,19 +334,19 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
         if len(gdf.shape) == 1 or gdf.shape[1] == 1:
-            dlpack = gdf.to_dlpack()
+            dlpack = self._pack(gdf)
         elif gdf.shape[0] == 1:
-            dlpack = gdf.values[0].toDlpack()
+            dlpack = self._pack(gdf.values[0])
         else:
-            dlpack = gdf.values.T.toDlpack()
+            dlpack = self._pack(gdf.values.T)
 
         # catch error caused by tf eager context
         # not being initialized
         try:
-            x = from_dlpack(dlpack)
+            x = self._unpack(dlpack)
         except AssertionError:
             tf.random.uniform((1,))
-            x = from_dlpack(dlpack)
+            x = self._unpack(dlpack)
 
         if gdf.shape[0] == 1:
             # batch size 1 so got squashed to a vector
@@ -313,35 +362,61 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             x = tf.transpose(x)
         return x
 
+    def _pull_values_offsets(self, values_offset):
+        """
+        values_offset is either a tuple (values, offsets) or just values.
+        Values is a tensor.
+        This method is used to turn a tensor into its sparse representation
+        """
+        # pull_values_offsets, return values offsets diff_offsets
+        diff_offsets = None
+        if isinstance(values_offset, tuple):
+            values = tf.reshape(values_offset[0], [-1])
+            diff_offsets = tf.cast(tf.reshape(values_offset[1], [-1]), dtype=tf.int64)
+            offsets = tf.math.cumsum(diff_offsets)
+        else:
+            values = tf.reshape(values_offset, [-1])
+            offsets = tf.arange(tf.shape(values)[0], dtype=tf.int64)
+            diff_offsets = offsets[1:] - offsets[:-1]
+        num_rows = len(offsets)
+        return values, offsets, diff_offsets, num_rows
+
+    def _get_max_seq_len(self, diff_offsets):
+        # get_max_seq_len, return int
+        return int(tf.math.reduce_max(diff_offsets))
+
+    def _get_indices(self, offsets, diff_offsets):
+        # Building the indices to reconstruct the sparse tensors
+        row_ids = tf.range(len(offsets), dtype=tf.int64)
+
+        row_ids_repeated = tf.repeat(row_ids, diff_offsets)
+        row_offset_repeated = tf.repeat(offsets, diff_offsets)
+        col_ids = tf.range(len(row_offset_repeated), dtype=tf.int64) - row_offset_repeated
+        indices = tf.concat(
+            values=[tf.expand_dims(row_ids_repeated, -1), tf.expand_dims(col_ids, -1)], axis=1
+        )
+        return indices
+
+    def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
+        sparse_tensor = tf.sparse.SparseTensor(
+            indices=indices, values=values, dense_shape=[num_rows, seq_limit]
+        )
+        return sparse_tensor
+
+    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
+        tensor = tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
+        if self.sparse_as_dense:
+            tensor = tf.sparse.to_dense(tensor)
+        return tensor
+
     def _handle_tensors(self, cats, conts, labels):
-        X = {}
-        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
-            lists = {}
-            if isinstance(tensor, tuple):
-                tensor, lists = tensor
-            names = [i for i in names if i not in lists]
+        to_return = super()._handle_tensors(cats, conts, labels)
 
-            # break list tuples into two keys, with postfixes
-            # TODO: better choices for naming?
-            list_columns = list(lists.keys())
-            for column in list_columns:
-                values, nnzs = lists.pop(column)
-                lists[column + "__values"] = values
-                lists[column + "__nnzs"] = nnzs
+        for map_fn in self._map_fns:
+            to_return = map_fn(*to_return)
 
-            # now add in any scalar tensors
-            if len(names) > 1:
-                tensors = tf.split(tensor, len(names), axis=1)
-                lists.update(zip(names, tensors))
-            elif len(names) == 1:
-                lists[names[0]] = tensor
-            X.update(lists)
-
-        # TODO: use dict for labels as well?
-        # would require output layers to match naming
-        if len(self.label_names) > 1:
-            labels = tf.split(labels, len(self.label_names), axis=1)
-        return X, labels
+        return to_return
 
 
 class KerasSequenceValidater(tf.keras.callbacks.Callback):

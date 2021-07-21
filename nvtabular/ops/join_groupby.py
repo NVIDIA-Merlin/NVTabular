@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import cupy
-import dask_cudf
+
+import dask.dataframe as dd
+import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
-from nvtabular.dispatch import _read_parquet_dispatch
+from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .operator import ColumnNames, Operator
@@ -105,7 +105,7 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         if isinstance(columns, list):
             for group in columns:
                 if isinstance(group, (list, tuple)) and len(group) > 1:
@@ -113,17 +113,26 @@ class JoinGroupby(StatOperator):
                     for col in group:
                         self.storage_name[col] = name
 
+        # Check metadata type to reset on_host and cat_cache if the
+        # underlying ddf is already a pandas-backed collection
+        if isinstance(ddf._meta, pd.DataFrame):
+            self.on_host = False
+            # Cannot use "device" caching if the data is pandas-backed
+            self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
+
         dsk, key = nvt_cat._category_stats(
             ddf,
-            columns,
-            self.cont_names,
-            self.stats,
-            self.out_path,
-            0,
-            self.tree_width,
-            self.on_host,
-            concat_groups=False,
-            name_sep=self.name_sep,
+            nvt_cat.FitOptions(
+                columns,
+                self.cont_names,
+                self.stats,
+                self.out_path,
+                0,
+                self.tree_width,
+                self.on_host,
+                concat_groups=False,
+                name_sep=self.name_sep,
+            ),
         )
         return Delayed(key, dsk)
 
@@ -131,37 +140,37 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        new_gdf = cudf.DataFrame()
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
-        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
 
         cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-            columns, gdf.columns, self.name_sep
+            columns, df.columns, self.name_sep
         )
 
-        _read_pq_func = _read_parquet_dispatch(gdf)
+        _read_pq_func = _read_parquet_dispatch(df)
         for name in cat_names:
-            new_part = cudf.DataFrame()
+            new_part = type(df)()
             storage_name = self.storage_name.get(name, name)
             name = multi_col_group.get(name, name)
             path = self.categories[storage_name]
             selection_l = list(name) if isinstance(name, tuple) else [name]
             selection_r = list(name) if isinstance(name, tuple) else [storage_name]
 
-            stat_gdf = nvt_cat._read_groupby_stat_df(
+            stat_df = nvt_cat._read_groupby_stat_df(
                 path, storage_name, self.cat_cache, _read_pq_func
             )
-            tran_gdf = gdf[selection_l + [tmp]].merge(
-                stat_gdf, left_on=selection_l, right_on=selection_r, how="left"
+            tran_df = df[selection_l + [tmp]].merge(
+                stat_df, left_on=selection_l, right_on=selection_r, how="left"
             )
-            tran_gdf = tran_gdf.sort_values(tmp)
-            tran_gdf.drop(columns=selection_l + [tmp], inplace=True)
-            new_cols = [c for c in tran_gdf.columns if c not in new_gdf.columns]
-            new_part = tran_gdf[new_cols].reset_index(drop=True)
-            new_gdf = cudf.concat([new_gdf, new_part], axis=1)
-        gdf.drop(columns=[tmp], inplace=True)
-        return new_gdf
+            tran_df = tran_df.sort_values(tmp)
+            tran_df.drop(columns=selection_l + [tmp], inplace=True)
+            new_cols = [c for c in tran_df.columns if c not in new_df.columns]
+            new_part = tran_df[new_cols].reset_index(drop=True)
+            new_df = _concat_columns([new_df, new_part])
+        df.drop(columns=[tmp], inplace=True)
+        return new_df
 
     def dependencies(self):
         return self.cont_cols

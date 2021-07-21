@@ -20,11 +20,8 @@ import math
 import random
 import warnings
 
-import cudf
 import dask
-import dask_cudf
 import numpy as np
-import pandas as pd
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -32,7 +29,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
-from nvtabular.dispatch import _hex_to_int
+from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
 
 from ..utils import device_mem_size
@@ -40,6 +37,11 @@ from .csv import CSVDatasetEngine
 from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 
 LOG = logging.getLogger("nvtabular")
 
@@ -156,6 +158,11 @@ class Dataset:
         DatasetEngine object or string identifier of engine. Current
         string options include: ("parquet", "csv", "avro"). This argument
         is ignored if path_or_source is a DataFrame type.
+    npartitions : int
+        Desired number of Dask-collection partitions to produce in
+        the ``to_ddf`` method when ``path_or_source`` corresponds to a
+        DataFrame type.  This argument is ignored for file-based
+        ``path_or_source`` input.
     part_size : str or int
         Desired size (in bytes) of each Dask partition.
         If None, part_mem_fraction will be used to calculate the
@@ -193,6 +200,7 @@ class Dataset:
         self,
         path_or_source,
         engine=None,
+        npartitions=None,
         part_size=None,
         part_mem_fraction=None,
         storage_options=None,
@@ -206,7 +214,9 @@ class Dataset:
         self.client = client
 
         # Check if we are keeping data in cpu memory
-        self.cpu = cpu or False
+        self.cpu = cpu
+        if not self.cpu:
+            self.cpu = cudf is None
 
         # Keep track of base dataset (optional)
         self.base_dataset = base_dataset or self
@@ -218,44 +228,25 @@ class Dataset:
                 "This is an experimental feature with extremely limited support!"
             )
 
-        if isinstance(path_or_source, (dask.dataframe.DataFrame, cudf.DataFrame, pd.DataFrame)):
+        npartitions = npartitions or 1
+        if isinstance(path_or_source, dask.dataframe.DataFrame) or _is_dataframe_object(
+            path_or_source
+        ):
             # User is passing in a <dask.dataframe|cudf|pd>.DataFrame
             # Use DataFrameDatasetEngine
-            moved_collection = (
-                False  # Whether a pd-backed collection was moved to cudf (or vice versa)
+            _path_or_source = _convert_data(
+                path_or_source, cpu=self.cpu, to_collection=True, npartitions=npartitions
             )
-            if self.cpu:
-                if isinstance(path_or_source, pd.DataFrame):
-                    # Convert pandas DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = dask.dataframe.from_pandas(path_or_source, npartitions=1)
-                elif isinstance(path_or_source, cudf.DataFrame):
-                    # Convert cudf DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = dask.dataframe.from_pandas(
-                        path_or_source.to_pandas(), npartitions=1
-                    )
-                elif isinstance(path_or_source, dask_cudf.DataFrame):
-                    # Convert dask_cudf DataFrame to pandas-backed dask.dataframe.DataFrame
-                    path_or_source = path_or_source.to_dask_dataframe()
-                    moved_collection = True
-            else:
-                if isinstance(path_or_source, cudf.DataFrame):
-                    # Convert cudf DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_cudf(path_or_source, npartitions=1)
-                elif isinstance(path_or_source, pd.DataFrame):
-                    # Convert pandas DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_cudf(
-                        cudf.from_pandas(path_or_source), npartitions=1
-                    )
-                elif not isinstance(path_or_source, dask_cudf.DataFrame):
-                    # Convert dask.dataframe.DataFrame DataFrame to dask_cudf.DataFrame
-                    path_or_source = dask_cudf.from_dask_dataframe(path_or_source)
-                    moved_collection = True
+            # Check if this is a collection that has now moved between host <-> device
+            moved_collection = isinstance(path_or_source, dask.dataframe.DataFrame) and (
+                not isinstance(_path_or_source._meta, type(path_or_source._meta))
+            )
             if part_size:
                 warnings.warn("part_size is ignored for DataFrame input.")
             if part_mem_fraction:
                 warnings.warn("part_mem_fraction is ignored for DataFrame input.")
             self.engine = DataFrameDatasetEngine(
-                path_or_source, cpu=self.cpu, moved_collection=moved_collection
+                _path_or_source, cpu=self.cpu, moved_collection=moved_collection
             )
         else:
             if part_size:
@@ -270,7 +261,7 @@ class Dataset:
                         "Using very large partitions sizes for Dask. "
                         "Memory-related errors are likely."
                     )
-                part_size = int(device_mem_size(kind="total") * part_mem_fraction)
+                part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
             paths = path_or_source
@@ -481,6 +472,67 @@ class Dataset:
         # Fall back to dask.dataframe algorithm
         return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
+    def repartition(self, npartitions=None, partition_size=None):
+        """Repartition the underlying ddf, and return a new Dataset
+
+        Parameters
+        ----------
+        npartitions : int; default None
+            Number of partitions in output ``Dataset``. Only used if
+            ``partition_size`` isn’t specified.
+        partition_size : int or str; default None
+            Max number of bytes of memory for each partition. Use
+            numbers or strings like '5MB'. If specified, ``npartitions``
+            will be ignored.
+        """
+        return Dataset(
+            self.to_ddf()
+            .clear_divisions()
+            .repartition(
+                npartitions=npartitions,
+                partition_size=partition_size,
+            )
+        )
+
+    @classmethod
+    def merge(cls, left, right, **kwargs):
+        """Merge two Dataset objects
+
+        Produces a new Dataset object. If the ``cpu`` Dataset attributes
+        do not match, the right side will be modified. See Dask-Dataframe
+        ``merge`` documentation for more information. Example usage::
+
+            ds_1 = Dataset("file.parquet")
+            ds_2 = Dataset(cudf.DataFrame(...))
+            ds_merged = Dataset.merge(ds_1, ds_2, on="foo", how="inner")
+
+        Parameters
+        ----------
+        left : Dataset
+            Left-side Dataset object.
+        right : Dataset
+            Right-side Dataset object.
+        **kwargs :
+            Key-word arguments to be passed through to Dask-Dataframe.
+        """
+
+        # Ensure both Dataset objects are eith cudf or pandas based
+        if left.cpu and not right.cpu:
+            _right = cls(right.to_ddf())
+            _right.to_cpu()
+        elif not left.cpu and right.cpu:
+            _right = cls(right.to_ddf())
+            _right.to_gpu()
+
+        return cls(
+            left.to_ddf()
+            .clear_divisions()
+            .merge(
+                _right.to_ddf().clear_divisions(),
+                **kwargs,
+            )
+        )
+
     def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
@@ -588,18 +640,28 @@ class Dataset:
             If True, the `out_files_per_proc` option will be ignored, but the
             `output_files` option will take precedence. Default is False.
         output_files : dict, list or int
-            Dictionary mapping of output file names to partition indices.
-            If a list of file names is specified, a contiguous range of
-            output partitions will be mapped to each file. The same procedure
-            is used if an integer is specified, but the file names will be
-            written as "part_*". If anything is specified for `output_files`,
-            the `output_files_per_proc` argument will be ignored.  Also, if
-            a dictionary is specified, excluded partition indices will not
-            be written to disk.
+            Dictionary mapping of output file names to partition indices. To
+            map multiple output files to a range of input partitions, the keys
+            should correspond to a tuple of file names. If a list of file names
+            is specified, a contiguous range of output partitions will be mapped
+            to each file. The same procedure is used if an integer is specified,
+            but the file names will be written as "part_*". If anything is
+            specified for `output_files`, the `output_files_per_proc` argument
+            will be interpreted as the desired number of output files to write
+            within the same task at run time (enabling input partitions to be
+            shuffled into multiple output files). Also, if a dictionary is
+            specified, excluded partition indices will not be written to disk.
+
+            Note that passing a file list or integer to `output_files` will
+            preserve the original ordering of the input data as long as
+            `out_files_per_proc` is set to `None` or `1`.
         out_files_per_proc : integer
             Number of files to create (per process) after shuffling the
-            data. This option will be ignored if `output_files`
-            is specified.
+            data. If an integer or list is specified for `output_files`,
+            `out_files_per_proc` will not modify the total output-file count,
+            but will instead be interpreted as the number of files to write
+            out within the same task (i.e. process) at run time. This argument
+            should not be specified if a dictionary is passed to `output_files`.
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
@@ -636,15 +698,40 @@ class Dataset:
         # Convert `output_files` argument to a dict mapping
         if output_files:
 
+            # Use out_files_per_proc to calculate how
+            # many output files should be written within the
+            # same subgraph.  Note that we must a
+            files_per_task = out_files_per_proc or 1
+            required_npartitions = ddf.npartitions
+            if isinstance(output_files, int):
+                required_npartitions = output_files
+                files_per_task = min(files_per_task, output_files)
+            elif isinstance(output_files, list):
+                required_npartitions = len(output_files)
+                files_per_task = min(files_per_task, len(output_files))
+            elif out_files_per_proc:
+                raise ValueError(
+                    "Cannot specify out_files_per_proc if output_files is "
+                    "defined as a dictionary mapping. Please define each "
+                    "key in output_files as a tuple of file names if you "
+                    "wish to have those files written by the same process."
+                )
+
+            # Repartition ddf if necessary
+            if ddf.npartitions < required_npartitions:
+                ddf = ddf.clear_divisions().repartition(npartitions=required_npartitions)
+
+            # Construct an output_files dictionary if necessary
             if isinstance(output_files, int):
                 output_files = [f"part_{i}" + suffix for i in range(output_files)]
             if isinstance(output_files, list):
                 new = {}
                 split = math.ceil(ddf.npartitions / len(output_files))
-                for i, fn in enumerate(output_files):
+                for i in range(0, len(output_files), files_per_task):
+                    fns = output_files[i : i + files_per_task]
                     start = i * split
-                    stop = min(start + split, ddf.npartitions)
-                    new[fn] = np.arange(start, stop)
+                    stop = min(start + split * len(fns), ddf.npartitions)
+                    new[tuple(fns)] = np.arange(start, stop)
                 output_files = new
                 suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
@@ -790,6 +877,10 @@ class Dataset:
     def num_rows(self):
         return self.engine.num_rows
 
+    @property
+    def npartitions(self):
+        return self.to_ddf().npartitions
+
     def validate_dataset(self, **kwargs):
         """Validate for efficient processing.
 
@@ -888,6 +979,22 @@ class Dataset:
             return result.compute()
         else:
             return result
+
+    @classmethod
+    def _bind_dd_method(cls, name):
+        """Bind Dask-Dataframe method to the Dataset class"""
+
+        def meth(self, *args, **kwargs):
+            _meth = getattr(self.to_ddf(), name)
+            return _meth(*args, **kwargs)
+
+        meth.__name__ = name
+        setattr(cls, name, meth)
+
+
+# Bind (simple) Dask-Dataframe Methods
+for op in ["compute", "persist", "head", "tail"]:
+    Dataset._bind_dd_method(op)
 
 
 def _set_dtypes(chunk, dtypes):

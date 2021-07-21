@@ -26,16 +26,19 @@ from distutils.version import LooseVersion
 from io import BytesIO
 from uuid import uuid4
 
-import cudf
+try:
+    import cudf
+    import dask_cudf
+    from cudf.io.parquet import ParquetWriter as pwriter_cudf
+except ImportError:
+    cudf = None
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import fsspec
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
-from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
@@ -71,15 +74,19 @@ class ParquetDatasetEngine(DatasetEngine):
         self._pp_nrows = None
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
-            with self.fs.open(path0, "rb") as f0:
-                if cpu:
+            if cpu:
+                with self.fs.open(path0, "rb") as f0:
                     # Use pyarrow for CPU version.
                     # Pandas does not enable single-row-group access.
                     rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+            else:
+                if cudf.utils.ioutils._is_local_filesystem(self.fs):
+                    # Allow cudf to open the file if this is a local file
+                    # system (can be significantly faster in this case)
+                    rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0))
                 else:
-                    rg_byte_size_0 = _memory_usage(
-                        cudf.io.read_parquet(f0, row_groups=0, row_group=0)
-                    )
+                    with self.fs.open(path0, "rb") as f0:
+                        rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(f0, row_groups=0))
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -874,7 +881,7 @@ class CPUParquetWriter(BaseParquetWriter):
         _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
         for writer, fn in zip(self.data_writers, _fns):
             writer.close()
-            _path = self.fs.sep.join([self.out_dir, fn])
+            _path = self.fs.sep.join([str(self.out_dir), fn])
             self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 

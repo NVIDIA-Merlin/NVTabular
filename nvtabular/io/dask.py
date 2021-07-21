@@ -21,8 +21,8 @@ from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
-from nvtx import annotate
 
+from nvtabular.dispatch import annotate
 from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache, get_worker_cache
 
@@ -171,7 +171,7 @@ def _write_partitioned(
 @annotate("write_subgraph", color="green", domain="nvt_python")
 def _write_subgraph(
     subgraph,
-    fn,
+    fns,
     output_path,
     shuffle,
     fs,
@@ -184,15 +184,16 @@ def _write_subgraph(
     suffix,
 ):
 
+    fns = fns if isinstance(fns, (tuple, list)) else (fns,)
     writer = writer_factory(
         output_format,
         output_path,
-        1,
+        len(fns),
         shuffle,
         bytes_io=(shuffle == Shuffle.PER_WORKER),
         num_threads=num_threads,
         cpu=cpu,
-        fns=[fn + suffix],
+        fns=[fn + suffix for fn in fns],
     )
     writer.set_col_names(labels=label_names, cats=cat_names, conts=cont_names)
 
@@ -305,14 +306,14 @@ def _ddf_to_dataset(
         # Use specified mapping of data to output files
         cached_writers = False
         full_graph = ddf.dask
-        for fn, parts in file_partition_map.items():
+        for fns, parts in file_partition_map.items():
             # Isolate subgraph for this output file
             subgraph = DaskSubgraph(full_graph, ddf._name, parts)
-            task_list.append((write_name, fn))
+            task_list.append((write_name, str(fns)))
             dsk[task_list[-1]] = (
                 _write_subgraph,
                 subgraph,
-                fn,
+                fns,
                 output_path,
                 shuffle,
                 fs,

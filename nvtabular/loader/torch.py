@@ -56,8 +56,14 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         enable/disable shuffling of dataset
     parts_per_chunk : int
         number of partitions from the iterator, an NVTabular Dataset, to concatenate into a "chunk"
-    devices : [int]
-        list representing all available GPU IDs
+    device : int
+        device id of selected GPU
+    sparse_list : [str]
+        list with column names of columns that should be represented as sparse tensors
+    sparse_max : {str: int}
+        dictionary of key: column_name + value: integer representing max sequence length for column
+    sparse_dense : bool
+        bool value to activate transforming sparse tensors to dense
     """
 
     def __init__(
@@ -74,6 +80,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_names=None,
+        sparse_max=None,
+        sparse_as_dense=False,
     ):
         DataLoader.__init__(
             self,
@@ -89,21 +98,39 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             global_size=global_size,
             global_rank=global_rank,
             drop_last=drop_last,
+            sparse_names=sparse_names,
+            sparse_max=sparse_max,
+            sparse_as_dense=sparse_as_dense,
         )
 
     def __iter__(self):
         return DataLoader.__iter__(self)
 
     def _get_device_ctx(self, dev):
+        if dev == "cpu":
+            return torch.device("cpu")
         return torch.cuda.device("cuda:{}".format(dev))
 
+    def _pack(self, gdf):
+        if self.device == "cpu":
+            return gdf
+        return gdf.to_dlpack()
+
+    def _unpack(self, dlpack):
+        if self.device == "cpu":
+            return torch.Tensor(dlpack.values).squeeze(1)
+        return from_dlpack(dlpack)
+
     def _to_tensor(self, gdf, dtype=None):
-        dl_pack = gdf.to_dlpack()
-        tensor = from_dlpack(dl_pack)
+        dl_pack = self._pack(gdf)
+        tensor = self._unpack(dl_pack)
         return tensor.type(dtype)
 
     def _split_fn(self, tensor, idx, axis=0):
         return torch.split(tensor, idx, dim=axis)
+
+    def _tensor_split(self, tensor, idx, axis=0):
+        return torch.tensor_split(tensor, idx, axis=axis)
 
     @property
     def _LONG_DTYPE(self):
@@ -113,10 +140,43 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     def _FLOAT32_DTYPE(self):
         return torch.float32
 
-    def _handle_tensors(self, cats, conts, labels):
-        if isinstance(conts, torch.Tensor):
-            conts = conts.clone()
-        return cats, conts, labels
+    def _pull_values_offsets(self, values_offset):
+        # pull_values_offsets, return values offsets diff_offsets
+        if isinstance(values_offset, tuple):
+            values = values_offset[0].flatten()
+            offsets = values_offset[1].flatten()
+        else:
+            values = values_offset.flatten()
+            offsets = torch.arange(values.size()[0], device=self.device)
+        num_rows = len(offsets)
+        offsets = torch.cat([offsets, torch.cuda.LongTensor([len(values)])])
+        diff_offsets = offsets[1:] - offsets[:-1]
+        return values, offsets, diff_offsets, num_rows
+
+    def _get_max_seq_len(self, diff_offsets):
+        return int(diff_offsets.max())
+
+    # Building the indices to reconstruct the sparse tensors
+
+    def _get_indices(self, offsets, diff_offsets):
+        row_ids = torch.arange(len(offsets) - 1, device=self.device)
+        row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
+        row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
+        col_ids = torch.arange(len(row_offset_repeated), device=self.device) - row_offset_repeated
+        indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
+        return indices
+
+    def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
+        sparse_tensor = torch.sparse_coo_tensor(
+            indices.T, values, torch.Size([num_rows, seq_limit]), device=self.device
+        )
+        if self.sparse_as_dense:
+            sparse_tensor = sparse_tensor.to_dense()
+        return sparse_tensor
+
+    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        indices = self._get_indices(offsets, diff_offsets)
+        return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 
 class DLDataLoader(torch.utils.data.DataLoader):

@@ -15,6 +15,7 @@
 #
 from __future__ import annotations
 
+from enum import Flag, auto
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from nvtabular.dispatch import DataFrameType
@@ -24,6 +25,19 @@ if TYPE_CHECKING:
     from nvtabular import ColumnGroup
 
 ColumnNames = List[Union[str, List[str]]]
+
+
+class Supports(Flag):
+    """ Indicates what type of data representation this operator supports for transformations """
+
+    # cudf dataframe
+    CPU_DATAFRAME = auto()
+    # pandas dataframe
+    GPU_DATAFRAME = auto()
+    # dict of column name to numpy array
+    CPU_DICT_ARRAY = auto()
+    # dict of column name to cupy array
+    GPU_DICT_ARRAY = auto()
 
 
 class Operator:
@@ -79,3 +93,17 @@ class Operator:
         import nvtabular
 
         return nvtabular.ColumnGroup(other) >> self
+
+    @property
+    def label(self) -> str:
+        return self.__class__.__name__
+
+    @property
+    def supports(self) -> Supports:
+        """ Returns what kind of data representation this operator supports """
+        return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
+
+    def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
+        """Configures this operator for use in inference. May return a different operator to use
+        instead of the one configured for use during training"""
+        return None

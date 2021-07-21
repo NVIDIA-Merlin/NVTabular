@@ -190,6 +190,32 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     assert_eq(df, ddf_check, check_index=False)
 
 
+@pytest.mark.parametrize("cpu", [None, True])
+def test_dask_datframe_methods(tmpdir, cpu):
+    # Input DataFrame objects
+    df1 = cudf.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
+    df2 = cudf.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
+
+    # Initialize and merge Dataset objects
+    ds1 = nvtabular.io.Dataset(df1, npartitions=3, cpu=cpu)
+    ds2 = nvtabular.io.Dataset(df2, npartitions=2, cpu=not cpu)
+    ds3 = nvtabular.io.Dataset.merge(ds1, ds2, on="id", how="inner")
+
+    # Check repartitioning
+    ds3 = ds3.repartition(npartitions=4)
+    assert ds3.npartitions == 4
+
+    # Check that head, tail, and persist are recognized
+    ds1.head()
+    ds1.tail()
+    ds1.persist()
+
+    # Check merge result
+    result = ds3.compute().sort_values(["id", "x", "y"])
+    expect = cudf.DataFrame.merge(df1, df2, on="id", how="inner").sort_values(["id", "x", "y"])
+    assert_eq(result, expect, check_index=False)
+
+
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], None])
@@ -324,7 +350,7 @@ def test_dataset_partition_shuffle(tmpdir):
 
 @pytest.mark.parametrize("engine", ["csv"])
 @pytest.mark.parametrize("num_io_threads", [0, 2])
-@pytest.mark.parametrize("nfiles", [0, 1, 2])
+@pytest.mark.parametrize("nfiles", [0, 1, 5])  # Use 5 to test repartition in to_parquet
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, None])
 @pytest.mark.parametrize("file_map", [True, False])
 def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, shuffle, file_map):
@@ -361,17 +387,59 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     )
 
 
+@pytest.mark.parametrize("output_files", [1, 6, None])
+@pytest.mark.parametrize("out_files_per_proc", [None, 4])
+@pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_WORKER, False])
+def test_to_parquet_output_files(tmpdir, datasets, output_files, out_files_per_proc, shuffle):
+    # Simple test to check that the `output_files` and `out_files_per_proc`
+    # arguments for `to_parquet` are interacting as expected.
+    path = str(datasets["parquet"])
+    outdir = str(tmpdir)
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    ddf0 = dataset.to_ddf(columns=mycols_pq)
+
+    if output_files is None:
+        # Test expected behavior when a dictionary
+        # is specified for output_files
+        output_files = {"file.parquet": range(ddf0.npartitions)}
+
+    if isinstance(output_files, dict) and out_files_per_proc:
+        # to_parquet should raise an error if we try to
+        # use `out_files_per_proc` when a dictionary
+        # is passed in for `output_files`
+        with pytest.raises(ValueError):
+            dataset.to_parquet(
+                outdir,
+                shuffle=shuffle,
+                output_files=output_files,
+                out_files_per_proc=out_files_per_proc,
+            )
+    else:
+        # Test normal/correct to_parquet usage
+        dataset.to_parquet(
+            outdir,
+            shuffle=shuffle,
+            output_files=output_files,
+            out_files_per_proc=out_files_per_proc,
+        )
+
+        # Check that the expected number of files has been written
+        written_files = glob.glob(os.path.join(outdir, "*.parquet"))
+        assert (
+            len(written_files) == output_files
+            if isinstance(output_files, int)
+            else len(output_files)
+        )
+
+        # Check that we didn't loose any data
+        ddf1 = dd.read_parquet(outdir, columns=mycols_pq)
+        assert len(ddf0) == len(ddf1)
+
+
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("out_files_per_proc", [None, 2])
 def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
-    # the cudf 0.17 dev container returns a '0+untagged.1.ga6296e3' version for cudf
-    # (which is tough to parse correctly with LooseVersion et al). This also fails
-    # to run this test frequently, whereas it works with later versions of cudf.
-    # skip if we are running this specific version of cudf (and lets remove this
-    # check entirely after we've upgraded the CI container)
-    if cudf.__version__.startswith("0+untagged"):
-        pytest.skip("parquet lists support is flakey here without cudf0.18")
 
     df = cudf.DataFrame(
         {
@@ -400,7 +468,8 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
     df_out = cudf.read_parquet(out_paths)
     df_out = df_out.sort_values(by="Post", ascending=True)
-    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+    # user C is encoded as 2 because of frequency
+    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [3, 2], [2]]
 
 
 @pytest.mark.parametrize("part_size", [None, "1KB"])
