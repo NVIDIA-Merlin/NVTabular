@@ -43,4 +43,4 @@ jobs:
         python setup.py develop
     - name: Run unittests
       run: |
-        python -m pytest -svv tests/unit/test_cpu_workflow.py
+        python -m pytest tests/unit/test_cpu_workflow.py tests/unit/test_column_group.py tests/unit/test_ops.py
