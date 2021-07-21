@@ -35,7 +35,7 @@ from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.utils import _ensure_optimize_dataframe_graph
+from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -79,6 +79,16 @@ class Workflow:
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
+
+        # Warn user if there is an unused global
+        # Dask client available
+        if global_dask_client(self.client):
+            warnings.warn(
+                "A global dask.distributed client has been detected, but the "
+                "single-threaded scheduler will be used for execution. Please "
+                "use the `client` argument to initialize a `Workflow` object "
+                "with distributed-execution enabled."
+            )
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
