@@ -29,7 +29,7 @@ try:
     import cupy as cp
     import dask_cudf
     from cudf.core.column import as_column, build_column
-    from cudf.utils.dtypes import is_list_dtype
+    from cudf.utils.dtypes import is_list_dtype, is_string_dtype
 
     HAS_GPU = True
 except ImportError:
@@ -201,6 +201,13 @@ def _is_list_dtype(ser):
             return False
         return pd.api.types.is_list_like(ser.values[0])
     return is_list_dtype(ser)
+
+
+def _is_string_dtype(obj):
+    if not HAS_GPU:
+        return pd.api.types.is_string_dtype(obj)
+    else:
+        return is_string_dtype(obj)
 
 
 def _flatten_list_column(s):
