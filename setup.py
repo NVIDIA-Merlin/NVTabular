@@ -28,6 +28,7 @@ import versioneer
 
 class build_proto(_build_py):
     def run(self):
+        print("running build_proto")
         protoc = None
         if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
             protoc = os.environ["PROTOC"]
@@ -50,6 +51,8 @@ class build_proto(_build_py):
                 print("Generating", output, "from", source)
                 cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
                 subprocess.check_call(cmd, env=env)
+            else:
+                print("not generating", output)
 
         _build_py.run(self)
 
