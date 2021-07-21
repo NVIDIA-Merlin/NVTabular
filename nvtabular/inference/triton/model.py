@@ -30,7 +30,6 @@ import os
 from typing import List
 
 import numpy as np
-from cudf.utils.dtypes import is_list_dtype
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
@@ -41,7 +40,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.dispatch import _concat_columns
+from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
 from nvtabular.ops.operator import Supports
@@ -82,15 +81,15 @@ class TritonPythonModel:
         self.input_dtypes = {
             col: dtype
             for col, dtype in self.workflow.input_dtypes.items()
-            if not is_list_dtype(dtype)
+            if not _is_list_dtype(dtype)
         }
         self.input_multihots = {
-            col: dtype for col, dtype in self.workflow.input_dtypes.items() if is_list_dtype(dtype)
+            col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
         }
 
         self.output_dtypes = dict()
         for name, dtype in self.workflow.output_dtypes.items():
-            if not is_list_dtype(dtype):
+            if not _is_list_dtype(dtype):
                 self._set_output_dtype(name)
             else:
                 # pytorch + hugectr don't support multihot output features at inference
