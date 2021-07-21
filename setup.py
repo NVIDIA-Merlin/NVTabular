@@ -16,7 +16,6 @@
 import os
 import subprocess
 import sys
-from distutils.command.build_py import build_py as _build_py
 from distutils.spawn import find_executable
 
 from pybind11.setup_helpers import Pybind11Extension
@@ -26,9 +25,9 @@ from setuptools import find_packages, setup
 import versioneer
 
 
-class build_proto(_build_py):
+class build_pybind_and_proto(build_pybind11):
     def run(self):
-        print("running build_proto")
+        build_pybind11.run(self)
         protoc = None
         if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
             protoc = os.environ["PROTOC"]
@@ -52,9 +51,7 @@ class build_proto(_build_py):
                 cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
                 subprocess.check_call(cmd, env=env)
             else:
-                print("not generating", output)
-
-        _build_py.run(self)
+                print("not regenerating", output, " - file exists and proto hasn't been updated")
 
 
 ext_modules = [
@@ -73,8 +70,7 @@ ext_modules = [
 
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = build_pybind11
-cmdclass["build_py"] = build_proto
+cmdclass["build_ext"] = build_pybind_and_proto
 
 
 def parse_requirements(filename):
@@ -105,5 +101,5 @@ setup(
     cmdclass=cmdclass,
     ext_modules=ext_modules,
     zip_safe=False,
-    install_requires=install_reqs,
+    #    install_requires=install_reqs,
 )
