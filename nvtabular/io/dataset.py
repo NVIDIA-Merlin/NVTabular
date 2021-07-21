@@ -648,22 +648,21 @@ class Dataset:
             the output file names to partition indices, or a list of desired
             output-file names.
 
-            NOTES:
-            (1) If a list of file names is specified, a contiguous range of output
-                partitions will be mapped to each file. The same procedure is used
-                if an integer is specified, but the file names will be written as
-                "part_*".
-            (2) When `output_files` is used, the `output_files_per_proc` argument
-                will be interpreted as the desired number of output files to write
-                within the same task at run time (enabling input partitions to be
-                shuffled into multiple output files).
-            (3) Passing a list or integer to `output_files` will preserve the
-                original ordering of the input data as long as `out_files_per_proc`
-                is set to `1` (or `None`), and `shuffle==None`.
-            (4) If a dictionary is specified, excluded partition indices will
-                not be written to disk.
-            (5) To map multiple output files to a range of input partitions,
-                dictionary-input keys should correspond to a tuple of file names.
+            - If a list of file names is specified, a contiguous range of output
+              partitions will be mapped to each file. The same procedure is used
+              if an integer is specified, but the file names will be written as
+              "part_*".
+            - When `output_files` is used, the `output_files_per_proc` argument
+              will be interpreted as the desired number of output files to write
+              within the same task at run time (enabling input partitions to be
+              shuffled into multiple output files).
+            - Passing a list or integer to `output_files` will preserve the
+              original ordering of the input data as long as `out_files_per_proc`
+              is set to `1` (or `None`), and `shuffle==None`.
+            - If a dictionary is specified, excluded partition indices will
+              not be written to disk.
+            - To map multiple output files to a range of input partitions,
+              dictionary-input keys should correspond to a tuple of file names.
         out_files_per_proc : integer
             Number of output files that each process will use to shuffle an input
             partition. Deafult is 1. If `method="worker"`, the total number of output
