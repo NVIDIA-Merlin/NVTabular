@@ -30,7 +30,7 @@ jobs:
         python -m pip install nvidia-pyindex
         python -m pip install -r requirements.txt pybind11
         python -m pip install -r requirements-dev.txt
-        python -m pip install tritonclient
+        python -m pip install tritonclient[all] protobuf
     - name: Lint with flake8
       run: |
         flake8 .
