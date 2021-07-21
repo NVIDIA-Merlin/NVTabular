@@ -18,6 +18,8 @@ import json
 import os
 from shutil import copyfile
 
+import pandas as pd
+
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
@@ -350,6 +352,8 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
     inputs = []
     for i, (name, col) in enumerate(columns):
         if _is_list_dtype(col):
+            if isinstance(col, pd.Series):
+                raise ValueError("this function doesn't support CPU list values yet")
             inputs.append(
                 _convert_column_to_triton_input(
                     col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
@@ -361,7 +365,8 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
                 )
             )
         else:
-            inputs.append(_convert_column_to_triton_input(col.values_host, name, input_class))
+            values = col.values if isinstance(col, pd.Series) else col.values_host
+            inputs.append(_convert_column_to_triton_input(values, name, input_class))
     return inputs
 
 

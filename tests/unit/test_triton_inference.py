@@ -11,7 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular.dispatch import HAS_GPU, _make_df
+from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.ops.operator import Supports
 from tests.conftest import assert_eq
 
@@ -141,7 +141,7 @@ def test_concatenate_dataframe(tmpdir):
         }
     )
     # this bug only happened with a dataframe representation: force this by using a lambda
-    cats = ["cat"] >> ops.LambdaOp(lambda col: col.hash_values() % 1000)
+    cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
     conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
     workflow = nvt.Workflow(cats + conts)
     _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_concatenate_dataframe")

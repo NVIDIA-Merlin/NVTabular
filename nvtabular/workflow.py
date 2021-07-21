@@ -258,8 +258,13 @@ class Workflow:
         lib = cudf if cudf else pd
         versions = meta["versions"]
         check_version(versions["nvtabular"], nvt_version, "nvtabular")
-        check_version(versions[lib.__name__], lib.__version__, lib.__name__)
         check_version(versions["python"], sys.version, "python")
+
+        if lib.__name__ in versions:
+            check_version(versions[lib.__name__], lib.__version__, lib.__name__)
+        else:
+            expected = "GPU" if "cudf" in versions else "CPU"
+            warnings.warn(f"Loading workflow generated on {expected}")
 
         # load up the workflow object di
         workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
