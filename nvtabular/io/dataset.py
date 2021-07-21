@@ -647,22 +647,6 @@ class Dataset:
             control, this argument may also be used to pass a dictionary mapping
             the output file names to partition indices, or a list of desired
             output-file names.
-
-            - If a list of file names is specified, a contiguous range of output
-              partitions will be mapped to each file. The same procedure is used
-              if an integer is specified, but the file names will be written as
-              "part_*".
-            - When `output_files` is used, the `output_files_per_proc` argument
-              will be interpreted as the desired number of output files to write
-              within the same task at run time (enabling input partitions to be
-              shuffled into multiple output files).
-            - Passing a list or integer to `output_files` will preserve the
-              original ordering of the input data as long as `out_files_per_proc`
-              is set to `1` (or `None`), and `shuffle==None`.
-            - If a dictionary is specified, excluded partition indices will
-              not be written to disk.
-            - To map multiple output files to a range of input partitions,
-              dictionary-input keys should correspond to a tuple of file names.
         out_files_per_proc : integer
             Number of output files that each process will use to shuffle an input
             partition. Deafult is 1. If `method="worker"`, the total number of output
@@ -736,6 +720,30 @@ class Dataset:
         # Deal with `method=="subgraph"`.
         # Convert `output_files` argument to a dict mapping
         if output_files:
+
+            #   NOTES on `output_files`:
+            #
+            # - If a list of file names is specified, a contiguous range of
+            #   output partitions will be mapped to each file. The same
+            #   procedure is used if an integer is specified, but the file
+            #   names will be written as "part_*".
+            #
+            # - When `output_files` is used, the `output_files_per_proc`
+            #   argument will be interpreted as the desired number of output
+            #   files to write within the same task at run time (enabling
+            #   input partitions to be shuffled into multiple output files).
+            #
+            # - Passing a list or integer to `output_files` will preserve
+            #   the original ordering of the input data as long as
+            #   `out_files_per_proc` is set to `1` (or `None`), and
+            #   `shuffle==None`.
+            #
+            # - If a dictionary is specified, excluded partition indices
+            #   will not be written to disk.
+            #
+            # - To map multiple output files to a range of input partitions,
+            #   dictionary-input keys should correspond to a tuple of file
+            #   names.
 
             # Use out_files_per_proc to calculate how
             # many output files should be written within the
