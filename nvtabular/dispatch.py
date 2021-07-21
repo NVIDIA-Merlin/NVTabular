@@ -105,6 +105,10 @@ def _is_cpu_object(x):
     return isinstance(x, (pd.DataFrame, pd.Series))
 
 
+def is_series_or_dataframe_object(maybe_series_or_df):
+    return _is_series_object(maybe_series_or_df) or _is_dataframe_object(maybe_series_or_df)
+
+
 def _hex_to_int(s, dtype=None):
     def _pd_convert_hex(x):
         if pd.isnull(x):
@@ -320,9 +324,26 @@ def _make_df(_like_df=None, device=None):
         return pd.DataFrame(_like_df)
     elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, dict) and len(_like_df) > 0:
+        is_pandas = all(isinstance(v, pd.Series) for v in _like_df.values())
+
+        return pd.DataFrame(_like_df) if is_pandas else cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame()
     return cudf.DataFrame()
+
+
+def _add_to_series(series, to_add, prepend=True):
+    if isinstance(series, pd.Series):
+        series_to_add = pd.Series(to_add)
+    elif isinstance(series, cudf.Series):
+        series_to_add = cudf.Series(to_add)
+    else:
+        raise ValueError("Unrecognized series, please provide either a pandas a cudf series")
+
+    series_to_concat = [series_to_add, series] if prepend else [series, series_to_add]
+
+    return _concat(series_to_concat)
 
 
 def _detect_format(data):
