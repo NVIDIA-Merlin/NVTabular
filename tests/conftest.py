@@ -24,6 +24,7 @@ import subprocess
 import time
 
 import dask
+import numpy as np
 import pandas as pd
 
 try:
@@ -40,7 +41,15 @@ try:
 except ImportError:
     cudf = None
 
-import numpy as np
+    def assert_eq(a, b, *args, **kwargs):
+        if isinstance(a, pd.DataFrame):
+            return pd.testing.assert_frame_equal(a, b, *args, **kwargs)
+        elif isinstance(a, pd.Series):
+            return pd.testing.assert_series_equal(a, b, *args, **kwargs)
+        else:
+            return np.testing.assert_allclose(a, b)
+
+
 import psutil
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
