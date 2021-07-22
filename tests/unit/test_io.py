@@ -35,7 +35,7 @@ import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ops
 from nvtabular.io.parquet import GPUParquetWriter
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
@@ -230,8 +230,6 @@ def test_dask_datframe_methods(tmpdir, cpu):
 def test_hugectr(
     tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
 ):
-    client = client if use_client else None
-
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -245,12 +243,23 @@ def test_hugectr(
 
     conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
-
-    workflow = nvt.Workflow(conts + cats + label_names)
+    # We have a global dask client defined in this context, so NVTabular
+    # should warn us if we initialze a `Workflow` with `client=None`
+    workflow = run_in_context(
+        nvt.Workflow,
+        conts + cats + label_names,
+        context=None if use_client else pytest.warns(UserWarning),
+        client=client if use_client else None,
+    )
     transformed = workflow.fit_transform(dataset)
 
+    # We have a global dask client defined in this context,
+    # so NVTabular should warn us if our `Dataset` was
+    # initialized with `client=None`
     if output_format == "hugectr":
-        transformed.to_hugectr(
+        run_in_context(
+            transformed.to_hugectr,
+            context=None if use_client else pytest.warns(UserWarning),
             cats=cat_names,
             conts=cont_names,
             labels=label_names,
@@ -259,7 +268,9 @@ def test_hugectr(
             num_threads=num_io_threads,
         )
     else:
-        transformed.to_parquet(
+        run_in_context(
+            transformed.to_parquet,
+            context=None if use_client else pytest.warns(UserWarning),
             output_path=outdir,
             out_files_per_proc=nfiles,
             num_threads=num_io_threads,
@@ -281,7 +292,11 @@ def test_hugectr(
     assert "conts" in data
     assert "labels" in data
     assert "file_stats" in data
-    assert len(data["file_stats"]) == nfiles if not client else nfiles * len(client.cluster.workers)
+    assert (
+        len(data["file_stats"]) == nfiles
+        if not use_client
+        else nfiles * len(client.cluster.workers)
+    )
     for cdata in data["cats"] + data["conts"] + data["labels"]:
         col_summary[cdata["index"]] = cdata["col_name"]
 
@@ -446,13 +461,6 @@ def test_to_parquet_output_files(tmpdir, datasets, output_files, out_files_per_p
 @pytest.mark.parametrize("shuffle", [nvt.io.Shuffle.PER_PARTITION, None])
 @pytest.mark.parametrize("out_files_per_proc", [None, 2])
 def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
-    # the cudf 0.17 dev container returns a '0+untagged.1.ga6296e3' version for cudf
-    # (which is tough to parse correctly with LooseVersion et al). This also fails
-    # to run this test frequently, whereas it works with later versions of cudf.
-    # skip if we are running this specific version of cudf (and lets remove this
-    # check entirely after we've upgraded the CI container)
-    if cudf.__version__.startswith("0+untagged"):
-        pytest.skip("parquet lists support is flakey here without cudf0.18")
 
     df = cudf.DataFrame(
         {
@@ -481,7 +489,8 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     out_paths = glob.glob(os.path.join(output_dir, "*.parquet"))
     df_out = cudf.read_parquet(out_paths)
     df_out = df_out.sort_values(by="Post", ascending=True)
-    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [2, 3], [3]]
+    # user C is encoded as 2 because of frequency
+    assert df_out["Authors"].to_arrow().to_pylist() == [[1], [1, 4], [3, 2], [2]]
 
 
 @pytest.mark.parametrize("part_size", [None, "1KB"])

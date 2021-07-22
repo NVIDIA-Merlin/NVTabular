@@ -23,6 +23,7 @@ import zipfile
 
 import dask
 from dask.dataframe.optimize import optimize as dd_optimize
+from dask.distributed import get_client
 from tqdm import tqdm
 
 try:
@@ -156,3 +157,14 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
     # Return optimized ddf
     ddf.dask = dsk
     return ddf
+
+
+def global_dask_client(client):
+    # Check for a global Dask client
+    # (if `client` is not already set)
+    if not client:
+        try:
+            return get_client()
+        except ValueError:
+            return None
+    return None
