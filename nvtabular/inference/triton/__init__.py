@@ -16,7 +16,6 @@
 import copy
 import json
 import os
-import subprocess
 import tempfile
 from shutil import copyfile
 
