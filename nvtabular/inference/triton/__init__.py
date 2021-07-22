@@ -74,8 +74,8 @@ def export_tensorflow_ensemble(
     # in dtypes between tf inputs and nvt outputs)
     for column in tf_config.input:
         tf_dtype = _triton_datatype_to_dtype(column.data_type)
-        nvt_dtype = workflow.output_dtypes[column.name]
-        if nvt_dtype != tf_dtype:
+        nvt_dtype = workflow.output_dtypes.get(column.name)
+        if nvt_dtype and nvt_dtype != tf_dtype:
             warnings.warn(
                 f"TF model expects {tf_dtype} for column {column.name}, but workflow "
                 f" is producing type {nvt_dtype}. Overriding dtype in NVTabular workflow."
