@@ -845,7 +845,7 @@ class Dataset:
         num_threads=0,
         dtypes=None,
     ):
-        """Writes out to a parquet dataset
+        """Writes out to a hugectr dataset
 
         Parameters
         ----------
