@@ -16,7 +16,7 @@
 import copy
 import json
 import os
-from shutil import copyfile
+from shutil import copyfile, copytree
 
 import pandas as pd
 
@@ -338,11 +338,7 @@ def generate_hugectr_model(
     os.makedirs(out_path_version, exist_ok=True)
 
     config = _generate_hugectr_config(name, out_path, hugectr_params, max_batch_size=max_batch_size)
-    for fname in os.listdir(trained_model_path):
-        copyfile(
-            os.path.join(trained_model_path, fname),
-            os.path.join(out_path_version, fname),
-        )
+    copytree(trained_model_path, out_path_version, dirs_exist_ok=True)
 
     return config
 
