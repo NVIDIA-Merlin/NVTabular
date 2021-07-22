@@ -56,7 +56,6 @@ struct ColumnMapping {
       }
     } else {
       // TODO: array dispatch code
-      std::cout << "dtype " << dtype.kind() << column_name << std::endl;
       switch (dtype.kind()) {
         case 'f':
           switch (dtype.itemsize()) {

@@ -24,13 +24,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import functools
 import json
 import logging
 import os
 from typing import List
 
 import numpy as np
-from cudf.utils.dtypes import is_list_dtype
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
@@ -41,7 +41,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.dispatch import _concat_columns
+from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
 from nvtabular.ops.operator import Supports
@@ -63,6 +63,18 @@ class TritonPythonModel:
             if inference_op:
                 column_group.op = inference_op
 
+            supported = column_group.op.supports
+
+            # if we're running on the CPU only, mask off support for GPU data formats
+            if self.kind == "CPU":
+                supported = functools.reduce(
+                    lambda a, b: a | b,
+                    (v for v in list(Supports) if v & supported and "CPU" in str(v)),
+                )
+            # the 'supports' property is readonly, and we can't always attach a new property
+            # to some of the operators (C++ categorify etc). set on the column_group instead
+            column_group.inference_supports = supported
+
         for parent in column_group.parents:
             if parent not in visited:
                 visited.add(parent)
@@ -73,6 +85,7 @@ class TritonPythonModel:
             args["model_repository"], str(args["model_version"]), "workflow"
         )
         self.workflow = nvtabular.Workflow.load(workflow_path)
+        self.kind = args["model_instance_kind"]
         self.model_config = json.loads(args["model_config"])
         self.output_model = self.model_config["parameters"]["output_model"]["string_value"]
 
@@ -82,15 +95,15 @@ class TritonPythonModel:
         self.input_dtypes = {
             col: dtype
             for col, dtype in self.workflow.input_dtypes.items()
-            if not is_list_dtype(dtype)
+            if not _is_list_dtype(dtype)
         }
         self.input_multihots = {
-            col: dtype for col, dtype in self.workflow.input_dtypes.items() if is_list_dtype(dtype)
+            col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
         }
 
         self.output_dtypes = dict()
         for name, dtype in self.workflow.output_dtypes.items():
-            if not is_list_dtype(dtype):
+            if not _is_list_dtype(dtype):
                 self._set_output_dtype(name)
             else:
                 # pytorch + hugectr don't support multihot output features at inference
@@ -230,7 +243,7 @@ def _transform_tensors(input_tensors, column_group):
                     # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
                     # we need to convert to a common format here first before concatentating.
                     op = column_group.op
-                    target_kind = op.supports if op else Supports.CPU_DICT_ARRAY
+                    target_kind = column_group.inference_supports if op else Supports.CPU_DICT_ARRAY
                     # note : the 2nd convert_format call needs to be stricter in what the kind is
                     # (exact match rather than a bitmask of values)
                     tensors, kind = convert_format(tensors, kind, target_kind)
@@ -245,8 +258,8 @@ def _transform_tensors(input_tensors, column_group):
     if column_group.op:
         try:
             # if the op doesn't support the current kind - we need to convert
-            if not column_group.op.supports & kind:
-                tensors, kind = convert_format(tensors, kind, column_group.op.supports)
+            if not column_group.inference_supports & kind:
+                tensors, kind = convert_format(tensors, kind, column_group.inference_supports)
 
             tensors = column_group.op.transform(column_group.columns, tensors)
 
