@@ -16,11 +16,15 @@
 
 import contextlib
 import threading
-from io import BytesIO
 
-import cudf
-import fsspec
 import pandas as pd
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
+import fsspec
+import pyarrow as pa
 from dask.distributed import get_worker
 
 # Use global variable as the default
@@ -66,40 +70,49 @@ def fetch_table_data(
     DataFrame to a cache if the element is missing).  Note that `cats_only=True`
     results in optimized logic for the `Categorify` transformation.
     """
-    reader = reader or cudf.io.read_parquet
+    _lib = cudf if cudf else pd
+    reader = reader or _lib.read_parquet
     table = table_cache.get(path, None)
-    if table is not None and not isinstance(table, (cudf.DataFrame, pd.DataFrame)):
-        if not cats_only:
-            return reader(table)
-        df = reader(table, columns=columns)
-        df.index.name = "labels"
-        df.reset_index(drop=False, inplace=True)
-        return df
-
     cache_df = cache == "device"
     if table is None:
+        use_kwargs = {"columns": columns} if columns is not None else {}
+        use_kwargs.update(kwargs)
         if cache in ("device", "disk"):
-            table = reader(path, columns=columns, **kwargs)
+            table = reader(path, **use_kwargs)
         elif cache == "host":
-            if reader == cudf.io.read_parquet:  # pylint: disable=comparison-with-callable
+            if reader == _lib.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
-                # Use BytesIO to cache data on host.
-
-                # Since the file is already in parquet format,
-                # we can just move the same bytes to host memory
-                with fsspec.open(path, "rb") as f:
-                    table_cache[path] = BytesIO(f.read())
-                table = reader(table_cache[path], columns=columns, **kwargs)
+                # Cache as an Arrow table.
+                with contextlib.closing(fsspec.open(path, "rb")) as f:
+                    table = reader(f, **use_kwargs)
+                if cudf:
+                    table_cache[path] = table.to_arrow()
+                else:
+                    table_cache[path] = pa.Table.from_pandas(table)
+                if columns is not None:
+                    table = table[columns]
             else:
                 # Using pandas-backed data with "host" caching.
                 # Just read in data and cache as a pandas DataFrame.
-                table = reader(path, columns=columns, **kwargs)
+                table = reader(path, **use_kwargs)
                 cache_df = True
         if cats_only:
             table.index.name = "labels"
             table.reset_index(drop=False, inplace=True)
         if cache_df:
             table_cache[path] = table.copy(deep=False)
+    elif isinstance(table, pa.Table):
+        if cudf:
+            df = cudf.DataFrame.from_arrow(table)
+        else:
+            df = table.to_pandas()
+        if not cats_only:
+            return df
+        if columns is not None:
+            df = df[columns]
+        df.index.name = "labels"
+        df.reset_index(drop=False, inplace=True)
+        return df
     return table
 
 

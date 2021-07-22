@@ -22,14 +22,20 @@ import warnings
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
-import cudf
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import dask
+import pandas as pd
 from dask.core import flatten
 
 from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
+from nvtabular.utils import _ensure_optimize_dataframe_graph
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -93,7 +99,7 @@ class Workflow:
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
-            _transform_ddf(ddf, self.column_group),
+            _transform_ddf(ddf, self.column_group, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
@@ -128,7 +134,9 @@ class Workflow:
             for column_group in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
-                transformed_ddf = _transform_ddf(ddf, column_group.parents)
+                transformed_ddf = _ensure_optimize_dataframe_graph(
+                    ddf=_transform_ddf(ddf, column_group.parents)
+                )
 
                 op = column_group.op
                 try:
@@ -196,12 +204,13 @@ class Workflow:
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
+        lib = cudf if cudf else pd
         with open(os.path.join(path, "metadata.json"), "w") as o:
             json.dump(
                 {
                     "versions": {
                         "nvtabular": nvt_version,
-                        "cudf": cudf.__version__,
+                        lib.__name__: lib.__version__,
                         "python": sys.version,
                     },
                     "generated_timestamp": int(time.time()),
@@ -246,10 +255,16 @@ class Workflow:
 
         # make sure we don't have any major/minor version conflicts between the stored worklflow
         # and the current environment
+        lib = cudf if cudf else pd
         versions = meta["versions"]
         check_version(versions["nvtabular"], nvt_version, "nvtabular")
-        check_version(versions["cudf"], cudf.__version__, "cudf")
         check_version(versions["python"], sys.version, "python")
+
+        if lib.__name__ in versions:
+            check_version(versions[lib.__name__], lib.__version__, lib.__name__)
+        else:
+            expected = "GPU" if "cudf" in versions else "CPU"
+            warnings.warn(f"Loading workflow generated on {expected}")
 
         # load up the workflow object di
         workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
@@ -282,7 +297,7 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, column_groups):
+def _transform_ddf(ddf, column_groups, meta=None):
     if isinstance(column_groups, ColumnGroup):
         column_groups = [column_groups]
 
@@ -295,13 +310,24 @@ def _transform_ddf(ddf, column_groups):
     if all((c.op is None and not c.parents) for c in column_groups):
         return ddf[_get_unique(columns)]
 
-    # TODO: constructing meta like this loses dtype information on the ddf
-    # sets it all to 'float64'. We should propogate dtype information along
-    # with column names in the columngroup graph
+    if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):
+        dtypes = meta
+        meta = type(ddf._meta)({k: [] for k in columns})
+        for column, dtype in dtypes.items():
+            meta[column] = meta[column].astype(dtype)
+
+    elif not meta:
+        # TODO: constructing meta like this loses dtype information on the ddf
+        # and sets it all to 'float64'. We should propogate dtype information along
+        # with column names in the columngroup graph. This currently only
+        # happesn during intermediate 'fit' transforms, so as long as statoperators
+        # don't require dtype information on the DDF this doesn't matter all that much
+        meta = type(ddf._meta)({k: [] for k in columns})
+
     return ddf.map_partitions(
         _transform_partition,
         column_groups,
-        meta=type(ddf._meta)({k: [] for k in columns}),
+        meta=meta,
     )
 
 
@@ -315,7 +341,7 @@ def _get_unique(cols):
 
 
 def _transform_partition(root_df, column_groups):
-    """ Transforms a single partition by appyling all operators in a ColumnGroup """
+    """Transforms a single partition by appyling all operators in a ColumnGroup"""
     output = None
     for column_group in column_groups:
         unique_flattened_cols = _get_unique(column_group.flattened_columns)
@@ -352,7 +378,7 @@ def _transform_partition(root_df, column_groups):
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
-        if not output:
+        if output is None:
             output = df[unique_flattened_cols]
         else:
             output = _concat_columns([output, df[unique_flattened_cols]])

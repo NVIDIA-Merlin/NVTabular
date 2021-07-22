@@ -138,11 +138,12 @@ class ColumnGroup:
     __radd__ = __add__
 
     def __sub__(self, other):
-        """Adds columns from this ColumnGroup with another to return a new ColumnGroup
+        """Removes columns from this ColumnGroup with another to return a new ColumnGroup
 
         Parameters
         -----------
         other: ColumnGroup or str or list of str
+            Columns to remove
 
         Returns
         -------
@@ -163,6 +164,28 @@ class ColumnGroup:
         child.kind = f"- {list(to_remove)}"
         return child
 
+    def __getitem__(self, columns):
+        """Selects certain columns from this ColumnGroup, and returns a new Columngroup with only
+        those columns
+
+        Parameters
+        -----------
+        columns: str or list of str
+            Columns to select
+
+        Returns
+        -------
+        ColumnGroup
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+
+        child = ColumnGroup(columns)
+        child.parents = [self]
+        self.children.append(child)
+        child.kind = str(columns)
+        return child
+
     def __repr__(self):
         output = " output" if not self.children else ""
         return f"<ColumnGroup {self.label}{output}>"
@@ -173,7 +196,7 @@ class ColumnGroup:
 
     @property
     def input_column_names(self):
-        """ Returns the names of columns in the main chain """
+        """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
             col for parent in self.parents for col in parent.columns if parent not in dependencies
@@ -182,7 +205,7 @@ class ColumnGroup:
     @property
     def label(self):
         if self.op:
-            return str(self.op.__class__.__name__)
+            return self.op.label
         elif self.kind:
             return self.kind
         elif not self.parents:
@@ -213,7 +236,7 @@ def iter_nodes(nodes):
 
 
 def _to_graphviz(column_group):
-    """ Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks """
+    """Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
     column_group = _merge_add_nodes(column_group)
@@ -236,7 +259,7 @@ def _to_graphviz(column_group):
 
 
 def _merge_add_nodes(graph):
-    """ Merges repeat '+' nodes, leading to nicer looking outputs """
+    """Merges repeat '+' nodes, leading to nicer looking outputs"""
     # lets take a copy to avoid mutating the input
     import copy
 

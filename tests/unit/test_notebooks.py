@@ -26,6 +26,7 @@ import pytest
 
 import nvtabular.tools.data_gen as datagen
 from tests.conftest import get_cuda_cluster
+from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
@@ -51,7 +52,7 @@ def test_criteo_tf_notebook(tmpdir):
             "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
         )
         line = line.replace("client", "# client")
-        line = line.replace("NUM_GPUS = [0,1,2,3,4,5,6,7]", "NUM_GPUS = [0]")
+        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
         line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
 
         return line
@@ -79,7 +80,7 @@ def test_criteo_tf_notebook(tmpdir):
         os.path.join(
             dirname(TEST_PATH),
             "examples/scaling-criteo/",
-            "03a-Training-with-TF.ipynb",
+            "03-Training-with-TF.ipynb",
         ),
         transform=_modify_tf_nb,
     )
@@ -104,7 +105,7 @@ def test_criteo_pyt_notebook(tmpdir):
             "workflow = nvt.Workflow(features, client=client)", "workflow = nvt.Workflow(features)"
         )
         line = line.replace("client", "# client")
-        line = line.replace("NUM_GPUS = [0,1,2,3,4,5,6,7]", "NUM_GPUS = [0]")
+        line = line.replace("NUM_GPUS = [0, 1, 2, 3, 4, 5, 6, 7]", "NUM_GPUS = [0]")
         line = line.replace("part_size = int(part_mem_frac * device_size)", "part_size = '128MB'")
         return line
 
@@ -124,7 +125,7 @@ def test_criteo_pyt_notebook(tmpdir):
         os.path.join(
             dirname(TEST_PATH),
             "examples/scaling-criteo/",
-            "03d-Training-with-FastAI.ipynb",
+            "03-Training-with-FastAI.ipynb",
         ),
     )
 
@@ -157,7 +158,10 @@ def test_movielens_example(tmpdir):
     _get_random_movielens_data(tmpdir, 10000, dataset="ratings")
     _get_random_movielens_data(tmpdir, 5000, dataset="ratings", valid=True)
 
+    triton_model_path = os.path.join(tmpdir, "models")
     os.environ["INPUT_DATA_DIR"] = str(tmpdir)
+    os.environ["MODEL_PATH"] = triton_model_path
+
     notebook_path = os.path.join(
         dirname(TEST_PATH),
         "examples/getting-started-movielens/",
@@ -167,25 +171,33 @@ def test_movielens_example(tmpdir):
 
     def _modify_tf_nb(line):
         return line.replace(
-            # don't require grqphviz/pydot
+            # don't require graphviz/pydot
             "tf.keras.utils.plot_model(model)",
             "# tf.keras.utils.plot_model(model)",
         )
+
+    def _modify_tf_triton(line):
+        # models are already preloaded
+        line = line.replace("triton_client.load_model", "# triton_client.load_model")
+        line = line.replace("triton_client.unload_model", "# triton_client.unload_model")
+        return line
 
     notebooks = []
     try:
         import torch  # noqa
 
-        notebooks.append("03b-Training-with-PyTorch.ipynb")
+        notebooks.append("03-Training-with-PyTorch.ipynb")
     except Exception:
         pass
     try:
         import nvtabular.inference.triton  # noqa
         import nvtabular.loader.tensorflow  # noqa
 
-        notebooks.append("03a-Training-with-TF.ipynb")
+        notebooks.append("03-Training-with-TF.ipynb")
+        has_tf = True
+
     except Exception:
-        pass
+        has_tf = False
 
     for notebook in notebooks:
         notebook_path = os.path.join(
@@ -193,10 +205,21 @@ def test_movielens_example(tmpdir):
             "examples/getting-started-movielens/",
             notebook,
         )
-        if notebook == "03a-Training-with-TF.ipynb":
+        if notebook == "03-Training-with-TF.ipynb":
             _run_notebook(tmpdir, notebook_path, transform=_modify_tf_nb)
         else:
             _run_notebook(tmpdir, notebook_path)
+
+    # test out the TF inference movielens notebook if appropiate
+    if has_tf and TRITON_SERVER_PATH:
+        notebook = "04-Triton-Inference-with-TF.ipynb"
+        notebook_path = os.path.join(
+            dirname(TEST_PATH),
+            "examples/getting-started-movielens/",
+            notebook,
+        )
+        with run_triton_server(triton_model_path):
+            _run_notebook(tmpdir, notebook_path, transform=_modify_tf_triton)
 
 
 def test_rossman_example(tmpdir):
@@ -217,16 +240,16 @@ def test_rossman_example(tmpdir):
     try:
         import torch  # noqa
 
-        notebooks.append("03b-Training-with-PyTorch.ipynb")
+        notebooks.append("03-Training-with-PyTorch.ipynb")
         import fastai  # noqa
 
-        notebooks.append("04-Training-with-FastAI.ipynb")
+        notebooks.append("03-Training-with-FastAI.ipynb")
     except Exception:
         pass
     try:
         import nvtabular.loader.tensorflow  # noqa
 
-        notebooks.append("03a-Training-with-TF.ipynb")
+        notebooks.append("03-Training-with-TF.ipynb")
     except Exception:
         pass
 

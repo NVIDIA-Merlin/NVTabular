@@ -20,27 +20,28 @@ import subprocess
 import tempfile
 from shutil import copyfile
 
-import cudf
-import tritonclient.grpc as grpcclient
-from cudf.utils.dtypes import is_list_dtype
-from google.protobuf import text_format
-from tritonclient.utils import np_to_triton_dtype
+import pandas as pd
 
-# read in the triton ModelConfig proto object - generating it if it doesn't exist
-try:
-    import nvtabular.inference.triton.model_config_pb2 as model_config
-except ImportError:
-    pwd = os.path.dirname(__file__)
-    try:
-        subprocess.check_output(
-            ["protoc", f"--python_out={pwd}", f"--proto_path={pwd}", "model_config.proto"]
-        )
-    except Exception as e:
-        raise ImportError("Failed to compile model_config.proto - is protobuf installed?") from e
-    import nvtabular.inference.triton.model_config_pb2 as model_config
+# this needs to be before any modules that import protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+import tritonclient.grpc as grpcclient  # noqa
+from google.protobuf import text_format  # noqa
+from tritonclient.utils import np_to_triton_dtype  # noqa
+
+import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
 
 
-def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns, version=1):
+def export_tensorflow_ensemble(
+    model,
+    workflow,
+    name,
+    model_path,
+    label_columns,
+    version=1,
+    nvtabular_backend="python",
+):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a tensorflow savedmodel
 
@@ -55,20 +56,28 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
     model_path:
         The root path to write out files to
     label_columns:
-        Labels in the dataset (will be removed from workflow)
+
+        Labels in the dataset (will be removed from the dataset)
+    version:
+        Version of the model
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
 
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
-    nvt_config = generate_nvtabular_model(workflow, name + "_nvt", preprocessing_path)
+    nvt_config = generate_nvtabular_model(
+        workflow,
+        name + "_nvt",
+        preprocessing_path,
+        backend=nvtabular_backend,
+    )
 
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
-    tf_model_path = os.path.join(tf_path, str(version), "model.savedmodel")
-    model.save(tf_model_path, include_optimizer=False)
-    tf_config = _generate_tensorflow_config(model, name + "_tf", tf_path)
+    tf_config = export_tensorflow_model(model, name + "_tf", tf_path, version=version)
 
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
@@ -78,7 +87,15 @@ def export_tensorflow_ensemble(model, workflow, name, model_path, label_columns,
 
 
 def export_pytorch_ensemble(
-    model, model_info, sample_input_data, workflow, name, model_path, label_columns, version=1
+    model,
+    model_info,
+    sample_input_data,
+    workflow,
+    name,
+    model_path,
+    label_columns,
+    version=1,
+    nvtabular_backend="python",
 ):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch saved model
@@ -87,6 +104,11 @@ def export_pytorch_ensemble(
     ----------
     model:
         The pytorch model that should be served
+    model_info:
+        Extra info about the model such as input dtype and shape
+    sample_input_data:
+        Sample input data to use it for converting PyTorch model
+        to Onnx model
     workflow:
         The nvtabular workflow used in preprocessing
     name:
@@ -94,7 +116,11 @@ def export_pytorch_ensemble(
     model_path:
         The root path to write out files to
     label_columns:
-        Labels in the dataset (will be removed f
+        Labels in the dataset (will be removed from the dataset)
+    version:
+        Version of the model
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
     import torch
 
@@ -109,6 +135,7 @@ def export_pytorch_ensemble(
         version=version,
         output_model="pytorch",
         output_info=model_info["input"],
+        backend=nvtabular_backend,
     )
 
     dynamic_axes = dict()
@@ -159,6 +186,7 @@ def export_hugectr_ensemble(
     cats=None,
     conts=None,
     max_batch_size=None,
+    nvtabular_backend="python",
 ):
     """Creates an ensemble hugectr server model, with the first model being a nvtabular
     preprocessing, and the second by a hugectr savedmodel
@@ -185,8 +213,12 @@ def export_hugectr_ensemble(
         Names of the continous columns
     max_batch_size:
         Max batch size that Triton can receive
-
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
+
+    if not cats and not conts:
+        raise ValueError("Either cats or conts has to have a value.")
 
     workflow = _remove_columns(workflow, label_columns)
 
@@ -201,6 +233,7 @@ def export_hugectr_ensemble(
         cats=cats,
         conts=conts,
         max_batch_size=max_batch_size,
+        backend=nvtabular_backend,
     )
 
     hugectr_params["label_dim"] = len(label_columns)
@@ -224,9 +257,11 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
+    slot_exist = False
     hugectr_training_config = json.load(open(hugectr_params["config"]))
     for elem in hugectr_training_config["layers"]:
         if "slot_size_array" in elem:
+            slot_exist = True
             with open(
                 os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
                 "w",
@@ -235,6 +270,9 @@ def export_hugectr_ensemble(
                 slot_sizes["slot_size_array"] = elem["slot_size_array"]
                 json.dump(slot_sizes, o)
             break
+
+    if cats and not slot_exist:
+        raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
 
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")
@@ -253,33 +291,36 @@ def generate_nvtabular_model(
     conts=None,
     max_batch_size=None,
     output_info=None,
+    backend="python",
 ):
-    """ converts a workflow to a triton mode """
+    """converts a workflow to a triton mode"""
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
-        workflow, name, output_path, output_model, max_batch_size, cats, conts, output_info
+        workflow,
+        name,
+        output_path,
+        output_model,
+        max_batch_size,
+        cats,
+        conts,
+        output_info,
+        backend=backend,
     )
 
     if output_model == "hugectr":
         _generate_column_types(os.path.join(output_path, str(version), "workflow"), cats, conts)
-        copyfile(
-            os.path.join(os.path.dirname(__file__), "model_hugectr.py"),
-            os.path.join(output_path, str(version), "model.py"),
-        )
     elif output_model == "pytorch":
         _generate_column_types_pytorch(
             os.path.join(output_path, str(version), "workflow"), output_info=output_info
         )
-        copyfile(
-            os.path.join(os.path.dirname(__file__), "model_pytorch.py"),
-            os.path.join(output_path, str(version), "model.py"),
-        )
-    else:
-        copyfile(
-            os.path.join(os.path.dirname(__file__), "model.py"),
-            os.path.join(output_path, str(version), "model.py"),
-        )
+
+    # copy the model file over. note that this isn't necessary with the c++ backend, but
+    # does provide us to use the python backend with just changing the 'backend' parameter
+    copyfile(
+        os.path.join(os.path.dirname(__file__), "model.py"),
+        os.path.join(output_path, str(version), "model.py"),
+    )
 
     return config
 
@@ -292,7 +333,7 @@ def generate_hugectr_model(
     version=1,
     max_batch_size=None,
 ):
-    """ converts a trained HugeCTR model to a triton mode """
+    """converts a trained HugeCTR model to a triton mode"""
 
     out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, name), exist_ok=True)
@@ -313,7 +354,9 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
     columns = [(col, batch[col]) for col in column_names]
     inputs = []
     for i, (name, col) in enumerate(columns):
-        if is_list_dtype(col):
+        if _is_list_dtype(col):
+            if isinstance(col, pd.Series):
+                raise ValueError("this function doesn't support CPU list values yet")
             inputs.append(
                 _convert_column_to_triton_input(
                     col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
@@ -325,7 +368,8 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
                 )
             )
         else:
-            inputs.append(_convert_column_to_triton_input(col.values_host, name, input_class))
+            values = col.values if isinstance(col, pd.Series) else col.values_host
+            inputs.append(_convert_column_to_triton_input(values, name, input_class))
     return inputs
 
 
@@ -337,7 +381,7 @@ def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput
 
 
 def convert_triton_output_to_df(columns, response):
-    return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
+    return _make_df({col: response.as_numpy(col) for col in columns})
 
 
 def _generate_nvtabular_config(
@@ -349,11 +393,14 @@ def _generate_nvtabular_config(
     cats=None,
     conts=None,
     output_info=None,
+    backend="python",
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
     and outputs to that workflow"""
+    config = model_config.ModelConfig(name=name, backend=backend, max_batch_size=max_batch_size)
 
-    config = model_config.ModelConfig(name=name, backend="python", max_batch_size=max_batch_size)
+    config.parameters["python_module"].string_value = "nvtabular.inference.triton.model"
+    config.parameters["output_model"].string_value = output_model if output_model else ""
 
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
@@ -426,9 +473,20 @@ def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext
     return config
 
 
-def _generate_tensorflow_config(model, name, output_path):
-    """given a workflow generates the trton modelconfig proto object describing the inputs
-    and outputs to that workflow"""
+def export_tensorflow_model(model, name, output_path, version=1):
+    """Exports a TensorFlow model for serving with Triton
+
+    Parameters
+    ----------
+    model:
+        The tensorflow model that should be served
+    name:
+        The name of the triton model to export
+    output_path:
+        The path to write the exported model to
+    """
+    tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
+    model.save(tf_model_path, include_optimizer=False)
     config = model_config.ModelConfig(
         name=name, backend="tensorflow", platform="tensorflow_savedmodel"
     )
@@ -593,7 +651,7 @@ def _remove_columns_from_column_group(cg, to_remove):
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if is_list_dtype(dtype):
+    if _is_list_dtype(dtype):
         params.append(
             paramclass(
                 name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=dims
@@ -630,7 +688,7 @@ def get_column_types(path):
 
 
 def _convert_dtype(dtype):
-    """ converts a dtype to the appropriate triton proto type """
+    """converts a dtype to the appropriate triton proto type"""
     if dtype == "float64":
         return model_config.TYPE_FP64
     if dtype == "float32":
@@ -655,6 +713,16 @@ def _convert_dtype(dtype):
         return model_config.TYPE_UINT8
     if dtype == "bool":
         return model_config.TYPE_BOOL
-    if cudf.utils.dtypes.is_string_dtype(dtype):
+    if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _convert_tensor(t):
+    out = t.as_numpy()
+    if len(out.shape) == 2:
+        out = out[:, 0]
+    # cudf doesn't seem to handle dtypes like |S15 or object that well
+    if _is_string_dtype(out.dtype):
+        out = out.astype("str")
+    return out

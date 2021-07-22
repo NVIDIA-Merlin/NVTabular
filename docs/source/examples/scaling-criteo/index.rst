@@ -10,5 +10,9 @@ Scaling to Large Datasets with Criteo
    :maxdepth: 1
 
    Download and Convert <01-Download-Convert>
-   ETL with NVTabular, Training with PyTorch <02-03b-ETL-with-NVTabular-Training-with-PyTorch>
-   ETL with NVTabular, Training with HugeCTR <02-03c-ETL-with-NVTabular-HugeCTR.ipynb>
+   ETL with NVTabular <02-ETL-with-NVTabular>
+   Training with TensorFlow <03-Training-with-TF>
+   Training with HugeCTR <03-Training-with-HugeCTR>
+   Training with FastAI <03-Training-with-FastAI>
+   Triton Inference with TensorFlow <04-Triton-Inference-with-TF>
+   Triton Inference with HugeCTR <04-Triton-Inference-with-HugeCTR>

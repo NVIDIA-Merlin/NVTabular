@@ -1,3 +1,23 @@
+# NVTabular v0.5.3 (1 June 2021)
+
+## Bug Fixes
+* Fix Shuffling in Torch DataLoader [#818](https://github.com/NVIDIA/NVTabular/pull/818)
+* Fix "Unsupported type_id conversion" in triton inference for string columns [#813](https://github.com/NVIDIA/NVTabular/issues/813)
+* Fix HugeCTR inference backend [Merlin#8](https://github.com/NVIDIA-Merlin/Merlin/pull/8)
+
+# NVTabular v0.5.1 (4 May 2021)
+
+## Improvements
+
+* Update dependencies to use cudf 0.19
+* Removed conda from docker containers, leading to much smaller container sizes
+* Added CUDA 11.2 support
+* Added FastAI v2.3 support
+
+## Bug Fixes
+
+* Fix NVTabular preprocessing with HugeCTR inference
+
 # NVTabular v0.5.0 (13 April 2021)
 
 ## Improvements

@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import dask_cudf
+import dask.dataframe as dd
 import numpy as np
-from nvtx import annotate
+
+from nvtabular.dispatch import DataFrameType, annotate
 
 from .moments import _custom_moments
 from .operator import ColumnNames, Operator
@@ -31,11 +31,11 @@ class DataStats(StatOperator):
         self.col_dtypes = []
         self.output = {}
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        return gdf
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        return df
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
         dask_stats = {}
 
         ddf_dtypes = ddf.head(1)

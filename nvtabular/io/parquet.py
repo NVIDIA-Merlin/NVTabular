@@ -26,16 +26,19 @@ from distutils.version import LooseVersion
 from io import BytesIO
 from uuid import uuid4
 
-import cudf
+try:
+    import cudf
+    import dask_cudf
+    from cudf.io.parquet import ParquetWriter as pwriter_cudf
+except ImportError:
+    cudf = None
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import fsspec
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import toolz as tlz
-from cudf.io.parquet import ParquetWriter as pwriter_cudf
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.utils import _analyze_paths
@@ -71,15 +74,19 @@ class ParquetDatasetEngine(DatasetEngine):
         self._pp_nrows = None
         if row_groups_per_part is None:
             path0 = self._dataset.pieces[0].path
-            with self.fs.open(path0, "rb") as f0:
-                if cpu:
+            if cpu:
+                with self.fs.open(path0, "rb") as f0:
                     # Use pyarrow for CPU version.
                     # Pandas does not enable single-row-group access.
                     rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+            else:
+                if cudf.utils.ioutils._is_local_filesystem(self.fs):
+                    # Allow cudf to open the file if this is a local file
+                    # system (can be significantly faster in this case)
+                    rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0))
                 else:
-                    rg_byte_size_0 = _memory_usage(
-                        cudf.io.read_parquet(f0, row_groups=0, row_group=0)
-                    )
+                    with self.fs.open(path0, "rb") as f0:
+                        rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(f0, row_groups=0))
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -87,8 +94,8 @@ class ParquetDatasetEngine(DatasetEngine):
                     f" than requested part_size ({self.part_size}) for the NVTabular dataset."
                     f"A row group memory size of 128 MB is generally recommended. You can find"
                     f" info on how to set the row group size of parquet files in "
-                    f"https://nvidia.github.io/NVTabular/main/HowItWorks.html"
-                    f"#getting-your-data-ready-for-nvtabular"
+                    f"https://nvidia.github.io/NVTabular/main/resources/troubleshooting.html"
+                    f"#setting-the-row-group-size-for-the-parquet-files"
                 )
                 row_groups_per_part = 1.0
 
@@ -136,11 +143,11 @@ class ParquetDatasetEngine(DatasetEngine):
 
         _pp_nrows = []
 
-        def _update_partition_lens(part_count, md, num_row_groups, rg_offset=None):
+        def _update_partition_lens(md, num_row_groups, rg_offset=None):
             # Helper function to calculate the row count for each
             # output partition (and add it to `_pp_nrows`)
             rg_offset = rg_offset or 0
-            for rg_i in range(0, part_count, self.row_groups_per_part):
+            for rg_i in range(0, num_row_groups, self.row_groups_per_part):
                 rg_f = min(rg_i + self.row_groups_per_part, num_row_groups)
                 _pp_nrows.append(
                     sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
@@ -163,7 +170,7 @@ class ParquetDatasetEngine(DatasetEngine):
             for fn, num_row_groups in _path_row_groups.items():
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(part_count, dataset.metadata, num_row_groups, rg_offset=rg)
+                _update_partition_lens(dataset.metadata, num_row_groups, rg_offset=rg)
                 ind += part_count
                 rg += num_row_groups
         else:
@@ -176,7 +183,7 @@ class ParquetDatasetEngine(DatasetEngine):
                 part_count = math.ceil(num_row_groups / self.row_groups_per_part)
                 fn = piece.path.split(self.fs.sep)[-1]
                 _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(part_count, md, num_row_groups)
+                _update_partition_lens(md, num_row_groups)
                 ind += part_count
 
         self._pp_map = _pp_map
@@ -874,13 +881,13 @@ class CPUParquetWriter(BaseParquetWriter):
         _fns = self.fns or [path.split(self.fs.sep)[-1] for path in self.data_paths]
         for writer, fn in zip(self.data_writers, _fns):
             writer.close()
-            _path = self.fs.sep.join([self.out_dir, fn])
+            _path = self.fs.sep.join([str(self.out_dir), fn])
             self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 
 
 def _write_pq_metadata_file_cudf(md_list, fs, path):
-    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    """Converts list of parquet metadata objects into a single shared _metadata file."""
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = cudf.io.merge_parquet_filemetadata(md_list) if len(md_list) > 1 else md_list[0]
@@ -890,7 +897,7 @@ def _write_pq_metadata_file_cudf(md_list, fs, path):
 
 
 def _write_pq_metadata_file_pyarrow(md_list, fs, path):
-    """ Converts list of parquet metadata objects into a single shared _metadata file. """
+    """Converts list of parquet metadata objects into a single shared _metadata file."""
     if md_list:
         metadata_path = fs.sep.join([path, "_metadata"])
         _meta = None

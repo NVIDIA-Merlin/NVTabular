@@ -44,7 +44,8 @@ TRAIN_PATHS = sorted(glob.glob(os.path.join(BASE_DIR, "train", "*.parquet")))
 
 proc = nvt.Workflow.load(os.path.join(BASE_DIR, "workflow/"))
 
-EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES, MH_EMBEDDING_TABLE_SHAPES = nvt.ops.get_embedding_sizes(proc)
+EMBEDDING_TABLE_SHAPES.update(MH_EMBEDDING_TABLE_SHAPES)
 
 
 # TensorItrDataset returns a single batch of x_cat, x_cont, y.
@@ -121,7 +122,12 @@ optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_par
 for epoch in range(args.epochs):
     start = time()
     print(f"Training epoch {epoch}")
-    train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
+    train_loss, y_pred, y = process_epoch(
+        train_loader,
+        model,
+        train=True,
+        optimizer=optimizer,
+    )
     hvd.join(gpu_to_use)
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
     print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}.")
