@@ -31,6 +31,7 @@ from fsspec.utils import stringify_path
 
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
+from nvtabular.utils import global_dask_client
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
@@ -467,10 +468,20 @@ class Dataset:
                 # multiple files from each partition directory at once.
                 # Generally speaking, we can optimize this code path
                 # much further.
-                return Dataset(_simple_shuffle(ddf, plan))
+                return Dataset(_simple_shuffle(ddf, plan), client=self.client)
+
+        # Warn user if there is an unused global
+        # Dask client available
+        if global_dask_client(self.client):
+            warnings.warn(
+                "A global dask.distributed client has been detected, but the "
+                "single-threaded scheduler is being used for this shuffle operation. "
+                "Please use the `client` argument to initialize a `Dataset` and/or "
+                "`Workflow` object with distributed-execution enabled."
+            )
 
         # Fall back to dask.dataframe algorithm
-        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions), client=self.client)
 
     def repartition(self, npartitions=None, partition_size=None):
         """Repartition the underlying ddf, and return a new Dataset
