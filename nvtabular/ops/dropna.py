@@ -16,7 +16,7 @@
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class Dropna(Operator):

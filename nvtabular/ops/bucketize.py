@@ -19,7 +19,7 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class Bucketize(Operator):

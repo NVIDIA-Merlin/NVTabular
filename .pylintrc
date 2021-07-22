@@ -58,7 +58,8 @@ disable=fixme,
     inconsistent-return-statements,
     duplicate-string-formatting-argument,
     len-as-condition,
-    cyclic-import
+    cyclic-import,
+    too-many-public-methods
 
 [SIMILARITIES]
 min-similarity-lines=20

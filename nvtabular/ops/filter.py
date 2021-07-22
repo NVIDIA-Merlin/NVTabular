@@ -23,7 +23,7 @@ from nvtabular.dispatch import (
     annotate,
 )
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class Filter(Operator):

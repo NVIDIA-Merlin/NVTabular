@@ -23,7 +23,7 @@ except ImportError:
 
 from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class ListSlice(Operator):

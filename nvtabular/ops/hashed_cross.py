@@ -17,7 +17,7 @@ from typing import Dict, Union
 
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class HashedCross(Operator):

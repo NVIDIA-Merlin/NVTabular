@@ -17,8 +17,8 @@
 import dask.dataframe as dd
 
 from ..dispatch import DataFrameType, annotate
+from .base import ColumnNames, Operator, Supports
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator, Supports
 from .stat_operator import StatOperator
 
 

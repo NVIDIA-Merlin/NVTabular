@@ -14,10 +14,15 @@
 # limitations under the License.
 #
 import collections.abc
+from operator import attrgetter
+from typing import Dict, List, Optional, Text, Union
 
+import joblib
 from dask.core import flatten
 
+from nvtabular.column import Column
 from nvtabular.ops import LambdaOp, Operator
+from nvtabular.tag import DefaultTags, Tag
 
 
 class ColumnGroup:
@@ -34,7 +39,12 @@ class ColumnGroup:
         for feature crosses.
     """
 
-    def __init__(self, columns):
+    def __init__(
+        self,
+        columns: Union[Text, List[Text], Column, List[Column], "ColumnGroup"],
+        tags: Optional[Union[List[Text], DefaultTags]] = None,
+        properties: Optional[Dict[Text, Text]] = None,
+    ):
         self.parents = []
         self.children = []
         self.op = None
@@ -43,6 +53,14 @@ class ColumnGroup:
 
         if isinstance(columns, str):
             columns = [columns]
+
+        if not tags:
+            tags = []
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+
+        self.tags = tags
+        self.properties = properties
 
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
@@ -55,7 +73,7 @@ class ColumnGroup:
                 else:
                     # we can't handle nesting arbitrarily deep here
                     # only accept non-nested (str) columns here
-                    if any(not isinstance(c, str) for c in col.columns):
+                    if any(not isinstance(c, Column) for c in col.columns):
                         raise ValueError("Can't handle more than 1 level of nested columns")
 
                 col.children.append(self)
@@ -63,9 +81,13 @@ class ColumnGroup:
                 self.columns.append(tuple(col.columns))
 
         else:
-            self.columns = [_convert_col(col) for col in columns]
+            self.columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
 
-    def __rshift__(self, operator):
+    @property
+    def column_names(self):
+        return [str(c) for c in self.columns]
+
+    def __call__(self, operator, **kwargs):
         """Transforms this ColumnGroup by applying an Operator
 
         Parameters
@@ -85,8 +107,12 @@ class ColumnGroup:
 
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
+        if getattr(operator, "output_columns", None):
+            child_columns = operator.output_columns(self.columns)
+        else:
+            child_columns = operator.output_column_names(self.column_names)
 
-        child = ColumnGroup(operator.output_column_names(self.columns))
+        child = ColumnGroup(child_columns)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
@@ -106,6 +132,9 @@ class ColumnGroup:
 
         return child
 
+    def __rshift__(self, operator):
+        return self.__call__(operator)
+
     def __add__(self, other):
         """Adds columns from this ColumnGroup with another to return a new ColumnGroup
 
@@ -123,7 +152,7 @@ class ColumnGroup:
             other = ColumnGroup(other)
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.columns).intersection(other.columns)
+        overlap = set(self.column_names).intersection(other.column_names)
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
@@ -150,14 +179,14 @@ class ColumnGroup:
         ColumnGroup
         """
         if isinstance(other, ColumnGroup):
-            to_remove = set(other.columns)
+            to_remove = set(other.column_names)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
             raise ValueError(f"Expected ColumnGroup, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.columns if c not in to_remove]
+        new_columns = [c for c in self.columns if c.name not in to_remove]
         child = ColumnGroup(new_columns)
         child.parents = [self]
         self.children.append(child)
@@ -179,27 +208,167 @@ class ColumnGroup:
         """
         if isinstance(columns, str):
             columns = [columns]
+        if isinstance(columns, int):
+            return self.column_names[columns]
 
-        child = ColumnGroup(columns)
+        filtered_columns = [col for col in _convert_col(columns) if col.name in self.column_names]
+        child = ColumnGroup(filtered_columns)
         child.parents = [self]
         self.children.append(child)
         child.kind = str(columns)
         return child
+
+    def filter_columns(self, filter_fn, by_name=True):
+        if by_name:
+            filtered = [c for c in self.columns if filter_fn(c.name)]
+        else:
+            filtered = [c for c in self.columns if filter_fn(c)]
+
+        return self[filtered]
+
+    def filter_by_namespace(self, namespace):
+        return self.filter_columns(lambda c: c.startswith(namespace))
+
+    def get_tagged(self, tags, output_list=False, tags_to_filter=None):
+        column_names_to_filter = (
+            self.get_tagged(tags_to_filter, output_list=True) if tags_to_filter else []
+        )
+
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+        if not isinstance(tags, list):
+            tags = [tags]
+        output_cols = []
+
+        for column in self.flattened_columns:
+            if all(x in column.tags for x in tags):
+                output_cols.append(column)
+
+        columns = [col for col in output_cols if col.name not in column_names_to_filter]
+
+        if output_list:
+            return [col.name for col in columns]
+
+        child = ColumnGroup(columns, tags=tags)
+        child.parents = [self]
+        self.children.append(child)
+        child.kind = f"tagged={child._tags_repr} " + self._cols_repr
+
+        return child
+
+    def tags_by_column(self):
+        outputs = {}
+
+        for col in self.flattened_columns:
+            outputs[col.name] = col.tags
+
+        return outputs
+
+    @property
+    def targets_columns(self):
+        return self.get_tagged(Tag.TARGETS, output_list=True)
+
+    @property
+    def targets_column_group(self):
+        return self.get_tagged(Tag.TARGETS, output_list=False)
+
+    @property
+    def binary_targets_columns(self):
+        return self.get_tagged(Tag.TARGETS_BINARY, output_list=True)
+
+    @property
+    def binary_targets_column_group(self):
+        return self.get_tagged(Tag.TARGETS_BINARY, output_list=False)
+
+    @property
+    def regression_targets_columns(self):
+        return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=True)
+
+    @property
+    def regression_targets_column_group(self):
+        return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=False)
+
+    @property
+    def continuous_columns(self):
+        return self.get_tagged(Tag.CONTINUOUS, output_list=True)
+
+    @property
+    def continuous_column_group(self):
+        return self.get_tagged(Tag.CONTINUOUS, output_list=False)
+
+    @property
+    def categorical_columns(self):
+        return self.get_tagged(Tag.CATEGORICAL, output_list=True)
+
+    @property
+    def categorical_column_group(self):
+        return self.get_tagged(Tag.CATEGORICAL, output_list=False)
+
+    @property
+    def text_columns(self):
+        return self.get_tagged(Tag.TEXT, output_list=True)
+
+    @property
+    def text_column_group(self):
+        return self.get_tagged(Tag.TEXT, output_list=False)
+
+    @property
+    def text_tokenized_columns(self):
+        return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=True)
+
+    @property
+    def text_tokenized_column_group(self):
+        return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=False)
+
+    def embedding_sizes(self):
+        return self._embedding_sizes_from_op()
+
+    def cardinalities(self):
+        return {k: v[0] for k, v in self._embedding_sizes_from_op().items()}
+
+    def _embedding_sizes_from_op(self):
+        queue = [self]
+        output = {}
+        while queue:
+            current = queue.pop()
+            if current.op and hasattr(current.op, "get_embedding_sizes"):
+                output.update(current.op.get_embedding_sizes(current.column_names))
+            elif not current.op:
+
+                # only follow parents if its not an operator node (which could
+                # transform meaning of the get_embedding_sizes
+                queue.extend(current.parents)
+
+        output = {k: v for k, v in output.items() if k in self.columns}
+
+        return output
+
+    def remove_tagged(self, tags):
+        to_remove = self.get_tagged(tags)
+
+        return self - to_remove
 
     def __repr__(self):
         output = " output" if not self.children else ""
         return f"<ColumnGroup {self.label}{output}>"
 
     @property
+    def flattened_column_names(self):
+        return list(flatten(self.column_names))
+
+    @property
     def flattened_columns(self):
-        return list(flatten(self.columns, container=tuple))
+        return list(flatten(self.columns))
 
     @property
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
-            col for parent in self.parents for col in parent.columns if parent not in dependencies
+            col
+            for parent in self.parents
+            for col in parent.column_names
+            if parent not in dependencies
         ]
 
     @property
@@ -214,15 +383,34 @@ class ColumnGroup:
             return "??"
 
     @property
+    def is_transformation(self):
+        return bool(self.parents)
+
+    @property
+    def id(self):
+        return joblib.hash(sorted([n.label for n in self.nodes]))
+
+    @property
     def _cols_repr(self):
-        cols = ", ".join(map(str, self.columns[:3]))
-        if len(self.columns) > 3:
+        cols = ", ".join(map(str, self.column_names[:3]))
+        if len(self.column_names) > 3:
+            cols += "..."
+        return cols
+
+    @property
+    def _tags_repr(self):
+        cols = ", ".join(map(str, self.tags[:3]))
+        if len(self.tags) > 3:
             cols += "..."
         return cols
 
     @property
     def graph(self):
         return _to_graphviz(self)
+
+    @property
+    def nodes(self):
+        return sorted(list(set(iter_nodes([self]))), key=attrgetter("is_transformation", "label"))
 
 
 def iter_nodes(nodes):
@@ -292,10 +480,14 @@ def _merge_add_nodes(graph):
     return graph
 
 
-def _convert_col(col):
-    if isinstance(col, (str, tuple)):
-        return col
-    elif isinstance(col, list):
-        return tuple(col)
+def _convert_col(col, tags=None, properties=None):
+    if not properties:
+        properties = {}
+    if isinstance(col, Column):
+        return col.with_tags(tags).with_properties(**properties)
+    elif isinstance(col, str):
+        return Column(col, tags=tags, properties=properties)
+    elif isinstance(col, (tuple, list)):
+        return tuple(_convert_col(c, tags=tags, properties=properties) for c in col)
     else:
-        raise ValueError(f"Invalid column value for ColumnGroup: {col}")
+        raise ValueError(f"Invalid column value for ColumnGroup: {col} (type: {type(col)})")

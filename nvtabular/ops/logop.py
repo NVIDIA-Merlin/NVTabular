@@ -17,7 +17,7 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _natural_log, annotate
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class LogOp(Operator):

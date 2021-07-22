@@ -12,7 +12,7 @@ import pytest
 import nvtabular as nvt
 import nvtabular.ops as ops
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
-from nvtabular.ops.operator import Supports
+from nvtabular.ops.base import Supports
 from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")

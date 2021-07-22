@@ -18,7 +18,9 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import TYPE_CHECKING, List, Optional, Union
 
+from nvtabular.column import Columns
 from nvtabular.dispatch import DataFrameType
+from nvtabular.tag import DefaultTags
 
 if TYPE_CHECKING:
     # avoid circular references
@@ -78,6 +80,9 @@ class Operator:
         """
         return columns
 
+    def output_columns(self, columns: Columns) -> Columns:
+        return columns
+
     def dependencies(self) -> Optional[List[Union[str, ColumnGroup]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
         that aren't part of the main transformation workflow.
@@ -107,3 +112,39 @@ class Operator:
         """Configures this operator for use in inference. May return a different operator to use
         instead of the one configured for use during training"""
         return None
+
+
+class AddMetadata(Operator):
+    def __init__(
+        self,
+        tags=None,
+        properties=None,
+        is_target=False,
+        is_regression_target=False,
+        is_binary_target=False,
+        is_multi_class_target=False,
+    ):
+        super().__init__()
+        self.properties = properties or {}
+        if isinstance(tags, DefaultTags):
+            tags = tags.value
+        if not tags:
+            tags = []
+        if not isinstance(tags, list):
+            tags = [tags]
+        if is_target:
+            tags.extend(DefaultTags.TARGETS.value)
+        if is_regression_target:
+            tags.extend(DefaultTags.TARGETS_REGRESSION.value)
+        if is_multi_class_target:
+            tags.extend(DefaultTags.TARGETS_MULTI_CLASS.value)
+        if is_binary_target:
+            tags.extend(DefaultTags.TARGETS_BINARY.value)
+
+        self.tags = list(set(tags))
+
+    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+        return df
+
+    def output_columns(self, columns):
+        return [col.with_tags(self.tags).with_properties(**self.properties) for col in columns]

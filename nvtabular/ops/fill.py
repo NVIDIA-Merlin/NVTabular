@@ -17,7 +17,7 @@ import dask.dataframe as dd
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 

@@ -26,8 +26,8 @@ from nvtabular.dispatch import (
 )
 
 from . import categorify as nvt_cat
+from .base import ColumnNames, Operator
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 

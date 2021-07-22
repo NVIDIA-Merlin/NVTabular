@@ -17,7 +17,7 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from .operator import ColumnNames, Operator
+from .base import ColumnNames, Operator
 
 
 class StatOperator(Operator):

@@ -18,8 +18,8 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, annotate
 
+from .base import ColumnNames, Operator
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
 from .stat_operator import StatOperator
 
 
