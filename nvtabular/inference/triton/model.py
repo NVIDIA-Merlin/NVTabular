@@ -101,18 +101,6 @@ class TritonPythonModel:
             col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
         }
 
-        self.output_dtypes = dict()
-        for name, dtype in self.workflow.output_dtypes.items():
-            if not _is_list_dtype(dtype):
-                self._set_output_dtype(name)
-            else:
-                # pytorch + hugectr don't support multihot output features at inference
-                if self.output_model in {"hugectr", "pytorch"}:
-                    raise ValueError(f"{self.output_model} doesn't yet support multihot features")
-
-                self._set_output_dtype(name + "__nnzs")
-                self._set_output_dtype(name + "__values")
-
         if self.output_model == "hugectr":
             self.column_types = get_column_types(workflow_path)
             self.offsets = get_hugectr_offsets(workflow_path)
@@ -120,6 +108,19 @@ class TritonPythonModel:
                 raise Exception("slot_size_array.json could not be found to read the slot sizes")
         else:
             self.column_types = self.offsets = None
+            self.output_dtypes = dict()
+            for name, dtype in self.workflow.output_dtypes.items():
+                if not _is_list_dtype(dtype):
+                    self._set_output_dtype(name)
+                else:
+                    # pytorch + hugectr don't support multihot output features at inference
+                    if self.output_model in {"hugectr", "pytorch"}:
+                        raise ValueError(
+                            f"{self.output_model} doesn't yet support multihot features"
+                        )
+
+                    self._set_output_dtype(name + "__nnzs")
+                    self._set_output_dtype(name + "__values")
 
     def _set_output_dtype(self, name):
         conf = get_output_config_by_name(self.model_config, name)
@@ -161,7 +162,7 @@ class TritonPythonModel:
         return responses
 
     def _transform_outputs(self, tensors):
-        """ transforms outputs for both pytorch and tensorflow """
+        """transforms outputs for both pytorch and tensorflow"""
         output_tensors = []
         for name, value in tensors.items():
             if isinstance(value, tuple):
@@ -193,8 +194,9 @@ class TritonPythonModel:
             output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
         if "cats" in self.column_types:
+            for i, name in enumerate(self.column_types["cats"]):
+                tensors[name] += self.offsets[i]
             cats_np = _convert_to_hugectr(self.column_types["cats"], tensors, np.int64)
-            cats_np += self.offsets
             output_tensors.append(
                 Tensor(
                     "CATCOLUMN",
@@ -212,7 +214,7 @@ class TritonPythonModel:
 
 
 def _convert_to_hugectr(columns, tensors, dtype):
-    """ converts outputs to a numpy input compatible with hugectr """
+    """converts outputs to a numpy input compatible with hugectr"""
     rows = max(len(tensors[name]) for name in columns)
     d = np.empty((rows, len(columns)), dtype=dtype)
     for i, name in enumerate(columns):
