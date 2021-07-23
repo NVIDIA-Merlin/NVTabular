@@ -25,7 +25,7 @@ import cudf
 import hugectr
 import numpy as np
 import pandas as pd
-from hugectr.inference import CreateEmbeddingCache, CreateParameterServer, InferenceSession
+from hugectr.inference import InferenceParams, CreateInferenceSession
 from mpi4py import MPI  # noqa
 from sklearn.model_selection import train_test_split
 
@@ -361,12 +361,13 @@ def _write_model_json(slot_sizes, total_cardinality):
 
 
 def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
-    parameter_server = CreateParameterServer([config_file], [model_name], True)
-    embedding_cache = CreateEmbeddingCache(
-        parameter_server, 0, True, 0.1, config_file, model_name, True
-    )
-    inference_session = InferenceSession(config_file, 0, embedding_cache)
-
+    inference_params = InferenceParams(model_name = model_name,
+                                    device_id = 0,
+                                    use_gpu_embedding_cache = True,
+                                    cache_size_percentage = 0.1,
+                                    i64_input_key = True,
+                                    use_mixed_precision = False)
+    inference_session = CreateInferenceSession(config_file, inference_params)
     output = inference_session.predict(dense_features, embedding_columns, row_ptrs, True)
 
     test_data_path = DATA_DIR + "test/"
