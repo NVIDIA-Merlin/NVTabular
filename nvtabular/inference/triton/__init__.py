@@ -29,6 +29,7 @@ from tritonclient.utils import np_to_triton_dtype  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
+from nvtabular.ops import get_embedding_sizes  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -253,23 +254,6 @@ def export_hugectr_ensemble(
         version=version,
         max_batch_size=max_batch_size,
     )
-
-    slot_exist = False
-    hugectr_training_config = json.load(open(hugectr_params["config"]))
-    for elem in hugectr_training_config["layers"]:
-        if "slot_size_array" in elem:
-            slot_exist = True
-            with open(
-                os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
-                "w",
-            ) as o:
-                slot_sizes = dict()
-                slot_sizes["slot_size_array"] = elem["slot_size_array"]
-                json.dump(slot_sizes, o)
-            break
-
-    if cats and not slot_exist:
-        raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
 
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")

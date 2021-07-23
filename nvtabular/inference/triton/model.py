@@ -44,6 +44,7 @@ import nvtabular
 from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
+from nvtabular.ops import get_embedding_sizes
 from nvtabular.ops.operator import Supports
 
 LOG = logging.getLogger("nvtabular")
@@ -89,6 +90,11 @@ class TritonPythonModel:
         self.model_config = json.loads(args["model_config"])
         self.output_model = self.model_config["parameters"]["output_model"]["string_value"]
 
+        if self.output_model == "hugectr":
+            self.column_types = get_column_types(workflow_path)
+            if "cats" in self.column_types:
+                self.offsets = get_hugectr_offsets(self.workflow)
+
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.column_group)
 
@@ -101,12 +107,7 @@ class TritonPythonModel:
             col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
         }
 
-        if self.output_model == "hugectr":
-            self.column_types = get_column_types(workflow_path)
-            self.offsets = get_hugectr_offsets(workflow_path)
-            if self.offsets is None and "cats" in self.column_types:
-                raise Exception("slot_size_array.json could not be found to read the slot sizes")
-        else:
+        if self.output_model != "hugectr":
             self.column_types = self.offsets = None
             self.output_dtypes = dict()
             for name, dtype in self.workflow.output_dtypes.items():
@@ -114,7 +115,7 @@ class TritonPythonModel:
                     self._set_output_dtype(name)
                 else:
                     # pytorch + hugectr don't support multihot output features at inference
-                    if self.output_model in {"hugectr", "pytorch"}:
+                    if self.output_model in {"pytorch"}:
                         raise ValueError(
                             f"{self.output_model} doesn't yet support multihot features"
                         )
@@ -194,8 +195,8 @@ class TritonPythonModel:
             output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
         if "cats" in self.column_types:
-            for i, name in enumerate(self.column_types["cats"]):
-                tensors[name] += self.offsets[i]
+            for name in self.column_types["cats"]:
+                tensors[name] += self.offsets[name]
             cats_np = _convert_to_hugectr(self.column_types["cats"], tensors, np.int64)
             output_tensors.append(
                 Tensor(
@@ -222,15 +223,12 @@ def _convert_to_hugectr(columns, tensors, dtype):
     return d.reshape(1, len(columns) * rows)
 
 
-def get_hugectr_offsets(path):
-    if os.path.exists(path):
-        slot_sizes = json.load(open(os.path.join(path, "slot_size_array.json")))
-        slot_sizes = slot_sizes["slot_size_array"]
-        slot_sizes.insert(0, 0)
-        slot_sizes.pop()
-        return np.cumsum(np.array(slot_sizes)).tolist()
+def get_hugectr_offsets(workflow):
+    embeddings = get_embedding_sizes(workflow)
+    if embeddings is None:
+        raise Exception("embeddings cannot be None")
     else:
-        return None
+        return {key: value[0] for key, value in embeddings.items()}
 
 
 def _transform_tensors(input_tensors, column_group):
