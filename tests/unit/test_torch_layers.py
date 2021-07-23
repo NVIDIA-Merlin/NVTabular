@@ -23,10 +23,16 @@ from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbedd
 
 
 def test_sparse_embedding_layer():
-    embedding_table_shapes={'col_a': (123, 4), 'col_b': (45, 3)}
-    
+    embedding_table_shapes = {"col_a": (123, 4), "col_b": (45, 3)}
+
     emb_layer = ConcatenatedEmbeddings(embedding_table_shapes)
-    assert emb_layer.embedding_layers[0].sparse==False and emb_layer.embedding_layers[1].sparse==False
-    
-    emb_layer = ConcatenatedEmbeddings(embedding_table_shapes, sparse_columns=['col_a'])
-    assert emb_layer.embedding_layers[0].sparse==True and emb_layer.embedding_layers[1].sparse==False
+    assert (
+        emb_layer.embedding_layers[0].sparse == False
+        and emb_layer.embedding_layers[1].sparse == False
+    )
+
+    emb_layer = ConcatenatedEmbeddings(embedding_table_shapes, sparse_columns=["col_a"])
+    assert (
+        emb_layer.embedding_layers[0].sparse == True
+        and emb_layer.embedding_layers[1].sparse == False
+    )
