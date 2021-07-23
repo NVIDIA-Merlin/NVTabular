@@ -21,8 +21,9 @@ from dask.delayed import Delayed
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
+from ..column import Column, Columns
 from . import categorify as nvt_cat
-from .base import ColumnNames, Operator
+from .base import Operator
 from .stat_operator import StatOperator
 
 
@@ -92,7 +93,7 @@ class JoinGroupby(StatOperator):
         self.cont_cols = (
             cont_cols if isinstance(cont_cols, nvt.ColumnGroup) else nvt.ColumnGroup(cont_cols)
         )
-        self.cont_names = self.cont_cols.columns
+        self.cont_names = self.cont_cols.column_names
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"
@@ -105,9 +106,9 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, columns: Columns, ddf: dd.DataFrame):
         if isinstance(columns, list):
-            for group in columns:
+            for group in columns.names():
                 if isinstance(group, (list, tuple)) and len(group) > 1:
                     name = nvt_cat._make_name(*group, sep=self.name_sep)
                     for col in group:
@@ -123,13 +124,13 @@ class JoinGroupby(StatOperator):
         dsk, key = nvt_cat._category_stats(
             ddf,
             nvt_cat.FitOptions(
-                columns,
-                self.cont_names,
-                self.stats,
-                self.out_path,
-                0,
-                self.tree_width,
-                self.on_host,
+                col_groups=columns.names(),
+                agg_cols=self.cont_names.to_list(),
+                agg_list=self.stats,
+                out_path=self.out_path,
+                freq_limit=0,
+                tree_width=self.tree_width,
+                on_host=self.on_host,
                 concat_groups=False,
                 name_sep=self.name_sep,
             ),
@@ -140,13 +141,13 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
 
         cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-            columns, df.columns, self.name_sep
+            columns.names().nesting_to_tuple(), df.columns, self.name_sep
         )
 
         _read_pq_func = _read_parquet_dispatch(df)
@@ -175,19 +176,19 @@ class JoinGroupby(StatOperator):
     def dependencies(self):
         return self.cont_cols
 
-    def output_column_names(self, columns):
+    def output_columns(self, columns: Columns) -> Columns:
         # TODO: the names here are defined in categorify/mid_level_groupby
         # refactor to have a common implementation
-        output = []
+        output = Columns()
         for name in columns:
             if isinstance(name, (tuple, list)):
-                name = nvt_cat._make_name(*name, sep=self.name_sep)
+                name = nvt_cat._make_name(*name.names(), sep=self.name_sep)
             for cont in self.cont_names:
                 for stat in self.stats:
                     if stat == "count":
-                        output.append(f"{name}_{stat}")
+                        output.append(Column(f"{name}_{stat}"))
                     else:
-                        output.append(f"{name}_{cont}_{stat}")
+                        output.append(Column(f"{name}_{cont}_{stat}"))
         return output
 
     def set_storage_path(self, new_path, copy=False):

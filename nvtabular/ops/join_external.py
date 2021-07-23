@@ -23,7 +23,8 @@ except ImportError:
 import dask.dataframe as dd
 import pandas as pd
 
-from nvtabular.dispatch import (
+from ..column import Columns
+from ..dispatch import (
     DataFrameType,
     ExtData,
     _arange,
@@ -32,8 +33,7 @@ from nvtabular.dispatch import (
     _read_dispatch,
     _to_host,
 )
-
-from .base import ColumnNames, Operator
+from .base import Operator
 
 
 class JoinExternal(Operator):
@@ -184,7 +184,7 @@ class JoinExternal(Operator):
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")

@@ -363,13 +363,13 @@ class Categorify(StatOperator):
 
     def _create_fit_options_from_columns(self, columns) -> "FitOptions":
         return FitOptions(
-            columns,
-            [],
-            [],
-            self.out_path,
-            self.freq_threshold,
-            self.tree_width,
-            self.on_host,
+            col_groups=columns,
+            agg_cols=[],
+            agg_list=[],
+            out_path=self.out_path,
+            freq_limit=self.freq_threshold,
+            tree_width=self.tree_width,
+            on_host=self.on_host,
             concat_groups=self.encode_type == "joint",
             name_sep=self.name_sep,
             max_size=self.max_size,
@@ -520,7 +520,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.columns))
+            output.update(current.op.get_embedding_sizes(current.column_names))
         elif not current.op:
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes

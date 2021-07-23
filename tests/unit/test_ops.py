@@ -27,6 +27,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnGroup, dispatch, ops
+from nvtabular.column import Columns
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -1152,32 +1153,32 @@ def test_list_slice(cpu):
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
     op = ops.ListSlice(0, 2)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(Columns.from_names("y"), df)
     expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(3, 5)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(Columns.from_names("y"), df)
     expected = DataFrame({"y": [[2, 767], [3], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(4, 10)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(Columns.from_names("y"), df)
     expected = DataFrame({"y": [[767], [], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(100, 20000)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(Columns.from_names("y"), df)
     expected = DataFrame({"y": [[], [], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(-4)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(Columns.from_names("y"), df)
     expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(-3, -1)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(Columns.from_names("y"), df)
     expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
@@ -1189,18 +1190,18 @@ def test_rename(cpu):
     df = DataFrame({"x": [1, 2, 3, 4, 5], "y": [6, 7, 8, 9, 10]})
 
     op = ops.Rename(f=lambda name: name.upper())
-    transformed = op.transform(["x", "y"], df)
+    transformed = op.transform(Columns.from_names("x", "y"), df)
     expected = DataFrame({"X": [1, 2, 3, 4, 5], "Y": [6, 7, 8, 9, 10]})
     assert_eq(transformed, expected)
 
     op = ops.Rename(postfix="_lower")
-    transformed = op.transform(["x", "y"], df)
+    transformed = op.transform(Columns.from_names("x", "y"), df)
     expected = DataFrame({"x_lower": [1, 2, 3, 4, 5], "y_lower": [6, 7, 8, 9, 10]})
     assert_eq(transformed, expected)
 
     df = DataFrame({"x": [1, 2, 3, 4, 5]})
 
     op = ops.Rename(name="z")
-    transformed = op.transform(["x"], df)
+    transformed = op.transform(Columns.from_names("x"), df)
     expected = DataFrame({"z": [1, 2, 3, 4, 5]})
     assert_eq(transformed, expected)

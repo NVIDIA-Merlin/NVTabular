@@ -21,9 +21,9 @@ try:
 except ImportError:
     cp = None
 
-from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
-
-from .base import ColumnNames, Operator
+from ..column import Columns
+from ..dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
+from .base import Operator
 
 
 class ListSlice(Operator):
@@ -56,10 +56,10 @@ class ListSlice(Operator):
             self.end = np.iinfo(np.int64).max
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
-        for col in columns:
+        for col in columns.names():
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]

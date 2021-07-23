@@ -17,7 +17,8 @@ from typing import Dict, Union
 
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
-from .base import ColumnNames, Operator
+from ..column import Columns
+from .base import Operator
 
 
 class HashedCross(Operator):
@@ -52,9 +53,9 @@ class HashedCross(Operator):
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for cross in _nest_columns(columns):
+        for cross in _nest_columns(columns.names()):
             val = 0
             for column in cross:
                 val ^= _hash_series(df[column])  # or however we want to do this aggregation
@@ -68,8 +69,8 @@ class HashedCross(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
-        return ["_X_".join(cross) for cross in _nest_columns(columns)]
+    def output_columns(self, columns: Columns) -> Columns:
+        return Columns(["_X_".join(cross) for cross in _nest_columns(columns.names())])
 
 
 def _nest_columns(columns):

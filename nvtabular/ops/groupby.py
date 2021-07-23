@@ -18,7 +18,7 @@ from dask.dataframe.utils import meta_nonempty
 from nvtabular.dispatch import DataFrameType, annotate
 
 from ..column import Columns
-from .base import ColumnNames, Operator
+from .base import Operator
 
 
 class Groupby(Operator):
@@ -99,7 +99,7 @@ class Groupby(Operator):
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
 
         # Sort if necessary
         if self.sort_cols:
@@ -112,7 +112,7 @@ class Groupby(Operator):
 
         # Get "complete" aggregation dicts
         _list_aggs, _conv_aggs = _get_agg_dicts(
-            self.groupby_cols, self.list_aggs, self.conv_aggs, columns
+            self.groupby_cols, self.list_aggs, self.conv_aggs, columns.names()
         )
 
         # Apply aggregations
@@ -151,14 +151,14 @@ class Groupby(Operator):
 
         output_columns = []
         for col in columns:
-            new_names = orig_to_new[col.name]
+            new_names = orig_to_new.get(col.name, [])
             for new_name in new_names:
                 if col.name in self.groupby_cols:
-                    to_add = col.update_name(new_name).with_tags(["groupby_col"])
+                    to_add = col.with_name(new_name).with_tags(["groupby_col"])
                 else:
                     agg = new_name.split(self.name_sep)[-1]
                     add_tags = agg != "count"
-                    to_add = col.update_name(new_name).with_tags([agg], add=add_tags)
+                    to_add = col.with_name(new_name).with_tags([agg], add=add_tags)
                 output_columns.append(to_add)
 
         return Columns(output_columns)

@@ -19,7 +19,8 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
-from .base import ColumnNames, Operator
+from ..column import Columns
+from .base import Operator
 
 
 class Bucketize(Operator):
@@ -67,8 +68,8 @@ class Bucketize(Operator):
         super().__init__()
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        boundaries = {name: self.boundaries(name) for name in columns}
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+        boundaries = {name: self.boundaries(name) for name in columns.names()}
         new_df = type(df)()
         for col, b in boundaries.items():
             if self.use_digitize:

@@ -16,7 +16,8 @@
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from .base import ColumnNames, Operator
+from ..column import Columns
+from .base import Operator
 
 
 class Dropna(Operator):
@@ -35,7 +36,7 @@ class Dropna(Operator):
     """
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        new_df = df.dropna(subset=columns or None)
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+        new_df = df.dropna(subset=columns.names().flatten() or None)
         new_df.reset_index(drop=True, inplace=True)
         return new_df

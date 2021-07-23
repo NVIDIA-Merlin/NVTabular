@@ -26,8 +26,6 @@ if TYPE_CHECKING:
     # avoid circular references
     from nvtabular import ColumnGroup
 
-ColumnNames = List[Union[str, List[str]]]
-
 
 class Supports(Flag):
     """ Indicates what type of data representation this operator supports for transformations """
@@ -47,7 +45,7 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
@@ -64,13 +62,12 @@ class Operator:
         """
         raise NotImplementedError
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
-        """Given a set of columns names returns the names of the transformed columns this
-        operator will produce
+    def output_columns(self, columns: Columns) -> Columns:
+        """Given a set of columns names returns transformed columns this operator will produce
 
         Parameters
         -----------
-        columns: list of str, or list of list of str
+        columns: Columns
             The columns to apply this operator to
 
         Returns
@@ -78,9 +75,6 @@ class Operator:
         list of str, or list of list of str
             The names of columns produced by this operator
         """
-        return columns
-
-    def output_columns(self, columns: Columns) -> Columns:
         return columns
 
     def dependencies(self) -> Optional[List[Union[str, ColumnGroup]]]:
@@ -108,7 +102,7 @@ class Operator:
         """ Returns what kind of data representation this operator supports """
         return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
 
-    def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
+    def inference_initialize(self, columns: Columns, model_config: dict) -> Optional[Operator]:
         """Configures this operator for use in inference. May return a different operator to use
         instead of the one configured for use during training"""
         return None
@@ -143,7 +137,7 @@ class AddMetadata(Operator):
 
         self.tags = list(set(tags))
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         return df
 
     def output_columns(self, columns: Columns) -> Columns:

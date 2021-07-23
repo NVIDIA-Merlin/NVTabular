@@ -43,6 +43,10 @@ class Column:
 
 
 class Columns(list):
+    @classmethod
+    def from_names(cls, *names):
+        return Columns([Column(name) for name in names])
+
     def map(self, fn) -> "Columns":
         return Columns(tree.map_structure(fn, self))
 

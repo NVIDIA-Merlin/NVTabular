@@ -15,15 +15,9 @@
 #
 from typing import Callable, Union
 
-from nvtabular.dispatch import (
-    DataFrameType,
-    SeriesType,
-    _is_dataframe_object,
-    _is_series_object,
-    annotate,
-)
-
-from .base import ColumnNames, Operator
+from ..column import Columns
+from ..dispatch import DataFrameType, SeriesType, _is_dataframe_object, _is_series_object, annotate
+from .base import Operator
 
 
 class Filter(Operator):
@@ -50,7 +44,7 @@ class Filter(Operator):
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         filtered = self.f(df)
         if _is_dataframe_object(filtered):
             new_df = filtered

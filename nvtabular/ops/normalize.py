@@ -16,8 +16,9 @@
 
 import dask.dataframe as dd
 
+from ..column import Columns
 from ..dispatch import DataFrameType, annotate
-from .base import ColumnNames, Operator, Supports
+from .base import Operator, Supports
 from .moments import _custom_moments
 from .stat_operator import StatOperator
 
@@ -45,8 +46,8 @@ class Normalize(StatOperator):
         self.stds = {}
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
-        return _custom_moments(ddf[columns])
+    def fit(self, columns: Columns, ddf: dd.DataFrame):
+        return _custom_moments(ddf[columns.names().flatten()])
 
     def fit_finalize(self, dask_stats):
         for col in dask_stats.index:
@@ -54,9 +55,10 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for name in columns:
+        names = columns.names() if isinstance(columns, Columns) else columns
+        for name in names:
             if self.stds[name] > 0:
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
                 new_df[name] = new_df[name].astype("float32")
@@ -102,7 +104,7 @@ class NormalizeMinMax(StatOperator):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
         new_df = type(df)()
-        for name in columns:
+        for name in columns.names():
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
                 new_df[name] = (df[name] - self.mins[name]) / dif
@@ -116,8 +118,8 @@ class NormalizeMinMax(StatOperator):
     @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
     def fit(self, columns, ddf):
         return {
-            "mins": ddf[columns].min(),
-            "maxs": ddf[columns].max(),
+            "mins": ddf[columns.names().flatten()].min(),
+            "maxs": ddf[columns.names().flatten()].max(),
         }
 
     @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")

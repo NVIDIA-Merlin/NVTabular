@@ -17,16 +17,16 @@ import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
-from nvtabular.dispatch import (
+from ..column import Columns
+from ..dispatch import (
     DataFrameType,
     _arange,
     _concat_columns,
     _random_state,
     _read_parquet_dispatch,
 )
-
 from . import categorify as nvt_cat
-from .base import ColumnNames, Operator
+from .base import Operator
 from .moments import _custom_moments
 from .stat_operator import StatOperator
 
@@ -162,13 +162,13 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, columns: Columns, ddf: dd.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
             moments = _custom_moments(ddf[self.target])
 
-        col_groups = columns[:]
+        col_groups = columns.names()[:]
         if self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
@@ -180,7 +180,7 @@ class TargetEncoding(StatOperator):
                 )
 
             # Add new col_groups with fold
-            for group in columns:
+            for group in columns.names():
                 if isinstance(group, tuple):
                     group = list(group)
                 if isinstance(group, list):
@@ -319,7 +319,7 @@ class TargetEncoding(StatOperator):
 
         return tran_df
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")

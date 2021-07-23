@@ -15,9 +15,9 @@
 #
 import numpy as np
 
-from nvtabular.dispatch import DataFrameType, _natural_log, annotate
-
-from .base import ColumnNames, Operator
+from ..column import Columns
+from ..dispatch import DataFrameType, _natural_log, annotate
+from .base import Operator
 
 
 class LogOp(Operator):
@@ -34,7 +34,7 @@ class LogOp(Operator):
     """
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        return _natural_log(df[columns].astype(np.float32) + 1)
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+        return _natural_log(df[columns.names().flatten()].astype(np.float32) + 1)
 
     transform.__doc__ = Operator.transform.__doc__
