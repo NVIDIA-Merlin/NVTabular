@@ -24,6 +24,7 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         embedding_table_shapes: A dictionary mapping column names to
             (cardinality, embedding_size) tuples.
         dropout: A float.
+        sparse_columns: A list of sparse columns
 
     Inputs:
         x: An int64 Tensor with shape [batch_size, num_variables].
@@ -32,12 +33,14 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         A Float Tensor with shape [batch_size, embedding_size_after_concat].
     """
 
-    def __init__(self, embedding_table_shapes, dropout=0.0):
+    def __init__(self, embedding_table_shapes, dropout=0.0, sparse_columns=[]):
         super().__init__()
+        for col in sparse_columns:
+            assert col in embedding_table_shapes, f"{col} is not in embedding_table_shapes"
         self.embedding_layers = torch.nn.ModuleList(
             [
-                torch.nn.Embedding(cat_size, emb_size)
-                for cat_size, emb_size in embedding_table_shapes.values()
+                torch.nn.Embedding(cat_size, emb_size, sparse=(col in sparse_columns))
+                for col, (cat_size, emb_size) in embedding_table_shapes.items()
             ]
         )
         self.dropout = torch.nn.Dropout(p=dropout)
