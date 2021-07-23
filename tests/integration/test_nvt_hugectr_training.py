@@ -169,31 +169,27 @@ def test_nvt_hugectr_training():
 
 def _run_model(slot_sizes, total_cardinality):
 
-    solver = hugectr.solver_parser_helper(
+    
+    solver = hugectr.CreateSolver(
         vvgpu=[[0]],
-        max_iter=2000,
         batchsize=2048,
-        display=100,
-        eval_interval=200,
         batchsize_eval=2048,
         max_eval_batches=160,
         i64_input_key=True,
         use_mixed_precision=False,
         repeat_dataset=True,
-        snapshot=1900,
     )
 
-    optimizer = hugectr.optimizer.CreateOptimizer(
-        optimizer_type=hugectr.Optimizer_t.Adam, use_mixed_precision=False
-    )
-    model = hugectr.Model(solver, optimizer)
+    reader = hugectr.DataReaderParams(data_reader_type = hugectr.DataReaderType_t.Parquet,
+        source = [DATA_DIR + "train/_file_list.txt"],
+        eval_source = DATA_DIR + "valid/_file_list.txt",
+        check_type = hugectr.Check_t.Non)
+
+    optimizer = hugectr.CreateOptimizer(optimizer_type=hugectr.Optimizer_t.Adam)
+    model = hugectr.Model(solver, reader, optimizer)
 
     model.add(
         hugectr.Input(
-            data_reader_type=hugectr.DataReaderType_t.Parquet,
-            source=DATA_DIR + "train/_file_list.txt",
-            eval_source=DATA_DIR + "valid/_file_list.txt",
-            check_type=hugectr.Check_t.Non,
             label_dim=1,
             label_name="label",
             dense_dim=0,
@@ -201,7 +197,7 @@ def _run_model(slot_sizes, total_cardinality):
             slot_size_array=slot_sizes,
             data_reader_sparse_param_array=[
                 hugectr.DataReaderSparseParam(
-                    hugectr.DataReaderSparse_t.Distributed, len(slot_sizes) + 1, 1, len(slot_sizes)
+                    "data1", len(slot_sizes) + 1, True, len(slot_sizes)
                 )
             ],
             sparse_names=["data1"],
