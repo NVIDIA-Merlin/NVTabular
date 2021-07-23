@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from ..column import Column, Columns
 from ..dispatch import DataFrameType
-from .base import ColumnNames, Operator
+from .base import Operator
 
 
 class Rename(Operator):
@@ -48,20 +49,20 @@ class Rename(Operator):
         self.postfix = postfix
         self.name = name
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        df.columns = self.output_column_names(columns)
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+        df.columns = self.output_columns(columns).names()
         return df
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
+    def output_columns(self, columns: Columns) -> Columns:
         if self.f:
-            return [self.f(col) for col in columns]
+            return columns.map_names(self.f)
         elif self.postfix:
-            return [col + self.postfix for col in columns]
+            return columns.map_names(lambda n: n + self.postfix)
         elif self.name:
             if len(columns) == 1:
-                return [self.name]
+                return Columns([Column(self.name)])
             else:
                 raise RuntimeError("Single column name provided for renaming multiple columns")
         else:

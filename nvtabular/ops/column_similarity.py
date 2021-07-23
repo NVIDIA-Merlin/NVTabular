@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from ..column import Column, Columns
+
 try:
     import cupy
     import cupy.sparse
@@ -112,6 +114,9 @@ class ColumnSimilarity(Operator):
 
     def output_column_names(self, columns):
         return [f"{a}_{b}_sim" for a, b in columns]
+
+    def output_columns(self, columns: Columns) -> Columns:
+        return columns.map(lambda a, b: Column(f"{a}_{b}_sim"))
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):

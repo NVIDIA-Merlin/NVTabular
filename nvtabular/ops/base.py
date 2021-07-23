@@ -146,5 +146,5 @@ class AddMetadata(Operator):
     def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
         return df
 
-    def output_columns(self, columns):
-        return [col.with_tags(self.tags).with_properties(**self.properties) for col in columns]
+    def output_columns(self, columns: Columns) -> Columns:
+        return columns.map(lambda col: col.with_tags(self.tags).with_properties(**self.properties))

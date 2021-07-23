@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Text, Union
 import joblib
 from dask.core import flatten
 
-from nvtabular.column import Column
+from nvtabular.column import Column, Columns
 from nvtabular.ops import LambdaOp, Operator
 from nvtabular.tag import DefaultTags, Tag
 
@@ -65,7 +65,7 @@ class ColumnGroup:
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
         if any(isinstance(col, ColumnGroup) for col in columns):
-            self.columns = []
+            self.columns: Columns = Columns()
             self.kind = "[...]"
             for col in columns:
                 if not isinstance(col, ColumnGroup):
@@ -81,11 +81,12 @@ class ColumnGroup:
                 self.columns.append(tuple(col.columns))
 
         else:
-            self.columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
+            columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
+            self.columns: Columns = Columns(columns)
 
     @property
     def column_names(self):
-        return [str(c) for c in self.columns]
+        return self.columns.names()
 
     def __call__(self, operator, **kwargs):
         """Transforms this ColumnGroup by applying an Operator
@@ -107,10 +108,7 @@ class ColumnGroup:
 
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
-        if getattr(operator, "output_columns", None):
-            child_columns = operator.output_columns(self.columns)
-        else:
-            child_columns = operator.output_column_names(self.column_names)
+        child_columns = operator.output_columns(self.columns)
 
         child = ColumnGroup(child_columns)
         child.parents = [self]
@@ -152,7 +150,8 @@ class ColumnGroup:
             other = ColumnGroup(other)
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.column_names).intersection(other.column_names)
+        overlap = self.column_names.intersection(other.column_names)
+
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
@@ -252,7 +251,7 @@ class ColumnGroup:
         child = ColumnGroup(columns, tags=tags)
         child.parents = [self]
         self.children.append(child)
-        child.kind = f"tagged={child._tags_repr} " + self._cols_repr
+        # child.kind = f"tagged={child._tags_repr} " + self._cols_repr
 
         return child
 
@@ -264,59 +263,45 @@ class ColumnGroup:
 
         return outputs
 
-    @property
     def targets_columns(self):
         return self.get_tagged(Tag.TARGETS, output_list=True)
 
-    @property
     def targets_column_group(self):
         return self.get_tagged(Tag.TARGETS, output_list=False)
 
-    @property
     def binary_targets_columns(self):
         return self.get_tagged(Tag.TARGETS_BINARY, output_list=True)
 
-    @property
     def binary_targets_column_group(self):
         return self.get_tagged(Tag.TARGETS_BINARY, output_list=False)
 
-    @property
     def regression_targets_columns(self):
         return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=True)
 
-    @property
     def regression_targets_column_group(self):
         return self.get_tagged(Tag.TARGETS_REGRESSION, output_list=False)
 
-    @property
     def continuous_columns(self):
         return self.get_tagged(Tag.CONTINUOUS, output_list=True)
 
-    @property
     def continuous_column_group(self):
         return self.get_tagged(Tag.CONTINUOUS, output_list=False)
 
-    @property
     def categorical_columns(self):
         return self.get_tagged(Tag.CATEGORICAL, output_list=True)
 
-    @property
     def categorical_column_group(self):
         return self.get_tagged(Tag.CATEGORICAL, output_list=False)
 
-    @property
     def text_columns(self):
         return self.get_tagged(Tag.TEXT, output_list=True)
 
-    @property
     def text_column_group(self):
         return self.get_tagged(Tag.TEXT, output_list=False)
 
-    @property
     def text_tokenized_columns(self):
         return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=True)
 
-    @property
     def text_tokenized_column_group(self):
         return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=False)
 
@@ -358,14 +343,21 @@ class ColumnGroup:
 
     @property
     def flattened_columns(self):
-        return list(flatten(self.columns))
+        return self.columns.flatten()
+
+    @property
+    def input_columns(self) -> Columns:
+        dependencies = self.dependencies or set()
+        return Columns(
+            [col for parent in self.parents for col in parent.columns if parent not in dependencies]
+        )
 
     @property
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
-            col
+            tuple(col) if isinstance(col, Columns) else col
             for parent in self.parents
             for col in parent.column_names
             if parent not in dependencies
@@ -488,6 +480,6 @@ def _convert_col(col, tags=None, properties=None):
     elif isinstance(col, str):
         return Column(col, tags=tags, properties=properties)
     elif isinstance(col, (tuple, list)):
-        return tuple(_convert_col(c, tags=tags, properties=properties) for c in col)
+        return Columns(tuple(_convert_col(c, tags=tags, properties=properties) for c in col))
     else:
         raise ValueError(f"Invalid column value for ColumnGroup: {col} (type: {type(col)})")

@@ -19,7 +19,7 @@ import os
 import sys
 import time
 import warnings
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import cloudpickle
 
@@ -140,7 +140,7 @@ class Workflow:
 
                 op = column_group.op
                 try:
-                    stats.append(op.fit(column_group.input_column_names, transformed_ddf))
+                    stats.append(op.fit(column_group.input_columns, transformed_ddf))
                     ops.append(op)
                 except Exception:
                     LOG.exception("Failed to fit operator %s", column_group.op)
@@ -287,7 +287,7 @@ class Workflow:
 
     def _input_columns(self):
         input_nodes = set(node for node in iter_nodes([self.column_group]) if not node.parents)
-        return list(set(col for node in input_nodes for col in node.flattened_columns))
+        return list(set(col for node in input_nodes for col in node.flattened_column_names))
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
@@ -301,7 +301,7 @@ def _transform_ddf(ddf, column_groups, meta=None):
     if isinstance(column_groups, ColumnGroup):
         column_groups = [column_groups]
 
-    columns = list(flatten(cg.flattened_columns for cg in column_groups))
+    columns = list(flatten(cg.flattened_column_names for cg in column_groups))
 
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
@@ -344,13 +344,13 @@ def _transform_partition(root_df, column_groups):
     """Transforms a single partition by appyling all operators in a ColumnGroup"""
     output = None
     for column_group in column_groups:
-        unique_flattened_cols = _get_unique(column_group.flattened_columns)
+        unique_flattened_cols: List[str] = column_group.column_names.flatten().unique()
         # collect dependencies recursively if we have parents
         if column_group.parents:
             df = None
             columns = None
             for parent in column_group.parents:
-                unique_flattened_cols_parent = _get_unique(parent.flattened_columns)
+                unique_flattened_cols_parent = parent.column_names.flatten().unique()
                 parent_df = _transform_partition(root_df, [parent])
                 if df is None or not len(df):
                     df = parent_df[unique_flattened_cols_parent]
@@ -366,7 +366,7 @@ def _transform_partition(root_df, column_groups):
         # apply the operator if necessary
         if column_group.op:
             try:
-                df = column_group.op.transform(column_group.input_column_names, df)
+                df = column_group.op.transform(column_group.input_columns, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise

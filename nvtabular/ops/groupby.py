@@ -17,6 +17,7 @@ from dask.dataframe.utils import meta_nonempty
 
 from nvtabular.dispatch import DataFrameType, annotate
 
+from ..column import Columns
 from .base import ColumnNames, Operator
 
 
@@ -132,6 +133,35 @@ class Groupby(Operator):
         _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
 
         return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
+
+    def output_columns(self, columns: Columns) -> Columns:
+        output_names = self.output_column_names(columns.names())
+        orig_to_new = {}
+        for name in output_names:
+            if name in self.groupby_cols:
+                orig_name = name
+            else:
+                agg = name.split(self.name_sep)[-1]
+                orig_name = name[: -(len(agg) + len(self.name_sep))]
+
+            if orig_name in orig_to_new:
+                orig_to_new[orig_name].append(name)
+            else:
+                orig_to_new[orig_name] = [name]
+
+        output_columns = []
+        for col in columns:
+            new_names = orig_to_new[col.name]
+            for new_name in new_names:
+                if col.name in self.groupby_cols:
+                    to_add = col.update_name(new_name).with_tags(["groupby_col"])
+                else:
+                    agg = new_name.split(self.name_sep)[-1]
+                    add_tags = agg != "count"
+                    to_add = col.update_name(new_name).with_tags([agg], add=add_tags)
+                output_columns.append(to_add)
+
+        return Columns(output_columns)
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

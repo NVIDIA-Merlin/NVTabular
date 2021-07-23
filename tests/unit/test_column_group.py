@@ -34,13 +34,14 @@ def test_nested_column_group():
         }
     )
 
-    country = (
-        ColumnGroup(["geo"]) >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
-    )
+    geo = ColumnGroup(["geo"])
+    sliced = geo >> (lambda col: col.str.slice(0, 2))
+    country = sliced >> Rename(postfix="_country")
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
-    cats = [country + "user"] + country + "user" >> Categorify(encode_type="combo")
+    c = [country + "user"] + country + "user"
+    cats = c >> Categorify(encode_type="combo")
 
     workflow = Workflow(cats)
     df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")

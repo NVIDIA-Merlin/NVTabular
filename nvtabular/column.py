@@ -44,10 +44,28 @@ class Column:
 
 class Columns(list):
     def map(self, fn) -> "Columns":
-        return tree.map_structure(fn, self)
+        return Columns(tree.map_structure(fn, self))
 
     def map_names(self, fn) -> "Columns":
         return tree.map_structure(lambda x: x.with_name(fn(x.name)), self)
 
     def flatten(self) -> "Columns":
-        return tree.flatten(self)
+        return Columns(tree.flatten(self))
+
+    def names(self):
+        return self.map(lambda x: x if isinstance(x, str) else x.name)
+
+    def to_list(self):
+        return [list(x) if isinstance(x, Columns) else x for x in self]
+
+    def nesting_to_tuple(self):
+        return [tuple(x) if isinstance(x, Columns) else x for x in self]
+
+    def intersection(self, other):
+        return set(self.nesting_to_tuple()).intersection(other.nesting_to_tuple())
+
+    def unique(self):
+        return list({x: x for x in self.to_list()}.keys())
+
+    def __add__(self, x) -> "Columns":
+        return Columns(super().__add__(x))
