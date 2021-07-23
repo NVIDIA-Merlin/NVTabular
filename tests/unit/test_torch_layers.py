@@ -15,24 +15,18 @@
 #
 import pytest
 
+from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
-from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
 
 
 def test_sparse_embedding_layer():
     embedding_table_shapes = {"col_a": (123, 4), "col_b": (45, 3)}
 
     emb_layer = ConcatenatedEmbeddings(embedding_table_shapes)
-    assert (
-        emb_layer.embedding_layers[0].sparse == False
-        and emb_layer.embedding_layers[1].sparse == False
-    )
+    assert not emb_layer.embedding_layers[0].sparse and not emb_layer.embedding_layers[1].sparse
 
     emb_layer = ConcatenatedEmbeddings(embedding_table_shapes, sparse_columns=["col_a"])
-    assert (
-        emb_layer.embedding_layers[0].sparse == True
-        and emb_layer.embedding_layers[1].sparse == False
-    )
+    assert emb_layer.embedding_layers[0].sparse and not emb_layer.embedding_layers[1].sparse
