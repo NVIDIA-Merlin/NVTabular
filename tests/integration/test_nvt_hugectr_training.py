@@ -25,7 +25,7 @@ import cudf
 import hugectr
 import numpy as np
 import pandas as pd
-from hugectr.inference import InferenceParams, CreateInferenceSession
+from hugectr.inference import CreateInferenceSession, InferenceParams
 from mpi4py import MPI  # noqa
 from sklearn.model_selection import train_test_split
 
@@ -163,13 +163,12 @@ def test_nvt_hugectr_training():
     )
 
     shutil.rmtree(TEMP_DIR)
-
+    print(hugectr_params["config"])
     _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], model_name)
 
 
 def _run_model(slot_sizes, total_cardinality):
 
-    
     solver = hugectr.CreateSolver(
         vvgpu=[[0]],
         batchsize=2048,
@@ -180,10 +179,12 @@ def _run_model(slot_sizes, total_cardinality):
         repeat_dataset=True,
     )
 
-    reader = hugectr.DataReaderParams(data_reader_type = hugectr.DataReaderType_t.Parquet,
-        source = [DATA_DIR + "train/_file_list.txt"],
-        eval_source = DATA_DIR + "valid/_file_list.txt",
-        check_type = hugectr.Check_t.Non)
+    reader = hugectr.DataReaderParams(
+        data_reader_type=hugectr.DataReaderType_t.Parquet,
+        source=[DATA_DIR + "train/_file_list.txt"],
+        eval_source=DATA_DIR + "valid/_file_list.txt",
+        check_type=hugectr.Check_t.Non,
+    )
 
     optimizer = hugectr.CreateOptimizer(optimizer_type=hugectr.Optimizer_t.Adam)
     model = hugectr.Model(solver, reader, optimizer)
@@ -194,24 +195,22 @@ def _run_model(slot_sizes, total_cardinality):
             label_name="label",
             dense_dim=0,
             dense_name="dense",
-            slot_size_array=slot_sizes,
             data_reader_sparse_param_array=[
-                hugectr.DataReaderSparseParam(
-                    "data1", len(slot_sizes) + 1, True, len(slot_sizes)
-                )
+                hugectr.DataReaderSparseParam("data1", len(slot_sizes) + 1, True, len(slot_sizes))
             ],
-            sparse_names=["data1"],
         )
     )
 
     model.add(
         hugectr.SparseEmbedding(
             embedding_type=hugectr.Embedding_t.DistributedSlotSparseEmbeddingHash,
-            max_vocabulary_size_per_gpu=total_cardinality,
+            workspace_size_per_gpu_in_mb=107,
             embedding_vec_size=16,
-            combiner=0,
+            combiner="sum",
             sparse_embedding_name="sparse_embedding1",
             bottom_name="data1",
+            slot_size_array=slot_sizes,
+            optimizer=optimizer,
         )
     )
     model.add(
@@ -357,12 +356,18 @@ def _write_model_json(slot_sizes, total_cardinality):
 
 
 def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
-    inference_params = InferenceParams(model_name = model_name,
-                                    device_id = 0,
-                                    use_gpu_embedding_cache = True,
-                                    cache_size_percentage = 0.1,
-                                    i64_input_key = True,
-                                    use_mixed_precision = False)
+    inference_params = InferenceParams(
+        model_name=model_name,
+        max_batchsize=64,
+        hit_rate_threshold=0.5,
+        dense_model_file=MODEL_DIR + "test_model/1/_dense_1900.model",
+        sparse_model_files=[MODEL_DIR + "test_model/1/0_sparse_1900.model"],
+        device_id=0,
+        use_gpu_embedding_cache=True,
+        cache_size_percentage=0.1,
+        i64_input_key=True,
+        use_mixed_precision=False,
+    )
     inference_session = CreateInferenceSession(config_file, inference_params)
     output = inference_session.predict(dense_features, embedding_columns, row_ptrs, True)
 
