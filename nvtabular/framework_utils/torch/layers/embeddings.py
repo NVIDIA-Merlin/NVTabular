@@ -33,7 +33,7 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         A Float Tensor with shape [batch_size, embedding_size_after_concat].
     """
 
-    def __init__(self, embedding_table_shapes, dropout=0.0, sparse_columns=[]):
+    def __init__(self, embedding_table_shapes, dropout=0.0, sparse_columns=()):
         super().__init__()
         for col in sparse_columns:
             assert col in embedding_table_shapes, f"{col} is not in embedding_table_shapes"
