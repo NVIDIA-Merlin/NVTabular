@@ -17,29 +17,36 @@ import copy
 import math
 import string
 
-import cudf
-import cupy as cp
 import dask.dataframe as dd
-import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
-from cudf.tests.utils import assert_eq
 from dask.dataframe import assert_eq as assert_eq_dd
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnGroup, ops
-from tests.conftest import mycols_csv, mycols_pq
+from nvtabular import ColumnGroup, dispatch, ops
+from tests.conftest import assert_eq, mycols_csv, mycols_pq
+
+try:
+    import cudf
+    import cupy as cp
+    import dask_cudf
+
+    _CPU = [True, False]
+    _HAS_GPU = True
+except ImportError:
+    _CPU = [True]
+    _HAS_GPU = False
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 # TODO: dask workflow doesn't support min/max on string columns, so won't work
 # with op_columns=None
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, cpu):
     df = dataset.to_ddf().compute()
     cont_features = op_columns >> ops.NormalizeMinMax()
@@ -58,12 +65,13 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
 
+@pytest.mark.skipif(not _HAS_GPU, reason="TargetEncoding doesn't work without a GPU yet")
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "Author": list(string.ascii_uppercase),
             "Engaging-User": list(string.ascii_lowercase),
@@ -72,7 +80,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         }
     )
     if cpu:
-        df = dd.from_pandas(df.to_pandas(), npartitions=3)
+        df = dd.from_pandas(df if isinstance(df, pd.DataFrame) else df.to_pandas(), npartitions=3)
     else:
         df = dask_cudf.from_cudf(df, npartitions=3)
 
@@ -105,17 +113,19 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         assert_eq(check, df_out_check)
 
 
+@pytest.mark.skipif(not _HAS_GPU, reason="TargetEncoding doesn't work without a GPU yet")
 @pytest.mark.parametrize("npartitions", [1, 2])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_target_encode_multi(tmpdir, npartitions, cpu):
-
     cat_1 = np.asarray(["baaaa"] * 12)
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
     df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     if cpu:
-        df = dd.from_pandas(df.to_pandas(), npartitions=npartitions)
+        df = dd.from_pandas(
+            df if isinstance(df, pd.DataFrame) else df.to_pandas(), npartitions=npartitions
+        )
     else:
         df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
@@ -143,11 +153,11 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
     assert math.isclose(df_out["TE_cat_num_2"].iloc[0], num_2.mean(), abs_tol=1e-3)
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 @pytest.mark.parametrize("add_binary_cols", [True, False])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_fill_median(
     tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, add_binary_cols, cpu
 ):
@@ -155,7 +165,9 @@ def test_fill_median(
     processor = nvt.Workflow(cont_features)
 
     ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
-    df0 = df.to_pandas() if cpu else df
+    df0 = df
+    if cpu and not isinstance(df0, pd.DataFrame):
+        df0 = df0.to_pandas()
 
     processor.fit(ds)
     new_df = processor.transform(ds).to_ddf().compute()
@@ -169,22 +181,25 @@ def test_fill_median(
             assert df0[col].isna().sum() == new_df[f"{col}_filled"].sum()
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
-def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
+@pytest.mark.parametrize("cpu", _CPU)
+def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     cont_features = op_columns >> nvt.ops.LogOp()
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    new_gdf.index = df.index  # Make sure index is aligned for checks
-    assert new_gdf[op_columns] == np.log(df[op_columns].astype(np.float32))
+    new_df = processor.transform(dataset).to_ddf().compute()
+    for col in op_columns:
+        values = dispatch._array(new_df[col])
+        original = dispatch._array(df[col])
+        assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     cat_names = ["name-string"]
     if cpu:
@@ -208,8 +223,9 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, c
     np.all(new_df[cat_names].sum().values == checksum)
 
 
+@pytest.mark.skipif(not _HAS_GPU, reason="HashBucket doesn't work on lists without a GPU yet")
 def test_hash_bucket_lists(tmpdir):
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -234,9 +250,9 @@ def test_hash_bucket_lists(tmpdir):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("add_binary_cols", [True, False])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_fill_missing(tmpdir, df, engine, add_binary_cols, cpu):
-    if cpu:
+    if cpu and not isinstance(df, pd.DataFrame):
         df = df.to_pandas()
     cont_names = ["x", "y"]
     cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42, add_binary_cols=add_binary_cols)
@@ -260,7 +276,7 @@ def test_fill_missing(tmpdir, df, engine, add_binary_cols, cpu):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_dropna(tmpdir, df, dataset, engine, cpu):
     columns = mycols_pq if engine == "parquet" else mycols_csv
     dropna_features = columns >> ops.Dropna()
@@ -293,14 +309,20 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
         ]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
+    # our normalize op also works on dicts of cupy/numpy tensors. make sure this works like we'd
+    # expect
+    df = dataset.compute()
+    cupy_inputs = {col: df[col].values for col in op_columns}
+    cupy_outputs = cont_features.op.transform(op_columns, cupy_inputs)
+    for col in op_columns:
+        assert np.allclose(cupy_outputs[col], new_gdf[col].values)
+
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("op_columns", [["x"]])
 def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_columns):
-    df = cudf.DataFrame(
-        {"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1, 0, 1, 0]}, dtype="float32"
-    )
+    df = dispatch._make_df({"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1.0, 0.0, 1.0, 0.0]})
 
     cont_features = op_columns >> ops.Normalize()
     processor = nvtabular.Workflow(cont_features)
@@ -320,7 +342,7 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     dataset = nvt.Dataset(paths, cpu=cpu)
     df_copy = df.copy()
@@ -404,7 +426,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     assert np.sum(new_gdf["name-cat"] < 100) == 0
 
 
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_lambdaop_misalign(cpu):
     size = 12
     df0 = pd.DataFrame(
@@ -436,10 +458,11 @@ def test_lambdaop_misalign(cpu):
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
-@pytest.mark.parametrize("cpu", [False, True])
-@pytest.mark.parametrize("dtype", [np.int32, np.int64])
-def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
-    df = cudf.DataFrame(
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
+@pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
+def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
+    df = dispatch._make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -450,7 +473,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
     label_name = ["Post"]
 
     cat_features = cat_names >> ops.Categorify(
-        out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype
+        out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype, vocabs=vocabs
     )
 
     workflow = nvt.Workflow(cat_features + label_name)
@@ -458,21 +481,21 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype):
 
     # Columns are encoded independently
     if cpu:
-        assert df_out["Authors"][0].dtype == np.dtype(dtype)
+        assert df_out["Authors"][0].dtype == np.dtype(dtype) if dtype else np.dtype("int64")
         compare = [list(row) for row in df_out["Authors"].tolist()]
     else:
-        assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype)
+        assert df_out["Authors"].dtype == cudf.core.dtypes.ListDtype(dtype if dtype else "int64")
         compare = df_out["Authors"].to_arrow().to_pylist()
 
-    if freq_threshold < 2:
-        assert compare == [[1], [1, 4], [2, 3], [3]]
+    if freq_threshold < 2 or vocabs is not None:
+        assert compare == [[1], [1, 4], [3, 2], [2]]
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_categorify_multi(tmpdir, cat_names, kind, cpu):
     df = pd.DataFrame(
         {
@@ -503,8 +526,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
                 if cpu
                 else df_out["Engaging User"].to_arrow().to_pylist()
             )
-            assert compare_authors == [1, 5, 2, 3]
-            assert compare_engaging == [2, 2, 1, 4]
+            # again userB has highest frequency given lowest encoding
+            assert compare_authors == [2, 5, 1, 3]
+            assert compare_engaging == [1, 1, 2, 4]
         else:
             # Column combinations are encoded
             compare_engaging = (
@@ -524,10 +548,11 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
             else df_out["Engaging User"].to_arrow().to_pylist()
         )
         assert compare_authors == [1, 4, 2, 3]
-        assert compare_engaging == [2, 2, 1, 3]
+        # User B is first in frequency based ordering
+        assert compare_engaging == [1, 1, 2, 3]
 
 
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_categorify_multi_combo(tmpdir, cpu):
     cat_names = [["Author", "Engaging User"], ["Author"], "Engaging User"]
     kind = "combo"
@@ -557,20 +582,21 @@ def test_categorify_multi_combo(tmpdir, cpu):
         else df_out["Author_Engaging User"].to_arrow().to_pylist()
     )
     assert compare_a == [1, 4, 2, 3]
-    assert compare_e == [2, 2, 1, 3]
+    # here User B has more frequency so lower encode value
+    assert compare_e == [1, 1, 2, 3]
     assert compare_ae == [1, 4, 2, 3]
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
 @pytest.mark.parametrize("buckets", [None, 10, {"Author": 10, "Engaging User": 20}])
 @pytest.mark.parametrize("search_sort", [True, False])
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
     if search_sort and cpu:
         # invalid combination - don't test
         return
 
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "Author": [
                 "User_A",
@@ -634,7 +660,11 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
                 assert df_out["Author"].max() <= 9
                 assert df_out["Engaging User"].max() <= 9
         elif freq_limit and buckets:
-            if isinstance(buckets, dict) and isinstance(buckets, dict):
+            if (
+                isinstance(buckets, dict)
+                and isinstance(buckets, dict)
+                and not isinstance(df, pd.DataFrame)
+            ):
                 assert (
                     df_out["Author"].max()
                     <= (df["Author"].hash_values() % buckets["Author"]).max() + 2 + 1
@@ -645,9 +675,9 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
                 )
 
 
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_categorify_hash_bucket(cpu):
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
             "Engaging_User": ["User_B", "User_B", "User_A", "User_D", "User_D"],
@@ -672,7 +702,7 @@ def test_categorify_hash_bucket(cpu):
 
 @pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
 def test_categorify_max_size(max_emb_size):
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "Author": [
                 "User_A",
@@ -729,7 +759,7 @@ def test_categorify_max_size(max_emb_size):
     assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_joingroupby_dependency(tmpdir, cpu):
     df = pd.DataFrame(
         {
@@ -757,10 +787,9 @@ def test_joingroupby_dependency(tmpdir, cpu):
         ]
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("groups", [[["Author", "Engaging-User"]], "Author"])
 def test_joingroupby_multi(tmpdir, groups, cpu):
-
     df = pd.DataFrame(
         {
             "Author": ["User_A", "User_A", "User_A", "User_B"],
@@ -793,6 +822,7 @@ def test_joingroupby_multi(tmpdir, groups, cpu):
         assert check == [600.0, 600.0, 600.0, 400.0]
 
 
+@pytest.mark.skipif(not _HAS_GPU, reason="This unittest requires cudf/dask_cudf to run")
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize(
     "kind_ext",
@@ -810,10 +840,9 @@ def test_joingroupby_multi(tmpdir, groups, cpu):
 )
 @pytest.mark.parametrize("cache", ["host", "device"])
 @pytest.mark.parametrize("how", ["left", "inner"])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("drop_duplicates", [True, False])
 def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, drop_duplicates):
-
     # Define "external" table
     shift = 100
     df_ext = df[["id"]].copy().sort_values("id")
@@ -874,11 +903,11 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     assert "new_col_3" not in new_gdf.columns
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
-    if cpu:
+    if cpu and not isinstance(df, pd.DataFrame):
         df = df.to_pandas()
 
     cont_names = ["x", "y"]
@@ -916,7 +945,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         new_gdf = processor.transform(dataset).to_ddf().compute()
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_difference_lag(cpu):
     lib = pd if cpu else cudf
     df = lib.DataFrame(
@@ -949,9 +978,9 @@ def test_difference_lag(cpu):
         assert new_df["timestamp_difference_lag_-1"][5] is (lib.NA if hasattr(lib, "NA") else None)
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # TODO: add tests for > 2 features, multiple crosses, etc.
     cat_names = [["name-string", "id"]]
@@ -972,9 +1001,9 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     assert new_df[new_column_name].sum() == checksum
 
 
-@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     cont_names = ["x", "y"]
     boundaries = [[-1, 0, 1], [-4, 100]]
@@ -999,8 +1028,9 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         # repeat the existing logic
 
 
+@pytest.mark.skipif(not _HAS_GPU, reason="This unittest requires cudf/dask_cudf to run")
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_data_stats(tmpdir, df, datasets, engine, cpu):
     # cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
@@ -1061,7 +1091,7 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
         )
 
 
-@pytest.mark.parametrize("cpu", [False, True])
+@pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("keys", [["name"], "id", ["name", "id"]])
 def test_groupby_op(keys, cpu):
     # Initial timeseries dataset
@@ -1115,7 +1145,7 @@ def test_groupby_op(keys, cpu):
     assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_list_slice(cpu):
     DataFrame = pd.DataFrame if cpu else cudf.DataFrame
 
@@ -1152,7 +1182,7 @@ def test_list_slice(cpu):
     assert_eq(transformed, expected)
 
 
-@pytest.mark.parametrize("cpu", [True, False])
+@pytest.mark.parametrize("cpu", _CPU)
 def test_rename(cpu):
     DataFrame = pd.DataFrame if cpu else cudf.DataFrame
 

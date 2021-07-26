@@ -1,32 +1,33 @@
-import cudf
+import numpy as np
 import pytest
-from cudf.tests.utils import assert_eq
 
-from nvtabular import ColumnGroup, Dataset, Workflow
+from nvtabular import ColumnGroup, Dataset, Workflow, dispatch
 from nvtabular.ops import Categorify, Rename
+from tests.conftest import assert_eq
 
 
 def test_column_group_select():
-    df = cudf.DataFrame({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
+    df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
     input_features = ColumnGroup(["a", "b", "c"])
-    sqrt_features = input_features[["a", "c"]] >> cudf.sqrt
+    # pylint: disable=unnecessary-lambda
+    sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
     plus_one_features = input_features["b"] >> (lambda col: col + 1)
     features = sqrt_features + plus_one_features
 
     workflow = Workflow(features)
     df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
-    expected = cudf.DataFrame()
-    expected["a"] = cudf.sqrt(df["a"])
-    expected["c"] = cudf.sqrt(df["c"])
+    expected = dispatch._make_df()
+    expected["a"] = np.sqrt(df["a"])
+    expected["c"] = np.sqrt(df["c"])
     expected["b"] = df["b"] + 1
 
     assert_eq(expected, df_out)
 
 
 def test_nested_column_group():
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
             "user": ["User_A", "User_A", "User_A", "User_B"],

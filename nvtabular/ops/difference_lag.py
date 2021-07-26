@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtx import annotate
-
-from nvtabular.dispatch import DataFrameType, _is_dataframe_object
+from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
 from .operator import ColumnNames, Operator
 

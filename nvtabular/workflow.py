@@ -22,7 +22,11 @@ import warnings
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
-import cudf
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 import dask
 import pandas as pd
 from dask.core import flatten
@@ -31,7 +35,7 @@ from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.utils import _ensure_optimize_dataframe_graph
+from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
@@ -75,6 +79,16 @@ class Workflow:
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
+
+        # Warn user if there is an unused global
+        # Dask client available
+        if global_dask_client(self.client):
+            warnings.warn(
+                "A global dask.distributed client has been detected, but the "
+                "single-threaded scheduler will be used for execution. Please "
+                "use the `client` argument to initialize a `Workflow` object "
+                "with distributed-execution enabled."
+            )
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -200,12 +214,13 @@ class Workflow:
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
+        lib = cudf if cudf else pd
         with open(os.path.join(path, "metadata.json"), "w") as o:
             json.dump(
                 {
                     "versions": {
                         "nvtabular": nvt_version,
-                        "cudf": cudf.__version__,
+                        lib.__name__: lib.__version__,
                         "python": sys.version,
                     },
                     "generated_timestamp": int(time.time()),
@@ -250,10 +265,16 @@ class Workflow:
 
         # make sure we don't have any major/minor version conflicts between the stored worklflow
         # and the current environment
+        lib = cudf if cudf else pd
         versions = meta["versions"]
         check_version(versions["nvtabular"], nvt_version, "nvtabular")
-        check_version(versions["cudf"], cudf.__version__, "cudf")
         check_version(versions["python"], sys.version, "python")
+
+        if lib.__name__ in versions:
+            check_version(versions[lib.__name__], lib.__version__, lib.__name__)
+        else:
+            expected = "GPU" if "cudf" in versions else "CPU"
+            warnings.warn(f"Loading workflow generated on {expected}")
 
         # load up the workflow object di
         workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))

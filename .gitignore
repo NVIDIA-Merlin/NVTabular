@@ -71,7 +71,9 @@ ipython_config.py
 .dmypy.json
 dmypy.json
 
+# PyCharm
+.idea
 
 examples/end-to-end-poc/data/
-
 examples/end-to-end-poc/logs/
+
