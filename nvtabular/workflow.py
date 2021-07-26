@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING, List, Optional
 
 import cloudpickle
 
+from nvtabular.ops.data_schema import DataSchema
+
 try:
     import cudf
 except ImportError:
@@ -79,6 +81,11 @@ class Workflow:
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
+
+    def generate_schema(self, dataset, output_path=None):
+        return DataSchema.calculate_on_dataset(
+            dataset, self.column_group.tags_by_column(), output_path=output_path
+        )
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``

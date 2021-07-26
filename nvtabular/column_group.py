@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Text, Union
 
 import joblib
 from dask.core import flatten
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 from nvtabular.column import Column, Columns
 from nvtabular.ops import LambdaOp, Operator
@@ -44,6 +45,7 @@ class ColumnGroup:
         columns: Union[Text, List[Text], Column, List[Column], "ColumnGroup"],
         tags: Optional[Union[List[Text], DefaultTags]] = None,
         properties: Optional[Dict[Text, Text]] = None,
+        schema: Optional[schema_pb2.Schema] = None,
     ):
         self.parents = []
         self.children = []
@@ -61,6 +63,7 @@ class ColumnGroup:
 
         self.tags = tags
         self.properties = properties
+        self._schema = schema
 
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
@@ -83,6 +86,34 @@ class ColumnGroup:
         else:
             columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
             self.columns: Columns = Columns(columns)
+
+    @staticmethod
+    def read_schema(schema_path):
+        with open(schema_path, "rb") as f:
+            schema = schema_pb2.Schema()
+            schema.ParseFromString(f.read())
+
+        return schema
+
+    def set_schema(self, schema):
+        self._schema = schema
+
+    @classmethod
+    def from_schema(cls, schema) -> "ColumnGroup":
+        if isinstance(schema, str):
+            schema = cls.read_schema(schema)
+
+        columns = []
+        for feat in schema.feature:
+            tags = feat.annotation.tag
+            if feat.HasField("value_count"):
+                tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
+            columns.append(Column(feat.name, tags=tags))
+
+        output = cls(columns)
+        output.set_schema(schema)
+
+        return output
 
     @property
     def column_names(self):
