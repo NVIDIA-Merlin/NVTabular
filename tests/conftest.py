@@ -320,3 +320,15 @@ def run_triton_server(modelpath, model_name, triton_server_path, device_id="0"):
         finally:
             # signal triton to shutdown
             process.send_signal(signal.SIGINT)
+
+
+def run_in_context(func, *args, context=None, **kwargs):
+    # Convenience utility to execute a function within
+    # a specific `context`.  For example, this can be
+    # used to test that a function raises a `UserWarning`
+    # by setting `context=pytest.warns(UserWarning)`
+    if context is None:
+        context = contextlib.suppress()
+    with context:
+        result = func(*args, **kwargs)
+    return result
