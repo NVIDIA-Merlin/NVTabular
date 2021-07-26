@@ -73,3 +73,5 @@ dmypy.json
 
 
 examples/end-to-end-poc/data/
+
+examples/end-to-end-poc/logs/

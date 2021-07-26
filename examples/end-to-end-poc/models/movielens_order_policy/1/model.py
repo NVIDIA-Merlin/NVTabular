@@ -78,7 +78,7 @@ class TritonPythonModel:
 
                 # TODO: Extract k and theta as config parameters
                 k = 10
-                theta = 10.0
+                theta = 20.0
 
                 # The weights for the sampling distribution are the softmax of the scores
                 weights = np.exp(theta * predicted_scores) / np.sum(predicted_scores)
