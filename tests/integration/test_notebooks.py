@@ -41,16 +41,16 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
     notebook_etl = os.path.join(
         dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
     )
-#     out = _run_notebook(
-#         tmpdir,
-#         notebook_etl,
-#         input_path,
-#         output_path,
-#         gpu_id="7",
-#         clean_up=False,
-#         params=[0.4, 0.5, 0.1],
-#         main_block=39,
-#     )
+    out = _run_notebook(
+        tmpdir,
+        notebook_etl,
+        input_path,
+        output_path,
+        gpu_id="1,3,4,5,7",
+        clean_up=False,
+        params=[0.4, 0.5, 0.1],
+        main_block=39,
+    )
 
     # Only run if PyTorch installed
     try:
