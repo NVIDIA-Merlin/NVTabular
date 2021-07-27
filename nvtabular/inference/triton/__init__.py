@@ -17,7 +17,7 @@ import copy
 import json
 import os
 import warnings
-from shutil import copyfile
+from shutil import copyfile, copytree
 
 import numpy as np
 import pandas as pd
@@ -31,6 +31,7 @@ from tritonclient.utils import np_to_triton_dtype  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
+from nvtabular.ops import get_embedding_sizes  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -269,23 +270,6 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
-    slot_exist = False
-    hugectr_training_config = json.load(open(hugectr_params["config"]))
-    for elem in hugectr_training_config["layers"]:
-        if "slot_size_array" in elem:
-            slot_exist = True
-            with open(
-                os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
-                "w",
-            ) as o:
-                slot_sizes = dict()
-                slot_sizes["slot_size_array"] = elem["slot_size_array"]
-                json.dump(slot_sizes, o)
-            break
-
-    if cats and not slot_exist:
-        raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
-
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")
     os.makedirs(ensemble_path, exist_ok=True)
@@ -353,11 +337,7 @@ def generate_hugectr_model(
     os.makedirs(out_path_version, exist_ok=True)
 
     config = _generate_hugectr_config(name, out_path, hugectr_params, max_batch_size=max_batch_size)
-    for fname in os.listdir(trained_model_path):
-        copyfile(
-            os.path.join(trained_model_path, fname),
-            os.path.join(out_path_version, fname),
-        )
+    copytree(trained_model_path, out_path_version, dirs_exist_ok=True)
 
     return config
 
@@ -736,7 +716,7 @@ def _convert_dtype(dtype):
 
 
 def _triton_datatype_to_dtype(data_type):
-    """ the reverse of _convert_dtype: converts a triton proto data_type to a numpy dtype """
+    """the reverse of _convert_dtype: converts a triton proto data_type to a numpy dtype"""
     name = model_config._DATATYPE.values[data_type].name[5:].lower()
     if name == "string":
         return np.dtype("str")
