@@ -13,29 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import base64
 import logging
 import os
 
 import dask.array as da
 import dask.dataframe as dd
 import numpy as np
-
-from nvtabular.dispatch import DataFrameType, annotate
+from tensorflow_metadata.proto.v0 import path_pb2, statistics_pb2
 
 from ..column import Columns
-from .base import Operator
-from .data_schema import DataSchema
+from ..dispatch import annotate
+from ..visualization import statistics as vis_statistics
+from .data_schema import prepare_schema
 from .stat_operator import StatOperator
 
 LOG = logging.getLogger("nvtabular")
 
 
-class DataStats(DataSchema):
-    STATS_FILE_NAME = "stats.pb"
+class DataStats(StatOperator):
+    STATS_FILE_NAME = vis_statistics.STATS_FILE_NAME
 
     def __init__(self, output_path=None, cross_columns=None, name="data"):
-        super(StatOperator, self).__init__()  # pylint: disable=bad-super-call
+        super().__init__()  # pylint: disable=bad-super-call
         self.cross_columns = cross_columns
         self.name = name
         self.stats_path = os.path.join(output_path, self.STATS_FILE_NAME) if output_path else None
@@ -62,8 +61,6 @@ class DataStats(DataSchema):
 
     @classmethod
     def load(cls, directory):
-        from tensorflow_metadata.proto.v0 import statistics_pb2
-
         stats_file = os.path.join(directory, cls.STATS_FILE_NAME)
 
         if not os.path.exists(stats_file):
@@ -74,10 +71,7 @@ class DataStats(DataSchema):
         with open(stats_file, "rb") as f:
             d.ParseFromString(f.read())
 
-        return DatasetCollectionStatistics(d)
-
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
-        return df
+        return vis_statistics.DatasetCollectionStatistics(d)
 
     @annotate("Statistics_fit", color="green", domain="nvt_python")
     def fit(self, columns: Columns, ddf: dd.DataFrame):
@@ -86,7 +80,8 @@ class DataStats(DataSchema):
         ddf_dtypes = ddf.head(1)
         num_examples = len(ddf)
 
-        #         dask_stats["median"] = ddf[columns].quantile(q=0.5, method="dask")
+        # TODO: Fix median, right now it gives an error.
+        # dask_stats["median"] = ddf[columns].quantile(q=0.5, method="dask")
 
         # For each column, calculate the stats
         for col in columns:
@@ -144,8 +139,6 @@ class DataStats(DataSchema):
         return num_examples, dask_stats
 
     def fit_finalize(self, stats):
-        from tensorflow_metadata.proto.v0 import path_pb2, statistics_pb2
-
         num_examples, dask_stats = stats
 
         self.stats = statistics_pb2.DatasetFeatureStatistics(
@@ -234,11 +227,9 @@ class DataStats(DataSchema):
     def clear(self):
         self.schema = None
 
-    def stats_list(self, others=None) -> "DatasetCollectionStatistics":
+    def stats_list(self, others=None) -> vis_statistics.DatasetCollectionStatistics:
         if not others:
             others = []
-        from tensorflow_metadata.proto.v0 import statistics_pb2
-
         data = statistics_pb2.DatasetFeatureStatisticsList()
 
         d = data.datasets.add()
@@ -248,55 +239,14 @@ class DataStats(DataSchema):
             x = data.datasets.add()
             x.CopyFrom(d)
 
-        return DatasetCollectionStatistics(data)
+        return vis_statistics.DatasetCollectionStatistics(data)
 
     def to_schema(self, tags_by_column):
         self.tags_by_column = tags_by_column
 
-        return self.prepare_schema(self.stats)
+        return prepare_schema(
+            self.stats, self.col_names, self.col_dtypes, tags_by_column=tags_by_column
+        )
 
-    transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
-
-
-class DatasetCollectionStatistics:
-    HTML_TEMPLATE = """
-<script
-    src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.3.3/webcomponents-lite.js">
-</script>
-<link rel="import"
-    href="https://raw.githubusercontent.com/PAIR-code/facets/1.0.0/facets-dist/facets-jupyter.html">
-<facets-overview id="elem"></facets-overview>
-<script>
- document.querySelector("#elem").protoInput = "{protostr}";
-</script>"""
-
-    def __init__(self, dataset_feature_statistics_list) -> None:
-        super().__init__()
-        self.stats = dataset_feature_statistics_list
-
-    def display_overview(self):
-        from IPython.core.display import HTML, display
-
-        return display(HTML(self.to_html()))
-
-    def to_html(self):
-        protostr = self.to_proto_string(self.stats)
-        html = self.HTML_TEMPLATE.format(protostr=protostr)
-
-        return html
-
-    def save_to_html(self, output_dir, file_name="stats.html"):
-        with open(os.path.join(output_dir, file_name), "w") as html_file:
-            html_file.write(self.to_html())
-
-    def to_proto_string(self, inputs):
-        return base64.b64encode(inputs.SerializeToString()).decode("utf-8")
-
-    def save(self, output_dir, file_name=DataStats.STATS_FILE_NAME):
-        out_path = os.path.join(output_dir, file_name)
-        with open(out_path, "wb") as f:
-            f.write(self.stats.SerializeToString())
-
-        self.save_to_html(output_dir)

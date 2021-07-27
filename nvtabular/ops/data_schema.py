@@ -18,11 +18,9 @@ import os
 
 import dask.dataframe as dd
 from nvtx import annotate
-
-from nvtabular.dispatch import DataFrameType
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 from ..column import Columns
-from .base import Operator
 from .stat_operator import StatOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -59,8 +57,6 @@ class DataSchema(StatOperator):
 
     @classmethod
     def load(cls, directory):
-        from tensorflow_metadata.proto.v0 import schema_pb2
-
         schema_file = os.path.join(directory, cls.SCHEMA_FILE_NAME)
 
         LOG.info("Loading schema from %s", schema_file)
@@ -73,9 +69,6 @@ class DataSchema(StatOperator):
             schema.ParseFromString(f.read())
 
         return schema
-
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
-        return df
 
     @annotate("Schema_fit", color="green", domain="nvt_python")
     def fit(self, columns: Columns, ddf: dd.DataFrame):
@@ -107,56 +100,9 @@ class DataSchema(StatOperator):
         return dask_stats
 
     def fit_finalize(self, stats):
-        return self.prepare_schema(stats)
-
-    def prepare_schema(self, stats):
-        from tensorflow_metadata.proto.v0 import schema_pb2
-
-        dask_stats = stats
-
-        self.schema = schema_pb2.Schema()
-
-        for i, col in enumerate(self.col_names):
-            dtype = self.col_dtypes[i]
-            tags = self.tags_by_column.get(col, [])
-
-            feature = self.schema.feature.add()
-            feature.name = col
-            feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
-
-            if str(dtype) == "list":
-                dtype = dtype.leaf_type
-                min_length = dask_stats[col]["min_length"].item()
-                max_length = dask_stats[col]["max_length"].item()
-                if min_length == max_length:
-                    shape = schema_pb2.FixedShape()
-                    dim = shape.dim.add()
-                    dim.size = min_length
-                    feature.shape.CopyFrom(shape)
-                else:
-                    feature.value_count.CopyFrom(
-                        schema_pb2.ValueCount(min=min_length, max=max_length)
-                    )
-
-            if str(dtype) in ["float32", "float64"]:
-                feature.float_domain.CopyFrom(
-                    schema_pb2.FloatDomain(
-                        name=col,
-                        min=dask_stats[col]["min"].item(),
-                        max=dask_stats[col]["max"].item(),
-                    )
-                )
-                feature.type = 3
-            elif str(dtype) in ["int8", "int32", "int64"]:
-                feature.int_domain.CopyFrom(
-                    schema_pb2.IntDomain(
-                        name=col,
-                        min=dask_stats[col]["min"].item(),
-                        max=dask_stats[col]["max"].item(),
-                        is_categorical="categorical" in tags,
-                    )
-                )
-                feature.type = 2
+        self.schema = prepare_schema(
+            stats, self.col_names, self.col_dtypes, tags_by_column=self.tags_by_column
+        )
 
         if self.schema_path:
             self.save(self.schema)
@@ -168,6 +114,53 @@ class DataSchema(StatOperator):
         with open(self.schema_path, "wb") as f:
             f.write(schema.SerializeToString())
 
-    transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
+
+def prepare_schema(stats, col_names, col_dtypes, tags_by_column=None) -> schema_pb2.Schema:
+    dask_stats = stats
+
+    schema = schema_pb2.Schema()
+
+    for i, col in enumerate(col_names):
+        dtype = col_dtypes[i]
+        tags = tags_by_column.get(col, [])
+
+        feature = schema.feature.add()
+        feature.name = col
+        feature.annotation.CopyFrom(schema_pb2.Annotation(tag=tags))
+
+        if str(dtype) == "list":
+            dtype = dtype.leaf_type
+            min_length = dask_stats[col]["min_length"].item()
+            max_length = dask_stats[col]["max_length"].item()
+            if min_length == max_length:
+                shape = schema_pb2.FixedShape()
+                dim = shape.dim.add()
+                dim.size = min_length
+                feature.shape.CopyFrom(shape)
+            else:
+                feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
+
+        if str(dtype) in ["float32", "float64"]:
+            feature.float_domain.CopyFrom(
+                schema_pb2.FloatDomain(
+                    name=col,
+                    min=dask_stats[col]["min"].item(),
+                    max=dask_stats[col]["max"].item(),
+                )
+            )
+            feature.type = 3
+        elif str(dtype) in ["int8", "int32", "int64"]:
+            feature.int_domain.CopyFrom(
+                schema_pb2.IntDomain(
+                    name=col,
+                    min=dask_stats[col]["min"].item(),
+                    max=dask_stats[col]["max"].item(),
+                    is_categorical="categorical" in tags,
+                )
+            )
+            feature.type = 2
+
+    return schema
