@@ -204,11 +204,12 @@ def test_log_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns,
     cont_features = op_columns >> nvt.ops.LogNormalize()
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
-    new_df = processor.transform(dataset).to_ddf().compute()
+    processor.transform(dataset).to_ddf().compute()
     for col in op_columns:
-        values = dispatch._array(new_df[col])
         original = dispatch._array(df[col])
-        assert_eq(values, np.log(original.astype(np.float32) + 1))
+        log = np.log(original.astype(np.float32) + 1)
+        assert math.isclose(log.mean(), processor.column_group.op.means[col], rel_tol=1e-4)
+        assert math.isclose(log.std(), processor.column_group.op.stds[col], rel_tol=1e-3)
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
