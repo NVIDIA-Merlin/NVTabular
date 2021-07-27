@@ -11,7 +11,6 @@ black-nb==0.4.0
 flake8-nb==0.2.7
 pytest>=5
 pytest-cov>=2
-pytest-xdist>=2
 Sphinx>=3
 sphinx_markdown_tables
 sphinx-multiversion
