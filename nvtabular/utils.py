@@ -20,6 +20,7 @@ import tarfile
 import urllib.request
 import warnings
 import zipfile
+from types import SimpleNamespace
 
 import dask
 from dask.dataframe.optimize import optimize as dd_optimize
@@ -53,7 +54,6 @@ def _pynvml_mem_size(kind="total", index=0):
 
 
 def device_mem_size(kind="total", cpu=False):
-
     # Use psutil (if available) for cpu mode
     if cpu and psutil:
         if kind == "total":
@@ -168,3 +168,26 @@ def global_dask_client(client):
         except ValueError:
             return None
     return None
+
+
+class Namespace(SimpleNamespace):
+    @classmethod
+    def from_splits(cls, train, eval=None, test=None):  # pylint: disable=W0622
+        splits = dict(train=train)
+        if eval:
+            splits["eval"] = eval
+        if test:
+            splits["test"] = test
+        return cls(**splits)
+
+    def get(self, name):
+        return vars(self).get(name)
+
+    def items(self):
+        return vars(self).items()
+
+    def __getitem__(self, name):
+        return vars(self)[name]
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)

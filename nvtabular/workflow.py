@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
 
+from nvtabular.io.dataset_collection import DatasetCollection
+
 try:
     import cudf
 except ImportError:
@@ -39,7 +41,6 @@ from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 
 LOG = logging.getLogger("nvtabular")
-
 
 if TYPE_CHECKING:
     import distributed
@@ -194,6 +195,21 @@ class Workflow:
         """
         self.fit(dataset)
         return self.transform(dataset)
+
+    def fit_transform_collection(
+        self,
+        datasets: DatasetCollection,
+        to_fit="train",
+    ) -> DatasetCollection:
+        outputs = DatasetCollection()
+        LOG.info("Fitting dataset...")
+        self.fit(datasets[to_fit])
+
+        for split_name, dataset in datasets.items():
+            LOG.info("Transforming %s...", split_name)
+            outputs[split_name] = self.transform(dataset)
+
+        return outputs
 
     def save(self, path):
         """Save this workflow to disk

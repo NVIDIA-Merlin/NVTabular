@@ -17,8 +17,10 @@
 import collections
 import logging
 import math
+import os
 import random
 import warnings
+from glob import glob
 
 import dask
 import numpy as np
@@ -302,6 +304,10 @@ class Dataset:
                 self.engine = engine(
                     paths, part_size, cpu=self.cpu, storage_options=storage_options
                 )
+
+    @classmethod
+    def from_pattern(cls, path, pattern="*.parquet", **kwargs):
+        return cls(glob(os.path.join(path, pattern)), **kwargs)
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`
