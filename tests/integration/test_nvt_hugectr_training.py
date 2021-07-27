@@ -16,7 +16,6 @@
 
 import gc
 import glob
-import json
 import os
 import shutil
 from os import path
@@ -121,7 +120,7 @@ def test_nvt_hugectr_training():
     if path.exists(MODEL_DIR):
         shutil.rmtree(MODEL_DIR)
 
-    os.makedirs(MODEL_DIR+"test_model/1/")
+    os.makedirs(MODEL_DIR + "test_model/1/")
 
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
     sample_data.to_csv(test_data_path + "data.csv")
@@ -161,7 +160,7 @@ def test_nvt_hugectr_training():
     )
 
     shutil.rmtree(TEMP_DIR)
-    
+
     _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], model_name)
 
 
@@ -267,7 +266,8 @@ def _run_model(slot_sizes, total_cardinality):
     model.compile()
     model.summary()
     model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)
-    model.graph_to_json(graph_config_file=MODEL_DIR+"test_model/1/model.json")
+    model.graph_to_json(graph_config_file=MODEL_DIR + "test_model/1/model.json")
+
 
 def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
     inference_params = InferenceParams(
@@ -283,7 +283,7 @@ def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_nam
         use_mixed_precision=False,
     )
     inference_session = CreateInferenceSession(config_file, inference_params)
-    output = inference_session.predict(dense_features, embedding_columns, row_ptrs)#, True)
+    output = inference_session.predict(dense_features, embedding_columns, row_ptrs)  # , True)
 
     test_data_path = DATA_DIR + "test/"
     embedding_columns_df = pd.DataFrame()
