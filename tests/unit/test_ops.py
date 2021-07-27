@@ -318,6 +318,16 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
         assert np.allclose(cupy_outputs[col], new_gdf[col].values)
 
 
+@pytest.mark.parametrize("cpu", _CPU)
+def test_normalize_std_zero(cpu):
+    df = pd.DataFrame({"a": 7 * [10]})
+    dataset = nvt.Dataset(df, cpu=cpu)
+    processor = nvtabular.Workflow(["a"] >> ops.Normalize())
+    processor.fit(dataset)
+    result = processor.transform(dataset).compute()["a"]
+    assert (result == 0).all()
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.1])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("op_columns", [["x"]])
