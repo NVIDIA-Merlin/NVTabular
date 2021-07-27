@@ -46,7 +46,7 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
         notebook_etl,
         input_path,
         output_path,
-        gpu_id="1,3,4,5,7",
+        gpu_id="0,1",
         clean_up=False,
         params=[0.4, 0.5, 0.1],
         main_block=39,
@@ -63,7 +63,7 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
         )
 
         out = _run_notebook(
-            tmpdir, notebook_pytorch, output_path, output_path, gpu_id="7", clean_up=False
+            tmpdir, notebook_pytorch, output_path, output_path, gpu_id="0", clean_up=False
         )
 
         bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
@@ -102,13 +102,13 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         dirname(TEST_PATH), "examples/tabular-data-rossmann", "01-Download-Convert.ipynb"
     )
 
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="4", clean_up=False)
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="1", clean_up=False)
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/tabular-data-rossmann", "02-ETL-with-NVTabular.ipynb"
     )
 
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="4", clean_up=False)
+    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="1", clean_up=False)
 
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
 
@@ -121,7 +121,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         notebookex_path = os.path.join(
             dirname(TEST_PATH), "examples/tabular-data-rossmann", "04-Training-with-FastAI.ipynb"
         )
-        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
+        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="1")
         bench_results = RossBenchFastAI().get_epochs(out.splitlines())
         bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
@@ -129,7 +129,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         notebookex_path = os.path.join(
             dirname(TEST_PATH), "examples/tabular-data-rossmann", "03-Training-with-PyTorch.ipynb"
         )
-        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
+        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="1")
         bench_results = RossBenchPytorch().get_epochs(out.splitlines())
         bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
@@ -146,7 +146,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         notebookex_path = os.path.join(
             dirname(TEST_PATH), "examples/tabular-data-rossmann", "03-Training-with-TF.ipynb"
         )
-        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
+        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="1")
         bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
         bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
