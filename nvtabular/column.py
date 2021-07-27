@@ -8,7 +8,7 @@ from nvtabular.tag import DefaultTags
 
 @dataclass(frozen=True)
 class Column:
-    """"A Column with metadata. """
+    """A Column with metadata."""
 
     name: Text
     tags: Optional[List[Text]] = field(default_factory=list)
