@@ -59,7 +59,9 @@ class Normalize(StatOperator):
         for name in columns:
             if self.stds[name] > 0:
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
-                new_df[name] = new_df[name].astype("float32")
+            else:
+                new_df[name] = df[name] - self.means[name]
+            new_df[name] = new_df[name].astype("float32")
         return new_df
 
     @property
