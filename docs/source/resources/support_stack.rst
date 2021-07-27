@@ -1,10 +1,10 @@
-Software Stack
+Support Stack
 ==============
 
 .. role:: raw-html(raw)
     :format: html
 
-We offer the following software stacks:
+We offer the following support stacks:
 
 * `Merlin Inference <#table-1>`_: Allows you to deploy NVTabular workflows and HugeCTR or TensorFlow models to the Triton Inference server for production.
 * `Merlin Training <#table-2>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with HugeCTR.
@@ -17,7 +17,7 @@ The following tables provide the software and model versions that NVTabular vers
 
 .. _table-1:
 
-:raw-html:`<p align="center"><b>Table 1: Software stack matrix for the Merlin Inference (merlin-inference) image</b></p>`
+:raw-html:`<p align="center"><b>Table 1: Support stack matrix for the Merlin Inference (merlin-inference) image</b></p>`
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **DGX**                                                                                                                      |
@@ -31,7 +31,7 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **NVIDIA Certified Systems**                                                                                                 |
 +-----------------------------------------------------+------------------------------------------------------------------------+
-| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.3.1, which        |
+| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.4, which          |
 |                                                     | requires NVIDIA Driver version 465.19.01 or later. However, if you're  |
 |                                                     | running on Data Center GPUs (formerly Tesla) such as T4, you can use   |
 |                                                     | any of the following NVIDIA Driver versions:                           |
@@ -75,7 +75,7 @@ The following tables provide the software and model versions that NVTabular vers
 
 .. _table-2:
 
-:raw-html:`<p align="center"><b>Table 2: Software stack matrix for the Merlin Training (merlin-training) image</b></p>`
+:raw-html:`<p align="center"><b>Table 2: Support stack matrix for the Merlin Training (merlin-training) image</b></p>`
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **DGX**                                                                                                                      |
@@ -89,7 +89,7 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **NVIDIA Certified Systems**                                                                                                 |
 +-----------------------------------------------------+------------------------------------------------------------------------+
-| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.3.1, which        |
+| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.4, which          |
 |                                                     | requires NVIDIA Driver version 465.19.01 or later. However, if you're  |
 |                                                     | running on Data Center GPUs (formerly Tesla) such as T4, you can use   |
 |                                                     | any of the following NVIDIA Driver versions:                           |
@@ -133,7 +133,7 @@ The following tables provide the software and model versions that NVTabular vers
 
 .. _table-3:
 
-:raw-html:`<p align="center"><b>Table 3: Software stack matrix for the Merlin TensorFlow Training (merlin-tensorflow-training) image</b></p>`
+:raw-html:`<p align="center"><b>Table 3: Support stack matrix for the Merlin TensorFlow Training (merlin-tensorflow-training) image</b></p>`
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **DGX**                                                                                                                      |
@@ -147,7 +147,7 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **NVIDIA Certified Systems**                                                                                                 |
 +-----------------------------------------------------+------------------------------------------------------------------------+
-| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.3.1, which        |
+| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.4, which          |
 |                                                     | requires NVIDIA Driver version 465.19.01 or later. However, if you're  |
 |                                                     | running on Data Center GPUs (formerly Tesla) such as T4, you can use   |
 |                                                     | any of the following NVIDIA Driver versions:                           |
@@ -190,11 +190,9 @@ The following tables provide the software and model versions that NVTabular vers
 
 :raw-html:`<br />`
 
-
 .. _table-4:
 
-:raw-html:`<p align="center"><b>Table 4: Software stack matrix for the Merlin PyTorch Training (merlin-pytorch-training) image</b></p>`
-
+:raw-html:`<p align="center"><b>Table 4: Support stack matrix for the Merlin PyTorch Training (merlin-pytorch-training) image</b></p>`
 
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **DGX**                                                                                                                      |
@@ -208,7 +206,7 @@ The following tables provide the software and model versions that NVTabular vers
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | **NVIDIA Certified Systems**                                                                                                 |
 +-----------------------------------------------------+------------------------------------------------------------------------+
-| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.3.1, which        |
+| NVIDIA Driver                                       | The 21.06 release is based on NVIDIA CUDA version 11.4, which          |
 |                                                     | requires NVIDIA Driver version 465.19.01 or later. However, if you're  |
 |                                                     | running on Data Center GPUs (formerly Tesla) such as T4, you can use   |
 |                                                     | any of the following NVIDIA Driver versions:                           |
