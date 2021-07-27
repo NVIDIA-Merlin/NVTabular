@@ -443,11 +443,6 @@ class Categorify(StatOperator):
 
         return new_df
 
-    # def output_column_names(self, columns: ColumnNames) -> ColumnNames:
-    #     if self.encode_type == "combo":
-    #         cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
-    #         return cat_names
-    #     return list(flatten(columns, container=tuple))
 
     def output_columns(self, columns: Columns) -> Columns:
         if self.encode_type == "combo":
