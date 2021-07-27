@@ -337,10 +337,25 @@ class ColumnGroup:
         return self.get_tagged(Tag.TEXT_TOKENIZED, output_list=False)
 
     def embedding_sizes(self):
+        if self._schema:
+            cardinalities = self.cardinalities()
+
+            from nvtabular.ops.categorify import _emb_sz_rule
+
+            return {key: _emb_sz_rule(val) for key, val in cardinalities.items()}
+
         return self._embedding_sizes_from_op()
 
     def cardinalities(self):
-        return {k: v[0] for k, v in self._embedding_sizes_from_op().items()}
+        if self._schema:
+            outputs = {}
+            for feature in self._schema.feature:
+                if feature.int_domain and feature.int_domain.is_categorical:
+                    outputs[feature.name] = feature.int_domain.max
+
+            return outputs
+        else:
+            return {k: v[0] for k, v in self._embedding_sizes_from_op().items()}
 
     def _embedding_sizes_from_op(self):
         queue = [self]
