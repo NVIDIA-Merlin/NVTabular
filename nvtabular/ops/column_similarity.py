@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..column import Column, Columns
+
 
 try:
     import cupy
@@ -29,7 +29,8 @@ from cupyx.scipy.sparse import coo_matrix
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from .base import ColumnNames, Operator
+from ..column import Column, Columns
+from .base import Operator
 
 
 class ColumnSimilarity(Operator):
@@ -85,7 +86,7 @@ class ColumnSimilarity(Operator):
             self._initialized = True
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
         use_values = self.on_device
         if isinstance(df, pd.DataFrame):
             # Disallow on-device computation for cpu-backed data
