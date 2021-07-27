@@ -198,6 +198,21 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
+@pytest.mark.parametrize("cpu", _CPU)
+def test_log_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
+    cont_features = op_columns >> nvt.ops.LogNormalize()
+    processor = nvt.Workflow(cont_features)
+    processor.fit(dataset)
+    new_df = processor.transform(dataset).to_ddf().compute()
+    for col in op_columns:
+        values = dispatch._array(new_df[col])
+        original = dispatch._array(df[col])
+        assert_eq(values, np.log(original.astype(np.float32) + 1))
+
+
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])
 @pytest.mark.parametrize("cpu", _CPU)
 def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
