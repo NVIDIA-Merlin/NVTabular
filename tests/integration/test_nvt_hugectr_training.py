@@ -16,7 +16,6 @@
 
 import gc
 import glob
-import json
 import os
 import shutil
 from os import path
@@ -25,7 +24,7 @@ import cudf
 import hugectr
 import numpy as np
 import pandas as pd
-from hugectr.inference import CreateEmbeddingCache, CreateParameterServer, InferenceSession
+from hugectr.inference import CreateInferenceSession, InferenceParams
 from mpi4py import MPI  # noqa
 from sklearn.model_selection import train_test_split
 
@@ -118,6 +117,11 @@ def test_nvt_hugectr_training():
 
     os.mkdir(test_data_path)
 
+    if path.exists(MODEL_DIR):
+        shutil.rmtree(MODEL_DIR)
+
+    os.makedirs(MODEL_DIR + "test_model/1/")
+
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
     sample_data.to_csv(test_data_path + "data.csv")
 
@@ -135,13 +139,6 @@ def test_nvt_hugectr_training():
     file_names = glob.iglob(os.path.join(os.getcwd(), "*.model"))
     for files in file_names:
         shutil.move(files, TEMP_DIR)
-
-    _write_model_json(slot_sizes, total_cardinality)
-
-    if path.exists(MODEL_DIR):
-        shutil.rmtree(MODEL_DIR)
-
-    os.mkdir(MODEL_DIR)
 
     model_name = "test_model"
     hugectr_params = dict()
@@ -169,53 +166,48 @@ def test_nvt_hugectr_training():
 
 def _run_model(slot_sizes, total_cardinality):
 
-    solver = hugectr.solver_parser_helper(
+    solver = hugectr.CreateSolver(
         vvgpu=[[0]],
-        max_iter=2000,
         batchsize=2048,
-        display=100,
-        eval_interval=200,
         batchsize_eval=2048,
         max_eval_batches=160,
         i64_input_key=True,
         use_mixed_precision=False,
         repeat_dataset=True,
-        snapshot=1900,
     )
 
-    optimizer = hugectr.optimizer.CreateOptimizer(
-        optimizer_type=hugectr.Optimizer_t.Adam, use_mixed_precision=False
+    reader = hugectr.DataReaderParams(
+        data_reader_type=hugectr.DataReaderType_t.Parquet,
+        source=[DATA_DIR + "train/_file_list.txt"],
+        eval_source=DATA_DIR + "valid/_file_list.txt",
+        check_type=hugectr.Check_t.Non,
     )
-    model = hugectr.Model(solver, optimizer)
+
+    optimizer = hugectr.CreateOptimizer(optimizer_type=hugectr.Optimizer_t.Adam)
+    model = hugectr.Model(solver, reader, optimizer)
 
     model.add(
         hugectr.Input(
-            data_reader_type=hugectr.DataReaderType_t.Parquet,
-            source=DATA_DIR + "train/_file_list.txt",
-            eval_source=DATA_DIR + "valid/_file_list.txt",
-            check_type=hugectr.Check_t.Non,
             label_dim=1,
             label_name="label",
             dense_dim=0,
             dense_name="dense",
-            slot_size_array=slot_sizes,
             data_reader_sparse_param_array=[
-                hugectr.DataReaderSparseParam(
-                    hugectr.DataReaderSparse_t.Distributed, len(slot_sizes) + 1, 1, len(slot_sizes)
-                )
+                hugectr.DataReaderSparseParam("data1", len(slot_sizes) + 1, True, len(slot_sizes))
             ],
-            sparse_names=["data1"],
         )
     )
 
     model.add(
         hugectr.SparseEmbedding(
             embedding_type=hugectr.Embedding_t.DistributedSlotSparseEmbeddingHash,
-            max_vocabulary_size_per_gpu=total_cardinality,
+            workspace_size_per_gpu_in_mb=107,
             embedding_vec_size=16,
-            combiner=0,
+            combiner="sum",
             sparse_embedding_name="sparse_embedding1",
             bottom_name="data1",
+            slot_size_array=slot_sizes,
+            optimizer=optimizer,
         )
     )
     model.add(
@@ -273,101 +265,25 @@ def _run_model(slot_sizes, total_cardinality):
     )
     model.compile()
     model.summary()
-    model.fit()
-
-
-def _write_model_json(slot_sizes, total_cardinality):
-
-    config = json.dumps(
-        {
-            "inference": {
-                "max_batchsize": 64,
-                "hit_rate_threshold": 0.6,
-                "dense_model_file": MODEL_DIR + "test_model/1/_dense_1900.model",
-                "sparse_model_file": MODEL_DIR + "test_model/1/0_sparse_1900.model",
-                "label": 1,
-                "input_key_type": "I64",
-            },
-            "layers": [
-                {
-                    "name": "data",
-                    "type": "Data",
-                    "format": "Parquet",
-                    "slot_size_array": slot_sizes,
-                    "source": DATA_DIR + "train/_file_list.txt",
-                    "eval_source": DATA_DIR + "valid/_file_list.txt",
-                    "check": "Sum",
-                    "label": {"top": "label", "label_dim": 1},
-                    "dense": {"top": "dense", "dense_dim": 0},
-                    "sparse": [
-                        {
-                            "top": "data1",
-                            "type": "DistributedSlot",
-                            "max_feature_num_per_sample": len(CATEGORICAL_COLUMNS),
-                            "slot_num": len(slot_sizes),
-                        }
-                    ],
-                },
-                {
-                    "name": "sparse_embedding1",
-                    "type": "DistributedSlotSparseEmbeddingHash",
-                    "bottom": "data1",
-                    "top": "sparse_embedding1",
-                    "sparse_embedding_hparam": {
-                        "max_vocabulary_size_per_gpu": total_cardinality,
-                        "embedding_vec_size": 16,
-                        "combiner": 0,
-                    },
-                },
-                {
-                    "name": "reshape1",
-                    "type": "Reshape",
-                    "bottom": "sparse_embedding1",
-                    "top": "reshape1",
-                    "leading_dim": 48,
-                },
-                {
-                    "name": "fc1",
-                    "type": "InnerProduct",
-                    "bottom": "reshape1",
-                    "top": "fc1",
-                    "fc_param": {"num_output": 128},
-                },
-                {"name": "relu1", "type": "ReLU", "bottom": "fc1", "top": "relu1"},
-                {
-                    "name": "fc2",
-                    "type": "InnerProduct",
-                    "bottom": "relu1",
-                    "top": "fc2",
-                    "fc_param": {"num_output": 128},
-                },
-                {"name": "relu2", "type": "ReLU", "bottom": "fc2", "top": "relu2"},
-                {
-                    "name": "fc3",
-                    "type": "InnerProduct",
-                    "bottom": "relu2",
-                    "top": "fc3",
-                    "fc_param": {"num_output": 1},
-                },
-                {"name": "sigmoid", "type": "Sigmoid", "bottom": "fc3", "top": "sigmoid"},
-            ],
-        }
-    )
-
-    config = json.loads(config)
-
-    f = open(os.path.join(TEMP_DIR, "model.json"), "w")
-    json.dump(config, f)
+    model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)
+    model.graph_to_json(graph_config_file=MODEL_DIR + "test_model/1/model.json")
 
 
 def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
-    parameter_server = CreateParameterServer([config_file], [model_name], True)
-    embedding_cache = CreateEmbeddingCache(
-        parameter_server, 0, True, 0.1, config_file, model_name, True
+    inference_params = InferenceParams(
+        model_name=model_name,
+        max_batchsize=64,
+        hit_rate_threshold=0.5,
+        dense_model_file=MODEL_DIR + "test_model/1/_dense_1900.model",
+        sparse_model_files=[MODEL_DIR + "test_model/1/0_sparse_1900.model"],
+        device_id=0,
+        use_gpu_embedding_cache=True,
+        cache_size_percentage=0.1,
+        i64_input_key=True,
+        use_mixed_precision=False,
     )
-    inference_session = InferenceSession(config_file, 0, embedding_cache)
-
-    output = inference_session.predict(dense_features, embedding_columns, row_ptrs, True)
+    inference_session = CreateInferenceSession(config_file, inference_params)
+    output = inference_session.predict(dense_features, embedding_columns, row_ptrs)  # , True)
 
     test_data_path = DATA_DIR + "test/"
     embedding_columns_df = pd.DataFrame()
