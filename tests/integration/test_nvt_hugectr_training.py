@@ -118,6 +118,11 @@ def test_nvt_hugectr_training():
 
     os.mkdir(test_data_path)
 
+    if path.exists(MODEL_DIR):
+        shutil.rmtree(MODEL_DIR)
+
+    os.makedirs(MODEL_DIR+"test_model/1/")
+
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
     sample_data.to_csv(test_data_path + "data.csv")
 
@@ -135,13 +140,6 @@ def test_nvt_hugectr_training():
     file_names = glob.iglob(os.path.join(os.getcwd(), "*.model"))
     for files in file_names:
         shutil.move(files, TEMP_DIR)
-
-    _write_model_json(slot_sizes, total_cardinality)
-
-    if path.exists(MODEL_DIR):
-        shutil.rmtree(MODEL_DIR)
-
-    os.mkdir(MODEL_DIR)
 
     model_name = "test_model"
     hugectr_params = dict()
@@ -163,7 +161,7 @@ def test_nvt_hugectr_training():
     )
 
     shutil.rmtree(TEMP_DIR)
-    print(hugectr_params["config"])
+    
     _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], model_name)
 
 
@@ -268,92 +266,8 @@ def _run_model(slot_sizes, total_cardinality):
     )
     model.compile()
     model.summary()
-    model.fit()
-
-
-def _write_model_json(slot_sizes, total_cardinality):
-
-    config = json.dumps(
-        {
-            "inference": {
-                "max_batchsize": 64,
-                "hit_rate_threshold": 0.6,
-                "dense_model_file": MODEL_DIR + "test_model/1/_dense_1900.model",
-                "sparse_model_file": MODEL_DIR + "test_model/1/0_sparse_1900.model",
-                "label": 1,
-                "input_key_type": "I64",
-            },
-            "layers": [
-                {
-                    "name": "data",
-                    "type": "Data",
-                    "format": "Parquet",
-                    "slot_size_array": slot_sizes,
-                    "source": DATA_DIR + "train/_file_list.txt",
-                    "eval_source": DATA_DIR + "valid/_file_list.txt",
-                    "check": "Sum",
-                    "label": {"top": "label", "label_dim": 1},
-                    "dense": {"top": "dense", "dense_dim": 0},
-                    "sparse": [
-                        {
-                            "top": "data1",
-                            "type": "DistributedSlot",
-                            "max_feature_num_per_sample": len(CATEGORICAL_COLUMNS),
-                            "slot_num": len(slot_sizes),
-                        }
-                    ],
-                },
-                {
-                    "name": "sparse_embedding1",
-                    "type": "DistributedSlotSparseEmbeddingHash",
-                    "bottom": "data1",
-                    "top": "sparse_embedding1",
-                    "sparse_embedding_hparam": {
-                        "max_vocabulary_size_per_gpu": total_cardinality,
-                        "embedding_vec_size": 16,
-                        "combiner": 0,
-                    },
-                },
-                {
-                    "name": "reshape1",
-                    "type": "Reshape",
-                    "bottom": "sparse_embedding1",
-                    "top": "reshape1",
-                    "leading_dim": 48,
-                },
-                {
-                    "name": "fc1",
-                    "type": "InnerProduct",
-                    "bottom": "reshape1",
-                    "top": "fc1",
-                    "fc_param": {"num_output": 128},
-                },
-                {"name": "relu1", "type": "ReLU", "bottom": "fc1", "top": "relu1"},
-                {
-                    "name": "fc2",
-                    "type": "InnerProduct",
-                    "bottom": "relu1",
-                    "top": "fc2",
-                    "fc_param": {"num_output": 128},
-                },
-                {"name": "relu2", "type": "ReLU", "bottom": "fc2", "top": "relu2"},
-                {
-                    "name": "fc3",
-                    "type": "InnerProduct",
-                    "bottom": "relu2",
-                    "top": "fc3",
-                    "fc_param": {"num_output": 1},
-                },
-                {"name": "sigmoid", "type": "Sigmoid", "bottom": "fc3", "top": "sigmoid"},
-            ],
-        }
-    )
-
-    config = json.loads(config)
-
-    f = open(os.path.join(TEMP_DIR, "model.json"), "w")
-    json.dump(config, f)
-
+    model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)
+    model.graph_to_json(graph_config_file=MODEL_DIR+"test_model/1/model.json")
 
 def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
     inference_params = InferenceParams(
@@ -369,7 +283,7 @@ def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_nam
         use_mixed_precision=False,
     )
     inference_session = CreateInferenceSession(config_file, inference_params)
-    output = inference_session.predict(dense_features, embedding_columns, row_ptrs, True)
+    output = inference_session.predict(dense_features, embedding_columns, row_ptrs)#, True)
 
     test_data_path = DATA_DIR + "test/"
     embedding_columns_df = pd.DataFrame()
