@@ -29,8 +29,11 @@ try:
     import cupy as cp
     import dask_cudf
     from cudf.core.column import as_column, build_column
-    from cudf.utils.dtypes import is_list_dtype
+    from cudf.utils.dtypes import is_list_dtype, is_string_dtype
+
+    HAS_GPU = True
 except ImportError:
+    HAS_GPU = False
     cp = None
     cudf = None
 
@@ -58,12 +61,12 @@ except ImportError:
         return inner1
 
 
-if cudf is None:
-    DataFrameType = Union[pd.DataFrame]
-    SeriesType = Union[pd.Series]
-else:
+if HAS_GPU:
     DataFrameType = Union[pd.DataFrame, cudf.DataFrame]
     SeriesType = Union[pd.Series, cudf.Series]
+else:
+    DataFrameType = Union[pd.DataFrame]
+    SeriesType = Union[pd.Series]
 
 
 class ExtData(enum.Enum):
@@ -79,10 +82,14 @@ class ExtData(enum.Enum):
     CSV = 7
 
 
+def get_lib():
+    return cudf if HAS_GPU else pd
+
+
 def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
-    if cudf is None:
+    if not HAS_GPU:
         return isinstance(x, pd.DataFrame)
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
@@ -90,7 +97,7 @@ def _is_dataframe_object(x):
 def _is_series_object(x):
     # Simple check if object is a cudf or pandas
     # Series object
-    if cudf is None:
+    if not HAS_GPU:
         return isinstance(x, pd.Series)
     return isinstance(x, (cudf.Series, pd.Series))
 
@@ -99,6 +106,10 @@ def _is_cpu_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
     return isinstance(x, (pd.DataFrame, pd.Series))
+
+
+def is_series_or_dataframe_object(maybe_series_or_df):
+    return _is_series_object(maybe_series_or_df) or _is_dataframe_object(maybe_series_or_df)
 
 
 def _hex_to_int(s, dtype=None):
@@ -121,7 +132,7 @@ def _hex_to_int(s, dtype=None):
 
 def _random_state(seed, like_df=None):
     """Dispatch for numpy.random.RandomState"""
-    if isinstance(like_df, (pd.DataFrame, pd.Series)):
+    if not HAS_GPU or isinstance(like_df, (pd.DataFrame, pd.Series)):
         return np.random.RandomState(seed)
     else:
         return cp.random.RandomState(seed)
@@ -129,7 +140,7 @@ def _random_state(seed, like_df=None):
 
 def _arange(size, like_df=None, dtype=None):
     """Dispatch for numpy.arange"""
-    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+    if not HAS_GPU or isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
         return np.arange(size, dtype=dtype)
     else:
         return cp.arange(size, dtype=dtype)
@@ -137,7 +148,7 @@ def _arange(size, like_df=None, dtype=None):
 
 def _array(x, like_df=None, dtype=None):
     """Dispatch for numpy.array"""
-    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+    if not HAS_GPU or isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
         return np.array(x, dtype=dtype)
     else:
         return cp.array(x, dtype=dtype)
@@ -145,7 +156,7 @@ def _array(x, like_df=None, dtype=None):
 
 def _zeros(size, like_df=None, dtype=None):
     """Dispatch for numpy.array"""
-    if isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
+    if not HAS_GPU or isinstance(like_df, (np.ndarray, pd.DataFrame, pd.Series)):
         return np.zeros(size, dtype=dtype)
     else:
         return cp.zeros(size, dtype=dtype)
@@ -153,7 +164,7 @@ def _zeros(size, like_df=None, dtype=None):
 
 def _hash_series(s):
     """Row-wise Series hash"""
-    if isinstance(s, pd.Series):
+    if not HAS_GPU or isinstance(s, pd.Series):
         # Using pandas hashing, which does not produce the
         # same result as cudf.Series.hash_values().  Do not
         # expect hash-based data transformations to be the
@@ -185,11 +196,18 @@ def _series_has_nulls(s):
 
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
-    if isinstance(ser, pd.Series):
+    if not HAS_GPU or isinstance(ser, pd.Series):
         if not len(ser):  # pylint: disable=len-as-condition
             return False
         return pd.api.types.is_list_like(ser.values[0])
     return is_list_dtype(ser)
+
+
+def _is_string_dtype(obj):
+    if not HAS_GPU:
+        return pd.api.types.is_string_dtype(obj)
+    else:
+        return is_string_dtype(obj)
 
 
 def _flatten_list_column(s):
@@ -205,7 +223,7 @@ def _concat_columns(args: list):
     if len(args) == 1:
         return args[0]
     else:
-        _lib = cudf if cudf is not None and isinstance(args[0], cudf.DataFrame) else pd
+        _lib = cudf if HAS_GPU and isinstance(args[0], cudf.DataFrame) else pd
         return _lib.concat(
             [a.reset_index(drop=True) for a in args],
             axis=1,
@@ -221,7 +239,7 @@ def _read_dispatch(df: DataFrameType = None, cpu=None, collection=False, fmt="pa
     """Return the necessary read_parquet function to generate
     data of a specified type.
     """
-    if cpu or isinstance(df, pd.DataFrame):
+    if cpu or isinstance(df, pd.DataFrame) or not HAS_GPU:
         _mod = dd if collection else pd
     else:
         _mod = dask_cudf if collection else cudf.io
@@ -312,13 +330,30 @@ def _concat(objs, **kwargs):
 
 
 def _make_df(_like_df=None, device=None):
-    if isinstance(_like_df, (pd.DataFrame, pd.Series)):
+    if not cudf or isinstance(_like_df, (pd.DataFrame, pd.Series)):
         return pd.DataFrame(_like_df)
     elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(_like_df)
+    elif isinstance(_like_df, dict) and len(_like_df) > 0:
+        is_pandas = all(isinstance(v, pd.Series) for v in _like_df.values())
+
+        return pd.DataFrame(_like_df) if is_pandas else cudf.DataFrame(_like_df)
     if device == "cpu":
-        return pd.DataFrame()
-    return cudf.DataFrame()
+        return pd.DataFrame(_like_df)
+    return cudf.DataFrame(_like_df)
+
+
+def _add_to_series(series, to_add, prepend=True):
+    if isinstance(series, pd.Series):
+        series_to_add = pd.Series(to_add)
+    elif isinstance(series, cudf.Series):
+        series_to_add = cudf.Series(to_add)
+    else:
+        raise ValueError("Unrecognized series, please provide either a pandas a cudf series")
+
+    series_to_concat = [series_to_add, series] if prepend else [series, series_to_add]
+
+    return _concat(series_to_concat)
 
 
 def _detect_format(data):
@@ -405,14 +440,14 @@ def _to_host(x):
 
     All other data will pass through unchanged.
     """
-    if isinstance(x, (pd.DataFrame, dd.DataFrame)):
+    if not HAS_GPU or isinstance(x, (pd.DataFrame, dd.DataFrame)):
         return x
     else:
         return x.to_arrow()
 
 
 def _from_host(x):
-    if cudf is None:
+    if not HAS_GPU:
         return x
     elif isinstance(x, cudf.DataFrame):
         return x
@@ -421,7 +456,7 @@ def _from_host(x):
 
 
 def _build_cudf_list_column(new_elements, new_offsets):
-    if cudf is None:
+    if not HAS_GPU:
         return []
     return build_column(
         None,

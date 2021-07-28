@@ -83,7 +83,7 @@ def fetch_table_data(
             if reader == _lib.read_parquet:  # pylint: disable=comparison-with-callable
                 # Using cudf-backed data with "host" caching.
                 # Cache as an Arrow table.
-                with fsspec.open(path, "rb") as f:
+                with contextlib.closing(fsspec.open(path, "rb")) as f:
                     table = reader(f, **use_kwargs)
                 if cudf:
                     table_cache[path] = table.to_arrow()

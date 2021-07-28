@@ -7,7 +7,8 @@ nvt_directory="$(dirname -- $ci_directory)"
 cd $nvt_directory
 
 echo "Installing NVTabular"
-pip install -e .
+python -m pip install --user --upgrade pip setuptools wheel pybind11
+python setup.py develop --user
 
 # following checks requirement requirements-dev.txt to be installed
 echo "Running black --check"
@@ -36,4 +37,4 @@ echo "Building docs"
 make -C docs html SPHINXOPTS="-W -q"
 
 # test out our codebase
-py.test --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/
+py.test -rsx --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/

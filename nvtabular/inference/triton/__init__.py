@@ -16,15 +16,22 @@
 import copy
 import json
 import os
-from shutil import copyfile
+import warnings
+from shutil import copyfile, copytree
 
-import cudf
-import tritonclient.grpc as grpcclient
-from cudf.utils.dtypes import is_list_dtype
-from google.protobuf import text_format
-from tritonclient.utils import np_to_triton_dtype
+import numpy as np
+import pandas as pd
 
-import nvtabular.inference.triton.model_config_pb2 as model_config
+# this needs to be before any modules that import protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+import tritonclient.grpc as grpcclient  # noqa
+from google.protobuf import text_format  # noqa
+from tritonclient.utils import np_to_triton_dtype  # noqa
+
+import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
+from nvtabular.ops import get_embedding_sizes  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -50,6 +57,7 @@ def export_tensorflow_ensemble(
     model_path:
         The root path to write out files to
     label_columns:
+
         Labels in the dataset (will be removed from the dataset)
     version:
         Version of the model
@@ -59,6 +67,22 @@ def export_tensorflow_ensemble(
 
     workflow = _remove_columns(workflow, label_columns)
 
+    # generate the TF saved model
+    tf_path = os.path.join(model_path, name + "_tf")
+    tf_config = export_tensorflow_model(model, name + "_tf", tf_path, version=version)
+
+    # override the output dtype of the nvtabular model if necessary (fixes mismatches
+    # in dtypes between tf inputs and nvt outputs)
+    for column in tf_config.input:
+        tf_dtype = _triton_datatype_to_dtype(column.data_type)
+        nvt_dtype = workflow.output_dtypes.get(column.name)
+        if nvt_dtype and nvt_dtype != tf_dtype:
+            warnings.warn(
+                f"TF model expects {tf_dtype} for column {column.name}, but workflow "
+                f" is producing type {nvt_dtype}. Overriding dtype in NVTabular workflow."
+            )
+            workflow.output_dtypes[column.name] = tf_dtype
+
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
     nvt_config = generate_nvtabular_model(
@@ -67,10 +91,6 @@ def export_tensorflow_ensemble(
         preprocessing_path,
         backend=nvtabular_backend,
     )
-
-    # generate the TF saved model
-    tf_path = os.path.join(model_path, name + "_tf")
-    tf_config = export_tensorflow_model(model, name + "_tf", tf_path, version=version)
 
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
@@ -250,23 +270,6 @@ def export_hugectr_ensemble(
         max_batch_size=max_batch_size,
     )
 
-    slot_exist = False
-    hugectr_training_config = json.load(open(hugectr_params["config"]))
-    for elem in hugectr_training_config["layers"]:
-        if "slot_size_array" in elem:
-            slot_exist = True
-            with open(
-                os.path.join(preprocessing_path, str(version), "workflow", "slot_size_array.json"),
-                "w",
-            ) as o:
-                slot_sizes = dict()
-                slot_sizes["slot_size_array"] = elem["slot_size_array"]
-                json.dump(slot_sizes, o)
-            break
-
-    if cats and not slot_exist:
-        raise Exception("slot sizes could not be found in the file: " + hugectr_params["config"])
-
     # generate the triton ensemble
     ensemble_path = os.path.join(output_path, name + "_ens")
     os.makedirs(ensemble_path, exist_ok=True)
@@ -334,11 +337,7 @@ def generate_hugectr_model(
     os.makedirs(out_path_version, exist_ok=True)
 
     config = _generate_hugectr_config(name, out_path, hugectr_params, max_batch_size=max_batch_size)
-    for fname in os.listdir(trained_model_path):
-        copyfile(
-            os.path.join(trained_model_path, fname),
-            os.path.join(out_path_version, fname),
-        )
+    copytree(trained_model_path, out_path_version, dirs_exist_ok=True)
 
     return config
 
@@ -347,7 +346,9 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
     columns = [(col, batch[col]) for col in column_names]
     inputs = []
     for i, (name, col) in enumerate(columns):
-        if is_list_dtype(col):
+        if _is_list_dtype(col):
+            if isinstance(col, pd.Series):
+                raise ValueError("this function doesn't support CPU list values yet")
             inputs.append(
                 _convert_column_to_triton_input(
                     col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
@@ -359,7 +360,8 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
                 )
             )
         else:
-            inputs.append(_convert_column_to_triton_input(col.values_host, name, input_class))
+            values = col.values if isinstance(col, pd.Series) else col.values_host
+            inputs.append(_convert_column_to_triton_input(values, name, input_class))
     return inputs
 
 
@@ -371,7 +373,7 @@ def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput
 
 
 def convert_triton_output_to_df(columns, response):
-    return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
+    return _make_df({col: response.as_numpy(col) for col in columns})
 
 
 def _generate_nvtabular_config(
@@ -443,10 +445,18 @@ def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext
     config.input.extend(nvt_config.input)
     config.output.extend(nn_config.output)
 
+    nn_input_cols = set(col.name for col in nn_config.input)
+
     nvt_step = model_config.ModelEnsembling.Step(model_name=nvt_config.name, model_version=-1)
     for input_col in nvt_config.input:
         nvt_step.input_map[input_col.name] = input_col.name
     for output_col in nvt_config.output:
+        if output_col.name not in nn_input_cols:
+            warnings.warn(
+                f"Column {output_col.name} is being generated by NVTabular workflow "
+                f" but is unused in {nn_config.name} model"
+            )
+            continue
         nvt_step.output_map[output_col.name] = output_col.name + "_nvt"
 
     tf_step = model_config.ModelEnsembling.Step(model_name=nn_config.name, model_version=-1)
@@ -476,19 +486,34 @@ def export_tensorflow_model(model, name, output_path, version=1):
         The path to write the exported model to
     """
     tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
-    model.save(tf_model_path)
+    model.save(tf_model_path, include_optimizer=False)
     config = model_config.ModelConfig(
         name=name, backend="tensorflow", platform="tensorflow_savedmodel"
     )
 
-    for col in model.inputs:
+    inputs, outputs = model.inputs, model.outputs
+
+    if not inputs or not outputs:
+        signatures = getattr(model, "signatures", {}) or {}
+        default_signature = signatures.get("serving_default")
+        if not default_signature:
+            # roundtrip saved model to disk to generate signature if it doesn't exist
+            import tensorflow as tf
+
+            reloaded = tf.keras.models.load_model(tf_model_path)
+            default_signature = reloaded.signatures["serving_default"]
+
+        inputs = list(default_signature.structured_input_signature[1].values())
+        outputs = list(default_signature.structured_outputs.values())
+
+    for col in inputs:
         config.input.append(
             model_config.ModelInput(
                 name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
             )
         )
 
-    for col in model.outputs:
+    for col in outputs:
         config.output.append(
             model_config.ModelOutput(
                 name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
@@ -623,7 +648,7 @@ def _remove_columns_from_column_group(cg, to_remove):
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if is_list_dtype(dtype):
+    if _is_list_dtype(dtype):
         params.append(
             paramclass(
                 name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=dims
@@ -685,9 +710,17 @@ def _convert_dtype(dtype):
         return model_config.TYPE_UINT8
     if dtype == "bool":
         return model_config.TYPE_BOOL
-    if cudf.utils.dtypes.is_string_dtype(dtype):
+    if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _triton_datatype_to_dtype(data_type):
+    """the reverse of _convert_dtype: converts a triton proto data_type to a numpy dtype"""
+    name = model_config._DATATYPE.values[data_type].name[5:].lower()
+    if name == "string":
+        return np.dtype("str")
+    return np.dtype(name.replace("fp", "float"))
 
 
 def _convert_tensor(t):
@@ -695,6 +728,6 @@ def _convert_tensor(t):
     if len(out.shape) == 2:
         out = out[:, 0]
     # cudf doesn't seem to handle dtypes like |S15 or object that well
-    if cudf.utils.dtypes.is_string_dtype(out.dtype):
+    if _is_string_dtype(out.dtype):
         out = out.astype("str")
     return out
