@@ -21,7 +21,7 @@ from dask.delayed import Delayed
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
-from ..column import Column, Columns
+from ..column import ColumnSchema, ColumnSchemas
 from . import categorify as nvt_cat
 from .base import Operator
 from .stat_operator import StatOperator
@@ -106,7 +106,7 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns: Columns, ddf: dd.DataFrame):
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame):
         if isinstance(columns, list):
             for group in columns.names():
                 if isinstance(group, (list, tuple)) and len(group) > 1:
@@ -141,7 +141,7 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
@@ -176,19 +176,19 @@ class JoinGroupby(StatOperator):
     def dependencies(self):
         return self.cont_cols
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         # TODO: the names here are defined in categorify/mid_level_groupby
         # refactor to have a common implementation
-        output = Columns()
+        output = ColumnSchemas()
         for name in columns:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name.names(), sep=self.name_sep)
             for cont in self.cont_names:
                 for stat in self.stats:
                     if stat == "count":
-                        output.append(Column(f"{name}_{stat}"))
+                        output.append(ColumnSchema(f"{name}_{stat}"))
                     else:
-                        output.append(Column(f"{name}_{cont}_{stat}"))
+                        output.append(ColumnSchema(f"{name}_{cont}_{stat}"))
         return output
 
     def set_storage_path(self, new_path, copy=False):

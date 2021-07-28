@@ -17,7 +17,7 @@ from dask.dataframe.utils import meta_nonempty
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from .base import Operator
 
 
@@ -99,7 +99,7 @@ class Groupby(Operator):
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
 
         # Sort if necessary
         if self.sort_cols:
@@ -134,7 +134,7 @@ class Groupby(Operator):
 
         return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         output_names = self.output_column_names(columns.names())
         orig_to_new = {}
         for name in output_names:
@@ -161,7 +161,7 @@ class Groupby(Operator):
                     to_add = col.with_name(new_name).with_tags([agg], add=add_tags)
                 output_columns.append(to_add)
 
-        return Columns(output_columns)
+        return ColumnSchemas(output_columns)
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

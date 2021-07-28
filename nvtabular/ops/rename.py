@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..column import Column, Columns
+from ..column import ColumnSchema, ColumnSchemas
 from ..dispatch import DataFrameType
 from .base import Operator
 
@@ -49,20 +49,20 @@ class Rename(Operator):
         self.postfix = postfix
         self.name = name
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         df.columns = self.output_columns(columns).names()
         return df
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         if self.f:
             return columns.map_names(self.f)
         elif self.postfix:
             return columns.map_names(lambda n: n + self.postfix)
         elif self.name:
             if len(columns) == 1:
-                return Columns([Column(self.name)])
+                return ColumnSchemas([ColumnSchema(self.name)])
             else:
                 raise RuntimeError("Single column name provided for renaming multiple columns")
         else:

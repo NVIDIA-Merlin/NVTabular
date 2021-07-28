@@ -18,7 +18,7 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from .base import Operator
 from .moments import _custom_moments
 from .stat_operator import StatOperator
@@ -32,11 +32,11 @@ class DataStats(StatOperator):
         self.col_dtypes = []
         self.output = {}
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         return df
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
-    def fit(self, columns: Columns, ddf: dd.DataFrame):
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame):
         dask_stats = {}
 
         ddf_dtypes = ddf.head(1)

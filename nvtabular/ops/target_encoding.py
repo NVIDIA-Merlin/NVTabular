@@ -17,7 +17,7 @@ import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from ..dispatch import (
     DataFrameType,
     _arange,
@@ -162,7 +162,7 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns: Columns, ddf: dd.DataFrame):
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
@@ -319,7 +319,7 @@ class TargetEncoding(StatOperator):
 
         return tran_df
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")

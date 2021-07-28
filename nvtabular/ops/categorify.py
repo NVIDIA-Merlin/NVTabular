@@ -36,7 +36,7 @@ from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from ..column import Column, Columns
+from ..column import ColumnSchema, ColumnSchemas
 from ..tag import Tag
 from .base import Operator
 from .stat_operator import StatOperator
@@ -283,7 +283,7 @@ class Categorify(StatOperator):
         self.categories = deepcopy(self.vocabs)
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
-    def fit(self, columns: Columns, ddf: dd.DataFrame):
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
@@ -381,7 +381,7 @@ class Categorify(StatOperator):
         self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         new_df = df.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in columns.names())
@@ -443,11 +443,13 @@ class Categorify(StatOperator):
 
         return new_df
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         if self.encode_type == "combo":
             cat_names, _ = _get_multicolumn_names(columns.names(), columns.names(), self.name_sep)
 
-            return Columns(cat_names).map(lambda col: Column(col, tags=Tag.CATEGORICAL.value))
+            return ColumnSchemas(cat_names).map(
+                lambda col: ColumnSchema(col, tags=Tag.CATEGORICAL.value)
+            )
         columns = columns.flatten()
 
         return columns.map(lambda col: col.with_tags(Tag.CATEGORICAL.value))

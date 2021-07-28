@@ -15,7 +15,7 @@
 #
 from inspect import getsourcelines, signature
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, annotate
 from .base import Operator
 
@@ -66,7 +66,7 @@ class LambdaOp(Operator):
         self._label = label
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         for col in columns.names():
             if self._param_count == 2:

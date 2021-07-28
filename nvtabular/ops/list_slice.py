@@ -21,7 +21,7 @@ try:
 except ImportError:
     cp = None
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 from .base import Operator
 
@@ -56,7 +56,7 @@ class ListSlice(Operator):
             self.end = np.iinfo(np.int64).max
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
         for col in columns.names():

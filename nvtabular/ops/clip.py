@@ -15,7 +15,7 @@
 #
 from nvtabular.dispatch import DataFrameType, annotate
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from .base import Operator
 
 
@@ -47,7 +47,7 @@ class Clip(Operator):
         self.max_value = max_value
 
     @annotate("Clip_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         z_df = df[columns.names().flatten()]
         if self.min_value is not None:
             z_df[z_df < self.min_value] = self.min_value

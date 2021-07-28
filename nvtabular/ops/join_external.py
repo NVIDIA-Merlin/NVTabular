@@ -23,7 +23,7 @@ except ImportError:
 import dask.dataframe as dd
 import pandas as pd
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from ..dispatch import (
     DataFrameType,
     ExtData,
@@ -184,7 +184,7 @@ class JoinExternal(Operator):
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")

@@ -16,7 +16,7 @@
 
 import dask.dataframe as dd
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, annotate
 from .base import Operator, Supports
 from .moments import _custom_moments
@@ -46,7 +46,7 @@ class Normalize(StatOperator):
         self.stds = {}
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, columns: Columns, ddf: dd.DataFrame):
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame):
         return _custom_moments(ddf[columns.names().flatten()])
 
     def fit_finalize(self, dask_stats):
@@ -55,9 +55,9 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        names = columns.names() if isinstance(columns, Columns) else columns
+        names = columns.names() if isinstance(columns, ColumnSchemas) else columns
         for name in names:
             if self.stds[name] > 0:
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])

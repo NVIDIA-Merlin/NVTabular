@@ -29,7 +29,7 @@ from cupyx.scipy.sparse import coo_matrix
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from ..column import Column, Columns
+from ..column import ColumnSchema, ColumnSchemas
 from .base import Operator
 
 
@@ -86,7 +86,7 @@ class ColumnSimilarity(Operator):
             self._initialized = True
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         use_values = self.on_device
         if isinstance(df, pd.DataFrame):
             # Disallow on-device computation for cpu-backed data
@@ -116,8 +116,8 @@ class ColumnSimilarity(Operator):
     def output_column_names(self, columns):
         return [f"{a}_{b}_sim" for a, b in columns]
 
-    def output_columns(self, columns: Columns) -> Columns:
-        return columns.map(lambda a, b: Column(f"{a}_{b}_sim"))
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
+        return columns.map(lambda a, b: ColumnSchema(f"{a}_{b}_sim"))
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):

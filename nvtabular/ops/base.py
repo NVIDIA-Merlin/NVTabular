@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from nvtabular.column import Columns
+from nvtabular.column import ColumnSchemas
 from nvtabular.dispatch import DataFrameType
 from nvtabular.tag import DefaultTags
 
@@ -45,7 +45,7 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
@@ -62,7 +62,7 @@ class Operator:
         """
         raise NotImplementedError
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         """Given a set of columns names returns transformed columns this operator will produce
 
         Parameters
@@ -102,7 +102,9 @@ class Operator:
         """Returns what kind of data representation this operator supports"""
         return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
 
-    def inference_initialize(self, columns: Columns, model_config: dict) -> Optional[Operator]:
+    def inference_initialize(
+        self, columns: ColumnSchemas, model_config: dict
+    ) -> Optional[Operator]:
         """Configures this operator for use in inference. May return a different operator to use
         instead of the one configured for use during training"""
         return None
@@ -137,8 +139,8 @@ class AddMetadata(Operator):
 
         self.tags = list(set(tags))
 
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         return df
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         return columns.map(lambda col: col.with_tags(self.tags).with_properties(**self.properties))

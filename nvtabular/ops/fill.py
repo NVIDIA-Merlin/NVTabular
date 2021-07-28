@@ -17,7 +17,7 @@ import dask.dataframe as dd
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from ..column import Column, Columns
+from ..column import ColumnSchema, ColumnSchemas
 from .base import Operator
 from .stat_operator import StatOperator
 
@@ -48,7 +48,7 @@ class FillMissing(Operator):
         self._inference_transform = None
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         if self.add_binary_cols:
             for col in columns.names():
                 df[f"{col}_filled"] = df[col].isna()
@@ -68,10 +68,10 @@ class FillMissing(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         output_cols = columns[:]
         if self.add_binary_cols:
-            output_cols.extend([Column(f"{col}_filled") for col in columns])
+            output_cols.extend([ColumnSchema(f"{col}_filled") for col in columns])
         return output_cols
 
 
@@ -97,7 +97,7 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
@@ -108,7 +108,7 @@ class FillMedian(StatOperator):
         return df
 
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
-    def fit(self, columns: Columns, ddf: dd.DataFrame):
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame):
         # TODO: Use `method="tidigest"` when crick supports device
         dask_stats = ddf[columns.names().flatten()].quantile(q=0.5, method="dask")
         return dask_stats
@@ -127,8 +127,8 @@ class FillMedian(StatOperator):
     def clear(self):
         self.medians = {}
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         output_cols = columns[:]
         if self.add_binary_cols:
-            output_cols.extend([Column(f"{col}_filled") for col in columns])
+            output_cols.extend([ColumnSchema(f"{col}_filled") for col in columns])
         return output_cols

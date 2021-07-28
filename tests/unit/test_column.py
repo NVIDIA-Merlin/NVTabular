@@ -1,8 +1,8 @@
-from nvtabular.column import Column, Columns
+from nvtabular.column import ColumnSchema, ColumnSchemas
 
 
 def test_column():
-    column = Column("name", tags=["tag-1"])
+    column = ColumnSchema("name", tags=["tag-1"])
 
     assert column.name == "name"
     assert column.tags[0] == "tag-1"
@@ -11,7 +11,7 @@ def test_column():
 
 
 def test_columns():
-    cols = Columns([Column("a"), [Column("b")]])
+    cols = ColumnSchemas([ColumnSchema("a"), [ColumnSchema("b")]])
 
     assert all(
         str(col).endswith("suffix") for col in cols.map_names(lambda x: x + "suffix").flatten()

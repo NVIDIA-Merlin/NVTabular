@@ -17,7 +17,7 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from ..column import Columns
+from ..column import ColumnSchemas
 from .base import Operator
 
 
@@ -27,7 +27,7 @@ class StatOperator(Operator):
     on top of the Operator class.
     """
 
-    def fit(self, columns: Columns, ddf: dd.DataFrame) -> Any:
+    def fit(self, columns: ColumnSchemas, ddf: dd.DataFrame) -> Any:
         """Calculate statistics for this operator, and return a dask future
         to these statistics, which will be computed by the workflow."""
 

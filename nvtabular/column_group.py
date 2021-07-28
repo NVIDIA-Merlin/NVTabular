@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Text, Union
 import joblib
 from dask.core import flatten
 
-from nvtabular.column import Column, Columns
+from nvtabular.column import ColumnSchema, ColumnSchemas
 from nvtabular.ops import LambdaOp, Operator
 from nvtabular.tag import DefaultTags, Tag
 
@@ -41,7 +41,7 @@ class ColumnGroup:
 
     def __init__(
         self,
-        columns: Union[Text, List[Text], Column, List[Column], "ColumnGroup"],
+        columns: Union[Text, List[Text], ColumnSchema, List[ColumnSchema], "ColumnGroup"],
         tags: Optional[Union[List[Text], DefaultTags]] = None,
         properties: Optional[Dict[Text, Text]] = None,
     ):
@@ -65,7 +65,7 @@ class ColumnGroup:
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
         if any(isinstance(col, ColumnGroup) for col in columns):
-            self.columns: Columns = Columns()
+            self.columns: ColumnSchemas = ColumnSchemas()
             self.kind = "[...]"
             for col in columns:
                 if not isinstance(col, ColumnGroup):
@@ -73,7 +73,7 @@ class ColumnGroup:
                 else:
                     # we can't handle nesting arbitrarily deep here
                     # only accept non-nested (str) columns here
-                    if any(not isinstance(c, Column) for c in col.columns):
+                    if any(not isinstance(c, ColumnSchema) for c in col.columns):
                         raise ValueError("Can't handle more than 1 level of nested columns")
 
                 col.children.append(self)
@@ -82,7 +82,7 @@ class ColumnGroup:
 
         else:
             columns = [_convert_col(col, tags=tags, properties=properties) for col in columns]
-            self.columns: Columns = Columns(columns)
+            self.columns: ColumnSchemas = ColumnSchemas(columns)
 
     @property
     def column_names(self):
@@ -346,9 +346,9 @@ class ColumnGroup:
         return self.columns.flatten()
 
     @property
-    def input_columns(self) -> Columns:
+    def input_columns(self) -> ColumnSchemas:
         dependencies = self.dependencies or set()
-        return Columns(
+        return ColumnSchemas(
             [col for parent in self.parents for col in parent.columns if parent not in dependencies]
         )
 
@@ -357,7 +357,7 @@ class ColumnGroup:
         """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
         return [
-            tuple(col) if isinstance(col, Columns) else col
+            tuple(col) if isinstance(col, ColumnSchemas) else col
             for parent in self.parents
             for col in parent.column_names
             if parent not in dependencies
@@ -475,11 +475,11 @@ def _merge_add_nodes(graph):
 def _convert_col(col, tags=None, properties=None):
     if not properties:
         properties = {}
-    if isinstance(col, Column):
+    if isinstance(col, ColumnSchema):
         return col.with_tags(tags).with_properties(**properties)
     elif isinstance(col, str):
-        return Column(col, tags=tags, properties=properties)
+        return ColumnSchema(col, tags=tags, properties=properties)
     elif isinstance(col, (tuple, list)):
-        return Columns(tuple(_convert_col(c, tags=tags, properties=properties) for c in col))
+        return ColumnSchemas(tuple(_convert_col(c, tags=tags, properties=properties) for c in col))
     else:
         raise ValueError(f"Invalid column value for ColumnGroup: {col} (type: {type(col)})")

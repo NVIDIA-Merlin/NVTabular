@@ -15,7 +15,7 @@
 #
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
-from ..column import Column, Columns
+from ..column import ColumnSchema, ColumnSchemas
 from ..tag import DefaultTags
 from .base import Operator
 
@@ -59,7 +59,7 @@ class DifferenceLag(Operator):
         self.shifts = [shift] if isinstance(shift, int) else shift
 
     @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: Columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, columns: ColumnSchemas, df: DataFrameType) -> DataFrameType:
         # compute a mask indicating partition boundaries, handling multiple partition_cols
         # represent partition boundaries by None values
         output = {}
@@ -78,11 +78,11 @@ class DifferenceLag(Operator):
     def dependencies(self):
         return self.partition_cols
 
-    def output_columns(self, columns: Columns) -> Columns:
+    def output_columns(self, columns: ColumnSchemas) -> ColumnSchemas:
         return columns.map(lambda col: [self._create_column(col, shift) for shift in self.shifts])
 
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
 
     def _create_column(self, col, shift):
-        return Column(self._column_name(col, shift), tags=DefaultTags.TIME.value)
+        return ColumnSchema(self._column_name(col, shift), tags=DefaultTags.TIME.value)
