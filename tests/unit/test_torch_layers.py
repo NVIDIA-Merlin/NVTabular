@@ -23,7 +23,6 @@ torch = pytest.importorskip("torch")
 from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
 
 
-
 def test_sparse_embedding_layer():
     embedding_table_shapes = {"col_a": (123, 4), "col_b": (45, 3)}
 
