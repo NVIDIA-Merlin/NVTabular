@@ -15,11 +15,13 @@
 #
 import pytest
 
-from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
-
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
+# needed for torch import for ConcatenatedEmbeddings
 torch = pytest.importorskip("torch")
+
+from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
+
 
 
 def test_sparse_embedding_layer():
