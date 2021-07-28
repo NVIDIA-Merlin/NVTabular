@@ -17,9 +17,9 @@ import pytest
 
 # If pytorch isn't installed skip these tests. Note that the
 # torch_dataloader import needs to happen after this line
-# needed for torch import for ConcatenatedEmbeddings
 torch = pytest.importorskip("torch")
 
+# Must come after `pytest.importorskip("torch")`
 from nvtabular.framework_utils.torch.layers.embeddings import ConcatenatedEmbeddings
 
 
