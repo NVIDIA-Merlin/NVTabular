@@ -18,7 +18,7 @@ from dask.dataframe.utils import meta_nonempty
 from nvtabular.dispatch import DataFrameType, annotate
 
 from ..column import ColumnSchemas
-from .base import Operator
+from .operator import Operator
 
 
 class Groupby(Operator):

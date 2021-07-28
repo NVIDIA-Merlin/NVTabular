@@ -19,8 +19,8 @@ import numpy as np
 from nvtabular.dispatch import DataFrameType, annotate
 
 from ..column import ColumnSchemas
-from .base import Operator
 from .moments import _custom_moments
+from .operator import Operator
 from .stat_operator import StatOperator
 
 

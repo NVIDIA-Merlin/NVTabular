@@ -45,7 +45,7 @@ from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
 from nvtabular.ops import get_embedding_sizes
-from nvtabular.ops.base import Supports
+from nvtabular.ops.operator import Supports
 
 LOG = logging.getLogger("nvtabular")
 

@@ -33,7 +33,7 @@ from ..dispatch import (
     _read_dispatch,
     _to_host,
 )
-from .base import Operator
+from .operator import Operator
 
 
 class JoinExternal(Operator):

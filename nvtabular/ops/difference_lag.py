@@ -17,7 +17,7 @@ from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
 from ..column import ColumnSchema, ColumnSchemas
 from ..tag import DefaultTags
-from .base import Operator
+from .operator import Operator
 
 
 class DifferenceLag(Operator):

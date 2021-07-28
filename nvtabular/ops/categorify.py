@@ -38,7 +38,7 @@ from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..column import ColumnSchema, ColumnSchemas
 from ..tag import Tag
-from .base import Operator
+from .operator import Operator
 from .stat_operator import StatOperator
 
 

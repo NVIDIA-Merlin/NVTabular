@@ -17,8 +17,8 @@ from typing import Dict, Union
 
 from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
-from .base import Operator
 from .categorify import _emb_sz_rule, _get_embedding_order
+from .operator import Operator
 
 
 class HashBucket(Operator):

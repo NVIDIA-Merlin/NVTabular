@@ -30,7 +30,7 @@ from cupyx.scipy.sparse import coo_matrix
 from nvtabular.dispatch import DataFrameType, annotate
 
 from ..column import ColumnSchema, ColumnSchemas
-from .base import Operator
+from .operator import Operator
 
 
 class ColumnSimilarity(Operator):

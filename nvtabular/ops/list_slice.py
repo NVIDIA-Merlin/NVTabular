@@ -23,7 +23,7 @@ except ImportError:
 
 from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
-from .base import Operator
+from .operator import Operator
 
 
 class ListSlice(Operator):

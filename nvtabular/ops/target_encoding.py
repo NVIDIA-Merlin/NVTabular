@@ -26,8 +26,8 @@ from ..dispatch import (
     _read_parquet_dispatch,
 )
 from . import categorify as nvt_cat
-from .base import Operator
 from .moments import _custom_moments
+from .operator import Operator
 from .stat_operator import StatOperator
 
 

@@ -20,7 +20,7 @@ import numpy as np
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
 from ..column import ColumnSchemas
-from .base import Operator
+from .operator import Operator
 
 
 class Bucketize(Operator):

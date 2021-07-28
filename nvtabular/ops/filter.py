@@ -17,7 +17,7 @@ from typing import Callable, Union
 
 from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, SeriesType, _is_dataframe_object, _is_series_object, annotate
-from .base import Operator
+from .operator import Operator
 
 
 class Filter(Operator):

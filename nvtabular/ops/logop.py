@@ -17,7 +17,7 @@ import numpy as np
 
 from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, _natural_log, annotate
-from .base import Operator
+from .operator import Operator
 
 
 class LogOp(Operator):

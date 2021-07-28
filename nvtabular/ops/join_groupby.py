@@ -23,7 +23,7 @@ from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_pa
 
 from ..column import ColumnSchema, ColumnSchemas
 from . import categorify as nvt_cat
-from .base import Operator
+from .operator import Operator
 from .stat_operator import StatOperator
 
 

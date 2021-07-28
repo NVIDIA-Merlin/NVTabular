@@ -15,7 +15,7 @@
 #
 from ..column import ColumnSchema, ColumnSchemas
 from ..dispatch import DataFrameType
-from .base import Operator
+from .operator import Operator
 
 
 class Rename(Operator):

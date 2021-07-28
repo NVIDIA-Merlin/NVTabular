@@ -17,7 +17,7 @@ from inspect import getsourcelines, signature
 
 from ..column import ColumnSchemas
 from ..dispatch import DataFrameType, annotate
-from .base import Operator
+from .operator import Operator
 
 
 class LambdaOp(Operator):
