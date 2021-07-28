@@ -5,13 +5,13 @@ import subprocess
 import time
 from distutils.spawn import find_executable
 
-import cudf
 import numpy as np
 import pandas as pd
 import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.ops.operator import Supports
 from tests.conftest import assert_eq
 
@@ -83,13 +83,13 @@ def _verify_workflow_on_tritonserver(tmpdir, workflow, df, model_name):
 
         for col in df.columns:
             features = response.as_numpy(col)
-            triton_df = cudf.DataFrame({col: features.reshape(features.shape[0])})
+            triton_df = _make_df({col: features.reshape(features.shape[0])})
             assert_eq(triton_df, local_df[[col]])
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 def test_error_handling(tmpdir):
-    df = cudf.DataFrame({"x": np.arange(10), "y": np.arange(10)})
+    df = _make_df({"x": np.arange(10), "y": np.arange(10)})
 
     def custom_transform(col):
         if len(col) == 2:
@@ -115,7 +115,7 @@ def test_error_handling(tmpdir):
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 def test_tritonserver_inference_string(tmpdir):
-    df = cudf.DataFrame({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
+    df = _make_df({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
     features = ["user"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
     _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_inference_string")
@@ -124,10 +124,27 @@ def test_tritonserver_inference_string(tmpdir):
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 def test_large_strings(tmpdir):
     strings = ["a" * (2 ** exp) for exp in range(1, 17)]
-    df = cudf.DataFrame({"description": strings})
+    df = _make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
     _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_large_string")
+
+
+@pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
+def test_concatenate_dataframe(tmpdir):
+    # we were seeing an issue in the rossmann workflow where we dropped certain columns,
+    # https://github.com/NVIDIA/NVTabular/issues/961
+    df = _make_df(
+        {
+            "cat": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"],
+            "cont": [0.0, 1.0, 2.0, 3.0, 4.0, 5],
+        }
+    )
+    # this bug only happened with a dataframe representation: force this by using a lambda
+    cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
+    conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
+    workflow = nvt.Workflow(cats + conts)
+    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_concatenate_dataframe")
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
@@ -149,7 +166,7 @@ def test_numeric_dtypes(tmpdir):
 
     # simple transform to make sure we can round-trip the min/max values for each dtype,
     # through triton, with the 'transform' here just checking that the dtypes are correct
-    df = cudf.DataFrame(
+    df = _make_df(
         {dtype: np.array([limits.max, 0, limits.min], dtype=dtype) for dtype, limits in dtypes}
     )
     features = nvt.ColumnGroup(df.columns) >> check_dtypes
@@ -158,7 +175,7 @@ def test_numeric_dtypes(tmpdir):
 
 
 def test_generate_triton_multihot(tmpdir):
-    df = cudf.DataFrame(
+    df = _make_df(
         {
             "userId": ["a", "a", "b"],
             "movieId": ["1", "2", "2"],
@@ -170,7 +187,6 @@ def test_generate_triton_multihot(tmpdir):
     workflow = nvt.Workflow(cats)
     workflow.fit(nvt.Dataset(df))
     expected = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
-    print(expected)
 
     # save workflow to triton / verify we see some expected output
     repo = os.path.join(tmpdir, "models")
@@ -209,8 +225,13 @@ def test_generate_triton_model(tmpdir, engine, df):
 
 # lets test the data format conversion function on the full cartesian product
 # of the Support flags
-@pytest.mark.parametrize("_from", list(Supports))
-@pytest.mark.parametrize("_to", list(Supports))
+_SUPPORTS = list(Supports)
+if not HAS_GPU:
+    _SUPPORTS = [s for s in _SUPPORTS if "GPU" not in str(s)]
+
+
+@pytest.mark.parametrize("_from", _SUPPORTS)
+@pytest.mark.parametrize("_to", _SUPPORTS)
 def test_convert_format(_from, _to):
     convert_format = data_conversions.convert_format
 

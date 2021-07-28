@@ -110,6 +110,8 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
 
     out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="4", clean_up=False)
 
+    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
+
     # Only run if PyTorch installed
     try:
         import torch
@@ -125,7 +127,7 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         send_results(asv_db, bench_info, bench_results)
 
         notebookex_path = os.path.join(
-            dirname(TEST_PATH), "examples/tabular-data-rossmann", "03b-Training-with-PyTorch.ipynb"
+            dirname(TEST_PATH), "examples/tabular-data-rossmann", "03-Training-with-PyTorch.ipynb"
         )
         out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
         bench_results = RossBenchPytorch().get_epochs(out.splitlines())
@@ -142,21 +144,21 @@ def test_rossman_example(asv_db, bench_info, tmpdir):
         print(tensorflow.__version__)
 
         notebookex_path = os.path.join(
-            dirname(TEST_PATH), "examples/tabular-data-rossmann", "03a-Training-with-TF.ipynb"
+            dirname(TEST_PATH), "examples/tabular-data-rossmann", "03-Training-with-TF.ipynb"
         )
         out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
         bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
         bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
-        print("TensorFlow not installed in this container, skipping 03a-Training-with-TF.ipynb")
+        print("TensorFlow not installed in this container, skipping 03-Training-with-TF.ipynb")
 
 
-def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
+def test_movielens_example(asv_db, bench_info, tmpdir):
     # Tensorflow required to run this test
     pytest.importorskip("tensorflow")
-    data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
+    data_path = os.path.join(DATA_START, "movielens/data")
+    input_path = os.path.join(DATA_START, "movielens/input")
 
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
@@ -168,20 +170,20 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/getting-started-movielens", "01-Download-Convert.ipynb"
     )
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="2", clean_up=False)
 
     notebookpre_path = os.path.join(
         dirname(TEST_PATH), "examples/getting-started-movielens", "02-ETL-with-NVTabular.ipynb"
     )
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="2", clean_up=False)
 
     notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/getting-started-movielens", "03a-Training-with-TF.ipynb"
+        dirname(TEST_PATH), "examples/getting-started-movielens", "03-Training-with-TF.ipynb"
     )
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="2", clean_up=False)
 
 
-def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
+def test_movielens_multihot_examples(asv_db, bench_info, tmpdir):
     # Tritonclient required for this test
     pytest.importorskip("tritonclient")
 
