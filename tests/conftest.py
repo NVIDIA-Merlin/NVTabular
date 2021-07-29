@@ -281,15 +281,25 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
 
 
 @contextlib.contextmanager
-def run_triton_server(modelpath, model_name, triton_server_path, device_id="0"):
+def run_triton_server(
+    modelpath, model_name, triton_server_path, device_id="0", backend="tensorflow", ps_path=None
+):
     import tritonclient
     import tritonclient.grpc as grpcclient
+
+    if backend == "tensorflow":
+        backend_config = "tensorflow,version=2"
+    elif backend == "hugectr":
+        backend_config = "hugectr,ps=" + ps_path
+    else:
+        raise ValueError("unknown backend:" + backend)
 
     cmdline = [
         triton_server_path,
         "--model-repository",
         modelpath,
-        "--backend-config=tensorflow,version=2",
+        "--backend-config",
+        backend_config,
         "--model-control-mode=explicit",
         "--load-model",
         model_name,

@@ -15,7 +15,7 @@ pytest tests/integration/test_notebooks.py::test_movielens_example
 
 # Run tests for specific containers
 if [ "$1" == "merlin-training" ]; then
-  pytest tests/integration/test_nvt_hugectr_training.py::test_nvt_hugectr_training
+  pytest tests/integration/test_nvt_hugectr.py::test_training
 elif [ "$1" == "merlin-tensorflow-trainig" ]; then
   pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference
   pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference
@@ -26,7 +26,7 @@ elif [ "$1" == "merlin-inference" ]; then
   pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
   pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
   pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
-  pytest tests/integration/test_nvt_hugectr_inference.py::test_nvt_hugectr_inference
+  pytest tests/integration/test_nvt_hugectr.py::test_inference
 else
   echo "INVALID Container name"
   exit 1

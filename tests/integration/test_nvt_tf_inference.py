@@ -15,25 +15,17 @@
 #
 
 import concurrent.futures
-import datetime as dt
 import glob
 import os
 from distutils.spawn import find_executable
 
 import cudf
-import cupy as cp
 import pytest
-import tritonclient.grpc as grpcclient
-from benchmark_parsers import create_bench_result
-
-# from benchmark_parsers import send_results
-from tritonclient.utils import np_to_triton_dtype
+from common.parsers.benchmark_parsers import create_bench_result
+from common.utils import _run_query
 
 import nvtabular as nvt
 import tests.conftest as test_utils
-
-# from benchmark_parsers import send_results
-
 
 TEST_N_ROWS = 1024
 MODEL_DIR = "/model/models/"
@@ -48,7 +40,11 @@ TRITON_DEVICE_ID = "1"
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_movielens_inference_triton(asv_db, bench_info, n_rows, err_tol):
     with test_utils.run_triton_server(
-        os.path.expanduser(MODEL_DIR), "movielens", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+        os.path.expanduser(MODEL_DIR),
+        "movielens",
+        TRITON_SERVER_PATH,
+        TRITON_DEVICE_ID,
+        "tensorflow",
     ) as client:
         diff, run_time = _run_movielens_query(client, n_rows)
 
@@ -66,7 +62,11 @@ def test_nvt_tf_movielens_inference_triton(asv_db, bench_info, n_rows, err_tol):
 def test_nvt_tf_movielens_inference_triton_mt(asv_db, bench_info, n_rows, err_tol):
     futures = []
     with test_utils.run_triton_server(
-        os.path.expanduser(MODEL_DIR), "movielens", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+        os.path.expanduser(MODEL_DIR),
+        "movielens",
+        TRITON_SERVER_PATH,
+        TRITON_DEVICE_ID,
+        "tensorflow",
     ) as client:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for n_row in n_rows:
@@ -137,7 +137,11 @@ def test_nvt_tf_movielens_inference():
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
     with test_utils.run_triton_server(
-        os.path.expanduser(MODEL_DIR), "rossmann", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+        os.path.expanduser(MODEL_DIR),
+        "rossmann",
+        TRITON_SERVER_PATH,
+        TRITON_DEVICE_ID,
+        "tensorflow",
     ) as client:
         diff, run_time = _run_rossmann_query(client, n_rows)
 
@@ -155,7 +159,11 @@ def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
 def test_nvt_tf_rossmann_inference_triton_mt(asv_db, bench_info, n_rows, err_tol):
     futures = []
     with test_utils.run_triton_server(
-        os.path.expanduser(MODEL_DIR), "rossmann", TRITON_SERVER_PATH, TRITON_DEVICE_ID
+        os.path.expanduser(MODEL_DIR),
+        "rossmann",
+        TRITON_SERVER_PATH,
+        TRITON_DEVICE_ID,
+        "tensorflow",
     ) as client:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for n_row in n_rows:
@@ -267,46 +275,6 @@ def test_nvt_tf_rossmann_inference():
     cudf_pred.to_csv(os.path.join(output_dir, prediction_file_name))
 
     os.remove(os.path.join(output_dir, workflow_output_test_trans_file_name))
-
-
-def _run_query(
-    client,
-    n_rows,
-    model_name,
-    workflow_path,
-    data_path,
-    actual_output_filename,
-    output_name,
-    input_cols_name=None,
-):
-
-    workflow = nvt.Workflow.load(workflow_path)
-
-    if input_cols_name is None:
-        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
-    else:
-        batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
-
-    columns = [(col, batch[col]) for col in batch.columns]
-
-    inputs = []
-    for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(col.dtype)
-        d = d.reshape(len(d), 1)
-        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
-        inputs[i].set_data_from_numpy(d)
-
-    outputs = [grpcclient.InferRequestedOutput(output_name)]
-    time_start = dt.datetime.now()
-    response = client.infer(model_name, inputs, request_id="1", outputs=outputs)
-    run_time = dt.datetime.now() - time_start
-
-    output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
-    output_actual = cp.asnumpy(output_actual["0"].values)
-    output_predict = response.as_numpy(output_name)
-
-    diff = abs(output_actual - output_predict[:, 0])
-    return diff, run_time
 
 
 def _run_movielens_query(client, n_rows):
