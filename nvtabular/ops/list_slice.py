@@ -23,7 +23,7 @@ except ImportError:
 
 from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class ListSlice(Operator):
@@ -56,10 +56,10 @@ class ListSlice(Operator):
             self.end = np.iinfo(np.int64).max
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
-        for col in columns:
+        for col in col_selector:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]

@@ -37,7 +37,7 @@ from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -282,12 +282,12 @@ class Categorify(StatOperator):
         self.categories = deepcopy(self.vocabs)
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
-        columns_uniq = list(set(flatten(columns, container=tuple)))
-        columns_all = list(flatten(columns, container=tuple))
+        columns_uniq = list(set(flatten(col_selector, container=tuple)))
+        columns_all = list(flatten(col_selector, container=tuple))
         if sorted(columns_all) != sorted(columns_uniq) and self.encode_type == "joint":
             # If we are doing "joint" encoding, there must be unique mapping
             # between input column names and column groups.  Otherwise, more
@@ -295,7 +295,7 @@ class Categorify(StatOperator):
             # column.
             raise ValueError("Same column name included in multiple groups.")
 
-        for group in columns:
+        for group in col_selector:
             if isinstance(group, tuple) and len(group) > 1:
                 # For multi-column groups, we concatenate column names
                 # to get the "group" name.
@@ -318,7 +318,9 @@ class Categorify(StatOperator):
         # convert tuples to lists
         cols_with_vocabs = list(self.categories.keys())
         columns = [
-            list(c) if isinstance(c, tuple) else c for c in columns if c not in cols_with_vocabs
+            list(c) if isinstance(c, tuple) else c
+            for c in col_selector
+            if c not in cols_with_vocabs
         ]
         dsk, key = _category_stats(ddf, self._create_fit_options_from_columns(columns))
         return Delayed(key, dsk)
@@ -378,10 +380,10 @@ class Categorify(StatOperator):
         self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = df.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
-            assert all(x in self.freq_threshold for x in columns)
+            assert all(x in self.freq_threshold for x in col_selector)
 
         if self.encode_type == "combo":
             # Case (3) - We want to track multi- and single-column groups separately
@@ -391,11 +393,13 @@ class Categorify(StatOperator):
             #            multi-column groups only, and use `cat_names` to store the
             #            string representation of both single- and multi-column groups.
             #
-            cat_names, multi_col_group = _get_multicolumn_names(columns, df.columns, self.name_sep)
+            cat_names, multi_col_group = _get_multicolumn_names(
+                col_selector, df.columns, self.name_sep
+            )
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
-            cat_names = list(flatten(columns, container=tuple))
+            cat_names = list(flatten(col_selector, container=tuple))
 
         # Encode each column-group separately
         for name in cat_names:
@@ -438,11 +442,11 @@ class Categorify(StatOperator):
 
         return new_df
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         if self.encode_type == "combo":
-            cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
+            cat_names, _ = _get_multicolumn_names(col_selector, col_selector, self.name_sep)
             return cat_names
-        return list(flatten(columns, container=tuple))
+        return list(flatten(col_selector, container=tuple))
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(

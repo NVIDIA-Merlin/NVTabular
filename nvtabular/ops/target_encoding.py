@@ -27,7 +27,7 @@ from nvtabular.dispatch import (
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -162,13 +162,13 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
             moments = _custom_moments(ddf[self.target])
 
-        col_groups = columns[:]
+        col_groups = col_selector[:]
         if self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
@@ -180,7 +180,7 @@ class TargetEncoding(StatOperator):
                 )
 
             # Add new col_groups with fold
-            for group in columns:
+            for group in col_selector:
                 if isinstance(group, tuple):
                     group = list(group)
                 if isinstance(group, list):
@@ -319,7 +319,7 @@ class TargetEncoding(StatOperator):
 
         return tran_df
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
@@ -333,7 +333,7 @@ class TargetEncoding(StatOperator):
 
         # Loop over categorical-column groups and apply logic
         new_df = None
-        for ind, cat_group in enumerate(columns):
+        for ind, cat_group in enumerate(col_selector):
             if isinstance(cat_group, tuple):
                 cat_group = list(cat_group)
             elif isinstance(cat_group, str):

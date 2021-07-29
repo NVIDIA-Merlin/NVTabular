@@ -22,7 +22,7 @@ import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
 from . import categorify as nvt_cat
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -105,9 +105,9 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
-        if isinstance(columns, list):
-            for group in columns:
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+        if isinstance(col_selector, list):
+            for group in col_selector:
                 if isinstance(group, (list, tuple)) and len(group) > 1:
                     name = nvt_cat._make_name(*group, sep=self.name_sep)
                     for col in group:
@@ -123,7 +123,7 @@ class JoinGroupby(StatOperator):
         dsk, key = nvt_cat._category_stats(
             ddf,
             nvt_cat.FitOptions(
-                columns,
+                col_selector,
                 self.cont_names,
                 self.stats,
                 self.out_path,
@@ -140,13 +140,13 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
 
         cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-            columns, df.columns, self.name_sep
+            col_selector, df.columns, self.name_sep
         )
 
         _read_pq_func = _read_parquet_dispatch(df)

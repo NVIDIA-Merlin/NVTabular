@@ -33,7 +33,7 @@ from nvtabular.dispatch import (
     _to_host,
 )
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class JoinExternal(Operator):
@@ -184,7 +184,7 @@ class JoinExternal(Operator):
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")

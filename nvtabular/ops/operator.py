@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     # avoid circular references
     from nvtabular import ColumnGroup
 
-ColumnNames = List[Union[str, List[str]]]
+ColumnSelector = List[Union[str, List[str]]]
 
 
 class Supports(Flag):
@@ -45,7 +45,7 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
@@ -62,7 +62,7 @@ class Operator:
         """
         raise NotImplementedError
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this
         operator will produce
 
@@ -76,7 +76,7 @@ class Operator:
         list of str, or list of list of str
             The names of columns produced by this operator
         """
-        return columns
+        return col_selector
 
     def dependencies(self) -> Optional[List[Union[str, ColumnGroup]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
@@ -103,7 +103,9 @@ class Operator:
         """ Returns what kind of data representation this operator supports """
         return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
 
-    def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
+    def inference_initialize(
+        self, col_selector: ColumnSelector, model_config: dict
+    ) -> Optional[Operator]:
         """Configures this operator for use in inference. May return a different operator to use
         instead of the one configured for use during training"""
         return None

@@ -23,7 +23,7 @@ from nvtabular.dispatch import (
     annotate,
 )
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class Filter(Operator):
@@ -50,7 +50,7 @@ class Filter(Operator):
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         filtered = self.f(df)
         if _is_dataframe_object(filtered):
             new_df = filtered

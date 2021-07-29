@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from ..dispatch import DataFrameType
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class Rename(Operator):
@@ -48,8 +48,8 @@ class Rename(Operator):
         self.postfix = postfix
         self.name = name
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        df.columns = self.output_column_names(columns)
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        df.columns = self.output_column_names(col_selector)
         return df
 
     transform.__doc__ = Operator.transform.__doc__

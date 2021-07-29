@@ -17,7 +17,7 @@ from typing import Dict, Union
 
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
 from .categorify import _emb_sz_rule, _get_embedding_order
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class HashBucket(Operator):
@@ -74,9 +74,9 @@ class HashBucket(Operator):
         super(HashBucket, self).__init__()
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if isinstance(self.num_buckets, int):
-            num_buckets = {name: self.num_buckets for name in columns}
+            num_buckets = {name: self.num_buckets for name in col_selector}
         else:
             num_buckets = self.num_buckets
 
