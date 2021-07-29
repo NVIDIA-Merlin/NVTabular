@@ -614,6 +614,24 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
 
+    def __post_init__(self):
+        col_selectors = []
+        for i, cat_col_names in enumerate(self.col_groups):
+            if isinstance(cat_col_names, tuple):
+                cat_col_names = list(cat_col_names)
+
+            if isinstance(cat_col_names, str):
+                cat_col_names = [cat_col_names]
+
+            if not isinstance(cat_col_names, ColumnSelector):
+                cat_col_selector = ColumnSelector(cat_col_names)
+            else:
+                cat_col_selector = cat_col_names
+
+            col_selectors.append(cat_col_selector)
+
+        self.col_groups = col_selectors
+
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
 def _top_level_groupby(df, options: FitOptions):
@@ -625,12 +643,6 @@ def _top_level_groupby(df, options: FitOptions):
     output = {}
     k = 0
     for i, cat_col_names in enumerate(options.col_groups):
-        if isinstance(cat_col_names, tuple):
-            cat_col_names = list(cat_col_names)
-
-        if isinstance(cat_col_names, str):
-            cat_col_names = [cat_col_names]
-
         if not isinstance(cat_col_names, ColumnSelector):
             cat_col_selector = ColumnSelector(cat_col_names)
         else:
@@ -699,14 +711,9 @@ def _top_level_groupby(df, options: FitOptions):
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
-    if isinstance(col_group, str):
-        col_group = [col_group]
-    elif isinstance(col_group, tuple):
-        col_group = list(col_group)
-
-    if options.concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=options.name_sep)]
+def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions):
+    if options.concat_groups and len(col_selector) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector, sep=options.name_sep)])
 
     if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
@@ -715,41 +722,46 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
         df = dispatch._from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
-    groups = df.groupby(col_group, dropna=False)
-    gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
+
+    groups = df.groupby(col_selector.names, dropna=False)
+    gb = groups.agg(
+        {col: _get_aggregation_type(col) for col in df.columns if col not in col_selector}
+    )
     gb.reset_index(drop=False, inplace=True)
 
-    name_count = _make_name(*(col_group + ["count"]), sep=options.name_sep)
+    name_count = _make_name(*(col_selector.names + ["count"]), sep=options.name_sep)
     if options.freq_limit and not options.max_size:
         gb = gb[gb[name_count] >= freq_limit_val]
 
-    required = col_group.copy()
+    required = col_selector.names.copy()
     if "count" in options.agg_list:
         required.append(name_count)
 
     ddof = 1
     for cont_col in options.agg_cols:
-        name_sum = _make_name(*(col_group + [cont_col, "sum"]), sep=options.name_sep)
+        name_sum = _make_name(*(col_selector.names + [cont_col, "sum"]), sep=options.name_sep)
         if "sum" in options.agg_list:
             required.append(name_sum)
 
         if "mean" in options.agg_list:
-            name_mean = _make_name(*(col_group + [cont_col, "mean"]), sep=options.name_sep)
+            name_mean = _make_name(*(col_selector.names + [cont_col, "mean"]), sep=options.name_sep)
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "min" in options.agg_list:
-            name_min = _make_name(*(col_group + [cont_col, "min"]), sep=options.name_sep)
+            name_min = _make_name(*(col_selector.names + [cont_col, "min"]), sep=options.name_sep)
             required.append(name_min)
 
         if "max" in options.agg_list:
-            name_max = _make_name(*(col_group + [cont_col, "max"]), sep=options.name_sep)
+            name_max = _make_name(*(col_selector.names + [cont_col, "max"]), sep=options.name_sep)
             required.append(name_max)
 
         if "var" in options.agg_list or "std" in options.agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]), sep=options.name_sep)]
+            x2 = gb[
+                _make_name(*(col_selector.names + [cont_col, "pow2", "sum"]), sep=options.name_sep)
+            ]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 1] = 1
@@ -757,11 +769,15 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
             result[(n - ddof) == 0] = np.nan
 
             if "var" in options.agg_list:
-                name_var = _make_name(*(col_group + [cont_col, "var"]), sep=options.name_sep)
+                name_var = _make_name(
+                    *(col_selector.names + [cont_col, "var"]), sep=options.name_sep
+                )
                 required.append(name_var)
                 gb[name_var] = result
             if "std" in options.agg_list:
-                name_std = _make_name(*(col_group + [cont_col, "std"]), sep=options.name_sep)
+                name_std = _make_name(
+                    *(col_selector.names + [cont_col, "std"]), sep=options.name_sep
+                )
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
@@ -782,7 +798,7 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_selector, options: FitOptions):
+def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
     if options.concat_groups and len(col_selector) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
@@ -824,11 +840,10 @@ def _write_gb_stats(dfs, base_path, col_selector, options: FitOptions):
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col_group, options):
-    if options.concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=options.name_sep)]
-    if isinstance(col_group, str):
-        col_group = [col_group]
+def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+    if options.concat_groups and len(col_selector) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
+
     if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
@@ -836,14 +851,14 @@ def _write_uniques(dfs, base_path, col_group, options):
         df = dispatch._from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
-    rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
+    rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
         # Make sure first category is Null
-        df = df.sort_values(col_group, na_position="first")
+        df = df.sort_values(col_selector.names, na_position="first")
         new_cols = {}
         nulls_missing = False
-        for col in col_group:
+        for col in col_selector:
             name_count = col + "_count"
             if options.max_size:
                 max_emb_size = options.max_size
@@ -885,8 +900,8 @@ def _write_uniques(dfs, base_path, col_group, options):
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
     else:
-        df_null = type(df)({c: [None] for c in col_group})
-        for c in col_group:
+        df_null = type(df)({c: [None] for c in col_selector})
+        for c in col_selector:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_null.to_parquet(path, index=False, compression=None)
     del df
