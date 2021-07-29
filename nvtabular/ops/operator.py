@@ -15,6 +15,7 @@
 #
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Flag, auto
 from typing import TYPE_CHECKING, List, Optional, Union
 
@@ -24,7 +25,25 @@ if TYPE_CHECKING:
     # avoid circular references
     from nvtabular import ColumnGroup
 
-ColumnSelector = List[Union[str, List[str]]]
+
+@dataclass
+class ColumnSelector:
+    names: List[Union[str, List[str]]]
+
+    def __getitem__(self, index):
+        return self.names[index]
+
+    def __iter__(self):
+        return iter(self.names)
+
+    def __add__(self, other):
+        if isinstance(other, ColumnSelector):
+            return ColumnSelector(self.names + other.names)
+        else:
+            return ColumnSelector(self.names + other)
+
+    def __radd__(self, other):
+        return self + other
 
 
 class Supports(Flag):

@@ -642,7 +642,11 @@ def _top_level_groupby(df, options: FitOptions):
         else:
             # Compile aggregation dictionary and add "squared-sum"
             # column(s) (necessary when `agg_cols` is non-empty)
-            df_gb = df[cat_col_group + options.agg_cols].copy(deep=False)
+            if isinstance(cat_col_group, ColumnSelector):
+                combined_col_selector = cat_col_group.names + options.agg_cols
+            else:
+                combined_col_selector = ColumnSelector(cat_col_group) + options.agg_cols
+            df_gb = df[combined_col_selector.names].copy(deep=False)
 
         agg_dict = {}
         agg_dict[cat_col_group[0]] = ["count"]

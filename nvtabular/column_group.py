@@ -17,7 +17,7 @@ import collections.abc
 
 from dask.core import flatten
 
-from nvtabular.ops import LambdaOp, Operator
+from nvtabular.ops import ColumnSelector, LambdaOp, Operator
 
 
 class ColumnGroup:
@@ -64,6 +64,8 @@ class ColumnGroup:
 
         else:
             self.columns = [_convert_col(col) for col in columns]
+
+        self.columns = ColumnSelector(self.columns)
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
