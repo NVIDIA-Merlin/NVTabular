@@ -33,6 +33,9 @@ class ColumnSelector:
     def __getitem__(self, index):
         return self.names[index]
 
+    def __len__(self):
+        return len(self.names)
+
     def __iter__(self):
         return iter(self.names)
 

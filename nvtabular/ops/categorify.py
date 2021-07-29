@@ -624,32 +624,37 @@ def _top_level_groupby(df, options: FitOptions):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
-    for i, cat_col_group in enumerate(options.col_groups):
-        if isinstance(cat_col_group, tuple):
-            cat_col_group = list(cat_col_group)
+    for i, cat_col_names in enumerate(options.col_groups):
+        if isinstance(cat_col_names, tuple):
+            cat_col_names = list(cat_col_names)
 
-        if isinstance(cat_col_group, str):
-            cat_col_group = [cat_col_group]
-        cat_col_group_str = _make_name(*cat_col_group, sep=options.name_sep)
+        if isinstance(cat_col_names, str):
+            cat_col_names = [cat_col_names]
 
-        if options.concat_groups and len(cat_col_group) > 1:
+        if not isinstance(cat_col_names, ColumnSelector):
+            cat_col_selector = ColumnSelector(cat_col_names)
+        else:
+            cat_col_selector = cat_col_names
+
+        cat_col_selector_str = _make_name(*cat_col_selector.names, sep=options.name_sep)
+
+        if options.concat_groups and len(cat_col_selector) > 1:
             # Concatenate columns and replace cat_col_group
             # with the single name
             df_gb = type(df)()
             ignore_index = True
-            df_gb[cat_col_group_str] = _concat([df[col] for col in cat_col_group], ignore_index)
-            cat_col_group = [cat_col_group_str]
+            df_gb[cat_col_selector_str] = _concat(
+                [df[col] for col in cat_col_selector], ignore_index
+            )
+            cat_col_selector = ColumnSelector([cat_col_selector_str])
         else:
             # Compile aggregation dictionary and add "squared-sum"
             # column(s) (necessary when `agg_cols` is non-empty)
-            if isinstance(cat_col_group, ColumnSelector):
-                combined_col_selector = cat_col_group.names + options.agg_cols
-            else:
-                combined_col_selector = ColumnSelector(cat_col_group) + options.agg_cols
+            combined_col_selector = cat_col_selector + options.agg_cols
             df_gb = df[combined_col_selector.names].copy(deep=False)
 
         agg_dict = {}
-        agg_dict[cat_col_group[0]] = ["count"]
+        agg_dict[cat_col_selector[0]] = ["count"]
         for col in options.agg_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
@@ -664,25 +669,25 @@ def _top_level_groupby(df, options: FitOptions):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf/pd support)
-        if _is_list_col(cat_col_group, df_gb):
+        if _is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
-            df_gb = dispatch._flatten_list_column(df_gb[cat_col_group[0]])
+            df_gb = dispatch._flatten_list_column(df_gb[cat_col_selector[0]])
 
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
-        gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
+        gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
-            _make_name(*(tuple(cat_col_group) + name[1:]), sep=options.name_sep)
-            if name[0] == cat_col_group[0]
-            else _make_name(*(tuple(cat_col_group) + name), sep=options.name_sep)
+            _make_name(*(tuple(cat_col_selector) + name[1:]), sep=options.name_sep)
+            if name[0] == cat_col_selector[0]
+            else _make_name(*(tuple(cat_col_selector) + name), sep=options.name_sep)
             for name in gb.columns.to_flat_index()
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        nsplits = options.tree_width[cat_col_group_str]
+        nsplits = options.tree_width[cat_col_selector_str]
         for j, split in shuffle_group(
-            gb, cat_col_group, 0, nsplits, nsplits, True, nsplits
+            gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
         ).items():
             if options.on_host:
                 output[k] = split.to_arrow(preserve_index=False)
@@ -777,13 +782,11 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_group, options: FitOptions):
-    if options.concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=options.name_sep)]
-    if isinstance(col_group, str):
-        col_group = [col_group]
+def _write_gb_stats(dfs, base_path, col_selector, options: FitOptions):
+    if options.concat_groups and len(col_selector) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
+    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
     if not options.on_host and len(dfs):
