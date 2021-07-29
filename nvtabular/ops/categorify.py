@@ -286,8 +286,8 @@ class Categorify(StatOperator):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
-        columns_uniq = list(set(flatten(col_selector, container=tuple)))
-        columns_all = list(flatten(col_selector, container=tuple))
+        columns_uniq = list(set(flatten(col_selector.names, container=tuple)))
+        columns_all = list(flatten(col_selector.names, container=tuple))
         if sorted(columns_all) != sorted(columns_uniq) and self.encode_type == "joint":
             # If we are doing "joint" encoding, there must be unique mapping
             # between input column names and column groups.  Otherwise, more
@@ -399,7 +399,7 @@ class Categorify(StatOperator):
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
-            cat_names = list(flatten(col_selector, container=tuple))
+            cat_names = list(flatten(col_selector.names, container=tuple))
 
         # Encode each column-group separately
         for name in cat_names:
@@ -446,7 +446,7 @@ class Categorify(StatOperator):
         if self.encode_type == "combo":
             cat_names, _ = _get_multicolumn_names(col_selector, col_selector, self.name_sep)
             return cat_names
-        return list(flatten(col_selector, container=tuple))
+        return list(flatten(col_selector.names, container=tuple))
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(

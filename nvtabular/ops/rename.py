@@ -54,13 +54,13 @@ class Rename(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
+    def output_column_names(self, col_selector):
         if self.f:
-            return [self.f(col) for col in columns]
+            return [self.f(col) for col in col_selector]
         elif self.postfix:
-            return [col + self.postfix for col in columns]
+            return [col + self.postfix for col in col_selector]
         elif self.name:
-            if len(columns) == 1:
+            if len(col_selector) == 1:
                 return [self.name]
             else:
                 raise RuntimeError("Single column name provided for renaming multiple columns")

@@ -74,7 +74,7 @@ class DataStats(StatOperator):
             # Get Percentage of NaNs for all
             dask_stats[col]["per_nan"] = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
-        return dask_stats, _custom_moments(ddf[col_selector])
+        return dask_stats, _custom_moments(ddf[col_selector.names])
 
     def fit_finalize(self, stats):
         dask_stats, moments = stats

@@ -36,6 +36,6 @@ class Dropna(Operator):
 
     @annotate("Dropna_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        new_df = df.dropna(subset=col_selector or None)
+        new_df = df.dropna(subset=col_selector.names or None)
         new_df.reset_index(drop=True, inplace=True)
         return new_df

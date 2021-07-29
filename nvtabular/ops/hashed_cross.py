@@ -54,7 +54,7 @@ class HashedCross(Operator):
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for cross in _nest_columns(col_selector):
+        for cross in _nest_columns(col_selector.names):
             val = 0
             for column in cross:
                 val ^= _hash_series(df[column])  # or however we want to do this aggregation

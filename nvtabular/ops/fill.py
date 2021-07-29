@@ -53,7 +53,7 @@ class FillMissing(Operator):
                 df[f"{col}_filled"] = df[col].isna()
                 df[col] = df[col].fillna(self.fill_val)
         else:
-            df[col_selector] = df[col_selector].fillna(self.fill_val)
+            df[col_selector.names] = df[col_selector.names].fillna(self.fill_val)
 
         return df
 
@@ -109,7 +109,7 @@ class FillMedian(StatOperator):
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         # TODO: Use `method="tidigest"` when crick supports device
-        dask_stats = ddf[col_selector].quantile(q=0.5, method="dask")
+        dask_stats = ddf[col_selector.names].quantile(q=0.5, method="dask")
         return dask_stats
 
     @annotate("FillMedian_finalize", color="green", domain="nvt_python")

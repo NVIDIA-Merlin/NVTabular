@@ -46,7 +46,7 @@ class Normalize(StatOperator):
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
-        return _custom_moments(ddf[col_selector])
+        return _custom_moments(ddf[col_selector.names])
 
     def fit_finalize(self, dask_stats):
         for col in dask_stats.index:
@@ -118,8 +118,8 @@ class NormalizeMinMax(StatOperator):
     @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
     def fit(self, col_selector: ColumnSelector, ddf):
         return {
-            "mins": ddf[col_selector].min(),
-            "maxs": ddf[col_selector].max(),
+            "mins": ddf[col_selector.names].min(),
+            "maxs": ddf[col_selector.names].max(),
         }
 
     @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")
