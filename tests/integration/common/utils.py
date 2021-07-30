@@ -109,6 +109,7 @@ def _run_query(
     actual_output_filename,
     output_name,
     input_cols_name=None,
+    backend="tensorflow",
 ):
 
     workflow = nvt.Workflow.load(workflow_path)
@@ -133,9 +134,14 @@ def _run_query(
     response = client.infer(model_name, inputs, request_id="1", outputs=outputs)
     run_time = dt.datetime.now() - time_start
 
+    output_key = "output" if backend == "hugectr" else "0"
+
     output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
-    output_actual = cp.asnumpy(output_actual["0"].values)
+    output_actual = cp.asnumpy(output_actual[output_key].values)
     output_predict = response.as_numpy(output_name)
 
-    diff = abs(output_actual - output_predict[:, 0])
+    if backend == "tensorflow":
+        output_predict = output_predict[:, 0]
+
+    diff = abs(output_actual - output_predict)
     return diff, run_time
