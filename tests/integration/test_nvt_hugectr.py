@@ -146,12 +146,10 @@ def test_training():
     os.makedirs(TRAIN_DIR)
 
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
-    #sample_data.to_csv(test_data_path + "data.csv")
+    sample_data.to_csv(test_data_path + "data.csv")
 
     sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
-    
-    sample_data_trans.to_csv(test_data_path + "data.csv")
-    print("DATA", sample_data_trans)
+
     dense_features, embedding_columns, row_ptrs = _convert(sample_data_trans, slot_sizes)
 
     _run_model(slot_sizes, total_cardinality)
@@ -184,12 +182,10 @@ def test_training():
     )
 
     shutil.rmtree(TEMP_DIR)
-    print("INPUT_DATA")
-    print(embedding_columns)
     _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], MODEL_NAME)
 
 
-@pytest.mark.parametrize("n_rows", [64])  # , 58, 11, 1])
+@pytest.mark.parametrize("n_rows", [64, 58, 11, 1])
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_inference(n_rows, err_tol):
     warnings.simplefilter("ignore")

@@ -93,7 +93,7 @@ class TritonPythonModel:
         if self.output_model == "hugectr":
             self.column_types = get_column_types(workflow_path)
             if "cats" in self.column_types:
-                self.offsets = get_hugectr_offsets(self.workflow)
+                self.offsets = get_hugectr_offsets(self.workflow, self.column_types)
 
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.column_group)
@@ -223,12 +223,17 @@ def _convert_to_hugectr(columns, tensors, dtype):
     return d.reshape(1, len(columns) * rows)
 
 
-def get_hugectr_offsets(workflow):
+def get_hugectr_offsets(workflow, column_types):
     embeddings = get_embedding_sizes(workflow)
     if embeddings is None:
         raise Exception("embeddings cannot be None")
     else:
-        return {key: value[0] for key, value in embeddings.items()}
+        offsets = dict()
+        curr_offset = 0
+        for name in column_types["cats"]:
+            offsets[name] = curr_offset
+            curr_offset += embeddings[name][0]
+        return offsets
 
 
 def _transform_tensors(input_tensors, column_group):
