@@ -52,9 +52,9 @@ TEMP_DIR = DIR + "temp_hugectr/"
 MODEL_DIR = DIR + "models/"
 TRAIN_DIR = MODEL_DIR + "test_model/1/"
 NETWORK_FILE = TRAIN_DIR + "model.json"
+DENSE_FILE = TRAIN_DIR + "_dense_1900.model"
+SPARSE_FILES = TRAIN_DIR + "0_sparse_1900.model"
 MODEL_NAME = "test_model"
-DENSE_FILE = (TRAIN_DIR + "_dense_1900.model",)
-SPARSE_FILES = (TRAIN_DIR + "0_sparse_1900.model",)
 
 CATEGORICAL_COLUMNS = ["userId", "movieId", "new_cat1"]
 LABEL_COLUMNS = ["rating"]
@@ -182,11 +182,10 @@ def test_training():
     )
 
     shutil.rmtree(TEMP_DIR)
-
     _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], MODEL_NAME)
 
 
-@pytest.mark.parametrize("n_rows", [64])  # , 58, 11, 1])
+@pytest.mark.parametrize("n_rows", [64, 58, 11, 1])
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_inference(n_rows, err_tol):
     warnings.simplefilter("ignore")
@@ -195,18 +194,28 @@ def test_inference(n_rows, err_tol):
     output_path = DATA_DIR + "test/output.csv"
     ps_file = TRAIN_DIR + "ps.json"
 
+    workflow_path = MODEL_DIR + MODEL_NAME + "_nvt/1/workflow"
+
     _write_ps_hugectr(ps_file, MODEL_NAME, SPARSE_FILES, DENSE_FILE, NETWORK_FILE)
 
     with test_utils.run_triton_server(
         os.path.expanduser(MODEL_DIR),
-        MODEL_NAME,
+        MODEL_NAME + "_ens",
         TRITON_SERVER_PATH,
         TRITON_DEVICE_ID,
         "hugectr",
         ps_file,
     ) as client:
         diff, run_time = _run_query(
-            client, n_rows, MODEL_NAME, None, data_path, output_path, "OUTPUT0", CATEGORICAL_COLUMNS
+            client,
+            n_rows,
+            MODEL_NAME + "_ens",
+            workflow_path,
+            data_path,
+            output_path,
+            "OUTPUT0",
+            CATEGORICAL_COLUMNS,
+            "hugectr",
         )
     assert (diff < err_tol).all()
     benchmark_results = []
@@ -373,7 +382,7 @@ def _write_ps_hugectr(output_file, model_name, sparse_files, dense_file, network
             "models": [
                 {
                     "model": model_name,
-                    "sparse_files": sparse_files,
+                    "sparse_files": [sparse_files],
                     "dense_file": dense_file,
                     "network_file": network_file,
                 }
