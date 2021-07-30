@@ -175,7 +175,7 @@ The following tables provide the software and model versions that NVTabular vers
 | Base Container                                      | `nvcr.io/nvidia/tensorflow:21.07-tf2-py3                               |
 |                                                     | <https://nvcr.io/nvidia/tensorflow:21.07-tf2-py3>`_                    |
 |                                                     |                                                                        |
-|                                                     | *Customized with TensorFlow version 2.4.2                              |
+|                                                     | \*Customized with TensorFlow version 2.4.2                              |
 +-----------------------------------------------------+------------------------------------------------------------------------+
 | CUDA                                                | 11.4                                                                   | 
 +-----------------------------------------------------+------------------------------------------------------------------------+
