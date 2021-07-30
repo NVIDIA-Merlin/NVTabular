@@ -21,7 +21,7 @@ import os
 import shutil
 import subprocess
 import sys
-
+import numpy as np
 import cudf
 import cupy as cp
 import tritonclient.grpc as grpcclient
@@ -29,7 +29,6 @@ from tritonclient.utils import np_to_triton_dtype
 
 import nvtabular as nvt
 from nvtabular.ops import get_embedding_sizes
-
 
 def _run_notebook(
     tmpdir,
@@ -112,8 +111,11 @@ def _run_query(
     input_cols_name=None,
     backend="tensorflow",
 ):
+    offset = [0]*len(input_cols_name)
     workflow = nvt.Workflow.load(workflow_path)
-    offset = [value[0] for _, value in get_embedding_sizes(workflow).items()]
+    if backend == "hugectr":
+        offset = [value[0] for _, value in get_embedding_sizes(workflow).items()]
+        offset = np.insert(np.cumsum(offset), 0, 0)[:-1].tolist()
 
     if input_cols_name is None:
         batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
@@ -121,14 +123,23 @@ def _run_query(
         batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
 
     columns = [(col, batch[col]) for col in batch.columns]
-
+    
+    # temp
+    batch[input_cols_name]+=offset
+    data = batch[input_cols_name].values.reshape(1, batch.shape[0] * len(input_cols_name)).tolist()[0]
+    
     inputs = []
+    total = []
     for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(col.dtype) + offset[i]
+        # temp
+        #d = col.values_host.astype(col.dtype) + offset[i]
+        d = np.array(data[i*64:(i+1)*64])
+        total += d.tolist()
         d = d.reshape(len(d), 1)
         inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
         inputs[i].set_data_from_numpy(d)
-
+    print("Input")
+    print(total)
     outputs = [grpcclient.InferRequestedOutput(output_name)]
     time_start = dt.datetime.now()
     response = client.infer(model_name, inputs, request_id="1", outputs=outputs)
@@ -142,5 +153,10 @@ def _run_query(
 
     if backend == "tensorflow":
         output_predict = output_predict[:, 0]
+
+    #print("ACTUAL")
+    #print(output_actual.tolist())
+    #print("PREDICTED")
+    #print(output_predict.tolist())
     diff = abs(output_actual - output_predict)
     return diff, run_time
