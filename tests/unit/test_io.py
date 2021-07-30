@@ -736,6 +736,11 @@ def test_hive_partitioned_data(tmpdir, cpu):
         seed=42,
     ).reset_index()
     ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+
+    # Make sure the first partition is empty
+    ddf = ddf[ddf.timestamp > 1]
+
+    # Convert to nvt.Dataset
     ds = nvt.Dataset(ddf, engine="parquet")
 
     # Write the dataset to disk
@@ -748,12 +753,14 @@ def test_hive_partitioned_data(tmpdir, cpu):
     df_expect = df_expect.sort_values(["id", "x", "y"]).reset_index(drop=True)
     timestamp_check = df_expect["timestamp"].iloc[0]
     name_check = df_expect["name"].iloc[0]
-    assert glob.glob(
+    result_paths = glob.glob(
         os.path.join(
             path,
             f"timestamp={timestamp_check}/name={name_check}/*",
         )
     )
+    assert result_paths
+    assert all(p.endswith(".parquet") for p in result_paths)
 
     # Read back with dask.dataframe and check the data
     df_check = dd.read_parquet(path).compute()
