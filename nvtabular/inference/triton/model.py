@@ -90,10 +90,11 @@ class TritonPythonModel:
         self.model_config = json.loads(args["model_config"])
         self.output_model = self.model_config["parameters"]["output_model"]["string_value"]
 
-        if self.output_model == "hugectr":
+        if self.output_model == "hugectr" or self.output_model == "pytorch":
             self.column_types = get_column_types(workflow_path)
-            if "cats" in self.column_types:
+            if "cats" in self.column_types and self.output_model == "hugectr":
                 self.offsets = get_hugectr_offsets(self.workflow, self.column_types)
+
 
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.column_group)
@@ -107,19 +108,13 @@ class TritonPythonModel:
             col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
         }
 
-        if self.output_model != "hugectr":
+        if self.output_model != "hugectr" and self.output_model != "pytorch":
             self.column_types = self.offsets = None
             self.output_dtypes = dict()
             for name, dtype in self.workflow.output_dtypes.items():
                 if not _is_list_dtype(dtype):
                     self._set_output_dtype(name)
                 else:
-                    # pytorch + hugectr don't support multihot output features at inference
-                    if self.output_model in {"pytorch"}:
-                        raise ValueError(
-                            f"{self.output_model} doesn't yet support multihot features"
-                        )
-
                     self._set_output_dtype(name + "__nnzs")
                     self._set_output_dtype(name + "__values")
 
@@ -156,6 +151,8 @@ class TritonPythonModel:
             # convert to the format expected by the DL models
             if self.output_model == "hugectr":
                 response = self._transform_hugectr_outputs(transformed)
+            elif self.output_model == "pytorch":
+                response = self._transform_pytorch_outputs(transformed)
             else:
                 response = self._transform_outputs(transformed)
             responses.append(response)
@@ -180,6 +177,18 @@ class TritonPythonModel:
                 d = value.astype(self.output_dtypes[name])
                 d = d.reshape(len(d), 1)
                 output_tensors.append(Tensor(name, d))
+        return InferenceResponse(output_tensors)
+
+    def _transform_pytorch_outputs(self, tensors):
+        output_tensors = []
+        for output_name, cols in self.column_types.items():
+            output_tensors.append(
+                Tensor(
+                    output_name,
+                    _convert_to_pytorch(cols["columns"], tensors, cols["dtype"]),
+                )
+            )
+
         return InferenceResponse(output_tensors)
 
     def _transform_hugectr_outputs(self, tensors):
@@ -214,13 +223,25 @@ class TritonPythonModel:
         return InferenceResponse(output_tensors)
 
 
+def _convert_to_pytorch(columns, tensors, dtype):
+    """converts outputs to a numpy input compatible with pytorch"""
+    rows = max(len(tensors[name]) for name in columns)
+    return _convert_to_np(columns, tensors, dtype, rows)
+
+
 def _convert_to_hugectr(columns, tensors, dtype):
     """converts outputs to a numpy input compatible with hugectr"""
     rows = max(len(tensors[name]) for name in columns)
+    d = _convert_to_np(columns, tensors, dtype, rows)
+    return d.reshape(1, len(columns) * rows)
+
+
+def _convert_to_np(columns, tensors, dtype, rows):
+    """converts outputs to a numpy input compatible with pytorch"""
     d = np.empty((rows, len(columns)), dtype=dtype)
     for i, name in enumerate(columns):
         d[:, i] = tensors[name].astype(dtype)
-    return d.reshape(1, len(columns) * rows)
+    return d
 
 
 def get_hugectr_offsets(workflow, column_types):

@@ -119,13 +119,14 @@ def _run_query(
     else:
         batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
 
+    input_dtypes = {col: dtype for col, dtype in workflow.input_dtypes.items()}
     columns = [(col, batch[col]) for col in batch.columns]
 
     inputs = []
     for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(col.dtype)
+        d = col.values_host.astype(input_dtypes[name])
         d = d.reshape(len(d), 1)
-        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
+        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(input_dtypes[name])))
         inputs[i].set_data_from_numpy(d)
 
     outputs = [grpcclient.InferRequestedOutput(output_name)]
