@@ -11,7 +11,7 @@ We offer the following containers:
 * `Merlin TensorFlow Training <#table-3>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with TensorFlow.
 * `Merlin PyTorch Training <#table-4>`_: Allows you to do preprocessing and feature engineering with NVTabular so that you can train a deep learning recommendation model with PyTorch.
 
-The following tables provide the software and model versions that NVTabular version 0.6 supports.
+The following tables provide the software and model versions that NVTabular version 0.6 supports per container.
 
 :raw-html:`<br/>`
 
