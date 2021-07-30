@@ -95,7 +95,6 @@ class TritonPythonModel:
             if "cats" in self.column_types and self.output_model == "hugectr":
                 self.offsets = get_hugectr_offsets(self.workflow, self.column_types)
 
-
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.column_group)
 
