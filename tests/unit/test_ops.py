@@ -520,10 +520,9 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
     cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
 
     workflow = nvt.Workflow(cats + label_name)
+    dataset = nvt.Dataset(df, cpu=cpu)
 
-    df_out = (
-        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
-    )
+    df_out = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     if len(cat_names) == 1:
         if kind == "joint":
@@ -993,7 +992,7 @@ def test_difference_lag(cpu):
 @pytest.mark.parametrize("cpu", _CPU)
 def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # TODO: add tests for > 2 features, multiple crosses, etc.
-    cat_names = [["name-string", "id"]]
+    cat_names = ["name-string", "id"]
     num_buckets = 10
 
     hashed_cross = cat_names >> ops.HashedCross(num_buckets)
@@ -1003,7 +1002,7 @@ def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     new_df = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
-    new_column_name = "_X_".join(cat_names[0])
+    new_column_name = "_X_".join(cat_names)
     assert np.all(new_df[new_column_name].values >= 0)
     assert np.all(new_df[new_column_name].values <= 9)
     checksum = new_df[new_column_name].sum()

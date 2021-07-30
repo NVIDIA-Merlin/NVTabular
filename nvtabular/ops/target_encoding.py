@@ -168,7 +168,8 @@ class TargetEncoding(StatOperator):
             # calcualte the mean if we don't have it already
             moments = _custom_moments(ddf[self.target])
 
-        col_groups = col_selector[:]
+        col_groups = col_selector.grouped_names
+
         if self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
@@ -180,7 +181,7 @@ class TargetEncoding(StatOperator):
                 )
 
             # Add new col_groups with fold
-            for group in col_selector:
+            for group in col_selector.grouped_names:
                 if isinstance(group, tuple):
                     group = list(group)
                 if isinstance(group, list):
@@ -215,7 +216,7 @@ class TargetEncoding(StatOperator):
 
     def output_column_names(self, columns):
         ret = []
-        for cat in columns:
+        for cat in columns.grouped_names:
             cat = [cat] if isinstance(cat, str) else cat
             ret.extend(self._make_te_name(cat))
 
@@ -333,7 +334,7 @@ class TargetEncoding(StatOperator):
 
         # Loop over categorical-column groups and apply logic
         new_df = None
-        for ind, cat_group in enumerate(col_selector):
+        for ind, cat_group in enumerate(col_selector.grouped_names):
             if isinstance(cat_group, tuple):
                 cat_group = list(cat_group)
             elif isinstance(cat_group, str):

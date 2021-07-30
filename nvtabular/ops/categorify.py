@@ -295,12 +295,12 @@ class Categorify(StatOperator):
             # column.
             raise ValueError("Same column name included in multiple groups.")
 
-        for group in col_selector:
-            if isinstance(group, tuple) and len(group) > 1:
+        for group in col_selector.subgroups:
+            if len(group.names) > 1:
                 # For multi-column groups, we concatenate column names
                 # to get the "group" name.
-                name = _make_name(*group, sep=self.name_sep)
-                for col in group:
+                name = _make_name(*group.names, sep=self.name_sep)
+                for col in group.names:
                     self.storage_name[col] = name
 
         # Check metadata type to reset on_host and cat_cache if the
@@ -319,9 +319,10 @@ class Categorify(StatOperator):
         cols_with_vocabs = list(self.categories.keys())
         columns = [
             list(c) if isinstance(c, tuple) else c
-            for c in col_selector
+            for c in col_selector.grouped_names
             if c not in cols_with_vocabs
         ]
+
         dsk, key = _category_stats(ddf, self._create_fit_options_from_columns(columns))
         return Delayed(key, dsk)
 
@@ -444,9 +445,11 @@ class Categorify(StatOperator):
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         if self.encode_type == "combo":
-            cat_names, _ = _get_multicolumn_names(col_selector, col_selector, self.name_sep)
+            cat_names, _ = _get_multicolumn_names(
+                col_selector, col_selector.grouped_names, self.name_sep
+            )
             return cat_names
-        return list(flatten(col_selector.names, container=tuple))
+        return ColumnSelector(flatten(col_selector.names, container=tuple))
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
@@ -615,8 +618,11 @@ class FitOptions:
     num_buckets: Optional[Union[int, dict]] = None
 
     def __post_init__(self):
+        if not isinstance(self.col_groups, ColumnSelector):
+            self.col_groups = ColumnSelector(self.col_groups)
+
         col_selectors = []
-        for i, cat_col_names in enumerate(self.col_groups):
+        for cat_col_names in self.col_groups.grouped_names:
             if isinstance(cat_col_names, tuple):
                 cat_col_names = list(cat_col_names)
 
@@ -663,6 +669,7 @@ def _top_level_groupby(df, options: FitOptions):
             # Compile aggregation dictionary and add "squared-sum"
             # column(s) (necessary when `agg_cols` is non-empty)
             combined_col_selector = cat_col_selector + options.agg_cols
+
             df_gb = df[combined_col_selector.names].copy(deep=False)
 
         agg_dict = {}
@@ -1136,19 +1143,19 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
     return read_pq_func(path)
 
 
-def _get_multicolumn_names(column_groups, df_columns, name_sep):
+def _get_multicolumn_names(col_selector, df_columns, name_sep):
     cat_names = []
     multi_col_group = {}
-    for col_group in column_groups:
-        if isinstance(col_group, (list, tuple)):
-            name = _make_name(*col_group, sep=name_sep)
+    for col_name in col_selector.grouped_names:
+        if isinstance(col_name, (list, tuple)):
+            name = _make_name(*col_name, sep=name_sep)
             if name not in cat_names:
                 cat_names.append(name)
                 # TODO: Perhaps we should check that all columns from the group
                 #       are in df here?
-                multi_col_group[name] = col_group
-        elif col_group in df_columns:
-            cat_names.append(col_group)
+                multi_col_group[name] = col_name
+        elif col_name in df_columns:
+            cat_names.append(col_name)
     return cat_names, multi_col_group
 
 

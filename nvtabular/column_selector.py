@@ -13,16 +13,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from dataclasses import dataclass
-from typing import List, Union
+from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass
 class ColumnSelector:
-    names: List[Union[str, List[str]]]
+    _names: List[str]
+    subgroups: List["ColumnSelector"] = field(default_factory=list)
+
+    @property
+    def names(self):
+        names = []
+        names += self._names
+        for subgroup in self.subgroups:
+            names += subgroup.names
+        return names
+
+    @property
+    def grouped_names(self):
+        names = []
+        names += self._names
+        for subgroup in self.subgroups:
+            names.append(tuple(subgroup.names))
+        return names
+
+    def __post_init__(self):
+        plain_names = []
+        for name in self._names:
+            if isinstance(name, str):
+                plain_names.append(name)
+            else:
+                self.subgroups.append(ColumnSelector(name))
+        self._names = plain_names
 
     def __getitem__(self, index):
-        return self.names[index]
+        return self._names[index]
 
     def __len__(self):
         return len(self.names)
@@ -32,9 +58,9 @@ class ColumnSelector:
 
     def __add__(self, other):
         if isinstance(other, ColumnSelector):
-            return ColumnSelector(self.names + other.names)
+            return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
         else:
-            return ColumnSelector(self.names + other)
+            return ColumnSelector(self._names + other, self.subgroups)
 
     def __radd__(self, other):
         return self + other

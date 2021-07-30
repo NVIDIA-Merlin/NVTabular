@@ -106,12 +106,11 @@ class JoinGroupby(StatOperator):
                 raise ValueError(op + " operation is not supported.")
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
-        if isinstance(col_selector, list):
-            for group in col_selector:
-                if isinstance(group, (list, tuple)) and len(group) > 1:
-                    name = nvt_cat._make_name(*group, sep=self.name_sep)
-                    for col in group:
-                        self.storage_name[col] = name
+        for group in col_selector.subgroups:
+            if len(group.names) > 1:
+                name = nvt_cat._make_name(*group.names, sep=self.name_sep)
+                for col in group.names:
+                    self.storage_name[col] = name
 
         # Check metadata type to reset on_host and cat_cache if the
         # underlying ddf is already a pandas-backed collection
@@ -179,7 +178,8 @@ class JoinGroupby(StatOperator):
         # TODO: the names here are defined in categorify/mid_level_groupby
         # refactor to have a common implementation
         output = []
-        for name in columns:
+
+        for name in columns.grouped_names:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name, sep=self.name_sep)
             for cont in self.cont_names:

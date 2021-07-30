@@ -41,13 +41,16 @@ class ColumnGroup:
         self.kind = None
         self.dependencies = None
 
-        if isinstance(columns, str):
-            columns = [columns]
+        if isinstance(columns, ColumnSelector):
+            self.columns = columns
+
+        elif isinstance(columns, str):
+            self.columns = ColumnSelector([columns])
 
         # if any of the values we're passed are a columngroup
         # we have to ourselves as a childnode in the graph.
-        if any(isinstance(col, ColumnGroup) for col in columns):
-            self.columns = []
+        elif any(isinstance(col, ColumnGroup) for col in columns):
+            new_columns = []
             self.kind = "[...]"
             for col in columns:
                 if not isinstance(col, ColumnGroup):
@@ -55,17 +58,17 @@ class ColumnGroup:
                 else:
                     # we can't handle nesting arbitrarily deep here
                     # only accept non-nested (str) columns here
-                    if any(not isinstance(c, str) for c in col.columns):
+                    if any(not isinstance(c, str) for c in col.columns.grouped_names):
                         raise ValueError("Can't handle more than 1 level of nested columns")
 
                 col.children.append(self)
                 self.parents.append(col)
-                self.columns.append(tuple(col.columns))
+                new_columns.append(tuple(col.columns))
+
+            self.columns = ColumnSelector(new_columns)
 
         else:
-            self.columns = [_convert_col(col) for col in columns]
-
-        self.columns = ColumnSelector(self.columns)
+            self.columns = ColumnSelector([_convert_col(col) for col in columns])
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
@@ -125,7 +128,8 @@ class ColumnGroup:
             other = ColumnGroup(other)
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.columns).intersection(other.columns)
+        overlap = set(self.columns.grouped_names).intersection(other.columns.grouped_names)
+
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
@@ -200,8 +204,12 @@ class ColumnGroup:
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
+
         return [
-            col for parent in self.parents for col in parent.columns if parent not in dependencies
+            col
+            for parent in self.parents
+            for col in parent.columns.grouped_names
+            if parent not in dependencies
         ]
 
     @property
