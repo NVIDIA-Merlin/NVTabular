@@ -196,10 +196,12 @@ def _series_has_nulls(s):
 
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
-    if not HAS_GPU or isinstance(ser, pd.Series):
+    if isinstance(ser, pd.Series):
         if not len(ser):  # pylint: disable=len-as-condition
             return False
         return pd.api.types.is_list_like(ser.values[0])
+    elif not HAS_GPU:
+        return pd.api.types.is_list_like(np.dtype(ser))
     return is_list_dtype(ser)
 
 

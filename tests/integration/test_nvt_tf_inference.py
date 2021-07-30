@@ -154,7 +154,7 @@ def test_nvt_tf_rossmann_inference_triton(asv_db, bench_info, n_rows, err_tol):
         # send_results(asv_db, bench_info, benchmark_results)
 
 
-@pytest.mark.parametrize("n_rows", [[1024, 1000, 35, 16]])
+@pytest.mark.parametrize("n_rows", [[1024, 1000, 35, 16, 5]])
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_nvt_tf_rossmann_inference_triton_mt(asv_db, bench_info, n_rows, err_tol):
     futures = []
