@@ -17,7 +17,8 @@ import collections.abc
 
 from dask.core import flatten
 
-from nvtabular.ops import ColumnSelector, LambdaOp, Operator
+from nvtabular.column_selector import ColumnSelector
+from nvtabular.ops import LambdaOp, Operator
 
 
 class ColumnGroup:
@@ -183,6 +184,7 @@ class ColumnGroup:
         -------
         ColumnGroup
         """
+
         if isinstance(columns, str):
             columns = [columns]
 

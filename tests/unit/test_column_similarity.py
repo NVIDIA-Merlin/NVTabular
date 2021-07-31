@@ -20,6 +20,7 @@ import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
 
 import nvtabular
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.ops.column_similarity import ColumnSimilarity
 
 
@@ -44,7 +45,7 @@ def test_column_similarity(on_device, metric, cpu, cpu_features):
     if cpu_features:
         categories = scipy.sparse.coo_matrix(categories.get())
 
-    sim_features = [["left", "right"]] >> ColumnSimilarity(
+    sim_features = ColumnSelector([["left", "right"]]) >> ColumnSimilarity(
         categories, metric=metric, on_device=on_device
     )
     workflow = nvtabular.Workflow(sim_features)
@@ -62,7 +63,7 @@ def test_column_similarity(on_device, metric, cpu, cpu_features):
     assert output[4] != 0
 
     # make sure that we can operate multiple times on the same matrix correctly
-    sim_features = [["left", "right"]] >> ColumnSimilarity(
+    sim_features = ColumnSelector([["left", "right"]]) >> ColumnSimilarity(
         categories, metric="inner", on_device=on_device
     )
     workflow = nvtabular.Workflow(sim_features)

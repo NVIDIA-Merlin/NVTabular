@@ -16,6 +16,8 @@
 from dataclasses import dataclass, field
 from typing import List
 
+import nvtabular
+
 
 @dataclass
 class ColumnSelector:
@@ -39,6 +41,9 @@ class ColumnSelector:
         return names
 
     def __post_init__(self):
+        if isinstance(self._names, str):
+            self._names = [self._names]
+
         plain_names = []
         for name in self._names:
             if isinstance(name, str):
@@ -60,7 +65,13 @@ class ColumnSelector:
         if isinstance(other, ColumnSelector):
             return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
         else:
+            if isinstance(other, str):
+                other = [other]
+
             return ColumnSelector(self._names + other, self.subgroups)
 
     def __radd__(self, other):
         return self + other
+
+    def __rshift__(self, other):
+        return nvtabular.ColumnGroup(self) >> other

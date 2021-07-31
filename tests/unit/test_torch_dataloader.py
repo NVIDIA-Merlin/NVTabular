@@ -34,6 +34,7 @@ from tests.conftest import assert_eq, mycols_csv, mycols_pq
 # torch_dataloader import needs to happen after this line
 torch = pytest.importorskip("torch")
 import nvtabular.loader.torch as torch_dataloader  # noqa isort:skip
+from nvtabular.column_selector import ColumnSelector  # noqa isort:skip
 from nvtabular.framework_utils.torch.models import Model  # noqa isort:skip
 from nvtabular.framework_utils.torch.utils import process_epoch  # noqa isort:skip
 
@@ -162,9 +163,9 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
     dataset = nvt.Dataset(dataset)
     features = []
     if cont_names:
-        features.append(cont_names >> ops.FillMedian() >> ops.Normalize())
+        features.append(ColumnSelector(cont_names) >> ops.FillMedian() >> ops.Normalize())
     if cat_names or mh_names:
-        features.append(cat_names + mh_names >> ops.Categorify())
+        features.append(ColumnSelector(cat_names + mh_names) >> ops.Categorify())
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
     graph = sum(features, nvt.ColumnGroup(label_name))
@@ -239,8 +240,8 @@ def test_gpu_dl_break(tmpdir, df, dataset, batch_size, part_mem_fraction, engine
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
-    cats = cat_names >> ops.Categorify()
+    conts = ColumnSelector(cont_names) >> ops.FillMedian() >> ops.Normalize()
+    cats = ColumnSelector(cat_names) >> ops.Categorify()
 
     processor = nvt.Workflow(conts + cats + label_name)
 
@@ -300,8 +301,8 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
-    cats = cat_names >> ops.Categorify()
+    conts = ColumnSelector(cont_names) >> ops.FillMedian() >> ops.Normalize()
+    cats = ColumnSelector(cat_names) >> ops.Categorify()
 
     processor = nvt.Workflow(conts + cats + label_name)
 
@@ -372,8 +373,8 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
-    cats = cat_names >> ops.Categorify()
+    conts = ColumnSelector(cont_names) >> ops.FillMedian() >> ops.Normalize()
+    cats = ColumnSelector(cat_names) >> ops.Categorify()
 
     processor = nvt.Workflow(conts + cats + label_name)
 
@@ -439,7 +440,7 @@ def test_mh_support(tmpdir):
     cont_names = []
     label_name = ["Post"]
 
-    cats = cat_names >> ops.HashBucket(num_buckets=10)
+    cats = ColumnSelector(cat_names) >> ops.HashBucket(num_buckets=10)
 
     processor = nvt.Workflow(cats + label_name)
     df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
@@ -522,8 +523,8 @@ def test_mh_model_support(tmpdir):
     out_path = os.path.join(tmpdir, "train/")
     os.mkdir(out_path)
 
-    cats = cat_names >> ops.Categorify()
-    conts = cont_names >> ops.Normalize()
+    cats = ColumnSelector(cat_names) >> ops.Categorify()
+    conts = ColumnSelector(cont_names) >> ops.Normalize()
 
     processor = nvt.Workflow(cats + conts + label_name)
     df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute()

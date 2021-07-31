@@ -25,9 +25,9 @@ class LambdaOp(Operator):
 
     Example usage 1::
 
-        # Define a ColumnGroup that LamdaOp will apply to
+        # Define a ColumnSelector that LamdaOp will apply to
         # then define a custom function, e.g. extract first 5 character from a string
-        lambda_feature = ColumnGroup(["col1"])
+        lambda_feature = ColumnSelector(["col1"])
         new_lambda_feature = lambda_feature >> (lambda col: col.str.slice(0, 5))
         processor = nvtabular.Workflow(new_lambda_feature + 'label')
 
@@ -35,7 +35,7 @@ class LambdaOp(Operator):
 
         # define a custom function e.g. calculate probability for different events.
         # Rename the each new feature column name.
-        lambda_features = ColumnGroup(['event1', 'event2', 'event3']), # columns, f is applied to
+        lambda_features = ColumnSelector(['event1', 'event2', 'event3']), # columns, f is applied to
         def cond_prob(col, gdf):
             col = col.astype(np.float32)
             col = col / gdf['total_events']

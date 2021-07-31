@@ -34,6 +34,7 @@ from dask.dataframe.io.demo import names as name_list
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ops
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -470,7 +471,7 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     df.to_parquet(filename)
 
     cat_names = ["Authors", "Engaging User"]
-    cats = cat_names >> ops.Categorify(out_path=str(output_dir))
+    cats = ColumnSelector(cat_names) >> ops.Categorify(out_path=str(output_dir))
     workflow = nvt.Workflow(cats + "Post")
 
     transformed = workflow.fit_transform(nvt.Dataset(filename))

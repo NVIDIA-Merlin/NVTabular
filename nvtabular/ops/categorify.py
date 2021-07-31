@@ -486,8 +486,8 @@ def get_embedding_sizes(source, output_dtypes=None):
 
     Parameters
     ----------
-    source : Workflow or ColumnGroup
-        Either a nvtabular Workflow or ColumnGroup object that we should use to find
+    source : Workflow or ColumnSelector
+        Either a nvtabular Workflow or ColumnSelector object that we should use to find
         embedding sizes
     output_dtypes : dict, optional
         Optional dictionary of column_name:dtype. If passing a workflow object dtypes

@@ -26,7 +26,7 @@ class Clip(Operator):
 
         # clip all continuous columns to be positive only, and then take the log of the clipped
         # columns
-        columns = nvt.ColumnGroup(CONT_NAMES) >> Clip(min_value=0) >> LogOp()
+        columns = ColumnSelector(CONT_NAMES) >> Clip(min_value=0) >> LogOp()
 
     Parameters
     ----------

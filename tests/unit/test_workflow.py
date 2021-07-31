@@ -28,6 +28,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import ColumnGroup, Dataset, Workflow, ops
+from nvtabular.column_selector import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
@@ -41,8 +42,14 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
     label_name = ["label"]
 
     norms = ops.Normalize()
-    cat_features = cat_names >> ops.Categorify(cat_cache="host")
-    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
+    cat_features = ColumnSelector(cat_names) >> ops.Categorify(cat_cache="host")
+    cont_features = (
+        ColumnSelector(cont_names)
+        >> ops.FillMissing()
+        >> ops.Clip(min_value=0)
+        >> ops.LogOp
+        >> norms
+    )
 
     workflow = Workflow(
         cat_features + cont_features + label_name, client=client if use_client else None
@@ -136,8 +143,8 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
     label_name = ["label"]
 
     norms = ops.Normalize()
-    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> norms
-    cats = cat_names >> ops.Categorify()
+    conts = ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Clip(min_value=0) >> norms
+    cats = ColumnSelector(cat_names) >> ops.Categorify()
     workflow = nvt.Workflow(conts + cats + label_name)
 
     workflow.fit(dataset)
@@ -198,12 +205,12 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
     label_name = ["label"]
 
     norms = ops.Normalize()
-    cat_features = cat_names >> ops.Categorify()
+    cat_features = ColumnSelector(cat_names) >> ops.Categorify()
     if replace:
-        cont_features = cont_names >> ops.FillMissing() >> ops.LogOp >> norms
+        cont_features = ColumnSelector(cont_names) >> ops.FillMissing() >> ops.LogOp >> norms
     else:
         fillmissing_logop = (
-            cont_names
+            ColumnSelector(cont_names)
             >> ops.FillMissing()
             >> ops.LogOp
             >> ops.Rename(postfix="_FillMissing_1_LogOp_1")
@@ -282,10 +289,12 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     df = pd.DataFrame({"a": np.arange(size)})
     df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
 
-    columns = ["a"]
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
 
-    workflow = nvt.Workflow(columns >> ops.Normalize(), client=client if use_client else None)
+    columns = ["a"]
+    normalize_node = ColumnSelector(columns) >> ops.Normalize()
+
+    workflow = nvt.Workflow(normalize_node, client=client if use_client else None)
     workflow.fit_transform(dataset).to_parquet(
         output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
@@ -361,7 +370,7 @@ def test_chaining_1():
     )
     df["cont01"][:10] = None
 
-    cont1 = "cont01" >> ops.FillMissing()
+    cont1 = ColumnSelector("cont01") >> ops.FillMissing()
     conts = cont1 + "cont02" >> ops.NormalizeMinMax()
     workflow = Workflow(conts + "cat01" + "label")
 
@@ -385,11 +394,11 @@ def test_chaining_2():
     label_name = []
 
     all_features = (
-        cat_names + cont_names
+        ColumnSelector(cat_names + cont_names)
         >> ops.LambdaOp(f=lambda col: col.isnull())
         >> ops.Rename(postfix="_isnull")
     )
-    cat_features = cat_names >> ops.Categorify()
+    cat_features = ColumnSelector(cat_names) >> ops.Categorify()
 
     workflow = Workflow(all_features + cat_features + label_name)
 
@@ -413,8 +422,10 @@ def test_chaining_3():
         }
     )
 
-    platform_features = ["platform"] >> ops.Dropna()
-    joined = ["ad_id"] >> ops.JoinGroupby(cont_cols=["clicked"], stats=["sum", "count"])
+    platform_features = ColumnSelector(["platform"]) >> ops.Dropna()
+    joined = ColumnSelector(["ad_id"]) >> ops.JoinGroupby(
+        cont_cols=["clicked"], stats=["sum", "count"]
+    )
     joined_lambda = (
         joined
         >> ops.LambdaOp(f=lambda col, gdf: col / gdf["ad_id_count"])
@@ -462,8 +473,10 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
 
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
 
-    cat_features = cat_names >> ops.Categorify()
-    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp
+    cat_features = ColumnSelector(cat_names) >> ops.Categorify()
+    cont_features = (
+        ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp
+    )
 
     workflow = Workflow(
         cat_features + cont_features + label_name, client=client if use_client else None
@@ -506,13 +519,13 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
     # defining a simple workflow that strips out the country code from the first two digits of the
     # geo_location code and sticks in a new 'geo_location_country' field
     country = (
-        ["geo_location"]
+        ColumnSelector(["geo_location"])
         >> ops.LambdaOp(
             f=lambda col: col.str.slice(0, 2),
         )
         >> ops.Rename(postfix="_country")
     )
-    cat_features = ["geo_location"] + country >> ops.Categorify()
+    cat_features = country + ["geo_location"] >> ops.Categorify()
 
     workflow = Workflow(cat_features)
 
@@ -531,7 +544,8 @@ def test_fit_simple():
     data = cudf.DataFrame({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
     dataset = Dataset(data)
 
-    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
+    squared_median_node = ColumnSelector(["x", "y"]) >> ops.FillMedian() >> (lambda x: x * x)
+    workflow = Workflow(squared_median_node)
 
     workflow.fit(dataset)
     transformed = workflow.transform(dataset).to_ddf().compute()
@@ -589,7 +603,7 @@ def test_workflow_move_saved(tmpdir):
 
 def test_workflow_input_output_dtypes():
     df = cudf.DataFrame({"genre": ["drama", "comedy"], "user": ["a", "b"], "unneeded": [1, 2]})
-    features = [["genre", "user"], "genre"] >> ops.Categorify(encode_type="combo")
+    features = ColumnSelector([["genre", "user"], "genre"]) >> ops.Categorify(encode_type="combo")
     workflow = Workflow(features)
     workflow.fit(Dataset(df))
 
@@ -606,7 +620,7 @@ def test_workflow_transform_ddf_dtypes():
 
     # Create and Execute Workflow
     cols = ["name", "x", "y", "timestamp"]
-    cat_cols = ["id"] >> ops.Normalize()
+    cat_cols = ColumnSelector(["id"]) >> ops.Normalize()
     workflow = Workflow(cols + cat_cols)
     workflow.fit(dataset)
     transformed_ddf = workflow.transform(dataset).to_ddf()

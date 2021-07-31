@@ -16,14 +16,10 @@
 from __future__ import annotations
 
 from enum import Flag, auto
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from nvtabular.column_selector import ColumnSelector
 from nvtabular.dispatch import DataFrameType
-
-if TYPE_CHECKING:
-    # avoid circular references
-    from nvtabular import ColumnGroup
 
 
 class Supports(Flag):
@@ -77,21 +73,16 @@ class Operator:
         """
         return col_selector
 
-    def dependencies(self) -> Optional[List[Union[str, ColumnGroup]]]:
+    def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
         that aren't part of the main transformation workflow.
 
         Returns
         -------
-        str, list of str or ColumnGroup, optional
+        str, list of str or ColumnSelector, optional
             Extra dependencies of this operator. Defaults to None
         """
         return None
-
-    def __rrshift__(self, other) -> ColumnGroup:
-        import nvtabular
-
-        return nvtabular.ColumnGroup(other) >> self
 
     @property
     def label(self) -> str:

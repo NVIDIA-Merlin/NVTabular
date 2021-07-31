@@ -27,6 +27,7 @@ from sklearn.metrics import roc_auc_score
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.io.dataset import Dataset
 
 tf = pytest.importorskip("tensorflow")
@@ -242,8 +243,8 @@ def test_tf_gpu_dl(
 
     columns = cont_names + cat_names
 
-    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
-    cats = cat_names >> ops.Categorify()
+    conts = ColumnSelector(cont_names) >> ops.FillMedian() >> ops.Normalize()
+    cats = ColumnSelector(cat_names) >> ops.Categorify()
 
     workflow = nvt.Workflow(conts + cats + label_name)
     workflow.fit(dataset)
@@ -350,7 +351,7 @@ def test_mh_support(tmpdir, batch_size):
     cont_names = ["Embedding"]
     label_name = ["Post"]
 
-    cats = cat_names >> ops.HashBucket(num_buckets=10)
+    cats = ColumnSelector(cat_names) >> ops.HashBucket(num_buckets=10)
     workflow = nvt.Workflow(cats + cont_names + label_name)
 
     data_itr = tf_dataloader.KerasSequenceLoader(

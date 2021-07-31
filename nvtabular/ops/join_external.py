@@ -47,7 +47,7 @@ class JoinExternal(Operator):
         df_external = cudf.read_parquet('external.parquet')
 
         # Use JoinExternal to define a NVTabular workflow
-        joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
+        joined = ColumnSelector(columns_left) >> nvt.ops.JoinExternal(
             df_ext,
             on=['key1', 'key2'],
             on_ext=['key1_ext', 'key2_ext'],

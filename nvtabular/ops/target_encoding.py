@@ -63,7 +63,7 @@ class TargetEncoding(StatOperator):
 
         # First, we can transform the label columns to binary targets
         LABEL_COLUMNS = ['label1', 'label2']
-        labels = nvt.ColumnGroup(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
+        labels = ColumnSelector(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
         # We target encode cat1, cat2 and the cross columns cat1 x cat2
         target_encode = (
             ['cat1', 'cat2', ['cat2','cat3']] >>

@@ -20,6 +20,7 @@ import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 import nvtabular as nvt
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.ops import Bucketize, Categorify, HashBucket, HashedCross, Rename
 
 
@@ -226,10 +227,12 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         features += features_replaced_buckets
 
     if len(categorifies) > 0:
-        features += categorifies.keys() >> Categorify(vocabs=pd.DataFrame(categorifies))
+        features += ColumnSelector(list(categorifies.keys())) >> Categorify(
+            vocabs=pd.DataFrame(categorifies)
+        )
 
     if len(hashes) > 0:
-        features += hashes.keys() >> HashBucket(hashes)
+        features += ColumnSelector(list(hashes.keys())) >> HashBucket(hashes)
 
     if len(crosses) > 0:
         # need to check if any bucketized columns are coming from
