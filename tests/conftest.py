@@ -18,9 +18,13 @@ import glob
 import os
 import platform
 import random
+import signal
 import socket
+import subprocess
+import time
 
 import dask
+import numpy as np
 import pandas as pd
 
 try:
@@ -37,7 +41,15 @@ try:
 except ImportError:
     cudf = None
 
-import numpy as np
+    def assert_eq(a, b, *args, **kwargs):
+        if isinstance(a, pd.DataFrame):
+            return pd.testing.assert_frame_equal(a, b, *args, **kwargs)
+        elif isinstance(a, pd.Series):
+            return pd.testing.assert_series_equal(a, b, *args, **kwargs)
+        else:
+            return np.testing.assert_allclose(a, b)
+
+
 import psutil
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
@@ -266,3 +278,57 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
         return df[col].values_host
     else:
         return df[col]
+
+
+@contextlib.contextmanager
+def run_triton_server(modelpath, model_name, triton_server_path, device_id="0"):
+    import tritonclient
+    import tritonclient.grpc as grpcclient
+
+    cmdline = [
+        triton_server_path,
+        "--model-repository",
+        modelpath,
+        "--backend-config=tensorflow,version=2",
+        "--model-control-mode=explicit",
+        "--load-model",
+        model_name,
+    ]
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = device_id
+    with subprocess.Popen(cmdline, env=env) as process:
+        try:
+            with grpcclient.InferenceServerClient("localhost:8001") as client:
+                # wait until server is ready
+                for _ in range(60):
+                    if process.poll() is not None:
+                        retcode = process.returncode
+                        raise RuntimeError(f"Tritonserver failed to start (ret={retcode})")
+
+                    try:
+                        ready = client.is_server_ready()
+                    except tritonclient.utils.InferenceServerException:
+                        ready = False
+
+                    if ready:
+                        yield client
+                        return
+
+                    time.sleep(1)
+
+                raise RuntimeError("Timed out waiting for tritonserver to become ready")
+        finally:
+            # signal triton to shutdown
+            process.send_signal(signal.SIGINT)
+
+
+def run_in_context(func, *args, context=None, **kwargs):
+    # Convenience utility to execute a function within
+    # a specific `context`.  For example, this can be
+    # used to test that a function raises a `UserWarning`
+    # by setting `context=pytest.warns(UserWarning)`
+    if context is None:
+        context = contextlib.suppress()
+    with context:
+        result = func(*args, **kwargs)
+    return result

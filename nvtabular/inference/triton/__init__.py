@@ -18,13 +18,17 @@ import json
 import os
 from shutil import copyfile
 
-import cudf
-import tritonclient.grpc as grpcclient
-from cudf.utils.dtypes import is_list_dtype
-from google.protobuf import text_format
-from tritonclient.utils import np_to_triton_dtype
+import pandas as pd
 
-import nvtabular.inference.triton.model_config_pb2 as model_config
+# this needs to be before any modules that import protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+import tritonclient.grpc as grpcclient  # noqa
+from google.protobuf import text_format  # noqa
+from tritonclient.utils import np_to_triton_dtype  # noqa
+
+import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -347,7 +351,9 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
     columns = [(col, batch[col]) for col in column_names]
     inputs = []
     for i, (name, col) in enumerate(columns):
-        if is_list_dtype(col):
+        if _is_list_dtype(col):
+            if isinstance(col, pd.Series):
+                raise ValueError("this function doesn't support CPU list values yet")
             inputs.append(
                 _convert_column_to_triton_input(
                     col._column.offsets.values_host.astype("int64"), name + "__nnzs", input_class
@@ -359,7 +365,8 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
                 )
             )
         else:
-            inputs.append(_convert_column_to_triton_input(col.values_host, name, input_class))
+            values = col.values if isinstance(col, pd.Series) else col.values_host
+            inputs.append(_convert_column_to_triton_input(values, name, input_class))
     return inputs
 
 
@@ -371,7 +378,7 @@ def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput
 
 
 def convert_triton_output_to_df(columns, response):
-    return cudf.DataFrame({col: response.as_numpy(col) for col in columns})
+    return _make_df({col: response.as_numpy(col) for col in columns})
 
 
 def _generate_nvtabular_config(
@@ -623,7 +630,7 @@ def _remove_columns_from_column_group(cg, to_remove):
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if is_list_dtype(dtype):
+    if _is_list_dtype(dtype):
         params.append(
             paramclass(
                 name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=dims
@@ -685,7 +692,7 @@ def _convert_dtype(dtype):
         return model_config.TYPE_UINT8
     if dtype == "bool":
         return model_config.TYPE_BOOL
-    if cudf.utils.dtypes.is_string_dtype(dtype):
+    if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
 
@@ -695,6 +702,6 @@ def _convert_tensor(t):
     if len(out.shape) == 2:
         out = out[:, 0]
     # cudf doesn't seem to handle dtypes like |S15 or object that well
-    if cudf.utils.dtypes.is_string_dtype(out.dtype):
+    if _is_string_dtype(out.dtype):
         out = out.astype("str")
     return out

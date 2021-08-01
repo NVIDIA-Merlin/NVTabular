@@ -27,8 +27,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel 
-        python -m pip install -r requirements.txt
+        python -m pip install nvidia-pyindex
+        python -m pip install -r requirements.txt pybind11
         python -m pip install -r requirements-dev.txt
+        python -m pip install tritonclient[all] protobuf
     - name: Lint with flake8
       run: |
         flake8 .
@@ -40,7 +42,7 @@ jobs:
         isort -c .
     - name: Build
       run: |
-        python -m pip install -e .
+        python setup.py develop --user
     - name: Run unittests
       run: |
-        python -m pytest -svv tests/unit/test_cpu_workflow.py
+        python -m pytest -rxs tests/unit/test_cpu_workflow.py tests/unit/test_column_group.py tests/unit/test_ops.py tests/unit/test_triton_inference.py
