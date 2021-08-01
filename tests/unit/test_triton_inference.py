@@ -65,7 +65,9 @@ def run_triton_server(modelpath):
             process.send_signal(signal.SIGINT)
 
 
-def _verify_workflow_on_tritonserver(tmpdir, workflow, df, model_name):
+def _verify_workflow_on_tritonserver(
+    tmpdir, workflow, df, model_name, output_model="tensorflow", model_info=None
+):
     """tests that the nvtabular workflow produces the same results when run locally in the
     process, and when run in tritonserver"""
     # fit the workflow and test on the input
@@ -74,7 +76,13 @@ def _verify_workflow_on_tritonserver(tmpdir, workflow, df, model_name):
 
     local_df = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
     triton.generate_nvtabular_model(
-        workflow, model_name, tmpdir + f"/{model_name}", backend=BACKEND
+        workflow=workflow,
+        name=model_name,
+        output_path=tmpdir + f"/{model_name}",
+        version=1,
+        output_model=output_model,
+        output_info=model_info,
+        backend=BACKEND,
     )
 
     inputs = triton.convert_df_to_triton_input(df.columns, df)
@@ -114,24 +122,41 @@ def test_error_handling(tmpdir):
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
-def test_tritonserver_inference_string(tmpdir):
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_tritonserver_inference_string(tmpdir, output_model):
     df = _make_df({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
     features = ["user"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_inference_string")
+
+    if output_model == "pytorch":
+        model_info = {"user": {"columns": ["user"], "dtype": "int64"}}
+    else:
+        model_info = None
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "test_inference_string", output_model, model_info
+    )
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
-def test_large_strings(tmpdir):
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_large_strings(tmpdir, output_model):
     strings = ["a" * (2 ** exp) for exp in range(1, 17)]
     df = _make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_large_string")
+
+    if output_model == "pytorch":
+        model_info = {"description": {"columns": ["description"], "dtype": "int64"}}
+    else:
+        model_info = None
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "test_large_string", output_model, model_info
+    )
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
-def test_concatenate_dataframe(tmpdir):
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_concatenate_dataframe(tmpdir, output_model):
     # we were seeing an issue in the rossmann workflow where we dropped certain columns,
     # https://github.com/NVIDIA/NVTabular/issues/961
     df = _make_df(
@@ -144,21 +169,44 @@ def test_concatenate_dataframe(tmpdir):
     cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
     conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
     workflow = nvt.Workflow(cats + conts)
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_concatenate_dataframe")
+
+    if output_model == "pytorch":
+        model_info = {
+            "cat": {"columns": ["cat"], "dtype": "int32"},
+            "cont": {"columns": ["cont"], "dtype": "float32"},
+        }
+    else:
+        model_info = None
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "test_concatenate_dataframe", output_model, model_info
+    )
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
-def test_numeric_dtypes(tmpdir):
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_numeric_dtypes(tmpdir, output_model):
+    if output_model == "pytorch":
+        model_info = dict()
+    else:
+        model_info = None
+
     dtypes = []
     for width in [8, 16, 32, 64]:
         dtype = f"int{width}"
         dtypes.append((dtype, np.iinfo(dtype)))
+        if output_model == "pytorch":
+            model_info[dtype] = {"columns": [dtype], "dtype": dtype}
+
         dtype = f"uint{width}"
         dtypes.append((dtype, np.iinfo(dtype)))
+        if output_model == "pytorch":
+            model_info[dtype] = {"columns": [dtype], "dtype": dtype}
 
     for width in [32, 64]:
         dtype = f"float{width}"
         dtypes.append((dtype, np.finfo(dtype)))
+        if output_model == "pytorch":
+            model_info[dtype] = {"columns": [dtype], "dtype": dtype}
 
     def check_dtypes(col):
         assert str(col.dtype) == col.name
@@ -171,7 +219,9 @@ def test_numeric_dtypes(tmpdir):
     )
     features = nvt.ColumnGroup(df.columns) >> check_dtypes
     workflow = nvt.Workflow(features)
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "test_numeric_dtypes")
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "test_numeric_dtypes", output_model, model_info
+    )
 
 
 def test_generate_triton_multihot(tmpdir):
@@ -202,7 +252,8 @@ def test_generate_triton_multihot(tmpdir):
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
-def test_generate_triton_model(tmpdir, engine, df):
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_generate_triton_model(tmpdir, engine, output_model, df):
     tmpdir = "./tmp"
     conts = ["x", "y", "id"] >> ops.FillMissing() >> ops.Normalize()
     cats = ["name-cat", "name-string"] >> ops.Categorify(cat_cache="host")
@@ -211,15 +262,32 @@ def test_generate_triton_model(tmpdir, engine, df):
     expected = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
 
     # save workflow to triton / verify we see some expected output
+    if output_model == "pytorch":
+        model_info = {
+            "name-cat": {"columns": ["name-cat"], "dtype": "int64"},
+            "name-string": {"columns": ["name-string"], "dtype": "int64"},
+            "id": {"columns": ["id"], "dtype": "float32"},
+            "x": {"columns": ["x"], "dtype": "float32"},
+            "y": {"columns": ["y"], "dtype": "float32"},
+        }
+    else:
+        model_info = None
+
     repo = os.path.join(tmpdir, "models")
-    triton.generate_nvtabular_model(workflow, "model", repo)
+    triton.generate_nvtabular_model(
+        workflow=workflow,
+        name="model",
+        output_path=repo,
+        version=1,
+        output_model=output_model,
+        output_info=model_info,
+    )
     workflow = None
 
     assert os.path.exists(os.path.join(repo, "config.pbtxt"))
 
     workflow = nvt.Workflow.load(os.path.join(repo, "1", "workflow"))
     transformed = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
-
     assert_eq(expected, transformed)
 
 

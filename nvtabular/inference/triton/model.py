@@ -44,6 +44,7 @@ import nvtabular
 from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
+from nvtabular.ops import get_embedding_sizes
 from nvtabular.ops.operator import Supports
 
 LOG = logging.getLogger("nvtabular")
@@ -89,6 +90,11 @@ class TritonPythonModel:
         self.model_config = json.loads(args["model_config"])
         self.output_model = self.model_config["parameters"]["output_model"]["string_value"]
 
+        if self.output_model == "hugectr" or self.output_model == "pytorch":
+            self.column_types = get_column_types(workflow_path)
+            if "cats" in self.column_types and self.output_model == "hugectr":
+                self.offsets = get_hugectr_offsets(self.workflow, self.column_types)
+
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.column_group)
 
@@ -101,25 +107,15 @@ class TritonPythonModel:
             col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
         }
 
-        self.output_dtypes = dict()
-        for name, dtype in self.workflow.output_dtypes.items():
-            if not _is_list_dtype(dtype):
-                self._set_output_dtype(name)
-            else:
-                # pytorch + hugectr don't support multihot output features at inference
-                if self.output_model in {"hugectr", "pytorch"}:
-                    raise ValueError(f"{self.output_model} doesn't yet support multihot features")
-
-                self._set_output_dtype(name + "__nnzs")
-                self._set_output_dtype(name + "__values")
-
-        if self.output_model == "hugectr":
-            self.column_types = get_column_types(workflow_path)
-            self.offsets = get_hugectr_offsets(workflow_path)
-            if self.offsets is None and "cats" in self.column_types:
-                raise Exception("slot_size_array.json could not be found to read the slot sizes")
-        else:
+        if self.output_model != "hugectr" and self.output_model != "pytorch":
             self.column_types = self.offsets = None
+            self.output_dtypes = dict()
+            for name, dtype in self.workflow.output_dtypes.items():
+                if not _is_list_dtype(dtype):
+                    self._set_output_dtype(name)
+                else:
+                    self._set_output_dtype(name + "__nnzs")
+                    self._set_output_dtype(name + "__values")
 
     def _set_output_dtype(self, name):
         conf = get_output_config_by_name(self.model_config, name)
@@ -154,6 +150,8 @@ class TritonPythonModel:
             # convert to the format expected by the DL models
             if self.output_model == "hugectr":
                 response = self._transform_hugectr_outputs(transformed)
+            elif self.output_model == "pytorch":
+                response = self._transform_pytorch_outputs(transformed)
             else:
                 response = self._transform_outputs(transformed)
             responses.append(response)
@@ -161,7 +159,7 @@ class TritonPythonModel:
         return responses
 
     def _transform_outputs(self, tensors):
-        """ transforms outputs for both pytorch and tensorflow """
+        """transforms outputs for both pytorch and tensorflow"""
         output_tensors = []
         for name, value in tensors.items():
             if isinstance(value, tuple):
@@ -180,6 +178,18 @@ class TritonPythonModel:
                 output_tensors.append(Tensor(name, d))
         return InferenceResponse(output_tensors)
 
+    def _transform_pytorch_outputs(self, tensors):
+        output_tensors = []
+        for output_name, cols in self.column_types.items():
+            output_tensors.append(
+                Tensor(
+                    output_name,
+                    _convert_to_pytorch(cols["columns"], tensors, cols["dtype"]),
+                )
+            )
+
+        return InferenceResponse(output_tensors)
+
     def _transform_hugectr_outputs(self, tensors):
         output_tensors = []
         if "conts" in self.column_types:
@@ -193,8 +203,9 @@ class TritonPythonModel:
             output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
         if "cats" in self.column_types:
+            for name in self.column_types["cats"]:
+                tensors[name] += self.offsets[name]
             cats_np = _convert_to_hugectr(self.column_types["cats"], tensors, np.int64)
-            cats_np += self.offsets
             output_tensors.append(
                 Tensor(
                     "CATCOLUMN",
@@ -211,24 +222,38 @@ class TritonPythonModel:
         return InferenceResponse(output_tensors)
 
 
-def _convert_to_hugectr(columns, tensors, dtype):
-    """ converts outputs to a numpy input compatible with hugectr """
+def _convert_to_pytorch(columns, tensors, dtype):
+    """converts outputs to a numpy input compatible with pytorch"""
     rows = max(len(tensors[name]) for name in columns)
-    d = np.empty((rows, len(columns)), dtype=dtype)
-    for i, name in enumerate(columns):
-        d[:, i] = tensors[name].astype(dtype)
+    return _convert_to_np(columns, tensors, dtype, rows)
+
+
+def _convert_to_hugectr(columns, tensors, dtype):
+    """converts outputs to a numpy input compatible with hugectr"""
+    rows = max(len(tensors[name]) for name in columns)
+    d = _convert_to_np(columns, tensors, dtype, rows)
     return d.reshape(1, len(columns) * rows)
 
 
-def get_hugectr_offsets(path):
-    if os.path.exists(path):
-        slot_sizes = json.load(open(os.path.join(path, "slot_size_array.json")))
-        slot_sizes = slot_sizes["slot_size_array"]
-        slot_sizes.insert(0, 0)
-        slot_sizes.pop()
-        return np.cumsum(np.array(slot_sizes)).tolist()
+def _convert_to_np(columns, tensors, dtype, rows):
+    """converts outputs to a numpy input compatible with pytorch"""
+    d = np.empty((rows, len(columns)), dtype=dtype)
+    for i, name in enumerate(columns):
+        d[:, i] = tensors[name].astype(dtype)
+    return d
+
+
+def get_hugectr_offsets(workflow, column_types):
+    embeddings = get_embedding_sizes(workflow)
+    if embeddings is None:
+        raise Exception("embeddings cannot be None")
     else:
-        return None
+        offsets = dict()
+        curr_offset = 0
+        for name in column_types["cats"]:
+            offsets[name] = curr_offset
+            curr_offset += embeddings[name][0]
+        return offsets
 
 
 def _transform_tensors(input_tensors, column_group):
