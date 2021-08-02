@@ -42,36 +42,10 @@ class ColumnGroup:
         self.kind = None
         self.dependencies = None
 
-        if not isinstance(columns, (ColumnSelector, ColumnGroup)):
-            assert False, f"Passed {columns} object into ColumnGroup"
+        if not isinstance(columns, ColumnSelector):
+            raise TypeError("The columns argument must be a ColumnSelector object")
 
-        if isinstance(columns, ColumnSelector):
-            self.columns = columns
-        elif isinstance(columns, str):
-            self.columns = ColumnSelector([columns])
-
-        # if any of the values we're passed are a columngroup
-        # we have to ourselves as a childnode in the graph.
-        elif any(isinstance(col, ColumnGroup) for col in columns):
-            new_columns = []
-            self.kind = "[...]"
-            for col in columns:
-                if not isinstance(col, ColumnGroup):
-                    col = ColumnGroup(col)
-                else:
-                    # we can't handle nesting arbitrarily deep here
-                    # only accept non-nested (str) columns here
-                    if any(not isinstance(c, str) for c in col.columns.grouped_names):
-                        raise ValueError("Can't handle more than 1 level of nested columns")
-
-                col.children.append(self)
-                self.parents.append(col)
-                new_columns.append(tuple(col.columns))
-
-            self.columns = ColumnSelector(new_columns)
-
-        else:
-            self.columns = ColumnSelector([_convert_col(col) for col in columns])
+        self.columns = columns
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
