@@ -607,8 +607,8 @@ def test_horovod_multigpu(tmpdir):
     df_files = df_gen.full_df_create(10000, cols, output=target_path)
 
     # process them
-    cat_features = nvt.ColumnGroup(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
-    ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    cat_features = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
+    ratings = ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
 
     proc = nvt.Workflow(output)
