@@ -236,8 +236,8 @@ def test_hugectr(
     os.mkdir(outdir)
     outdir = str(outdir)
 
-    conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
-    cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
+    conts = ColumnSelector(cont_names) >> ops.Normalize
+    cats = ColumnSelector(cat_names) >> ops.Categorify
     # We have a global dask client defined in this context, so NVTabular
     # should warn us if we initialze a `Workflow` with `client=None`
     workflow = run_in_context(
@@ -374,8 +374,8 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
-    columns = cat_names + cont_names + label_names
-    workflow = nvt.Workflow(nvt.ColumnGroup(columns))
+    col_selector = ColumnSelector(cat_names + cont_names + label_names)
+    workflow = nvt.Workflow(nvt.ColumnGroup(col_selector))
 
     outdir = str(tmpdir.mkdir("out"))
     transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
@@ -397,8 +397,8 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     # Check that our output data is exactly the same
     df_check = cudf.read_parquet(out_paths)
     assert_eq(
-        df_check[columns].sort_values(["x", "y"]),
-        df[columns].sort_values(["x", "y"]),
+        df_check[col_selector.names].sort_values(["x", "y"]),
+        df[col_selector.names].sort_values(["x", "y"]),
         check_index=False,
     )
 

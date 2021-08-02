@@ -67,12 +67,13 @@ class ColumnSelector:
         return iter(self.names)
 
     def __add__(self, other):
-        if isinstance(other, ColumnSelector):
+        if isinstance(other, nvtabular.ColumnGroup):
+            return other + self
+        elif isinstance(other, ColumnSelector):
             return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
         else:
             if isinstance(other, str):
                 other = [other]
-
             return ColumnSelector(self._names + other, self.subgroups)
 
     def __radd__(self, other):

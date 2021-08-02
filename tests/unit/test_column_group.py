@@ -9,7 +9,7 @@ from tests.conftest import assert_eq
 def test_column_group_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
-    input_features = ColumnGroup(["a", "b", "c"])
+    input_features = ColumnGroup(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
     sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
     plus_one_features = input_features["b"] >> (lambda col: col + 1)
@@ -27,6 +27,11 @@ def test_column_group_select():
 
 
 def test_nested_column_group():
+    # TODO: Sort out how to do nesting/sub-groups in the DSL for building up graphs
+    # This test appears to be the only place in the test suite that relies on that
+    # behavior. The key challenges here are that `>>`'ing a list on to an operator
+    # is no longer allowed, and that a `ColumnSelector` should never contain a
+    # `ColumnGroup`.
     df = dispatch._make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],

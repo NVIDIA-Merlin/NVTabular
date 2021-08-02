@@ -87,11 +87,15 @@ class JoinGroupby(StatOperator):
     ):
         super().__init__()
 
+        if isinstance(cont_cols, nvt.ColumnGroup):
+            self.cont_cols = cont_cols
+        elif isinstance(cont_cols, ColumnSelector):
+            self.cont_cols = nvt.ColumnGroup(cont_cols)
+        else:
+            self.cont_cols = nvt.ColumnGroup(ColumnSelector(cont_cols))
+
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_cols = (
-            cont_cols if isinstance(cont_cols, nvt.ColumnGroup) else nvt.ColumnGroup(cont_cols)
-        )
         self.cont_names = self.cont_cols.columns
         self.stats = stats
         self.tree_width = tree_width

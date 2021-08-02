@@ -201,7 +201,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             _make_categorical_embedding(key, cat_column.num_buckets, embedding_dim)
         )
 
-    features = nvt.ColumnGroup(label_name)
+    features = ColumnSelector(label_name)
 
     if len(buckets) > 0:
         new_buckets = {}

@@ -26,7 +26,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnGroup, dispatch, ops
+from nvtabular import dispatch, ops
 from nvtabular.column_selector import ColumnSelector
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
@@ -367,7 +367,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Substring
     # Replacement
-    substring = ColumnGroup(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
+    substring = ColumnSelector(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
     processor = nvtabular.Workflow(substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -377,11 +377,11 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # No Replacement from old API (skipped for other examples)
     substring = (
-        ColumnGroup(["name-cat", "name-string"])
+        ColumnSelector(["name-cat", "name-string"])
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(["name-cat", "name-string"] + substring)
+    processor = nvtabular.Workflow(substring + ColumnSelector(["name-cat", "name-string"]))
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -402,7 +402,9 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Replace
     # Replacement
-    oplambda = ColumnGroup(["name-cat", "name-string"]) >> (lambda col: col.str.replace("e", "XX"))
+    oplambda = ColumnSelector(["name-cat", "name-string"]) >> (
+        lambda col: col.str.replace("e", "XX")
+    )
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -414,7 +416,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # astype
     # Replacement
-    oplambda = ColumnGroup(["id"]) >> (lambda col: col.astype(float))
+    oplambda = ColumnSelector(["id"]) >> (lambda col: col.astype(float))
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -424,7 +426,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # Workflow
     # Replacement
     oplambda = (
-        ColumnGroup(["name-cat"])
+        ColumnSelector(["name-cat"])
         >> (lambda col: col.astype(str).str.slice(0, 1))
         >> ops.Categorify()
     )
@@ -434,7 +436,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     assert is_integer_dtype(new_gdf["name-cat"].dtype)
 
     oplambda = (
-        ColumnGroup(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
+        ColumnSelector(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
     )
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
@@ -457,9 +459,9 @@ def test_lambdaop_misalign(cpu):
 
     ddf0 = dd.from_pandas(df0, npartitions=4)
 
-    cont_names = ColumnGroup(["a"])
-    cat_names = ColumnGroup(["b"])
-    label = ColumnGroup(["c"])
+    cont_names = ColumnSelector(["a"])
+    cat_names = ColumnSelector(["b"])
+    label = ColumnSelector(["c"])
     if cpu:
         label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
     else:
@@ -903,7 +905,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     df_ext_check = df_ext_check[columns_ext]
     if drop_duplicates:
         df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
-    joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
+    joined = ColumnSelector(columns_left) >> nvt.ops.JoinExternal(
         df_ext,
         on,
         how=how,
@@ -1138,7 +1140,7 @@ def test_groupby_op(keys, cpu):
     dataset = nvt.Dataset(ddf1, cpu=cpu)
 
     # Define Groupby Workflow
-    groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
+    groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
         sort_cols=["ts"],
         aggs={

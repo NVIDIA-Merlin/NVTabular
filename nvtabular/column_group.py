@@ -42,9 +42,11 @@ class ColumnGroup:
         self.kind = None
         self.dependencies = None
 
+        if not isinstance(columns, (ColumnSelector, ColumnGroup)):
+            assert False, f"Passed {columns} object into ColumnGroup"
+
         if isinstance(columns, ColumnSelector):
             self.columns = columns
-
         elif isinstance(columns, str):
             self.columns = ColumnSelector([columns])
 
@@ -92,7 +94,10 @@ class ColumnGroup:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        child = ColumnGroup(operator.output_column_names(self.columns))
+        # TODO: Make `Operator.output_column_names` return a ColumnSelector?
+        col_selector = ColumnSelector(operator.output_column_names(self.columns))
+
+        child = ColumnGroup(col_selector)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
@@ -104,8 +109,12 @@ class ColumnGroup:
                 dependencies = [dependencies]
 
             for dependency in dependencies:
-                if not isinstance(dependency, ColumnGroup):
+                if isinstance(dependency, ColumnGroup):
+                    pass
+                elif isinstance(dependency, ColumnSelector):
                     dependency = ColumnGroup(dependency)
+                else:
+                    dependency = ColumnGroup(ColumnSelector(dependency))
                 dependency.children.append(child)
                 child.parents.append(dependency)
                 child.dependencies.add(dependency)
@@ -123,10 +132,12 @@ class ColumnGroup:
         -------
         ColumnGroup
         """
-        if isinstance(other, str):
-            other = ColumnGroup([other])
-        elif isinstance(other, collections.abc.Sequence):
+        if isinstance(other, ColumnGroup):
+            pass
+        elif isinstance(other, ColumnSelector):
             other = ColumnGroup(other)
+        else:
+            other = ColumnGroup(ColumnSelector(other))
 
         # check if there are any columns with the same name in both column groups
         overlap = set(self.columns.grouped_names).intersection(other.columns.grouped_names)
@@ -184,11 +195,8 @@ class ColumnGroup:
         -------
         ColumnGroup
         """
-
-        if isinstance(columns, str):
-            columns = [columns]
-
-        child = ColumnGroup(columns)
+        col_selector = ColumnSelector(columns)
+        child = ColumnGroup(col_selector)
         child.parents = [self]
         self.children.append(child)
         child.kind = str(columns)
