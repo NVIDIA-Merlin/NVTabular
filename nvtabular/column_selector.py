@@ -41,6 +41,9 @@ class ColumnSelector:
         return names
 
     def __post_init__(self):
+        if isinstance(self._names, nvtabular.ColumnGroup):
+            raise TypeError("ColumnSelectors can not contain ColumnGroups")
+
         if isinstance(self._names, str):
             self._names = [self._names]
 
@@ -48,6 +51,8 @@ class ColumnSelector:
         for name in self._names:
             if isinstance(name, str):
                 plain_names.append(name)
+            elif isinstance(name, nvtabular.ColumnGroup):
+                raise ValueError("ColumnSelectors can not contain ColumnGroups")
             else:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names

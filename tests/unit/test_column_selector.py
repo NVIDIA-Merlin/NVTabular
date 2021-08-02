@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pytest
+
+from nvtabular.column_group import ColumnGroup
 from nvtabular.column_selector import ColumnSelector
 
 
@@ -22,6 +25,20 @@ def test_constructor_works_with_single_strings_and_lists():
 
     selector2 = ColumnSelector(["a", "b", "c"])
     assert selector2._names == ["a", "b", "c"]
+
+
+def test_constructor_rejects_column_groups():
+    group = ColumnGroup(ColumnSelector(["a"]))
+
+    with pytest.raises(TypeError) as exception_info:
+        ColumnSelector(group)
+
+    assert "ColumnGroup" in str(exception_info.value)
+
+    with pytest.raises(ValueError) as exception_info:
+        ColumnSelector(["a", "b", group])
+
+    assert "ColumnGroup" in str(exception_info.value)
 
 
 def test_constructor_creates_subgroups_from_nesting():
