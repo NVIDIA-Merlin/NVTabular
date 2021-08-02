@@ -109,22 +109,24 @@ def _run_query(
     actual_output_filename,
     output_name,
     input_cols_name=None,
+    backend="tensorflow",
 ):
-    if workflow_path:
-        workflow = nvt.Workflow.load(workflow_path)
+
+    workflow = nvt.Workflow.load(workflow_path)
 
     if input_cols_name is None:
         batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
     else:
         batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
 
+    input_dtypes = {col: dtype for col, dtype in workflow.input_dtypes.items()}
     columns = [(col, batch[col]) for col in batch.columns]
 
     inputs = []
     for i, (name, col) in enumerate(columns):
-        d = col.values_host.astype(col.dtype)
+        d = col.values_host.astype(input_dtypes[name])
         d = d.reshape(len(d), 1)
-        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(col.dtype)))
+        inputs.append(grpcclient.InferInput(name, d.shape, np_to_triton_dtype(input_dtypes[name])))
         inputs[i].set_data_from_numpy(d)
 
     outputs = [grpcclient.InferRequestedOutput(output_name)]
@@ -132,9 +134,14 @@ def _run_query(
     response = client.infer(model_name, inputs, request_id="1", outputs=outputs)
     run_time = dt.datetime.now() - time_start
 
+    output_key = "output" if backend == "hugectr" else "0"
+
     output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
-    output_actual = cp.asnumpy(output_actual["0"].values)
+    output_actual = cp.asnumpy(output_actual[output_key].values)
     output_predict = response.as_numpy(output_name)
 
-    diff = abs(output_actual - output_predict[:, 0])
+    if backend == "tensorflow":
+        output_predict = output_predict[:, 0]
+
+    diff = abs(output_actual - output_predict)
     return diff, run_time
