@@ -27,6 +27,16 @@ def test_constructor_works_with_single_strings_and_lists():
     assert selector2._names == ["a", "b", "c"]
 
 
+def test_constructor_works_with_single_subgroups_and_lists():
+    selector1 = ColumnSelector([], subgroups=ColumnSelector("a"))
+    assert isinstance(selector1.subgroups, list)
+    assert selector1.subgroups[0] == ColumnSelector("a")
+
+    selector2 = ColumnSelector([], subgroups=ColumnSelector(["a", "b", "c"]))
+    assert isinstance(selector2.subgroups, list)
+    assert selector2.subgroups[0] == ColumnSelector(["a", "b", "c"])
+
+
 def test_constructor_rejects_column_groups():
     group = ColumnGroup(ColumnSelector(["a"]))
 

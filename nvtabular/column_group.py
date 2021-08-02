@@ -136,6 +136,15 @@ class ColumnGroup:
             pass
         elif isinstance(other, ColumnSelector):
             other = ColumnGroup(other)
+        elif isinstance(other, list):
+            new_selector = ColumnSelector([])
+            for element in other:
+                if isinstance(element, ColumnGroup):
+                    new_selector += ColumnSelector([], subgroups=[element.columns])
+                else:
+                    new_selector += ColumnSelector(element)
+            other = sum(other, ColumnGroup(ColumnSelector([])))
+            other.columns = new_selector
         else:
             other = ColumnGroup(ColumnSelector(other))
 

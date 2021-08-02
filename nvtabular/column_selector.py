@@ -47,6 +47,9 @@ class ColumnSelector:
         if isinstance(self._names, str):
             self._names = [self._names]
 
+        if isinstance(self.subgroups, ColumnSelector):
+            self.subgroups = [self.subgroups]
+
         plain_names = []
         for name in self._names:
             if isinstance(name, str):

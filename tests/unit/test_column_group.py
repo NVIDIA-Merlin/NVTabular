@@ -44,7 +44,7 @@ def test_nested_column_group():
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
-    cats = [country + "user"] + country + "user" >> Categorify(encode_type="combo")
+    cats = country + "user" + [country + "user"] >> Categorify(encode_type="combo")
 
     workflow = Workflow(cats)
     df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
