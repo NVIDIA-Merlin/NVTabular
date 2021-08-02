@@ -11,6 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.ops.operator import Supports
 from tests.conftest import assert_eq
@@ -104,7 +105,9 @@ def test_error_handling(tmpdir):
             raise ValueError("Lets cause some problems")
         return col
 
-    features = ["x", "y"] >> ops.FillMissing() >> ops.Normalize() >> custom_transform
+    features = (
+        ColumnSelector(["x", "y"]) >> ops.FillMissing() >> ops.Normalize() >> custom_transform
+    )
     workflow = nvt.Workflow(features)
     workflow.fit(nvt.Dataset(df))
 
@@ -125,7 +128,7 @@ def test_error_handling(tmpdir):
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_tritonserver_inference_string(tmpdir, output_model):
     df = _make_df({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
-    features = ["user"] >> ops.Categorify()
+    features = ColumnSelector(["user"]) >> ops.Categorify()
     workflow = nvt.Workflow(features)
 
     if output_model == "pytorch":
@@ -142,7 +145,7 @@ def test_tritonserver_inference_string(tmpdir, output_model):
 def test_large_strings(tmpdir, output_model):
     strings = ["a" * (2 ** exp) for exp in range(1, 17)]
     df = _make_df({"description": strings})
-    features = ["description"] >> ops.Categorify()
+    features = ColumnSelector(["description"]) >> ops.Categorify()
     workflow = nvt.Workflow(features)
 
     if output_model == "pytorch":
@@ -166,8 +169,8 @@ def test_concatenate_dataframe(tmpdir, output_model):
         }
     )
     # this bug only happened with a dataframe representation: force this by using a lambda
-    cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
-    conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
+    cats = ColumnSelector(["cat"]) >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
+    conts = ColumnSelector(["cont"]) >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
     workflow = nvt.Workflow(cats + conts)
 
     if output_model == "pytorch":
@@ -233,7 +236,7 @@ def test_generate_triton_multihot(tmpdir):
         }
     )
 
-    cats = ["userId", "movieId", "genres"] >> nvt.ops.Categorify()
+    cats = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
     workflow = nvt.Workflow(cats)
     workflow.fit(nvt.Dataset(df))
     expected = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
@@ -255,8 +258,8 @@ def test_generate_triton_multihot(tmpdir):
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_generate_triton_model(tmpdir, engine, output_model, df):
     tmpdir = "./tmp"
-    conts = ["x", "y", "id"] >> ops.FillMissing() >> ops.Normalize()
-    cats = ["name-cat", "name-string"] >> ops.Categorify(cat_cache="host")
+    conts = ColumnSelector(["x", "y", "id"]) >> ops.FillMissing() >> ops.Normalize()
+    cats = ColumnSelector(["name-cat", "name-string"]) >> ops.Categorify(cat_cache="host")
     workflow = nvt.Workflow(conts + cats)
     workflow.fit(nvt.Dataset(df))
     expected = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
