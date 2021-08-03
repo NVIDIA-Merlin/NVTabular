@@ -13,16 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from dataclasses import dataclass, field
 from typing import List
 
 import nvtabular
 
 
-@dataclass
 class ColumnSelector:
-    _names: List[str]
-    subgroups: List["ColumnSelector"] = field(default_factory=list)
+    def __init__(self, names: List[str], subgroups=None):
+        self._names = names
+        self.subgroups = subgroups if subgroups else []
+        self.__post_init__()
 
     @property
     def names(self):
@@ -39,6 +39,12 @@ class ColumnSelector:
         for subgroup in self.subgroups:
             names.append(tuple(subgroup.names))
         return names
+
+    def __nested_check(self, nests=0):
+        if nests > 2:
+            raise AttributeError("Too many nested subgroups")
+        for col_sel0 in self.subgroups:
+            col_sel0.__nested_check(nests=nests + 1)
 
     def __post_init__(self):
         if isinstance(self._names, nvtabular.ColumnGroup):
@@ -59,6 +65,7 @@ class ColumnSelector:
             else:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
+        self.__nested_check()
 
     def __getitem__(self, index):
         return self._names[index]
@@ -84,3 +91,9 @@ class ColumnSelector:
 
     def __rshift__(self, other):
         return nvtabular.ColumnGroup(self) >> other
+
+    def __eq__(self, other):
+        if isinstance(other, ColumnSelector):
+            if other._names == self._names and other.subgroups == self.subgroups:
+                return True
+        return False

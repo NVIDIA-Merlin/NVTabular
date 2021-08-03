@@ -37,6 +37,20 @@ def test_constructor_works_with_single_subgroups_and_lists():
     assert selector2.subgroups[0] == ColumnSelector(["a", "b", "c"])
 
 
+def test_constructor_too_many_level():
+
+    selector0 = ColumnSelector([], subgroups=ColumnSelector(["a", "b", "c"]))
+    selector1 = ColumnSelector(["f", "w", "g"], subgroups=selector0)
+    # next should break
+
+    test_pass = False
+    try:
+        ColumnSelector(["h", "i"], subgroups=selector1)
+    except AttributeError:
+        test_pass = True
+    assert test_pass
+
+
 def test_constructor_rejects_column_groups():
     group = ColumnGroup(ColumnSelector(["a"]))
 
