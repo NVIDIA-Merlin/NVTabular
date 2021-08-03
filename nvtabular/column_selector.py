@@ -13,34 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from dataclasses import dataclass, field
 from typing import List
 
 import nvtabular
 
 
-@dataclass
 class ColumnSelector:
-    _names: List[str]
-    subgroups: List["ColumnSelector"] = field(default_factory=list)
-
-    @property
-    def names(self):
-        names = []
-        names += self._names
-        for subgroup in self.subgroups:
-            names += subgroup.names
-        return names
-
-    @property
-    def grouped_names(self):
-        names = []
-        names += self._names
-        for subgroup in self.subgroups:
-            names.append(tuple(subgroup.names))
-        return names
-
-    def __post_init__(self):
+    def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
+        self._names = names if names is not None else []
+        self.subgroups = subgroups if subgroups else []
         if isinstance(self._names, nvtabular.ColumnGroup):
             raise TypeError("ColumnSelectors can not contain ColumnGroups")
 
@@ -59,6 +40,29 @@ class ColumnSelector:
             else:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
+        self._nested_check()
+
+    @property
+    def names(self):
+        names = []
+        names += self._names
+        for subgroup in self.subgroups:
+            names += subgroup.names
+        return names
+
+    @property
+    def grouped_names(self):
+        names = []
+        names += self._names
+        for subgroup in self.subgroups:
+            names.append(tuple(subgroup.names))
+        return names
+
+    def _nested_check(self, nests=0):
+        if nests > 1:
+            raise AttributeError("Too many nested subgroups")
+        for col_sel0 in self.subgroups:
+            col_sel0._nested_check(nests=nests + 1)
 
     def __getitem__(self, index):
         return self._names[index]
@@ -84,3 +88,8 @@ class ColumnSelector:
 
     def __rshift__(self, other):
         return nvtabular.ColumnGroup(self) >> other
+
+    def __eq__(self, other):
+        if not isinstance(other, ColumnSelector):
+            return False
+        return other._names == self._names and other.subgroups == self.subgroups:
