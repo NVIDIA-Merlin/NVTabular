@@ -27,6 +27,12 @@ def test_constructor_works_with_single_strings_and_lists():
     assert selector2._names == ["a", "b", "c"]
 
 
+def test_constructor_no_names():
+    selector2 = ColumnSelector(["a", "b", "c"])
+    selector3 = ColumnSelector(subgroups=selector2)
+    assert selector3.subgroups[0] == selector2
+
+
 def test_constructor_works_with_single_subgroups_and_lists():
     selector1 = ColumnSelector([], subgroups=ColumnSelector("a"))
     assert isinstance(selector1.subgroups, list)
@@ -38,17 +44,11 @@ def test_constructor_works_with_single_subgroups_and_lists():
 
 
 def test_constructor_too_many_level():
-
-    selector0 = ColumnSelector([], subgroups=ColumnSelector(["a", "b", "c"]))
-    selector1 = ColumnSelector(["f", "w", "g"], subgroups=selector0)
-    # next should break
-
-    test_pass = False
-    try:
-        ColumnSelector(["h", "i"], subgroups=selector1)
-    except AttributeError:
-        test_pass = True
-    assert test_pass
+    with pytest.raises(AttributeError) as exc_info:
+        ColumnSelector(["h", "i"], 
+                       subgroups= ColumnSelector(names=["b"], 
+                                                 subgroups=ColumnSelector(["a"])))
+    assert "Too many" in str(exc_info.value)
 
 
 def test_constructor_rejects_column_groups():
