@@ -58,7 +58,7 @@ class FillMissing(Operator):
         return df
 
     def inference_initialize(self, col_selector, inference_config):
-        """ load up extra configuration about this op.  """
+        """load up extra configuration about this op."""
         if self.add_binary_cols:
             return None
         import nvtabular_cpp

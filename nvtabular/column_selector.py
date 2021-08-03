@@ -92,4 +92,4 @@ class ColumnSelector:
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):
             return False
-        return other._names == self._names and other.subgroups == self.subgroups:
+        return other._names == self._names and other.subgroups == self.subgroups
