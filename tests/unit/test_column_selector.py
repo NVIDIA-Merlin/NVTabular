@@ -45,9 +45,9 @@ def test_constructor_works_with_single_subgroups_and_lists():
 
 def test_constructor_too_many_level():
     with pytest.raises(AttributeError) as exc_info:
-        ColumnSelector(["h", "i"], 
-                       subgroups= ColumnSelector(names=["b"], 
-                                                 subgroups=ColumnSelector(["a"])))
+        ColumnSelector(
+            ["h", "i"], subgroups=ColumnSelector(names=["b"], subgroups=ColumnSelector(["a"]))
+        )
     assert "Too many" in str(exc_info.value)
 
 

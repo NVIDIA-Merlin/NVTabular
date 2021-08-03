@@ -20,7 +20,7 @@ import nvtabular
 
 class ColumnSelector:
     def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
-        self._names = names if names is not None else [] 
+        self._names = names if names is not None else []
         self.subgroups = subgroups if subgroups else []
         if isinstance(self._names, nvtabular.ColumnGroup):
             raise TypeError("ColumnSelectors can not contain ColumnGroups")
