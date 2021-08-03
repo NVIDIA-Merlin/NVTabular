@@ -35,6 +35,6 @@ class LogOp(Operator):
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        return _natural_log(df[col_selector._names].astype(np.float32) + 1)
+        return _natural_log(df[col_selector.names].astype(np.float32) + 1)
 
     transform.__doc__ = Operator.transform.__doc__
