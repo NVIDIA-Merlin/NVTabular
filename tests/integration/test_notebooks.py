@@ -88,20 +88,20 @@ def test_criteo(asv_db, bench_info, tmpdir):
         print("Tensorflow not installed, skipping " + notebook)
 
 
-def test_rossman(asv_db, bench_info, tmpdir):
+def test_rossman(asv_db, bench_info, tmpdir, devices):
     data_path = os.path.join(DATA_DIR, "rossman/data")
     input_path = os.path.join(DATA_DIR, "rossman/input")
     output_path = os.path.join(DATA_DIR, "rossman/output")
 
     # Run Donwload & Convert for all
     notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "01-Download-Convert.ipynb")
-    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
     # Run ETL for all
     notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "02-ETL-with-NVTabular.ipynb")
-    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
-    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
+    # os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
 
     # Run training for PyTorch container
     try:
@@ -109,13 +109,13 @@ def test_rossman(asv_db, bench_info, tmpdir):
         import torch
 
         print(torch.__version__)
-        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0")
+        out = _run_notebook(tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False)
         bench_results = RossBenchFastAI().get_epochs(out.splitlines())
         bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
-
+        
         notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
-        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0")
+        out = _run_notebook(tmpdir, notebook, input_path, input_path, gpu_id=devices)
         bench_results = RossBenchPytorch().get_epochs(out.splitlines())
         bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
@@ -128,7 +128,7 @@ def test_rossman(asv_db, bench_info, tmpdir):
         import tensorflow
 
         print(tensorflow.__version__)
-        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0")
+        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices)
         bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
         bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
@@ -136,7 +136,7 @@ def test_rossman(asv_db, bench_info, tmpdir):
         print("Tensorflow not installed, skipping " + notebook)
 
 
-def test_movielens(asv_db, bench_info, tmpdir):
+def test_movielens(asv_db, bench_info, tmpdir, devices):
     data_path = os.path.join(DATA_DIR, "movielens/data")
     input_path = os.path.join(DATA_DIR, "movielens/input")
 
@@ -149,11 +149,11 @@ def test_movielens(asv_db, bench_info, tmpdir):
 
     # Run Download & Convert for all
     notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "01-Download-Convert.ipynb")
-    _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
     # Run ETL for all
     notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "02-ETL-with-NVTabular.ipynb")
-    _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+    _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
     # Run training for PyTorch container
     try:
@@ -161,7 +161,7 @@ def test_movielens(asv_db, bench_info, tmpdir):
         import torch
 
         print(torch.__version__)
-        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
     except ImportError:
         print("Pytorch not installed, skipping " + notebook)
 
@@ -171,7 +171,7 @@ def test_movielens(asv_db, bench_info, tmpdir):
         import tensorflow
 
         print(tensorflow.__version__)
-        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
     except ImportError:
         print("Tensorflow not installed, skipping " + notebook)
 
@@ -183,7 +183,7 @@ def test_movielens(asv_db, bench_info, tmpdir):
         import hugectr
 
         print(hugectr.__version__)
-        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id="0", clean_up=False)
+        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
     except ImportError:
         print("HugeCTR not installed, skipping " + notebook)
 
