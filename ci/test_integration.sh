@@ -1,34 +1,40 @@
 #!/bin/bash
 
-# Call this script with name of container as parameter
-# [merlin-training, merlin-tensorflow-training,
-#  merlin-pytorch-training, merlin-inference]
+# Call this script with:
+# 1. Name of container as first parameter
+#    [merlin-training, merlin-tensorflow,
+#      merlin-pytorch, merlin-inference]
+#
+# 2. Devices to use:
+#    [0; 0,1; 0,1,..,n-1]
 
 # Get last NVTabular version
 cd /nvtabular/
 git pull origin main
 
+container=$1
+cmd="--devices $2"
+
 # Run tests for all containers
-pytest tests/integration/test_notebooks.py::test_criteo_example
-pytest tests/integration/test_notebooks.py::test_rossman_example
-pytest tests/integration/test_notebooks.py::test_movielens_example
+pytest $config tests/integration/test_notebooks.py::test_criteo
+pytest $config tests/integration/test_notebooks.py::test_rossman
+pytest $config tests/integration/test_notebooks.py::test_movielens
 
 # Run tests for specific containers
-if [ "$1" == "merlin-training" ]; then
-  pytest tests/integration/test_nvt_hugectr.py::test_training
-elif [ "$1" == "merlin-tensorflow-trainig" ]; then
-  pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference
-  pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference
-elif [ "$1" == "merlin-pytorch-training" ]; then
-  echo "Nothing specific for $1 yet"
-elif [ "$1" == "merlin-inference" ]; then
-  pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
-  pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
-  pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
-  pytest tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
-  pytest tests/integration/test_nvt_hugectr.py::test_inference
+if [ "$container" == "merlin-training" ]; then
+  pytest $config tests/integration/test_nvt_hugectr.py::test_training
+elif [ "$container" == "merlin-tensorflow" ]; then
+  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference
+  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference
+elif [ "$container" == "merlin-pytorch" ]; then
+  echo "Nothing specific for $container yet"
+elif [ "$container" == "merlin-inference" ]; then
+  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
+  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
+  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
+  pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
+  pytest $config tests/integration/test_nvt_hugectr.py::test_inference
 else
   echo "INVALID Container name"
   exit 1
 fi
-
