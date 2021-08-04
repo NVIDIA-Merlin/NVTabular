@@ -16,7 +16,7 @@
 import pytest
 
 from nvtabular.column_selector import ColumnSelector
-from nvtabular.workflow_node import WorkflowNode
+from nvtabular.workflow import WorkflowNode
 
 
 def test_constructor_works_with_single_strings_and_lists():

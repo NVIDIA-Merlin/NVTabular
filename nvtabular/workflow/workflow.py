@@ -37,7 +37,7 @@ from nvtabular.ops import StatOperator
 from nvtabular.ops.operator import ColumnSelector
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
-from nvtabular.workflow_node import WorkflowNode, _merge_add_nodes, iter_nodes
+from nvtabular.workflow.node import WorkflowNode, _merge_add_nodes, iter_nodes
 
 LOG = logging.getLogger("nvtabular")
 
