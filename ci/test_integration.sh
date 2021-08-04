@@ -15,10 +15,12 @@ git pull origin main
 container=$1
 cmd="--devices $2"
 
-# Run tests for all containers
-pytest $config tests/integration/test_notebooks.py::test_criteo
-pytest $config tests/integration/test_notebooks.py::test_rossman
-pytest $config tests/integration/test_notebooks.py::test_movielens
+# Run tests for all containers but inference
+if [ "$container" != "merlin-inference" ]; then
+  #pytest $config tests/integration/test_notebooks.py::test_criteo
+  pytest $config tests/integration/test_notebooks.py::test_rossman
+  pytest $config tests/integration/test_notebooks.py::test_movielens
+fi
 
 # Run tests for specific containers
 if [ "$container" == "merlin-training" ]; then
@@ -29,6 +31,7 @@ elif [ "$container" == "merlin-tensorflow" ]; then
 elif [ "$container" == "merlin-pytorch" ]; then
   echo "Nothing specific for $container yet"
 elif [ "$container" == "merlin-inference" ]; then
+  #pytest $config tests/integration/test_notebooks.py::test_inference
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference_triton_mt
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton
