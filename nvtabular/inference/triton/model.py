@@ -97,7 +97,7 @@ class TritonPythonModel:
                 self.offsets = get_hugectr_offsets(self.workflow, self.column_types)
 
         # recurse over all column groups, initializing operators for inference pipeline
-        self._initialize_ops(self.workflow.workflow_node)
+        self._initialize_ops(self.workflow.output_node)
 
         self.input_dtypes = {
             col: dtype
@@ -141,7 +141,7 @@ class TritonPythonModel:
                 input_tensors[name] = (values, offsets)
 
             # use our NVTabular workflow to transform the dataset
-            transformed, kind = _transform_tensors(input_tensors, self.workflow.workflow_node)
+            transformed, kind = _transform_tensors(input_tensors, self.workflow.output_node)
 
             # if we don't have tensors in numpy format, convert back so that the we can return
             # to triton

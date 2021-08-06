@@ -69,14 +69,14 @@ class Workflow:
 
     Parameters
     ----------
-    workflow_node: WorkflowNode
-        The graph of operators this workflow should apply
+    output_node: WorkflowNode
+        The last node in the graph of operators this workflow should apply
     client: distributed.Client, optional
         The Dask distributed client to use for multi-gpu processing and multi-node processing
     """
 
-    def __init__(self, workflow_node: WorkflowNode, client: Optional["distributed.Client"] = None):
-        self.workflow_node = _merge_add_nodes(workflow_node)
+    def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
+        self.output_node = _merge_add_nodes(output_node)
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
@@ -110,7 +110,7 @@ class Workflow:
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
-            _transform_ddf(ddf, self.workflow_node, self.output_dtypes),
+            _transform_ddf(ddf, self.output_node, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
@@ -131,7 +131,7 @@ class Workflow:
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
-        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.workflow_node])}
+        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.output_node])}
 
         while stat_ops:
             # get all the StatOperators that we can currently call fit on (no outstanding
@@ -212,7 +212,7 @@ class Workflow:
 
         # point all stat ops to store intermediate output (parquet etc) at the path
         # this lets us easily bundle
-        for stat in _get_stat_ops([self.workflow_node]):
+        for stat in _get_stat_ops([self.output_node]):
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
@@ -284,7 +284,7 @@ class Workflow:
 
         # we might have been copied since saving, update all the stat ops
         # with the new path to their storage locations
-        for stat in _get_stat_ops([workflow.workflow_node]):
+        for stat in _get_stat_ops([workflow.output_node]):
             stat.op.set_storage_path(path, copy=False)
 
         return workflow
@@ -294,11 +294,11 @@ class Workflow:
         return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
-        for stat in _get_stat_ops([self.workflow_node]):
+        for stat in _get_stat_ops([self.output_node]):
             stat.op.clear()
 
     def _input_columns(self):
-        input_nodes = set(node for node in iter_nodes([self.workflow_node]) if not node.parents)
+        input_nodes = set(node for node in iter_nodes([self.output_node]) if not node.parents)
         return list(set(col for node in input_nodes for col in node.flattened_columns))
 
     def _clear_worker_cache(self):

@@ -501,7 +501,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     from nvtabular.workflow import Workflow
 
     if isinstance(source, Workflow):
-        queue = [source.workflow_node]
+        queue = [source.output_node]
         output_dtypes = output_dtypes or source.output_dtypes
     else:
         # passed in a column group

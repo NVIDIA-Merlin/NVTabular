@@ -397,7 +397,7 @@ def _generate_nvtabular_config(
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
 
-        for column in workflow.workflow_node.input_column_names:
+        for column in workflow.output_node.input_column_names:
             dtype = workflow.input_dtypes[column]
             config.input.append(
                 model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
@@ -627,7 +627,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
-    workflow.workflow_node = _remove_columns_from_workflow_node(workflow.workflow_node, to_remove)
+    workflow.output_node = _remove_columns_from_workflow_node(workflow.output_node, to_remove)
 
     for label in to_remove:
         if label in workflow.input_dtypes:

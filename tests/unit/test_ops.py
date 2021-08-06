@@ -56,11 +56,11 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
     new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_min = df[col].min()
-        assert col_min == pytest.approx(processor.workflow_node.op.mins[col], 1e-2)
+        assert col_min == pytest.approx(processor.output_node.op.mins[col], 1e-2)
         col_max = df[col].max()
-        assert col_max == pytest.approx(processor.workflow_node.op.maxs[col], 1e-2)
-        df[col] = (df[col] - processor.workflow_node.op.mins[col]) / (
-            processor.workflow_node.op.maxs[col] - processor.workflow_node.op.mins[col]
+        assert col_max == pytest.approx(processor.output_node.op.maxs[col], 1e-2)
+        df[col] = (df[col] - processor.output_node.op.mins[col]) / (
+            processor.output_node.op.maxs[col] - processor.output_node.op.mins[col]
         )
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
@@ -174,7 +174,7 @@ def test_fill_median(
     new_df.index = df0.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
-        assert math.isclose(col_median, processor.workflow_node.op.medians[col], rel_tol=1e1)
+        assert math.isclose(col_median, processor.output_node.op.medians[col], rel_tol=1e1)
         assert np.all((df0[col].fillna(col_median) - new_df[col]).abs().values <= 1e-2)
         assert (f"{col}_filled" in new_df.keys()) == add_binary_cols
         if add_binary_cols:
@@ -302,11 +302,11 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     new_gdf = processor.transform(dataset).to_ddf().compute()
     new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
-        assert math.isclose(df[col].mean(), processor.workflow_node.op.means[col], rel_tol=1e-4)
-        assert math.isclose(df[col].std(), processor.workflow_node.op.stds[col], rel_tol=1e-4)
+        assert math.isclose(df[col].mean(), processor.output_node.op.means[col], rel_tol=1e-4)
+        assert math.isclose(df[col].std(), processor.output_node.op.stds[col], rel_tol=1e-4)
         df[col] = (
-            df[col] - processor.workflow_node.op.means[col]
-        ) / processor.workflow_node.op.stds[col]
+            df[col] - processor.output_node.op.means[col]
+        ) / processor.output_node.op.stds[col]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
     # our normalize op also works on dicts of cupy/numpy tensors. make sure this works like we'd
@@ -342,11 +342,11 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     for col in op_columns:
-        assert math.isclose(df[col].mean(), processor.workflow_node.op.means[col], rel_tol=1e-4)
-        assert math.isclose(df[col].std(), processor.workflow_node.op.stds[col], rel_tol=1e-4)
+        assert math.isclose(df[col].mean(), processor.output_node.op.means[col], rel_tol=1e-4)
+        assert math.isclose(df[col].std(), processor.output_node.op.stds[col], rel_tol=1e-4)
         df[col] = (
-            df[col] - processor.workflow_node.op.means[col]
-        ) / processor.workflow_node.op.stds[col]
+            df[col] - processor.output_node.op.means[col]
+        ) / processor.output_node.op.stds[col]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
 

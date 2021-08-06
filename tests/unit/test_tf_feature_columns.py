@@ -21,4 +21,4 @@ def test_feature_column_utils():
     ]
 
     workflow, _ = nvtf.make_feature_column_workflow(cols, "target")
-    assert workflow.workflow_node.columns.names == ["vocab_1", "vocab_2", "target"]
+    assert workflow.output_node.columns.names == ["vocab_1", "vocab_2", "target"]
