@@ -16,6 +16,7 @@
 import pytest
 
 from nvtabular.columns.schema import ColumnSchema, DatasetSchema
+from nvtabular.columns.selector import ColumnSelector
 
 
 def test_column_schema():
@@ -117,3 +118,16 @@ def test_dataset_schema_column_names():
     ds_schema = DatasetSchema(["x", "y", "z"])
 
     assert ds_schema.column_names == ["x", "y", "z"]
+
+
+def test_applying_selector_to_schema_selects_relevant_columns():
+    schema = DatasetSchema(["a", "b", "c", "d", "e"])
+    selector = ColumnSelector(["a", "b"])
+    result = schema.apply(selector)
+
+    assert result == DatasetSchema(["a", "b"])
+
+    selector = None
+    result = schema.apply(selector)
+
+    assert result == schema

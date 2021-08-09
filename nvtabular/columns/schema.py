@@ -60,6 +60,12 @@ class DatasetSchema:
     def column_names(self):
         return list(self.column_schemas.keys())
 
+    def apply(self, selector):
+        if selector:
+            return self.select_by_name(selector.names)
+        else:
+            return self
+
     def select_by_tag(self, tags):
         if not isinstance(tags, list):
             tags = [tags]
