@@ -109,9 +109,13 @@ class ColumnSelector:
         return self + other
 
     def __rshift__(self, other):
-        node = nvtabular.WorkflowNode(self) >> other
-        node.parents = []
-        return node
+        temp_node = nvtabular.WorkflowNode(self)
+        new_node = temp_node >> other
+        new_node.selector = self
+
+        temp_node.children = []
+        new_node.parents = []
+        return new_node
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):

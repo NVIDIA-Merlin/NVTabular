@@ -152,3 +152,13 @@ def test_applying_to_schema_selects_relevant_columns():
     )
 
     assert result == expected
+
+
+def test_rshift_operator_onto_selector_creates_node_with_selector():
+    selector = ColumnSelector(["a", "b", "c"])
+    operator = Operator()
+
+    result = selector >> operator
+
+    assert isinstance(result, WorkflowNode)
+    assert result.selector == selector
