@@ -111,3 +111,9 @@ def test_construct_dataset_schema_with_column_names():
     expected = DatasetSchema([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
 
     assert ds_schema == expected
+
+
+def test_dataset_schema_column_names():
+    ds_schema = DatasetSchema(["x", "y", "z"])
+
+    assert ds_schema.column_names == ["x", "y", "z"]

@@ -56,6 +56,10 @@ class DatasetSchema:
         else:
             raise TypeError("The `column_schemas` parameter must be a list or dict.")
 
+    @property
+    def column_names(self):
+        return list(self.column_schemas.keys())
+
     def select_by_tag(self, tags):
         if not isinstance(tags, list):
             tags = [tags]
