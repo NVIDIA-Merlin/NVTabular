@@ -68,10 +68,7 @@ class WorkflowNode:
         self._selector = sel
 
     def compute_schemas(self, parent_schema):
-        if self.selector:
-            self.input_schema = self.selector.apply(parent_schema)
-        else:
-            self.input_schema = parent_schema
+        self.input_schema = parent_schema.apply(self.selector)
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
