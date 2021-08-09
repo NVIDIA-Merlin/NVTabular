@@ -77,7 +77,7 @@ class Operator:
     def compute_output_schema(
         self, input_schema: DatasetSchema, col_selector: ColumnSelector
     ) -> DatasetSchema:
-        selected_schema = col_selector.apply(input_schema)
+        selected_schema = input_schema.apply(col_selector)
         column_selector = ColumnSelector(selected_schema.column_schemas.keys())
         output_selector = self.output_column_names(column_selector)
         output_names = (
