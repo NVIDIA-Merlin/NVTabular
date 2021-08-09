@@ -90,7 +90,9 @@ class ColumnSelector:
         return iter(self.names)
 
     def __add__(self, other):
-        if isinstance(other, nvtabular.WorkflowNode):
+        if other is None:
+            return self
+        elif isinstance(other, nvtabular.WorkflowNode):
             return other + self
         elif isinstance(other, ColumnSelector):
             return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
