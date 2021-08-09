@@ -69,7 +69,7 @@ class HashedCross(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        return ["_X_".join(cross) for cross in _nest_columns(columns)]
+        return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
 
 
 def _nest_columns(columns):

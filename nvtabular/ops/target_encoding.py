@@ -223,7 +223,7 @@ class TargetEncoding(StatOperator):
         if self.kfold > 1 and not self.drop_folds:
             ret.append(self.fold_name)
 
-        return ret
+        return ColumnSelector(ret)
 
     def set_storage_path(self, new_path, copy=False):
         self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)

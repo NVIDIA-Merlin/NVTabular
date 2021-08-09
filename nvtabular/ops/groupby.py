@@ -131,7 +131,7 @@ class Groupby(Operator):
         _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
         _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
 
-        return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
+        return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

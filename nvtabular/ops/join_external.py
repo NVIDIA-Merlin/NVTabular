@@ -200,7 +200,7 @@ class JoinExternal(Operator):
     def output_column_names(self, columns):
         if self.columns_ext:
             return list(set(columns + self.columns_ext))
-        return list(set(columns + list(self._ext.columns)))
+        return ColumnSelector(list(set(columns + list(self._ext.columns))))
 
 
 def _check_partition_count(df):

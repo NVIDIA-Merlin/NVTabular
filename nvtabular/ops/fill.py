@@ -71,7 +71,7 @@ class FillMissing(Operator):
         output_cols = col_selector[:]
         if self.add_binary_cols:
             output_cols.extend([f"{col}_filled" for col in col_selector])
-        return output_cols
+        return ColumnSelector(output_cols)
 
 
 class FillMedian(StatOperator):
@@ -130,4 +130,4 @@ class FillMedian(StatOperator):
         output_cols = col_selector[:]
         if self.add_binary_cols:
             output_cols.extend([f"{col}_filled" for col in col_selector])
-        return output_cols
+        return ColumnSelector(output_cols)

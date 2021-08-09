@@ -192,7 +192,7 @@ class JoinGroupby(StatOperator):
                         output.append(f"{name}_{stat}")
                     else:
                         output.append(f"{name}_{cont}_{stat}")
-        return output
+        return ColumnSelector(output)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)

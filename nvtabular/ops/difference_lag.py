@@ -77,7 +77,9 @@ class DifferenceLag(Operator):
         return self.partition_cols
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        return [self._column_name(col, shift) for shift in self.shifts for col in col_selector]
+        return ColumnSelector(
+            [self._column_name(col, shift) for shift in self.shifts for col in col_selector]
+        )
 
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"

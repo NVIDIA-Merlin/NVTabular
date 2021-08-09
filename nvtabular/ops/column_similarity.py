@@ -111,7 +111,7 @@ class ColumnSimilarity(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        return [f"{a}_{b}_sim" for a, b in columns.grouped_names]
+        return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
