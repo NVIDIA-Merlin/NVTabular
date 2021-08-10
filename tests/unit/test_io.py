@@ -33,7 +33,7 @@ from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnSelector, ops
+from nvtabular import ops
 from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -373,8 +373,8 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
-    col_selector = ColumnSelector(cat_names + cont_names + label_names)
-    workflow = nvt.Workflow(nvt.ColumnGroup(col_selector))
+    columns = cat_names + cont_names + label_names
+    workflow = nvt.Workflow(nvt.ColumnGroup(columns))
 
     outdir = str(tmpdir.mkdir("out"))
     transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))
@@ -396,8 +396,8 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     # Check that our output data is exactly the same
     df_check = cudf.read_parquet(out_paths)
     assert_eq(
-        df_check[col_selector.names].sort_values(["x", "y"]),
-        df[col_selector.names].sort_values(["x", "y"]),
+        df_check[columns].sort_values(["x", "y"]),
+        df[columns].sort_values(["x", "y"]),
         check_index=False,
     )
 
