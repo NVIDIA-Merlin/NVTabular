@@ -1051,6 +1051,23 @@ class Dataset:
         else:
             return result
 
+    def sample_dtypes(self, n=1):
+        """Return the real dtypes of the Dataset
+
+        Sample the partitions of the underlying Dask collection
+        until a non-empty partition is found. Then, use the first
+        ``n`` rows of that partition to infer dtype info. If no
+        non-empty partitions are found, use the Dask dtypes.
+        """
+        _ddf = self.to_ddf()
+        output_dtypes = _ddf.dtypes
+        for partition_index in range(_ddf.npartitions):
+            _partition = _ddf.partitions[partition_index]
+            if len(_partition):
+                output_dtypes = _partition.head(n).dtypes
+                break
+        return output_dtypes
+
     @classmethod
     def _bind_dd_method(cls, name):
         """Bind Dask-Dataframe method to the Dataset class"""
