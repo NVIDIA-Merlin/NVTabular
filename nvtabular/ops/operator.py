@@ -28,7 +28,7 @@ ColumnNames = List[Union[str, List[str]]]
 
 
 class Supports(Flag):
-    """ Indicates what type of data representation this operator supports for transformations """
+    """Indicates what type of data representation this operator supports for transformations"""
 
     # cudf dataframe
     CPU_DATAFRAME = auto()
@@ -100,7 +100,7 @@ class Operator:
 
     @property
     def supports(self) -> Supports:
-        """ Returns what kind of data representation this operator supports """
+        """Returns what kind of data representation this operator supports"""
         return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
 
     def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
