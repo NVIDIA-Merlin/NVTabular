@@ -24,8 +24,7 @@ import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import read_parquet as dd_read_parquet
 
-from nvtabular import Dataset, Workflow, ops
-from nvtabular.column_selector import ColumnSelector
+from nvtabular import ColumnGroup, Dataset, Workflow, ops
 from nvtabular.io.shuffle import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -83,11 +82,11 @@ def test_dask_workflow_api_dlrm(
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    cats = ColumnSelector(cat_names) >> ops.Categorify(
+    cats = cat_names >> ops.Categorify(
         freq_threshold=freq_threshold, out_path=str(tmpdir), cat_cache=cat_cache, on_host=on_host
     )
 
-    conts = ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
 
     workflow = Workflow(cats + conts + label_name, client=client)
 
@@ -147,7 +146,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
-    features = ColumnSelector(cat_names) >> ops.JoinGroupby(
+    features = cat_names >> ops.JoinGroupby(
         cont_cols=cont_names, stats=["count", "sum", "std", "min"], out_path=str(tmpdir)
     )
 
@@ -183,10 +182,9 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
 
-    cat_features = ColumnSelector(cat_names) >> ops.Categorify(
-        out_path=str(tmpdir), freq_threshold=10, on_host=True
-    )
-    groupby_features = ColumnSelector(cat_names) >> ops.JoinGroupby(
+    cats = ColumnGroup(cat_names)
+    cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
+    groupby_features = cats >> ops.JoinGroupby(
         cont_cols=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
     )
 
@@ -219,7 +217,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
     label_name = ["label"]
 
     normalize = ops.Normalize()
-    conts = ColumnSelector(cont_names) >> ops.FillMissing() >> normalize
+    conts = cont_names >> ops.FillMissing() >> normalize
     workflow = Workflow(conts + cat_names + label_name, client=client)
 
     dataset = Dataset(paths, engine=engine, cpu=cpu)
@@ -263,7 +261,7 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     cat_names = ["name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
-    conts = ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Normalize()
+    conts = cont_names >> ops.FillMissing() >> ops.Normalize()
     workflow = Workflow(conts + cat_names + label_name, client=client)
     transformed = workflow.fit_transform(dataset)
 

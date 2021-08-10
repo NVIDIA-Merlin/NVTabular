@@ -24,7 +24,6 @@ from dask_cudf.io.tests import test_s3
 
 import nvtabular as nvt
 from nvtabular import ops
-from nvtabular.column_selector import ColumnSelector
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # Import fixtures and context managers from dask_cudf
@@ -77,10 +76,8 @@ def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df):
         cont_names = ["x", "y", "id"]
         label_name = ["label"]
 
-        conts = (
-            ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
-        )
-        cats = ColumnSelector(cat_names) >> ops.Categorify(cat_cache="host")
+        conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+        cats = cat_names >> ops.Categorify(cat_cache="host")
 
         processor = nvt.Workflow(conts + cats + label_name)
         processor.fit(dataset)

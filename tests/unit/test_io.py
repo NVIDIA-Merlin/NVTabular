@@ -33,8 +33,7 @@ from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ops
-from nvtabular.column_selector import ColumnSelector
+from nvtabular import ColumnSelector, ops
 from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -236,8 +235,8 @@ def test_hugectr(
     os.mkdir(outdir)
     outdir = str(outdir)
 
-    conts = ColumnSelector(cont_names) >> ops.Normalize
-    cats = ColumnSelector(cat_names) >> ops.Categorify
+    conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
+    cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
     # We have a global dask client defined in this context, so NVTabular
     # should warn us if we initialze a `Workflow` with `client=None`
     workflow = run_in_context(
@@ -471,7 +470,7 @@ def test_parquet_lists(tmpdir, freq_threshold, shuffle, out_files_per_proc):
     df.to_parquet(filename)
 
     cat_names = ["Authors", "Engaging User"]
-    cats = ColumnSelector(cat_names) >> ops.Categorify(out_path=str(output_dir))
+    cats = cat_names >> ops.Categorify(out_path=str(output_dir))
     workflow = nvt.Workflow(cats + "Post")
 
     transformed = workflow.fit_transform(nvt.Dataset(filename))

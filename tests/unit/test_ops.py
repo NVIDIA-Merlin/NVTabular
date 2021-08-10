@@ -26,8 +26,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import dispatch, ops
-from nvtabular.column_selector import ColumnSelector
+from nvtabular import ColumnGroup, ColumnSelector, dispatch, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -50,7 +49,7 @@ except ImportError:
 @pytest.mark.parametrize("cpu", _CPU)
 def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, cpu):
     df = dataset.to_ddf().compute()
-    cont_features = ColumnSelector(op_columns) >> ops.NormalizeMinMax()
+    cont_features = op_columns >> ops.NormalizeMinMax()
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -86,7 +85,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         df = dask_cudf.from_cudf(df, npartitions=3)
 
     cont_names = ["Cost"]
-    te_features = ColumnSelector(cat_groups) >> ops.TargetEncoding(
+    te_features = cat_groups >> ops.TargetEncoding(
         cont_names,
         out_path=str(tmpdir),
         kfold=kfold,
@@ -95,9 +94,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         drop_folds=False,  # Keep folds to validate
     )
 
-    cont_features = (
-        ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
-    )
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
     workflow = nvt.Workflow(te_features + cont_features + ["Author", "Engaging-User"])
     df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
@@ -133,7 +130,7 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
         df = dask_cudf.from_cudf(df, npartitions=npartitions)
 
     cat_groups = ["cat", "cat2", ["cat", "cat2"]]
-    te_features = ColumnSelector(cat_groups) >> ops.TargetEncoding(
+    te_features = cat_groups >> ops.TargetEncoding(
         ["num", "num_2"], out_path=str(tmpdir), kfold=1, p_smooth=5, out_dtype="float32"
     )
 
@@ -164,9 +161,7 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
 def test_fill_median(
     tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, add_binary_cols, cpu
 ):
-    cont_features = ColumnSelector(op_columns) >> nvt.ops.FillMedian(
-        add_binary_cols=add_binary_cols
-    )
+    cont_features = op_columns >> nvt.ops.FillMedian(add_binary_cols=add_binary_cols)
     processor = nvt.Workflow(cont_features)
 
     ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
@@ -191,7 +186,7 @@ def test_fill_median(
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 @pytest.mark.parametrize("cpu", _CPU)
 def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
-    cont_features = ColumnSelector(op_columns) >> nvt.ops.LogOp()
+    cont_features = op_columns >> nvt.ops.LogOp()
     processor = nvt.Workflow(cont_features)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
@@ -214,7 +209,7 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, c
     else:
         num_buckets = {column: 10 for column in op_columns}
 
-    hash_features = ColumnSelector(cat_names) >> ops.HashBucket(num_buckets)
+    hash_features = cat_names >> ops.HashBucket(num_buckets)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
@@ -240,7 +235,7 @@ def test_hash_bucket_lists(tmpdir):
     cat_names = ["Authors"]  # , "Engaging User"]
 
     dataset = nvt.Dataset(df)
-    hash_features = ColumnSelector(cat_names) >> ops.HashBucket(num_buckets=10)
+    hash_features = cat_names >> ops.HashBucket(num_buckets=10)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -260,9 +255,7 @@ def test_fill_missing(tmpdir, df, engine, add_binary_cols, cpu):
     if cpu and not isinstance(df, pd.DataFrame):
         df = df.to_pandas()
     cont_names = ["x", "y"]
-    cont_features = ColumnSelector(cont_names) >> nvt.ops.FillMissing(
-        fill_val=42, add_binary_cols=add_binary_cols
-    )
+    cont_features = cont_names >> nvt.ops.FillMissing(fill_val=42, add_binary_cols=add_binary_cols)
 
     for col in cont_names:
         idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
@@ -286,7 +279,7 @@ def test_fill_missing(tmpdir, df, engine, add_binary_cols, cpu):
 @pytest.mark.parametrize("cpu", _CPU)
 def test_dropna(tmpdir, df, dataset, engine, cpu):
     columns = mycols_pq if engine == "parquet" else mycols_csv
-    dropna_features = ColumnSelector(columns) >> ops.Dropna()
+    dropna_features = columns >> ops.Dropna()
     if cpu:
         dataset.to_cpu()
 
@@ -302,7 +295,7 @@ def test_dropna(tmpdir, df, dataset, engine, cpu):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
-    cont_features = ColumnSelector(op_columns) >> ops.Normalize()
+    cont_features = op_columns >> ops.Normalize()
     processor = nvtabular.Workflow(cont_features)
     processor.fit(dataset)
 
@@ -329,8 +322,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
 def test_normalize_std_zero(cpu):
     df = pd.DataFrame({"a": 7 * [10]})
     dataset = nvt.Dataset(df, cpu=cpu)
-    node = ColumnSelector(["a"]) >> ops.Normalize()
-    processor = nvtabular.Workflow(node)
+    processor = nvtabular.Workflow(["a"] >> ops.Normalize())
     processor.fit(dataset)
     result = processor.transform(dataset).compute()["a"]
     assert (result == 0).all()
@@ -342,7 +334,7 @@ def test_normalize_std_zero(cpu):
 def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_columns):
     df = dispatch._make_df({"x": [1.9e10, 2.3e16, 3.4e18, 1.6e19], "label": [1.0, 0.0, 1.0, 0.0]})
 
-    cont_features = ColumnSelector(op_columns) >> ops.Normalize()
+    cont_features = op_columns >> ops.Normalize()
     processor = nvtabular.Workflow(cont_features)
     dataset = nvt.Dataset(df)
     processor.fit(dataset)
@@ -367,7 +359,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Substring
     # Replacement
-    substring = ColumnSelector(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
+    substring = ColumnGroup(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
     processor = nvtabular.Workflow(substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -381,7 +373,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(substring + ColumnSelector(["name-cat", "name-string"]))
+    processor = nvtabular.Workflow(["name-cat", "name-string"] + substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -402,9 +394,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Replace
     # Replacement
-    oplambda = ColumnSelector(["name-cat", "name-string"]) >> (
-        lambda col: col.str.replace("e", "XX")
-    )
+    oplambda = ColumnGroup(["name-cat", "name-string"]) >> (lambda col: col.str.replace("e", "XX"))
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -416,7 +406,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # astype
     # Replacement
-    oplambda = ColumnSelector(["id"]) >> (lambda col: col.astype(float))
+    oplambda = ColumnGroup(["id"]) >> (lambda col: col.astype(float))
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -426,7 +416,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # Workflow
     # Replacement
     oplambda = (
-        ColumnSelector(["name-cat"])
+        ColumnGroup(["name-cat"])
         >> (lambda col: col.astype(str).str.slice(0, 1))
         >> ops.Categorify()
     )
@@ -436,7 +426,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     assert is_integer_dtype(new_gdf["name-cat"].dtype)
 
     oplambda = (
-        ColumnSelector(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
+        ColumnGroup(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
     )
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
@@ -459,9 +449,9 @@ def test_lambdaop_misalign(cpu):
 
     ddf0 = dd.from_pandas(df0, npartitions=4)
 
-    cont_names = ColumnSelector(["a"])
-    cat_names = ColumnSelector(["b"])
-    label = ColumnSelector(["c"])
+    cont_names = ColumnGroup(["a"])
+    cat_names = ColumnGroup(["b"])
+    label = ColumnGroup(["c"])
     if cpu:
         label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
     else:
@@ -492,7 +482,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
     cat_names = ["Authors", "Engaging User"]
     label_name = ["Post"]
 
-    cat_features = ColumnSelector(cat_names) >> ops.Categorify(
+    cat_features = cat_names >> ops.Categorify(
         out_path=str(tmpdir), freq_threshold=freq_threshold, dtype=dtype, vocabs=vocabs
     )
 
@@ -527,12 +517,13 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
 
     label_name = ["Post"]
 
-    cats = ColumnSelector(cat_names) >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
+    cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
 
     workflow = nvt.Workflow(cats + label_name)
-    dataset = nvt.Dataset(df, cpu=cpu)
 
-    df_out = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
+    df_out = (
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
+    )
 
     if len(cat_names) == 1:
         if kind == "joint":
@@ -584,7 +575,7 @@ def test_categorify_multi_combo(tmpdir, cpu):
     )
 
     label_name = ["Post"]
-    cats = ColumnSelector(cat_names) >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
+    cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
     workflow = nvt.Workflow(cats + label_name)
     df_out = (
         workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute(scheduler="synchronous")
@@ -649,7 +640,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
     if (not search_sort and isfreqthr) or (search_sort and not isfreqthr):
         cat_names = ["Author", "Engaging User"]
 
-        cats = ColumnSelector(cat_names) >> ops.Categorify(
+        cats = cat_names >> ops.Categorify(
             freq_threshold=freq_limit,
             out_path=str(tmpdir),
             search_sorted=search_sort,
@@ -706,7 +697,7 @@ def test_categorify_hash_bucket(cpu):
     cat_names = ["Authors", "Engaging_User"]
     buckets = 10
     dataset = nvt.Dataset(df, cpu=cpu)
-    hash_features = ColumnSelector(cat_names) >> ops.Categorify(num_buckets=buckets)
+    hash_features = cat_names >> ops.Categorify(num_buckets=buckets)
     processor = nvt.Workflow(hash_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -755,9 +746,7 @@ def test_categorify_max_size(max_emb_size):
     cat_names = ["Author", "Engaging_User"]
     buckets = 3
     dataset = nvt.Dataset(df)
-    cat_features = ColumnSelector(cat_names) >> ops.Categorify(
-        max_size=max_emb_size, num_buckets=buckets
-    )
+    cat_features = cat_names >> ops.Categorify(max_size=max_emb_size, num_buckets=buckets)
     processor = nvt.Workflow(cat_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -789,12 +778,8 @@ def test_joingroupby_dependency(tmpdir, cpu):
         }
     )
 
-    normalized_cost = (
-        ColumnSelector(["Cost"])
-        >> nvt.ops.NormalizeMinMax()
-        >> nvt.ops.Rename(postfix="_normalized")
-    )
-    groupby_features = ColumnSelector(["Author"]) >> ops.JoinGroupby(
+    normalized_cost = ["Cost"] >> nvt.ops.NormalizeMinMax() >> nvt.ops.Rename(postfix="_normalized")
+    groupby_features = ["Author"] >> ops.JoinGroupby(
         out_path=str(tmpdir), stats=["sum"], cont_cols=normalized_cost
     )
     workflow = nvt.Workflow(groupby_features)
@@ -824,7 +809,7 @@ def test_joingroupby_multi(tmpdir, groups, cpu):
         }
     )
 
-    groupby_features = ColumnSelector(groups) >> ops.JoinGroupby(
+    groupby_features = groups >> ops.JoinGroupby(
         out_path=str(tmpdir), stats=["sum"], cont_cols=["Cost"]
     )
     workflow = nvt.Workflow(groupby_features + "Post")
@@ -905,7 +890,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     df_ext_check = df_ext_check[columns_ext]
     if drop_duplicates:
         df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
-    joined = ColumnSelector(columns_left) >> nvt.ops.JoinExternal(
+    joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
         df_ext,
         on,
         how=how,
@@ -935,8 +920,8 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     if cpu and not isinstance(df, pd.DataFrame):
         df = df.to_pandas()
 
-    cont_names = ColumnSelector(["x", "y"])
-    filtered = ColumnSelector(cont_names) >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
+    cont_names = ["x", "y"]
+    filtered = cont_names >> ops.Filter(f=lambda df: df[df["y"] > 0.5])
     processor = nvtabular.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute().reset_index()
@@ -949,14 +934,14 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
         idx = np.random.choice(df.shape[0] - 1, int(df.shape[0] * 0.2))
         df[col].iloc[idx] = None
 
-    filtered = ColumnSelector(cont_names) >> ops.Filter(f=lambda df: df[df.x.isnull()])
+    filtered = cont_names >> ops.Filter(f=lambda df: df[df.x.isnull()])
     processor = nvtabular.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
     assert new_gdf.shape[0] < df.shape[0], "null values do not exist"
 
     # again testing filtering by returning a series rather than a df
-    filtered = ColumnSelector(cont_names) >> ops.Filter(f=lambda df: df.x.isnull())
+    filtered = cont_names >> ops.Filter(f=lambda df: df.x.isnull())
     processor = nvtabular.Workflow(filtered)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -964,7 +949,7 @@ def test_filter(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     # if the filter returns an invalid type we should get an exception immediately
     # (rather than causing problems downstream in the workflow)
-    filtered = ColumnSelector(cont_names) >> ops.Filter(f=lambda df: "some invalid value")
+    filtered = cont_names >> ops.Filter(f=lambda df: "some invalid value")
     processor = nvtabular.Workflow(filtered)
     with pytest.raises(ValueError):
         new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -977,9 +962,7 @@ def test_difference_lag(cpu):
         {"userid": [0, 0, 0, 1, 1, 2], "timestamp": [1000, 1005, 1100, 2000, 2001, 3000]}
     )
 
-    diff_features = ColumnSelector(["timestamp"]) >> ops.DifferenceLag(
-        partition_cols=["userid"], shift=[1, -1]
-    )
+    diff_features = ["timestamp"] >> ops.DifferenceLag(partition_cols=["userid"], shift=[1, -1])
     dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(diff_features)
     processor.fit(dataset)
@@ -1010,17 +993,17 @@ def test_difference_lag(cpu):
 @pytest.mark.parametrize("cpu", _CPU)
 def test_hashed_cross(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
     # TODO: add tests for > 2 features, multiple crosses, etc.
-    cat_names = ["name-string", "id"]
+    cat_names = [["name-string", "id"]]
     num_buckets = 10
 
-    hashed_cross = ColumnSelector(cat_names) >> ops.HashedCross(num_buckets)
+    hashed_cross = cat_names >> ops.HashedCross(num_buckets)
     dataset = nvt.Dataset(df, cpu=cpu)
     processor = nvtabular.Workflow(hashed_cross)
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
 
     # check sums for determinancy
-    new_column_name = "_X_".join(cat_names)
+    new_column_name = "_X_".join(cat_names[0])
     assert np.all(new_df[new_column_name].values >= 0)
     assert np.all(new_df[new_column_name].values <= 9)
     checksum = new_df[new_column_name].sum()
@@ -1037,7 +1020,7 @@ def test_bucketized(tmpdir, df, dataset, gpu_memory_frac, engine, cpu):
 
     bucketize_op = ops.Bucketize(dict(zip(cont_names, boundaries)))
 
-    bucket_features = ColumnSelector(cont_names) >> bucketize_op
+    bucket_features = cont_names >> bucketize_op
     processor = nvtabular.Workflow(bucket_features)
 
     ds = copy.copy(dataset)
@@ -1069,7 +1052,7 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
 
     data_stats = ops.DataStats()
 
-    features = ColumnSelector(all_cols) >> data_stats
+    features = all_cols >> data_stats
     workflow = nvtabular.Workflow(features)
     workflow.fit(dataset)
 

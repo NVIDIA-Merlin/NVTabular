@@ -9,7 +9,6 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.column_selector import ColumnSelector
 from tests.conftest import get_cats
 
 try:
@@ -34,8 +33,8 @@ def test_cpu_workflow(tmpdir, df, dataset, cpu, engine, dump):
     label_name = ["label"]
 
     norms = ops.Normalize()
-    conts = ColumnSelector(cont_names) >> ops.FillMissing() >> ops.Clip(min_value=0) >> norms
-    cats = ColumnSelector(cat_names) >> ops.Categorify()
+    conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> norms
+    cats = cat_names >> ops.Categorify()
     workflow = nvt.Workflow(conts + cats + label_name)
 
     workflow.fit(dataset)

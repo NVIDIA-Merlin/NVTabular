@@ -84,6 +84,11 @@ class Operator:
         """
         return None
 
+    def __rrshift__(self, other):
+        import nvtabular
+
+        return nvtabular.ColumnSelector(other) >> self
+
     @property
     def label(self) -> str:
         return self.__class__.__name__

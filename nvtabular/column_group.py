@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import collections.abc
+import warnings
 
 from dask.core import flatten
 
@@ -29,7 +30,7 @@ class ColumnGroup:
 
     Parameters
     ----------
-    columns: list of (str or tuple of str)
+    columns: ColumnSelector or list of (str or tuple of str)
         The columns to select from the input Dataset. The elements of this list are strings
         indicating the column names in most cases, but can also be tuples of strings
         for feature crosses.
@@ -42,8 +43,16 @@ class ColumnGroup:
         self.kind = None
         self.dependencies = None
 
+        if isinstance(columns, list):
+            warnings.warn(
+                'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnSelector` '
+                "has been deprecated in NVTabular 21.09 and will be removed in a future version.",
+                FutureWarning,
+            )
+            columns = ColumnSelector(columns)
+
         if not isinstance(columns, ColumnSelector):
-            raise TypeError("The columns argument must be a ColumnSelector object")
+            raise TypeError("The columns argument must be a list or a ColumnSelector")
 
         self.columns = columns
 
