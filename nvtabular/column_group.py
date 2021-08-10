@@ -45,7 +45,7 @@ class ColumnGroup:
 
         if isinstance(columns, list):
             warnings.warn(
-                'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnSelector` '
+                'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnGroup` '
                 "has been deprecated in NVTabular 21.09 and will be removed in a future version.",
                 FutureWarning,
             )
