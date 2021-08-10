@@ -21,8 +21,8 @@ import nvtabular
 class ColumnSelector:
     """A ColumnSelector describes a group of columns to be transformed by Operators in a
     Workflow. Operators can be applied to the selected columns by shifting (>>) operators
-    on to the ColumnSelector, which returns a new ColumnGroup with the transformations applied.
-    This lets you define a graph of operations that makes up your Workflow.
+    on to the ColumnSelector, which returns a new WorkflowNode with the transformations
+    applied. This lets you define a graph of operations that makes up your Workflow.
 
     Parameters
     ----------
