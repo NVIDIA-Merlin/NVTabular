@@ -1,5 +1,5 @@
 ColumnSelector
-===========
+==============
 
 .. automodule:: nvtabular.column_selector
    :members:
