@@ -178,7 +178,7 @@ class Workflow:
         # an interim solution this gets us what we need.
         input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
         self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
-        output_dtypes = self.transform(dataset).to_ddf().head(1).dtypes
+        output_dtypes = self.transform(dataset).sample_dtypes()
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
