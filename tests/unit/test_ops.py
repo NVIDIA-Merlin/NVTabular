@@ -1137,6 +1137,10 @@ def test_groupby_op(keys, cpu):
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
+    if not cpu:
+        # Make sure we are capturing the list type in `output_dtypes`
+        assert processor.output_dtypes["x-list"] == cudf.core.dtypes.ListDtype("int64")
+
     # Check list-aggregation ordering
     x = new_gdf["x-list"]
     x = x.to_pandas() if hasattr(x, "to_pandas") else x
