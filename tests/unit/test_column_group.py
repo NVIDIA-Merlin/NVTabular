@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from nvtabular import ColumnGroup, Dataset, Workflow, dispatch
 from nvtabular.column_selector import ColumnSelector
@@ -27,11 +28,6 @@ def test_column_group_select():
 
 
 def test_nested_column_group():
-    # TODO: Sort out how to do nesting/sub-groups in the DSL for building up graphs
-    # This test appears to be the only place in the test suite that relies on that
-    # behavior. The key challenges here are that `>>`'ing a list on to an operator
-    # is no longer allowed, and that a `ColumnSelector` should never contain a
-    # `ColumnGroup`.
     df = dispatch._make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
@@ -61,10 +57,8 @@ def test_nested_column_group():
     assert geo_country_user[0] == geo_country_user[1]  # US / userA
     assert geo_country_user[2] != geo_country_user[0]  # same user but in canada
 
-    # TODO: Sort out how to check this since >>'ing a list in to an op no longer works
-
     # make sure we get an exception if we nest too deeply (can't handle arbitrarily deep
     # nested column groups - and the exceptions we would get in operators like Categorify
     # are super confusing for users)
-    # with pytest.raises(ValueError):
-    #   cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
+    with pytest.raises(ValueError):
+        cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")

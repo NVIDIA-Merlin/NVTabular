@@ -77,7 +77,6 @@ class ColumnGroup:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        # TODO: Make `Operator.output_column_names` return a ColumnSelector?
         col_selector = ColumnSelector(operator.output_column_names(self.columns))
 
         child = ColumnGroup(col_selector)
