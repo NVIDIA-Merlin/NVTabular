@@ -286,7 +286,7 @@ def _transform_tensors(input_tensors, column_group):
             if not column_group.inference_supports & kind:
                 tensors, kind = convert_format(tensors, kind, column_group.inference_supports)
 
-            tensors = column_group.op.transform(column_group.columns, tensors)
+            tensors = column_group.op.transform(column_group.input_column_names, tensors)
 
         except Exception:
             LOG.exception("Failed to transform operator %s", column_group.op)
