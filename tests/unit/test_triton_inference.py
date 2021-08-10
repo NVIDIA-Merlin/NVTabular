@@ -92,10 +92,8 @@ def _verify_workflow_on_tritonserver(
         response = client.infer(model_name, inputs, outputs=outputs)
 
         for col in workflow.output_dtypes.keys():
-            # print(col)
             features = response.as_numpy(col)
             triton_df = _make_df({col: features.reshape(features.shape[0])})
-            # print(triton_df)
             assert_eq(triton_df, local_df[[col]])
 
 
