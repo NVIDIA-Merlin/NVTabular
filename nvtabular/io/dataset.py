@@ -1060,13 +1060,11 @@ class Dataset:
         non-empty partitions are found, use the Dask dtypes.
         """
         _ddf = self.to_ddf()
-        output_dtypes = _ddf.dtypes
         for partition_index in range(_ddf.npartitions):
-            _partition = _ddf.partitions[partition_index]
-            if len(_partition):
-                output_dtypes = _partition.head(n).dtypes
-                break
-        return output_dtypes
+            _head = _ddf.partitions[partition_index].head(n)
+            if len(_head):
+                return _head.dtypes
+        return _ddf.dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):
