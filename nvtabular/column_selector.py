@@ -19,6 +19,22 @@ import nvtabular
 
 
 class ColumnSelector:
+    """A ColumnSelector describes a group of columns to be transformed by Operators in a
+    Workflow. Operators can be applied to the selected columns by shifting (>>) operators
+    on to the ColumnSelector, which returns a new ColumnGroup with the transformations applied.
+    This lets you define a graph of operations that makes up your Workflow.
+
+    Parameters
+    ----------
+    names: list of (str or tuple of str)
+        The columns to select from the input Dataset. The elements of this list are strings
+        indicating the column names in most cases, but can also be tuples of strings
+        for feature crosses.
+    subgroups, optional: list of ColumnSelector objects
+        This provides an alternate syntax for grouping column names together (instead
+        of nesting tuples inside the list of names)
+    """
+
     def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
         self._names = names if names is not None else []
         self.subgroups = subgroups if subgroups else []
