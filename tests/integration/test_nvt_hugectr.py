@@ -88,7 +88,7 @@ def test_training():
 
     # Perform ETL with NVTabular
     cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(cat_cache="device")
-    ratings = nvt.WorkflowNode(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    ratings = nvt.ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
 
     workflow = nvt.Workflow(output)
