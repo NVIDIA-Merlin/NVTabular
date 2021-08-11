@@ -66,7 +66,7 @@ def test_nested_workflow_node():
 
 def test_workflow_node_converts_lists():
     node = WorkflowNode([])
-    assert node.columns == ColumnSelector([])
+    assert node.selector == ColumnSelector([])
 
-    node.columns = ["a", "b", "c"]
-    assert node.columns == ColumnSelector(["a", "b", "c"])
+    node.selector = ["a", "b", "c"]
+    assert node.selector == ColumnSelector(["a", "b", "c"])
