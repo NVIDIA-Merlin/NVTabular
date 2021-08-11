@@ -209,7 +209,7 @@ struct CategorifyTransform {
     }
   }
 
-  py::object transform(py::list column_names, py::dict tensors) {
+  py::object transform(py::object column_selector, py::dict tensors) {
     for (auto it: tensors) {
       auto column_name = py::cast<std::string>(it.first);
       auto mapping = columns.find(column_name);

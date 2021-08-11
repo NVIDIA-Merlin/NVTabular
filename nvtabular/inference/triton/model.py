@@ -41,6 +41,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
@@ -286,7 +287,9 @@ def _transform_tensors(input_tensors, column_group):
             if not column_group.inference_supports & kind:
                 tensors, kind = convert_format(tensors, kind, column_group.inference_supports)
 
-            tensors = column_group.op.transform(column_group.input_column_names, tensors)
+            tensors = column_group.op.transform(
+                ColumnSelector(column_group.input_column_names), tensors
+            )
 
         except Exception:
             LOG.exception("Failed to transform operator %s", column_group.op)

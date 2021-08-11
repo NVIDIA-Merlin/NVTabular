@@ -35,6 +35,7 @@ from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
+from nvtabular.ops.operator import ColumnSelector
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 
@@ -150,7 +151,8 @@ class Workflow:
 
                 op = column_group.op
                 try:
-                    stats.append(op.fit(column_group.input_column_names, transformed_ddf))
+                    col_selector = ColumnSelector(column_group.input_column_names)
+                    stats.append(op.fit(col_selector, transformed_ddf))
                     ops.append(op)
                 except Exception:
                     LOG.exception("Failed to fit operator %s", column_group.op)
@@ -376,7 +378,8 @@ def _transform_partition(root_df, column_groups):
         # apply the operator if necessary
         if column_group.op:
             try:
-                df = column_group.op.transform(column_group.input_column_names, df)
+                col_selector = ColumnSelector(column_group.input_column_names)
+                df = column_group.op.transform(col_selector, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", column_group.op)
                 raise
