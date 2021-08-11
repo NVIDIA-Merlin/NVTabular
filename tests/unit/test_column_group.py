@@ -62,3 +62,13 @@ def test_nested_column_group():
     # are super confusing for users)
     with pytest.raises(ValueError):
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
+
+
+def test_column_group_converts_lists():
+    column_group = ColumnGroup([])
+
+    assert column_group.columns == ColumnSelector([])
+
+    column_group.columns = ["a", "b", "c"]
+
+    assert column_group.columns == ColumnSelector(["a", "b", "c"])

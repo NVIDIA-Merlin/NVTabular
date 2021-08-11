@@ -54,7 +54,18 @@ class ColumnGroup:
         if not isinstance(columns, ColumnSelector):
             raise TypeError("The columns argument must be a list or a ColumnSelector")
 
-        self.columns = columns
+        self._columns = columns
+
+    @property
+    def columns(self):
+        return self._columns
+
+    @columns.setter
+    def columns(self, cols):
+        if isinstance(cols, list):
+            cols = ColumnSelector(cols)
+
+        self._columns = cols
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
