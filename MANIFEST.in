@@ -1,2 +1,3 @@
 include versioneer.py
 include nvtabular/_version.py
+include requirements.txt
