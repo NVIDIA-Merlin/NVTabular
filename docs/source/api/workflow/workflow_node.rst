@@ -1,5 +1,5 @@
 WorkflowNode
-===========
+============
 
 .. automodule:: nvtabular.workflow.node
    :members:
