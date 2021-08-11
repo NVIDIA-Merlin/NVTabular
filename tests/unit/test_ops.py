@@ -26,7 +26,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnGroup, dispatch, ops
+from nvtabular import ColumnGroup, ColumnSelector, dispatch, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -369,7 +369,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # No Replacement from old API (skipped for other examples)
     substring = (
-        ColumnGroup(["name-cat", "name-string"])
+        ColumnSelector(["name-cat", "name-string"])
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
@@ -1123,7 +1123,7 @@ def test_groupby_op(keys, cpu):
     dataset = nvt.Dataset(ddf1, cpu=cpu)
 
     # Define Groupby Workflow
-    groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
+    groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
         sort_cols=["ts"],
         aggs={

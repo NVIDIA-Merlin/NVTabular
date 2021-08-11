@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from nvtabular import ColumnGroup, Dataset, Workflow, dispatch
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.ops import Categorify, Rename
 from tests.conftest import assert_eq
 
@@ -9,7 +10,7 @@ from tests.conftest import assert_eq
 def test_column_group_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
-    input_features = ColumnGroup(["a", "b", "c"])
+    input_features = ColumnGroup(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
     sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
     plus_one_features = input_features["b"] >> (lambda col: col + 1)
@@ -34,13 +35,12 @@ def test_nested_column_group():
         }
     )
 
-    country = (
-        ColumnGroup(["geo"]) >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
-    )
+    geo_selector = ColumnSelector(["geo"])
+    country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
-    cats = [country + "user"] + country + "user" >> Categorify(encode_type="combo")
+    cats = country + "user" + [country + "user"] >> Categorify(encode_type="combo")
 
     workflow = Workflow(cats)
     df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
@@ -62,3 +62,13 @@ def test_nested_column_group():
     # are super confusing for users)
     with pytest.raises(ValueError):
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
+
+
+def test_column_group_converts_lists():
+    column_group = ColumnGroup([])
+
+    assert column_group.columns == ColumnSelector([])
+
+    column_group.columns = ["a", "b", "c"]
+
+    assert column_group.columns == ColumnSelector(["a", "b", "c"])

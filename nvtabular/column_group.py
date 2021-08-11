@@ -14,9 +14,11 @@
 # limitations under the License.
 #
 import collections.abc
+import warnings
 
 from dask.core import flatten
 
+from nvtabular.column_selector import ColumnSelector
 from nvtabular.ops import LambdaOp, Operator
 
 
@@ -28,7 +30,7 @@ class ColumnGroup:
 
     Parameters
     ----------
-    columns: list of (str or tuple of str)
+    columns: ColumnSelector or list of (str or tuple of str)
         The columns to select from the input Dataset. The elements of this list are strings
         indicating the column names in most cases, but can also be tuples of strings
         for feature crosses.
@@ -41,29 +43,29 @@ class ColumnGroup:
         self.kind = None
         self.dependencies = None
 
-        if isinstance(columns, str):
-            columns = [columns]
+        if isinstance(columns, list):
+            warnings.warn(
+                'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnGroup` '
+                "has been deprecated in NVTabular 21.09 and will be removed in a future version.",
+                FutureWarning,
+            )
+            columns = ColumnSelector(columns)
 
-        # if any of the values we're passed are a columngroup
-        # we have to ourselves as a childnode in the graph.
-        if any(isinstance(col, ColumnGroup) for col in columns):
-            self.columns = []
-            self.kind = "[...]"
-            for col in columns:
-                if not isinstance(col, ColumnGroup):
-                    col = ColumnGroup(col)
-                else:
-                    # we can't handle nesting arbitrarily deep here
-                    # only accept non-nested (str) columns here
-                    if any(not isinstance(c, str) for c in col.columns):
-                        raise ValueError("Can't handle more than 1 level of nested columns")
+        if not isinstance(columns, ColumnSelector):
+            raise TypeError("The columns argument must be a list or a ColumnSelector")
 
-                col.children.append(self)
-                self.parents.append(col)
-                self.columns.append(tuple(col.columns))
+        self._columns = columns
 
-        else:
-            self.columns = [_convert_col(col) for col in columns]
+    @property
+    def columns(self):
+        return self._columns
+
+    @columns.setter
+    def columns(self, cols):
+        if isinstance(cols, list):
+            cols = ColumnSelector(cols)
+
+        self._columns = cols
 
     def __rshift__(self, operator):
         """Transforms this ColumnGroup by applying an Operator
@@ -86,7 +88,9 @@ class ColumnGroup:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        child = ColumnGroup(operator.output_column_names(self.columns))
+        col_selector = ColumnSelector(operator.output_column_names(self.columns))
+
+        child = ColumnGroup(col_selector)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
@@ -98,8 +102,12 @@ class ColumnGroup:
                 dependencies = [dependencies]
 
             for dependency in dependencies:
-                if not isinstance(dependency, ColumnGroup):
+                if isinstance(dependency, ColumnGroup):
+                    pass
+                elif isinstance(dependency, ColumnSelector):
                     dependency = ColumnGroup(dependency)
+                else:
+                    dependency = ColumnGroup(ColumnSelector(dependency))
                 dependency.children.append(child)
                 child.parents.append(dependency)
                 child.dependencies.add(dependency)
@@ -117,13 +125,25 @@ class ColumnGroup:
         -------
         ColumnGroup
         """
-        if isinstance(other, str):
-            other = ColumnGroup([other])
-        elif isinstance(other, collections.abc.Sequence):
+        if isinstance(other, ColumnGroup):
+            pass
+        elif isinstance(other, ColumnSelector):
             other = ColumnGroup(other)
+        elif isinstance(other, list):
+            new_selector = ColumnSelector([])
+            for element in other:
+                if isinstance(element, ColumnGroup):
+                    new_selector += ColumnSelector([], subgroups=[element.columns])
+                else:
+                    new_selector += ColumnSelector(element)
+            other = sum(other, ColumnGroup(ColumnSelector([])))
+            other.columns = new_selector
+        else:
+            other = ColumnGroup(ColumnSelector(other))
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.columns).intersection(other.columns)
+        overlap = set(self.columns.grouped_names).intersection(other.columns.grouped_names)
+
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
@@ -177,10 +197,8 @@ class ColumnGroup:
         -------
         ColumnGroup
         """
-        if isinstance(columns, str):
-            columns = [columns]
-
-        child = ColumnGroup(columns)
+        col_selector = ColumnSelector(columns)
+        child = ColumnGroup(col_selector)
         child.parents = [self]
         self.children.append(child)
         child.kind = str(columns)
@@ -198,8 +216,12 @@ class ColumnGroup:
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
         dependencies = self.dependencies or set()
+
         return [
-            col for parent in self.parents for col in parent.columns if parent not in dependencies
+            col
+            for parent in self.parents
+            for col in parent.columns.grouped_names
+            if parent not in dependencies
         ]
 
     @property
