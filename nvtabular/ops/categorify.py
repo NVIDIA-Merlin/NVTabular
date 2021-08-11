@@ -513,7 +513,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.columns))
+            output.update(current.op.get_embedding_sizes(current.selector))
         elif not current.op:
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes

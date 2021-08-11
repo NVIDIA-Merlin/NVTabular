@@ -30,42 +30,40 @@ class WorkflowNode:
 
     Parameters
     ----------
-    columns: ColumnSelector or list of (str or tuple of str)
-        The columns to select from the input Dataset. The elements of this list are strings
-        indicating the column names in most cases, but can also be tuples of strings
-        for feature crosses.
+    selector: ColumnSelector
+        Defines which columns to select from the input Dataset using column names and tags.
     """
 
-    def __init__(self, columns):
+    def __init__(self, selector):
         self.parents = []
         self.children = []
         self.op = None
         self.kind = None
         self.dependencies = None
 
-        if isinstance(columns, list):
+        if isinstance(selector, list):
             warnings.warn(
                 'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnGroup` '
                 "has been deprecated in NVTabular 21.09 and will be removed in a future version.",
                 FutureWarning,
             )
-            columns = ColumnSelector(columns)
+            selector = ColumnSelector(selector)
 
-        if not isinstance(columns, ColumnSelector):
-            raise TypeError("The columns argument must be a list or a ColumnSelector")
+        if not isinstance(selector, ColumnSelector):
+            raise TypeError("The selector argument must be a list or a ColumnSelector")
 
-        self._columns = columns
+        self._selector = selector
 
     @property
-    def columns(self):
-        return self._columns
+    def selector(self):
+        return self._selector
 
-    @columns.setter
-    def columns(self, cols):
-        if isinstance(cols, list):
-            cols = ColumnSelector(cols)
+    @selector.setter
+    def selector(self, sel):
+        if isinstance(sel, list):
+            sel = ColumnSelector(sel)
 
-        self._columns = cols
+        self._selector = sel
 
     def __rshift__(self, operator):
         """Transforms this WorkflowNode by applying an Operator
@@ -88,7 +86,7 @@ class WorkflowNode:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        col_selector = ColumnSelector(operator.output_column_names(self.columns))
+        col_selector = ColumnSelector(operator.output_column_names(self.selector))
 
         child = WorkflowNode(col_selector)
         child.parents = [self]
@@ -133,21 +131,21 @@ class WorkflowNode:
             new_selector = ColumnSelector([])
             for element in other:
                 if isinstance(element, WorkflowNode):
-                    new_selector += ColumnSelector([], subgroups=[element.columns])
+                    new_selector += ColumnSelector([], subgroups=[element.selector])
                 else:
                     new_selector += ColumnSelector(element)
             other = sum(other, WorkflowNode(ColumnSelector([])))
-            other.columns = new_selector
+            other.selector = new_selector
         else:
             other = WorkflowNode(ColumnSelector(other))
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.columns.grouped_names).intersection(other.columns.grouped_names)
+        overlap = set(self.selector.grouped_names).intersection(other.selector.grouped_names)
 
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
-        child = WorkflowNode(self.columns + other.columns)
+        child = WorkflowNode(self.selector + other.selector)
         child.parents = [self, other]
         child.kind = "+"
         self.children.append(child)
@@ -170,14 +168,14 @@ class WorkflowNode:
         WorkflowNode
         """
         if isinstance(other, WorkflowNode):
-            to_remove = set(other.columns)
+            to_remove = set(other.selector)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
             raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.columns if c not in to_remove]
+        new_columns = [c for c in self.selector if c not in to_remove]
         child = WorkflowNode(new_columns)
         child.parents = [self]
         self.children.append(child)
@@ -210,7 +208,7 @@ class WorkflowNode:
 
     @property
     def flattened_columns(self):
-        return list(flatten(self.columns, container=tuple))
+        return list(flatten(self.selector, container=tuple))
 
     @property
     def input_column_names(self):
@@ -220,7 +218,7 @@ class WorkflowNode:
         return [
             col
             for parent in self.parents
-            for col in parent.columns.grouped_names
+            for col in parent.selector.grouped_names
             if parent not in dependencies
         ]
 
@@ -237,8 +235,8 @@ class WorkflowNode:
 
     @property
     def _cols_repr(self):
-        cols = ", ".join(map(str, self.columns[:3]))
-        if len(self.columns) > 3:
+        cols = ", ".join(map(str, self.selector[:3]))
+        if len(self.selector) > 3:
             cols += "..."
         return cols
 

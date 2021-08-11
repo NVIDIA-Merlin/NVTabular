@@ -639,11 +639,11 @@ def _remove_columns(workflow, to_remove):
     return workflow
 
 
-def _remove_columns_from_workflow_node(cg, to_remove):
-    cg.columns = [col for col in cg.columns if col not in to_remove]
-    parents = [_remove_columns_from_workflow_node(parent, to_remove) for parent in cg.parents]
-    cg.parents = [p for p in parents if p.columns]
-    return cg
+def _remove_columns_from_workflow_node(wfn, to_remove):
+    wfn.selector = [col for col in wfn.selector if col not in to_remove]
+    parents = [_remove_columns_from_workflow_node(parent, to_remove) for parent in wfn.parents]
+    wfn.parents = [p for p in parents if p.selector]
+    return wfn
 
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):

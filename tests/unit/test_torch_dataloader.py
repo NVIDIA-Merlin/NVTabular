@@ -168,7 +168,7 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
     graph = sum(features, nvt.WorkflowNode(label_name))
-    if not graph.columns:
+    if not graph.selector:
         # if we don't have conts/cats/labels we're done
         return
 
