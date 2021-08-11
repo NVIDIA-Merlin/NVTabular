@@ -60,7 +60,7 @@ class TritonPythonModel:
 
         if workflow_node.op:
             inference_op = workflow_node.op.inference_initialize(
-                workflow_node.columns, self.model_config
+                workflow_node.selector, self.model_config
             )
             if inference_op:
                 workflow_node.op = inference_op
@@ -280,7 +280,7 @@ def _transform_tensors(input_tensors, workflow_node):
                 tensors = _concat_tensors([tensors, transformed], kind)
 
     else:
-        tensors = {c: input_tensors[c] for c in workflow_node.columns}
+        tensors = {c: input_tensors[c] for c in workflow_node.selector}
         kind = Supports.CPU_DICT_ARRAY
 
     if workflow_node.op:
