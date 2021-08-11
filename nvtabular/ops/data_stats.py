@@ -19,7 +19,7 @@ import numpy as np
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -31,17 +31,17 @@ class DataStats(StatOperator):
         self.col_dtypes = []
         self.output = {}
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         return df
 
     @annotate("DataStats_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         dask_stats = {}
 
         ddf_dtypes = ddf.head(1)
 
         # For each column, calculate the stats
-        for col in columns:
+        for col in col_selector:
             dask_stats[col] = {}
             self.col_names.append(col)
             # Get dtype for all
@@ -74,7 +74,7 @@ class DataStats(StatOperator):
             # Get Percentage of NaNs for all
             dask_stats[col]["per_nan"] = 100 * (1 - ddf[col].count() / len(ddf[col]))
 
-        return dask_stats, _custom_moments(ddf[columns])
+        return dask_stats, _custom_moments(ddf[col_selector.names])
 
     def fit_finalize(self, stats):
         dask_stats, moments = stats
