@@ -87,7 +87,7 @@ def parse_requirements(filename):
     return [line for line in lineiter if line and not line.startswith("#")]
 
 
-install_reqs = parse_requirements("./requirements.txt") if not os.getenv("CONDA_BUILD") else None
+install_reqs = parse_requirements("./requirements.txt")
 
 setup(
     name="nvtabular",
