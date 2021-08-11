@@ -374,7 +374,7 @@ def test_multifile_parquet(tmpdir, dataset, df, engine, num_io_threads, nfiles, 
     cont_names = ["x", "y"]
     label_names = ["label"]
     columns = cat_names + cont_names + label_names
-    workflow = nvt.Workflow(nvt.ColumnGroup(columns))
+    workflow = nvt.Workflow(nvt.WorkflowNode(columns))
 
     outdir = str(tmpdir.mkdir("out"))
     transformed = workflow.transform(nvt.Dataset(dask_cudf.from_cudf(df, 2)))

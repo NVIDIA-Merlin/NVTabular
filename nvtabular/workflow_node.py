@@ -22,10 +22,10 @@ from nvtabular.column_selector import ColumnSelector
 from nvtabular.ops import LambdaOp, Operator
 
 
-class ColumnGroup:
-    """A ColumnGroup is a group of columns that you want to apply the same transformations to.
-    ColumnGroup's can be transformed by shifting operators on to them, which returns a new
-    ColumnGroup with the transformations applied. This lets you define a graph of operations
+class WorkflowNode:
+    """A WorkflowNode is a group of columns that you want to apply the same transformations to.
+    WorkflowNode's can be transformed by shifting operators on to them, which returns a new
+    WorkflowNode with the transformations applied. This lets you define a graph of operations
     that makes up your workflow
 
     Parameters
@@ -68,7 +68,7 @@ class ColumnGroup:
         self._columns = cols
 
     def __rshift__(self, operator):
-        """Transforms this ColumnGroup by applying an Operator
+        """Transforms this WorkflowNode by applying an Operator
 
         Parameters
         -----------
@@ -76,7 +76,7 @@ class ColumnGroup:
 
         Returns
         -------
-        ColumnGroup
+        WorkflowNode
         """
         if isinstance(operator, type) and issubclass(operator, Operator):
             # handle case where an operator class is passed
@@ -90,7 +90,7 @@ class ColumnGroup:
 
         col_selector = ColumnSelector(operator.output_column_names(self.columns))
 
-        child = ColumnGroup(col_selector)
+        child = WorkflowNode(col_selector)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
@@ -102,12 +102,12 @@ class ColumnGroup:
                 dependencies = [dependencies]
 
             for dependency in dependencies:
-                if isinstance(dependency, ColumnGroup):
+                if isinstance(dependency, WorkflowNode):
                     pass
                 elif isinstance(dependency, ColumnSelector):
-                    dependency = ColumnGroup(dependency)
+                    dependency = WorkflowNode(dependency)
                 else:
-                    dependency = ColumnGroup(ColumnSelector(dependency))
+                    dependency = WorkflowNode(ColumnSelector(dependency))
                 dependency.children.append(child)
                 child.parents.append(dependency)
                 child.dependencies.add(dependency)
@@ -115,31 +115,31 @@ class ColumnGroup:
         return child
 
     def __add__(self, other):
-        """Adds columns from this ColumnGroup with another to return a new ColumnGroup
+        """Adds columns from this WorkflowNode with another to return a new WorkflowNode
 
         Parameters
         -----------
-        other: ColumnGroup or str or list of str
+        other: WorkflowNode or str or list of str
 
         Returns
         -------
-        ColumnGroup
+        WorkflowNode
         """
-        if isinstance(other, ColumnGroup):
+        if isinstance(other, WorkflowNode):
             pass
         elif isinstance(other, ColumnSelector):
-            other = ColumnGroup(other)
+            other = WorkflowNode(other)
         elif isinstance(other, list):
             new_selector = ColumnSelector([])
             for element in other:
-                if isinstance(element, ColumnGroup):
+                if isinstance(element, WorkflowNode):
                     new_selector += ColumnSelector([], subgroups=[element.columns])
                 else:
                     new_selector += ColumnSelector(element)
-            other = sum(other, ColumnGroup(ColumnSelector([])))
+            other = sum(other, WorkflowNode(ColumnSelector([])))
             other.columns = new_selector
         else:
-            other = ColumnGroup(ColumnSelector(other))
+            other = WorkflowNode(ColumnSelector(other))
 
         # check if there are any columns with the same name in both column groups
         overlap = set(self.columns.grouped_names).intersection(other.columns.grouped_names)
@@ -147,45 +147,45 @@ class ColumnGroup:
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
-        child = ColumnGroup(self.columns + other.columns)
+        child = WorkflowNode(self.columns + other.columns)
         child.parents = [self, other]
         child.kind = "+"
         self.children.append(child)
         other.children.append(child)
         return child
 
-    # handle the "column_name" + ColumnGroup case
+    # handle the "column_name" + WorkflowNode case
     __radd__ = __add__
 
     def __sub__(self, other):
-        """Removes columns from this ColumnGroup with another to return a new ColumnGroup
+        """Removes columns from this WorkflowNode with another to return a new WorkflowNode
 
         Parameters
         -----------
-        other: ColumnGroup or str or list of str
+        other: WorkflowNode or str or list of str
             Columns to remove
 
         Returns
         -------
-        ColumnGroup
+        WorkflowNode
         """
-        if isinstance(other, ColumnGroup):
+        if isinstance(other, WorkflowNode):
             to_remove = set(other.columns)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
-            raise ValueError(f"Expected ColumnGroup, str, or list of str. Got {other.__class__}")
+            raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
         new_columns = [c for c in self.columns if c not in to_remove]
-        child = ColumnGroup(new_columns)
+        child = WorkflowNode(new_columns)
         child.parents = [self]
         self.children.append(child)
         child.kind = f"- {list(to_remove)}"
         return child
 
     def __getitem__(self, columns):
-        """Selects certain columns from this ColumnGroup, and returns a new Columngroup with only
+        """Selects certain columns from this WorkflowNode, and returns a new Columngroup with only
         those columns
 
         Parameters
@@ -195,10 +195,10 @@ class ColumnGroup:
 
         Returns
         -------
-        ColumnGroup
+        WorkflowNode
         """
         col_selector = ColumnSelector(columns)
-        child = ColumnGroup(col_selector)
+        child = WorkflowNode(col_selector)
         child.parents = [self]
         self.children.append(child)
         child.kind = str(columns)
@@ -206,7 +206,7 @@ class ColumnGroup:
 
     def __repr__(self):
         output = " output" if not self.children else ""
-        return f"<ColumnGroup {self.label}{output}>"
+        return f"<WorkflowNode {self.label}{output}>"
 
     @property
     def flattened_columns(self):
@@ -257,16 +257,16 @@ def iter_nodes(nodes):
             queue.append(parent)
 
 
-def _to_graphviz(column_group):
-    """Converts a ColumnGroup to a GraphViz DiGraph object useful for display in notebooks"""
+def _to_graphviz(workflow_node):
+    """Converts a WorkflowNode to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
-    column_group = _merge_add_nodes(column_group)
+    workflow_node = _merge_add_nodes(workflow_node)
     graph = Digraph()
 
     # get all the nodes from parents of this columngroup
     # and add edges between each of them
-    allnodes = list(set(iter_nodes([column_group])))
+    allnodes = list(set(iter_nodes([workflow_node])))
     node_ids = {v: str(k) for k, v in enumerate(allnodes)}
     for node, nodeid in node_ids.items():
         graph.node(nodeid, node.label)
@@ -275,8 +275,8 @@ def _to_graphviz(column_group):
 
     # add a single 'output' node representing the final state
     output_node_id = str(len(allnodes))
-    graph.node(output_node_id, f"output cols=[{column_group._cols_repr}]")
-    graph.edge(node_ids[column_group], output_node_id)
+    graph.node(output_node_id, f"output cols=[{workflow_node._cols_repr}]")
+    graph.edge(node_ids[workflow_node], output_node_id)
     return graph
 
 
@@ -320,4 +320,4 @@ def _convert_col(col):
     elif isinstance(col, list):
         return tuple(col)
     else:
-        raise ValueError(f"Invalid column value for ColumnGroup: {col}")
+        raise ValueError(f"Invalid column value for WorkflowNode: {col}")
