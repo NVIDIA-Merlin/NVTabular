@@ -379,7 +379,7 @@ class Workflow:
 
     @property
     def _input_nodes(self):
-        return set(node for node in iter_nodes([self.workflow_node]) if not node.parents)
+        return set(node for node in iter_nodes([self.output_node]) if not node.parents)
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
