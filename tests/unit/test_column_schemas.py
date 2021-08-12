@@ -90,7 +90,6 @@ def test_dataset_schema_select_by_name():
 
 def test_dataset_schemas_can_be_added():
     ds1_schema = DatasetSchema([ColumnSchema("col1"), ColumnSchema("col2")])
-
     ds2_schema = DatasetSchema([ColumnSchema("col3"), ColumnSchema("col4")])
 
     result = ds1_schema + ds2_schema
@@ -105,3 +104,10 @@ def test_dataset_schemas_can_be_added():
         ds1_schema + ds1_schema  # pylint: disable=pointless-statement
 
     assert "Overlapping column schemas" in str(exception_info.value)
+
+
+def test_construct_dataset_schema_with_column_names():
+    ds_schema = DatasetSchema(["x", "y", "z"])
+    expected = DatasetSchema([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
+
+    assert ds_schema == expected

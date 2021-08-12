@@ -50,6 +50,8 @@ class DatasetSchema:
         elif isinstance(column_schemas, list):
             self.column_schemas = {}
             for column_schema in column_schemas:
+                if isinstance(column_schema, str):
+                    column_schema = ColumnSchema(column_schema)
                 self.column_schemas[column_schema.name] = column_schema
         else:
             raise TypeError("The `column_schemas` parameter must be a list or dict.")
