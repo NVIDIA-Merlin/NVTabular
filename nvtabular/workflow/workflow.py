@@ -365,13 +365,13 @@ class Workflow:
             raise ValueError("Input columns can't be computed until the input schema is provided.")
 
         selectors = self._input_selectors
-        input_columns = set()
+        input_columns = {}
         for selector in selectors:
             for column_name in selector.names:
                 col_schema = self.input_schema.column_schemas[column_name]
-                input_columns.add(col_schema)
+                input_columns[column_name] = col_schema
 
-        return list(input_columns)
+        return list(input_columns.values())
 
     @property
     def _input_selectors(self):
