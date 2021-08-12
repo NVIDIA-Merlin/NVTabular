@@ -28,53 +28,28 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import ColumnSelector, Dataset, Workflow, ops
-from nvtabular.columns.schema import ColumnSchema, DatasetSchema
+from nvtabular.columns.schema import DatasetSchema
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
+# TODO: Fix selectors
+# TODO: Convert + to an actual Operator
 def test_workflow_fit_schema():
-    cont_names = ["x", "y", "id"]
-
-    # TODO: Convert + to an actual Operator
-
-    keys = ["x", "id"]
+    schema = DatasetSchema(["x", "y", "id"])
 
     cont_features = (
-        ColumnSelector(cont_names)
+        ColumnSelector(schema.column_names)
         >> ops.FillMissing()
         >> ops.Clip(min_value=0)
         >> ops.LogOp
         >> ops.Normalize()
-        >> ops.Groupby(
-            groupby_cols=keys,
-            aggs={
-                "x": ["list", "sum"],
-                "id": ["first", "last"],
-            },
-            name_sep="-",
-        )
+        >> ops.Rename(postfix="_renamed")
     )
 
     workflow = Workflow(cont_features)
-
-    schema = DatasetSchema(
-        [
-            ColumnSchema("x"),
-            ColumnSchema("y"),
-            ColumnSchema("id"),
-        ]
-    )
-
     workflow.fit_schema(schema)
 
-    expected = DatasetSchema(
-        [
-            ColumnSchema("x"),
-            ColumnSchema("id"),
-        ]
-    )
-
-    assert workflow.output_schema == expected
+    assert workflow.output_schema.column_names == ["x_renamed", "y_renamed", "id_renamed"]
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
