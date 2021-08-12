@@ -31,7 +31,9 @@ Dataset = io.dataset.Dataset
 
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to
 # select columns at the beginning of an operator chain don't break
-ColumnGroup = ColumnSelector
+def ColumnGroup(columns):
+   warnings.warn("ColumnGroup is deprecated, use ColumnSelector instead", DeprecationWarning)
+   return ColumnSelector(columns)
 
 
 __all__ = ["Workflow", "Dataset", "WorkflowNode", "ColumnGroup", "ColumnSelector"]
