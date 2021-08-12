@@ -3,8 +3,13 @@ import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
 from nvtabular.columns import ColumnSelector
-from nvtabular.ops import Categorify, Rename
+from nvtabular.ops import Categorify, Operator, Rename
 from tests.conftest import assert_eq
+
+
+def test_workflow_node_rshift_doesnt_set_selector():
+    node = ColumnSelector(["a", "b", "c"]) >> Operator()
+    assert node.selector is None
 
 
 def test_workflow_node_select():

@@ -34,7 +34,7 @@ class WorkflowNode:
         Defines which columns to select from the input Dataset using column names and tags.
     """
 
-    def __init__(self, selector):
+    def __init__(self, selector=None):
         self.parents = []
         self.children = []
         self.op = None
@@ -97,9 +97,7 @@ class WorkflowNode:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        col_selector = ColumnSelector(operator.output_column_names(self.selector))
-
-        child = WorkflowNode(col_selector)
+        child = WorkflowNode()
         child.parents = [self]
         self.children.append(child)
         child.op = operator
