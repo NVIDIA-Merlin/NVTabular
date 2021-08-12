@@ -42,7 +42,7 @@ class ColumnSchema:
 class DatasetSchema:
     """A collection of column schemas for a dataframe."""
 
-    def __init__(self, column_schemas):
+    def __init__(self, column_schemas=None):
         column_schemas = column_schemas or {}
 
         if isinstance(column_schemas, dict):
@@ -72,3 +72,23 @@ class DatasetSchema:
 
         selected_schemas = {key: self.column_schemas[key] for key in names}
         return DatasetSchema(selected_schemas)
+
+    def __eq__(self, other):
+        if not isinstance(other, DatasetSchema):
+            return False
+
+        if len(self.column_schemas) != len(other.column_schemas):
+            return False
+
+        return all(column in other.column_schemas for column in self.column_schemas)
+
+    def __add__(self, other):
+        if not isinstance(other, DatasetSchema):
+            raise TypeError(f"unsupported operand type(s) for +: 'DatasetSchema' and {type(other)}")
+
+        overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
+
+        if overlap:
+            raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
+
+        return DatasetSchema({**self.column_schemas, **other.column_schemas})

@@ -86,3 +86,22 @@ def test_dataset_schema_select_by_name():
         ds_schema.select_by_name("col3")
 
     assert "col3" in str(exception_info.value)
+
+
+def test_dataset_schemas_can_be_added():
+    ds1_schema = DatasetSchema([ColumnSchema("col1"), ColumnSchema("col2")])
+
+    ds2_schema = DatasetSchema([ColumnSchema("col3"), ColumnSchema("col4")])
+
+    result = ds1_schema + ds2_schema
+
+    expected = DatasetSchema(
+        [ColumnSchema("col1"), ColumnSchema("col2"), ColumnSchema("col3"), ColumnSchema("col4")]
+    )
+
+    assert result == expected
+
+    with pytest.raises(ValueError) as exception_info:
+        ds1_schema + ds1_schema  # pylint: disable=pointless-statement
+
+    assert "Overlapping column schemas" in str(exception_info.value)
