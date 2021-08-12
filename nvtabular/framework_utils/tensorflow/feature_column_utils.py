@@ -20,7 +20,7 @@ import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 import nvtabular as nvt
-from nvtabular.column_selector import ColumnSelector
+from nvtabular.columns import ColumnSelector
 from nvtabular.ops import Bucketize, Categorify, HashBucket, HashedCross, Rename
 
 

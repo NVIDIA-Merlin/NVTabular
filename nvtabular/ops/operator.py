@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
-from nvtabular.column_selector import ColumnSelector
+from nvtabular.columns import ColumnSelector
 from nvtabular.dispatch import DataFrameType
 
 

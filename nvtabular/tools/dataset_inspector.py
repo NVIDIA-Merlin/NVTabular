@@ -19,7 +19,7 @@ import json
 import fsspec
 import numpy as np
 
-from nvtabular.column_selector import ColumnSelector
+from nvtabular.columns import ColumnSelector
 from nvtabular.ops import DataStats
 from nvtabular.workflow import Workflow
 
