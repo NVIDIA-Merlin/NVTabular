@@ -46,7 +46,7 @@ class JoinGroupby(StatOperator):
 
     Parameters
     -----------
-    cont_cols : list of str or ColumnGroup
+    cont_cols : list of str or WorkflowNode
         The continuous columns to calculate statistics for
         (for each unique group in each column in `columns`).
     stats : list of str, default []
@@ -87,16 +87,16 @@ class JoinGroupby(StatOperator):
     ):
         super().__init__()
 
-        if isinstance(cont_cols, nvt.ColumnGroup):
+        if isinstance(cont_cols, nvt.WorkflowNode):
             self.cont_cols = cont_cols
         elif isinstance(cont_cols, ColumnSelector):
-            self.cont_cols = nvt.ColumnGroup(cont_cols)
+            self.cont_cols = nvt.WorkflowNode(cont_cols)
         else:
-            self.cont_cols = nvt.ColumnGroup(ColumnSelector(cont_cols))
+            self.cont_cols = nvt.WorkflowNode(ColumnSelector(cont_cols))
 
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_names = self.cont_cols.columns
+        self.cont_names = self.cont_cols.selector
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"

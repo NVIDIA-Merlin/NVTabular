@@ -167,12 +167,12 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
         features.append(cat_names + mh_names >> ops.Categorify())
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
-    graph = sum(features, nvt.ColumnGroup(label_name))
-    if not graph.columns:
+    graph = sum(features, nvt.WorkflowNode(label_name))
+    if not graph.selector:
         # if we don't have conts/cats/labels we're done
         return
 
-    processor = nvt.Workflow(sum(features, nvt.ColumnGroup(label_name)))
+    processor = nvt.Workflow(sum(features, nvt.WorkflowNode(label_name)))
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)

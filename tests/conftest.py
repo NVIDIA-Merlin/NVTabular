@@ -266,7 +266,7 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
     # figure out the categorify node from the workflow graph
     cats = [
         cg.op
-        for cg in nvtabular.column_group.iter_nodes([workflow.column_group])
+        for cg in nvtabular.workflow.node.iter_nodes([workflow.output_node])
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:

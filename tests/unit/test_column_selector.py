@@ -15,8 +15,8 @@
 #
 import pytest
 
-from nvtabular.column_group import ColumnGroup
 from nvtabular.column_selector import ColumnSelector
+from nvtabular.workflow import WorkflowNode
 
 
 def test_constructor_works_with_single_strings_and_lists():
@@ -51,18 +51,18 @@ def test_constructor_too_many_level():
     assert "Too many" in str(exc_info.value)
 
 
-def test_constructor_rejects_column_groups():
-    group = ColumnGroup(ColumnSelector(["a"]))
+def test_constructor_rejects_workflow_nodes():
+    group = WorkflowNode(ColumnSelector(["a"]))
 
     with pytest.raises(TypeError) as exception_info:
         ColumnSelector(group)
 
-    assert "ColumnGroup" in str(exception_info.value)
+    assert "WorkflowNode" in str(exception_info.value)
 
     with pytest.raises(ValueError) as exception_info:
         ColumnSelector(["a", "b", group])
 
-    assert "ColumnGroup" in str(exception_info.value)
+    assert "WorkflowNode" in str(exception_info.value)
 
 
 def test_constructor_creates_subgroups_from_nesting():

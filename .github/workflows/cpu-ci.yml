@@ -45,4 +45,4 @@ jobs:
         python setup.py develop --user
     - name: Run unittests
       run: |
-        python -m pytest -rxs tests/unit/test_cpu_workflow.py tests/unit/test_column_group.py tests/unit/test_ops.py tests/unit/test_triton_inference.py
+        python -m pytest -rxs tests/unit/test_cpu_workflow.py tests/unit/test_workflow_node.py tests/unit/test_ops.py tests/unit/test_triton_inference.py

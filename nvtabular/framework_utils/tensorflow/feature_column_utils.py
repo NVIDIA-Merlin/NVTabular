@@ -263,7 +263,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                         else:
                             raise RuntimeError(f"Unknown bucket column {key}")
                     else:
-                        cross_columns.append(nvt.ColumnGroup(key))
+                        cross_columns.append(nvt.WorkflowNode(key))
 
                 features += sum(cross_columns[1:], cross_columns[0]) >> HashedCross(
                     hash_bucket_size

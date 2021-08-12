@@ -11,7 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular import ColumnGroup
+from nvtabular import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.ops.operator import Supports
 from tests.conftest import assert_eq
@@ -337,7 +337,7 @@ def test_groupby_model(tmpdir, output_model):
         }
     )
 
-    groupby_features = ColumnGroup(["id", "ts", "x", "y"]) >> ops.Groupby(
+    groupby_features = ColumnSelector(["id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=["id"],
         sort_cols=["ts"],
         aggs={

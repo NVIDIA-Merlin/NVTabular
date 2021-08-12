@@ -103,7 +103,7 @@ def test_nvt_tf_movielens_inference():
 
     sample_data = cudf.read_parquet(data_path, nrows=TEST_N_ROWS)
     sample_data.to_csv(os.path.join(output_dir, workflow_output_test_file_name))
-    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
+    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.output_node])
     sample_data_trans.to_parquet(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
     CATEGORICAL_COLUMNS = ["movieId", "userId"]  # Single-hot
@@ -201,7 +201,7 @@ def test_nvt_tf_rossmann_inference():
 
     sample_data = cudf.read_csv(data_path, nrows=TEST_N_ROWS)
     sample_data.to_csv(os.path.join(output_dir, workflow_output_test_file_name))
-    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
+    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.output_node])
     sample_data_trans.to_parquet(os.path.join(output_dir, workflow_output_test_trans_file_name))
 
     CATEGORICAL_COLUMNS = [
