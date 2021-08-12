@@ -42,6 +42,9 @@ class WorkflowNode:
         self.dependencies = None
         self.input_schema = None
         self.output_schema = None
+        self._selector = None
+
+        selector = selector or ColumnSelector()
 
         if isinstance(selector, list):
             warnings.warn(

@@ -17,6 +17,7 @@ import pytest
 
 from nvtabular.columns import ColumnSelector
 from nvtabular.columns.schema import ColumnSchema, DatasetSchema
+from nvtabular.ops import Operator
 from nvtabular.workflow import WorkflowNode
 
 
