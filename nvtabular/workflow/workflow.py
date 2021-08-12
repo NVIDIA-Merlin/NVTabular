@@ -364,7 +364,7 @@ class Workflow:
         if not self.input_schema:
             raise ValueError("Input columns can't be computed until the input schema is provided.")
 
-        selectors = self._input_selectors()
+        selectors = self._input_selectors
         input_columns = set()
         for selector in selectors:
             for column_name in selector.names:
