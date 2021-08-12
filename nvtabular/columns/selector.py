@@ -16,6 +16,7 @@
 from typing import List
 
 import nvtabular
+from nvtabular.columns.schema import DatasetSchema
 
 
 class ColumnSelector:
@@ -73,6 +74,9 @@ class ColumnSelector:
         for subgroup in self.subgroups:
             names.append(tuple(subgroup.names))
         return names
+
+    def apply(self, schema: DatasetSchema):
+        return schema.select_by_name(self.names)
 
     def _nested_check(self, nests=0):
         if nests > 1:
