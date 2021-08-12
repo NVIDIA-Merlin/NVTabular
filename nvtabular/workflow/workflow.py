@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
 
+from nvtabular.columns.schema import ColumnSchema, DatasetSchema
+
 try:
     import cudf
 except ImportError:
@@ -78,6 +80,7 @@ class Workflow:
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
         self.output_node = _merge_add_nodes(output_node)
         self.client = client
+        self.input_schema = None
         self.input_dtypes = None
         self.output_dtypes = None
 
@@ -108,7 +111,7 @@ class Workflow:
         Dataset
         """
         self._clear_worker_cache()
-        ddf = dataset.to_ddf(columns=self._input_columns())
+        ddf = dataset.to_ddf(columns=self._input_columns)
         return Dataset(
             _transform_ddf(ddf, self.output_node, self.output_dtypes),
             client=self.client,
@@ -116,7 +119,46 @@ class Workflow:
             base_dataset=dataset.base_dataset,
         )
 
-    def fit(self, dataset: Dataset):
+    @property
+    def output_schema(self):
+        return self.output_node.output_schema
+
+    def fit_schema(self, input_schema: DatasetSchema):
+        schemaless_nodes = {
+            node: _get_schemaless_nodes(node.parents)
+            for node in _get_schemaless_nodes([self.output_node])
+        }
+
+        while schemaless_nodes:
+            # get all the Operators with no outstanding dependencies
+            current_phase = [
+                node for node, dependencies in schemaless_nodes.items() if not dependencies
+            ]
+            if not current_phase:
+                # this shouldn't happen, but lets not infinite loop just in case
+                raise RuntimeError("failed to find dependency-free Operator to compute schema for")
+
+            processed_nodes = []
+            for node in current_phase:
+                if not node.parents:
+                    node.compute_schemas(input_schema)
+                else:
+                    combined_schema = sum(
+                        [parent.output_schema for parent in node.parents if parent.output_schema],
+                        DatasetSchema(),
+                    )
+                    node.compute_schemas(combined_schema)
+
+                processed_nodes.append(node)
+
+            # Remove all the operators we processed in this phase, and remove
+            # from the dependencies of other ops too
+            for schemaless_node in current_phase:
+                schemaless_nodes.pop(schemaless_node)
+            for dependencies in schemaless_nodes.values():
+                dependencies.difference_update(current_phase)
+
+    def fit(self, dataset: Dataset, input_schema: DatasetSchema = None):
         """Calculates statistics for this workflow on the input dataset
 
         Parameters
@@ -126,7 +168,26 @@ class Workflow:
             data should be the training dataset only.
         """
         self._clear_worker_cache()
-        ddf = dataset.to_ddf(columns=self._input_columns())
+
+        # Compute which input columns we need to load from the source dataset
+        if input_schema:
+            # TODO: Validate that the dataset matches the schema (if present)
+            self.input_schema = input_schema
+            input_columns = self._input_columns
+        else:
+            input_columns = None
+
+        ddf = dataset.to_ddf(columns=input_columns)
+
+        # Create a schema for the dataset if none was supplied
+        # TODO: Extract this to the dataset __init__ method?
+        if not input_schema:
+            col_schemas = []
+            for column_name in ddf.columns:
+                col_schemas.append(ColumnSchema(column_name))
+            self.input_schema = DatasetSchema(col_schemas)
+
+        self.fit_schema(self.input_schema)
 
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
@@ -176,7 +237,7 @@ class Workflow:
         # hack: store input/output dtypes here. We should have complete dtype
         # information for each operator (like we do for column names), but as
         # an interim solution this gets us what we need.
-        input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
+        input_dtypes = dataset.to_ddf()[self._input_columns].dtypes
         self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         output_dtypes = self.transform(dataset).sample_dtypes()
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
@@ -297,9 +358,27 @@ class Workflow:
         for stat in _get_stat_ops([self.output_node]):
             stat.op.clear()
 
+    @property
     def _input_columns(self):
-        input_nodes = set(node for node in iter_nodes([self.output_node]) if not node.parents)
-        return list(set(col for node in input_nodes for col in node.flattened_columns))
+        if not self.input_schema:
+            raise ValueError("Input columns can't be computed until the input schema is provided.")
+
+        selectors = self._input_selectors()
+        input_columns = set()
+        for selector in selectors:
+            for column_name in selector.names:
+                col_schema = self.input_schema[column_name]
+                input_columns.add(col_schema)
+
+        return list(input_columns)
+
+    @property
+    def _input_selectors(self):
+        return [node.selector for node in self._input_nodes]
+
+    @property
+    def _input_nodes(self):
+        return set(node for node in iter_nodes([self.workflow_node]) if not node.parents)
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
@@ -345,6 +424,10 @@ def _transform_ddf(ddf, workflow_nodes, meta=None):
 
 def _get_stat_ops(nodes):
     return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
+
+
+def _get_schemaless_nodes(nodes):
+    return set(node for node in iter_nodes(nodes) if node.input_schema is None)
 
 
 def _get_unique(cols):

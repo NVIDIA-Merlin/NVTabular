@@ -16,6 +16,7 @@
 import pytest
 
 from nvtabular.columns import ColumnSelector
+from nvtabular.columns.schema import ColumnSchema, DatasetSchema
 from nvtabular.workflow import WorkflowNode
 
 
@@ -127,3 +128,27 @@ def test_addition_works_with_none():
     combined = selector + None
 
     assert combined.names == ["a", "b", "c"]
+
+
+def test_applying_to_schema_selects_relevant_columns():
+    schema = DatasetSchema(
+        [
+            ColumnSchema("a"),
+            ColumnSchema("b"),
+            ColumnSchema("c"),
+            ColumnSchema("d"),
+            ColumnSchema("e"),
+        ]
+    )
+    selector = ColumnSelector(["a", "b"])
+
+    result = selector.apply(schema)
+
+    expected = DatasetSchema(
+        [
+            ColumnSchema("a"),
+            ColumnSchema("b"),
+        ]
+    )
+
+    assert result == expected

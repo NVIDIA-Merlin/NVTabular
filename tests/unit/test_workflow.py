@@ -28,7 +28,53 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import ColumnSelector, Dataset, Workflow, ops
+from nvtabular.columns.schema import ColumnSchema, DatasetSchema
 from tests.conftest import assert_eq, get_cats, mycols_csv
+
+
+def test_workflow_fit_schema():
+    cont_names = ["x", "y", "id"]
+
+    # TODO: Convert + to an actual Operator
+
+    keys = ["x", "id"]
+
+    cont_features = (
+        ColumnSelector(cont_names)
+        >> ops.FillMissing()
+        >> ops.Clip(min_value=0)
+        >> ops.LogOp
+        >> ops.Normalize()
+        >> ops.Groupby(
+            groupby_cols=keys,
+            aggs={
+                "x": ["list", "sum"],
+                "id": ["first", "last"],
+            },
+            name_sep="-",
+        )
+    )
+
+    workflow = Workflow(cont_features)
+
+    schema = DatasetSchema(
+        [
+            ColumnSchema("x"),
+            ColumnSchema("y"),
+            ColumnSchema("id"),
+        ]
+    )
+
+    workflow.fit_schema(schema)
+
+    expected = DatasetSchema(
+        [
+            ColumnSchema("x"),
+            ColumnSchema("id"),
+        ]
+    )
+
+    assert workflow.output_schema == expected
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

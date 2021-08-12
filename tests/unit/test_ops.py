@@ -27,6 +27,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular.columns.schema import ColumnSchema, DatasetSchema
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -39,6 +40,26 @@ try:
 except ImportError:
     _CPU = [True]
     _HAS_GPU = False
+
+
+def test_compute_output_schema():
+    op = ops.Operator()
+
+    schema = DatasetSchema(
+        [
+            ColumnSchema("a"),
+            ColumnSchema("b"),
+            ColumnSchema("c"),
+            ColumnSchema("d"),
+            ColumnSchema("e"),
+        ]
+    )
+
+    result = op.compute_output_schema(schema, ColumnSelector(["a", "b"]))
+
+    expected = DatasetSchema([ColumnSchema("a"), ColumnSchema("b")])
+
+    assert result == expected
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])

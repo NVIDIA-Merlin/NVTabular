@@ -19,6 +19,7 @@ from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
 from nvtabular.columns import ColumnSelector
+from nvtabular.columns.schema import ColumnSchema, DatasetSchema
 from nvtabular.dispatch import DataFrameType
 
 
@@ -72,6 +73,19 @@ class Operator:
             The names of columns produced by this operator
         """
         return col_selector
+
+    def compute_output_schema(
+        self, input_schema: DatasetSchema, col_selector: ColumnSelector
+    ) -> DatasetSchema:
+        selected_schema = col_selector.apply(input_schema)
+        column_selector = ColumnSelector(selected_schema.column_schemas.keys())
+        output_selector = self.output_column_names(column_selector)
+        output_names = (
+            output_selector.names
+            if isinstance(output_selector, ColumnSelector)
+            else output_selector
+        )
+        return DatasetSchema([ColumnSchema(name) for name in output_names])
 
     def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns

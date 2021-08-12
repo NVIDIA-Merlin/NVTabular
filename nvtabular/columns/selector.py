@@ -16,6 +16,7 @@
 from typing import List
 
 import nvtabular
+from nvtabular.columns.schema import DatasetSchema
 
 
 class ColumnSelector:
@@ -74,6 +75,9 @@ class ColumnSelector:
             names.append(tuple(subgroup.names))
         return names
 
+    def apply(self, schema: DatasetSchema):
+        return schema.select_by_name(self.names)
+
     def _nested_check(self, nests=0):
         if nests > 1:
             raise AttributeError("Too many nested subgroups")
@@ -105,7 +109,9 @@ class ColumnSelector:
         return self + other
 
     def __rshift__(self, other):
-        return nvtabular.WorkflowNode(self) >> other
+        node = nvtabular.WorkflowNode(self) >> other
+        node.parents = []
+        return node
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):

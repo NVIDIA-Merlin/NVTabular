@@ -40,6 +40,8 @@ class WorkflowNode:
         self.op = None
         self.kind = None
         self.dependencies = None
+        self.input_schema = None
+        self.output_schema = None
 
         if isinstance(selector, list):
             warnings.warn(
@@ -64,6 +66,15 @@ class WorkflowNode:
             sel = ColumnSelector(sel)
 
         self._selector = sel
+
+    def compute_schemas(self, parent_schema):
+        if self.selector:
+            self.input_schema = self.selector.apply(parent_schema)
+        else:
+            self.input_schema = parent_schema
+
+        if self.op:
+            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
 
     def __rshift__(self, operator):
         """Transforms this WorkflowNode by applying an Operator
@@ -208,11 +219,24 @@ class WorkflowNode:
 
     @property
     def flattened_columns(self):
+        if not self.selector:
+            raise ValueError(
+                "To support selecting by tag, exact column names"
+                "aren't computed until the workflow is fit to a dataset."
+            )
+
         return list(flatten(self.selector, container=tuple))
 
     @property
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
+
+        if not self.selector:
+            raise ValueError(
+                "To support selecting by tag, exact column names"
+                "aren't computed until the workflow is fit to a dataset."
+            )
+
         dependencies = self.dependencies or set()
 
         return [
@@ -235,6 +259,12 @@ class WorkflowNode:
 
     @property
     def _cols_repr(self):
+        if not self.selector:
+            raise ValueError(
+                "To support selecting by tag, exact column names"
+                "aren't computed until the workflow is fit to a dataset."
+            )
+
         cols = ", ".join(map(str, self.selector[:3]))
         if len(self.selector) > 3:
             cols += "..."
