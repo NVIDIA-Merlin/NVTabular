@@ -21,8 +21,8 @@ import nvtabular
 class ColumnSelector:
     """A ColumnSelector describes a group of columns to be transformed by Operators in a
     Workflow. Operators can be applied to the selected columns by shifting (>>) operators
-    on to the ColumnSelector, which returns a new ColumnGroup with the transformations applied.
-    This lets you define a graph of operations that makes up your Workflow.
+    on to the ColumnSelector, which returns a new WorkflowNode with the transformations
+    applied. This lets you define a graph of operations that makes up your Workflow.
 
     Parameters
     ----------
@@ -38,8 +38,8 @@ class ColumnSelector:
     def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
         self._names = names if names is not None else []
         self.subgroups = subgroups if subgroups else []
-        if isinstance(self._names, nvtabular.ColumnGroup):
-            raise TypeError("ColumnSelectors can not contain ColumnGroups")
+        if isinstance(self._names, nvtabular.WorkflowNode):
+            raise TypeError("ColumnSelectors can not contain WorkflowNodes")
 
         if isinstance(self._names, str):
             self._names = [self._names]
@@ -51,8 +51,8 @@ class ColumnSelector:
         for name in self._names:
             if isinstance(name, str):
                 plain_names.append(name)
-            elif isinstance(name, nvtabular.ColumnGroup):
-                raise ValueError("ColumnSelectors can not contain ColumnGroups")
+            elif isinstance(name, nvtabular.WorkflowNode):
+                raise ValueError("ColumnSelectors can not contain WorkflowNodes")
             else:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
@@ -90,7 +90,7 @@ class ColumnSelector:
         return iter(self.names)
 
     def __add__(self, other):
-        if isinstance(other, nvtabular.ColumnGroup):
+        if isinstance(other, nvtabular.WorkflowNode):
             return other + self
         elif isinstance(other, ColumnSelector):
             return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
@@ -103,7 +103,7 @@ class ColumnSelector:
         return self + other
 
     def __rshift__(self, other):
-        return nvtabular.ColumnGroup(self) >> other
+        return nvtabular.WorkflowNode(self) >> other
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):

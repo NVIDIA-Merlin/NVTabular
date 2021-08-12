@@ -397,7 +397,7 @@ def _generate_nvtabular_config(
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
 
-        for column in workflow.column_group.input_column_names:
+        for column in workflow.output_node.input_column_names:
             dtype = workflow.input_dtypes[column]
             config.input.append(
                 model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
@@ -627,7 +627,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
-    workflow.column_group = _remove_columns_from_column_group(workflow.column_group, to_remove)
+    workflow.output_node = _remove_columns_from_workflow_node(workflow.output_node, to_remove)
 
     for label in to_remove:
         if label in workflow.input_dtypes:
@@ -639,11 +639,11 @@ def _remove_columns(workflow, to_remove):
     return workflow
 
 
-def _remove_columns_from_column_group(cg, to_remove):
-    cg.columns = [col for col in cg.columns if col not in to_remove]
-    parents = [_remove_columns_from_column_group(parent, to_remove) for parent in cg.parents]
-    cg.parents = [p for p in parents if p.columns]
-    return cg
+def _remove_columns_from_workflow_node(wfn, to_remove):
+    wfn.selector = [col for col in wfn.selector if col not in to_remove]
+    parents = [_remove_columns_from_workflow_node(parent, to_remove) for parent in wfn.parents]
+    wfn.parents = [p for p in parents if p.selector]
+    return wfn
 
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):

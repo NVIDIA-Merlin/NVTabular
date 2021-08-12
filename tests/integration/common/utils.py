@@ -39,9 +39,11 @@ def _run_notebook(
     gpu_id=0,
     clean_up=True,
     transform=None,
-    params=[],
+    params=None,
     main_block=-1,
 ):
+    params = params or []
+
     os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("GPU_TARGET_ID", gpu_id)
 
     if not os.path.exists(input_path):
@@ -66,12 +68,12 @@ def _run_notebook(
     # Replace config parms
     if params:
 
-        def transform(line):
+        def transform_fracs(line):
             line = line.replace("device_limit_frac = 0.7", "device_limit_frac = " + str(params[0]))
             line = line.replace("device_pool_frac = 0.8", "device_pool_frac = " + str(params[1]))
             return line.replace("part_mem_frac = 0.15", "part_mem_frac = " + str(params[2]))
 
-        lines = [transform(line) for line in lines]
+        lines = [transform_fracs(line) for line in lines]
 
     # Add guarding block and indentation
     if main_block >= 0:
@@ -115,11 +117,11 @@ def _run_query(
     workflow = nvt.Workflow.load(workflow_path)
 
     if input_cols_name is None:
-        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.column_group.input_column_names]
+        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.output_node.input_column_names]
     else:
         batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
 
-    input_dtypes = {col: dtype for col, dtype in workflow.input_dtypes.items()}
+    input_dtypes = workflow.input_dtypes
     columns = [(col, batch[col]) for col in batch.columns]
 
     inputs = []
