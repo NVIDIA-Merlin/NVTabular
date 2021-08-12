@@ -213,10 +213,10 @@ class Categorify(StatOperator):
         #       Since the same column may be included in multiple groups,
         #       replacement is not allowed for this transform.
 
-        # Set column_groups if the user has passed in a list of columns.
+        # Set workflow_nodes if the user has passed in a list of columns.
         # The purpose is to capture multi-column groups. If the user doesn't
         # specify `columns`, there are no multi-column groups to worry about.
-        self.column_groups = None
+        self.workflow_nodes = None
         self.name_sep = name_sep
 
         # For case (2), we need to keep track of the multi-column group name
@@ -482,7 +482,7 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(source, output_dtypes=None):
-    """Returns a dictionary of embedding sizes from a workflow or column_group
+    """Returns a dictionary of embedding sizes from a workflow or workflow_node
 
     Parameters
     ----------
@@ -492,7 +492,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     output_dtypes : dict, optional
         Optional dictionary of column_name:dtype. If passing a workflow object dtypes
         will be read from the workflow. This is used to figure out which columns
-        are multihot-categorical, which are split out by this function. If passed a column_group
+        are multihot-categorical, which are split out by this function. If passed a workflow_node
         and this parameter isn't set, you won't have multihot columns returned separately
     """
     # TODO: do we need to distinguish multihot columns here?  (if so why? )
@@ -501,7 +501,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     from nvtabular.workflow import Workflow
 
     if isinstance(source, Workflow):
-        queue = [source.column_group]
+        queue = [source.output_node]
         output_dtypes = output_dtypes or source.output_dtypes
     else:
         # passed in a column group
@@ -513,7 +513,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.columns))
+            output.update(current.op.get_embedding_sizes(current.selector))
         elif not current.op:
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
@@ -1159,9 +1159,9 @@ def _get_multicolumn_names(col_selector, df_columns, name_sep):
     return cat_names, multi_col_group
 
 
-def _is_list_col(column_group, df):
-    has_lists = any(dispatch._is_list_dtype(df[col]) for col in column_group)
-    if has_lists and len(column_group) != 1:
+def _is_list_col(workflow_node, df):
+    has_lists = any(dispatch._is_list_dtype(df[col]) for col in workflow_node)
+    if has_lists and len(workflow_node) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
 

@@ -24,7 +24,7 @@ import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import read_parquet as dd_read_parquet
 
-from nvtabular import ColumnGroup, Dataset, Workflow, ops
+from nvtabular import ColumnSelector, Dataset, Workflow, ops
 from nvtabular.io.shuffle import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -182,7 +182,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
 
-    cats = ColumnGroup(cat_names)
+    cats = ColumnSelector(cat_names)
     cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
     groupby_features = cats >> ops.JoinGroupby(
         cont_cols=cont_names, stats=["count", "sum"], out_path=str(tmpdir)

@@ -31,13 +31,13 @@ import dask
 import pandas as pd
 from dask.core import flatten
 
-from nvtabular.column_group import ColumnGroup, _merge_add_nodes, iter_nodes
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.ops.operator import ColumnSelector
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
+from nvtabular.workflow.node import WorkflowNode, _merge_add_nodes, iter_nodes
 
 LOG = logging.getLogger("nvtabular")
 
@@ -69,14 +69,14 @@ class Workflow:
 
     Parameters
     ----------
-    column_group: ColumnGroup
-        The graph of operators this workflow should apply
+    output_node: WorkflowNode
+        The last node in the graph of operators this workflow should apply
     client: distributed.Client, optional
         The Dask distributed client to use for multi-gpu processing and multi-node processing
     """
 
-    def __init__(self, column_group: ColumnGroup, client: Optional["distributed.Client"] = None):
-        self.column_group = _merge_add_nodes(column_group)
+    def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
+        self.output_node = _merge_add_nodes(output_node)
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
@@ -110,7 +110,7 @@ class Workflow:
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
-            _transform_ddf(ddf, self.column_group, self.output_dtypes),
+            _transform_ddf(ddf, self.output_node, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
@@ -131,7 +131,7 @@ class Workflow:
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
-        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.column_group])}
+        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.output_node])}
 
         while stat_ops:
             # get all the StatOperators that we can currently call fit on (no outstanding
@@ -142,20 +142,20 @@ class Workflow:
                 raise RuntimeError("failed to find dependency-free StatOperator to fit")
 
             stats, ops = [], []
-            for column_group in current_phase:
+            for workflow_node in current_phase:
                 # apply transforms necessary for the inputs to the current column group, ignoring
                 # the transforms from the statop itself
                 transformed_ddf = _ensure_optimize_dataframe_graph(
-                    ddf=_transform_ddf(ddf, column_group.parents)
+                    ddf=_transform_ddf(ddf, workflow_node.parents)
                 )
 
-                op = column_group.op
+                op = workflow_node.op
                 try:
-                    col_selector = ColumnSelector(column_group.input_column_names)
+                    col_selector = ColumnSelector(workflow_node.input_column_names)
                     stats.append(op.fit(col_selector, transformed_ddf))
                     ops.append(op)
                 except Exception:
-                    LOG.exception("Failed to fit operator %s", column_group.op)
+                    LOG.exception("Failed to fit operator %s", workflow_node.op)
                     raise
 
             if self.client:
@@ -212,7 +212,7 @@ class Workflow:
 
         # point all stat ops to store intermediate output (parquet etc) at the path
         # this lets us easily bundle
-        for stat in _get_stat_ops([self.column_group]):
+        for stat in _get_stat_ops([self.output_node]):
             stat.op.set_storage_path(path, copy=True)
 
         # generate a file of all versions used to generate this bundle
@@ -284,7 +284,7 @@ class Workflow:
 
         # we might have been copied since saving, update all the stat ops
         # with the new path to their storage locations
-        for stat in _get_stat_ops([workflow.column_group]):
+        for stat in _get_stat_ops([workflow.output_node]):
             stat.op.set_storage_path(path, copy=False)
 
         return workflow
@@ -294,11 +294,11 @@ class Workflow:
         return {k: v for k, v in self.__dict__.items() if k != "client"}
 
     def clear_stats(self):
-        for stat in _get_stat_ops([self.column_group]):
+        for stat in _get_stat_ops([self.output_node]):
             stat.op.clear()
 
     def _input_columns(self):
-        input_nodes = set(node for node in iter_nodes([self.column_group]) if not node.parents)
+        input_nodes = set(node for node in iter_nodes([self.output_node]) if not node.parents)
         return list(set(col for node in input_nodes for col in node.flattened_columns))
 
     def _clear_worker_cache(self):
@@ -309,17 +309,17 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, column_groups, meta=None):
-    if isinstance(column_groups, ColumnGroup):
-        column_groups = [column_groups]
+def _transform_ddf(ddf, workflow_nodes, meta=None):
+    if isinstance(workflow_nodes, WorkflowNode):
+        workflow_nodes = [workflow_nodes]
 
-    columns = list(flatten(cg.flattened_columns for cg in column_groups))
+    columns = list(flatten(cg.flattened_columns for cg in workflow_nodes))
 
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
     # IO function.
-    if all((c.op is None and not c.parents) for c in column_groups):
+    if all((c.op is None and not c.parents) for c in workflow_nodes):
         return ddf[_get_unique(columns)]
 
     if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):
@@ -338,7 +338,7 @@ def _transform_ddf(ddf, column_groups, meta=None):
 
     return ddf.map_partitions(
         _transform_partition,
-        column_groups,
+        workflow_nodes,
         meta=meta,
     )
 
@@ -352,16 +352,16 @@ def _get_unique(cols):
     return list({x: x for x in cols}.keys())
 
 
-def _transform_partition(root_df, column_groups):
-    """Transforms a single partition by appyling all operators in a ColumnGroup"""
+def _transform_partition(root_df, workflow_nodes):
+    """Transforms a single partition by appyling all operators in a WorkflowNode"""
     output = None
-    for column_group in column_groups:
-        unique_flattened_cols = _get_unique(column_group.flattened_columns)
+    for workflow_node in workflow_nodes:
+        unique_flattened_cols = _get_unique(workflow_node.flattened_columns)
         # collect dependencies recursively if we have parents
-        if column_group.parents:
+        if workflow_node.parents:
             df = None
             columns = None
-            for parent in column_group.parents:
+            for parent in workflow_node.parents:
                 unique_flattened_cols_parent = _get_unique(parent.flattened_columns)
                 parent_df = _transform_partition(root_df, [parent])
                 if df is None or not len(df):
@@ -376,16 +376,16 @@ def _transform_partition(root_df, column_groups):
             df = root_df[unique_flattened_cols]
 
         # apply the operator if necessary
-        if column_group.op:
+        if workflow_node.op:
             try:
-                col_selector = ColumnSelector(column_group.input_column_names)
-                df = column_group.op.transform(col_selector, df)
+                col_selector = ColumnSelector(workflow_node.input_column_names)
+                df = workflow_node.op.transform(col_selector, df)
             except Exception:
-                LOG.exception("Failed to transform operator %s", column_group.op)
+                LOG.exception("Failed to transform operator %s", workflow_node.op)
                 raise
             if df is None:
                 raise RuntimeError(
-                    "Operator %s didn't return a value during transform" % column_group.op
+                    "Operator %s didn't return a value during transform" % workflow_node.op
                 )
 
         # dask needs output to be in the same order defined as meta, reorder partitions here

@@ -1,16 +1,16 @@
 import numpy as np
 import pytest
 
-from nvtabular import ColumnGroup, Dataset, Workflow, dispatch
+from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
 from nvtabular.column_selector import ColumnSelector
 from nvtabular.ops import Categorify, Rename
 from tests.conftest import assert_eq
 
 
-def test_column_group_select():
+def test_workflow_node_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
-    input_features = ColumnGroup(ColumnSelector(["a", "b", "c"]))
+    input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
     sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
     plus_one_features = input_features["b"] >> (lambda col: col + 1)
@@ -27,7 +27,7 @@ def test_column_group_select():
     assert_eq(expected, df_out)
 
 
-def test_nested_column_group():
+def test_nested_workflow_node():
     df = dispatch._make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
@@ -64,11 +64,9 @@ def test_nested_column_group():
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
 
 
-def test_column_group_converts_lists():
-    column_group = ColumnGroup([])
+def test_workflow_node_converts_lists():
+    node = WorkflowNode([])
+    assert node.selector == ColumnSelector([])
 
-    assert column_group.columns == ColumnSelector([])
-
-    column_group.columns = ["a", "b", "c"]
-
-    assert column_group.columns == ColumnSelector(["a", "b", "c"])
+    node.selector = ["a", "b", "c"]
+    assert node.selector == ColumnSelector(["a", "b", "c"])

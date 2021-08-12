@@ -1,7 +1,7 @@
-ColumnGroup
-===========
+WorkflowNode
+============
 
-.. automodule:: nvtabular.column_group
+.. automodule:: nvtabular.workflow.node
    :members:
    :private-members:
    :special-members:
