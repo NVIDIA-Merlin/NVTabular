@@ -368,7 +368,7 @@ class Workflow:
         input_columns = set()
         for selector in selectors:
             for column_name in selector.names:
-                col_schema = self.input_schema[column_name]
+                col_schema = self.input_schema.column_schemas[column_name]
                 input_columns.add(col_schema)
 
         return list(input_columns)
