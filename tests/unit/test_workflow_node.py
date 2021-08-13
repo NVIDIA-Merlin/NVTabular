@@ -7,19 +7,37 @@ from nvtabular.ops import Categorify, Operator, Rename
 from tests.conftest import assert_eq
 
 
-def test_workflow_node_rshift_doesnt_set_selector():
+def test_selecting_columns_sets_selector_and_kind():
     node = ColumnSelector(["a", "b", "c"]) >> Operator()
+    output = node[["a", "b"]]
+    assert output.selector.names == ["a", "b"]
+    assert "[" in output.kind and "]" in output.kind
+
+    output = node["b"]
+    assert output.selector.names == ["b"]
+    assert "[" in output.kind and "]" in output.kind
+
+
+def test_workflow_node_rshift_doesnt_set_selector():
+    node = ColumnSelector(["a", "b", "c"]) >> Operator() >> Operator()
     assert node.selector is None
+
+
+def test_adding_workflow_nodes_doesnt_set_selector():
+    node1 = ColumnSelector(["a", "b", "c"]) >> Operator()
+    node2 = ColumnSelector(["d", "e", "f"]) >> Operator()
+    output = node1 + node2
+    assert output.selector is None
 
 
 def test_workflow_node_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
-    input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
+    input_features = ColumnSelector(["a", "b", "c"])
     # pylint: disable=unnecessary-lambda
-    sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
-    plus_one_features = input_features["b"] >> (lambda col: col + 1)
-    features = sqrt_features + plus_one_features
+    sqrt_features = input_features >> (lambda col: np.sqrt(col))
+    plus_one_features = input_features >> (lambda col: col + 1)
+    features = sqrt_features[["a", "c"]] + plus_one_features["b"]
 
     workflow = Workflow(features)
     df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")

@@ -34,7 +34,7 @@ from tests.conftest import assert_eq, get_cats, mycols_csv
 
 # TODO: Fix selectors
 # TODO: Convert + to an actual Operator
-def test_workflow_fit_schema():
+def test_fit_schema():
     schema = DatasetSchema(["x", "y", "id"])
 
     cont_features = (
@@ -50,6 +50,31 @@ def test_workflow_fit_schema():
     workflow.fit_schema(schema)
 
     assert workflow.output_schema.column_names == ["x_renamed", "y_renamed", "id_renamed"]
+
+
+def test_fit_schema_propagates_through_plus_nodes():
+    schema = DatasetSchema(["a", "b", "c", "d", "e"])
+
+    cat_features = ColumnSelector(["a", "b", "c"]) >> ops.Operator()
+    cont_features = ColumnSelector(["d", "e"]) >> ops.Operator()
+    all_features = cat_features + cont_features
+
+    workflow = Workflow(all_features)
+    workflow.fit_schema(schema)
+
+    assert workflow.output_schema.column_names == ["a", "b", "c", "d", "e"]
+
+
+def test_fit_schema_propagates_through_selection_nodes():
+    schema = DatasetSchema(["a", "b", "c", "d", "e"])
+
+    cat_features = ColumnSelector(["a", "b", "c", "d", "e"]) >> ops.Operator()
+    user_cat_features = cat_features[["a", "b"]]
+
+    workflow = Workflow(user_cat_features)
+    workflow.fit_schema(schema)
+
+    assert workflow.output_schema.column_names == ["a", "b"]
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

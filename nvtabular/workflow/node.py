@@ -16,8 +16,6 @@
 import collections.abc
 import warnings
 
-from dask.core import flatten
-
 from nvtabular.columns import ColumnSelector
 from nvtabular.ops import LambdaOp, Operator
 
@@ -44,8 +42,6 @@ class WorkflowNode:
         self.output_schema = None
         self._selector = None
 
-        selector = selector or ColumnSelector()
-
         if isinstance(selector, list):
             warnings.warn(
                 'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnGroup` '
@@ -54,7 +50,7 @@ class WorkflowNode:
             )
             selector = ColumnSelector(selector)
 
-        if not isinstance(selector, ColumnSelector):
+        if selector and not isinstance(selector, ColumnSelector):
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
         self._selector = selector
@@ -75,6 +71,10 @@ class WorkflowNode:
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+        elif self.kind == "+":
+            self.output_schema = self.input_schema
+        elif self.kind and "[" in self.kind and "]" in self.kind:
+            self.output_schema = self.input_schema
 
     def __rshift__(self, operator):
         """Transforms this WorkflowNode by applying an Operator
@@ -140,7 +140,8 @@ class WorkflowNode:
             new_selector = ColumnSelector([])
             for element in other:
                 if isinstance(element, WorkflowNode):
-                    new_selector += ColumnSelector([], subgroups=[element.selector])
+                    if element.selector:
+                        new_selector += ColumnSelector([], subgroups=[element.selector])
                 else:
                     new_selector += ColumnSelector(element)
             other = sum(other, WorkflowNode(ColumnSelector([])))
@@ -148,13 +149,7 @@ class WorkflowNode:
         else:
             other = WorkflowNode(ColumnSelector(other))
 
-        # check if there are any columns with the same name in both column groups
-        overlap = set(self.selector.grouped_names).intersection(other.selector.grouped_names)
-
-        if overlap:
-            raise ValueError(f"duplicate column names found: {overlap}")
-
-        child = WorkflowNode(self.selector + other.selector)
+        child = WorkflowNode()
         child.parents = [self, other]
         child.kind = "+"
         self.children.append(child)
@@ -208,7 +203,7 @@ class WorkflowNode:
         child = WorkflowNode(col_selector)
         child.parents = [self]
         self.children.append(child)
-        child.kind = str(columns)
+        child.kind = str(list(columns))
         return child
 
     def __repr__(self):
@@ -217,32 +212,25 @@ class WorkflowNode:
 
     @property
     def flattened_columns(self):
-        if not self.selector:
+        if not self.output_schema:
             raise ValueError(
-                "To support selecting by tag, exact column names"
+                "To support selecting by tag, exact column names "
                 "aren't computed until the workflow is fit to a dataset."
             )
 
-        return list(flatten(self.selector, container=tuple))
+        return list(self.output_schema.column_schemas.keys())
 
     @property
     def input_column_names(self):
         """Returns the names of columns in the main chain"""
 
-        if not self.selector:
+        if not self.input_schema:
             raise ValueError(
                 "To support selecting by tag, exact column names"
                 "aren't computed until the workflow is fit to a dataset."
             )
 
-        dependencies = self.dependencies or set()
-
-        return [
-            col
-            for parent in self.parents
-            for col in parent.selector.grouped_names
-            if parent not in dependencies
-        ]
+        return list(self.input_schema.column_schemas.keys())
 
     @property
     def label(self):

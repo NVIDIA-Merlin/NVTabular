@@ -371,7 +371,7 @@ class Workflow:
                 col_schema = self.input_schema.column_schemas[column_name]
                 input_columns[column_name] = col_schema
 
-        return list(input_columns.values())
+        return list(input_columns.keys())
 
     @property
     def _input_selectors(self):
@@ -393,7 +393,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None):
     if isinstance(workflow_nodes, WorkflowNode):
         workflow_nodes = [workflow_nodes]
 
-    columns = list(flatten(cg.flattened_columns for cg in workflow_nodes))
+    columns = list(flatten(wfn.flattened_columns for wfn in workflow_nodes))
 
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
