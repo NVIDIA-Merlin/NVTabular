@@ -40,7 +40,7 @@ class ColumnSchema:
 
 
 class DatasetSchema:
-    """A collection of column schemas for a dataframe."""
+    """A collection of column schemas for a dataset."""
 
     def __init__(self, column_schemas=None):
         column_schemas = column_schemas or {}
