@@ -8,6 +8,7 @@ API Documentation
    WorkflowNode <workflow/workflow_node>
    Dataset <dataset>
    Operators <ops/index>
-   ColumnSelector <column_selector>
+   ColumnSelector <columns/selector>
+   ColumnSchema <columns/schema>
    Torch Dataloader <torch_dataloader>
    TensorFlow Dataloader <tensorflow_dataloader>
