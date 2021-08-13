@@ -34,7 +34,7 @@ class ColumnSchema:
         if not isinstance(tags, list):
             tags = [tags]
 
-        tags = list(set(list(self.tags) + list(tags)))
+        tags = list(set(list(self.tags) + tags))
 
         return ColumnSchema(self.name, tags=tags)
 
