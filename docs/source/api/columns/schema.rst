@@ -1,7 +1,7 @@
-ColumnSelector
+ColumnSchema
 ==============
 
-.. automodule:: nvtabular.column_selector
+.. automodule:: nvtabular.columns.schema
    :members:
    :private-members:
    :special-members:

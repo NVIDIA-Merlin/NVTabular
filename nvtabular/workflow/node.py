@@ -18,7 +18,7 @@ import warnings
 
 from dask.core import flatten
 
-from nvtabular.column_selector import ColumnSelector
+from nvtabular.columns import ColumnSelector
 from nvtabular.ops import LambdaOp, Operator
 
 

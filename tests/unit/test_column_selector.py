@@ -15,7 +15,7 @@
 #
 import pytest
 
-from nvtabular.column_selector import ColumnSelector
+from nvtabular.columns import ColumnSelector
 from nvtabular.workflow import WorkflowNode
 
 
@@ -120,3 +120,10 @@ def test_addition_works_with_lists_of_strings():
     combined = selector + ["d", "e", "f"]
 
     assert combined.names == ["a", "b", "c", "d", "e", "f"]
+
+
+def test_addition_works_with_none():
+    selector = ColumnSelector(["a", "b", "c"])
+    combined = selector + None
+
+    assert combined.names == ["a", "b", "c"]
