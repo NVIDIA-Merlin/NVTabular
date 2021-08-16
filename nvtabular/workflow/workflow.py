@@ -298,8 +298,14 @@ class Workflow:
             stat.op.clear()
 
     def _input_columns(self):
-        input_nodes = set(node for node in iter_nodes([self.output_node]) if not node.parents)
-        return list(set(col for node in input_nodes for col in node.flattened_columns))
+        input_columns = set()
+        for node in iter_nodes([self.output_node]):
+            parent_columns = set()
+            for parent in node.parents:
+                parent_columns = parent_columns.union(set(parent.selector.names))
+            input_columns = input_columns.union(set(node.selector.names) - parent_columns)
+
+        return list(input_columns)
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
@@ -310,6 +316,9 @@ class Workflow:
 
 
 def _transform_ddf(ddf, workflow_nodes, meta=None):
+    # import pdb
+    # pdb.set_trace()
+
     if isinstance(workflow_nodes, WorkflowNode):
         workflow_nodes = [workflow_nodes]
 
@@ -368,9 +377,15 @@ def _transform_partition(root_df, workflow_nodes):
                     df = parent_df[unique_flattened_cols_parent]
                     columns = set(unique_flattened_cols_parent)
                 else:
-                    new_columns = set(unique_flattened_cols_parent) - columns
-                    df = _concat_columns([df, parent_df[list(new_columns)]])
-                    columns.update(new_columns)
+                    # TODO: This is about where we'd need to fetch missing columns from the root DF
+                    parent_columns = set(unique_flattened_cols_parent) - columns
+                    df = _concat_columns([df, parent_df[list(parent_columns)]])
+                    columns.update(parent_columns)
+
+                # Do the logic here
+                new_columns = set(unique_flattened_cols) - set(unique_flattened_cols_parent)
+                df = _concat_columns([df, root_df[list(new_columns)]])
+                columns.update(new_columns)
         else:
             # otherwise select the input from the root df
             df = root_df[unique_flattened_cols]
@@ -380,6 +395,9 @@ def _transform_partition(root_df, workflow_nodes):
             try:
                 col_selector = ColumnSelector(workflow_node.input_column_names)
                 df = workflow_node.op.transform(col_selector, df)
+                import pdb
+
+                pdb.set_trace()
             except Exception:
                 LOG.exception("Failed to transform operator %s", workflow_node.op)
                 raise
