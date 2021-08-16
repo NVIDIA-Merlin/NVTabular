@@ -129,6 +129,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, df):
+
+        # Early return
+        if isinstance(df, list) and not df:
+            return
+
         # Populate columns idxs
         if not self.col_idx:
             _df = df[0] if isinstance(df, list) else df

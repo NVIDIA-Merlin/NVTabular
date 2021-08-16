@@ -4,9 +4,11 @@ API Documentation
 .. toctree::
    :maxdepth: 2
 
-   Workflow <workflow>
+   Workflow <workflow/workflow>
+   WorkflowNode <workflow/workflow_node>
    Dataset <dataset>
    Operators <ops/index>
-   ColumnGroup <column_group>
+   ColumnSelector <columns/selector>
+   ColumnSchema <columns/schema>
    Torch Dataloader <torch_dataloader>
    TensorFlow Dataloader <tensorflow_dataloader>

@@ -26,7 +26,7 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ColumnGroup, dispatch, ops
+from nvtabular import ColumnSelector, dispatch, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -56,11 +56,11 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
     new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_min = df[col].min()
-        assert col_min == pytest.approx(processor.column_group.op.mins[col], 1e-2)
+        assert col_min == pytest.approx(processor.output_node.op.mins[col], 1e-2)
         col_max = df[col].max()
-        assert col_max == pytest.approx(processor.column_group.op.maxs[col], 1e-2)
-        df[col] = (df[col] - processor.column_group.op.mins[col]) / (
-            processor.column_group.op.maxs[col] - processor.column_group.op.mins[col]
+        assert col_max == pytest.approx(processor.output_node.op.maxs[col], 1e-2)
+        df[col] = (df[col] - processor.output_node.op.mins[col]) / (
+            processor.output_node.op.maxs[col] - processor.output_node.op.mins[col]
         )
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
@@ -174,7 +174,7 @@ def test_fill_median(
     new_df.index = df0.index  # Make sure index is aligned for checks
     for col in op_columns:
         col_median = df[col].dropna().quantile(0.5, interpolation="linear")
-        assert math.isclose(col_median, processor.column_group.op.medians[col], rel_tol=1e1)
+        assert math.isclose(col_median, processor.output_node.op.medians[col], rel_tol=1e1)
         assert np.all((df0[col].fillna(col_median) - new_df[col]).abs().values <= 1e-2)
         assert (f"{col}_filled" in new_df.keys()) == add_binary_cols
         if add_binary_cols:
@@ -302,9 +302,9 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     new_gdf = processor.transform(dataset).to_ddf().compute()
     new_gdf.index = df.index  # Make sure index is aligned for checks
     for col in op_columns:
-        assert math.isclose(df[col].mean(), processor.column_group.op.means[col], rel_tol=1e-4)
-        assert math.isclose(df[col].std(), processor.column_group.op.stds[col], rel_tol=1e-4)
-        df[col] = (df[col] - processor.column_group.op.means[col]) / processor.column_group.op.stds[
+        assert math.isclose(df[col].mean(), processor.output_node.op.means[col], rel_tol=1e-4)
+        assert math.isclose(df[col].std(), processor.output_node.op.stds[col], rel_tol=1e-4)
+        df[col] = (df[col] - processor.output_node.op.means[col]) / processor.output_node.op.stds[
             col
         ]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
@@ -342,9 +342,9 @@ def test_normalize_upcastfloat64(tmpdir, dataset, gpu_memory_frac, engine, op_co
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
     for col in op_columns:
-        assert math.isclose(df[col].mean(), processor.column_group.op.means[col], rel_tol=1e-4)
-        assert math.isclose(df[col].std(), processor.column_group.op.stds[col], rel_tol=1e-4)
-        df[col] = (df[col] - processor.column_group.op.means[col]) / processor.column_group.op.stds[
+        assert math.isclose(df[col].mean(), processor.output_node.op.means[col], rel_tol=1e-4)
+        assert math.isclose(df[col].std(), processor.output_node.op.stds[col], rel_tol=1e-4)
+        df[col] = (df[col] - processor.output_node.op.means[col]) / processor.output_node.op.stds[
             col
         ]
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
@@ -359,7 +359,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Substring
     # Replacement
-    substring = ColumnGroup(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
+    substring = ColumnSelector(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
     processor = nvtabular.Workflow(substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -369,7 +369,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # No Replacement from old API (skipped for other examples)
     substring = (
-        ColumnGroup(["name-cat", "name-string"])
+        ColumnSelector(["name-cat", "name-string"])
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
@@ -394,7 +394,9 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Replace
     # Replacement
-    oplambda = ColumnGroup(["name-cat", "name-string"]) >> (lambda col: col.str.replace("e", "XX"))
+    oplambda = ColumnSelector(["name-cat", "name-string"]) >> (
+        lambda col: col.str.replace("e", "XX")
+    )
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -406,7 +408,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # astype
     # Replacement
-    oplambda = ColumnGroup(["id"]) >> (lambda col: col.astype(float))
+    oplambda = ColumnSelector(["id"]) >> (lambda col: col.astype(float))
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -416,7 +418,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # Workflow
     # Replacement
     oplambda = (
-        ColumnGroup(["name-cat"])
+        ColumnSelector(["name-cat"])
         >> (lambda col: col.astype(str).str.slice(0, 1))
         >> ops.Categorify()
     )
@@ -426,7 +428,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     assert is_integer_dtype(new_gdf["name-cat"].dtype)
 
     oplambda = (
-        ColumnGroup(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
+        ColumnSelector(["name-cat", "name-string"]) >> ops.Categorify() >> (lambda col: col + 100)
     )
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
@@ -449,9 +451,9 @@ def test_lambdaop_misalign(cpu):
 
     ddf0 = dd.from_pandas(df0, npartitions=4)
 
-    cont_names = ColumnGroup(["a"])
-    cat_names = ColumnGroup(["b"])
-    label = ColumnGroup(["c"])
+    cont_names = ColumnSelector(["a"])
+    cat_names = ColumnSelector(["b"])
+    label = ColumnSelector(["c"])
     if cpu:
         label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
     else:
@@ -763,7 +765,7 @@ def test_categorify_max_size(max_emb_size):
     assert embedding_sizes["Author"][0] <= max_emb_size["Author"]
     assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
 
-    # make sure we can also get embedding sizes from the column_group
+    # make sure we can also get embedding sizes from the workflow_node
     embedding_sizes = nvt.ops.get_embedding_sizes(cat_features)
     assert embedding_sizes["Author"][0] <= max_emb_size["Author"]
     assert embedding_sizes["Engaging_User"][0] <= max_emb_size["Engaging_User"]
@@ -890,7 +892,7 @@ def test_join_external(tmpdir, df, dataset, engine, kind_ext, cache, how, cpu, d
     df_ext_check = df_ext_check[columns_ext]
     if drop_duplicates:
         df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
-    joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
+    joined = nvt.ColumnSelector(columns_left) >> nvt.ops.JoinExternal(
         df_ext,
         on,
         how=how,
@@ -1123,7 +1125,7 @@ def test_groupby_op(keys, cpu):
     dataset = nvt.Dataset(ddf1, cpu=cpu)
 
     # Define Groupby Workflow
-    groupby_features = ColumnGroup(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
+    groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
         sort_cols=["ts"],
         aggs={
@@ -1136,6 +1138,10 @@ def test_groupby_op(keys, cpu):
     processor = nvtabular.Workflow(groupby_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    if not cpu:
+        # Make sure we are capturing the list type in `output_dtypes`
+        assert processor.output_dtypes["x-list"] == cudf.core.dtypes.ListDtype("int64")
 
     # Check list-aggregation ordering
     x = new_gdf["x-list"]

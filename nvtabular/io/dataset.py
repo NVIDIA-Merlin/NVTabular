@@ -645,9 +645,9 @@ class Dataset:
             persist stage. The `FULL` option is not yet implemented.
         partition_on : str or list(str)
             Columns to use for hive-partitioning.  If this option is used,
-            `preserve_files`, `output_files`, and `out_files_per_proc` will
-            all be ignored.  Also, the `PER_WORKER` shuffle will not be
-            supported.
+            `preserve_files`, `output_files`, and `out_files_per_proc`
+            cannot be specified, and `method` will be ignored.  Also, the
+            `PER_WORKER` shuffle will not be supported.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
             the base dataset. This option requires `method="subgraph"`, and is
@@ -698,25 +698,41 @@ class Dataset:
             specifying `method="worker"`.
         """
 
-        # Check that method (algorithm) is valid
-        if method not in ("subgraph", "worker"):
-            raise ValueError(f"{method} not a recognized method for `Dataset.to_parquet`")
+        if partition_on:
 
-        # Deal with method-specific defaults
-        if method == "worker":
-            if output_files or preserve_files:
-                raise ValueError("output_files and preserve_files require `method='subgraph'`")
-            output_files = False
-        elif preserve_files and output_files:
-            raise ValueError("Cannot specify both preserve_files and output_files.")
-        elif not (output_files or preserve_files):
-            # Default "subgraph" behavior - Set output_files to the
-            # total umber of workers, multiplied by out_files_per_proc
-            try:
-                nworkers = len(self.client.cluster.workers)
-            except AttributeError:
-                nworkers = 1
-            output_files = nworkers * (out_files_per_proc or 1)
+            # Check that the user is not expecting a specific output-file
+            # count/structure that is not supported
+            if output_files:
+                raise ValueError("`output_files` not supported when `partition_on` is used.")
+            if out_files_per_proc:
+                raise ValueError("`out_files_per_proc` not supported when `partition_on` is used.")
+            if preserve_files:
+                raise ValueError("`preserve_files` not supported when `partition_on` is used.")
+
+        else:
+
+            # Check that method (algorithm) is valid
+            if method not in ("subgraph", "worker"):
+                raise ValueError(f"{method} not a recognized method for `Dataset.to_parquet`")
+
+            # Deal with method-specific defaults
+            if method == "worker":
+                if output_files or preserve_files:
+                    raise ValueError("output_files and preserve_files require `method='subgraph'`")
+                output_files = False
+            elif preserve_files and output_files:
+                raise ValueError("Cannot specify both preserve_files and output_files.")
+            elif not (output_files or preserve_files):
+                # Default "subgraph" behavior - Set output_files to the
+                # total umber of workers, multiplied by out_files_per_proc
+                try:
+                    nworkers = len(self.client.cluster.workers)
+                except AttributeError:
+                    nworkers = 1
+                output_files = nworkers * (out_files_per_proc or 1)
+
+        # Replace None/False suffix argument with ""
+        suffix = suffix or ""
 
         # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
@@ -727,9 +743,6 @@ class Dataset:
             ddf = self.to_ddf()
         else:
             ddf = self.to_ddf(shuffle=shuffle)
-
-        # Replace None/False suffix argument with ""
-        suffix = suffix or ""
 
         # Deal with `method=="subgraph"`.
         # Convert `output_files` argument to a dict mapping
@@ -1040,6 +1053,21 @@ class Dataset:
             return result.compute()
         else:
             return result
+
+    def sample_dtypes(self, n=1):
+        """Return the real dtypes of the Dataset
+
+        Sample the partitions of the underlying Dask collection
+        until a non-empty partition is found. Then, use the first
+        ``n`` rows of that partition to infer dtype info. If no
+        non-empty partitions are found, use the Dask dtypes.
+        """
+        _ddf = self.to_ddf()
+        for partition_index in range(_ddf.npartitions):
+            _head = _ddf.partitions[partition_index].head(n)
+            if len(_head):
+                return _head.dtypes
+        return _ddf.dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):

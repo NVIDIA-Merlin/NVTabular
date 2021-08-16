@@ -16,19 +16,14 @@
 from __future__ import annotations
 
 from enum import Flag, auto
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import Any, List, Optional, Union
 
+from nvtabular.columns import ColumnSelector
 from nvtabular.dispatch import DataFrameType
-
-if TYPE_CHECKING:
-    # avoid circular references
-    from nvtabular import ColumnGroup
-
-ColumnNames = List[Union[str, List[str]]]
 
 
 class Supports(Flag):
-    """ Indicates what type of data representation this operator supports for transformations """
+    """Indicates what type of data representation this operator supports for transformations"""
 
     # cudf dataframe
     CPU_DATAFRAME = auto()
@@ -45,7 +40,7 @@ class Operator:
     Base class for all operator classes.
     """
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         """Transform the dataframe by applying this operator to the set of input columns
 
         Parameters
@@ -62,7 +57,7 @@ class Operator:
         """
         raise NotImplementedError
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this
         operator will produce
 
@@ -76,23 +71,23 @@ class Operator:
         list of str, or list of list of str
             The names of columns produced by this operator
         """
-        return columns
+        return col_selector
 
-    def dependencies(self) -> Optional[List[Union[str, ColumnGroup]]]:
+    def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
         that aren't part of the main transformation workflow.
 
         Returns
         -------
-        str, list of str or ColumnGroup, optional
+        str, list of str or ColumnSelector, optional
             Extra dependencies of this operator. Defaults to None
         """
         return None
 
-    def __rrshift__(self, other) -> ColumnGroup:
+    def __rrshift__(self, other):
         import nvtabular
 
-        return nvtabular.ColumnGroup(other) >> self
+        return nvtabular.ColumnSelector(other) >> self
 
     @property
     def label(self) -> str:
@@ -100,10 +95,12 @@ class Operator:
 
     @property
     def supports(self) -> Supports:
-        """ Returns what kind of data representation this operator supports """
+        """Returns what kind of data representation this operator supports"""
         return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
 
-    def inference_initialize(self, columns: ColumnNames, model_config: dict) -> Optional[Operator]:
+    def inference_initialize(
+        self, col_selector: ColumnSelector, model_config: dict
+    ) -> Optional[Operator]:
         """Configures this operator for use in inference. May return a different operator to use
         instead of the one configured for use during training"""
         return None

@@ -1,7 +1,7 @@
-ColumnGroup
-===========
+ColumnSchema
+==============
 
-.. automodule:: nvtabular.column_group
+.. automodule:: nvtabular.columns.schema
    :members:
    :private-members:
    :special-members:

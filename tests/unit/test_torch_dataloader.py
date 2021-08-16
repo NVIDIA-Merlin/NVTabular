@@ -26,7 +26,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
-from nvtabular import ops
+from nvtabular import ColumnSelector, ops
 from nvtabular.io.dataset import Dataset
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
@@ -167,12 +167,12 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
         features.append(cat_names + mh_names >> ops.Categorify())
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
-    graph = sum(features, nvt.ColumnGroup(label_name))
-    if not graph.columns:
+    graph = sum(features, nvt.WorkflowNode(label_name))
+    if not graph.selector:
         # if we don't have conts/cats/labels we're done
         return
 
-    processor = nvt.Workflow(sum(features, nvt.ColumnGroup(label_name)))
+    processor = nvt.Workflow(sum(features, nvt.WorkflowNode(label_name)))
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
@@ -606,8 +606,8 @@ def test_horovod_multigpu(tmpdir):
     df_files = df_gen.full_df_create(10000, cols, output=target_path)
 
     # process them
-    cat_features = nvt.ColumnGroup(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
-    ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    cat_features = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
+    ratings = ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
 
     proc = nvt.Workflow(output)

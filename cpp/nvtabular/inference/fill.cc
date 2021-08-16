@@ -33,7 +33,7 @@ struct FillTransform {
     fill_val = py::cast<double>(op.attr("fill_val"));
   }
 
-  py::object transform(py::list column_names, py::dict tensors) {
+  py::object transform(py::object column_selector, py::dict tensors) {
     py::dict ret;
     for (auto it: tensors) {
       auto column_name = py::cast<std::string>(it.first);

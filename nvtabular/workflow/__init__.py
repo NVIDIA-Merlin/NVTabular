@@ -14,4 +14,6 @@
 # limitations under the License.
 #
 
-$PYTHON setup.py install
+# flake8: noqa
+from .node import WorkflowNode
+from .workflow import Workflow

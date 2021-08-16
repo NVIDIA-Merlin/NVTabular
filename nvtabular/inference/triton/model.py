@@ -41,6 +41,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
+from nvtabular import ColumnSelector
 from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
@@ -53,18 +54,18 @@ LOG = logging.getLogger("nvtabular")
 class TritonPythonModel:
     """Generic TritonPythonModel for nvtabular workflows"""
 
-    def _initialize_ops(self, column_group, visited=None):
+    def _initialize_ops(self, workflow_node, visited=None):
         if visited is None:
             visited = set()
 
-        if column_group.op:
-            inference_op = column_group.op.inference_initialize(
-                column_group.columns, self.model_config
+        if workflow_node.op:
+            inference_op = workflow_node.op.inference_initialize(
+                workflow_node.selector, self.model_config
             )
             if inference_op:
-                column_group.op = inference_op
+                workflow_node.op = inference_op
 
-            supported = column_group.op.supports
+            supported = workflow_node.op.supports
 
             # if we're running on the CPU only, mask off support for GPU data formats
             if self.kind == "CPU":
@@ -73,10 +74,10 @@ class TritonPythonModel:
                     (v for v in list(Supports) if v & supported and "CPU" in str(v)),
                 )
             # the 'supports' property is readonly, and we can't always attach a new property
-            # to some of the operators (C++ categorify etc). set on the column_group instead
-            column_group.inference_supports = supported
+            # to some of the operators (C++ categorify etc). set on the workflow_node instead
+            workflow_node.inference_supports = supported
 
-        for parent in column_group.parents:
+        for parent in workflow_node.parents:
             if parent not in visited:
                 visited.add(parent)
                 self._initialize_ops(parent, visited)
@@ -96,7 +97,7 @@ class TritonPythonModel:
                 self.offsets = get_hugectr_offsets(self.workflow, self.column_types)
 
         # recurse over all column groups, initializing operators for inference pipeline
-        self._initialize_ops(self.workflow.column_group)
+        self._initialize_ops(self.workflow.output_node)
 
         self.input_dtypes = {
             col: dtype
@@ -140,7 +141,7 @@ class TritonPythonModel:
                 input_tensors[name] = (values, offsets)
 
             # use our NVTabular workflow to transform the dataset
-            transformed, kind = _transform_tensors(input_tensors, self.workflow.column_group)
+            transformed, kind = _transform_tensors(input_tensors, self.workflow.output_node)
 
             # if we don't have tensors in numpy format, convert back so that the we can return
             # to triton
@@ -256,10 +257,10 @@ def get_hugectr_offsets(workflow, column_types):
         return offsets
 
 
-def _transform_tensors(input_tensors, column_group):
-    if column_group.parents:
+def _transform_tensors(input_tensors, workflow_node):
+    if workflow_node.parents:
         tensors, kind = None, None
-        for parent in column_group.parents:
+        for parent in workflow_node.parents:
             transformed, transformed_kind = _transform_tensors(input_tensors, parent)
             if tensors is None:
                 tensors, kind = transformed, transformed_kind
@@ -267,8 +268,10 @@ def _transform_tensors(input_tensors, column_group):
                 if kind != transformed_kind:
                     # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
                     # we need to convert to a common format here first before concatentating.
-                    op = column_group.op
-                    target_kind = column_group.inference_supports if op else Supports.CPU_DICT_ARRAY
+                    op = workflow_node.op
+                    target_kind = (
+                        workflow_node.inference_supports if op else Supports.CPU_DICT_ARRAY
+                    )
                     # note : the 2nd convert_format call needs to be stricter in what the kind is
                     # (exact match rather than a bitmask of values)
                     tensors, kind = convert_format(tensors, kind, target_kind)
@@ -277,19 +280,22 @@ def _transform_tensors(input_tensors, column_group):
                 tensors = _concat_tensors([tensors, transformed], kind)
 
     else:
-        tensors = {c: input_tensors[c] for c in column_group.columns}
+        tensors = {c: input_tensors[c] for c in workflow_node.selector}
         kind = Supports.CPU_DICT_ARRAY
 
-    if column_group.op:
+    if workflow_node.op:
         try:
             # if the op doesn't support the current kind - we need to convert
-            if not column_group.inference_supports & kind:
-                tensors, kind = convert_format(tensors, kind, column_group.inference_supports)
+            if not workflow_node.inference_supports & kind:
+                tensors, kind = convert_format(tensors, kind, workflow_node.inference_supports)
 
-            tensors = column_group.op.transform(column_group.columns, tensors)
+            tensors = workflow_node.op.transform(
+                ColumnSelector(workflow_node.input_column_names),
+                tensors,
+            )
 
         except Exception:
-            LOG.exception("Failed to transform operator %s", column_group.op)
+            LOG.exception("Failed to transform operator %s", workflow_node.op)
             raise
 
     return tensors, kind
