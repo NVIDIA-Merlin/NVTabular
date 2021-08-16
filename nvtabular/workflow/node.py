@@ -137,6 +137,7 @@ class WorkflowNode:
         elif isinstance(other, ColumnSelector):
             other = WorkflowNode(other)
         elif isinstance(other, list):
+            # The right behavior for strings vs nodes is different here
             new_selector = ColumnSelector([])
             for element in other:
                 if isinstance(element, WorkflowNode):
@@ -144,6 +145,8 @@ class WorkflowNode:
                         new_selector += ColumnSelector([], subgroups=[element.selector])
                 else:
                     new_selector += ColumnSelector(element)
+
+            # This line is where the problem happens for strings
             other = sum(other, WorkflowNode(ColumnSelector([])))
             other.selector = new_selector
         else:
@@ -247,7 +250,7 @@ class WorkflowNode:
     def _cols_repr(self):
         if not self.selector:
             raise ValueError(
-                "To support selecting by tag, exact column names"
+                "To support selecting by tag, exact column names for _cols_repr "
                 "aren't computed until the workflow is fit to a dataset."
             )
 

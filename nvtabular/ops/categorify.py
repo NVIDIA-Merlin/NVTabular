@@ -648,6 +648,7 @@ def _top_level_groupby(df, options: FitOptions):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
+
     for i, cat_col_names in enumerate(options.col_groups):
         if not isinstance(cat_col_names, ColumnSelector):
             cat_col_selector = ColumnSelector(cat_col_names)

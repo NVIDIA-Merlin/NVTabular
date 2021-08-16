@@ -390,6 +390,9 @@ class Workflow:
 
 
 def _transform_ddf(ddf, workflow_nodes, meta=None):
+    if not workflow_nodes:
+        return ddf
+
     if isinstance(workflow_nodes, WorkflowNode):
         workflow_nodes = [workflow_nodes]
 
@@ -399,7 +402,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None):
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
     # IO function.
-    if all((c.op is None and not c.parents) for c in workflow_nodes):
+    if all((wfn.op is None and not wfn.parents) for wfn in workflow_nodes):
         return ddf[_get_unique(columns)]
 
     if isinstance(meta, dict) and isinstance(ddf._meta, pd.DataFrame):

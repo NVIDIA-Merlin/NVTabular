@@ -77,6 +77,29 @@ def test_fit_schema_propagates_through_selection_nodes():
     assert workflow.output_schema.column_names == ["a", "b"]
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("use_client", [False])
+def test_gpu_workflow_api_temp(client, dataset, engine, use_client):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    cat_features = cat_names >> ops.Categorify(cat_cache="host")
+
+    norms = ops.Normalize()
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
+
+    output_node = cat_features + cont_features + label_name
+
+    import pdb
+
+    pdb.set_trace()
+
+    workflow = Workflow(output_node, client=client if use_client else None)
+
+    workflow.fit(dataset)
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])

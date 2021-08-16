@@ -30,6 +30,24 @@ def test_adding_workflow_nodes_doesnt_set_selector():
     assert output.selector is None
 
 
+def test_adding_column_names_to_node():
+    # TODO: Try out addition nodes that don't create extra
+    # WorkflowNodes to be their parents and just add additional
+    # columns to their own selectors
+    node = ColumnSelector(["a", "b", "c"]) >> Operator()
+    output_node = node + "d"
+
+    assert len(output_node.parents) == 1
+    assert output_node.selector.names == ["a", "b", "c", "d"]
+
+    node = ColumnSelector(["a", "b", "c"]) >> Operator()
+    output_node = node + ["d", "e", "f"]
+
+    assert len(output_node.parents) == 1
+    assert len(output_node.parents[0].parents) == 0
+    assert output_node.selector.names == ["a", "b", "c", "d", "e", "f"]
+
+
 def test_workflow_node_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
