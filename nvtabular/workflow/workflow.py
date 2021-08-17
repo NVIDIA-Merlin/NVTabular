@@ -367,6 +367,7 @@ def _transform_partition(root_df, workflow_nodes):
     for workflow_node in workflow_nodes:
         unique_flattened_cols = _get_unique(workflow_node.flattened_columns)
         # collect dependencies recursively if we have parents
+        new_columns = set()
         if workflow_node.parents:
             df = None
             columns = None
@@ -381,11 +382,10 @@ def _transform_partition(root_df, workflow_nodes):
                     parent_columns = set(unique_flattened_cols_parent) - columns
                     df = _concat_columns([df, parent_df[list(parent_columns)]])
                     columns.update(parent_columns)
-
                 # Do the logic here
-                new_columns = set(unique_flattened_cols) - set(unique_flattened_cols_parent)
-                df = _concat_columns([df, root_df[list(new_columns)]])
-                columns.update(new_columns)
+                new_columns = new_columns.union(set(unique_flattened_cols) - set(unique_flattened_cols_parent))            
+            # is this even needed here???
+            columns.update(new_columns)
         else:
             # otherwise select the input from the root df
             df = root_df[unique_flattened_cols]
@@ -394,10 +394,11 @@ def _transform_partition(root_df, workflow_nodes):
         if workflow_node.op:
             try:
                 col_selector = ColumnSelector(workflow_node.input_column_names)
-                df = workflow_node.op.transform(col_selector, df)
-                import pdb
-
-                pdb.set_trace()
+                new_df = workflow_node.op.transform(col_selector, df)
+                # concat here with other columns because this is when we want 
+                # to grab others, not before transforms but after...
+                df = _concat_columns([df, root_df[list(new_columns)]])
+                # import pdb; pdb.set_trace()
             except Exception:
                 LOG.exception("Failed to transform operator %s", workflow_node.op)
                 raise
