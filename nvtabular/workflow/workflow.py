@@ -394,7 +394,7 @@ def _transform_partition(root_df, workflow_nodes):
         if workflow_node.op:
             try:
                 col_selector = ColumnSelector(workflow_node.input_column_names)
-                new_df = workflow_node.op.transform(col_selector, df)
+                df = workflow_node.op.transform(col_selector, df)
                 # concat here with other columns because this is when we want 
                 # to grab others, not before transforms but after...
                 df = _concat_columns([df, root_df[list(new_columns)]])
