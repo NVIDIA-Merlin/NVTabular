@@ -16,8 +16,6 @@
 import collections.abc
 import warnings
 
-from dask.core import flatten
-
 from nvtabular.columns import ColumnSelector
 from nvtabular.ops import LambdaOp, Operator
 
@@ -227,10 +225,6 @@ class WorkflowNode:
             return self.selector
         else:
             return self.input_columns
-
-    @property
-    def flattened_columns(self):
-        return list(flatten(self.selector, container=tuple))
 
     @property
     def label(self):
