@@ -207,6 +207,28 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
+    def input_columns(self):
+        dependencies = self.dependencies or set()
+
+        if self.parents:
+            parent_selectors = [
+                parent.selector for parent in self.parents if parent not in dependencies
+            ]
+
+            return sum(parent_selectors, ColumnSelector())
+        else:
+            return self.selector
+
+    @property
+    def output_columns(self):
+        if self.op:
+            return self.op.output_column_names(self.input_columns)
+        elif self.kind and "[" in self.kind and "]" in self.kind:
+            return self.selector
+        else:
+            return self.input_columns
+
+    @property
     def flattened_columns(self):
         return list(flatten(self.selector, container=tuple))
 

@@ -3,8 +3,34 @@ import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
 from nvtabular.columns import ColumnSelector
-from nvtabular.ops import Categorify, Rename
+from nvtabular.ops import Categorify, FillMissing, Rename, TargetEncoding
 from tests.conftest import assert_eq
+
+
+def test_input_output_column_names():
+    input_node = ["a", "b", "c"] >> FillMissing()
+    assert input_node.input_columns.names == ["a", "b", "c"]
+    assert input_node.output_columns.names == ["a", "b", "c"]
+
+    chained_node = input_node >> Categorify()
+    assert chained_node.input_columns.names == ["a", "b", "c"]
+    assert chained_node.output_columns.names == ["a", "b", "c"]
+
+    selection_node = input_node[["b", "c"]]
+    assert selection_node.input_columns.names == ["a", "b", "c"]
+    assert selection_node.output_columns.names == ["b", "c"]
+
+    addition_node = input_node + ["d"]
+    assert addition_node.input_columns.names == ["a", "b", "c", "d"]
+    assert addition_node.output_columns.names == ["a", "b", "c", "d"]
+
+    rename_node = input_node >> Rename(postfix="_renamed")
+    assert rename_node.input_columns.names == ["a", "b", "c"]
+    assert rename_node.output_columns.names == ["a_renamed", "b_renamed", "c_renamed"]
+
+    dependency_node = input_node >> TargetEncoding("d")
+    assert dependency_node.input_columns.names == ["a", "b", "c"]
+    assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
 
 
 def test_workflow_node_select():
