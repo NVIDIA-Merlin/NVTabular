@@ -199,7 +199,7 @@ class JoinExternal(Operator):
 
     def output_column_names(self, columns):
         if self.columns_ext:
-            return list(set(columns + self.columns_ext))
+            return ColumnSelector(list(set(columns + self.columns_ext)))
         return ColumnSelector(list(set(columns + list(self._ext.columns))))
 
 
