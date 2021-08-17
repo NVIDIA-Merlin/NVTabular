@@ -448,7 +448,7 @@ class Categorify(StatOperator):
             cat_names, _ = _get_multicolumn_names(
                 col_selector, col_selector.grouped_names, self.name_sep
             )
-            return cat_names
+            return ColumnSelector(cat_names)
         return ColumnSelector(flatten(col_selector.names, container=tuple))
 
     def get_embedding_sizes(self, columns):
