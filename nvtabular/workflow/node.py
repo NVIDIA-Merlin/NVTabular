@@ -233,18 +233,6 @@ class WorkflowNode:
         return list(flatten(self.selector, container=tuple))
 
     @property
-    def input_column_names(self):
-        """Returns the names of columns in the main chain"""
-        dependencies = self.dependencies or set()
-
-        return [
-            col
-            for parent in self.parents
-            for col in parent.selector.grouped_names
-            if parent not in dependencies
-        ]
-
-    @property
     def label(self):
         if self.op:
             return self.op.label

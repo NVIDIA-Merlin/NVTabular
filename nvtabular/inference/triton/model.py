@@ -41,7 +41,6 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular import ColumnSelector
 from nvtabular.dispatch import _concat_columns, _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.data_conversions import convert_format
@@ -290,7 +289,7 @@ def _transform_tensors(input_tensors, workflow_node):
                 tensors, kind = convert_format(tensors, kind, workflow_node.inference_supports)
 
             tensors = workflow_node.op.transform(
-                ColumnSelector(workflow_node.input_column_names),
+                workflow_node.input_columns,
                 tensors,
             )
 

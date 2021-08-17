@@ -34,7 +34,6 @@ from dask.core import flatten
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.ops.operator import ColumnSelector
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode, _merge_add_nodes, iter_nodes
@@ -151,8 +150,7 @@ class Workflow:
 
                 op = workflow_node.op
                 try:
-                    col_selector = ColumnSelector(workflow_node.input_column_names)
-                    stats.append(op.fit(col_selector, transformed_ddf))
+                    stats.append(op.fit(workflow_node.input_columns, transformed_ddf))
                     ops.append(op)
                 except Exception:
                     LOG.exception("Failed to fit operator %s", workflow_node.op)
@@ -378,8 +376,7 @@ def _transform_partition(root_df, workflow_nodes):
         # apply the operator if necessary
         if workflow_node.op:
             try:
-                col_selector = ColumnSelector(workflow_node.input_column_names)
-                df = workflow_node.op.transform(col_selector, df)
+                df = workflow_node.op.transform(workflow_node.input_columns, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", workflow_node.op)
                 raise
