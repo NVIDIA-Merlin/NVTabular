@@ -31,6 +31,18 @@ from nvtabular import ColumnSelector, Dataset, Workflow, ops
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_grab_additional_input_columns(dataset, engine):
+    node1 = ["x"] >> ops.FillMissing()
+    node2 = node1 >> ops.Clip(min_value=0)
+
+    node2.selector = node2.selector + ["y"]
+
+    workflow = Workflow(node2)
+    workflow.fit(dataset)
+    workflow.fit_transform(dataset)
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("dump", [True, False])
