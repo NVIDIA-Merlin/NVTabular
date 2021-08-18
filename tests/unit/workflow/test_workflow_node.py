@@ -17,7 +17,7 @@ def test_input_output_column_names():
     assert chained_node.output_columns.names == ["a", "b", "c"]
 
     selection_node = input_node[["b", "c"]]
-    assert selection_node.input_columns.names == ["a", "b", "c"]
+    assert selection_node.input_columns.names == ["b", "c"]
     assert selection_node.output_columns.names == ["b", "c"]
 
     addition_node = input_node + ["d"]

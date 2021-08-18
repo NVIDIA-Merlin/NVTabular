@@ -84,9 +84,7 @@ class WorkflowNode:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        col_selector = ColumnSelector(operator.output_column_names(self.selector))
-
-        child = WorkflowNode(col_selector)
+        child = WorkflowNode(self.output_columns)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
