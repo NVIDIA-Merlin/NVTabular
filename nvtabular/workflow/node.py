@@ -127,7 +127,7 @@ class WorkflowNode:
             new_selector = ColumnSelector([])
             for element in other:
                 if isinstance(element, WorkflowNode):
-                    new_selector += ColumnSelector([], subgroups=[element.selector])
+                    new_selector += ColumnSelector([], subgroups=[element.output_columns])
                 else:
                     new_selector += ColumnSelector(element)
             other = sum(other, WorkflowNode(ColumnSelector([])))
@@ -136,12 +136,14 @@ class WorkflowNode:
             other = WorkflowNode(ColumnSelector(other))
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.selector.grouped_names).intersection(other.selector.grouped_names)
+        overlap = set(self.output_columns.grouped_names).intersection(
+            other.output_columns.grouped_names
+        )
 
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
-        child = WorkflowNode(self.selector + other.selector)
+        child = WorkflowNode(self.output_columns + other.output_columns)
         child.parents = [self, other]
         child.kind = "+"
         self.children.append(child)
