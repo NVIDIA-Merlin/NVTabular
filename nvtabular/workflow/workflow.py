@@ -318,6 +318,9 @@ def _transform_ddf(ddf, workflow_nodes, meta=None):
     if isinstance(workflow_nodes, WorkflowNode):
         workflow_nodes = [workflow_nodes]
 
+    if not workflow_nodes:
+        return ddf
+
     columns = list(flatten(wfn.output_columns.names for wfn in workflow_nodes))
 
     # Check if we are only selecting columns (no transforms).
