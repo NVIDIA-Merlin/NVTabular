@@ -206,16 +206,7 @@ class WorkflowNode:
 
     @property
     def input_columns(self):
-        dependencies = self.dependencies or set()
-
-        if self.parents:
-            parent_selectors = [
-                parent.selector for parent in self.parents if parent not in dependencies
-            ]
-
-            return sum(parent_selectors, ColumnSelector())
-        else:
-            return self.selector
+        return self.selector
 
     @property
     def output_columns(self):

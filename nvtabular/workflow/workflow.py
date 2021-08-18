@@ -296,8 +296,15 @@ class Workflow:
             stat.op.clear()
 
     def _input_columns(self):
-        input_nodes = list(set(node for node in iter_nodes([self.output_node]) if not node.parents))
-        return list(set(col for node in input_nodes for col in node.input_columns.names))
+        input_cols = []
+        for node in iter_nodes([self.output_node]):
+            parent_output_cols = []
+            for parent in node.parents:
+                parent_output_cols += parent.output_columns.names
+            parent_output_cols = _get_unique(parent_output_cols)
+            input_cols += list(set(node.input_columns.names) - set(parent_output_cols))
+
+        return _get_unique(input_cols)
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"

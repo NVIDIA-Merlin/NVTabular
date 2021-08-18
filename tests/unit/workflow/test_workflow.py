@@ -39,8 +39,10 @@ def test_grab_additional_input_columns(dataset, engine):
     node2.selector = node2.selector + ["y"]
 
     workflow = Workflow(node2)
-    workflow.fit(dataset)
-    workflow.fit_transform(dataset)
+    output_df = workflow.fit_transform(dataset).to_ddf().compute()
+
+    assert len(output_df.columns) == 2
+    assert output_df.columns.tolist() == ["x", "y"]
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])
