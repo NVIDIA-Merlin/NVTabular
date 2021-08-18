@@ -362,6 +362,7 @@ def _transform_partition(root_df, workflow_nodes):
     output = None
 
     for node in workflow_nodes:
+        node_input_cols = _get_unique(node.input_columns.names)
         node_output_cols = _get_unique(node.output_columns.names)
 
         # Build input dataframe
@@ -390,7 +391,7 @@ def _transform_partition(root_df, workflow_nodes):
         else:
             # If there are no parents, this is an input node,
             # so pull columns directly from root df
-            input_df = root_df[node_output_cols]
+            input_df = root_df[node_input_cols]
 
         # Compute the node's output
         if node.op:
