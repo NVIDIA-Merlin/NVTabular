@@ -3,8 +3,16 @@ import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
 from nvtabular.columns import ColumnSelector
-from nvtabular.ops import Categorify, FillMissing, Rename, TargetEncoding
+from nvtabular.ops import Categorify, FillMissing, Operator, Rename, TargetEncoding
 from tests.conftest import assert_eq
+
+
+def test_workflow_node_converts_lists_to_selectors():
+    node = WorkflowNode([])
+    assert node.selector == ColumnSelector([])
+
+    node.selector = ["a", "b", "c"]
+    assert node.selector == ColumnSelector(["a", "b", "c"])
 
 
 def test_input_output_column_names():
@@ -31,6 +39,24 @@ def test_input_output_column_names():
     dependency_node = input_node >> TargetEncoding("d")
     assert dependency_node.input_columns.names == ["a", "b", "c"]
     assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
+
+
+def test_workflow_node_addition():
+    node1 = ["a", "b"] >> Operator()
+    node2 = ["c", "d"] >> Operator()
+    output_node = node1 + node2
+
+    assert len(output_node.parents) == 2
+    assert output_node.output_columns.names == ["a", "b", "c", "d"]
+
+    output_node = node1 + "c"
+
+    assert len(output_node.parents) == 1
+    assert output_node.output_columns.names == ["a", "b", "c"]
+
+    output_node = node1 + ["c", "d"]
+
+    assert output_node.output_columns.names == ["a", "b", "c", "d"]
 
 
 def test_workflow_node_select():
@@ -88,11 +114,3 @@ def test_nested_workflow_node():
     # are super confusing for users)
     with pytest.raises(ValueError):
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
-
-
-def test_workflow_node_converts_lists():
-    node = WorkflowNode([])
-    assert node.selector == ColumnSelector([])
-
-    node.selector = ["a", "b", "c"]
-    assert node.selector == ColumnSelector(["a", "b", "c"])
