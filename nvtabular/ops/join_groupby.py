@@ -96,7 +96,7 @@ class JoinGroupby(StatOperator):
 
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_names = self.cont_cols.selector
+        self.cont_names = self.cont_cols.output_columns
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"

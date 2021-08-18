@@ -3,7 +3,7 @@ import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
 from nvtabular.columns import ColumnSelector
-from nvtabular.ops import Categorify, FillMissing, Operator, Rename, TargetEncoding
+from nvtabular.ops import Categorify, DifferenceLag, FillMissing, Operator, Rename, TargetEncoding
 from tests.conftest import assert_eq
 
 
@@ -41,6 +41,11 @@ def test_input_output_column_names():
     assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
 
 
+def test_dependency_column_names():
+    dependency_node = ["a", "b", "c"] >> TargetEncoding("d")
+    assert dependency_node.dependency_columns.names == ["d"]
+
+
 def test_workflow_node_addition():
     node1 = ["a", "b"] >> Operator()
     node2 = ["c", "d"] >> Operator()
@@ -75,6 +80,17 @@ def test_workflow_node_addition():
     output_node = node1 + [node2, node3]
     assert output_node.output_columns.names == ["a", "b", "c", "d", "e", "f"]
     assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e", "f")]
+
+
+def test_workflow_node_dependencies():
+    # Full WorkflowNode case
+    node1 = ["a", "b"] >> Operator()
+    output_node = ["timestamp"] >> DifferenceLag(partition_cols=[node1], shift=[1, -1])
+    assert list(output_node.dependencies) == [node1]
+
+    # ColumnSelector case
+    output_node = ["timestamp"] >> DifferenceLag(partition_cols=["userid"], shift=[1, -1])
+    assert list(output_node.dependencies) == [ColumnSelector(["userid"])]
 
 
 def test_workflow_node_select():
