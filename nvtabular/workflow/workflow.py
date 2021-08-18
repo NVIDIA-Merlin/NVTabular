@@ -34,7 +34,6 @@ from dask.core import flatten
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.ops.operator import ColumnSelector
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode, _merge_add_nodes, iter_nodes
@@ -151,8 +150,7 @@ class Workflow:
 
                 op = workflow_node.op
                 try:
-                    col_selector = ColumnSelector(workflow_node.input_column_names)
-                    stats.append(op.fit(col_selector, transformed_ddf))
+                    stats.append(op.fit(workflow_node.input_columns, transformed_ddf))
                     ops.append(op)
                 except Exception:
                     LOG.exception("Failed to fit operator %s", workflow_node.op)
@@ -298,8 +296,8 @@ class Workflow:
             stat.op.clear()
 
     def _input_columns(self):
-        input_nodes = set(node for node in iter_nodes([self.output_node]) if not node.parents)
-        return list(set(col for node in input_nodes for col in node.flattened_columns))
+        input_nodes = list(set(node for node in iter_nodes([self.output_node]) if not node.parents))
+        return list(set(col for node in input_nodes for col in node.input_columns.names))
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
@@ -313,7 +311,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None):
     if isinstance(workflow_nodes, WorkflowNode):
         workflow_nodes = [workflow_nodes]
 
-    columns = list(flatten(cg.flattened_columns for cg in workflow_nodes))
+    columns = list(flatten(wfn.output_columns.names for wfn in workflow_nodes))
 
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
@@ -356,13 +354,13 @@ def _transform_partition(root_df, workflow_nodes):
     """Transforms a single partition by appyling all operators in a WorkflowNode"""
     output = None
     for workflow_node in workflow_nodes:
-        unique_flattened_cols = _get_unique(workflow_node.flattened_columns)
+        unique_flattened_cols = _get_unique(workflow_node.output_columns.names)
         # collect dependencies recursively if we have parents
         if workflow_node.parents:
             df = None
             columns = None
             for parent in workflow_node.parents:
-                unique_flattened_cols_parent = _get_unique(parent.flattened_columns)
+                unique_flattened_cols_parent = _get_unique(parent.output_columns.names)
                 parent_df = _transform_partition(root_df, [parent])
                 if df is None or not len(df):
                     df = parent_df[unique_flattened_cols_parent]
@@ -378,8 +376,7 @@ def _transform_partition(root_df, workflow_nodes):
         # apply the operator if necessary
         if workflow_node.op:
             try:
-                col_selector = ColumnSelector(workflow_node.input_column_names)
-                df = workflow_node.op.transform(col_selector, df)
+                df = workflow_node.op.transform(workflow_node.input_columns, df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", workflow_node.op)
                 raise
