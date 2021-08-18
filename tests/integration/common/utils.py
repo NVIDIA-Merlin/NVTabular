@@ -117,7 +117,7 @@ def _run_query(
     workflow = nvt.Workflow.load(workflow_path)
 
     if input_cols_name is None:
-        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.output_node.input_column_names]
+        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.output_node.input_columns.names]
     else:
         batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
 
