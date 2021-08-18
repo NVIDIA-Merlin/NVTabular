@@ -353,44 +353,51 @@ def _get_unique(cols):
 def _transform_partition(root_df, workflow_nodes):
     """Transforms a single partition by appyling all operators in a WorkflowNode"""
     output = None
-    for workflow_node in workflow_nodes:
-        unique_flattened_cols = _get_unique(workflow_node.output_columns.names)
-        # collect dependencies recursively if we have parents
-        if workflow_node.parents:
-            df = None
-            columns = None
-            for parent in workflow_node.parents:
-                unique_flattened_cols_parent = _get_unique(parent.output_columns.names)
-                parent_df = _transform_partition(root_df, [parent])
-                if df is None or not len(df):
-                    df = parent_df[unique_flattened_cols_parent]
-                    columns = set(unique_flattened_cols_parent)
-                else:
-                    new_columns = set(unique_flattened_cols_parent) - columns
-                    df = _concat_columns([df, parent_df[list(new_columns)]])
-                    columns.update(new_columns)
-        else:
-            # otherwise select the input from the root df
-            df = root_df[unique_flattened_cols]
 
-        # apply the operator if necessary
-        if workflow_node.op:
+    for node in workflow_nodes:
+        node_output_cols = _get_unique(node.output_columns.names)
+
+        # Build input dataframe
+        if node.parents:
+            # If there are parents, collect their outputs to
+            # build this node's input
+            input_df = None
+            seen_columns = None
+            for parent in node.parents:
+                parent_output_cols = _get_unique(parent.output_columns.names)
+                parent_df = _transform_partition(root_df, [parent])
+                if input_df is None or not len(input_df):
+                    input_df = parent_df[parent_output_cols]
+                    seen_columns = set(parent_output_cols)
+                else:
+                    new_columns = set(parent_output_cols) - seen_columns
+                    input_df = _concat_columns([input_df, parent_df[list(new_columns)]])
+                    seen_columns.update(new_columns)
+        else:
+            # If there are no parents, this is an input node,
+            # so pull columns directly from root df
+            input_df = root_df[node_output_cols]
+
+        # Compute the node's output
+        if node.op:
             try:
-                df = workflow_node.op.transform(workflow_node.input_columns, df)
+                output_df = node.op.transform(node.input_columns, input_df)
             except Exception:
-                LOG.exception("Failed to transform operator %s", workflow_node.op)
+                LOG.exception("Failed to transform operator %s", node.op)
                 raise
-            if df is None:
-                raise RuntimeError(
-                    "Operator %s didn't return a value during transform" % workflow_node.op
-                )
+            if output_df is None:
+                raise RuntimeError("Operator %s didn't return a value during transform" % node.op)
+        else:
+            output_df = input_df
+
+        # Combine output across node loop iterations
 
         # dask needs output to be in the same order defined as meta, reorder partitions here
         # this also selects columns (handling the case of removing columns from the output using
         # "-" overload)
         if output is None:
-            output = df[unique_flattened_cols]
+            output = output_df[node_output_cols]
         else:
-            output = _concat_columns([output, df[unique_flattened_cols]])
+            output = _concat_columns([output, output_df[node_output_cols]])
 
     return output
