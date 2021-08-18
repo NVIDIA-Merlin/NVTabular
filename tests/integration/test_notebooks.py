@@ -151,19 +151,6 @@ def test_movielens(asv_db, bench_info, tmpdir, devices):
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
     os.environ["MODEL_PATH"] = INFERENCE_MULTI_HOT
 
-    # Run HugeCTR
-    try:
-        notebook = os.path.join(
-            dirname(TEST_PATH), MOVIELENS_DIR, "inference-HugeCTR/Training-with-HugeCTR.ipynb"
-        )
-        import hugectr
-
-        print(hugectr.__version__)
-        # _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
-        return
-    except ImportError:
-        print("HugeCTR not installed, skipping " + notebook)
-
     # Run Tensorflow or PyTorch
     # Run Download & Convert for all
     notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "01-Download-Convert.ipynb")
