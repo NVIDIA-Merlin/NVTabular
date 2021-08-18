@@ -90,21 +90,20 @@ class WorkflowNode:
         child.op = operator
 
         dependencies = operator.dependencies()
+
         if dependencies:
             child.dependencies = set()
+            child.dependencies = []
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
             for dependency in dependencies:
                 if isinstance(dependency, WorkflowNode):
-                    pass
-                elif isinstance(dependency, ColumnSelector):
-                    dependency = WorkflowNode(dependency)
+                    dependency.children.append(child)
+                    child.parents.append(dependency)
                 else:
-                    dependency = WorkflowNode(ColumnSelector(dependency))
-                dependency.children.append(child)
-                child.parents.append(dependency)
-                child.dependencies.add(dependency)
+                    dependency = ColumnSelector(dependency)
+                child.dependencies.append(dependency)
 
         return child
 
@@ -221,6 +220,22 @@ class WorkflowNode:
             return self.selector
         else:
             return self.input_columns
+
+    @property
+    def dependency_columns(self):
+        dependency_cols = []
+
+        if not self.dependencies:
+            return ColumnSelector(dependency_cols)
+
+        # Dependencies can be either WorkflowNodes or ColumnSelectors
+        # WorkflowNodes are already handled as parents, but we still
+        # need to account for the columns in raw (non-node) selectors
+        for selector in self.dependencies:
+            if isinstance(selector, ColumnSelector):
+                dependency_cols += selector.names
+
+        return ColumnSelector(dependency_cols)
 
     @property
     def label(self):

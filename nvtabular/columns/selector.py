@@ -112,7 +112,7 @@ class ColumnSelector:
 
         # Remove virtual input node from the graph
         virtual_node.children = []
-        new_node.parents = []
+        new_node.parents.remove(virtual_node)
         del virtual_node
 
         # Return the new node as the (real) input node

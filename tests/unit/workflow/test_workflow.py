@@ -37,6 +37,7 @@ def test_grab_additional_input_columns(dataset, engine):
     node2 = node1 >> ops.Clip(min_value=0)
 
     node2.selector = node2.selector + ["y"]
+    assert node2.input_columns.names == ["x", "y"]
 
     workflow = Workflow(node2)
     output_df = workflow.fit_transform(dataset).to_ddf().compute()
