@@ -101,11 +101,6 @@ def test_schema_sets_can_be_added():
 
     assert result == expected
 
-    with pytest.raises(ValueError) as exception_info:
-        schema_set1 + schema_set1  # pylint: disable=pointless-statement
-
-    assert "Overlapping column schemas" in str(exception_info.value)
-
 
 def test_column_schema_sets_can_be_added_to_none():
     schema_set = ColumnSchemaSet(["a", "b", "c"])

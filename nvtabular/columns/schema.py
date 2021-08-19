@@ -103,11 +103,6 @@ class ColumnSchemaSet:
                 f"unsupported operand type(s) for +: 'ColumnSchemaSet' and {type(other)}"
             )
 
-        overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
-
-        if overlap:
-            raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
-
         return ColumnSchemaSet({**self.column_schemas, **other.column_schemas})
 
     def __radd__(self, other):
