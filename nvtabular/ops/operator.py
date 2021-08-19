@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
-from nvtabular.columns import ColumnSelector
+from nvtabular.columns import ColumnSchemaSet, ColumnSelector
 from nvtabular.dispatch import DataFrameType
 
 
@@ -72,6 +72,35 @@ class Operator:
             The names of columns produced by this operator
         """
         return col_selector
+
+    def compute_output_schema(
+        self, input_schema: ColumnSchemaSet, col_selector: ColumnSelector
+    ) -> ColumnSchemaSet:
+        """Given a set of schemas and a column selector for the input columns,
+        returns a set of schemas for the transformed columns this operator will produce
+
+        Parameters
+        -----------
+        input_schema: ColumnSchemaSet
+            The schemas of the columns to apply this operator to
+        col_selector: ColumnSelector
+            The column selector to apply to the input schema
+
+        Returns
+        -------
+        ColumnSchemaSet
+            The schemas of the columns produced by this operator
+        """
+        selected_schema = input_schema.apply(col_selector)
+        # TODO: Add a method to ColumnSchemaSet to convert to ColumnSelector?
+        column_selector = ColumnSelector(selected_schema.column_schemas.keys())
+        output_selector = self.output_column_names(column_selector)
+        output_names = (
+            output_selector.names
+            if isinstance(output_selector, ColumnSelector)
+            else output_selector
+        )
+        return ColumnSchemaSet(output_names)
 
     def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
