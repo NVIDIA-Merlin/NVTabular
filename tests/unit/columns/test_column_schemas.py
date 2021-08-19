@@ -107,9 +107,16 @@ def test_schema_sets_can_be_added():
     assert "Overlapping column schemas" in str(exception_info.value)
 
 
+def test_column_schema_sets_can_be_added_to_none():
+    schema_set = ColumnSchemaSet(["a", "b", "c"])
+
+    assert (schema_set + None) == schema_set
+    assert (None + schema_set) == schema_set
+
+
 def test_construct_schema_set_with_column_names():
     schema_set = ColumnSchemaSet(["x", "y", "z"])
-    expected = ColumnSchemaSet([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
+    expected = ColumnSchemaSet(["x", "y", "z"])
 
     assert schema_set == expected
 
