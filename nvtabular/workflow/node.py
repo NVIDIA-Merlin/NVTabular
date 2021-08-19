@@ -16,8 +16,6 @@
 import collections.abc
 import warnings
 
-from dask.core import flatten
-
 from nvtabular.columns import ColumnSelector
 from nvtabular.ops import LambdaOp, Operator
 
@@ -207,20 +205,26 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
-    def flattened_columns(self):
-        return list(flatten(self.selector, container=tuple))
-
-    @property
-    def input_column_names(self):
-        """Returns the names of columns in the main chain"""
+    def input_columns(self):
         dependencies = self.dependencies or set()
 
-        return [
-            col
-            for parent in self.parents
-            for col in parent.selector.grouped_names
-            if parent not in dependencies
-        ]
+        if self.parents:
+            parent_selectors = [
+                parent.selector for parent in self.parents if parent not in dependencies
+            ]
+
+            return sum(parent_selectors, ColumnSelector())
+        else:
+            return self.selector
+
+    @property
+    def output_columns(self):
+        if self.op:
+            return self.op.output_column_names(self.input_columns)
+        elif self.kind and "[" in self.kind and "]" in self.kind:
+            return self.selector
+        else:
+            return self.input_columns
 
     @property
     def label(self):
