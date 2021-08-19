@@ -2,9 +2,20 @@ import numpy as np
 import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
-from nvtabular.columns import ColumnSelector
+from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import Categorify, DifferenceLag, FillMissing, Operator, Rename, TargetEncoding
 from tests.conftest import assert_eq
+
+
+def test_selecting_columns_sets_selector_and_kind():
+    node = ColumnSelector(["a", "b", "c"]) >> Operator()
+    output = node[["a", "b"]]
+    assert output.selector.names == ["a", "b"]
+    assert "[" in output.kind and "]" in output.kind
+
+    output = node["b"]
+    assert output.selector.names == ["b"]
+    assert "[" in output.kind and "]" in output.kind
 
 
 def test_workflow_node_converts_lists_to_selectors():
@@ -91,6 +102,28 @@ def test_workflow_node_dependencies():
     # ColumnSelector case
     output_node = ["timestamp"] >> DifferenceLag(partition_cols=["userid"], shift=[1, -1])
     assert list(output_node.dependencies) == [ColumnSelector(["userid"])]
+
+
+def test_compute_schemas():
+    root_schema = Schema(["a", "b", "c", "d", "e"])
+
+    node1 = ["a", "b"] >> Rename(postfix="_renamed")
+    node1.compute_schemas(root_schema)
+
+    assert node1.input_columns.names == ["a", "b"]
+    assert node1.output_columns.names == ["a_renamed", "b_renamed"]
+
+    node2 = node1 + "c"
+    node2.compute_schemas(root_schema)
+
+    assert node2.input_columns.names == ["a_renamed", "b_renamed", "c"]
+    assert node2.output_columns.names == ["a_renamed", "b_renamed", "c"]
+
+    node3 = node2["a_renamed"]
+    node3.compute_schemas(root_schema)
+
+    assert node3.input_columns.names == ["a_renamed"]
+    assert node3.output_columns.names == ["a_renamed"]
 
 
 def test_workflow_node_select():
