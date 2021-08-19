@@ -15,4 +15,5 @@
 #
 
 # flake8: noqa
+from .schema import ColumnSchema, ColumnSchemaSet
 from .selector import ColumnSelector
