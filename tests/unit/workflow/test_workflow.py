@@ -27,8 +27,27 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-from nvtabular import ColumnSelector, Dataset, Workflow, ops
+from nvtabular import Dataset, Workflow, ops
+from nvtabular.columns import ColumnSchemaSet, ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
+
+
+def test_fit_schema():
+    schema = ColumnSchemaSet(["x", "y", "id"])
+
+    cont_features = (
+        ColumnSelector(schema.column_names)
+        >> ops.FillMissing()
+        >> ops.Clip(min_value=0)
+        >> ops.LogOp
+        >> ops.Normalize()
+        >> ops.Rename(postfix="_renamed")
+    )
+
+    workflow = Workflow(cont_features)
+    workflow.fit_schema(schema)
+
+    assert workflow.output_schema.column_names == ["x_renamed", "y_renamed", "id_renamed"]
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
