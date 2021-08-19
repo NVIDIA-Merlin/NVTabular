@@ -15,7 +15,7 @@
 #
 import pytest
 
-from nvtabular.columns.schema import ColumnSchema, DatasetSchema
+from nvtabular.columns.schema import ColumnSchema, ColumnSchemaSet
 from nvtabular.columns.selector import ColumnSelector
 
 
@@ -28,104 +28,104 @@ def test_column_schema():
     assert set(column.with_tags("tag-2").tags) == set(["tag-1", "tag-2"])
 
 
-def test_dataset_schema_constructor():
+def test_schema_set_constructor():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["c", "d", "e"])
 
     expected = {schema1.name: schema1, schema2.name: schema2}
 
-    ds_schema_dict = DatasetSchema(expected)
-    ds_schema_list = DatasetSchema([schema1, schema2])
+    schema_set_dict = ColumnSchemaSet(expected)
+    schema_set_list = ColumnSchemaSet([schema1, schema2])
 
-    assert ds_schema_dict.column_schemas == expected
-    assert ds_schema_list.column_schemas == expected
+    assert schema_set_dict.column_schemas == expected
+    assert schema_set_list.column_schemas == expected
 
     with pytest.raises(TypeError) as exception_info:
-        DatasetSchema(12345)
+        ColumnSchemaSet(12345)
 
     assert "column_schemas" in str(exception_info.value)
 
 
-def test_dataset_schema_select_by_tag():
+def test_schema_set_select_by_tag():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
 
-    ds_schema = DatasetSchema([schema1, schema2])
+    schema_set = ColumnSchemaSet([schema1, schema2])
 
-    selected_schema1 = ds_schema.select_by_tag("a")
-    selected_schema2 = ds_schema.select_by_tag("d")
+    selected_schema1 = schema_set.select_by_tag("a")
+    selected_schema2 = schema_set.select_by_tag("d")
 
     assert selected_schema1.column_schemas == {"col1": schema1}
     assert selected_schema2.column_schemas == {"col2": schema2}
 
-    selected_schema_both = ds_schema.select_by_tag("c")
-    selected_schema_neither = ds_schema.select_by_tag("e")
-    selected_schema_multi = ds_schema.select_by_tag(["b", "c"])
+    selected_schema_both = schema_set.select_by_tag("c")
+    selected_schema_neither = schema_set.select_by_tag("e")
+    selected_schema_multi = schema_set.select_by_tag(["b", "c"])
 
     assert selected_schema_both.column_schemas == {"col1": schema1, "col2": schema2}
     assert selected_schema_neither.column_schemas == {}
     assert selected_schema_multi.column_schemas == {"col1": schema1, "col2": schema2}
 
 
-def test_dataset_schema_select_by_name():
+def test_schema_set_select_by_name():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
 
-    ds_schema = DatasetSchema([schema1, schema2])
+    schema_set = ColumnSchemaSet([schema1, schema2])
 
-    selected_schema1 = ds_schema.select_by_name("col1")
-    selected_schema2 = ds_schema.select_by_name("col2")
+    selected_schema1 = schema_set.select_by_name("col1")
+    selected_schema2 = schema_set.select_by_name("col2")
 
     assert selected_schema1.column_schemas == {"col1": schema1}
     assert selected_schema2.column_schemas == {"col2": schema2}
 
-    selected_schema_multi = ds_schema.select_by_name(["col1", "col2"])
+    selected_schema_multi = schema_set.select_by_name(["col1", "col2"])
 
     assert selected_schema_multi.column_schemas == {"col1": schema1, "col2": schema2}
 
     with pytest.raises(KeyError) as exception_info:
-        ds_schema.select_by_name("col3")
+        schema_set.select_by_name("col3")
 
     assert "col3" in str(exception_info.value)
 
 
-def test_dataset_schemas_can_be_added():
-    ds1_schema = DatasetSchema([ColumnSchema("col1"), ColumnSchema("col2")])
-    ds2_schema = DatasetSchema([ColumnSchema("col3"), ColumnSchema("col4")])
+def test_schema_sets_can_be_added():
+    schema_set1 = ColumnSchemaSet([ColumnSchema("col1"), ColumnSchema("col2")])
+    schema_set2 = ColumnSchemaSet([ColumnSchema("col3"), ColumnSchema("col4")])
 
-    result = ds1_schema + ds2_schema
+    result = schema_set1 + schema_set2
 
-    expected = DatasetSchema(
+    expected = ColumnSchemaSet(
         [ColumnSchema("col1"), ColumnSchema("col2"), ColumnSchema("col3"), ColumnSchema("col4")]
     )
 
     assert result == expected
 
     with pytest.raises(ValueError) as exception_info:
-        ds1_schema + ds1_schema  # pylint: disable=pointless-statement
+        schema_set1 + schema_set1  # pylint: disable=pointless-statement
 
     assert "Overlapping column schemas" in str(exception_info.value)
 
 
-def test_construct_dataset_schema_with_column_names():
-    ds_schema = DatasetSchema(["x", "y", "z"])
-    expected = DatasetSchema([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
+def test_construct_schema_set_with_column_names():
+    schema_set = ColumnSchemaSet(["x", "y", "z"])
+    expected = ColumnSchemaSet([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
 
-    assert ds_schema == expected
+    assert schema_set == expected
 
 
-def test_dataset_schema_column_names():
-    ds_schema = DatasetSchema(["x", "y", "z"])
+def test_schema_set_column_names():
+    schema_set = ColumnSchemaSet(["x", "y", "z"])
 
-    assert ds_schema.column_names == ["x", "y", "z"]
+    assert schema_set.column_names == ["x", "y", "z"]
 
 
 def test_applying_selector_to_schema_selects_relevant_columns():
-    schema = DatasetSchema(["a", "b", "c", "d", "e"])
+    schema = ColumnSchemaSet(["a", "b", "c", "d", "e"])
     selector = ColumnSelector(["a", "b"])
     result = schema.apply(selector)
 
-    assert result == DatasetSchema(["a", "b"])
+    assert result == ColumnSchemaSet(["a", "b"])
 
     selector = None
     result = schema.apply(selector)
