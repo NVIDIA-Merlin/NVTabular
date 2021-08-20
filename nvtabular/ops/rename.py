@@ -49,6 +49,7 @@ class Rename(Operator):
         self.name = name
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        df = df[col_selector.names]
         df.columns = self.output_column_names(col_selector)
         return df
 
