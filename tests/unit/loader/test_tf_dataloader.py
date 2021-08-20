@@ -518,7 +518,9 @@ def test_sparse_tensors(tmpdir, sparse_dense):
                 assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
 
 
-@pytest.mark.skip(reason="not working correctly in ci environment")
+@pytest.mark.skipif(
+    os.environ.get("NR_USER") is not None, reason="not working correctly in ci environment"
+)
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 def test_horovod_multigpu(tmpdir):
     json_sample = {
