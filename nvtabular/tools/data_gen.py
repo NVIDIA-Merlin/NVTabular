@@ -46,7 +46,7 @@ class PowerLawDistro:
         gamma = 1 - self.alpha
         # range 1.0 - 2.0 to avoid using 0, which represents unknown, null, None
         ser = cudf.Series(cupy.random.uniform(0.0, 1.0, size=num_rows))
-        factor = (cupy.power(max_val, gamma) - cupy.power(min_val, gamma))
+        factor = cupy.power(max_val, gamma) - cupy.power(min_val, gamma)
         ser = (ser * factor.item()) + cupy.power(min_val, gamma).item()
         exp = 1.0 / gamma
         ser = ser.pow(exp)
