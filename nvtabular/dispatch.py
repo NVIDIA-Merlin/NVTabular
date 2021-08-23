@@ -330,7 +330,7 @@ def _pull_apart_list(original):
         offsets = original._column.offsets
         elements = original._column.elements
         if isinstance(elements, cudf.core.column.lists.ListColumn):
-            offsets = elements.list(parent=original.list._parent)._column.offsets[offsets]
+            offsets = elements.offsets[offsets]
     return values, offsets
 
 

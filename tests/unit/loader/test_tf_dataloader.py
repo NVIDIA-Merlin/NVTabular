@@ -518,7 +518,9 @@ def test_sparse_tensors(tmpdir, sparse_dense):
                 assert not isinstance(feature_tensor, tf.sparse.SparseTensor)
 
 
-@pytest.mark.skip(reason="not working correctly in ci environment")
+@pytest.mark.skipif(
+    os.environ.get("NR_USER") is not None, reason="not working correctly in ci environment"
+)
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 def test_horovod_multigpu(tmpdir):
     json_sample = {
@@ -549,8 +551,8 @@ def test_horovod_multigpu(tmpdir):
     os.mkdir(target_path)
     df_files = df_gen.full_df_create(10000, cols, output=target_path)
     # process them
-    cat_features = nvt.ColumnGroup(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
-    ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    cat_features = nvt.ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
+    ratings = nvt.ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
     proc = nvt.Workflow(output)
     target_path_train = os.path.join(tmpdir, "train/")
@@ -563,7 +565,7 @@ def test_horovod_multigpu(tmpdir):
     os.mkdir(target_path)
     proc.save(target_path)
     curr_path = os.path.abspath(__file__)
-    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../..")))
+    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../../..")))
     hvd_wrap_path = os.path.join(repo_root, "examples/multi-gpu-movielens/hvd_wrapper.sh")
     hvd_exam_path = os.path.join(repo_root, "examples/multi-gpu-movielens/tf_trainer.py")
     with subprocess.Popen(

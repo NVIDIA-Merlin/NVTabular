@@ -20,6 +20,7 @@ import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 import nvtabular as nvt
+from nvtabular.columns import ColumnSelector
 from nvtabular.ops import Bucketize, Categorify, HashBucket, HashedCross, Rename
 
 
@@ -200,7 +201,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             _make_categorical_embedding(key, cat_column.num_buckets, embedding_dim)
         )
 
-    features = nvt.ColumnGroup(label_name)
+    features = ColumnSelector(label_name)
 
     if len(buckets) > 0:
         new_buckets = {}
@@ -226,10 +227,12 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         features += features_replaced_buckets
 
     if len(categorifies) > 0:
-        features += categorifies.keys() >> Categorify(vocabs=pd.DataFrame(categorifies))
+        features += ColumnSelector(list(categorifies.keys())) >> Categorify(
+            vocabs=pd.DataFrame(categorifies)
+        )
 
     if len(hashes) > 0:
-        features += hashes.keys() >> HashBucket(hashes)
+        features += ColumnSelector(list(hashes.keys())) >> HashBucket(hashes)
 
     if len(crosses) > 0:
         # need to check if any bucketized columns are coming from
@@ -260,7 +263,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                         else:
                             raise RuntimeError(f"Unknown bucket column {key}")
                     else:
-                        cross_columns.append(nvt.ColumnGroup(key))
+                        cross_columns.append(nvt.WorkflowNode(key))
 
                 features += sum(cross_columns[1:], cross_columns[0]) >> HashedCross(
                     hash_bucket_size

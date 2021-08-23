@@ -27,7 +27,7 @@ import pytest
 try:
     import hugectr
     from hugectr.inference import CreateInferenceSession, InferenceParams
-    from mpi4py import MPI  # noqa
+    from mpi4py import MPI  # noqa pylint: disable=unused-import
 except ImportError:
     hugectr = None
 
@@ -88,7 +88,7 @@ def test_training():
 
     # Perform ETL with NVTabular
     cat_features = CATEGORICAL_COLUMNS >> nvt.ops.Categorify(cat_cache="device")
-    ratings = nvt.ColumnGroup(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    ratings = nvt.ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
 
     workflow = nvt.Workflow(output)
@@ -148,7 +148,7 @@ def test_training():
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
     sample_data.to_csv(test_data_path + "data.csv")
 
-    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.column_group])
+    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.output_node])
 
     dense_features, embedding_columns, row_ptrs = _convert(sample_data_trans, slot_sizes)
 
@@ -369,7 +369,7 @@ def _convert(data, slot_size_array):
     data[CATEGORICAL_COLUMNS] += offset
     cat = data[CATEGORICAL_COLUMNS].values.reshape(1, batch_size * categorical_dim).tolist()[0]
 
-    row_ptrs = [i for i in range(batch_size * categorical_dim + 1)]
+    row_ptrs = list(range(batch_size * categorical_dim + 1))
     dense = []
 
     return dense, cat, row_ptrs

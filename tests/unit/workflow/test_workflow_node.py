@@ -1,15 +1,42 @@
 import numpy as np
 import pytest
 
-from nvtabular import ColumnGroup, Dataset, Workflow, dispatch
-from nvtabular.ops import Categorify, Rename
+from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
+from nvtabular.columns import ColumnSelector
+from nvtabular.ops import Categorify, FillMissing, Rename, TargetEncoding
 from tests.conftest import assert_eq
 
 
-def test_column_group_select():
+def test_input_output_column_names():
+    input_node = ["a", "b", "c"] >> FillMissing()
+    assert input_node.input_columns.names == ["a", "b", "c"]
+    assert input_node.output_columns.names == ["a", "b", "c"]
+
+    chained_node = input_node >> Categorify()
+    assert chained_node.input_columns.names == ["a", "b", "c"]
+    assert chained_node.output_columns.names == ["a", "b", "c"]
+
+    selection_node = input_node[["b", "c"]]
+    assert selection_node.input_columns.names == ["a", "b", "c"]
+    assert selection_node.output_columns.names == ["b", "c"]
+
+    addition_node = input_node + ["d"]
+    assert addition_node.input_columns.names == ["a", "b", "c", "d"]
+    assert addition_node.output_columns.names == ["a", "b", "c", "d"]
+
+    rename_node = input_node >> Rename(postfix="_renamed")
+    assert rename_node.input_columns.names == ["a", "b", "c"]
+    assert rename_node.output_columns.names == ["a_renamed", "b_renamed", "c_renamed"]
+
+    dependency_node = input_node >> TargetEncoding("d")
+    assert dependency_node.input_columns.names == ["a", "b", "c"]
+    assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
+
+
+def test_workflow_node_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
 
-    input_features = ColumnGroup(["a", "b", "c"])
+    input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
     sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
     plus_one_features = input_features["b"] >> (lambda col: col + 1)
@@ -26,7 +53,7 @@ def test_column_group_select():
     assert_eq(expected, df_out)
 
 
-def test_nested_column_group():
+def test_nested_workflow_node():
     df = dispatch._make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
@@ -34,13 +61,12 @@ def test_nested_column_group():
         }
     )
 
-    country = (
-        ColumnGroup(["geo"]) >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
-    )
+    geo_selector = ColumnSelector(["geo"])
+    country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
-    cats = [country + "user"] + country + "user" >> Categorify(encode_type="combo")
+    cats = country + "user" + [country + "user"] >> Categorify(encode_type="combo")
 
     workflow = Workflow(cats)
     df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
@@ -62,3 +88,11 @@ def test_nested_column_group():
     # are super confusing for users)
     with pytest.raises(ValueError):
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
+
+
+def test_workflow_node_converts_lists():
+    node = WorkflowNode([])
+    assert node.selector == ColumnSelector([])
+
+    node.selector = ["a", "b", "c"]
+    assert node.selector == ColumnSelector(["a", "b", "c"])

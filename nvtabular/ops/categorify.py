@@ -37,7 +37,7 @@ from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _nullable_series, annotate
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -213,10 +213,10 @@ class Categorify(StatOperator):
         #       Since the same column may be included in multiple groups,
         #       replacement is not allowed for this transform.
 
-        # Set column_groups if the user has passed in a list of columns.
+        # Set workflow_nodes if the user has passed in a list of columns.
         # The purpose is to capture multi-column groups. If the user doesn't
         # specify `columns`, there are no multi-column groups to worry about.
-        self.column_groups = None
+        self.workflow_nodes = None
         self.name_sep = name_sep
 
         # For case (2), we need to keep track of the multi-column group name
@@ -282,12 +282,12 @@ class Categorify(StatOperator):
         self.categories = deepcopy(self.vocabs)
 
     @annotate("Categorify_fit", color="darkgreen", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         # User passed in a list of column groups. We need to figure out
         # if this list contains any multi-column groups, and if there
         # are any (obvious) problems with these groups
-        columns_uniq = list(set(flatten(columns, container=tuple)))
-        columns_all = list(flatten(columns, container=tuple))
+        columns_uniq = list(set(flatten(col_selector.names, container=tuple)))
+        columns_all = list(flatten(col_selector.names, container=tuple))
         if sorted(columns_all) != sorted(columns_uniq) and self.encode_type == "joint":
             # If we are doing "joint" encoding, there must be unique mapping
             # between input column names and column groups.  Otherwise, more
@@ -295,12 +295,12 @@ class Categorify(StatOperator):
             # column.
             raise ValueError("Same column name included in multiple groups.")
 
-        for group in columns:
-            if isinstance(group, tuple) and len(group) > 1:
+        for group in col_selector.subgroups:
+            if len(group.names) > 1:
                 # For multi-column groups, we concatenate column names
                 # to get the "group" name.
-                name = _make_name(*group, sep=self.name_sep)
-                for col in group:
+                name = _make_name(*group.names, sep=self.name_sep)
+                for col in group.names:
                     self.storage_name[col] = name
 
         # Check metadata type to reset on_host and cat_cache if the
@@ -318,8 +318,11 @@ class Categorify(StatOperator):
         # convert tuples to lists
         cols_with_vocabs = list(self.categories.keys())
         columns = [
-            list(c) if isinstance(c, tuple) else c for c in columns if c not in cols_with_vocabs
+            list(c) if isinstance(c, tuple) else c
+            for c in col_selector.grouped_names
+            if c not in cols_with_vocabs
         ]
+
         dsk, key = _category_stats(ddf, self._create_fit_options_from_columns(columns))
         return Delayed(key, dsk)
 
@@ -378,10 +381,10 @@ class Categorify(StatOperator):
         self.out_path = new_path
 
     @annotate("Categorify_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = df.copy(deep=False)
         if isinstance(self.freq_threshold, dict):
-            assert all(x in self.freq_threshold for x in columns)
+            assert all(x in self.freq_threshold for x in col_selector)
 
         if self.encode_type == "combo":
             # Case (3) - We want to track multi- and single-column groups separately
@@ -391,11 +394,13 @@ class Categorify(StatOperator):
             #            multi-column groups only, and use `cat_names` to store the
             #            string representation of both single- and multi-column groups.
             #
-            cat_names, multi_col_group = _get_multicolumn_names(columns, df.columns, self.name_sep)
+            cat_names, multi_col_group = _get_multicolumn_names(
+                col_selector, df.columns, self.name_sep
+            )
         else:
             # Case (1) & (2) - Simple 1-to-1 mapping
             multi_col_group = {}
-            cat_names = list(flatten(columns, container=tuple))
+            cat_names = list(flatten(col_selector.names, container=tuple))
 
         # Encode each column-group separately
         for name in cat_names:
@@ -438,11 +443,13 @@ class Categorify(StatOperator):
 
         return new_df
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         if self.encode_type == "combo":
-            cat_names, _ = _get_multicolumn_names(columns, columns, self.name_sep)
-            return cat_names
-        return list(flatten(columns, container=tuple))
+            cat_names, _ = _get_multicolumn_names(
+                col_selector, col_selector.grouped_names, self.name_sep
+            )
+            return ColumnSelector(cat_names)
+        return ColumnSelector(flatten(col_selector.names, container=tuple))
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
@@ -475,17 +482,17 @@ def _get_embedding_order(cat_names):
 
 
 def get_embedding_sizes(source, output_dtypes=None):
-    """Returns a dictionary of embedding sizes from a workflow or column_group
+    """Returns a dictionary of embedding sizes from a workflow or workflow_node
 
     Parameters
     ----------
-    source : Workflow or ColumnGroup
-        Either a nvtabular Workflow or ColumnGroup object that we should use to find
+    source : Workflow or ColumnSelector
+        Either a nvtabular Workflow or ColumnSelector object that we should use to find
         embedding sizes
     output_dtypes : dict, optional
         Optional dictionary of column_name:dtype. If passing a workflow object dtypes
         will be read from the workflow. This is used to figure out which columns
-        are multihot-categorical, which are split out by this function. If passed a column_group
+        are multihot-categorical, which are split out by this function. If passed a workflow_node
         and this parameter isn't set, you won't have multihot columns returned separately
     """
     # TODO: do we need to distinguish multihot columns here?  (if so why? )
@@ -494,7 +501,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     from nvtabular.workflow import Workflow
 
     if isinstance(source, Workflow):
-        queue = [source.column_group]
+        queue = [source.output_node]
         output_dtypes = output_dtypes or source.output_dtypes
     else:
         # passed in a column group
@@ -506,7 +513,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.columns))
+            output.update(current.op.get_embedding_sizes(current.selector))
         elif not current.op:
             # only follow parents if its not an operator node (which could
             # transform meaning of the get_embedding_sizes
@@ -610,6 +617,27 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
 
+    def __post_init__(self):
+        if not isinstance(self.col_groups, ColumnSelector):
+            self.col_groups = ColumnSelector(self.col_groups)
+
+        col_selectors = []
+        for cat_col_names in self.col_groups.grouped_names:
+            if isinstance(cat_col_names, tuple):
+                cat_col_names = list(cat_col_names)
+
+            if isinstance(cat_col_names, str):
+                cat_col_names = [cat_col_names]
+
+            if not isinstance(cat_col_names, ColumnSelector):
+                cat_col_selector = ColumnSelector(cat_col_names)
+            else:
+                cat_col_selector = cat_col_names
+
+            col_selectors.append(cat_col_selector)
+
+        self.col_groups = col_selectors
+
 
 @annotate("top_level_groupby", color="green", domain="nvt_python")
 def _top_level_groupby(df, options: FitOptions):
@@ -620,28 +648,32 @@ def _top_level_groupby(df, options: FitOptions):
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
-    for i, cat_col_group in enumerate(options.col_groups):
-        if isinstance(cat_col_group, tuple):
-            cat_col_group = list(cat_col_group)
+    for i, cat_col_names in enumerate(options.col_groups):
+        if not isinstance(cat_col_names, ColumnSelector):
+            cat_col_selector = ColumnSelector(cat_col_names)
+        else:
+            cat_col_selector = cat_col_names
 
-        if isinstance(cat_col_group, str):
-            cat_col_group = [cat_col_group]
-        cat_col_group_str = _make_name(*cat_col_group, sep=options.name_sep)
+        cat_col_selector_str = _make_name(*cat_col_selector.names, sep=options.name_sep)
 
-        if options.concat_groups and len(cat_col_group) > 1:
+        if options.concat_groups and len(cat_col_selector) > 1:
             # Concatenate columns and replace cat_col_group
             # with the single name
             df_gb = type(df)()
             ignore_index = True
-            df_gb[cat_col_group_str] = _concat([df[col] for col in cat_col_group], ignore_index)
-            cat_col_group = [cat_col_group_str]
+            df_gb[cat_col_selector_str] = _concat(
+                [df[col] for col in cat_col_selector], ignore_index
+            )
+            cat_col_selector = ColumnSelector([cat_col_selector_str])
         else:
             # Compile aggregation dictionary and add "squared-sum"
             # column(s) (necessary when `agg_cols` is non-empty)
-            df_gb = df[cat_col_group + options.agg_cols].copy(deep=False)
+            combined_col_selector = cat_col_selector + options.agg_cols
+
+            df_gb = df[combined_col_selector.names].copy(deep=False)
 
         agg_dict = {}
-        agg_dict[cat_col_group[0]] = ["count"]
+        agg_dict[cat_col_selector[0]] = ["count"]
         for col in options.agg_cols:
             agg_dict[col] = ["sum"]
             if sum_sq:
@@ -656,25 +688,25 @@ def _top_level_groupby(df, options: FitOptions):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf/pd support)
-        if _is_list_col(cat_col_group, df_gb):
+        if _is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
-            df_gb = dispatch._flatten_list_column(df_gb[cat_col_group[0]])
+            df_gb = dispatch._flatten_list_column(df_gb[cat_col_selector[0]])
 
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
-        gb = df_gb.groupby(cat_col_group, dropna=False).agg(agg_dict)
+        gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
-            _make_name(*(tuple(cat_col_group) + name[1:]), sep=options.name_sep)
-            if name[0] == cat_col_group[0]
-            else _make_name(*(tuple(cat_col_group) + name), sep=options.name_sep)
+            _make_name(*(tuple(cat_col_selector) + name[1:]), sep=options.name_sep)
+            if name[0] == cat_col_selector[0]
+            else _make_name(*(tuple(cat_col_selector) + name), sep=options.name_sep)
             for name in gb.columns.to_flat_index()
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
 
         # Split the result by the hash value of the categorical column
-        nsplits = options.tree_width[cat_col_group_str]
+        nsplits = options.tree_width[cat_col_selector_str]
         for j, split in shuffle_group(
-            gb, cat_col_group, 0, nsplits, nsplits, True, nsplits
+            gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
         ).items():
             if options.on_host:
                 output[k] = split.to_arrow(preserve_index=False)
@@ -686,14 +718,9 @@ def _top_level_groupby(df, options: FitOptions):
 
 
 @annotate("mid_level_groupby", color="green", domain="nvt_python")
-def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
-    if isinstance(col_group, str):
-        col_group = [col_group]
-    elif isinstance(col_group, tuple):
-        col_group = list(col_group)
-
-    if options.concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=options.name_sep)]
+def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, options: FitOptions):
+    if options.concat_groups and len(col_selector) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector, sep=options.name_sep)])
 
     if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
@@ -702,41 +729,46 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
         df = dispatch._from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
-    groups = df.groupby(col_group, dropna=False)
-    gb = groups.agg({col: _get_aggregation_type(col) for col in df.columns if col not in col_group})
+
+    groups = df.groupby(col_selector.names, dropna=False)
+    gb = groups.agg(
+        {col: _get_aggregation_type(col) for col in df.columns if col not in col_selector}
+    )
     gb.reset_index(drop=False, inplace=True)
 
-    name_count = _make_name(*(col_group + ["count"]), sep=options.name_sep)
+    name_count = _make_name(*(col_selector.names + ["count"]), sep=options.name_sep)
     if options.freq_limit and not options.max_size:
         gb = gb[gb[name_count] >= freq_limit_val]
 
-    required = col_group.copy()
+    required = col_selector.names.copy()
     if "count" in options.agg_list:
         required.append(name_count)
 
     ddof = 1
     for cont_col in options.agg_cols:
-        name_sum = _make_name(*(col_group + [cont_col, "sum"]), sep=options.name_sep)
+        name_sum = _make_name(*(col_selector.names + [cont_col, "sum"]), sep=options.name_sep)
         if "sum" in options.agg_list:
             required.append(name_sum)
 
         if "mean" in options.agg_list:
-            name_mean = _make_name(*(col_group + [cont_col, "mean"]), sep=options.name_sep)
+            name_mean = _make_name(*(col_selector.names + [cont_col, "mean"]), sep=options.name_sep)
             required.append(name_mean)
             gb[name_mean] = gb[name_sum] / gb[name_count]
 
         if "min" in options.agg_list:
-            name_min = _make_name(*(col_group + [cont_col, "min"]), sep=options.name_sep)
+            name_min = _make_name(*(col_selector.names + [cont_col, "min"]), sep=options.name_sep)
             required.append(name_min)
 
         if "max" in options.agg_list:
-            name_max = _make_name(*(col_group + [cont_col, "max"]), sep=options.name_sep)
+            name_max = _make_name(*(col_selector.names + [cont_col, "max"]), sep=options.name_sep)
             required.append(name_max)
 
         if "var" in options.agg_list or "std" in options.agg_list:
             n = gb[name_count]
             x = gb[name_sum]
-            x2 = gb[_make_name(*(col_group + [cont_col, "pow2", "sum"]), sep=options.name_sep)]
+            x2 = gb[
+                _make_name(*(col_selector.names + [cont_col, "pow2", "sum"]), sep=options.name_sep)
+            ]
             result = x2 - x ** 2 / n
             div = n - ddof
             div[div < 1] = 1
@@ -744,11 +776,15 @@ def _mid_level_groupby(dfs, col_group, freq_limit_val, options: FitOptions):
             result[(n - ddof) == 0] = np.nan
 
             if "var" in options.agg_list:
-                name_var = _make_name(*(col_group + [cont_col, "var"]), sep=options.name_sep)
+                name_var = _make_name(
+                    *(col_selector.names + [cont_col, "var"]), sep=options.name_sep
+                )
                 required.append(name_var)
                 gb[name_var] = result
             if "std" in options.agg_list:
-                name_std = _make_name(*(col_group + [cont_col, "std"]), sep=options.name_sep)
+                name_std = _make_name(
+                    *(col_selector.names + [cont_col, "std"]), sep=options.name_sep
+                )
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
@@ -769,13 +805,11 @@ def _get_aggregation_type(col):
 
 
 @annotate("write_gb_stats", color="green", domain="nvt_python")
-def _write_gb_stats(dfs, base_path, col_group, options: FitOptions):
-    if options.concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=options.name_sep)]
-    if isinstance(col_group, str):
-        col_group = [col_group]
+def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+    if options.concat_groups and len(col_selector) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
-    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
+    rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
     if not options.on_host and len(dfs):
@@ -813,11 +847,10 @@ def _write_gb_stats(dfs, base_path, col_group, options: FitOptions):
 
 
 @annotate("write_uniques", color="green", domain="nvt_python")
-def _write_uniques(dfs, base_path, col_group, options):
-    if options.concat_groups and len(col_group) > 1:
-        col_group = [_make_name(*col_group, sep=options.name_sep)]
-    if isinstance(col_group, str):
-        col_group = [col_group]
+def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+    if options.concat_groups and len(col_selector) > 1:
+        col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
+
     if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
@@ -825,14 +858,14 @@ def _write_uniques(dfs, base_path, col_group, options):
         df = dispatch._from_host(df)
     else:
         df = _concat(dfs, ignore_index=True)
-    rel_path = "unique.%s.parquet" % (_make_name(*col_group, sep=options.name_sep))
+    rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
         # Make sure first category is Null
-        df = df.sort_values(col_group, na_position="first")
+        df = df.sort_values(col_selector.names, na_position="first")
         new_cols = {}
         nulls_missing = False
-        for col in col_group:
+        for col in col_selector:
             name_count = col + "_count"
             if options.max_size:
                 max_emb_size = options.max_size
@@ -874,8 +907,8 @@ def _write_uniques(dfs, base_path, col_group, options):
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
     else:
-        df_null = type(df)({c: [None] for c in col_group})
-        for c in col_group:
+        df_null = type(df)({c: [None] for c in col_selector})
+        for c in col_selector:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_null.to_parquet(path, index=False, compression=None)
     del df
@@ -1110,25 +1143,25 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
     return read_pq_func(path)
 
 
-def _get_multicolumn_names(column_groups, df_columns, name_sep):
+def _get_multicolumn_names(col_selector, df_columns, name_sep):
     cat_names = []
     multi_col_group = {}
-    for col_group in column_groups:
-        if isinstance(col_group, (list, tuple)):
-            name = _make_name(*col_group, sep=name_sep)
+    for col_name in col_selector.grouped_names:
+        if isinstance(col_name, (list, tuple)):
+            name = _make_name(*col_name, sep=name_sep)
             if name not in cat_names:
                 cat_names.append(name)
                 # TODO: Perhaps we should check that all columns from the group
                 #       are in df here?
-                multi_col_group[name] = col_group
-        elif col_group in df_columns:
-            cat_names.append(col_group)
+                multi_col_group[name] = col_name
+        elif col_name in df_columns:
+            cat_names.append(col_name)
     return cat_names, multi_col_group
 
 
-def _is_list_col(column_group, df):
-    has_lists = any(dispatch._is_list_dtype(df[col]) for col in column_group)
-    if has_lists and len(column_group) != 1:
+def _is_list_col(workflow_node, df):
+    has_lists = any(dispatch._is_list_dtype(df[col]) for col in workflow_node)
+    if has_lists and len(workflow_node) != 1:
         raise ValueError("Can't categorical encode multiple list columns")
     return has_lists
 

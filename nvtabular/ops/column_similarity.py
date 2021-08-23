@@ -27,7 +27,7 @@ from cupyx.scipy.sparse import coo_matrix
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class ColumnSimilarity(Operator):
@@ -83,7 +83,7 @@ class ColumnSimilarity(Operator):
             self._initialized = True
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         use_values = self.on_device
         if isinstance(df, pd.DataFrame):
             # Disallow on-device computation for cpu-backed data
@@ -93,8 +93,8 @@ class ColumnSimilarity(Operator):
         # Check if features are initialized
         self._initialize_features()
 
-        names = self.output_column_names(columns)
-        for name, (left, right) in zip(names, columns):
+        names = self.output_column_names(col_selector)
+        for name, (left, right) in zip(names, col_selector.grouped_names):
             a = df[left].values if use_values else df[left].values_host
             b = df[right].values if use_values else df[right].values_host
 
@@ -111,7 +111,7 @@ class ColumnSimilarity(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        return [f"{a}_{b}_sim" for a, b in columns]
+        return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):

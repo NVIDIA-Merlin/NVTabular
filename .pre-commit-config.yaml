@@ -1,16 +1,16 @@
 repos:
       - repo: https://github.com/timothycrosley/isort
-        rev: 5.6.4
+        rev: 5.9.3
         hooks:
         - id: isort
           additional_dependencies: [toml]
           exclude: examples/*
       - repo: https://github.com/python/black
-        rev: 20.8b1
+        rev: 21.7b0
         hooks:
         - id: black
       - repo: https://gitlab.com/pycqa/flake8
-        rev: 3.8.4
+        rev: 3.9.2
         hooks:
         - id: flake8
       - repo: https://github.com/pycqa/pylint
@@ -23,7 +23,7 @@ repos:
         - id: bandit
           args: [--verbose, -ll, -x, tests,examples,bench]
       - repo: https://github.com/s-weigand/flake8-nb
-        rev: v0.2.7
+        rev: v0.3.0
         hooks:
         - id: flake8-nb
           files: \.ipynb$

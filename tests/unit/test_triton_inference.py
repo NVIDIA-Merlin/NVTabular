@@ -11,6 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from nvtabular import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.ops.operator import Supports
 from tests.conftest import assert_eq
@@ -86,10 +87,11 @@ def _verify_workflow_on_tritonserver(
     )
 
     inputs = triton.convert_df_to_triton_input(df.columns, df)
+    outputs = [grpcclient.InferRequestedOutput(col) for col in workflow.output_dtypes.keys()]
     with run_triton_server(tmpdir) as client:
-        response = client.infer(model_name, inputs)
+        response = client.infer(model_name, inputs, outputs=outputs)
 
-        for col in df.columns:
+        for col in workflow.output_dtypes.keys():
             features = response.as_numpy(col)
             triton_df = _make_df({col: features.reshape(features.shape[0])})
             assert_eq(triton_df, local_df[[col]])
@@ -217,7 +219,7 @@ def test_numeric_dtypes(tmpdir, output_model):
     df = _make_df(
         {dtype: np.array([limits.max, 0, limits.min], dtype=dtype) for dtype, limits in dtypes}
     )
-    features = nvt.ColumnGroup(df.columns) >> check_dtypes
+    features = nvt.ColumnSelector(df.columns) >> check_dtypes
     workflow = nvt.Workflow(features)
     _verify_workflow_on_tritonserver(
         tmpdir, workflow, df, "test_numeric_dtypes", output_model, model_info
@@ -320,3 +322,39 @@ def test_convert_format(_from, _to):
     final, kind = convert_format(mid, kind, Supports.CPU_DATAFRAME)
     assert kind == Supports.CPU_DATAFRAME
     assert_eq(df, final)
+
+
+@pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_groupby_model(tmpdir, output_model):
+    size = 20
+    df = _make_df(
+        {
+            "id": np.random.choice([0, 1], size=size),
+            "ts": np.linspace(0.0, 10.0, num=size),
+            "x": np.arange(size),
+            "y": np.linspace(0.0, 10.0, num=size),
+        }
+    )
+
+    groupby_features = ColumnSelector(["id", "ts", "x", "y"]) >> ops.Groupby(
+        groupby_cols=["id"],
+        sort_cols=["ts"],
+        aggs={
+            "x": ["sum"],
+            "y": ["first"],
+        },
+        name_sep="-",
+    )
+    workflow = nvt.Workflow(groupby_features)
+
+    if output_model == "pytorch":
+        model_info = {
+            "x-sum": {"columns": ["x-sum"], "dtype": "int64"},
+            "y-first": {"columns": ["y-first"], "dtype": "float64"},
+            "id": {"columns": ["id"], "dtype": "int64"},
+        }
+    else:
+        model_info = None
+
+    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "groupby", output_model, model_info)

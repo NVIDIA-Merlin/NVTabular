@@ -18,7 +18,7 @@ import dask.dataframe as dd
 
 from ..dispatch import DataFrameType, annotate
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator, Supports
+from .operator import ColumnSelector, Operator, Supports
 from .stat_operator import StatOperator
 
 
@@ -45,8 +45,8 @@ class Normalize(StatOperator):
         self.stds = {}
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
-        return _custom_moments(ddf[columns])
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+        return _custom_moments(ddf[col_selector.names])
 
     def fit_finalize(self, dask_stats):
         for col in dask_stats.index:
@@ -54,9 +54,9 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for name in columns:
+        for name in col_selector:
             if self.stds[name] > 0:
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
             else:
@@ -100,11 +100,11 @@ class NormalizeMinMax(StatOperator):
         self.maxs = {}
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, df: DataFrameType):
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
         new_df = type(df)()
-        for name in columns:
+        for name in col_selector:
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
                 new_df[name] = (df[name] - self.mins[name]) / dif
@@ -116,10 +116,10 @@ class NormalizeMinMax(StatOperator):
     transform.__doc__ = Operator.transform.__doc__
 
     @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
-    def fit(self, columns, ddf):
+    def fit(self, col_selector: ColumnSelector, ddf):
         return {
-            "mins": ddf[columns].min(),
-            "maxs": ddf[columns].max(),
+            "mins": ddf[col_selector.names].min(),
+            "maxs": ddf[col_selector.names].max(),
         }
 
     @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")

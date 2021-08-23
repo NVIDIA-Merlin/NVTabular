@@ -27,7 +27,7 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-from nvtabular import ColumnGroup, Dataset, Workflow, ops
+from nvtabular import ColumnSelector, Dataset, Workflow, ops
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
@@ -118,9 +118,9 @@ def test_spec_set(tmpdir, client):
         }
     )
 
-    cats = ColumnGroup(["ad_id", "source_id", "platform"])
+    cats = ColumnSelector(["ad_id", "source_id", "platform"])
     cat_features = cats >> ops.Categorify
-    cont_features = ColumnGroup(["cont"]) >> ops.FillMissing >> ops.Normalize
+    cont_features = ColumnSelector(["cont"]) >> ops.FillMissing >> ops.Normalize
     te_features = cats >> ops.TargetEncoding("clicked", kfold=5, fold_seed=42, p_smooth=20)
 
     p = Workflow(cat_features + cont_features + te_features, client=client)
@@ -325,7 +325,7 @@ def test_join_external_workflow(tmpdir, df, dataset, engine):
     df_ext_check = df_ext_check[columns_ext]
     if drop_duplicates:
         df_ext_check.drop_duplicates(ignore_index=True, inplace=True)
-    joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
+    joined = ColumnSelector(columns_left) >> nvt.ops.JoinExternal(
         df_ext,
         on,
         how=how,
@@ -544,7 +544,7 @@ def test_transform_geolocation():
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
     data = cudf.DataFrame({"geo_location": raw})
 
-    geo_location = ColumnGroup(["geo_location"])
+    geo_location = ColumnSelector(["geo_location"])
     state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
     country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
     geo_features = state + country + geo_location >> ops.HashBucket(num_buckets=100)
@@ -564,7 +564,7 @@ def test_workflow_move_saved(tmpdir):
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
     data = cudf.DataFrame({"geo": raw})
 
-    geo_location = ColumnGroup(["geo"])
+    geo_location = ColumnSelector(["geo"])
     state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
     country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
     geo_features = state + country + geo_location >> ops.Categorify()

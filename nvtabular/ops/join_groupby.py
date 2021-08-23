@@ -22,7 +22,7 @@ import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
 from . import categorify as nvt_cat
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -46,7 +46,7 @@ class JoinGroupby(StatOperator):
 
     Parameters
     -----------
-    cont_cols : list of str or ColumnGroup
+    cont_cols : list of str or WorkflowNode
         The continuous columns to calculate statistics for
         (for each unique group in each column in `columns`).
     stats : list of str, default []
@@ -87,12 +87,16 @@ class JoinGroupby(StatOperator):
     ):
         super().__init__()
 
+        if isinstance(cont_cols, nvt.WorkflowNode):
+            self.cont_cols = cont_cols
+        elif isinstance(cont_cols, ColumnSelector):
+            self.cont_cols = nvt.WorkflowNode(cont_cols)
+        else:
+            self.cont_cols = nvt.WorkflowNode(ColumnSelector(cont_cols))
+
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_cols = (
-            cont_cols if isinstance(cont_cols, nvt.ColumnGroup) else nvt.ColumnGroup(cont_cols)
-        )
-        self.cont_names = self.cont_cols.columns
+        self.cont_names = self.cont_cols.selector
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"
@@ -105,13 +109,12 @@ class JoinGroupby(StatOperator):
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
 
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
-        if isinstance(columns, list):
-            for group in columns:
-                if isinstance(group, (list, tuple)) and len(group) > 1:
-                    name = nvt_cat._make_name(*group, sep=self.name_sep)
-                    for col in group:
-                        self.storage_name[col] = name
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+        for group in col_selector.subgroups:
+            if len(group.names) > 1:
+                name = nvt_cat._make_name(*group.names, sep=self.name_sep)
+                for col in group.names:
+                    self.storage_name[col] = name
 
         # Check metadata type to reset on_host and cat_cache if the
         # underlying ddf is already a pandas-backed collection
@@ -123,7 +126,7 @@ class JoinGroupby(StatOperator):
         dsk, key = nvt_cat._category_stats(
             ddf,
             nvt_cat.FitOptions(
-                columns,
+                col_selector,
                 self.cont_names,
                 self.stats,
                 self.out_path,
@@ -140,13 +143,13 @@ class JoinGroupby(StatOperator):
         for col in dask_stats:
             self.categories[col] = dask_stats[col]
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
 
         cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-            columns, df.columns, self.name_sep
+            col_selector, df.columns, self.name_sep
         )
 
         _read_pq_func = _read_parquet_dispatch(df)
@@ -179,7 +182,8 @@ class JoinGroupby(StatOperator):
         # TODO: the names here are defined in categorify/mid_level_groupby
         # refactor to have a common implementation
         output = []
-        for name in columns:
+
+        for name in columns.grouped_names:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name, sep=self.name_sep)
             for cont in self.cont_names:
@@ -188,7 +192,7 @@ class JoinGroupby(StatOperator):
                         output.append(f"{name}_{stat}")
                     else:
                         output.append(f"{name}_{cont}_{stat}")
-        return output
+        return ColumnSelector(output)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)

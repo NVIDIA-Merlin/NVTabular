@@ -1,3 +1,12 @@
+# NVTabular v0.6.1 (11 August 2021)
+
+## Bug Fixes
+
+* Fix installing package via pip [#1030](https://github.com/NVIDIA/NVTabular/pull/1030)
+* Fix inference with groupby operator [#1019](https://github.com/NVIDIA/NVTabular/issues/1019)
+* Install tqdm with conda package [#1030](https://github.com/NVIDIA/NVTabular/pull/1030)
+* Fix workflow output_dtypes with empty partitions [#1028](https://github.com/NVIDIA/NVTabular/pull/1028)
+
 # NVTabular v0.6.0 (5 August 2021)
 
 ## Improvements
