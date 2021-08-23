@@ -34,7 +34,7 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.dispatch import DataFrameType, annotate, _null_series
+from nvtabular.dispatch import DataFrameType, _nullable_series, annotate
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnNames, Operator
@@ -399,8 +399,7 @@ class Categorify(StatOperator):
 
         # Encode each column-group separately
         for name in cat_names:
-            #try:
-            if True:
+            try:
                 # Use the column-group `list` directly (not the string name)
                 use_name = multi_col_group.get(name, name)
 
@@ -434,8 +433,8 @@ class Categorify(StatOperator):
                     max_size=self.max_size,
                     dtype=self.dtype,
                 )
-            # except Exception as e:
-            #     raise RuntimeError(f"Failed to categorical encode column {name}") from e
+            except Exception as e:
+                raise RuntimeError(f"Failed to categorical encode column {name}") from e
 
         return new_df
 
@@ -859,7 +858,7 @@ def _write_uniques(dfs, base_path, col_group, options):
 
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [_null_series(df, df[col].dtype), df[col]],
+                    [_nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
             else:
@@ -1046,7 +1045,7 @@ def _encode(
         value = type(df)()
         for c in selection_r:
             typ = df[selection_l[0]].dtype if len(selection_l) == 1 else df[c].dtype
-            value[c] = _null_series(df, typ)
+            value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 

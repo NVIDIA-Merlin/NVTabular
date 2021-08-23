@@ -71,9 +71,10 @@ else:
 # Define mapping between non-nullable,
 # and nullable types in Pandas
 _PD_NULLABLE_MAP = {
-    "int32" : "Int32",
-    "int64" : "Int64",
+    "int32": "Int32",
+    "int64": "Int64",
 }
+
 
 class ExtData(enum.Enum):
     """Simple Enum to track external-data types"""
@@ -99,17 +100,17 @@ def _is_dataframe_object(x):
         return isinstance(x, pd.DataFrame)
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
 
-def _null_series(like_df, dtype):
+
+def _nullable_series(data, like_df, dtype):
     # Return a Series containing a single null element,
     # of a specific dtype, using a DataFrame object to
     # infer the Series constructor
     if isinstance(like_df, pd.DataFrame):
         # Note that we cannot use "int32"/"int64" to
         # represent nullable data in pandas
-        return like_df._constructor_sliced(
-            [None], dtype=_PD_NULLABLE_MAP.get(str(dtype), dtype)
-        )
-    return like_df._constructor_sliced([None], dtype=dtype)
+        return like_df._constructor_sliced(data, dtype=_PD_NULLABLE_MAP.get(str(dtype), dtype))
+    return like_df._constructor_sliced(data, dtype=dtype)
+
 
 def _is_series_object(x):
     # Simple check if object is a cudf or pandas
