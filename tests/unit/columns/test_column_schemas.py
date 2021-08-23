@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
 from pathlib import Path
+
+import pytest
 
 from nvtabular.columns.schema import ColumnSchema, ColumnSchemaSet
 from nvtabular.columns.selector import ColumnSelector
@@ -30,10 +31,10 @@ def test_column_schema_meta():
     assert column.with_properties({"p2": "prop-2"}).properties == {"p1": "prop-1", "p2": "prop-2"}
     assert column.with_tags("tag-2").properties == {"p1": "prop-1"}
     assert set(column.with_properties({"p2": "prop-2"}).tags) == set(["tag-1"])
-    
+
     assert column == ColumnSchema("name", tags=["tag-1"], properties={"p1": "prop-1"})
     # should not be the same no properties
-    assert column != ColumnSchema("name",tags=["tag-1"])
+    assert column != ColumnSchema("name", tags=["tag-1"])
     # should not be the same no tags
     assert column != ColumnSchema("name", properties={"p1": "prop-1"})
 
@@ -44,7 +45,7 @@ def test_column_schema_set_protobuf(tmpdir):
     schema2 = ColumnSchema("col2", tags=["c", "d", "e"], properties={"p3": "p3", "p4": "p4"})
     column_schema_set = ColumnSchemaSet([schema1, schema2])
     # write schema out
-    schema_path = Path(tmpdir,"test.py")
+    schema_path = Path(tmpdir, "test.py")
     column_schema_set = column_schema_set.to_schema_protobuf(schema_path)
     # read schema back in
     target = ColumnSchemaSet.from_schema_protobuf(schema_path)

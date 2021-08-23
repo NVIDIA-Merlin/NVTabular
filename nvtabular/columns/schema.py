@@ -14,14 +14,13 @@
 # limitations under the License.
 #
 from dataclasses import dataclass, field
-from typing import List, Optional, Text
-
-from tensorflow_metadata.proto.v0 import schema_pb2
-from google.protobuf import text_format, json_format
 from pathlib import Path
-from typing import Dict
-from google.protobuf.struct_pb2 import Struct
+from typing import Dict, List, Optional, Text
+
+from google.protobuf import json_format, text_format
 from google.protobuf.any_pb2 import Any
+from google.protobuf.struct_pb2 import Struct
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 @dataclass(frozen=True)
@@ -45,7 +44,7 @@ class ColumnSchema:
         tags = list(set(list(self.tags) + tags))
 
         return ColumnSchema(self.name, tags=tags, properties=self.properties)
-    
+
     def with_properties(self, properties):
         if not isinstance(properties, dict):
             raise TypeError("properties must be in dict format, key: value")
@@ -58,13 +57,18 @@ class ColumnSchema:
     def __eq__(self, other):
         if not isinstance(other, ColumnSchema):
             return False
-        if self.name == other.name and self.tags == other.tags and len(other.properties) == len(self.properties):
-            #iterate through to ensure ALL keys AND values equal
+        if (
+            self.name == other.name
+            and self.tags == other.tags
+            and len(other.properties) == len(self.properties)
+        ):
+            # iterate through to ensure ALL keys AND values equal
             for prop_name, prop_value in other.properties.items():
                 if prop_name not in self.properties or self.properties[prop_name] != prop_value:
                     return False
             return True
         return False
+
 
 class ColumnSchemaSet:
     """A collection of column schemas for a dataset."""
@@ -121,25 +125,25 @@ class ColumnSchemaSet:
         return schema
 
     @classmethod
-    def from_schema_protobuf(cls, schema) -> "DatasetSchema":
+    def from_schema_protobuf(cls, schema) -> "ColumnSchemaSet":
         if isinstance(schema, (str, Path)):
             schema = cls.read_schema_protobuf(schema)
 
         columns = []
         for feat in schema.feature:
-            tags = feat.annotation.tag
-            if feat.HasField("value_count"):
-                tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
+            tags = list(feat.annotation.tag) or []
             # only one item should ever be in extra_metadata
             if len(feat.annotation.extra_metadata) > 1:
-                raise ValueError(f"extra_metadata for {feat.name} should only have 1 item, has {len(feat.annotation.extra_metadata)}")
+                raise ValueError(
+                    f"extra_metadata for {feat.name} should have 1 item, has {len(feat.annotation.extra_metadata)}"
+                )
             properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
             columns.append(ColumnSchema(feat.name, tags=tags, properties=properties))
 
         return ColumnSchemaSet(columns)
 
     def to_schema_protobuf(self, schema_path):
-        #traverse list of column schema
+        # traverse list of column schema
         schema = schema_pb2.Schema()
         features = []
         for col_name, col_schema in self.column_schemas.items():
@@ -147,7 +151,7 @@ class ColumnSchemaSet:
             feature.name = col_name
             annotation = feature.annotation
             annotation.tag.extend(col_schema.tags)
-            # must put dictionary in message 
+            # must put dictionary in message
             msg_struct = Struct()
             # msg_struct.update(col_schema.properties)
             # must pack message into "Any" type
@@ -162,7 +166,9 @@ class ColumnSchemaSet:
         return self
 
     def __eq__(self, other):
-        if not isinstance(other, ColumnSchemaSet) or len(self.column_schemas) != len(other.column_schemas):
+        if not isinstance(other, ColumnSchemaSet) or len(self.column_schemas) != len(
+            other.column_schemas
+        ):
             return False
         for col_name, col_schema in self.column_schemas.items():
             # if not in or if not the same, Fail
@@ -172,7 +178,9 @@ class ColumnSchemaSet:
 
     def __add__(self, other):
         if not isinstance(other, ColumnSchemaSet):
-            raise TypeError(f"unsupported operand type(s) for +: 'ColumnSchemaSet' and {type(other)}")
+            raise TypeError(
+                f"unsupported operand type(s) for +: 'ColumnSchemaSet' and {type(other)}"
+            )
 
         overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
 
