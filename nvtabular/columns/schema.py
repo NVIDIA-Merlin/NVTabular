@@ -16,6 +16,10 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Text
 
+from tensorflow_metadata.proto.v0 import schema_pb2
+from google.protobuf import text_format
+from pathlib import Path
+
 
 @dataclass(frozen=True)
 class ColumnSchema:
@@ -48,7 +52,7 @@ class ColumnSchema:
         return ColumnSchema(self.name, tags=self.tags, properties=properties)
 
 
-class DatasetSchema:
+class ColumnSchemaSet:
     """A collection of column schemas for a dataset."""
 
     def __init__(self, column_schemas=None):
@@ -85,17 +89,55 @@ class DatasetSchema:
             if all(x in column_schema.tags for x in tags):
                 selected_schemas[column_schema.name] = column_schema
 
-        return DatasetSchema(selected_schemas)
+        return ColumnSchemaSet(selected_schemas)
 
     def select_by_name(self, names):
         if isinstance(names, str):
             names = [names]
 
         selected_schemas = {key: self.column_schemas[key] for key in names}
-        return DatasetSchema(selected_schemas)
+        return ColumnSchemaSet(selected_schemas)
+
+    @staticmethod
+    def read_schema_protobuf(schema_path):
+        with open(schema_path, "r") as f:
+            schema = schema_pb2.Schema()
+            text_format.Parse(f.read(), schema)
+
+        return schema
+
+    @classmethod
+    def from_schema_protobuf(cls, schema) -> "DatasetSchema":
+        if isinstance(schema, (str, Path)):
+            schema = cls.read_schema_protobuf(schema)
+
+        columns = []
+        for feat in schema.feature:
+            tags = feat.annotation.tag
+            if feat.HasField("value_count"):
+                tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
+            columns.append(ColumnSchema(feat.name, tags=tags))
+
+        return ColumnSchemaSet(columns)
+
+    def to_schema_protobuf(self, schema_path):
+        #traverse list of column schema
+        schema = schema_pb2.Schema()
+        features = []
+        for col_name, col_schema in self.column_schemas.items():
+            feature = schema_pb2.Feature()
+            feature.name = col_name
+            annotation = feature.annotation
+            annotation.tag.extend(col_schema.tags)
+            # feature.annotation.extend(annotation)
+            features.append(feature)
+        schema.feature.extend(features)
+        with open(schema_path, "w") as f:
+            f.write(text_format.MessageToString(schema))
+        return self
 
     def __eq__(self, other):
-        if not isinstance(other, DatasetSchema):
+        if not isinstance(other, ColumnSchemaSet):
             return False
 
         if len(self.column_schemas) != len(other.column_schemas):
@@ -104,12 +146,12 @@ class DatasetSchema:
         return all(column in other.column_schemas for column in self.column_schemas)
 
     def __add__(self, other):
-        if not isinstance(other, DatasetSchema):
-            raise TypeError(f"unsupported operand type(s) for +: 'DatasetSchema' and {type(other)}")
+        if not isinstance(other, ColumnSchemaSet):
+            raise TypeError(f"unsupported operand type(s) for +: 'ColumnSchemaSet' and {type(other)}")
 
         overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
 
         if overlap:
             raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
 
-        return DatasetSchema({**self.column_schemas, **other.column_schemas})
+        return ColumnSchemaSet({**self.column_schemas, **other.column_schemas})

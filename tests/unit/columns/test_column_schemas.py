@@ -14,8 +14,9 @@
 # limitations under the License.
 #
 import pytest
+from pathlib import Path
 
-from nvtabular.columns.schema import ColumnSchema, DatasetSchema
+from nvtabular.columns.schema import ColumnSchema, ColumnSchemaSet
 from nvtabular.columns.selector import ColumnSelector
 
 
@@ -29,6 +30,20 @@ def test_column_schema_meta():
     assert set(column.with_properties("prop-2").properties) == set(["prop-1", "prop-2"])
     assert set(column.with_tags("tag-2").properties) == set(["prop-1"])
     assert set(column.with_properties("prop-2").tags) == set(["tag-1"])
+
+
+def test_column_schema_set_protobuf(tmpdir):
+    # create a schema
+    schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
+    schema2 = ColumnSchema("col2", tags=["c", "d", "e"])
+    column_schema_set = ColumnSchemaSet([schema1, schema2])
+    # write schema out
+    schema_path = Path(tmpdir,"test.py")
+    column_schema_set = column_schema_set.to_schema_protobuf(schema_path)
+    # read schema back in
+    target = ColumnSchemaSet.from_schema_protobuf(schema_path)
+    # compare read to origin
+    assert column_schema_set == target
 
 
 def test_dataset_schema_constructor():
