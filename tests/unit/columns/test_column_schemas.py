@@ -19,13 +19,16 @@ from nvtabular.columns.schema import ColumnSchema, DatasetSchema
 from nvtabular.columns.selector import ColumnSelector
 
 
-def test_column_schema():
-    column = ColumnSchema("name", tags=["tag-1"])
+def test_column_schema_meta():
+    column = ColumnSchema("name", tags=["tag-1"], properties=["prop-1"])
 
     assert column.name == "name"
     assert column.tags[0] == "tag-1"
     assert column.with_name("a").name == "a"
     assert set(column.with_tags("tag-2").tags) == set(["tag-1", "tag-2"])
+    assert set(column.with_properties("prop-2").properties) == set(["prop-1", "prop-2"])
+    assert set(column.with_tags("tag-2").properties) == set(["prop-1"])
+    assert set(column.with_properties("prop-2").tags) == set(["tag-1"])
 
 
 def test_dataset_schema_constructor():

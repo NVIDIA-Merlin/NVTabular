@@ -23,6 +23,7 @@ class ColumnSchema:
 
     name: Text
     tags: Optional[List[Text]] = field(default_factory=list)
+    properties: Optional[List[Text]] = field(default_factory=list)
 
     def __str__(self) -> str:
         return self.name
@@ -36,7 +37,15 @@ class ColumnSchema:
 
         tags = list(set(list(self.tags) + tags))
 
-        return ColumnSchema(self.name, tags=tags)
+        return ColumnSchema(self.name, tags=tags, properties=self.properties)
+    
+    def with_properties(self, properties):
+        if not isinstance(properties, list):
+            properties = [properties]
+
+        properties = list(set(list(self.properties) + properties))
+
+        return ColumnSchema(self.name, tags=self.tags, properties=properties)
 
 
 class DatasetSchema:
