@@ -21,21 +21,27 @@ from nvtabular.columns.selector import ColumnSelector
 
 
 def test_column_schema_meta():
-    column = ColumnSchema("name", tags=["tag-1"], properties=["prop-1"])
+    column = ColumnSchema("name", tags=["tag-1"], properties={"p1": "prop-1"})
 
     assert column.name == "name"
     assert column.tags[0] == "tag-1"
     assert column.with_name("a").name == "a"
     assert set(column.with_tags("tag-2").tags) == set(["tag-1", "tag-2"])
-    assert set(column.with_properties("prop-2").properties) == set(["prop-1", "prop-2"])
-    assert set(column.with_tags("tag-2").properties) == set(["prop-1"])
-    assert set(column.with_properties("prop-2").tags) == set(["tag-1"])
+    assert column.with_properties({"p2": "prop-2"}).properties == {"p1": "prop-1", "p2": "prop-2"}
+    assert column.with_tags("tag-2").properties == {"p1": "prop-1"}
+    assert set(column.with_properties({"p2": "prop-2"}).tags) == set(["tag-1"])
+    
+    assert column == ColumnSchema("name", tags=["tag-1"], properties={"p1": "prop-1"})
+    # should not be the same no properties
+    assert column != ColumnSchema("name",tags=["tag-1"])
+    # should not be the same no tags
+    assert column != ColumnSchema("name", properties={"p1": "prop-1"})
 
 
 def test_column_schema_set_protobuf(tmpdir):
     # create a schema
-    schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
-    schema2 = ColumnSchema("col2", tags=["c", "d", "e"])
+    schema1 = ColumnSchema("col1", tags=["a", "b", "c"], properties={"p1": "p1", "p2": "p2"})
+    schema2 = ColumnSchema("col2", tags=["c", "d", "e"], properties={"p3": "p3", "p4": "p4"})
     column_schema_set = ColumnSchemaSet([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir,"test.py")
@@ -52,14 +58,14 @@ def test_dataset_schema_constructor():
 
     expected = {schema1.name: schema1, schema2.name: schema2}
 
-    ds_schema_dict = DatasetSchema(expected)
-    ds_schema_list = DatasetSchema([schema1, schema2])
+    ds_schema_dict = ColumnSchemaSet(expected)
+    ds_schema_list = ColumnSchemaSet([schema1, schema2])
 
     assert ds_schema_dict.column_schemas == expected
     assert ds_schema_list.column_schemas == expected
 
     with pytest.raises(TypeError) as exception_info:
-        DatasetSchema(12345)
+        ColumnSchemaSet(12345)
 
     assert "column_schemas" in str(exception_info.value)
 
@@ -68,7 +74,7 @@ def test_dataset_schema_select_by_tag():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
 
-    ds_schema = DatasetSchema([schema1, schema2])
+    ds_schema = ColumnSchemaSet([schema1, schema2])
 
     selected_schema1 = ds_schema.select_by_tag("a")
     selected_schema2 = ds_schema.select_by_tag("d")
@@ -89,7 +95,7 @@ def test_dataset_schema_select_by_name():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
 
-    ds_schema = DatasetSchema([schema1, schema2])
+    ds_schema = ColumnSchemaSet([schema1, schema2])
 
     selected_schema1 = ds_schema.select_by_name("col1")
     selected_schema2 = ds_schema.select_by_name("col2")
@@ -108,12 +114,12 @@ def test_dataset_schema_select_by_name():
 
 
 def test_dataset_schemas_can_be_added():
-    ds1_schema = DatasetSchema([ColumnSchema("col1"), ColumnSchema("col2")])
-    ds2_schema = DatasetSchema([ColumnSchema("col3"), ColumnSchema("col4")])
+    ds1_schema = ColumnSchemaSet([ColumnSchema("col1"), ColumnSchema("col2")])
+    ds2_schema = ColumnSchemaSet([ColumnSchema("col3"), ColumnSchema("col4")])
 
     result = ds1_schema + ds2_schema
 
-    expected = DatasetSchema(
+    expected = ColumnSchemaSet(
         [ColumnSchema("col1"), ColumnSchema("col2"), ColumnSchema("col3"), ColumnSchema("col4")]
     )
 
@@ -126,24 +132,24 @@ def test_dataset_schemas_can_be_added():
 
 
 def test_construct_dataset_schema_with_column_names():
-    ds_schema = DatasetSchema(["x", "y", "z"])
-    expected = DatasetSchema([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
+    ds_schema = ColumnSchemaSet(["x", "y", "z"])
+    expected = ColumnSchemaSet([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
 
     assert ds_schema == expected
 
 
 def test_dataset_schema_column_names():
-    ds_schema = DatasetSchema(["x", "y", "z"])
+    ds_schema = ColumnSchemaSet(["x", "y", "z"])
 
     assert ds_schema.column_names == ["x", "y", "z"]
 
 
 def test_applying_selector_to_schema_selects_relevant_columns():
-    schema = DatasetSchema(["a", "b", "c", "d", "e"])
+    schema = ColumnSchemaSet(["a", "b", "c", "d", "e"])
     selector = ColumnSelector(["a", "b"])
     result = schema.apply(selector)
 
-    assert result == DatasetSchema(["a", "b"])
+    assert result == ColumnSchemaSet(["a", "b"])
 
     selector = None
     result = schema.apply(selector)

@@ -17,8 +17,11 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Text
 
 from tensorflow_metadata.proto.v0 import schema_pb2
-from google.protobuf import text_format
+from google.protobuf import text_format, json_format
 from pathlib import Path
+from typing import Dict
+from google.protobuf.struct_pb2 import Struct
+from google.protobuf.any_pb2 import Any
 
 
 @dataclass(frozen=True)
@@ -27,7 +30,7 @@ class ColumnSchema:
 
     name: Text
     tags: Optional[List[Text]] = field(default_factory=list)
-    properties: Optional[List[Text]] = field(default_factory=list)
+    properties: Optional[Dict[str, any]] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return self.name
@@ -44,13 +47,24 @@ class ColumnSchema:
         return ColumnSchema(self.name, tags=tags, properties=self.properties)
     
     def with_properties(self, properties):
-        if not isinstance(properties, list):
-            properties = [properties]
+        if not isinstance(properties, dict):
+            raise TypeError("properties must be in dict format, key: value")
 
-        properties = list(set(list(self.properties) + properties))
+        # Using new dictionary to avoid passing old ref to new schema
+        properties.update(self.properties)
 
         return ColumnSchema(self.name, tags=self.tags, properties=properties)
 
+    def __eq__(self, other):
+        if not isinstance(other, ColumnSchema):
+            return False
+        if self.name == other.name and self.tags == other.tags and len(other.properties) == len(self.properties):
+            #iterate through to ensure ALL keys AND values equal
+            for prop_name, prop_value in other.properties.items():
+                if prop_name not in self.properties or self.properties[prop_name] != prop_value:
+                    return False
+            return True
+        return False
 
 class ColumnSchemaSet:
     """A collection of column schemas for a dataset."""
@@ -116,7 +130,11 @@ class ColumnSchemaSet:
             tags = feat.annotation.tag
             if feat.HasField("value_count"):
                 tags = list(tags) + Tag.LIST.value if tags else Tag.LIST.value
-            columns.append(ColumnSchema(feat.name, tags=tags))
+            # only one item should ever be in extra_metadata
+            if len(feat.annotation.extra_metadata) > 1:
+                raise ValueError(f"extra_metadata for {feat.name} should only have 1 item, has {len(feat.annotation.extra_metadata)}")
+            properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
+            columns.append(ColumnSchema(feat.name, tags=tags, properties=properties))
 
         return ColumnSchemaSet(columns)
 
@@ -129,7 +147,14 @@ class ColumnSchemaSet:
             feature.name = col_name
             annotation = feature.annotation
             annotation.tag.extend(col_schema.tags)
-            # feature.annotation.extend(annotation)
+            # must put dictionary in message 
+            msg_struct = Struct()
+            # msg_struct.update(col_schema.properties)
+            # must pack message into "Any" type
+            any_pack = Any()
+            any_pack.Pack(json_format.ParseDict(col_schema.properties, msg_struct))
+            # extra_metadata only takes type "Any" messages
+            annotation.extra_metadata.add().CopyFrom(any_pack)
             features.append(feature)
         schema.feature.extend(features)
         with open(schema_path, "w") as f:
@@ -137,13 +162,13 @@ class ColumnSchemaSet:
         return self
 
     def __eq__(self, other):
-        if not isinstance(other, ColumnSchemaSet):
+        if not isinstance(other, ColumnSchemaSet) or len(self.column_schemas) != len(other.column_schemas):
             return False
-
-        if len(self.column_schemas) != len(other.column_schemas):
-            return False
-
-        return all(column in other.column_schemas for column in self.column_schemas)
+        for col_name, col_schema in self.column_schemas.items():
+            # if not in or if not the same, Fail
+            if col_name not in other.column_schemas or other.column_schemas[col_name] != col_schema:
+                return False
+        return True
 
     def __add__(self, other):
         if not isinstance(other, ColumnSchemaSet):
