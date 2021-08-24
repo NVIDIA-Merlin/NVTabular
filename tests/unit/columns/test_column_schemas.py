@@ -39,10 +39,14 @@ def test_column_schema_meta():
     assert column != ColumnSchema("name", properties={"p1": "prop-1"})
 
 
-def test_column_schema_set_protobuf(tmpdir):
+@pytest.mark.parametrize("props1", [{}, {"p1": "p1", "p2": "p2"}])
+@pytest.mark.parametrize("props2", [{}, {"p3": "p3", "p4": "p4"}])
+@pytest.mark.parametrize("tags1", [[], ["a", "b", "c"]])
+@pytest.mark.parametrize("tags2", [[], ["c", "d", "e"]])
+def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2):
     # create a schema
-    schema1 = ColumnSchema("col1", tags=["a", "b", "c"], properties={"p1": "p1", "p2": "p2"})
-    schema2 = ColumnSchema("col2", tags=["c", "d", "e"], properties={"p3": "p3", "p4": "p4"})
+    schema1 = ColumnSchema("col1", tags=tags1, properties=props1)
+    schema2 = ColumnSchema("col2", tags=tags2, properties=props2)
     column_schema_set = ColumnSchemaSet([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir, "test.py")

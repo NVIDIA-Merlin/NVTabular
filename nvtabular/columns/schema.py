@@ -135,7 +135,8 @@ class ColumnSchemaSet:
             # only one item should ever be in extra_metadata
             if len(feat.annotation.extra_metadata) > 1:
                 raise ValueError(
-                    f"extra_metadata for {feat.name} should have 1 item, has {len(feat.annotation.extra_metadata)}"
+                    f"{feat.name}: extra_metadata should have 1 item, has \
+                    {len(feat.annotation.extra_metadata)}"
                 )
             properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
             columns.append(ColumnSchema(feat.name, tags=tags, properties=properties))
