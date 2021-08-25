@@ -18,7 +18,8 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
-from nvtabular.columns import DatasetSchema as ColumnSchemaSet, ColumnSelector
+from nvtabular.columns import ColumnSelector
+from nvtabular.columns import DatasetSchema as ColumnSchemaSet
 from nvtabular.dispatch import DataFrameType
 
 
