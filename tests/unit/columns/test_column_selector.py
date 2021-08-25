@@ -16,6 +16,7 @@
 import pytest
 
 from nvtabular.columns import ColumnSelector
+from nvtabular.ops import Operator
 from nvtabular.workflow import WorkflowNode
 
 
@@ -127,3 +128,14 @@ def test_addition_works_with_none():
     combined = selector + None
 
     assert combined.names == ["a", "b", "c"]
+
+
+def test_rshift_operator_onto_selector_creates_node_with_selector():
+    selector = ColumnSelector(["a", "b", "c"])
+    operator = Operator()
+
+    output_node = selector >> operator
+
+    assert isinstance(output_node, WorkflowNode)
+    assert output_node.selector == selector
+    assert output_node.parents == []
