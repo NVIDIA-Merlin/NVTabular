@@ -101,11 +101,6 @@ class Schema:
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
-        overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
-
-        if overlap:
-            raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
-
         return Schema({**self.column_schemas, **other.column_schemas})
 
     def __radd__(self, other):
