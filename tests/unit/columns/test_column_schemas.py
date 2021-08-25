@@ -101,17 +101,19 @@ def test_dataset_schemas_can_be_added():
 
     assert result == expected
 
-    with pytest.raises(ValueError) as exception_info:
-        ds1_schema + ds1_schema  # pylint: disable=pointless-statement
 
-    assert "Overlapping column schemas" in str(exception_info.value)
+def test_schema_can_be_added_to_none():
+    schema_set = Schema(["a", "b", "c"])
+
+    assert (schema_set + None) == schema_set
+    assert (None + schema_set) == schema_set
 
 
-def test_construct_dataset_schema_with_column_names():
-    ds_schema = Schema(["x", "y", "z"])
+def test_construct_schema_with_column_names():
+    schema = Schema(["x", "y", "z"])
     expected = Schema([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
 
-    assert ds_schema == expected
+    assert schema == expected
 
 
 def test_dataset_schema_column_names():

@@ -32,6 +32,7 @@ import pandas as pd
 from dask.core import flatten
 
 import nvtabular
+from nvtabular.columns import Schema
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
@@ -91,6 +92,10 @@ class Workflow:
                 "with distributed-execution enabled."
             )
 
+    @property
+    def output_schema(self):
+        return self.output_node.output_schema
+
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
         method to have already been called, or calculated statistics to be loaded from disk
@@ -115,6 +120,41 @@ class Workflow:
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
         )
+
+    def fit_schema(self, input_schema: Schema):
+        schemaless_nodes = {
+            node: _get_schemaless_nodes(node.parents)
+            for node in _get_schemaless_nodes([self.output_node])
+        }
+
+        while schemaless_nodes:
+            # get all the Operators with no outstanding dependencies
+            current_phase = [
+                node for node, dependencies in schemaless_nodes.items() if not dependencies
+            ]
+            if not current_phase:
+                # this shouldn't happen, but lets not infinite loop just in case
+                raise RuntimeError("failed to find dependency-free Operator to compute schema for")
+
+            processed_nodes = []
+            for node in current_phase:
+                if not node.parents:
+                    node.compute_schemas(input_schema)
+                else:
+                    combined_schema = sum(
+                        [parent.output_schema for parent in node.parents if parent.output_schema],
+                        Schema(),
+                    )
+                    node.compute_schemas(combined_schema)
+
+                processed_nodes.append(node)
+
+            # Remove all the operators we processed in this phase, and remove
+            # from the dependencies of other ops too
+            for schemaless_node in current_phase:
+                schemaless_nodes.pop(schemaless_node)
+            for dependencies in schemaless_nodes.values():
+                dependencies.difference_update(current_phase)
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
@@ -367,6 +407,10 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
 
 def _get_stat_ops(nodes):
     return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
+
+
+def _get_schemaless_nodes(nodes):
+    return set(node for node in iter_nodes(nodes) if node.input_schema is None)
 
 
 def _get_unique(cols):

@@ -16,7 +16,7 @@
 import collections.abc
 import warnings
 
-from nvtabular.columns import ColumnSelector
+from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator
 
 
@@ -38,6 +38,8 @@ class WorkflowNode:
         self.op = None
         self.kind = None
         self.dependencies = None
+        self.input_schema = None
+        self.output_schema = None
 
         if isinstance(selector, list):
             warnings.warn(
@@ -62,6 +64,18 @@ class WorkflowNode:
             sel = ColumnSelector(sel)
 
         self._selector = sel
+
+    def compute_schemas(self, root_schema):
+        upstream_schema = Schema()
+        upstream_schema += root_schema
+        upstream_schema = sum([parent.output_schema for parent in self.parents], upstream_schema)
+
+        self.input_schema = upstream_schema.apply(self.selector)
+
+        if self.op:
+            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+        else:
+            self.output_schema = self.input_schema
 
     def __rshift__(self, operator):
         """Transforms this WorkflowNode by applying an Operator
@@ -201,7 +215,7 @@ class WorkflowNode:
         child = WorkflowNode(col_selector)
         child.parents = [self]
         self.children.append(child)
-        child.kind = str(columns)
+        child.kind = str(list(columns))
         return child
 
     def __repr__(self):
