@@ -95,6 +95,9 @@ class Schema:
         return all(column in other.column_schemas for column in self.column_schemas)
 
     def __add__(self, other):
+        if other is None:
+            return self
+
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
@@ -104,3 +107,6 @@ class Schema:
             raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
 
         return Schema({**self.column_schemas, **other.column_schemas})
+
+    def __radd__(self, other):
+        return self.__add__(other)
