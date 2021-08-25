@@ -105,7 +105,18 @@ class ColumnSelector:
         return self + other
 
     def __rshift__(self, other):
-        return nvtabular.WorkflowNode(self) >> other
+        # Create a virtual input node to shift onto
+        virtual_node = nvtabular.WorkflowNode(self)
+        new_node = virtual_node >> other
+        new_node.selector = self
+
+        # Remove virtual input node from the graph
+        virtual_node.children = []
+        new_node.parents.remove(virtual_node)
+        del virtual_node
+
+        # Return the new node as the (real) input node
+        return new_node
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):
