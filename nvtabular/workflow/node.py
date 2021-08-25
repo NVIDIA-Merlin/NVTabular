@@ -74,9 +74,7 @@ class WorkflowNode:
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
-        elif self.kind and "[" in self.kind and "]" in self.kind:
-            self.output_schema = self.input_schema
-        elif self.kind == "+":
+        else:
             self.output_schema = self.input_schema
 
     def __rshift__(self, operator):
