@@ -11,11 +11,9 @@ def test_selecting_columns_sets_selector_and_kind():
     node = ColumnSelector(["a", "b", "c"]) >> Operator()
     output = node[["a", "b"]]
     assert output.selector.names == ["a", "b"]
-    assert "[" in output.kind and "]" in output.kind
 
     output = node["b"]
     assert output.selector.names == ["b"]
-    assert "[" in output.kind and "]" in output.kind
 
 
 def test_workflow_node_converts_lists_to_selectors():
