@@ -24,3 +24,11 @@ def test_column_concat_op():
 
     concat_node = node + col_name
     assert isinstance(concat_node.op, internal.ConcatColumns)
+
+
+def test_column_subset_op():
+    node = ["col1", "col2"] >> ops.Operator()
+    col_name = "col1"
+
+    subtract_node = node - col_name
+    assert isinstance(subtract_node.op, internal.SubsetColumns)

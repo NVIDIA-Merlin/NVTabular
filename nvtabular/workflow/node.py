@@ -197,6 +197,7 @@ class WorkflowNode:
         child.parents = [self]
         self.children.append(child)
         child.kind = f"- {list(to_remove)}"
+        child.op = internal.SubsetColumns()
         return child
 
     def __getitem__(self, columns):
