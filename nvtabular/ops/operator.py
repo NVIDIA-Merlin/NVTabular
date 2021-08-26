@@ -83,7 +83,22 @@ class Operator:
             if isinstance(output_selector, ColumnSelector)
             else output_selector
         )
+        # add specific tag, dependent on operator
+        output_schema = self.add_tags(selected_schema)
+        # leaving this because need to keep backwards compatability until cutoff
+        # output schema should be input_schema + new_tags + column_name_changes
         return ColumnSchemaSet(output_names)
+
+    @property
+    def _op_tags(self):
+        return None
+
+    def add_tags_properties(self, schema, target_columns):
+        for col_name, col_schema in schema.items():
+            if col_name in target_columns and self._op_tags:
+                col_schema = col_schema.with_tags(self._op_tags)
+        return output_schema
+
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this

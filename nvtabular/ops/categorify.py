@@ -1198,3 +1198,6 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
         new_locations[column] = new_file
 
     return new_locations
+
+    def _op_tags(self):
+        return ["categorical"]

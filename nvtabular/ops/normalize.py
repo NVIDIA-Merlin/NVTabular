@@ -81,6 +81,9 @@ class Normalize(StatOperator):
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
+    def _op_tags(self):
+        return ["continuous"]
+
 
 class NormalizeMinMax(StatOperator):
     """
