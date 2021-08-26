@@ -85,7 +85,30 @@ def test_fit_schema_works_with_selection_nodes():
         >> ops.Rename(postfix="_renamed")
     )
 
-    workflow1 = Workflow(cont_features["x_renamed"])
+    workflow = Workflow(cont_features["x_renamed"])
+    workflow.fit_schema(schema)
+
+    assert workflow.output_schema.column_names == ["x_renamed"]
+
+
+def test_fit_schema_works_with_raw_column_dependencies():
+    schema = Schema(["x", "y", "cost"])
+
+    cat_features = ColumnSelector(["x", "y"]) >> ops.TargetEncoding("cost")
+
+    workflow = Workflow(cat_features)
+    workflow.fit_schema(schema)
+
+    assert workflow.output_schema.column_names == ["TE_x_cost", "TE_y_cost"]
+
+
+def test_fit_schema_works_with_node_dependencies():
+    schema = Schema(["x", "y", "cost"])
+
+    cont_features = ColumnSelector(["cost"]) >> ops.Rename(postfix="_renamed")
+    cat_features = ColumnSelector(["x", "y"]) >> ops.TargetEncoding(cont_features)
+
+    workflow1 = Workflow(cat_features)
     workflow1.fit_schema(schema)
 
-    assert workflow1.output_schema.column_names == ["x_renamed"]
+    assert workflow1.output_schema.column_names == ["TE_x_cost_renamed", "TE_y_cost_renamed"]
