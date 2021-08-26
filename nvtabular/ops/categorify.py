@@ -35,6 +35,7 @@ from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from .operator import ColumnSelector, Operator
@@ -514,7 +515,7 @@ def get_embedding_sizes(source, output_dtypes=None):
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.selector))
-        elif current.kind:
+        elif isinstance(current.op, (ConcatColumns, SubsetColumns, Identity)):
             # only follow parents if its an internal (Workflow) operator node
             # (which could transform meaning of the get_embedding_sizes)
             queue.extend(current.parents)

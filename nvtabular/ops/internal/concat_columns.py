@@ -21,6 +21,9 @@ from ..operator import Operator
 
 
 class ConcatColumns(Operator):
+    def __init__(self, label=None):
+        self._label = label or self.__class__.__name__
+
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         """Simply returns the selected output columns from the input dataframe
 
@@ -41,3 +44,7 @@ class ConcatColumns(Operator):
             Returns a transformed dataframe for this operator
         """
         return df[col_selector.names]
+
+    @property
+    def label(self) -> str:
+        return self._label
