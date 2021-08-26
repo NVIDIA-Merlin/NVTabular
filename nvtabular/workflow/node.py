@@ -184,14 +184,14 @@ class WorkflowNode:
         WorkflowNode
         """
         if isinstance(other, WorkflowNode):
-            to_remove = set(other.selector)
+            to_remove = set(other.output_columns)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
             raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.selector if c not in to_remove]
+        new_columns = [c for c in self.output_columns if c not in to_remove]
         child = WorkflowNode(new_columns)
         child.parents = [self]
         self.children.append(child)
