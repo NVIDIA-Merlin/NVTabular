@@ -32,3 +32,6 @@ def test_column_subset_op():
 
     subtract_node = node - col_name
     assert isinstance(subtract_node.op, internal.SubsetColumns)
+
+    bracket_node = node["col1"]
+    assert isinstance(bracket_node.op, internal.SubsetColumns)

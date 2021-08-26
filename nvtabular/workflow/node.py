@@ -218,6 +218,7 @@ class WorkflowNode:
         child.parents = [self]
         self.children.append(child)
         child.kind = str(list(columns))
+        child.op = internal.SubsetColumns()
         return child
 
     def __repr__(self):
