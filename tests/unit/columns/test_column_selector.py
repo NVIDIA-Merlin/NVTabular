@@ -98,6 +98,14 @@ def test_grouped_names_returns_nested_list():
     assert selector.grouped_names == ["a", "b", "c", ("d", "e", "f")]
 
 
+def test_returned_names_are_unique():
+    selector = ColumnSelector(["a", "b", "a"])
+    assert selector.names == ["a", "b"]
+
+    selector = ColumnSelector([("a", "b"), ("a", "b")])
+    assert selector.grouped_names == [("a", "b")]
+
+
 def test_addition_combines_names_and_subgroups():
     selector1 = ColumnSelector(["a", "b", "c", ["d", "e", "f"]])
     selector2 = ColumnSelector(["g", "h", "i", ["j", "k", "l"]])
