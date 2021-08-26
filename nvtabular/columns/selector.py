@@ -107,6 +107,7 @@ class ColumnSelector:
     def __rshift__(self, other):
         # Create a virtual input node to shift onto
         virtual_node = nvtabular.WorkflowNode(self)
+        virtual_node.op = nvtabular.ops.internal.Identity()
         new_node = virtual_node >> other
         new_node.selector = self
 

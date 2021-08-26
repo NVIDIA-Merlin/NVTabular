@@ -17,4 +17,5 @@
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
 from .concat_columns import ConcatColumns
+from .identity import Identity
 from .subset_columns import SubsetColumns
