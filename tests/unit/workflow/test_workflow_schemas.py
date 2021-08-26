@@ -102,6 +102,17 @@ def test_fit_schema_works_with_raw_column_dependencies():
     assert workflow.output_schema.column_names == ["TE_x_cost", "TE_y_cost"]
 
 
+def test_fit_schema_works_with_grouped_node_inputs():
+    schema = Schema(["x", "y", "cost"])
+
+    cat_features = ColumnSelector(["x", "y", ("x", "y")]) >> ops.TargetEncoding("cost")
+
+    workflow1 = Workflow(cat_features)
+    workflow1.fit_schema(schema)
+
+    assert workflow1.output_schema.column_names == ["TE_x_cost", "TE_y_cost", "TE_x_y_cost"]
+
+
 def test_fit_schema_works_with_node_dependencies():
     schema = Schema(["x", "y", "cost"])
 
