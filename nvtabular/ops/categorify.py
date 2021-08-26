@@ -514,9 +514,9 @@ def get_embedding_sizes(source, output_dtypes=None):
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
             output.update(current.op.get_embedding_sizes(current.selector))
-        elif not current.op:
-            # only follow parents if its not an operator node (which could
-            # transform meaning of the get_embedding_sizes
+        elif current.kind:
+            # only follow parents if its an internal (Workflow) operator node
+            # (which could transform meaning of the get_embedding_sizes)
             queue.extend(current.parents)
 
     for column in output:

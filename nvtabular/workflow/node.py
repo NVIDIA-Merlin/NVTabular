@@ -17,7 +17,7 @@ import collections.abc
 import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
-from nvtabular.ops import LambdaOp, Operator
+from nvtabular.ops import LambdaOp, Operator, internal
 
 
 class WorkflowNode:
@@ -160,6 +160,7 @@ class WorkflowNode:
         child = WorkflowNode(self.output_columns + other_selector)
         child.parents = [self]
         child.kind = "+"
+        child.op = internal.ConcatColumns()
         self.children.append(child)
 
         if other_node:
