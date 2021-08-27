@@ -23,6 +23,40 @@ from google.protobuf.struct_pb2 import Struct
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+
+def create_extra_metadata(column_schema):
+    msg_struct = Struct()
+    # msg_struct.update(col_schema.properties)
+    # must pack message into "Any" type
+    any_pack = Any()
+    any_pack.Pack(json_format.ParseDict(column_schema.properties, msg_struct))
+    return any_pack
+
+
+def set_protobuf_embbeddings(column_schema, feature):
+    if "embeddings" in column_schema.properties:
+        # add emebeddings, tuple in properties (min, max)
+        col_min, col_max = column_schema.properties.pop("embeddings")
+        feature.domain_info.int_domain.name = "embeddings"
+        feature.domain_info.int_domain.min = col_min
+        feature.domain_info.int_domain.max = col_max
+
+def set_protobuf_feature(column_schema):
+    feature = schema_pb2.Feature()
+    feature.name = column_schema.name
+    annotation = feature.annotation
+    annotation.tag.extend(column_schema.tags)
+    # check for embeddings, write them if exist
+    set_protobuf_embbeddings(column_schema, feature)
+    # must put dictionary in message
+    # all properties not split off and writen in specific fields
+    # are written in properties in extra_metadata
+    any_pack = create_extra_metadata(column_schema)
+    # extra_metadata only takes type "Any" messages
+    annotation.extra_metadata.add().CopyFrom(any_pack)
+    return feature
+
+
 @dataclass(frozen=True)
 class ColumnSchema:
     """A schema containing metadata of a dataframe column."""
@@ -139,6 +173,9 @@ class ColumnSchemaSet:
                     {len(feat.annotation.extra_metadata)}"
                 )
             properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
+            embeddings = feat.domain_info.int_domain.min, feat.domain_info.int_domain.max
+            if embeddings:
+                properties["embeddings"] = embeddings
             columns.append(ColumnSchema(feat.name, tags=tags, properties=properties))
 
         return ColumnSchemaSet(columns)
@@ -148,19 +185,7 @@ class ColumnSchemaSet:
         schema = schema_pb2.Schema()
         features = []
         for col_name, col_schema in self.column_schemas.items():
-            feature = schema_pb2.Feature()
-            feature.name = col_name
-            annotation = feature.annotation
-            annotation.tag.extend(col_schema.tags)
-            # must put dictionary in message
-            msg_struct = Struct()
-            # msg_struct.update(col_schema.properties)
-            # must pack message into "Any" type
-            any_pack = Any()
-            any_pack.Pack(json_format.ParseDict(col_schema.properties, msg_struct))
-            # extra_metadata only takes type "Any" messages
-            annotation.extra_metadata.add().CopyFrom(any_pack)
-            features.append(feature)
+            features.append(set_protobuf_feature(col_schema))
         schema.feature.extend(features)
         with open(schema_path, "w") as f:
             f.write(text_format.MessageToString(schema))
