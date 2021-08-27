@@ -72,10 +72,7 @@ class Operator:
         Schema
             The schemas of the columns produced by this operator
         """
-        selected_schema = input_schema.apply(col_selector)
-        # TODO: Add a method to Schema to convert to ColumnSelector?
-        column_selector = ColumnSelector(selected_schema.column_schemas.keys())
-        output_selector = self.output_column_names(column_selector)
+        output_selector = self.output_column_names(col_selector)
         output_names = (
             output_selector.names
             if isinstance(output_selector, ColumnSelector)
