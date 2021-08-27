@@ -32,7 +32,7 @@ import pandas as pd
 from dask.core import flatten
 
 import nvtabular
-from nvtabular.columns import Schema
+from nvtabular.columns import ColumnSchema, Schema
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
@@ -145,6 +145,7 @@ class Workflow:
                         [parent.output_schema for parent in node.parents if parent.output_schema],
                         Schema(),
                     )
+                    combined_schema += input_schema
                     node.compute_schemas(combined_schema)
 
                 processed_nodes.append(node)
@@ -167,6 +168,14 @@ class Workflow:
         """
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
+
+        # Create a schema for the dataset
+        col_schemas = []
+        for column_name in ddf.columns:
+            col_schemas.append(ColumnSchema(column_name))
+        input_schema = Schema(col_schemas)
+
+        self.fit_schema(input_schema)
 
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators

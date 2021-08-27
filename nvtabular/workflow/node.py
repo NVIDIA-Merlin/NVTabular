@@ -17,7 +17,8 @@ import collections.abc
 import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
-from nvtabular.ops import LambdaOp, Operator
+from nvtabular.ops import LambdaOp, Operator, internal
+from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
 class WorkflowNode:
@@ -36,7 +37,6 @@ class WorkflowNode:
         self.parents = []
         self.children = []
         self.op = None
-        self.kind = None
         self.dependencies = None
         self.input_schema = None
         self.output_schema = None
@@ -66,11 +66,16 @@ class WorkflowNode:
         self._selector = sel
 
     def compute_schemas(self, root_schema):
-        upstream_schema = Schema()
-        upstream_schema += root_schema
-        upstream_schema = sum([parent.output_schema for parent in self.parents], upstream_schema)
+        parent_outputs_schema = sum([parent.output_schema for parent in self.parents], Schema())
 
-        self.input_schema = upstream_schema.apply(self.selector)
+        if self.selector:
+            upstream_schema = Schema()
+            upstream_schema += root_schema
+            upstream_schema += parent_outputs_schema
+
+            self.input_schema = upstream_schema.apply(self.selector)
+        else:
+            self.input_schema = parent_outputs_schema
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
@@ -159,7 +164,7 @@ class WorkflowNode:
 
         child = WorkflowNode(self.output_columns + other_selector)
         child.parents = [self]
-        child.kind = "+"
+        child.op = internal.ConcatColumns(label="+")
         self.children.append(child)
 
         if other_node:
@@ -184,18 +189,18 @@ class WorkflowNode:
         WorkflowNode
         """
         if isinstance(other, WorkflowNode):
-            to_remove = set(other.selector)
+            to_remove = set(other.output_columns)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
             raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.selector if c not in to_remove]
+        new_columns = [c for c in self.output_columns if c not in to_remove]
         child = WorkflowNode(new_columns)
         child.parents = [self]
         self.children.append(child)
-        child.kind = f"- {list(to_remove)}"
+        child.op = internal.SubsetColumns(label=f"- {list(to_remove)}")
         return child
 
     def __getitem__(self, columns):
@@ -215,7 +220,7 @@ class WorkflowNode:
         child = WorkflowNode(col_selector)
         child.parents = [self]
         self.children.append(child)
-        child.kind = str(list(columns))
+        child.op = internal.SubsetColumns(label=str(list(columns)))
         return child
 
     def __repr__(self):
@@ -228,10 +233,10 @@ class WorkflowNode:
 
     @property
     def output_columns(self):
-        if self.op:
-            return self.op.output_column_names(self.input_columns)
-        elif self.kind and "[" in self.kind and "]" in self.kind:
+        if isinstance(self.op, SubsetColumns):
             return self.selector
+        elif self.op:
+            return self.op.output_column_names(self.input_columns)
         else:
             return self.input_columns
 
@@ -255,8 +260,6 @@ class WorkflowNode:
     def label(self):
         if self.op:
             return self.op.label
-        elif self.kind:
-            return self.kind
         elif not self.parents:
             return f"input cols=[{self._cols_repr}]"
         else:
@@ -317,13 +320,13 @@ def _merge_add_nodes(graph):
     queue = [graph]
     while queue:
         current = queue.pop()
-        if current.kind == "+":
+        if isinstance(current.op, internal.ConcatColumns):
             changed = True
             while changed:
                 changed = False
                 parents = []
                 for i, parent in enumerate(current.parents):
-                    if parent.kind == "+" and len(parent.children) == 1:
+                    if isinstance(parent.op, internal.ConcatColumns) and len(parent.children) == 1:
                         changed = True
                         # disconnect parent, point all the grandparents at current instead
                         parents.extend(parent.parents)
