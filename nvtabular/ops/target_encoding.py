@@ -143,8 +143,8 @@ class TargetEncoding(StatOperator):
         self.target = [target] if isinstance(target, str) else target
         self.dependency = self.target
 
-        if hasattr(self.target, "columns"):
-            self.target = self.target.columns
+        if hasattr(self.target, "output_columns"):
+            self.target = self.target.output_columns
 
         self.target_mean = target_mean
         self.kfold = kfold or 3
