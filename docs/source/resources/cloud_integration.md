@@ -4,6 +4,7 @@ Cloud Integration
 You can run NVTabular on the cloud using: 
 * [Amazon Web Services (AWS)](#amazon-web-services)
 * [Google Cloud Platform (GCP)](#google-cloud-platform)
+* [Databricks](#databricks)
 
 ## Amazon Web Services ##
 
