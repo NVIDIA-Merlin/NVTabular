@@ -108,9 +108,9 @@ To run NVTabular on Databricks, do the following:
 
 1. First we need to create a custom NVTabular container based on Databricks runtime. 
 
-2. Databricks is very sensitive to it dependency which comes natively with the Databricks container runtime. 
+2. Databricks is very sensitive to it dependency which comes natively with the Databricks container runtime. If some default dependencies that comes with the cluster are changed to a different version then it could result in the cluster not able to detect the Spark driver. 
 
-3. The Nvidia RAPIDS team has put together a [Docker container](https://github.com/rapidsai/cloud-ml-examples/tree/main/databricks/docker) to run RAPIDS inside a databricks cluster.
+3. In Order to solve the above issue, Nvidia RAPIDS team has put together a [Docker container](https://github.com/rapidsai/cloud-ml-examples/tree/main/databricks/docker) to run RAPIDS inside a databricks cluster.
 
 4. We will extend the above container and add NVTabular and PyTorch to run inside Databricks. All versions of NVTabular conda repo are listed [here](https://anaconda.org/nvidia/nvtabular/files?version=). Select the required version from the list.
 
