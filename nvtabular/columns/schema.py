@@ -72,9 +72,11 @@ def set_protobuf_int(column_schema, feature):
 def register_dtype(column_schema, feature):
     #  column_schema is a dict, changes are held
     #  TODO: this double check can be refactored
-    if str(column_schema.dtype) == "list":
-        feature = proto_dict[column_schema.dtype]
-    feature = proto_dict[column_schema.dtype]
+    if column_schema.dtype:
+        if str(column_schema.dtype) == "list":
+            feature = proto_dict[column_schema.dtype]
+        string_name = type(column_schema.dtype(1).item()).__name__
+        feature = proto_dict[string_name](column_schema, feature)
     return  feature
     
 proto_dict = {

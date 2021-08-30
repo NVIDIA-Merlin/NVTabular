@@ -25,6 +25,7 @@ from nvtabular.columns.selector import ColumnSelector
 import nvtabular.ops as ops
 import nvtabular.dispatch as dispatch
 
+
 try:
     import cudf
     import cupy as cp
@@ -38,7 +39,7 @@ except ImportError:
 
 
 
-@pytest.mark.parametrize("d_types", [cudf.core.dtypes.Decimal64Dtype, numpy.uint32, numpy.uint64])
+@pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
 def test_dtype_column_schema(d_types):
     column = ColumnSchema("name", tags=[], properties=[], dtype=d_types)
     assert column.dtype == d_types
@@ -107,10 +108,11 @@ def test_column_schema_meta():
 @pytest.mark.parametrize("props2", [{}, {"p3": "p3", "p4": "p4"}])
 @pytest.mark.parametrize("tags1", [[], ["a", "b", "c"]])
 @pytest.mark.parametrize("tags2", [[], ["c", "d", "e"]])
-def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2):
+@pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
+def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_types):
     # create a schema
-    schema1 = ColumnSchema("col1", tags=tags1, properties=props1)
-    schema2 = ColumnSchema("col2", tags=tags2, properties=props2)
+    schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_types)
+    schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_types)
     column_schema_set = Schema([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir, "test.py")
