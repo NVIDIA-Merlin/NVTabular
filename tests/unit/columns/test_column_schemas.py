@@ -114,10 +114,9 @@ def test_column_schema_meta():
 def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type, list_type):
     # create a schema
     if list_type:
-        x = cudf.DataFrame({"x": [d_type(x) for x in range(5)]})
-        d_type = x["x"].dtype
-    schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_type)
-    schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type)
+        df = dispatch._make_df({"x": [d_type(x) for x in range(5)]})
+    schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_type, _is_list=list_type)
+    schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type, _is_list=list_type)
     column_schema_set = Schema([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir, "test.py")

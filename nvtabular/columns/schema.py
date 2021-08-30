@@ -35,20 +35,22 @@ def register_extra_metadata(column_schema, feature):
     return feature
 
 def register_list(column_schema, feature):
-    if str(column_schema.dtype) == "list":
-        #  Needs pandas equivalent, 
-        column_schema.dtype = dtype.leaf_type
-        if min_length in column_schema.properties:
+    if str(column_schema._is_list):
+        min_length, max_length = None, None
+        if "min_length" in column_schema.properties:
             min_length = column_schema.properties["min_length"]
-        if max_length  in column_schema.properties:
+        if "max_length"  in column_schema.properties:
             max_length = column_schema.properties["max_length"]
-        if min_length == max_length:
+        if min_length and max_length and min_length == max_length:
             shape = schema_pb2.FixedShape()
             dim = shape.dim.add()
             dim.size = min_length
             feature.shape.CopyFrom(shape)
-        else:
+        elif min_length and max_length and min_length < max_length:
             feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
+        else:
+            # if no min max available set dummy value, to signal this is list
+            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=0, max=0))   
     return feature
 
 def set_protobuf_float(column_schema, feature):
@@ -144,6 +146,7 @@ class ColumnSchema:
             self.name == other.name
             and self.tags == other.tags
             and len(other.properties) == len(self.properties)
+            and self._is_list == other._is_list
         ):
             # iterate through to ensure ALL keys AND values equal
             for prop_name, prop_value in other.properties.items():
@@ -214,6 +217,7 @@ class Schema:
             schema = cls.read_protobuf(schema)
 
         for feat in schema.feature:
+            _is_list = False
             properties = {}
             tags = list(feat.annotation.tag) or []
             # only one item should ever be in extra_metadata
@@ -227,13 +231,15 @@ class Schema:
             # what domain
             # load the domain values
             # import pdb; pdb.set_trace()
-
+            shape_name = feat.WhichOneof("shape_type")
+            if shape_name:
+                _is_list = True
             field_name = feat.WhichOneof("domain_info")
             if field_name:
                 domain_values = getattr(feat, field_name)
                 min_max = domain_values.min, domain_values.max
                 properties["domain"] = min_max
-            columns.append(ColumnSchema(feat.name, tags=tags, properties=properties))
+            columns.append(ColumnSchema(feat.name, tags=tags, properties=properties, _is_list=_is_list))
 
         return Schema(columns)
 
@@ -247,6 +253,15 @@ class Schema:
         with open(schema_path, "w") as f:
             f.write(text_format.MessageToString(schema))
         return self
+
+    def __iter__(self):
+        return iter(self.column_schemas.values)
+
+    def  __len__(self):
+        return len(self.column_schemas)
+
+    def __repr__(self):
+        return str([col_schema.__dict__ for col_schema in self.column_schemas.values()])
 
     def __eq__(self, other):
         if not isinstance(other, Schema) or len(self.column_schemas) != len(
