@@ -36,7 +36,7 @@ def register_extra_metadata(column_schema, feature):
 
 def register_list(column_schema, feature):
     if str(column_schema.dtype) == "list":
-        #  Need to verify this behavior  for both pandas + cudf
+        #  Needs pandas equivalent, 
         column_schema.dtype = dtype.leaf_type
         if min_length in column_schema.properties:
             min_length = column_schema.properties["min_length"]
@@ -75,7 +75,10 @@ def register_dtype(column_schema, feature):
     if column_schema.dtype:
         if str(column_schema.dtype) == "list":
             feature = proto_dict[column_schema.dtype]
-        string_name = type(column_schema.dtype(1).item()).__name__
+        if hasattr(column_schema.dtype, "kind"):
+            string_name = numpy.core._dtype._kind_name(column_schema.dtype)
+        else:
+            string_name = type(column_schema.dtype(1).item()).__name__
         feature = proto_dict[string_name](column_schema, feature)
     return  feature
     
@@ -83,6 +86,7 @@ proto_dict = {
     "list": register_list,
     "float": set_protobuf_float,
     "int": set_protobuf_int,
+    "uint": set_protobuf_int,
     "properties": register_extra_metadata,
 }
 

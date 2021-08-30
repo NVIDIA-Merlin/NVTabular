@@ -108,11 +108,15 @@ def test_column_schema_meta():
 @pytest.mark.parametrize("props2", [{}, {"p3": "p3", "p4": "p4"}])
 @pytest.mark.parametrize("tags1", [[], ["a", "b", "c"]])
 @pytest.mark.parametrize("tags2", [[], ["c", "d", "e"]])
-@pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
-def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_types):
+@pytest.mark.parametrize("d_type", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
+@pytest.mark.parametrize("list_type", [True, False])
+def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type, list_type):
     # create a schema
-    schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_types)
-    schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_types)
+    if list_type:
+        x = cudf.DataFrame({"x": [d_type(x) for x in range(5)]})
+        d_type = x["x"].dtype
+    schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_type)
+    schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type)
     column_schema_set = Schema([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir, "test.py")
