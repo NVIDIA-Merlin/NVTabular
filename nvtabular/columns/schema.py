@@ -73,8 +73,8 @@ def register_dtype(column_schema, feature):
     #  column_schema is a dict, changes are held
     #  TODO: this double check can be refactored
     if column_schema.dtype:
-        if str(column_schema.dtype) == "list":
-            feature = proto_dict[column_schema.dtype]
+        if column_schema._is_list:
+            feature = proto_dict["list"](column_schema, feature)
         if hasattr(column_schema.dtype, "kind"):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
         else:
@@ -112,6 +112,7 @@ class ColumnSchema:
     tags: Optional[List[Text]] = field(default_factory=list)
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
     dtype: Optional[object] = None
+    _is_list: bool = False
 
     def __str__(self) -> str:
         return self.name
@@ -259,6 +260,8 @@ class Schema:
         return True
 
     def __add__(self, other):
+        if other is None:
+            return self
         if not isinstance(other, Schema):
             raise TypeError(
                 f"unsupported operand type(s) for +: 'Schema' and {type(other)}"

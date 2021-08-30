@@ -19,6 +19,7 @@ import pytest
 import pandas as pd
 import cudf
 import numpy
+import dask.dataframe as dd
 import nvtabular as nvt
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
