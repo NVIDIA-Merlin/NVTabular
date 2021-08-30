@@ -21,39 +21,80 @@ from google.protobuf import json_format, text_format
 from google.protobuf.any_pb2 import Any
 from google.protobuf.struct_pb2 import Struct
 from tensorflow_metadata.proto.v0 import schema_pb2
+import numpy
 
 
-
-def create_extra_metadata(column_schema):
+def register_extra_metadata(column_schema, feature):
     msg_struct = Struct()
     # msg_struct.update(col_schema.properties)
     # must pack message into "Any" type
     any_pack = Any()
     any_pack.Pack(json_format.ParseDict(column_schema.properties, msg_struct))
-    return any_pack
+    # extra_metadata only takes type "Any" messages
+    feature.annotation.extra_metadata.add().CopyFrom(any_pack)
+    return feature
 
+def register_list(column_schema, feature):
+    if str(column_schema.dtype) == "list":
+        #  Need to verify this behavior  for both pandas + cudf
+        column_schema.dtype = dtype.leaf_type
+        if min_length in column_schema.properties:
+            min_length = column_schema.properties["min_length"]
+        if max_length  in column_schema.properties:
+            max_length = column_schema.properties["max_length"]
+        if min_length == max_length:
+            shape = schema_pb2.FixedShape()
+            dim = shape.dim.add()
+            dim.size = min_length
+            feature.shape.CopyFrom(shape)
+        else:
+            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
+    return feature
 
-def set_protobuf_embbeddings(column_schema, feature):
-    if "embeddings" in column_schema.properties:
+def set_protobuf_float(column_schema, feature):
+    if str(column_schema.dtype) == ["float32", "float64"]:
         # add emebeddings, tuple in properties (min, max)
-        col_min, col_max = column_schema.properties.pop("embeddings")
-        feature.domain_info.int_domain.name = "embeddings"
-        feature.domain_info.int_domain.min = col_min
-        feature.domain_info.int_domain.max = col_max
+        col_min, col_max = column_schema.properties.pop("domain")
+        feature.float_domain.min = col_min
+        feature.float_domain.max = col_max
+        feature.type = 3
+    return  feature
 
-def set_protobuf_feature(column_schema):
+def set_protobuf_int(column_schema, feature):
+    if str(column_schema.dtype) == ["int8", "int32", "int64"]:
+        # add emebeddings, tuple in properties (min, max)
+        col_min, col_max = column_schema.properties.pop("domain")
+        feature.int_domain.min = col_min
+        feature.int_domain.max = col_max
+        feature.type = 2
+    return feature
+
+def register_dtype(column_schema, feature):
+    #  column_schema is a dict, changes are held
+    #  TODO: this double check can be refactored
+    if str(column_schema.dtype) == "list":
+        feature = proto_dict[column_schema.dtype]
+    feature = proto_dict[column_schema.dtype]
+    return  feature
+    
+proto_dict = {
+    "list": register_list,
+    "float": set_protobuf_float,
+    "int": set_protobuf_int,
+    "properties": register_extra_metadata,
+}
+
+def create_protobuf_feature(column_schema):
     feature = schema_pb2.Feature()
     feature.name = column_schema.name
+    if column_schema.dtype:
+        feature = register_dtype(column_schema, feature)
     annotation = feature.annotation
     annotation.tag.extend(column_schema.tags)
-    # check for embeddings, write them if exist
-    set_protobuf_embbeddings(column_schema, feature)
-    # must put dictionary in message
-    # all properties not split off and writen in specific fields
-    # are written in properties in extra_metadata
-    any_pack = create_extra_metadata(column_schema)
-    # extra_metadata only takes type "Any" messages
-    annotation.extra_metadata.add().CopyFrom(any_pack)
+    # can be instantiated with no values
+    # if  so, unnecessary to dump
+    if len(column_schema.properties) > 0:
+        feature = register_extra_metadata(column_schema, feature)
     return feature
 
 
@@ -64,6 +105,7 @@ class ColumnSchema:
     name: Text
     tags: Optional[List[Text]] = field(default_factory=list)
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
+    dtype: Optional[object] = None
 
     def __str__(self) -> str:
         return self.name
@@ -104,7 +146,7 @@ class ColumnSchema:
         return False
 
 
-class ColumnSchemaSet:
+class Schema:
     """A collection of column schemas for a dataset."""
 
     def __init__(self, column_schemas=None):
@@ -141,17 +183,17 @@ class ColumnSchemaSet:
             if all(x in column_schema.tags for x in tags):
                 selected_schemas[column_schema.name] = column_schema
 
-        return ColumnSchemaSet(selected_schemas)
+        return Schema(selected_schemas)
 
     def select_by_name(self, names):
         if isinstance(names, str):
             names = [names]
 
         selected_schemas = {key: self.column_schemas[key] for key in names}
-        return ColumnSchemaSet(selected_schemas)
+        return Schema(selected_schemas)
 
     @staticmethod
-    def read_schema_protobuf(schema_path):
+    def read_protobuf(schema_path):
         with open(schema_path, "r") as f:
             schema = schema_pb2.Schema()
             text_format.Parse(f.read(), schema)
@@ -159,12 +201,13 @@ class ColumnSchemaSet:
         return schema
 
     @classmethod
-    def from_schema_protobuf(cls, schema) -> "ColumnSchemaSet":
-        if isinstance(schema, (str, Path)):
-            schema = cls.read_schema_protobuf(schema)
-
+    def load_protobuf(cls, schema) -> "Schema":
         columns = []
+        if isinstance(schema, (str, Path)):
+            schema = cls.read_protobuf(schema)
+
         for feat in schema.feature:
+            properties = {}
             tags = list(feat.annotation.tag) or []
             # only one item should ever be in extra_metadata
             if len(feat.annotation.extra_metadata) > 1:
@@ -172,27 +215,34 @@ class ColumnSchemaSet:
                     f"{feat.name}: extra_metadata should have 1 item, has \
                     {len(feat.annotation.extra_metadata)}"
                 )
-            properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
-            embeddings = feat.domain_info.int_domain.min, feat.domain_info.int_domain.max
-            if embeddings:
-                properties["embeddings"] = embeddings
+            if feat.annotation.extra_metadata:
+                properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
+            # what domain
+            # load the domain values
+            # import pdb; pdb.set_trace()
+
+            field_name = feat.WhichOneof("domain_info")
+            if field_name:
+                domain_values = getattr(feat, field_name)
+                min_max = domain_values.min, domain_values.max
+                properties["domain"] = min_max
             columns.append(ColumnSchema(feat.name, tags=tags, properties=properties))
 
-        return ColumnSchemaSet(columns)
+        return Schema(columns)
 
-    def to_schema_protobuf(self, schema_path):
+    def save_protobuf(self, schema_path):
         # traverse list of column schema
         schema = schema_pb2.Schema()
         features = []
         for col_name, col_schema in self.column_schemas.items():
-            features.append(set_protobuf_feature(col_schema))
+            features.append(create_protobuf_feature(col_schema))
         schema.feature.extend(features)
         with open(schema_path, "w") as f:
             f.write(text_format.MessageToString(schema))
         return self
 
     def __eq__(self, other):
-        if not isinstance(other, ColumnSchemaSet) or len(self.column_schemas) != len(
+        if not isinstance(other, Schema) or len(self.column_schemas) != len(
             other.column_schemas
         ):
             return False
@@ -203,14 +253,17 @@ class ColumnSchemaSet:
         return True
 
     def __add__(self, other):
-        if not isinstance(other, ColumnSchemaSet):
+        if not isinstance(other, Schema):
             raise TypeError(
-                f"unsupported operand type(s) for +: 'ColumnSchemaSet' and {type(other)}"
+                f"unsupported operand type(s) for +: 'Schema' and {type(other)}"
             )
+        if other is None:
+            return self
 
-        overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
+        if not isinstance(other, Schema):
+            raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
-        if overlap:
-            raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
+        return Schema({**self.column_schemas, **other.column_schemas})
 
-        return ColumnSchemaSet({**self.column_schemas, **other.column_schemas})
+    def __radd__(self, other):
+        return self.__add__(other)

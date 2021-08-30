@@ -14,11 +14,75 @@
 # limitations under the License.
 #
 from pathlib import Path
-
+import string
 import pytest
-
-from nvtabular.columns.schema import ColumnSchema, ColumnSchemaSet
+import pandas as pd
+import cudf
+import numpy
+import nvtabular as nvt
+from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
+import nvtabular.ops as ops
+import nvtabular.dispatch as dispatch
+
+try:
+    import cudf
+    import cupy as cp
+    import dask_cudf
+
+    _CPU = [True, False]
+    _HAS_GPU = True
+except ImportError:
+    _CPU = [True]
+    _HAS_GPU = False
+
+
+
+@pytest.mark.parametrize("d_types", [cudf.core.dtypes.Decimal64Dtype, numpy.uint32, numpy.uint64])
+def test_dtype_column_schema(d_types):
+    column = ColumnSchema("name", tags=[], properties=[], dtype=d_types)
+    assert column.dtype == d_types
+    
+
+@pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
+@pytest.mark.parametrize("kfold", [1, 3])
+@pytest.mark.parametrize("fold_seed", [None, 42])
+@pytest.mark.parametrize("cpu", _CPU)
+def test_column_schema_ops_dtype(tmpdir, cat_groups,  kfold, fold_seed, cpu):
+    # create a pipeline
+    # got from target encoding example
+    df = dispatch._make_df(
+        {
+            "Author": list(string.ascii_uppercase),
+            "Engaging-User": list(string.ascii_lowercase),
+            "Cost": range(26),
+            "Post": [0, 1] * 13,
+        }
+    )
+    if cpu:
+        df = dd.from_pandas(df if isinstance(df, pd.DataFrame) else df.to_pandas(), npartitions=3)
+    else:
+        df = dask_cudf.from_cudf(df, npartitions=3)
+
+    cont_names = ["Cost"]
+    te_features = cat_groups >> ops.TargetEncoding(
+        cont_names,
+        out_path=str(tmpdir),
+        kfold=kfold,
+        out_dtype="float32",
+        fold_seed=42,
+        drop_folds=False,  # Keep folds to validate
+    )
+
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
+    workflow = nvt.Workflow(te_features + cont_features + ["Author", "Engaging-User"])
+    output_schema = nvt.Workflow.fit_schema
+    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+
+
+
+    # check dtype after transform 
+
 
 
 def test_column_schema_meta():
@@ -47,12 +111,12 @@ def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2):
     # create a schema
     schema1 = ColumnSchema("col1", tags=tags1, properties=props1)
     schema2 = ColumnSchema("col2", tags=tags2, properties=props2)
-    column_schema_set = ColumnSchemaSet([schema1, schema2])
+    column_schema_set = Schema([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir, "test.py")
-    column_schema_set = column_schema_set.to_schema_protobuf(schema_path)
+    column_schema_set = column_schema_set.save_protobuf(schema_path)
     # read schema back in
-    target = ColumnSchemaSet.from_schema_protobuf(schema_path)
+    target = Schema.load_protobuf(schema_path)
     # compare read to origin
     assert column_schema_set == target
 
@@ -63,14 +127,14 @@ def test_dataset_schema_constructor():
 
     expected = {schema1.name: schema1, schema2.name: schema2}
 
-    ds_schema_dict = ColumnSchemaSet(expected)
-    ds_schema_list = ColumnSchemaSet([schema1, schema2])
+    ds_schema_dict = Schema(expected)
+    ds_schema_list = Schema([schema1, schema2])
 
     assert ds_schema_dict.column_schemas == expected
     assert ds_schema_list.column_schemas == expected
 
     with pytest.raises(TypeError) as exception_info:
-        ColumnSchemaSet(12345)
+        Schema(12345)
 
     assert "column_schemas" in str(exception_info.value)
 
@@ -79,7 +143,7 @@ def test_dataset_schema_select_by_tag():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
 
-    ds_schema = ColumnSchemaSet([schema1, schema2])
+    ds_schema = Schema([schema1, schema2])
 
     selected_schema1 = ds_schema.select_by_tag("a")
     selected_schema2 = ds_schema.select_by_tag("d")
@@ -100,7 +164,7 @@ def test_dataset_schema_select_by_name():
     schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
     schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
 
-    ds_schema = ColumnSchemaSet([schema1, schema2])
+    ds_schema = Schema([schema1, schema2])
 
     selected_schema1 = ds_schema.select_by_name("col1")
     selected_schema2 = ds_schema.select_by_name("col2")
@@ -119,42 +183,44 @@ def test_dataset_schema_select_by_name():
 
 
 def test_dataset_schemas_can_be_added():
-    ds1_schema = ColumnSchemaSet([ColumnSchema("col1"), ColumnSchema("col2")])
-    ds2_schema = ColumnSchemaSet([ColumnSchema("col3"), ColumnSchema("col4")])
+    ds1_schema = Schema([ColumnSchema("col1"), ColumnSchema("col2")])
+    ds2_schema = Schema([ColumnSchema("col3"), ColumnSchema("col4")])
 
     result = ds1_schema + ds2_schema
 
-    expected = ColumnSchemaSet(
+    expected = Schema(
         [ColumnSchema("col1"), ColumnSchema("col2"), ColumnSchema("col3"), ColumnSchema("col4")]
     )
 
     assert result == expected
 
-    with pytest.raises(ValueError) as exception_info:
-        ds1_schema + ds1_schema  # pylint: disable=pointless-statement
 
-    assert "Overlapping column schemas" in str(exception_info.value)
+def test_schema_can_be_added_to_none():
+    schema_set = Schema(["a", "b", "c"])
+
+    assert (schema_set + None) == schema_set
+    assert (None + schema_set) == schema_set
 
 
-def test_construct_dataset_schema_with_column_names():
-    ds_schema = ColumnSchemaSet(["x", "y", "z"])
-    expected = ColumnSchemaSet([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
+def test_construct_schema_with_column_names():
+    schema = Schema(["x", "y", "z"])
+    expected = Schema([ColumnSchema("x"), ColumnSchema("y"), ColumnSchema("z")])
 
-    assert ds_schema == expected
+    assert schema == expected
 
 
 def test_dataset_schema_column_names():
-    ds_schema = ColumnSchemaSet(["x", "y", "z"])
+    ds_schema = Schema(["x", "y", "z"])
 
     assert ds_schema.column_names == ["x", "y", "z"]
 
 
 def test_applying_selector_to_schema_selects_relevant_columns():
-    schema = ColumnSchemaSet(["a", "b", "c", "d", "e"])
+    schema = Schema(["a", "b", "c", "d", "e"])
     selector = ColumnSelector(["a", "b"])
     result = schema.apply(selector)
 
-    assert result == ColumnSchemaSet(["a", "b"])
+    assert result == Schema(["a", "b"])
 
     selector = None
     result = schema.apply(selector)
