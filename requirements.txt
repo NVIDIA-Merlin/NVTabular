@@ -6,4 +6,4 @@ numba>=0.54
 tqdm>=4.0
 pyarrow>=1.0
 tensorflow-metadata>=1.2.0
-google>=3.0.0
+protobuf>=3.0.0
