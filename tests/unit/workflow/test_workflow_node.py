@@ -2,9 +2,26 @@ import numpy as np
 import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
-from nvtabular.columns import ColumnSelector
-from nvtabular.ops import Categorify, FillMissing, Rename, TargetEncoding
+from nvtabular.columns import ColumnSelector, Schema
+from nvtabular.ops import Categorify, DifferenceLag, FillMissing, Operator, Rename, TargetEncoding
 from tests.conftest import assert_eq
+
+
+def test_selecting_columns_sets_selector_and_kind():
+    node = ColumnSelector(["a", "b", "c"]) >> Operator()
+    output = node[["a", "b"]]
+    assert output.selector.names == ["a", "b"]
+
+    output = node["b"]
+    assert output.selector.names == ["b"]
+
+
+def test_workflow_node_converts_lists_to_selectors():
+    node = WorkflowNode([])
+    assert node.selector == ColumnSelector([])
+
+    node.selector = ["a", "b", "c"]
+    assert node.selector == ColumnSelector(["a", "b", "c"])
 
 
 def test_input_output_column_names():
@@ -17,7 +34,7 @@ def test_input_output_column_names():
     assert chained_node.output_columns.names == ["a", "b", "c"]
 
     selection_node = input_node[["b", "c"]]
-    assert selection_node.input_columns.names == ["a", "b", "c"]
+    assert selection_node.input_columns.names == ["b", "c"]
     assert selection_node.output_columns.names == ["b", "c"]
 
     addition_node = input_node + ["d"]
@@ -31,6 +48,80 @@ def test_input_output_column_names():
     dependency_node = input_node >> TargetEncoding("d")
     assert dependency_node.input_columns.names == ["a", "b", "c"]
     assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
+
+
+def test_dependency_column_names():
+    dependency_node = ["a", "b", "c"] >> TargetEncoding("d")
+    assert dependency_node.dependency_columns.names == ["d"]
+
+
+def test_workflow_node_addition():
+    node1 = ["a", "b"] >> Operator()
+    node2 = ["c", "d"] >> Operator()
+    node3 = ["e", "f"] >> Operator()
+
+    output_node = node1 + node2
+    assert len(output_node.parents) == 2
+    assert output_node.output_columns.names == ["a", "b", "c", "d"]
+
+    output_node = node1 + "c"
+    assert len(output_node.parents) == 1
+    assert output_node.output_columns.names == ["a", "b", "c"]
+
+    output_node = node1 + "c" + "d"
+    assert output_node.output_columns.names == ["a", "b", "c", "d"]
+
+    output_node = node1 + node2 + "e"
+    assert output_node.output_columns.names == ["a", "b", "c", "d", "e"]
+
+    output_node = node1 + node2 + node3
+    assert output_node.output_columns.names == ["a", "b", "c", "d", "e", "f"]
+
+    # Addition with groups
+    output_node = node1 + ["c", "d"]
+    assert output_node.output_columns.names == ["a", "b", "c", "d"]
+    assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d")]
+
+    output_node = node1 + [node2, "e"]
+    assert output_node.output_columns.names == ["a", "b", "c", "d", "e"]
+    assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e")]
+
+    output_node = node1 + [node2, node3]
+    assert output_node.output_columns.names == ["a", "b", "c", "d", "e", "f"]
+    assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e", "f")]
+
+
+def test_workflow_node_dependencies():
+    # Full WorkflowNode case
+    node1 = ["a", "b"] >> Operator()
+    output_node = ["timestamp"] >> DifferenceLag(partition_cols=[node1], shift=[1, -1])
+    assert list(output_node.dependencies) == [node1]
+
+    # ColumnSelector case
+    output_node = ["timestamp"] >> DifferenceLag(partition_cols=["userid"], shift=[1, -1])
+    assert list(output_node.dependencies) == [ColumnSelector(["userid"])]
+
+
+def test_compute_schemas():
+    root_schema = Schema(["a", "b", "c", "d", "e"])
+
+    node1 = ["a", "b"] >> Rename(postfix="_renamed")
+    node1.compute_schemas(root_schema)
+
+    assert node1.input_columns.names == ["a", "b"]
+    assert node1.output_columns.names == ["a_renamed", "b_renamed"]
+
+    node2 = node1 + "c"
+    node2.compute_schemas(root_schema)
+
+    assert node2.input_columns.names == ["a_renamed", "b_renamed", "c"]
+    assert node2.output_columns.names == ["a_renamed", "b_renamed", "c"]
+
+    node3 = node2["a_renamed"]
+    node3.compute_schemas(root_schema)
+
+    assert node3.input_columns.names == ["a_renamed"]
+    assert node3.output_columns.names == ["a_renamed"]
 
 
 def test_workflow_node_select():
@@ -88,11 +179,3 @@ def test_nested_workflow_node():
     # are super confusing for users)
     with pytest.raises(ValueError):
         cats = [[country + "user"] + country + "user"] >> Categorify(encode_type="combo")
-
-
-def test_workflow_node_converts_lists():
-    node = WorkflowNode([])
-    assert node.selector == ColumnSelector([])
-
-    node.selector = ["a", "b", "c"]
-    assert node.selector == ColumnSelector(["a", "b", "c"])

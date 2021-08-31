@@ -89,14 +89,14 @@ class JoinGroupby(StatOperator):
 
         if isinstance(cont_cols, nvt.WorkflowNode):
             self.cont_cols = cont_cols
+            self.cont_names = cont_cols.output_columns
         elif isinstance(cont_cols, ColumnSelector):
-            self.cont_cols = nvt.WorkflowNode(cont_cols)
+            self.cont_cols = self.cont_names = cont_cols
         else:
-            self.cont_cols = nvt.WorkflowNode(ColumnSelector(cont_cols))
+            self.cont_cols = self.cont_names = ColumnSelector(cont_cols)
 
         self.storage_name = {}
         self.name_sep = name_sep
-        self.cont_names = self.cont_cols.selector
         self.stats = stats
         self.tree_width = tree_width
         self.out_path = out_path or "./"
