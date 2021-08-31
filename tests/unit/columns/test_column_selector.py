@@ -16,6 +16,7 @@
 import pytest
 
 from nvtabular.columns import ColumnSelector
+from nvtabular.ops import Operator
 from nvtabular.workflow import WorkflowNode
 
 
@@ -97,6 +98,14 @@ def test_grouped_names_returns_nested_list():
     assert selector.grouped_names == ["a", "b", "c", ("d", "e", "f")]
 
 
+def test_returned_names_are_unique():
+    selector = ColumnSelector(["a", "b", "a"])
+    assert selector.names == ["a", "b"]
+
+    selector = ColumnSelector([("a", "b"), ("a", "b")])
+    assert selector.grouped_names == [("a", "b")]
+
+
 def test_addition_combines_names_and_subgroups():
     selector1 = ColumnSelector(["a", "b", "c", ["d", "e", "f"]])
     selector2 = ColumnSelector(["g", "h", "i", ["j", "k", "l"]])
@@ -127,3 +136,14 @@ def test_addition_works_with_none():
     combined = selector + None
 
     assert combined.names == ["a", "b", "c"]
+
+
+def test_rshift_operator_onto_selector_creates_node_with_selector():
+    selector = ColumnSelector(["a", "b", "c"])
+    operator = Operator()
+
+    output_node = selector >> operator
+
+    assert isinstance(output_node, WorkflowNode)
+    assert output_node.selector == selector
+    assert output_node.parents == []

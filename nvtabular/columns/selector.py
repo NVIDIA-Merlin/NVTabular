@@ -64,7 +64,9 @@ class ColumnSelector:
         names += self._names
         for subgroup in self.subgroups:
             names += subgroup.names
-        return names
+
+        # Only return unique column names
+        return list(dict.fromkeys(names).keys())
 
     @property
     def grouped_names(self):
@@ -72,7 +74,9 @@ class ColumnSelector:
         names += self._names
         for subgroup in self.subgroups:
             names.append(tuple(subgroup.names))
-        return names
+
+        # Only return unique grouped column names
+        return list(dict.fromkeys(names).keys())
 
     def _nested_check(self, nests=0):
         if nests > 1:
@@ -105,7 +109,19 @@ class ColumnSelector:
         return self + other
 
     def __rshift__(self, other):
-        return nvtabular.WorkflowNode(self) >> other
+        # Create a virtual input node to shift onto
+        virtual_node = nvtabular.WorkflowNode(self)
+        virtual_node.op = nvtabular.ops.internal.Identity()
+        new_node = virtual_node >> other
+        new_node.selector = self
+
+        # Remove virtual input node from the graph
+        virtual_node.children = []
+        new_node.parents.remove(virtual_node)
+        del virtual_node
+
+        # Return the new node as the (real) input node
+        return new_node
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):

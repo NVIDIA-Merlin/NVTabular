@@ -19,6 +19,7 @@ from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
 from nvtabular.columns import ColumnSelector
+from nvtabular.columns.schema import Schema
 from nvtabular.dispatch import DataFrameType
 
 
@@ -56,6 +57,28 @@ class Operator:
             Returns a transformed dataframe for this operator
         """
         raise NotImplementedError
+
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        """Given a set of schemas and a column selector for the input columns,
+        returns a set of schemas for the transformed columns this operator will produce
+        Parameters
+        -----------
+        input_schema: Schema
+            The schemas of the columns to apply this operator to
+        col_selector: ColumnSelector
+            The column selector to apply to the input schema
+        Returns
+        -------
+        Schema
+            The schemas of the columns produced by this operator
+        """
+        output_selector = self.output_column_names(col_selector)
+        output_names = (
+            output_selector.names
+            if isinstance(output_selector, ColumnSelector)
+            else output_selector
+        )
+        return Schema(output_names)
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this
