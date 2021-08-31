@@ -37,7 +37,7 @@ def configure_tensorflow(memory_allocation=None, device=None):
     # TODO: what will this look like in any sort
     # of distributed set up?
     if device is None:
-        device = os.environ.get("TF_VISIBLE_DEVICE", 0)
+        device = int(os.environ.get("TF_VISIBLE_DEVICE", 0))
     tf_devices = tf.config.list_physical_devices("GPU")
     if len(tf_devices) == 0:
         raise ImportError("TensorFlow is not configured for GPU")

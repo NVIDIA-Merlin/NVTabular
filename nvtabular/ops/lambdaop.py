@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from inspect import signature
+from inspect import getsourcelines, signature
 
-from nvtx import annotate
-
-from ..dispatch import DataFrameType
-from .operator import ColumnNames, Operator
+from ..dispatch import DataFrameType, annotate
+from .operator import ColumnSelector, Operator
 
 
 class LambdaOp(Operator):
@@ -27,9 +25,9 @@ class LambdaOp(Operator):
 
     Example usage 1::
 
-        # Define a ColumnGroup that LamdaOp will apply to
+        # Define a ColumnSelector that LamdaOp will apply to
         # then define a custom function, e.g. extract first 5 character from a string
-        lambda_feature = ColumnGroup(["col1"])
+        lambda_feature = ColumnSelector(["col1"])
         new_lambda_feature = lambda_feature >> (lambda col: col.str.slice(0, 5))
         processor = nvtabular.Workflow(new_lambda_feature + 'label')
 
@@ -37,7 +35,7 @@ class LambdaOp(Operator):
 
         # define a custom function e.g. calculate probability for different events.
         # Rename the each new feature column name.
-        lambda_features = ColumnGroup(['event1', 'event2', 'event3']), # columns, f is applied to
+        lambda_features = ColumnSelector(['event1', 'event2', 'event3']), # columns, f is applied to
         def cond_prob(col, gdf):
             col = col.astype(np.float32)
             col = col / gdf['total_events']
@@ -49,13 +47,13 @@ class LambdaOp(Operator):
     Parameters
     -----------
     f : callable
-        Defines a function that takes a cudf.Series and an optional cudf.DataFrame as input,
+        Defines a function that takes a Series and an optional DataFrame as input,
         and returns a new Series as the output.
     dependency : list, default None
         Whether to provide a dependency column or not.
     """
 
-    def __init__(self, f, dependency=None):
+    def __init__(self, f, dependency=None, label=None):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
@@ -64,11 +62,12 @@ class LambdaOp(Operator):
         if self._param_count not in (1, 2):
             raise ValueError("lambda function must accept either one or two parameters")
         self.dependency = dependency
+        self._label = label
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for col in columns:
+        for col in col_selector:
             if self._param_count == 2:
                 new_df[col] = self.f(df[col], df)
             elif self._param_count == 1:
@@ -82,3 +81,23 @@ class LambdaOp(Operator):
 
     def dependencies(self):
         return self.dependency
+
+    @property
+    def label(self):
+        # if we're given an explicit label to use, return it
+        if self._label:
+            return self._label
+
+        # if we have a named function (not a lambda) return the function name
+        name = self.f.__name__
+        if name != "<lambda>":
+            return name
+        else:
+            # otherwise get the lambda source code from the inspect module if possible
+            source = getsourcelines(self.f)[0][0]
+            lambdas = [op.strip() for op in source.split(">>") if "lambda " in op]
+            if len(lambdas) == 1 and lambdas[0].count("lambda") == 1:
+                return lambdas[0]
+
+        # Failed to figure out the source
+        return "LambdaOp"

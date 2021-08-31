@@ -4,10 +4,10 @@
 #   conda build . -c defaults -c conda-forge -c numba -c rapidsai
 
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.1').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
-{% set minor_version =  version.split('.')[0] + '.' + version.split('.')[1] %}
+{% set minor_version = version.split('.')[0] + '.' + version.split('.')[1] %}
 {% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
-{% set cuda_version='.'.join(environ.get('CUDA', 'unknown').split('.')[:2]) %}
 {% set py_version=environ.get('CONDA_PY', 36) %}
+{% set setup_py_data = load_setup_py_data() %}
 
 package:
   name: nvtabular
@@ -18,26 +18,26 @@ source:
 
 build:
   number: {{ git_revision_count }}
-  string: {{ git_revision_count }}
-  noarch: python
+  script: python -m pip install . -vvv
+
 
 requirements:
   build:
-    - python x.x
+    - python
     - setuptools
-    - cudf>=0.19.0
+    - pybind11>=2.7.0
+    - protobuf>=3.0.0
   run:
-    - python>=3.7.0
-    - cudf>=0.19.0
-    - dask-cudf>=0.19.0
+  {% for req in setup_py_data.get('install_requires', []) %}
+    - {{ req }}
+  {% endfor %}
+    - python
+    - cudf>=21.06.*
+    - dask-cudf>=21.06.*
     - cupy>=7.2.0,<9.0.0a
-    - dask==2021.4.0
-    - distributed>=2.22.0,<=2021.4.0
-    - PyYAML>=5.3
     - nvtx>=0.2.1
 
 about:
   home: https://github.com/NVIDIA/NVTabular
-  license: Apache-2.0
-  # license_file: LICENSE
+  license_file: LICENSE
   summary: NVTabular library

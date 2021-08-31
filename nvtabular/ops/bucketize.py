@@ -12,10 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import cudf
-from nvtx import annotate
 
-from .operator import ColumnNames, Operator
+from distutils.version import LooseVersion
+
+import numpy as np
+
+from nvtabular.dispatch import DataFrameType, _array, annotate
+
+from .operator import ColumnSelector, Operator
 
 
 class Bucketize(Operator):
@@ -40,6 +44,15 @@ class Bucketize(Operator):
     """
 
     def __init__(self, boundaries):
+        # Check if we have cupy.digitize support
+        try:
+            import cupy
+
+            self.use_digitize = LooseVersion(cupy.__version__) >= "8.0.0"
+        except ImportError:
+            # Assume cpu-backed data (since cupy is not even installed)
+            self.use_digitize = True
+
         # transform boundaries into a lookup function on column names
         if isinstance(boundaries, (list, tuple)):
             self.boundaries = lambda col: boundaries
@@ -54,15 +67,23 @@ class Bucketize(Operator):
         super().__init__()
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        boundaries = {name: self.boundaries(name) for name in columns}
-        new_gdf = cudf.DataFrame()
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        boundaries = {name: self.boundaries(name) for name in col_selector}
+        new_df = type(df)()
         for col, b in boundaries.items():
-            # TODO: should just be using cupy.digitize but it's not in 7.8
-            val = 0
-            for boundary in b:
-                val += (gdf[col] >= boundary).astype("int")
-            new_gdf[col] = val
-        return new_gdf
+            if self.use_digitize:
+                new_df[col] = np.digitize(
+                    df[col].values,
+                    _array(b, like_df=df),
+                    right=False,
+                )
+            else:
+                # TODO: Remove use_digitize=False code path
+                # once cupy>=8.0.0 is required.
+                val = 0
+                for boundary in b:
+                    val += (df[col] >= boundary).astype("int")
+                new_df[col] = val
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__

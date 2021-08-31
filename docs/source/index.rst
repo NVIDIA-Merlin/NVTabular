@@ -13,8 +13,8 @@ Welcome to NVTabular's documentation!
    Core Features <core_features>
    Accelerated Training <training/index>
    Examples <examples/index>
+   API Documentation <api/index>
    Additional Resources <resources/index>
-
 
 Indices and tables
 ==================

@@ -13,14 +13,14 @@
 # limitations under the License.
 #
 
-import os
 import warnings
 
-import cudf
+import pandas as pd
 import tensorflow as tf
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 import nvtabular as nvt
+from nvtabular.columns import ColumnSelector
 from nvtabular.ops import Bucketize, Categorify, HashBucket, HashedCross, Rename
 
 
@@ -201,7 +201,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
             _make_categorical_embedding(key, cat_column.num_buckets, embedding_dim)
         )
 
-    features = nvt.ColumnGroup(label_name)
+    features = ColumnSelector(label_name)
 
     if len(buckets) > 0:
         new_buckets = {}
@@ -227,10 +227,12 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         features += features_replaced_buckets
 
     if len(categorifies) > 0:
-        features += categorifies.keys() >> Categorify()
+        features += ColumnSelector(list(categorifies.keys())) >> Categorify(
+            vocabs=pd.DataFrame(categorifies)
+        )
 
     if len(hashes) > 0:
-        features += hashes.keys() >> HashBucket(hashes)
+        features += ColumnSelector(list(hashes.keys())) >> HashBucket(hashes)
 
     if len(crosses) > 0:
         # need to check if any bucketized columns are coming from
@@ -261,7 +263,7 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
                         else:
                             raise RuntimeError(f"Unknown bucket column {key}")
                     else:
-                        cross_columns.append(nvt.ColumnGroup(key))
+                        cross_columns.append(nvt.WorkflowNode(key))
 
                 features += sum(cross_columns[1:], cross_columns[0]) >> HashedCross(
                     hash_bucket_size
@@ -281,23 +283,5 @@ def make_feature_column_workflow(feature_columns, label_name, category_dir=None)
         features += [col.key for col in numeric_columns]
 
     workflow = nvt.Workflow(features)
-
-    # create stats for Categorify op if we need it
-    if len(categorifies) > 0:
-        if category_dir is None:
-            category_dir = "/tmp/categories"  # nosec
-        if not os.path.exists(category_dir):
-            os.makedirs(category_dir)
-
-        stats = {"categories": {}}
-        for feature_name, categories in categorifies.items():
-            categories.insert(0, None)
-            df = cudf.DataFrame({feature_name: categories})
-
-            save_path = os.path.join(category_dir, f"unique.{feature_name}.parquet")
-            df.to_parquet(save_path)
-            stats["categories"][feature_name] = save_path
-
-        workflow.stats = stats
 
     return workflow, numeric_columns + new_feature_columns

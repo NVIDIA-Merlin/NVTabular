@@ -18,14 +18,24 @@ import subprocess
 import sys
 from distutils.spawn import find_executable
 
+from pybind11.setup_helpers import Pybind11Extension
+from pybind11.setup_helpers import build_ext as build_pybind11
 from setuptools import find_packages, setup
-from setuptools.command.build_ext import build_ext
 
-import versioneer
+try:
+    import versioneer
+except ImportError:
+    # we have a versioneer.py file living in the same directory as this file, but
+    # if we're using pep 517/518 to build from pyproject.toml its not going to find it
+    # https://github.com/python-versioneer/python-versioneer/issues/193#issue-408237852
+    # make this work by adding this directory to the python path
+    sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+    import versioneer
 
 
-class build_proto(build_ext):
+class build_pybind_and_proto(build_pybind11):
     def run(self):
+        build_pybind11.run(self)
         protoc = None
         if "PROTOC" in os.environ and os.path.exists(os.environ["PROTOC"]):
             protoc = os.environ["PROTOC"]
@@ -48,14 +58,36 @@ class build_proto(build_ext):
                 print("Generating", output, "from", source)
                 cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
                 subprocess.check_call(cmd, env=env)
+            else:
+                print("not regenerating", output, " - file exists and proto hasn't been updated")
 
-        # Run original build_ext command
-        build_ext.run(self)
+
+ext_modules = [
+    Pybind11Extension(
+        "nvtabular_cpp",
+        [
+            "cpp/nvtabular/__init__.cc",
+            "cpp/nvtabular/inference/__init__.cc",
+            "cpp/nvtabular/inference/categorify.cc",
+            "cpp/nvtabular/inference/fill.cc",
+        ],
+        define_macros=[("VERSION_INFO", versioneer.get_version())],
+        include_dirs=["./cpp/"],
+    ),
+]
 
 
 cmdclass = versioneer.get_cmdclass()
-cmdclass["build_ext"] = build_proto
+cmdclass["build_ext"] = build_pybind_and_proto
 
+
+def parse_requirements(filename):
+    """load requirements from a pip requirements file"""
+    lineiter = (line.strip() for line in open(filename))
+    return [line for line in lineiter if line and not line.startswith("#")]
+
+
+install_reqs = parse_requirements("./requirements.txt")
 
 setup(
     name="nvtabular",
@@ -75,4 +107,7 @@ setup(
         "Topic :: Scientific/Engineering",
     ],
     cmdclass=cmdclass,
+    ext_modules=ext_modules,
+    zip_safe=False,
+    install_requires=install_reqs,
 )
