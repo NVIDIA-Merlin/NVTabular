@@ -31,14 +31,16 @@ struct ColumnMapping {
       : filename(filename) {
     // use pandas to read into a dataframe. Note: we're purposefully doing this on the
     // CPU here to avoid using gpu memory at inference time
-    py::object df = py::module_::import("pandas").attr("read_parquet")(filename);
+    py::object pandas = py::module_::import("pandas");
+    py::object df = pandas.attr("read_parquet")(filename);
+    py::object isnull = pandas.attr("isnull");
     py::array values = df[column_name.c_str()].attr("values");
     auto dtype = values.dtype();
 
     if ((dtype.kind() == 'O') || (dtype.kind() == 'U')) {
       int64_t i = 0;
       for (auto & value: values) {
-        if (!value.is_none()) {
+        if (!py::cast<bool>(isnull(value))) {
           if (PyUnicode_Check(value.ptr()) || PyBytes_Check(value.ptr())) {
             std::string key = py::cast<std::string>(value);
             mapping_str[key] = i;
