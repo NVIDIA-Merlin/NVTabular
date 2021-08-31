@@ -173,15 +173,26 @@ class WorkflowNode:
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
-        child = WorkflowNode(left_arg.output_columns)
+        if isinstance(left_arg.op, internal.ConcatColumns):
+            child = left_arg
+        else:
+            child = WorkflowNode(left_arg.output_columns)
+            child.op = internal.ConcatColumns(label="+")
+
+            left_arg.children.append(child)
+            child.parents.append(left_arg)
+
         child.selector += added_selector
-        child.op = internal.ConcatColumns(label="+")
-        child.parents.append(left_arg)
-        left_arg.children.append(child)
 
         if added_node:
-            child.parents.append(added_node)
-            added_node.children.append(child)
+            if isinstance(added_node.op, internal.ConcatColumns):
+                child.parents += added_node.parents
+                for parent in added_node.parents:
+                    parent.children.append(child)
+                    parent.children.remove(added_node)
+            else:
+                child.parents.append(added_node)
+                added_node.children.append(child)
 
         return child
 
