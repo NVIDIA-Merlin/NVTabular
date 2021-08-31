@@ -314,7 +314,6 @@ def _to_graphviz(workflow_node):
     """Converts a WorkflowNode to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
-    workflow_node = _merge_add_nodes(workflow_node)
     graph = Digraph()
 
     # get all the nodes from parents of this columngroup
@@ -330,40 +329,6 @@ def _to_graphviz(workflow_node):
     output_node_id = str(len(allnodes))
     graph.node(output_node_id, f"output cols=[{workflow_node._cols_repr}]")
     graph.edge(node_ids[workflow_node], output_node_id)
-    return graph
-
-
-def _merge_add_nodes(graph):
-    """Merges repeat '+' nodes, leading to nicer looking outputs"""
-    # lets take a copy to avoid mutating the input
-    import copy
-
-    graph = copy.copy(graph)
-
-    queue = [graph]
-    while queue:
-        current = queue.pop()
-        if isinstance(current.op, internal.ConcatColumns):
-            changed = True
-            while changed:
-                changed = False
-                parents = []
-                for i, parent in enumerate(current.parents):
-                    if isinstance(parent.op, internal.ConcatColumns) and len(parent.children) == 1:
-                        changed = True
-                        # disconnect parent, point all the grandparents at current instead
-                        parents.extend(parent.parents)
-                        for grandparent in parent.parents:
-                            grandparent.children = [
-                                current if child == parent else child
-                                for child in grandparent.children
-                            ]
-                    else:
-                        parents.append(parent)
-                current.parents = parents
-
-        queue.extend(current.parents)
-
     return graph
 
 
