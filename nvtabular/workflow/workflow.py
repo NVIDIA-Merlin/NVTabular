@@ -121,7 +121,7 @@ class Workflow:
             base_dataset=dataset.base_dataset,
         )
 
-    def fit_schema(self, input_schema: Schema):
+    def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
             node: _get_schemaless_nodes(node.parents)
             for node in _get_schemaless_nodes([self.output_node])
@@ -159,7 +159,9 @@ class Workflow:
 
         self.output_schema = self.output_node.output_schema
 
-    def fit(self, dataset: Dataset):
+        return self
+
+    def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
 
         Parameters
@@ -239,6 +241,8 @@ class Workflow:
         self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         output_dtypes = self.transform(dataset).sample_dtypes()
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
+
+        return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
