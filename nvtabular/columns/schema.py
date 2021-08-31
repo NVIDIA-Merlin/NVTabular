@@ -17,16 +17,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Text
 
+import numpy
 from google.protobuf import json_format, text_format
 from google.protobuf.any_pb2 import Any
 from google.protobuf.struct_pb2 import Struct
 from tensorflow_metadata.proto.v0 import schema_pb2
-import numpy
 
 
 def register_extra_metadata(column_schema, feature):
     msg_struct = Struct()
-    # msg_struct.update(col_schema.properties)
     # must pack message into "Any" type
     any_pack = Any()
     any_pack.Pack(json_format.ParseDict(column_schema.properties, msg_struct))
@@ -34,12 +33,13 @@ def register_extra_metadata(column_schema, feature):
     feature.annotation.extra_metadata.add().CopyFrom(any_pack)
     return feature
 
+
 def register_list(column_schema, feature):
     if str(column_schema._is_list):
         min_length, max_length = None, None
         if "min_length" in column_schema.properties:
             min_length = column_schema.properties["min_length"]
-        if "max_length"  in column_schema.properties:
+        if "max_length" in column_schema.properties:
             max_length = column_schema.properties["max_length"]
         if min_length and max_length and min_length == max_length:
             shape = schema_pb2.FixedShape()
@@ -50,8 +50,9 @@ def register_list(column_schema, feature):
             feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
         else:
             # if no min max available set dummy value, to signal this is list
-            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=0, max=0))   
+            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=0, max=0))
     return feature
+
 
 def set_protobuf_float(column_schema, feature):
     if str(column_schema.dtype) == ["float32", "float64"]:
@@ -60,7 +61,8 @@ def set_protobuf_float(column_schema, feature):
         feature.float_domain.min = col_min
         feature.float_domain.max = col_max
         feature.type = 3
-    return  feature
+    return feature
+
 
 def set_protobuf_int(column_schema, feature):
     if str(column_schema.dtype) == ["int8", "int32", "int64"]:
@@ -70,6 +72,7 @@ def set_protobuf_int(column_schema, feature):
         feature.int_domain.max = col_max
         feature.type = 2
     return feature
+
 
 def register_dtype(column_schema, feature):
     #  column_schema is a dict, changes are held
@@ -82,8 +85,9 @@ def register_dtype(column_schema, feature):
         else:
             string_name = type(column_schema.dtype(1).item()).__name__
         feature = proto_dict[string_name](column_schema, feature)
-    return  feature
-    
+    return feature
+
+
 proto_dict = {
     "list": register_list,
     "float": set_protobuf_float,
@@ -91,6 +95,7 @@ proto_dict = {
     "uint": set_protobuf_int,
     "properties": register_extra_metadata,
 }
+
 
 def create_protobuf_feature(column_schema):
     feature = schema_pb2.Feature()
@@ -230,7 +235,6 @@ class Schema:
                 properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
             # what domain
             # load the domain values
-            # import pdb; pdb.set_trace()
             shape_name = feat.WhichOneof("shape_type")
             if shape_name:
                 _is_list = True
@@ -239,7 +243,9 @@ class Schema:
                 domain_values = getattr(feat, field_name)
                 min_max = domain_values.min, domain_values.max
                 properties["domain"] = min_max
-            columns.append(ColumnSchema(feat.name, tags=tags, properties=properties, _is_list=_is_list))
+            columns.append(
+                ColumnSchema(feat.name, tags=tags, properties=properties, _is_list=_is_list)
+            )
 
         return Schema(columns)
 
@@ -257,16 +263,14 @@ class Schema:
     def __iter__(self):
         return iter(self.column_schemas.values)
 
-    def  __len__(self):
+    def __len__(self):
         return len(self.column_schemas)
 
     def __repr__(self):
         return str([col_schema.__dict__ for col_schema in self.column_schemas.values()])
 
     def __eq__(self, other):
-        if not isinstance(other, Schema) or len(self.column_schemas) != len(
-            other.column_schemas
-        ):
+        if not isinstance(other, Schema) or len(self.column_schemas) != len(other.column_schemas):
             return False
         for col_name, col_schema in self.column_schemas.items():
             # if not in or if not the same, Fail
@@ -278,12 +282,7 @@ class Schema:
         if other is None:
             return self
         if not isinstance(other, Schema):
-            raise TypeError(
-                f"unsupported operand type(s) for +: 'Schema' and {type(other)}"
-            )
-        if other is None:
-            return self
-
+            raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 

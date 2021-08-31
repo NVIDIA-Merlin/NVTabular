@@ -13,19 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from pathlib import Path
 import string
-import pytest
-import pandas as pd
+from pathlib import Path
+
 import cudf
-import numpy
 import dask.dataframe as dd
+import numpy
+import pandas as pd
+import pytest
+
 import nvtabular as nvt
+import nvtabular.dispatch as dispatch
+import nvtabular.ops as ops
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
-import nvtabular.ops as ops
-import nvtabular.dispatch as dispatch
-
 
 try:
     import cudf
@@ -39,18 +40,17 @@ except ImportError:
     _HAS_GPU = False
 
 
-
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
 def test_dtype_column_schema(d_types):
     column = ColumnSchema("name", tags=[], properties=[], dtype=d_types)
     assert column.dtype == d_types
-    
+
 
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
 @pytest.mark.parametrize("cpu", _CPU)
-def test_column_schema_ops_dtype(tmpdir, cat_groups,  kfold, fold_seed, cpu):
+def test_column_schema_ops_dtype(tmpdir, cat_groups, kfold, fold_seed, cpu):
     # create a pipeline
     # got from target encoding example
     df = dispatch._make_df(
@@ -81,10 +81,7 @@ def test_column_schema_ops_dtype(tmpdir, cat_groups,  kfold, fold_seed, cpu):
     output_schema = nvt.Workflow.fit_schema
     df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
-
-
-    # check dtype after transform 
-
+    # check dtype after transform
 
 
 def test_column_schema_meta():
