@@ -102,9 +102,9 @@ def _is_dataframe_object(x):
 
 
 def _nullable_series(data, like_df, dtype):
-    # Return a Series containing a single null element,
-    # of a specific dtype, using a DataFrame object to
-    # infer the Series constructor
+    # Return a Series containing the elements in `data`,
+    # with a nullable version of `dtype`, using `like_df`
+    # to infer the Series constructor
     if isinstance(like_df, pd.DataFrame):
         # Note that we cannot use "int32"/"int64" to
         # represent nullable data in pandas
