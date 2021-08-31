@@ -250,7 +250,10 @@ class WorkflowNode:
 
     @property
     def input_columns(self):
-        return ColumnSelector(self.input_schema.column_names)
+        if self.selector:
+            return self.selector
+        else:
+            return ColumnSelector(self.input_schema.column_names)
 
     @property
     def output_columns(self):
