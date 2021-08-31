@@ -39,7 +39,7 @@ class ColumnSchema:
         return ColumnSchema(self.name, tags=tags)
 
 
-class DatasetSchema:
+class Schema:
     """A collection of column schemas for a dataset."""
 
     def __init__(self, column_schemas=None):
@@ -76,17 +76,17 @@ class DatasetSchema:
             if all(x in column_schema.tags for x in tags):
                 selected_schemas[column_schema.name] = column_schema
 
-        return DatasetSchema(selected_schemas)
+        return Schema(selected_schemas)
 
     def select_by_name(self, names):
         if isinstance(names, str):
             names = [names]
 
         selected_schemas = {key: self.column_schemas[key] for key in names}
-        return DatasetSchema(selected_schemas)
+        return Schema(selected_schemas)
 
     def __eq__(self, other):
-        if not isinstance(other, DatasetSchema):
+        if not isinstance(other, Schema):
             return False
 
         if len(self.column_schemas) != len(other.column_schemas):
@@ -95,12 +95,13 @@ class DatasetSchema:
         return all(column in other.column_schemas for column in self.column_schemas)
 
     def __add__(self, other):
-        if not isinstance(other, DatasetSchema):
-            raise TypeError(f"unsupported operand type(s) for +: 'DatasetSchema' and {type(other)}")
+        if other is None:
+            return self
 
-        overlap = [name for name in self.column_schemas.keys() if name in other.column_schemas]
+        if not isinstance(other, Schema):
+            raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
-        if overlap:
-            raise ValueError(f"Overlapping column schemas detected during addition: {overlap}")
+        return Schema({**self.column_schemas, **other.column_schemas})
 
-        return DatasetSchema({**self.column_schemas, **other.column_schemas})
+    def __radd__(self, other):
+        return self.__add__(other)

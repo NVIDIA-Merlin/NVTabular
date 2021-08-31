@@ -27,7 +27,8 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-from nvtabular import ColumnSelector, Dataset, Workflow, ops
+from nvtabular import Dataset, Workflow, ops
+from nvtabular.columns import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 

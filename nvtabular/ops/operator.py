@@ -18,7 +18,8 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
-from nvtabular.columns import ColumnSchemaSet, ColumnSelector
+from nvtabular.columns import ColumnSelector
+from nvtabular.columns.schema import Schema, ColumnSchema
 from nvtabular.dispatch import DataFrameType
 
 
@@ -57,32 +58,63 @@ class Operator:
         """
         raise NotImplementedError
 
-    def compute_output_schema(
-        self, input_schema: ColumnSchemaSet, col_selector: ColumnSelector
-    ) -> ColumnSchemaSet:
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
         returns a set of schemas for the transformed columns this operator will produce
         Parameters
         -----------
-        input_schema: ColumnSchemaSet
+        input_schema: Schema
             The schemas of the columns to apply this operator to
         col_selector: ColumnSelector
             The column selector to apply to the input schema
         Returns
         -------
-        ColumnSchemaSet
+       Schema
             The schemas of the columns produced by this operator
         """
-        selected_schema = input_schema.apply(col_selector)
-        # TODO: Add a method to ColumnSchemaSet to convert to ColumnSelector?
-        column_selector = ColumnSelector(selected_schema.column_schemas.keys())
-        output_selector = self.output_column_names(column_selector)
+        output_selector = self.output_column_names(col_selector)
         output_names = (
             output_selector.names
             if isinstance(output_selector, ColumnSelector)
             else output_selector
         )
-        return ColumnSchemaSet(output_names)
+
+        # group (old, new) names, grab old if in new columns
+        names_original, names_transformed = [], []
+        for original_column in column_selector.names:
+            new_cols = [new_column for new_column in output_names if original_column in new_column]
+            # TODO: feature crosses? concantenated names?
+            assert len(new_cols) == 1
+            names_original.append(original_column)
+            #should only be 1 column collision
+            names_transformed.append(new_cols[0])
+        new_names = [name for name in output_names if name not in names_transformed]
+        new_col_schemas = []
+        # grab old column schemas and change the names
+        for orig_col_name, new_column_name in zip(names_original, names_transformed):
+            orig_col_schema = input_schema.column_schemas[orig_col_name]
+            new_col_schemas.append(orig_col_schema.with_name(new_column_name))
+        #create column Schemas for new columns
+        for new_col_name in new_names:
+            # needs to be filled in
+            new_col_schema.append(ColumnSchema(new_col_name))
+        #add in all tags properties and update dtypes
+        for column in new_col_schemas:
+            column = self._add_tags(column)
+            # column = self._add_properties(column)
+            # column = self._update_dtype(column)
+        return Schema(new_col_schemas)
+
+    def _add_tags(self, column_schema):
+        return column_schema.with_tags(self._get_tags())
+
+    def _add_properties(self, column_schema):
+        # get_properties should return the additional properties 
+        return column_schema.with_properties(self._get_properties())
+    
+    def _update_dtype(self, column_schema):
+        target_column_dtype, _is_list = self._get_dtypes()[column_schema.name]
+        return column_schema.with_dtype(target_column_dtype, _is_list=_is_list)
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this
