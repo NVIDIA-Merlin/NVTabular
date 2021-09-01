@@ -18,6 +18,7 @@ from dask.dataframe.utils import meta_nonempty
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
+from ..tags.DefaultTags import CATEGORICAL
 
 
 class Groupby(Operator):
@@ -133,6 +134,11 @@ class Groupby(Operator):
 
         return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
+    def _get_tags(self):
+        return [CATEGORICAL]
+
+    def _dtypes(self):
+        return numpy.int64
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
     # Helper function for `output_column_names`

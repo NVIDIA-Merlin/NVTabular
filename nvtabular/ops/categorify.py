@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from operator import getitem
 from typing import Optional, Union
 
+from ..tags.DefaultTags import CATEGORICAL
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -465,6 +466,13 @@ class Categorify(StatOperator):
         import nvtabular_cpp
 
         return nvtabular_cpp.inference.CategorifyTransform(self)
+
+    def _get_tags(self):
+        return [CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64
+
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

@@ -29,6 +29,7 @@ from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
+from ..tags.DefaultTags import CATEGORICAL
 
 
 class TargetEncoding(StatOperator):
@@ -351,6 +352,9 @@ class TargetEncoding(StatOperator):
         if fit_folds and not self.drop_folds:
             new_df[self.fold_name] = df[self.fold_name]
         return new_df
+
+    def _get_tags(self):
+        return [CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

@@ -18,6 +18,7 @@ from typing import Dict, Union
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnSelector, Operator
+from ..tags.DefaultTags import CATEGORICAL
 
 
 class HashBucket(Operator):
@@ -97,3 +98,9 @@ class HashBucket(Operator):
             return {col: embedding_size for col in columns}
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
+    
+    def _get_tags(self):
+        return [CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64

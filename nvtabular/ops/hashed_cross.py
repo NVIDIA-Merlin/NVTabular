@@ -71,6 +71,12 @@ class HashedCross(Operator):
     def output_column_names(self, columns):
         return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
 
+    def _get_tags(self):
+        return [CATEGORICAL]
+    
+    def _get_dtypes(self):
+        return numpy.int64
+
 
 def _nest_columns(columns):
     # if we have a list of flat column names, lets cross the whole group
@@ -78,3 +84,4 @@ def _nest_columns(columns):
         return [tuple(columns)]
     else:
         return columns
+

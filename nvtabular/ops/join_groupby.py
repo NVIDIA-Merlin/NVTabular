@@ -202,6 +202,12 @@ class JoinGroupby(StatOperator):
         self.categories = {}
         self.storage_name = {}
 
+    def _get_tags(self):
+        return [CONTINUOUS]
+
+    def _get_dtype(self):
+        return numpy.float
+
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__

@@ -28,6 +28,7 @@ from cupyx.scipy.sparse import coo_matrix
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
+from ..tags.DefaultTags import CONTINUOUS
 
 
 class ColumnSimilarity(Operator):
@@ -112,7 +113,12 @@ class ColumnSimilarity(Operator):
 
     def output_column_names(self, columns):
         return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
+    
+    def _get_tags(self):
+        return [CONTINUOUS]
 
+    def _get_dtypes(self):
+        return numpy.float
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
     """Computes the similarity between two columns, by computing the inner product

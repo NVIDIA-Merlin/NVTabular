@@ -20,6 +20,7 @@ import numpy as np
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
 from .operator import ColumnSelector, Operator
+from ..tags.DefaultTags import CATEGORICAL
 
 
 class Bucketize(Operator):
@@ -85,5 +86,11 @@ class Bucketize(Operator):
                     val += (df[col] >= boundary).astype("int")
                 new_df[col] = val
         return new_df
+
+    def _get_tags(self):
+        return [CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64
 
     transform.__doc__ = Operator.transform.__doc__

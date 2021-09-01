@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from ..tags.DefaultTags import CONTINUOUS
 
 import dask.dataframe as dd
 
@@ -142,6 +143,12 @@ class NormalizeMinMax(StatOperator):
             | Supports.CPU_DATAFRAME
             | Supports.GPU_DATAFRAME
         )
+    
+    def _add_tags(self):
+        return [CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

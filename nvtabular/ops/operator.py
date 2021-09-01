@@ -99,10 +99,12 @@ class Operator:
             # needs to be filled in
             new_col_schema.append(ColumnSchema(new_col_name))
         #add in all tags properties and update dtypes
+        final_new_cols = []
         for column in new_col_schemas:
             column = self._add_tags(column)
             # column = self._add_properties(column)
-            # column = self._update_dtype(column)
+            column = self._update_dtype(column)
+            final_new_cols.append(column)
         return Schema(new_col_schemas)
 
     def _add_tags(self, column_schema):
@@ -110,11 +112,32 @@ class Operator:
 
     def _add_properties(self, column_schema):
         # get_properties should return the additional properties 
-        return column_schema.with_properties(self._get_properties())
+        # for target column
+        target_column_properties = self._get_properties()[column_schema.name]
+        return column_schema.with_properties(target_column_properties)
     
     def _update_dtype(self, column_schema):
-        target_column_dtype, _is_list = self._get_dtypes()[column_schema.name]
-        return column_schema.with_dtype(target_column_dtype, _is_list=_is_list)
+        return column_schema.with_dtype(self._get_dtype())
+
+    def _get_dtype(self):
+        """
+        Retrieves a dictionary of format; column_name: column_dtype. For all 
+        input(with output_names) and created columns
+        """
+        #return dict of dtypes of all columns transformed and new columns formed
+        return None
+
+    def _get_tags(self):
+        """
+        Retrieves 
+        """
+        # returns a dict of column_name: tags to add to the output columns
+        return []
+    
+    def _get_properties(self):
+        # returns dict with column_name: properties to add
+        return {}
+
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this
