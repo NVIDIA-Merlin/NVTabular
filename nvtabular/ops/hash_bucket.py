@@ -18,7 +18,8 @@ from typing import Dict, Union
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnSelector, Operator
-from ..tags.DefaultTags import CATEGORICAL
+from ..tags import DefaultTags 
+CATEGORICAL = DefaultTags.CATEGORICAL
 
 
 class HashBucket(Operator):

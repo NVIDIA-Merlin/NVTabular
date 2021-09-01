@@ -3,19 +3,19 @@ from enum import Enum
 
 class DefaultTags(Enum):
     # Feature types
-    CATEGORICAL = ["categorical"]
-    CONTINUOUS = ["continuous"]
-    LIST = ["list"]
-    IMAGE = ["image"]
-    TEXT = ["text"]
-    TEXT_TOKENIZED = ["text_tokenized"]
-    TIME = ["time"]
+    CATEGORICAL = "categorical"
+    CONTINUOUS = "continuous"
+    LIST = "list"
+    IMAGE = "image"
+    TEXT = "text"
+    TEXT_TOKENIZED = "text_tokenized"
+    TIME = "time"
 
     # Feature context
-    USER = ["user"]
-    ITEM = ["item"]
+    USER = "user"
+    ITEM = "item"
     ITEM_ID = ["item", "item_id"]
-    CONTEXT = ["context"]
+    CONTEXT = "context"
 
     # Target related
     TARGETS = ["target"]

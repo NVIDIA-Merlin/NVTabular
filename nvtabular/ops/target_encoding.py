@@ -29,7 +29,8 @@ from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
-from ..tags.DefaultTags import CATEGORICAL
+from ..tags import DefaultTags 
+CATEGORICAL = DefaultTags.CATEGORICAL
 
 
 class TargetEncoding(StatOperator):

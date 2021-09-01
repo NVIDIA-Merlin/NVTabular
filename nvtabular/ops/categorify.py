@@ -20,7 +20,8 @@ from dataclasses import dataclass
 from operator import getitem
 from typing import Optional, Union
 
-from ..tags.DefaultTags import CATEGORICAL
+from ..tags import DefaultTags 
+CATEGORICAL = DefaultTags.CATEGORICAL
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd

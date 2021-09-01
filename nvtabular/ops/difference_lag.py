@@ -16,7 +16,8 @@
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
 from .operator import ColumnSelector, Operator
-from ..tag.DefaultTags import CONTINUOUS
+from ..tags import DefaultTags 
+CONTINUOUS = DefaultTags.CONTINUOUS
 
 
 class DifferenceLag(Operator):

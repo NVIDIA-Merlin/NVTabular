@@ -20,7 +20,8 @@ import numpy as np
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
 from .operator import ColumnSelector, Operator
-from ..tags.DefaultTags import CATEGORICAL
+from ..tags import DefaultTags 
+CATEGORICAL = DefaultTags.CATEGORICAL
 
 
 class Bucketize(Operator):

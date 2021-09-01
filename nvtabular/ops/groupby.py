@@ -18,7 +18,8 @@ from dask.dataframe.utils import meta_nonempty
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
-from ..tags.DefaultTags import CATEGORICAL
+from ..tags import DefaultTags 
+CATEGORICAL = DefaultTags.CATEGORICAL
 
 
 class Groupby(Operator):

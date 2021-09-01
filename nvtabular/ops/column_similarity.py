@@ -28,7 +28,8 @@ from cupyx.scipy.sparse import coo_matrix
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
-from ..tags.DefaultTags import CONTINUOUS
+from ..tags import DefaultTags 
+CONTINUOUS = DefaultTags.CONTINUOUS
 
 
 class ColumnSimilarity(Operator):

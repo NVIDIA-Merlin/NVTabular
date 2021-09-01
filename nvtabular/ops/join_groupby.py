@@ -17,6 +17,7 @@
 import dask.dataframe as dd
 import pandas as pd
 from dask.delayed import Delayed
+import numpy
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
@@ -24,6 +25,8 @@ from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_pa
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
+from ..tags import DefaultTags 
+CONTINUOUS = DefaultTags.CONTINUOUS
 
 
 class JoinGroupby(StatOperator):

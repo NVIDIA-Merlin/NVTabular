@@ -81,8 +81,8 @@ class Operator:
 
         # group (old, new) names, grab old if in new columns
         names_original, names_transformed = [], []
-        for original_column in column_selector.names:
-            new_cols = [new_column for new_column in output_names if original_column in new_column]
+        for original_column in col_selector.names:
+            new_cols = [new_column for new_column in output_names if new_column.startswith(original_column)]
             # TODO: feature crosses? concantenated names?
             assert len(new_cols) == 1
             names_original.append(original_column)
@@ -97,7 +97,7 @@ class Operator:
         #create column Schemas for new columns
         for new_col_name in new_names:
             # needs to be filled in
-            new_col_schema.append(ColumnSchema(new_col_name))
+            new_col_schemas.append(ColumnSchema(new_col_name))
         #add in all tags properties and update dtypes
         final_new_cols = []
         for column in new_col_schemas:
@@ -105,7 +105,7 @@ class Operator:
             # column = self._add_properties(column)
             column = self._update_dtype(column)
             final_new_cols.append(column)
-        return Schema(new_col_schemas)
+        return Schema(final_new_cols)
 
     def _add_tags(self, column_schema):
         return column_schema.with_tags(self._get_tags())

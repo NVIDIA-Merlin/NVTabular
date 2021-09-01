@@ -16,9 +16,10 @@
 import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _natural_log, annotate
-
+import numpy
 from .operator import ColumnSelector, Operator
-
+from ..tags import DefaultTags 
+CONTINUOUS = DefaultTags.CONTINUOUS.value
 
 class LogOp(Operator):
     """

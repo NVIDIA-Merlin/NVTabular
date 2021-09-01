@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..tags.DefaultTags import CONTINUOUS
+from ..tags import DefaultTags 
+CONTINUOUS = DefaultTags.CONTINUOUS
 
 import dask.dataframe as dd
 

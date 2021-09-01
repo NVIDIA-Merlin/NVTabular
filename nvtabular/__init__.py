@@ -28,6 +28,9 @@ WorkflowNode = workflow.WorkflowNode
 ColumnSelector = columns.selector.ColumnSelector
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
+ColumnSchema = columns.schema.ColumnSchema
+Schema = columns.schema.Schema
+
 
 
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to
@@ -37,7 +40,7 @@ def ColumnGroup(columns):
     return ColumnSelector(columns)
 
 
-__all__ = ["Workflow", "Dataset", "WorkflowNode", "ColumnGroup", "ColumnSelector"]
+__all__ = ["Workflow", "Dataset", "WorkflowNode", "ColumnGroup", "ColumnSelector", "ColumnSchema", "Schema"]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")
