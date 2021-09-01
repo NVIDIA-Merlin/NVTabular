@@ -43,7 +43,7 @@ import toolz as tlz
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.arrow import ArrowDatasetEngine
-from dask.dataframe.io.parquet.core import aggregate_row_groups, apply_filters
+from dask.dataframe.io.parquet.core import apply_filters
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
@@ -51,6 +51,11 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 from pyarrow.parquet import ParquetWriter as pwriter_pyarrow
+
+if LooseVersion(dask.__version__) >= "2021.07.1":
+    from dask.dataframe.io.parquet.core import aggregate_row_groups
+else:
+    aggregate_row_groups = None
 
 from .dataset_engine import DatasetEngine
 from .shuffle import Shuffle, _shuffle_df
@@ -66,7 +71,7 @@ class CPUParquetEngine(ArrowDatasetEngine):
 
     @classmethod
     def multi_support(cls):
-        return True
+        return hasattr(ArrowDatasetEngine, "multi_support") and ArrowDatasetEngine.multi_support()
 
 
 class GPUParquetEngine(CudfEngine):
@@ -76,7 +81,7 @@ class GPUParquetEngine(CudfEngine):
 
     @classmethod
     def multi_support(cls):
-        return True
+        return hasattr(CudfEngine, "multi_support") and CudfEngine.multi_support()
 
 
 def _override_read_metadata(
@@ -84,52 +89,107 @@ def _override_read_metadata(
     fs,
     paths,
     index=None,
-    filters=None,
     gather_statistics=None,
-    aggregate_files=None,
-    chunksize=None,
     split_row_groups=None,
     dataset=None,
-    **kwargs,
+    chunksize=None,
+    **global_kwargs,
 ):
+    # This function is used by both CPU and GPU-backed
+    # ParquetDatasetEngine instances to override the `read_metadata`
+    # component of the upstream `read_parquet` logic. This provides
+    # NVTabular with direct access to the final partitioning behavior.
 
-    metadata_collector = (dataset or {}).get("metadata_collector", None)
+    # For now, disallow the user from setting `chunksize`
+    if chunksize:
+        raise ValueError(
+            "NVTabular does not yet support the explicit use " "of Dask's `chunksize` argument."
+        )
+
+    # Extract optional read_parquet arguments that we may have
+    # moved into a `dataset` container. If these arguments
+    # are in `dataset`, then we are effectively hiding them from
+    # `read_parquet` logic that lives outside of `engine.read_metadata`
+    dataset = dataset or {}
+    metadata_collector = dataset.pop("metadata_collector", None)
+    aggregate_files = dataset.pop("aggregate_files", None)
+    filters = dataset.pop("filters", None)
+
+    # Gather statistics by default.
+    # This enables optimized length calculations
+    if gather_statistics is None:
+        gather_statistics = True
+
+    # Use a local_kwarg dictionary to make it easier to exclude
+    # `aggregate_files` for older Dask versions
+    local_kwargs = {
+        "index": index,
+        "filters": filters,
+        # Use chunksize=1 to "ensure" statistics are gathered
+        # if `gather_statistics=True`.  Note that Dask will bail
+        # from statistics gathering if it does not expect statistics
+        # to be "used" after `read_metadata` returns.
+        "chunksize": 1 if gather_statistics else None,
+        "gather_statistics": gather_statistics,
+        "split_row_groups": split_row_groups,
+    }
+    if aggregate_row_groups is not None:
+        # File aggregation is only available for Dask>=2021.07.1
+        local_kwargs["aggregate_files"] = aggregate_files
+    elif aggregate_files:
+        raise ValueError("This version of Dask does not support the " "`aggregate_files` argument.")
+
+    # Remove overlapping kwargs.
+    # This is necessary, becuase Dask's `read_parquet`
+    # logic will have added default settings for arguments
+    # that we are "hiding" from it.
+    for key in list(global_kwargs.keys()):
+        if key in local_kwargs:
+            global_kwargs.pop(key)
+
+    # Start with "super-class" read_metadata logic
     read_metadata_result = engine.read_metadata(
         fs,
         paths,
-        index=index,
-        filters=filters,
-        gather_statistics=True,
-        aggregate_files=aggregate_files,
-        chunksize=chunksize or 1,  # Trigger statistics
-        split_row_groups=split_row_groups,
-        **kwargs,
+        **local_kwargs,
+        **global_kwargs,
     )
     real_parts = read_metadata_result[2]
     parts = real_parts.copy()
     statistics = read_metadata_result[1].copy()
 
-    aggregation_depth = False
-    if len(parts) and aggregate_files:
-        aggregation_depth = parts[0].pop("aggregation_depth", aggregation_depth)
-
+    # Process the statistics.
+    # Note that these steps are usaually performed after
+    # `engine.read_metadata` returns (in Dask), but we are doing
+    # it ourselves in NVTabular (to assume control of the output
+    # partitioning plan)
     if statistics:
         result = list(
             zip(*[(part, stats) for part, stats in zip(parts, statistics) if stats["num-rows"] > 0])
         )
         parts, statistics = result or [[], []]
+
+        # Apply filters
         if filters:
             parts, statistics = apply_filters(parts, statistics, filters)
 
-        # Aggregate parts/statistics if we are splitting by row-group
-        if chunksize or (split_row_groups and int(split_row_groups) > 1):
-            parts, statistics = aggregate_row_groups(
-                parts, statistics, chunksize, split_row_groups, fs, aggregation_depth
-            )
+        # Apply file aggregation
+        if aggregate_row_groups is not None:
 
+            # Convert `aggregate_files` to an integer `aggregation_depth`
+            aggregation_depth = False
+            if len(parts) and aggregate_files:
+                aggregation_depth = parts[0].pop("aggregation_depth", aggregation_depth)
+
+            # Aggregate parts/statistics if we are splitting by row-group
+            if chunksize or (split_row_groups and int(split_row_groups) > 1):
+                parts, statistics = aggregate_row_groups(
+                    parts, statistics, chunksize, split_row_groups, fs, aggregation_depth
+                )
+
+    # Update `metadata_collector` and return the "original" `read_metadata_result`
     metadata_collector["stats"] = statistics
     metadata_collector["parts"] = parts
-
     return read_metadata_result
 
 
@@ -145,11 +205,19 @@ class ParquetDatasetEngine(DatasetEngine):
         legacy=False,
         batch_size=None,  # Ignored
         cpu=False,
+        **kwargs,
     ):
         super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         self._pp_map = None
         self._pp_nrows = None
         self._pp_metadata = None
+
+        # Process `kwargs`
+        self.read_parquet_kwargs = kwargs.copy()
+        self.aggregate_files = self.read_parquet_kwargs.pop("aggregate_files", False)
+        self.filters = self.read_parquet_kwargs.pop("filters", None)
+        self.dataset_kwargs = self.read_parquet_kwargs.pop("dataset", {})
+
         if row_groups_per_part is None:
             path0 = next(self._dataset.get_fragments()).path
             if cpu:
@@ -269,18 +337,21 @@ class ParquetDatasetEngine(DatasetEngine):
 
         # Use dask-dataframe with appropriate engine
         metadata_collector = {"stats": [], "parts": []}
-        dataset_kwargs = {"metadata_collector": metadata_collector}
+        dataset_kwargs = {
+            "metadata_collector": metadata_collector,
+            "aggregate_files": self.aggregate_files,
+            "filters": self.filters,
+        }
+        dataset_kwargs.update(self.dataset_kwargs)
         ddf = dd.read_parquet(
             self.paths,
             columns=columns,
             engine=backend_engine,
-            index=None if columns is None else False,
-            filters=None,
-            gather_statistics=False,
-            aggregate_files=False,
+            index=False,
             split_row_groups=self.row_groups_per_part,
             storage_options=self.storage_options,
             dataset=dataset_kwargs,
+            **self.read_parquet_kwargs,
         )
         self._pp_metadata = metadata_collector
         return ddf

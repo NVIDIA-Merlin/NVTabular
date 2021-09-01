@@ -195,6 +195,10 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    **kwargs :
+        Key-word arguments to pass through to Dask.dataframe IO function.
+        For the Parquet enngine(s), notable arguments include `filters`,
+        `aggregate_files`, and `gather_statistics`.
     """
 
     def __init__(

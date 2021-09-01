@@ -624,10 +624,18 @@ def test_validate_and_regenerate_dataset(tmpdir):
     ds2.validate_dataset(file_min_size=1)
 
     # Check that dataset content is correct
-    assert_eq(ddf, ds2.to_ddf().compute())
+    assert_eq(
+        ddf.reset_index(drop=False),
+        ds2.to_ddf().compute(),
+        check_index=False,
+    )
 
     # Check cpu version of `to_ddf`
-    assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
+    assert_eq(
+        ddf.reset_index(drop=False),
+        ds2.engine.to_ddf(cpu=True).compute(),
+        check_index=False,
+    )
 
 
 @pytest.mark.parametrize("preserve_files", [True, False])
@@ -830,3 +838,46 @@ def test_dataset_shuffle_on_keys(tmpdir, cpu, partition_on, keys, npartitions):
     for col in df1:
         # Order of columns can change after round-trip partitioning
         assert_eq(df1[col], df2[col], check_index=False)
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_filtered_flat(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf1 = dd.from_pandas(pd.DataFrame({"a": [1] * 10}), 1)
+    ddf1.to_parquet(path, engine="pyarrow", write_index=False)
+    ddf2 = dd.from_pandas(pd.DataFrame({"a": [2] * 10}), 1)
+    ddf2.to_parquet(path, engine="pyarrow", append=True, write_index=False)
+    ddf3 = dd.from_pandas(pd.DataFrame({"a": [3] * 10}), 1)
+    ddf3.to_parquet(path, engine="pyarrow", append=True, write_index=False)
+
+    # Convert to nvt.Dataset
+    ds = nvt.Dataset(path, engine="parquet", filters=[("a", ">", 1)])
+
+    # Make sure partitions were filtered
+    assert len(ds.to_ddf().a.unique()) == 2
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_filtered_hive(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
+
+    # Convert to nvt.Dataset
+    ds = nvt.Dataset(path, engine="parquet", filters=[("timestamp", "==", 1)])
+
+    # Make sure partitions were filtered
+    assert len(ds.to_ddf().timestamp.unique()) == 1
