@@ -268,9 +268,7 @@ class WorkflowNode:
 
     @property
     def output_columns(self):
-        if isinstance(self.op, SubsetColumns):
-            return self.selector
-        elif self.op:
+        if self.op and not isinstance(self.op, SubsetColumns):
             return self.op.output_column_names(self.input_columns)
         else:
             return self.input_columns
