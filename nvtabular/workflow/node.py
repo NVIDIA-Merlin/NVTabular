@@ -36,8 +36,9 @@ class WorkflowNode:
     def __init__(self, selector):
         self.parents = []
         self.children = []
+        self.dependencies = []
+
         self.op = None
-        self.dependencies = None
         self.input_schema = None
         self.output_schema = None
 
@@ -66,16 +67,14 @@ class WorkflowNode:
         self._selector = sel
 
     def compute_schemas(self, root_schema):
-        parent_outputs_schema = sum([parent.output_schema for parent in self.parents], Schema())
-
         if self.selector:
             upstream_schema = Schema()
             upstream_schema += root_schema
-            upstream_schema += parent_outputs_schema
+            upstream_schema += self.parents_schema
 
             self.input_schema = upstream_schema.apply(self.selector)
         else:
-            self.input_schema = parent_outputs_schema
+            self.input_schema = self.parents_schema
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
@@ -111,8 +110,6 @@ class WorkflowNode:
         dependencies = operator.dependencies()
 
         if dependencies:
-            child.dependencies = set()
-            child.dependencies = []
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
@@ -251,6 +248,18 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
+    def dependencies_schema(self):
+        schema = Schema()
+        for dep in self.dependencies:
+            if isinstance(dep, ColumnSelector):
+                schema += Schema(dep.names)
+        return schema
+
+    @property
+    def parents_schema(self):
+        return sum([parent.output_schema for parent in self.parents], Schema())
+
+    @property
     def input_columns(self):
         return self.selector
 
@@ -265,19 +274,7 @@ class WorkflowNode:
 
     @property
     def dependency_columns(self):
-        dependency_cols = []
-
-        if not self.dependencies:
-            return ColumnSelector(dependency_cols)
-
-        # Dependencies can be either WorkflowNodes or ColumnSelectors
-        # WorkflowNodes are already handled as parents, but we still
-        # need to account for the columns in raw (non-node) selectors
-        for selector in self.dependencies:
-            if isinstance(selector, ColumnSelector):
-                dependency_cols += selector.names
-
-        return ColumnSelector(dependency_cols)
+        return ColumnSelector(self.dependencies_schema.column_names)
 
     @property
     def label(self):
