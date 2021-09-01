@@ -73,15 +73,15 @@ class WorkflowNode:
             if isinstance(dep, ColumnSelector):
                 dependencies_schema += Schema(dep.names)
 
-        if self.selector:
-            upstream_schema = Schema()
-            upstream_schema += root_schema
-            upstream_schema += parent_outputs_schema
-            upstream_schema += dependencies_schema
+        upstream_schema = Schema()
+        upstream_schema += parent_outputs_schema
+        upstream_schema += dependencies_schema
 
+        if self.selector:
+            upstream_schema += root_schema
             self.input_schema = upstream_schema.apply(self.selector)
         else:
-            self.input_schema = parent_outputs_schema + dependencies_schema
+            self.input_schema = upstream_schema
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
@@ -251,6 +251,7 @@ class WorkflowNode:
     @property
     def input_columns(self):
         if self.selector:
+            # To maintain column groupings
             return self.selector
         else:
             return ColumnSelector(self.input_schema.column_names)
