@@ -433,6 +433,10 @@ class Dataset:
                 for c in keys:
                     typ = ddf._meta[c].dtype
                     if c in cols:
+                        if typ == "category":
+                            # Cannot cast directly to categorical unless we
+                            # first cast to the underlying dtype of the categories
+                            hive_mapping[c] = hive_mapping[c].astype(typ.categories.dtype)
                         hive_mapping[c] = hive_mapping[c].astype(typ)
 
                 # Generate simple-shuffle plan

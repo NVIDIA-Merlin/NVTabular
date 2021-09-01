@@ -30,17 +30,20 @@ try:
     import cudf
     import dask_cudf
     from cudf.io.parquet import ParquetWriter as pwriter_cudf
+    from dask_cudf.io.parquet import CudfEngine
 except ImportError:
     cudf = None
 import dask
 import dask.dataframe as dd
 import fsspec
-import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.dataset as pa_ds
 import toolz as tlz
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
+from dask.dataframe.io.parquet.arrow import ArrowDatasetEngine
+from dask.dataframe.io.parquet.core import aggregate_row_groups, apply_filters
 from dask.dataframe.io.parquet.utils import _analyze_paths
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
@@ -54,6 +57,80 @@ from .shuffle import Shuffle, _shuffle_df
 from .writer import ThreadedWriter
 
 LOG = logging.getLogger("nvtabular")
+
+
+class CPUParquetEngine(ArrowDatasetEngine):
+    @staticmethod
+    def read_metadata(*args, **kwargs):
+        return _override_read_metadata(ArrowDatasetEngine, *args, **kwargs)
+
+    @classmethod
+    def multi_support(cls):
+        return True
+
+
+class GPUParquetEngine(CudfEngine):
+    @staticmethod
+    def read_metadata(*args, **kwargs):
+        return _override_read_metadata(CudfEngine, *args, **kwargs)
+
+    @classmethod
+    def multi_support(cls):
+        return True
+
+
+def _override_read_metadata(
+    engine,
+    fs,
+    paths,
+    index=None,
+    filters=None,
+    gather_statistics=None,
+    aggregate_files=None,
+    chunksize=None,
+    split_row_groups=None,
+    dataset=None,
+    **kwargs,
+):
+
+    metadata_collector = (dataset or {}).get("metadata_collector", None)
+    read_metadata_result = engine.read_metadata(
+        fs,
+        paths,
+        index=index,
+        filters=filters,
+        gather_statistics=True,
+        aggregate_files=aggregate_files,
+        chunksize=chunksize or 1,  # Trigger statistics
+        split_row_groups=split_row_groups,
+        **kwargs,
+    )
+    real_parts = read_metadata_result[2]
+    parts = real_parts.copy()
+    statistics = read_metadata_result[1].copy()
+
+    aggregation_depth = False
+    if len(parts) and aggregate_files:
+        aggregation_depth = parts[0].pop("aggregation_depth", aggregation_depth)
+
+    if statistics:
+        result = list(
+            zip(*[(part, stats) for part, stats in zip(parts, statistics) if stats["num-rows"] > 0])
+        )
+        parts, statistics = result or [[], []]
+        if filters:
+            parts, statistics = apply_filters(parts, statistics, filters)
+
+        # Aggregate parts/statistics if we are splitting by row-group
+        if chunksize or (split_row_groups and int(split_row_groups) > 1):
+            parts, statistics = aggregate_row_groups(
+                parts, statistics, chunksize, split_row_groups, fs, aggregation_depth
+            )
+
+    metadata_collector["stats"] = statistics
+    metadata_collector["parts"] = parts
+
+    return read_metadata_result
 
 
 class ParquetDatasetEngine(DatasetEngine):
@@ -72,8 +149,9 @@ class ParquetDatasetEngine(DatasetEngine):
         super().__init__(paths, part_size, cpu=cpu, storage_options=storage_options)
         self._pp_map = None
         self._pp_nrows = None
+        self._pp_metadata = None
         if row_groups_per_part is None:
-            path0 = self._dataset.pieces[0].path
+            path0 = next(self._dataset.get_fragments()).path
             if cpu:
                 with self.fs.open(path0, "rb") as f0:
                     # Use pyarrow for CPU version.
@@ -105,7 +183,9 @@ class ParquetDatasetEngine(DatasetEngine):
 
     @property
     @functools.lru_cache(1)
-    def _dataset(self):
+    def _legacy_dataset(self):
+        # TODO: Remove this after finding a way to avoid
+        # the use of `ParquetDataset` in `validate_dataset`
         paths = self.paths
         fs = self.fs
         if len(paths) > 1:
@@ -117,6 +197,19 @@ class ParquetDatasetEngine(DatasetEngine):
         else:
             # This is a single file
             dataset = pq.ParquetDataset(paths[0], filesystem=fs)
+        return dataset
+
+    @property
+    @functools.lru_cache(1)
+    def _dataset(self):
+        paths = self.paths
+        fs = self.fs
+        if len(paths) > 1:
+            # This is a list of files
+            dataset = pa_ds.dataset(paths, filesystem=fs)
+        else:
+            # This is a directory or a single file
+            dataset = pa_ds.dataset(paths[0], filesystem=fs)
         return dataset
 
     @property
@@ -141,88 +234,56 @@ class ParquetDatasetEngine(DatasetEngine):
         # Utility shared by `_file_partition_map` and `_partition_lens`
         # to collect useful information from the parquet metadata
 
+        # First, we need to populate `self._pp_metadata`
+        if self._pp_metadata is None:
+            _ = self.to_ddf()
+
+        # Second, we can use the path and num-rows information
+        # in parts and stats
+        parts = self._pp_metadata["parts"]
+        stats = self._pp_metadata["stats"]
+        _pp_map = {}
         _pp_nrows = []
+        distinct_files = True
+        for i, (part, stat) in enumerate(zip(parts, stats)):
+            if distinct_files:
+                if isinstance(part, list):
+                    if len(part) > 1:
+                        distinct_files = False
+                    else:
+                        path = part[0]["piece"][0]
+                        _pp_map[path] = i
+                else:
+                    path = part["piece"][0]
+                    _pp_map[path] = i
+            _pp_nrows.append(stat["num-rows"])
 
-        def _update_partition_lens(md, num_row_groups, rg_offset=None):
-            # Helper function to calculate the row count for each
-            # output partition (and add it to `_pp_nrows`)
-            rg_offset = rg_offset or 0
-            for rg_i in range(0, num_row_groups, self.row_groups_per_part):
-                rg_f = min(rg_i + self.row_groups_per_part, num_row_groups)
-                _pp_nrows.append(
-                    sum([md.row_group(rg + rg_offset).num_rows for rg in range(rg_i, rg_f)])
-                )
-            return
-
-        dataset = self._dataset
-        if dataset.metadata:
-            # We have a metadata file.
-            # Determing the row-group count per file.
-            _path_row_groups = defaultdict(int)
-            for rg in range(dataset.metadata.num_row_groups):
-                fn = dataset.metadata.row_group(rg).column(0).file_path
-                _path_row_groups[fn] += 1
-
-            # Convert the per-file row-group count to the
-            # file-to-partition mapping
-            ind, rg = 0, 0
-            _pp_map = defaultdict(list)
-            for fn, num_row_groups in _path_row_groups.items():
-                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
-                _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(dataset.metadata, num_row_groups, rg_offset=rg)
-                ind += part_count
-                rg += num_row_groups
-        else:
-            # No metadata file. Construct file-to-partition map manually
-            ind = 0
-            _pp_map = {}
-            for piece in dataset.pieces:
-                md = piece.get_metadata()
-                num_row_groups = md.num_row_groups
-                part_count = math.ceil(num_row_groups / self.row_groups_per_part)
-                fn = piece.path.split(self.fs.sep)[-1]
-                _pp_map[fn] = np.arange(ind, ind + part_count)
-                _update_partition_lens(md, num_row_groups)
-                ind += part_count
-
-        self._pp_map = _pp_map
         self._pp_nrows = _pp_nrows
+        self._pp_map = _pp_map
 
     def to_ddf(self, columns=None, cpu=None):
 
-        # Check if we are using cpu
+        # Check if we are using cpu or gpu backend
         cpu = self.cpu if cpu is None else cpu
+        backend_engine = CPUParquetEngine if cpu else GPUParquetEngine
 
-        if cpu:
-            # Return a Dask-Dataframe in CPU memory
-            for try_engine in ["pyarrow-dataset", "pyarrow"]:
-                # Try to use the "pyarrow-dataset" engine, if
-                # available, but fall back on vanilla "pyarrow"
-                # for older Dask versions.
-                try:
-                    return dd.read_parquet(
-                        self.paths,
-                        engine=try_engine,
-                        columns=columns,
-                        index=None if columns is None else False,
-                        gather_statistics=False,
-                        split_row_groups=self.row_groups_per_part,
-                        storage_options=self.storage_options,
-                    )
-                except ValueError:
-                    pass
-            raise RuntimeError("dask.dataframe.read_parquet failed.")
-
-        return dask_cudf.read_parquet(
+        # Use dask-dataframe with appropriate engine
+        metadata_collector = {"stats": [], "parts": []}
+        dataset_kwargs = {"metadata_collector": metadata_collector}
+        ddf = dd.read_parquet(
             self.paths,
             columns=columns,
-            # can't omit reading the index in if we aren't being passed columns
+            engine=backend_engine,
             index=None if columns is None else False,
+            filters=None,
             gather_statistics=False,
+            aggregate_files=False,
             split_row_groups=self.row_groups_per_part,
             storage_options=self.storage_options,
+            dataset=dataset_kwargs,
         )
+        self._pp_metadata = metadata_collector
+        return ddf
 
     def to_cpu(self):
         self.cpu = True
@@ -299,7 +360,7 @@ class ParquetDatasetEngine(DatasetEngine):
             file_min_size = parse_bytes(file_min_size)
 
         # Get dataset and path list
-        pa_dataset = self._dataset
+        pa_dataset = self._legacy_dataset
         paths = [p.path for p in pa_dataset.pieces]
         root_dir, fns = _analyze_paths(paths, self.fs)
 

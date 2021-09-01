@@ -763,7 +763,7 @@ def test_hive_partitioned_data(tmpdir, cpu):
     assert all(p.endswith(".parquet") for p in result_paths)
 
     # Read back with dask.dataframe and check the data
-    df_check = dd.read_parquet(path).compute()
+    df_check = dd.read_parquet(path, engine="pyarrow").compute()
     df_check["name"] = df_check["name"].astype("object")
     df_check["timestamp"] = df_check["timestamp"].astype("int64")
     df_check = df_check.sort_values(["id", "x", "y"]).reset_index(drop=True)
