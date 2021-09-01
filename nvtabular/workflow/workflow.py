@@ -81,6 +81,7 @@ class Workflow:
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
+        self.output_schema = None
 
         # Warn user if there is an unused global
         # Dask client available
@@ -91,10 +92,6 @@ class Workflow:
                 "use the `client` argument to initialize a `Workflow` object "
                 "with distributed-execution enabled."
             )
-
-    @property
-    def output_schema(self):
-        return self.output_node.output_schema
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -112,6 +109,9 @@ class Workflow:
         -------
         Dataset
         """
+        if not self.output_schema:
+            self.fit(dataset)
+
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
@@ -156,6 +156,8 @@ class Workflow:
                 schemaless_nodes.pop(schemaless_node)
             for dependencies in schemaless_nodes.values():
                 dependencies.difference_update(current_phase)
+
+        self.output_schema = self.output_node.output_schema
 
     def fit(self, dataset: Dataset):
         """Calculates statistics for this workflow on the input dataset
