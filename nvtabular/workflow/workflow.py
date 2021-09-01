@@ -38,7 +38,7 @@ from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
-from nvtabular.workflow.node import WorkflowNode, _merge_add_nodes, iter_nodes
+from nvtabular.workflow.node import WorkflowNode, iter_nodes
 
 LOG = logging.getLogger("nvtabular")
 
@@ -77,7 +77,7 @@ class Workflow:
     """
 
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
-        self.output_node = _merge_add_nodes(output_node)
+        self.output_node = output_node
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
