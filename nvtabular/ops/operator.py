@@ -83,11 +83,12 @@ class Operator:
         names_original, names_transformed = [], []
         for original_column in col_selector.names:
             new_cols = [new_column for new_column in output_names if new_column.startswith(original_column)]
+            if new_cols:
             # TODO: feature crosses? concantenated names?
-            assert len(new_cols) == 1
-            names_original.append(original_column)
-            #should only be 1 column collision
-            names_transformed.append(new_cols[0])
+                assert len(new_cols) == 1
+                names_original.append(original_column)
+                #should only be 1 column collision
+                names_transformed.append(new_cols[0])
         new_names = [name for name in output_names if name not in names_transformed]
         new_col_schemas = []
         # grab old column schemas and change the names
@@ -96,8 +97,9 @@ class Operator:
             new_col_schemas.append(orig_col_schema.with_name(new_column_name))
         #create column Schemas for new columns
         for new_col_name in new_names:
+            if new_col_name not in input_schema.column_schemas:
             # needs to be filled in
-            new_col_schemas.append(ColumnSchema(new_col_name))
+                new_col_schemas.append(ColumnSchema(new_col_name))
         #add in all tags properties and update dtypes
         final_new_cols = []
         for column in new_col_schemas:
