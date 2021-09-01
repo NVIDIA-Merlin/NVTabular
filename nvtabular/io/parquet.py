@@ -261,7 +261,7 @@ class ParquetDatasetEngine(DatasetEngine):
     @property
     @functools.lru_cache(1)
     def _dataset(self):
-        paths = self.paths
+        paths = self.stripped_paths
         fs = self.fs
         if len(paths) > 1:
             # This is a list of files
