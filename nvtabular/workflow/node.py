@@ -35,8 +35,9 @@ class WorkflowNode:
     def __init__(self, selector=None):
         self.parents = []
         self.children = []
+        self.dependencies = []
+
         self.op = None
-        self.dependencies = None
         self.input_schema = None
         self.output_schema = None
 
@@ -139,59 +140,51 @@ class WorkflowNode:
         left_arg = self
         right_arg = other
 
-        added_node = None
-        added_selector = None
+        added_nodes = []
+        added_selectors = []
 
         if isinstance(right_arg, WorkflowNode):
             # If an argument is already an addition node, make it
             # the left arg and combine the right arg into it
-            if isinstance(other.op, internal.ConcatColumns):
+            if isinstance(right_arg.op, internal.ConcatColumns):
                 left_arg = other
                 right_arg = self
 
-            added_node = right_arg
-            added_selector = right_arg.output_columns
+            added_nodes.append(right_arg)
         elif isinstance(right_arg, ColumnSelector):
-            added_selector = right_arg
+            added_selectors.append(right_arg)
         elif isinstance(right_arg, list):
-            added_selector = ColumnSelector()
+            list_selector = ColumnSelector()
             for element in right_arg:
                 if isinstance(element, WorkflowNode):
-                    added_selector += element.output_columns
+                    added_nodes.append(element)
                 else:
-                    added_selector += element
-            added_selector = ColumnSelector(subgroups=added_selector)
+                    list_selector += element
+            added_selectors.append(ColumnSelector(subgroups=list_selector))
         else:
-            added_selector = ColumnSelector(right_arg)
-
-        # check if there are any columns with the same name in both column groups
-        overlap = set(left_arg.output_columns.grouped_names).intersection(
-            added_selector.grouped_names
-        )
-
-        if overlap:
-            raise ValueError(f"duplicate column names found: {overlap}")
+            added_selectors.append(ColumnSelector(right_arg))
 
         if isinstance(left_arg.op, internal.ConcatColumns):
             child = left_arg
         else:
-            child = WorkflowNode(left_arg.output_columns)
+            child = WorkflowNode()
             child.op = internal.ConcatColumns(label="+")
 
             left_arg.children.append(child)
             child.parents.append(left_arg)
 
-        child.selector += added_selector
-
-        if added_node:
-            if isinstance(added_node.op, internal.ConcatColumns):
-                child.parents += added_node.parents
-                for parent in added_node.parents:
+        for node in added_nodes:
+            if isinstance(node.op, internal.ConcatColumns):
+                child.parents += node.parents
+                for parent in node.parents:
                     parent.children.append(child)
-                    parent.children.remove(added_node)
+                    parent.children.remove(node)
             else:
-                child.parents.append(added_node)
-                added_node.children.append(child)
+                child.parents.append(node)
+                node.children.append(child)
+
+        for selector in added_selectors:
+            child.dependencies.append(selector)
 
         return child
 
