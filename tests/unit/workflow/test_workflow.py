@@ -27,8 +27,24 @@ import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
-from nvtabular import ColumnSelector, Dataset, Workflow, ops
+from nvtabular import Dataset, Workflow, ops
+from nvtabular.columns import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_grab_additional_input_columns(dataset, engine):
+    node1 = ["x"] >> ops.FillMissing()
+    node2 = node1 >> ops.Clip(min_value=0)
+
+    node2.selector = node2.selector + ["y"]
+    assert node2.input_columns.names == ["x", "y"]
+
+    workflow = Workflow(node2)
+    output_df = workflow.fit_transform(dataset).to_ddf().compute()
+
+    assert len(output_df.columns) == 2
+    assert output_df.columns.tolist() == ["x", "y"]
 
 
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1])

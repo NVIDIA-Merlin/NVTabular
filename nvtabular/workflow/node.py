@@ -16,10 +16,9 @@
 import collections.abc
 import warnings
 
-from dask.core import flatten
-
-from nvtabular.columns import ColumnSelector
-from nvtabular.ops import LambdaOp, Operator
+from nvtabular.columns import ColumnSelector, Schema
+from nvtabular.ops import LambdaOp, Operator, internal
+from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
 class WorkflowNode:
@@ -38,8 +37,9 @@ class WorkflowNode:
         self.parents = []
         self.children = []
         self.op = None
-        self.kind = None
         self.dependencies = None
+        self.input_schema = None
+        self.output_schema = None
 
         if isinstance(selector, list):
             warnings.warn(
@@ -65,6 +65,23 @@ class WorkflowNode:
 
         self._selector = sel
 
+    def compute_schemas(self, root_schema):
+        parent_outputs_schema = sum([parent.output_schema for parent in self.parents], Schema())
+
+        if self.selector:
+            upstream_schema = Schema()
+            upstream_schema += root_schema
+            upstream_schema += parent_outputs_schema
+
+            self.input_schema = upstream_schema.apply(self.selector)
+        else:
+            self.input_schema = parent_outputs_schema
+
+        if self.op:
+            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+        else:
+            self.output_schema = self.input_schema
+
     def __rshift__(self, operator):
         """Transforms this WorkflowNode by applying an Operator
 
@@ -86,29 +103,26 @@ class WorkflowNode:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        col_selector = ColumnSelector(operator.output_column_names(self.selector))
-
-        child = WorkflowNode(col_selector)
+        child = WorkflowNode(self.output_columns)
         child.parents = [self]
         self.children.append(child)
         child.op = operator
 
         dependencies = operator.dependencies()
+
         if dependencies:
             child.dependencies = set()
+            child.dependencies = []
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
             for dependency in dependencies:
                 if isinstance(dependency, WorkflowNode):
-                    pass
-                elif isinstance(dependency, ColumnSelector):
-                    dependency = WorkflowNode(dependency)
+                    dependency.children.append(child)
+                    child.parents.append(dependency)
                 else:
-                    dependency = WorkflowNode(ColumnSelector(dependency))
-                dependency.children.append(child)
-                child.parents.append(dependency)
-                child.dependencies.add(dependency)
+                    dependency = ColumnSelector(dependency)
+                child.dependencies.append(dependency)
 
         return child
 
@@ -123,33 +137,63 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-        if isinstance(other, WorkflowNode):
-            pass
-        elif isinstance(other, ColumnSelector):
-            other = WorkflowNode(other)
-        elif isinstance(other, list):
-            new_selector = ColumnSelector([])
-            for element in other:
+        left_arg = self
+        right_arg = other
+
+        added_node = None
+        added_selector = None
+
+        if isinstance(right_arg, WorkflowNode):
+            # If an argument is already an addition node, make it
+            # the left arg and combine the right arg into it
+            if isinstance(other.op, internal.ConcatColumns):
+                left_arg = other
+                right_arg = self
+
+            added_node = right_arg
+            added_selector = right_arg.output_columns
+        elif isinstance(right_arg, ColumnSelector):
+            added_selector = right_arg
+        elif isinstance(right_arg, list):
+            added_selector = ColumnSelector()
+            for element in right_arg:
                 if isinstance(element, WorkflowNode):
-                    new_selector += ColumnSelector([], subgroups=[element.selector])
+                    added_selector += element.output_columns
                 else:
-                    new_selector += ColumnSelector(element)
-            other = sum(other, WorkflowNode(ColumnSelector([])))
-            other.selector = new_selector
+                    added_selector += element
+            added_selector = ColumnSelector(subgroups=added_selector)
         else:
-            other = WorkflowNode(ColumnSelector(other))
+            added_selector = ColumnSelector(right_arg)
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.selector.grouped_names).intersection(other.selector.grouped_names)
+        overlap = set(left_arg.output_columns.grouped_names).intersection(
+            added_selector.grouped_names
+        )
 
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
-        child = WorkflowNode(self.selector + other.selector)
-        child.parents = [self, other]
-        child.kind = "+"
-        self.children.append(child)
-        other.children.append(child)
+        if isinstance(left_arg.op, internal.ConcatColumns):
+            child = left_arg
+        else:
+            child = WorkflowNode(left_arg.output_columns)
+            child.op = internal.ConcatColumns(label="+")
+
+            left_arg.children.append(child)
+            child.parents.append(left_arg)
+
+        child.selector += added_selector
+
+        if added_node:
+            if isinstance(added_node.op, internal.ConcatColumns):
+                child.parents += added_node.parents
+                for parent in added_node.parents:
+                    parent.children.append(child)
+                    parent.children.remove(added_node)
+            else:
+                child.parents.append(added_node)
+                added_node.children.append(child)
+
         return child
 
     # handle the "column_name" + WorkflowNode case
@@ -168,18 +212,18 @@ class WorkflowNode:
         WorkflowNode
         """
         if isinstance(other, WorkflowNode):
-            to_remove = set(other.selector)
+            to_remove = set(other.output_columns)
         elif isinstance(other, str):
             to_remove = {other}
         elif isinstance(other, collections.abc.Sequence):
             to_remove = set(other)
         else:
             raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.selector if c not in to_remove]
+        new_columns = [c for c in self.output_columns if c not in to_remove]
         child = WorkflowNode(new_columns)
         child.parents = [self]
         self.children.append(child)
-        child.kind = f"- {list(to_remove)}"
+        child.op = internal.SubsetColumns(label=f"- {list(to_remove)}")
         return child
 
     def __getitem__(self, columns):
@@ -199,7 +243,7 @@ class WorkflowNode:
         child = WorkflowNode(col_selector)
         child.parents = [self]
         self.children.append(child)
-        child.kind = str(columns)
+        child.op = internal.SubsetColumns(label=str(list(columns)))
         return child
 
     def __repr__(self):
@@ -207,27 +251,38 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
-    def flattened_columns(self):
-        return list(flatten(self.selector, container=tuple))
+    def input_columns(self):
+        return self.selector
 
     @property
-    def input_column_names(self):
-        """Returns the names of columns in the main chain"""
-        dependencies = self.dependencies or set()
+    def output_columns(self):
+        if isinstance(self.op, SubsetColumns):
+            return self.selector
+        elif self.op:
+            return self.op.output_column_names(self.input_columns)
+        else:
+            return self.input_columns
 
-        return [
-            col
-            for parent in self.parents
-            for col in parent.selector.grouped_names
-            if parent not in dependencies
-        ]
+    @property
+    def dependency_columns(self):
+        dependency_cols = []
+
+        if not self.dependencies:
+            return ColumnSelector(dependency_cols)
+
+        # Dependencies can be either WorkflowNodes or ColumnSelectors
+        # WorkflowNodes are already handled as parents, but we still
+        # need to account for the columns in raw (non-node) selectors
+        for selector in self.dependencies:
+            if isinstance(selector, ColumnSelector):
+                dependency_cols += selector.names
+
+        return ColumnSelector(dependency_cols)
 
     @property
     def label(self):
         if self.op:
             return self.op.label
-        elif self.kind:
-            return self.kind
         elif not self.parents:
             return f"input cols=[{self._cols_repr}]"
         else:
@@ -259,7 +314,6 @@ def _to_graphviz(workflow_node):
     """Converts a WorkflowNode to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
-    workflow_node = _merge_add_nodes(workflow_node)
     graph = Digraph()
 
     # get all the nodes from parents of this columngroup
@@ -275,40 +329,6 @@ def _to_graphviz(workflow_node):
     output_node_id = str(len(allnodes))
     graph.node(output_node_id, f"output cols=[{workflow_node._cols_repr}]")
     graph.edge(node_ids[workflow_node], output_node_id)
-    return graph
-
-
-def _merge_add_nodes(graph):
-    """Merges repeat '+' nodes, leading to nicer looking outputs"""
-    # lets take a copy to avoid mutating the input
-    import copy
-
-    graph = copy.copy(graph)
-
-    queue = [graph]
-    while queue:
-        current = queue.pop()
-        if current.kind == "+":
-            changed = True
-            while changed:
-                changed = False
-                parents = []
-                for i, parent in enumerate(current.parents):
-                    if parent.kind == "+" and len(parent.children) == 1:
-                        changed = True
-                        # disconnect parent, point all the grandparents at current instead
-                        parents.extend(parent.parents)
-                        for grandparent in parent.parents:
-                            grandparent.children = [
-                                current if child == parent else child
-                                for child in grandparent.children
-                            ]
-                    else:
-                        parents.append(parent)
-                current.parents = parents
-
-        queue.extend(current.parents)
-
     return graph
 
 

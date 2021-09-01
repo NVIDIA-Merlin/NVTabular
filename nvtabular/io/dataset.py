@@ -29,6 +29,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
 from nvtabular.utils import global_dask_client
@@ -1053,6 +1054,22 @@ class Dataset:
             return result.compute()
         else:
             return result
+
+    def infer_schema(self, n=1):
+        """Create a schema containing the column names and inferred dtypes of the Dataset
+
+        Args:
+            n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
+        """
+        sampled_dtypes = self.sample_dtypes(n)
+        dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+
+        column_schemas = []
+        for column, dtype in dtypes.items():
+            col_schema = ColumnSchema(column, dtype=dtype)
+            column_schemas.append(col_schema)
+
+        return Schema(column_schemas)
 
     def sample_dtypes(self, n=1):
         """Return the real dtypes of the Dataset

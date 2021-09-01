@@ -38,6 +38,13 @@ from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
 
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_dataset_infer_schema(dataset, engine):
+    schema = dataset.infer_schema()
+    expected_columns = ["timestamp", "id", "label", "name-cat", "name-string", "x", "y", "z"]
+    assert schema.column_names == expected_columns
+
+
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
 def test_shuffle_gpu(tmpdir, datasets, engine):
     num_files = 2

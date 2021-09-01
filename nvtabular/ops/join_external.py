@@ -198,9 +198,12 @@ class JoinExternal(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        if self.columns_ext:
-            return list(set(columns + self.columns_ext))
-        return ColumnSelector(list(set(columns + list(self._ext.columns))))
+        ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
+
+        # This maintains the order which set() does not
+        combined = dict.fromkeys(columns + list(ext_columns)).keys()
+
+        return ColumnSelector(list(combined))
 
 
 def _check_partition_count(df):

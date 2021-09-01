@@ -14,6 +14,24 @@
 # limitations under the License.
 #
 
-# flake8: noqa
-from .schema import ColumnSchema, Schema
-from .selector import ColumnSelector
+from nvtabular import ops
+from nvtabular.ops import internal
+
+
+def test_column_concat_op():
+    node = "col1" >> ops.Operator()
+    col_name = "col2"
+
+    concat_node = node + col_name
+    assert isinstance(concat_node.op, internal.ConcatColumns)
+
+
+def test_column_subset_op():
+    node = ["col1", "col2"] >> ops.Operator()
+    col_name = "col1"
+
+    subtract_node = node - col_name
+    assert isinstance(subtract_node.op, internal.SubsetColumns)
+
+    bracket_node = node["col1"]
+    assert isinstance(bracket_node.op, internal.SubsetColumns)
