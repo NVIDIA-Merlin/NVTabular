@@ -134,7 +134,7 @@ def _override_read_metadata(
         # File aggregation is only available for Dask>=2021.07.1
         local_kwargs["aggregate_files"] = aggregate_files
     elif aggregate_files:
-        raise ValueError("This version of Dask does not support the " "`aggregate_files` argument.")
+        raise ValueError("This version of Dask does not support the `aggregate_files` argument.")
 
     # Start with "super-class" read_metadata logic
     read_metadata_result = engine.read_metadata(
