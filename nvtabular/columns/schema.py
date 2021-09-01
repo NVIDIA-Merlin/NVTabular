@@ -13,15 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Text
 
 import numpy
-from google.protobuf import json_format, text_format
-from google.protobuf.any_pb2 import Any
-from google.protobuf.struct_pb2 import Struct
-from tensorflow_metadata.proto.v0 import schema_pb2
+
+# this needs to be before any modules that import protobuf
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+from google.protobuf import json_format, text_format  # noqa
+from google.protobuf.any_pb2 import Any  # noqa
+from google.protobuf.struct_pb2 import Struct  # noqa
+from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
 
 
 def register_extra_metadata(column_schema, feature):
