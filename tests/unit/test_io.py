@@ -877,7 +877,7 @@ def test_parquet_filtered_hive(tmpdir, cpu):
     ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
 
     # Convert to nvt.Dataset
-    ds = nvt.Dataset(path, engine="parquet", filters=[("timestamp", "==", 1)])
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", filters=[("timestamp", "==", 1)])
 
     # Make sure partitions were filtered
     assert len(ds.to_ddf().timestamp.unique()) == 1
@@ -905,17 +905,18 @@ def test_parquet_aggregate_files(tmpdir, cpu):
 
     # Setting `aggregate_files=True` should result
     # in one large partition
-    ds = nvt.Dataset(path, engine="parquet", aggregate_files=True, part_size="1GB")
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", aggregate_files=True, part_size="1GB")
     assert ds.to_ddf().npartitions == 1
 
     # Setting `aggregate_files="timestamp"` should result
     # in one partition for each unique value of "timestamp"
-    ds = nvt.Dataset(path, engine="parquet", aggregate_files="timestamp", part_size="1GB")
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", aggregate_files="timestamp", part_size="1GB")
     assert ds.to_ddf().npartitions == len(ddf.timestamp.unique())
 
     # Combining `aggregate_files` and `filters` should work
     ds = nvt.Dataset(
         path,
+        cpu=cpu,
         engine="parquet",
         aggregate_files="timestamp",
         filters=[("timestamp", "==", 1)],
