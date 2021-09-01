@@ -16,10 +16,8 @@
 import gc
 
 import pandas as pd
-
-# Some of the functions are copied or inspired by
-# https://github.com/schipiga/pandas-tfrecords/
 import tensorflow as tf
+from pandas_tfrecords.from_tfrecords import _get_feature_type, read_example
 from tqdm import tqdm
 
 
@@ -50,41 +48,14 @@ def convert_tfrecords_to_parquet(
     for file in filenames:
         dataset = tf.data.TFRecordDataset(file, compression_type=compression_type)
         features = _detect_schema(dataset)
-        parser = _read_example(features)
+        parser = read_example(features)
         parsed = dataset.map(parser)
         _to_parquet(parsed, file, output_dir, chunks, convert_lists)
 
 
-def _read_example(features):
-    # https://github.com/schipiga/pandas-tfrecords/blob/master/pandas_tfrecords/from_tfrecords.py
-    def parse(serialized):
-        example = tf.io.parse_single_example(serialized, features=features)
-        return example
-
-    return parse
-
-
-def _get_feature_type(feature=None, type_=None):
-    # https://github.com/schipiga/pandas-tfrecords/blob/master/pandas_tfrecords/from_tfrecords.py
-    if type_:
-        return {
-            int: tf.int64,
-            float: tf.float32,
-            str: tf.string,
-            bytes: tf.string,
-        }[type_]
-
-    if feature:
-        if feature.HasField("int64_list"):
-            return tf.int64
-        if feature.HasField("float_list"):
-            return tf.float32
-        if feature.HasField("bytes_list"):
-            return tf.string
-
-
 def _detect_schema(dataset):
-    # by https://github.com/schipiga/pandas-tfrecords/blob/master/pandas_tfrecords/from_tfrecords.py
+    # inspired by
+    # https://github.com/schipiga/pandas-tfrecords/blob/master/pandas_tfrecords/from_tfrecords.py
     features = {}
 
     serialized = next(iter(dataset.map(lambda serialized: serialized)))
