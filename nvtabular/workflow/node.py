@@ -89,9 +89,7 @@ class WorkflowNode:
             self.input_schema = upstream_schema
 
         if self.op:
-            self.output_schema = self.op.compute_output_schema(
-                self.input_schema, self.selector, self.dependency_schema
-            )
+            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
         else:
             self.output_schema = self.input_schema
 
