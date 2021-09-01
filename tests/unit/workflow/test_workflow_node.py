@@ -95,15 +95,15 @@ def test_workflow_node_addition():
     # Addition with groups
     output_node = node1 + ["c", "d"]
     workflow = Workflow(output_node).fit_schema(schema)
-    assert workflow.output_node.output_columns.grouped_names == ["a", "b", ("c", "d")]
+    assert workflow.output_node.output_columns.grouped_names == ["a", "b", "c", "d"]
 
     output_node = node1 + [node2, "e"]
     workflow = Workflow(output_node).fit_schema(schema)
-    assert workflow.output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e")]
+    assert workflow.output_node.output_columns.grouped_names == ["a", "b", "c", "d", "e"]
 
     output_node = node1 + [node2, node3]
     workflow = Workflow(output_node).fit_schema(schema)
-    assert workflow.output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e", "f")]
+    assert workflow.output_node.output_columns.grouped_names == ["a", "b", "c", "d", "e", "f"]
 
 
 def test_addition_nodes_are_combined():
