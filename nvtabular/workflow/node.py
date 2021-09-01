@@ -137,39 +137,62 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-        other_node = None
-        other_selector = None
+        left_arg = self
+        right_arg = other
 
-        if isinstance(other, WorkflowNode):
-            other_node = other
-            other_selector = other.output_columns
-        elif isinstance(other, ColumnSelector):
-            other_selector = other
-        elif isinstance(other, list):
-            other_selector = ColumnSelector()
-            for element in other:
+        added_node = None
+        added_selector = None
+
+        if isinstance(right_arg, WorkflowNode):
+            # If an argument is already an addition node, make it
+            # the left arg and combine the right arg into it
+            if isinstance(other.op, internal.ConcatColumns):
+                left_arg = other
+                right_arg = self
+
+            added_node = right_arg
+            added_selector = right_arg.output_columns
+        elif isinstance(right_arg, ColumnSelector):
+            added_selector = right_arg
+        elif isinstance(right_arg, list):
+            added_selector = ColumnSelector()
+            for element in right_arg:
                 if isinstance(element, WorkflowNode):
-                    other_selector += element.output_columns
+                    added_selector += element.output_columns
                 else:
-                    other_selector += element
-            other_selector = ColumnSelector(subgroups=other_selector)
+                    added_selector += element
+            added_selector = ColumnSelector(subgroups=added_selector)
         else:
-            other_selector = ColumnSelector(other)
+            added_selector = ColumnSelector(right_arg)
 
         # check if there are any columns with the same name in both column groups
-        overlap = set(self.output_columns.grouped_names).intersection(other_selector.grouped_names)
+        overlap = set(left_arg.output_columns.grouped_names).intersection(
+            added_selector.grouped_names
+        )
 
         if overlap:
             raise ValueError(f"duplicate column names found: {overlap}")
 
-        child = WorkflowNode(self.output_columns + other_selector)
-        child.parents = [self]
-        child.op = internal.ConcatColumns(label="+")
-        self.children.append(child)
+        if isinstance(left_arg.op, internal.ConcatColumns):
+            child = left_arg
+        else:
+            child = WorkflowNode(left_arg.output_columns)
+            child.op = internal.ConcatColumns(label="+")
 
-        if other_node:
-            child.parents.append(other_node)
-            other_node.children.append(child)
+            left_arg.children.append(child)
+            child.parents.append(left_arg)
+
+        child.selector += added_selector
+
+        if added_node:
+            if isinstance(added_node.op, internal.ConcatColumns):
+                child.parents += added_node.parents
+                for parent in added_node.parents:
+                    parent.children.append(child)
+                    parent.children.remove(added_node)
+            else:
+                child.parents.append(added_node)
+                added_node.children.append(child)
 
         return child
 
@@ -291,7 +314,6 @@ def _to_graphviz(workflow_node):
     """Converts a WorkflowNode to a GraphViz DiGraph object useful for display in notebooks"""
     from graphviz import Digraph
 
-    workflow_node = _merge_add_nodes(workflow_node)
     graph = Digraph()
 
     # get all the nodes from parents of this columngroup
@@ -307,40 +329,6 @@ def _to_graphviz(workflow_node):
     output_node_id = str(len(allnodes))
     graph.node(output_node_id, f"output cols=[{workflow_node._cols_repr}]")
     graph.edge(node_ids[workflow_node], output_node_id)
-    return graph
-
-
-def _merge_add_nodes(graph):
-    """Merges repeat '+' nodes, leading to nicer looking outputs"""
-    # lets take a copy to avoid mutating the input
-    import copy
-
-    graph = copy.copy(graph)
-
-    queue = [graph]
-    while queue:
-        current = queue.pop()
-        if isinstance(current.op, internal.ConcatColumns):
-            changed = True
-            while changed:
-                changed = False
-                parents = []
-                for i, parent in enumerate(current.parents):
-                    if isinstance(parent.op, internal.ConcatColumns) and len(parent.children) == 1:
-                        changed = True
-                        # disconnect parent, point all the grandparents at current instead
-                        parents.extend(parent.parents)
-                        for grandparent in parent.parents:
-                            grandparent.children = [
-                                current if child == parent else child
-                                for child in grandparent.children
-                            ]
-                    else:
-                        parents.append(parent)
-                current.parents = parents
-
-        queue.extend(current.parents)
-
     return graph
 
 
