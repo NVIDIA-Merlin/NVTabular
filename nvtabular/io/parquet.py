@@ -287,7 +287,9 @@ class ParquetDatasetEngine(DatasetEngine):
     def num_rows(self):
         # TODO: Avoid parsing metadata once upstream dask
         # can get the length efficiently (in all practical cases)
-        return sum(self._partition_lens)
+        if self._partition_lens:
+            return sum(self._partition_lens)
+        return len(self.to_ddf().index)
 
     def _process_parquet_metadata(self):
         # Utility shared by `_file_partition_map` and `_partition_lens`
