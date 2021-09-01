@@ -18,7 +18,6 @@ import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
-from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
 class WorkflowNode:
@@ -268,7 +267,7 @@ class WorkflowNode:
 
     @property
     def output_columns(self):
-        if self.op and not isinstance(self.op, SubsetColumns):
+        if self.op:
             return self.op.output_column_names(self.input_columns)
         else:
             return self.input_columns
