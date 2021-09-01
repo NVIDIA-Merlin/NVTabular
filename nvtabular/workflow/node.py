@@ -161,14 +161,6 @@ class WorkflowNode:
         else:
             added_selector = ColumnSelector(right_arg)
 
-        # check if there are any columns with the same name in both column groups
-        overlap = set(left_arg.output_columns.grouped_names).intersection(
-            added_selector.grouped_names
-        )
-
-        if overlap:
-            raise ValueError(f"duplicate column names found: {overlap}")
-
         if isinstance(left_arg.op, internal.ConcatColumns):
             child = left_arg
         else:
