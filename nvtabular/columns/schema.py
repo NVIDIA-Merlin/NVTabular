@@ -23,6 +23,7 @@ class ColumnSchema:
 
     name: Text
     tags: Optional[List[Text]] = field(default_factory=list)
+    dtype: Optional[object] = None
 
     def __str__(self) -> str:
         return self.name
