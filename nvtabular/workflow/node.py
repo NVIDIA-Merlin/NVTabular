@@ -65,17 +65,22 @@ class WorkflowNode:
 
         self._selector = sel
 
-    def compute_schemas(self, root_schema):
-        parent_outputs_schema = sum([parent.output_schema for parent in self.parents], Schema())
-
-        dependencies_schema = Schema()
+    @property
+    def dependency_schema(self):
+        schema = Schema()
         for dep in self.dependencies:
             if isinstance(dep, ColumnSelector):
-                dependencies_schema += Schema(dep.names)
+                schema += Schema(dep.names)
+        return schema
 
+    @property
+    def parents_schema(self):
+        return sum([parent.output_schema for parent in self.parents], Schema())
+
+    def compute_schemas(self, root_schema):
         upstream_schema = Schema()
-        upstream_schema += parent_outputs_schema
-        upstream_schema += dependencies_schema
+        upstream_schema += self.parents_schema
+        upstream_schema += self.dependency_schema
 
         if self.selector:
             upstream_schema += root_schema
@@ -84,7 +89,9 @@ class WorkflowNode:
             self.input_schema = upstream_schema
 
         if self.op:
-            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+            self.output_schema = self.op.compute_output_schema(
+                self.input_schema, self.selector, self.dependency_schema
+            )
         else:
             self.output_schema = self.input_schema
 
