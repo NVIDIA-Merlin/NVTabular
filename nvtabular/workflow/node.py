@@ -18,6 +18,7 @@ import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
+from nvtabular.ops.internal.concat_columns import ConcatColumns
 
 
 class WorkflowNode:
@@ -78,15 +79,17 @@ class WorkflowNode:
         return sum([parent.output_schema for parent in self.parents], Schema())
 
     def compute_schemas(self, root_schema):
-        upstream_schema = Schema()
-        upstream_schema += self.parents_schema
-        upstream_schema += self.dependency_schema
-
         if self.selector:
+            upstream_schema = Schema()
             upstream_schema += root_schema
+            upstream_schema += self.parents_schema
+            upstream_schema += self.dependency_schema
             self.input_schema = upstream_schema.apply(self.selector)
         else:
-            self.input_schema = upstream_schema
+            if isinstance(self.op, ConcatColumns):
+                self.input_schema = self.parents_schema + self.dependency_schema
+            else:
+                self.input_schema = self.parents_schema
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
