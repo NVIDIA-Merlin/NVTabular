@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from dataclasses import dataclass, field
-from typing import List, Optional, Text, Dict
+from typing import Dict, List, Optional, Text
 
 
 @dataclass(frozen=True)
@@ -29,15 +29,29 @@ class ColumnSchema:
 
     def __str__(self) -> str:
         return self.name
+
     def with_name(self, name) -> "ColumnSchema":
-        return ColumnSchema(name, tags=self.tags, properties=self.properties, dtype=self.dtype, _is_list=self._is_list)
+        return ColumnSchema(
+            name,
+            tags=self.tags,
+            properties=self.properties,
+            dtype=self.dtype,
+            _is_list=self._is_list,
+        )
+
     def with_tags(self, tags) -> "ColumnSchema":
         if not isinstance(tags, list):
             tags = [tags]
 
         tags = list(set(list(self.tags) + tags))
 
-        return ColumnSchema(self.name, tags=tags, properties=self.properties, dtype=self.dtype, _is_list=self._is_list)
+        return ColumnSchema(
+            self.name,
+            tags=tags,
+            properties=self.properties,
+            dtype=self.dtype,
+            _is_list=self._is_list,
+        )
 
     def with_properties(self, properties):
         if not isinstance(properties, dict):
@@ -46,11 +60,19 @@ class ColumnSchema:
         # Using new dictionary to avoid passing old ref to new schema
         properties.update(self.properties)
 
-        return ColumnSchema(self.name, tags=self.tags, properties=properties, dtype=self.dtype, _is_list=self._is_list)
+        return ColumnSchema(
+            self.name,
+            tags=self.tags,
+            properties=properties,
+            dtype=self.dtype,
+            _is_list=self._is_list,
+        )
 
     def with_dtype(self, dtype, is_list=None):
         is_list = is_list or self._is_list
-        return ColumnSchema(self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list)
+        return ColumnSchema(
+            self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSchema):

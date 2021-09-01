@@ -32,7 +32,6 @@ ColumnSchema = columns.schema.ColumnSchema
 Schema = columns.schema.Schema
 
 
-
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to
 # select columns at the beginning of an operator chain don't break
 def ColumnGroup(columns):
@@ -40,7 +39,15 @@ def ColumnGroup(columns):
     return ColumnSelector(columns)
 
 
-__all__ = ["Workflow", "Dataset", "WorkflowNode", "ColumnGroup", "ColumnSelector", "ColumnSchema", "Schema"]
+__all__ = [
+    "Workflow",
+    "Dataset",
+    "WorkflowNode",
+    "ColumnGroup",
+    "ColumnSelector",
+    "ColumnSchema",
+    "Schema",
+]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")

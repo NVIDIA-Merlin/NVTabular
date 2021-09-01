@@ -20,8 +20,6 @@ from dataclasses import dataclass
 from operator import getitem
 from typing import Optional, Union
 
-from ..tags import DefaultTags 
-CATEGORICAL = DefaultTags.CATEGORICAL
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -40,8 +38,11 @@ from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
+from ..tags import DefaultTags
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
+
+CATEGORICAL = DefaultTags.CATEGORICAL
 
 
 class Categorify(StatOperator):
@@ -472,8 +473,7 @@ class Categorify(StatOperator):
         return [CATEGORICAL]
 
     def _get_dtypes(self):
-        return numpy.int64
-
+        return np.int64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

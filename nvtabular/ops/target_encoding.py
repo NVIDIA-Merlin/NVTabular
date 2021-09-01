@@ -25,11 +25,12 @@ from nvtabular.dispatch import (
     _read_parquet_dispatch,
 )
 
+from ..tags import DefaultTags
 from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
-from ..tags import DefaultTags 
+
 CATEGORICAL = DefaultTags.CATEGORICAL
 
 

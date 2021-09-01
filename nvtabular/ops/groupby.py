@@ -12,13 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import numpy
 from dask.dataframe.utils import meta_nonempty
 
 from nvtabular.dispatch import DataFrameType, annotate
 
+from ..tags import DefaultTags
 from .operator import ColumnSelector, Operator
-from ..tags import DefaultTags 
+
 CATEGORICAL = DefaultTags.CATEGORICAL
 
 
@@ -140,6 +141,7 @@ class Groupby(Operator):
 
     def _dtypes(self):
         return numpy.int64
+
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
     # Helper function for `output_column_names`

@@ -15,11 +15,15 @@
 
 from typing import Dict, Union
 
+import numpy
+
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
+from ..tags import DefaultTags
 from .operator import ColumnSelector, Operator
-from ..tags import DefaultTags 
+
 CATEGORICAL = DefaultTags.CATEGORICAL
+
 
 class HashedCross(Operator):
     """
@@ -74,7 +78,7 @@ class HashedCross(Operator):
 
     def _get_tags(self):
         return [CATEGORICAL]
-    
+
     def _get_dtypes(self):
         return numpy.int64
 
@@ -85,4 +89,3 @@ def _nest_columns(columns):
         return [tuple(columns)]
     else:
         return columns
-

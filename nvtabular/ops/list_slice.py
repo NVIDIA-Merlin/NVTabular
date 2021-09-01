@@ -23,8 +23,9 @@ except ImportError:
 
 from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 
+from ..tags import DefaultTags
 from .operator import ColumnSelector, Operator
-from ..tags import DefaultTags 
+
 LIST = DefaultTags.LIST
 
 

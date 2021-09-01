@@ -13,15 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from ..tags import DefaultTags 
-CONTINUOUS = DefaultTags.CONTINUOUS
-
 import dask.dataframe as dd
+import numpy
 
 from ..dispatch import DataFrameType, annotate
+from ..tags import DefaultTags
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator, Supports
 from .stat_operator import StatOperator
+
+CONTINUOUS = DefaultTags.CONTINUOUS
 
 
 class Normalize(StatOperator):
@@ -144,7 +145,7 @@ class NormalizeMinMax(StatOperator):
             | Supports.CPU_DATAFRAME
             | Supports.GPU_DATAFRAME
         )
-    
+
     def _add_tags(self):
         return [CONTINUOUS]
 
