@@ -33,7 +33,7 @@ class WorkflowNode:
         Defines which columns to select from the input Dataset using column names and tags.
     """
 
-    def __init__(self, selector):
+    def __init__(self, selector=None):
         self.parents = []
         self.children = []
         self.dependencies = []
@@ -50,7 +50,7 @@ class WorkflowNode:
             )
             selector = ColumnSelector(selector)
 
-        if not isinstance(selector, ColumnSelector):
+        if selector and not isinstance(selector, ColumnSelector):
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
         self._selector = selector
