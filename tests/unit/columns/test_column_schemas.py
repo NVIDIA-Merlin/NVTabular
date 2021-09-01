@@ -13,75 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import string
 from pathlib import Path
-
-import cudf
-import dask.dataframe as dd
 import numpy
-import pandas as pd
 import pytest
 
-import nvtabular as nvt
-import nvtabular.dispatch as dispatch
-import nvtabular.ops as ops
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
-
-try:
-    import cudf
-    import cupy as cp
-    import dask_cudf
-
-    _CPU = [True, False]
-    _HAS_GPU = True
-except ImportError:
-    _CPU = [True]
-    _HAS_GPU = False
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
 def test_dtype_column_schema(d_types):
     column = ColumnSchema("name", tags=[], properties=[], dtype=d_types)
     assert column.dtype == d_types
-
-
-@pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
-@pytest.mark.parametrize("kfold", [1, 3])
-@pytest.mark.parametrize("fold_seed", [None, 42])
-@pytest.mark.parametrize("cpu", _CPU)
-def test_column_schema_ops_dtype(tmpdir, cat_groups, kfold, fold_seed, cpu):
-    # create a pipeline
-    # got from target encoding example
-    df = dispatch._make_df(
-        {
-            "Author": list(string.ascii_uppercase),
-            "Engaging-User": list(string.ascii_lowercase),
-            "Cost": range(26),
-            "Post": [0, 1] * 13,
-        }
-    )
-    if cpu:
-        df = dd.from_pandas(df if isinstance(df, pd.DataFrame) else df.to_pandas(), npartitions=3)
-    else:
-        df = dask_cudf.from_cudf(df, npartitions=3)
-
-    cont_names = ["Cost"]
-    te_features = cat_groups >> ops.TargetEncoding(
-        cont_names,
-        out_path=str(tmpdir),
-        kfold=kfold,
-        out_dtype="float32",
-        fold_seed=42,
-        drop_folds=False,  # Keep folds to validate
-    )
-
-    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
-    workflow = nvt.Workflow(te_features + cont_features + ["Author", "Engaging-User"])
-    output_schema = nvt.Workflow.fit_schema
-    df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
-
-    # check dtype after transform
 
 
 def test_column_schema_meta():
@@ -110,8 +53,6 @@ def test_column_schema_meta():
 @pytest.mark.parametrize("list_type", [True, False])
 def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type, list_type):
     # create a schema
-    if list_type:
-        df = dispatch._make_df({"x": [d_type(x) for x in range(5)]})
     schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_type, _is_list=list_type)
     schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type, _is_list=list_type)
     column_schema_set = Schema([schema1, schema2])
