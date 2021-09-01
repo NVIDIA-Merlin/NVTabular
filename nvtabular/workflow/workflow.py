@@ -109,10 +109,11 @@ class Workflow:
         -------
         Dataset
         """
-        if not self.output_schema:
-            self.fit(dataset)
-
         self._clear_worker_cache()
+
+        if not self.output_schema:
+            self.fit_schema(dataset.infer_schema())
+
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
             _transform_ddf(ddf, self.output_node, self.output_dtypes),
