@@ -74,14 +74,17 @@ class CPUParquetEngine(ArrowDatasetEngine):
         return hasattr(ArrowDatasetEngine, "multi_support") and ArrowDatasetEngine.multi_support()
 
 
-class GPUParquetEngine(CudfEngine):
-    @staticmethod
-    def read_metadata(*args, **kwargs):
-        return _override_read_metadata(CudfEngine, *args, **kwargs)
+# Define GPUParquetEngine if cudf is available
+if cudf is not None:
 
-    @classmethod
-    def multi_support(cls):
-        return hasattr(CudfEngine, "multi_support") and CudfEngine.multi_support()
+    class GPUParquetEngine(CudfEngine):
+        @staticmethod
+        def read_metadata(*args, **kwargs):
+            return _override_read_metadata(CudfEngine, *args, **kwargs)
+
+        @classmethod
+        def multi_support(cls):
+            return hasattr(CudfEngine, "multi_support") and CudfEngine.multi_support()
 
 
 def _override_read_metadata(
