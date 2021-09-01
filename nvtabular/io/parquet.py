@@ -91,6 +91,8 @@ def _override_read_metadata(
     index=None,
     gather_statistics=None,
     split_row_groups=None,
+    filters=None,
+    aggregate_files=None,
     dataset=None,
     chunksize=None,
     **global_kwargs,
@@ -106,14 +108,9 @@ def _override_read_metadata(
             "NVTabular does not yet support the explicit use " "of Dask's `chunksize` argument."
         )
 
-    # Extract optional read_parquet arguments that we may have
-    # moved into a `dataset` container. If these arguments
-    # are in `dataset`, then we are effectively hiding them from
-    # `read_parquet` logic that lives outside of `engine.read_metadata`
+    # Extract metadata_collector from the dataset "container"
     dataset = dataset or {}
     metadata_collector = dataset.pop("metadata_collector", None)
-    aggregate_files = dataset.pop("aggregate_files", None)
-    filters = dataset.pop("filters", None)
 
     # Gather statistics by default.
     # This enables optimized length calculations
@@ -139,14 +136,6 @@ def _override_read_metadata(
     elif aggregate_files:
         raise ValueError("This version of Dask does not support the " "`aggregate_files` argument.")
 
-    # Remove overlapping kwargs.
-    # This is necessary, becuase Dask's `read_parquet`
-    # logic will have added default settings for arguments
-    # that we are "hiding" from it.
-    for key in list(global_kwargs.keys()):
-        if key in local_kwargs:
-            global_kwargs.pop(key)
-
     # Start with "super-class" read_metadata logic
     read_metadata_result = engine.read_metadata(
         fs,
@@ -154,8 +143,7 @@ def _override_read_metadata(
         **local_kwargs,
         **global_kwargs,
     )
-    real_parts = read_metadata_result[2]
-    parts = real_parts.copy()
+    parts = read_metadata_result[2].copy()
     statistics = read_metadata_result[1].copy()
 
     # Process the statistics.
@@ -179,7 +167,7 @@ def _override_read_metadata(
             # Convert `aggregate_files` to an integer `aggregation_depth`
             aggregation_depth = False
             if len(parts) and aggregate_files:
-                aggregation_depth = parts[0].pop("aggregation_depth", aggregation_depth)
+                aggregation_depth = parts[0].get("aggregation_depth", aggregation_depth)
 
             # Aggregate parts/statistics if we are splitting by row-group
             if chunksize or (split_row_groups and int(split_row_groups) > 1):
@@ -337,17 +325,15 @@ class ParquetDatasetEngine(DatasetEngine):
 
         # Use dask-dataframe with appropriate engine
         metadata_collector = {"stats": [], "parts": []}
-        dataset_kwargs = {
-            "metadata_collector": metadata_collector,
-            "aggregate_files": self.aggregate_files,
-            "filters": self.filters,
-        }
+        dataset_kwargs = {"metadata_collector": metadata_collector}
         dataset_kwargs.update(self.dataset_kwargs)
         ddf = dd.read_parquet(
             self.paths,
             columns=columns,
             engine=backend_engine,
             index=False,
+            aggregate_files=self.aggregate_files,
+            filters=self.filters,
             split_row_groups=self.row_groups_per_part,
             storage_options=self.storage_options,
             dataset=dataset_kwargs,

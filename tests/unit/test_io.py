@@ -881,3 +881,45 @@ def test_parquet_filtered_hive(tmpdir, cpu):
 
     # Make sure partitions were filtered
     assert len(ds.to_ddf().timestamp.unique()) == 1
+
+
+@pytest.mark.skipif(
+    LooseVersion(dask.__version__) < "2021.07.1",
+    reason="Dask>=2021.07.1 required for file aggregation",
+)
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_aggregate_files(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
+
+    # Setting `aggregate_files=True` should result
+    # in one large partition
+    ds = nvt.Dataset(path, engine="parquet", aggregate_files=True, part_size="1GB")
+    assert ds.to_ddf().npartitions == 1
+
+    # Setting `aggregate_files="timestamp"` should result
+    # in one partition for each unique value of "timestamp"
+    ds = nvt.Dataset(path, engine="parquet", aggregate_files="timestamp", part_size="1GB")
+    assert ds.to_ddf().npartitions == len(ddf.timestamp.unique())
+
+    # Combining `aggregate_files` and `filters` should work
+    ds = nvt.Dataset(
+        path,
+        engine="parquet",
+        aggregate_files="timestamp",
+        filters=[("timestamp", "==", 1)],
+        part_size="1GB",
+    )
+    assert ds.to_ddf().npartitions == 1
+    assert len(ds.to_ddf().timestamp.unique()) == 1
