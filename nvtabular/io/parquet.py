@@ -149,7 +149,7 @@ def _override_read_metadata(
     # Process the statistics.
     # Note that these steps are usaually performed after
     # `engine.read_metadata` returns (in Dask), but we are doing
-    # it ourselves in NVTabular (to assume control of the output
+    # it ourselves in NVTabular (to capture the expected output
     # partitioning plan)
     if statistics:
         result = list(
