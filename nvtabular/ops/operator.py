@@ -82,16 +82,18 @@ class Operator:
         # group (old, new) names, grab old if in new columns
         names_original, names_transformed = [], []
         for original_column in col_selector.names:
+            # logic works for all ops except TE
             new_cols = [
-                new_column for new_column in output_names if new_column.startswith(original_column)
+                new_column for new_column in output_names if original_column in new_column
             ]
             if new_cols:
-                # TODO: feature crosses? concantenated names?
-                assert len(new_cols) == 1
-                names_original.append(original_column)
                 # should only be 1 column collision
-                names_transformed.append(new_cols[0])
-        new_names = [name for name in output_names if name not in names_transformed]
+                for column in new_cols:
+                    if column not in names_transformed:
+                        names_original.append(original_column)
+                        names_transformed.append(column)
+        # if name is same from input schema means it was a used column, in op logic to mutate against selector columns
+        new_names = [name for name in output_names if name not in names_transformed and name not in input_schema.column_schemas]
         new_col_schemas = []
         # grab old column schemas and change the names
         for orig_col_name, new_column_name in zip(names_original, names_transformed):

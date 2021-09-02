@@ -238,7 +238,7 @@ class TargetEncoding(StatOperator):
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        return [f"{tag}_TE_{x}" for x in self.target]
+        return [f"TE_{tag}_{x}" for x in self.target]
 
     def _op_group_logic(self, cat_group, df, y_mean, fit_folds, group_ind):
         # Define name of new TE column
