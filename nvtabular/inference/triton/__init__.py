@@ -135,7 +135,9 @@ def export_pytorch_ensemble(
 
     # generate the TF saved model
     pt_path = os.path.join(model_path, name + "_pt")
-    pt_config = export_pytorch_model(model, workflow, data_loader, name + "_pt", pt_path, version=version)
+    pt_config = export_pytorch_model(
+        model, workflow, data_loader, name + "_pt", pt_path, version=version
+    )
 
     # override the output dtype of the nvtabular model if necessary (fixes mismatches
     # in dtypes between tf inputs and nvt outputs)
@@ -165,7 +167,7 @@ def export_pytorch_ensemble(
     _generate_ensemble_config(name, ensemble_path, nvt_config, pt_config)
 
 
-def export_pytorch_ensemble(model, workflow, name, model_path, label_columns, version=1):
+def export_pytorch_onnx_ensemble(model, workflow, name, model_path, label_columns, version=1):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch saved model
 
@@ -182,6 +184,8 @@ def export_pytorch_ensemble(model, workflow, name, model_path, label_columns, ve
     label_columns:
         Labels in the dataset (will be removed f
     """
+
+    import torch
 
     workflow = _remove_columns(workflow, label_columns)
 
@@ -544,7 +548,9 @@ def export_tensorflow_model(model, name, output_path, version=1):
     return config
 
 
-def export_pytorch_model(model, workflow, data_loader, name, output_path, version=1, backend="python"):
+def export_pytorch_model(
+    model, workflow, data_loader, name, output_path, version=1, backend="python"
+):
     """Exports a PyTorch model for serving with Triton
 
     Parameters
@@ -556,30 +562,30 @@ def export_pytorch_model(model, workflow, data_loader, name, output_path, versio
     output_path:
         The path to write the exported model to
     """
-    import torch
     import cloudpickle
-    
+    import torch
+
     out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, str(version)), exist_ok=True)
-    
+
     pt_model_path = os.path.join(output_path, str(version), "model.pth")
     torch.save(model.state_dict(), pt_model_path)
 
     pt_model_path = os.path.join(output_path, str(version), "model.pkl")
     with open(pt_model_path, "wb") as o:
         cloudpickle.dump(model, o)
-    
+
     copyfile(
         os.path.join(os.path.dirname(__file__), "model_pt.py"),
         os.path.join(output_path, str(version), "model.py"),
     )
-    
+
     config = model_config.ModelConfig(name=name, backend=backend)
-    
+
     for column, dtype in workflow.output_dtypes.items():
         _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
-    *_, last_layer =  model.parameters()
+    *_, last_layer = model.parameters()
     dims = last_layer.shape[0]
     dtype = last_layer.dtype
     config.output.append(
@@ -587,13 +593,13 @@ def export_pytorch_model(model, workflow, data_loader, name, output_path, versio
             name="output", data_type=_convert_pytorch_dtype(dtype), dims=[-1, dims]
         )
     )
-    
+
     if data_loader:
         with open(os.path.join(output_path, str(version), "model_info.json"), "w") as o:
             model_info = dict()
             model_info["sparse_max"] = data_loader.sparse_max
             json.dump(model_info, o)
-    
+
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
     return config
@@ -606,9 +612,7 @@ def _generate_pytorch_config(model, name, output_path, max_batch_size=None):
 
     for col in model.inputs:
         config.input.append(
-            model_config.ModelInput(
-                name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1]
-            )
+            model_config.ModelInput(name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1])
         )
 
     for col in model.outputs:
@@ -783,12 +787,13 @@ def _convert_dtype(dtype):
     if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
     raise ValueError(f"Can't convert dtype {dtype})")
-    
+
+
 def _convert_pytorch_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
-    
+
     import torch
-    
+
     if dtype == torch.float64:
         return model_config.TYPE_FP64
     if dtype == torch.float32:
@@ -818,13 +823,13 @@ def _convert_pytorch_dtype(dtype):
 
 def _convert_string2pytorch_dtype(dtype):
     """converts a dtype to the appropriate torch type"""
-    
+
     import torch
-    
+
     if dtype == "TYPE_FP64":
         return torch.float64
     if dtype == "TYPE_FP32":
-        return torch.float32 
+        return torch.float32
     if dtype == "TYPE_FP16":
         return torch.float16
     if dtype == "TYPE_INT64":
@@ -847,7 +852,7 @@ def _convert_string2pytorch_dtype(dtype):
         return torch.bool
     raise ValueError(f"Can't convert dtype {dtype})")
 
-    
+
 def _triton_datatype_to_dtype(data_type):
     """the reverse of _convert_dtype: converts a triton proto data_type to a numpy dtype"""
     name = model_config._DATATYPE.values[data_type].name[5:].lower()
