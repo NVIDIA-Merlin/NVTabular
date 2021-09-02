@@ -97,8 +97,10 @@ def register_dtype(column_schema, feature):
             feature = proto_dict["list"](column_schema, feature)
         if hasattr(column_schema.dtype, "kind"):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
-        else:
+        elif hasattr(column_schema.dtype, "item"):
             string_name = type(column_schema.dtype(1).item()).__name__
+        else:
+            string_name = column_schema.dtype.__name__
         feature = proto_dict[string_name](column_schema, feature)
     return feature
 
@@ -267,7 +269,11 @@ class Schema:
                 # if zero no values were passed
                 if domain_values.max > 0:
                     properties["domain"] = domain_values.min, domain_values.max
-                dtype = feat.type
+                if feat.type:
+                    if feat.type == 2:
+                        dtype = numpy.int
+                    elif feat.type == 3:
+                        dtype = numpy.float
             columns.append(
                 ColumnSchema(
                     feat.name, tags=tags, properties=properties, dtype=dtype, _is_list=_is_list

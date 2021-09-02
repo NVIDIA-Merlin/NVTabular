@@ -50,7 +50,7 @@ def test_column_schema_meta():
 @pytest.mark.parametrize("props2", [{}, {"p3": "p3", "p4": "p4"}])
 @pytest.mark.parametrize("tags1", [[], ["a", "b", "c"]])
 @pytest.mark.parametrize("tags2", [[], ["c", "d", "e"]])
-@pytest.mark.parametrize("d_type", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
+@pytest.mark.parametrize("d_type", [numpy.float, numpy.int])
 @pytest.mark.parametrize("list_type", [True, False])
 def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type, list_type):
     # create a schema
