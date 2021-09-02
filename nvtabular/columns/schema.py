@@ -212,6 +212,12 @@ class Schema:
         else:
             return self
 
+    def apply_inverse(self, selector):
+        if selector:
+            return self - self.select_by_name(selector.names)
+        else:
+            return self
+
     def select_by_tag(self, tags):
         if not isinstance(tags, list):
             tags = [tags]
@@ -319,3 +325,18 @@ class Schema:
 
     def __radd__(self, other):
         return self.__add__(other)
+
+    def __sub__(self, other):
+        if other is None:
+            return self
+
+        if not isinstance(other, Schema):
+            raise TypeError(f"unsupported operand type(s) for -: 'Schema' and {type(other)}")
+
+        result = Schema({**self.column_schemas})
+
+        for key in other.column_schemas.keys():
+            if key in self.column_schemas.keys():
+                result.column_schemas.pop(key, None)
+
+        return result
