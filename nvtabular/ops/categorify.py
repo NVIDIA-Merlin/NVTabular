@@ -174,6 +174,12 @@ class Categorify(StatOperator):
         value will be `max_size - num_buckets -1`.  Setting the max_size param means that
         freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
         smaller than the max_size value.
+    start_index: int, default 0
+        The start index where Categorify will begin to translate dataframe entries
+        into integer values. For instance, if our original translated dataframe entries appear 
+        as [[1], [1, 4], [3, 2], [2]], then with a start_index of 16, Categorify will now be 
+        [[16], [16, 19], [18, 17], [17]]. This option is useful to reserve an intial segment 
+        of non-negative translated integers for out-of-vocabulary or other special values. 
     """
 
     def __init__(
@@ -191,6 +197,7 @@ class Categorify(StatOperator):
         num_buckets=None,
         vocabs=None,
         max_size=0,
+        start_index=0,
     ):
 
         # We need to handle three types of encoding here:
@@ -603,6 +610,8 @@ class FitOptions:
         num_buckets:
             If specified will also do hashing operation for values that would otherwise be mapped
             to as unknown (by freq_limit or max_size parameters)
+        start_index: int
+            The index to start mapping our output categorical values to. 
     """
 
     col_groups: list
@@ -617,6 +626,7 @@ class FitOptions:
     name_sep: str = "-"
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
+    start_index: int = 0
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
