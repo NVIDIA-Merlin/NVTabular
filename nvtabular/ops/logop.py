@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import numpy
 import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _natural_log, annotate
@@ -45,6 +44,6 @@ class LogOp(Operator):
         return [CONTINUOUS]
 
     def _get_dtype(self):
-        return numpy.float
+        return np.float
 
     transform.__doc__ = Operator.transform.__doc__
