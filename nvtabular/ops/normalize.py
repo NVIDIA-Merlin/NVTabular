@@ -80,6 +80,12 @@ class Normalize(StatOperator):
         self.means = {}
         self.stds = {}
 
+    def _get_tags(self):
+        return [CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
+
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
@@ -146,7 +152,7 @@ class NormalizeMinMax(StatOperator):
             | Supports.GPU_DATAFRAME
         )
 
-    def _add_tags(self):
+    def _get_tags(self):
         return [CONTINUOUS]
 
     def _get_dtypes(self):

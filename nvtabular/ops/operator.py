@@ -83,17 +83,19 @@ class Operator:
         names_original, names_transformed = [], []
         for original_column in col_selector.names:
             # logic works for all ops except TE
-            new_cols = [
-                new_column for new_column in output_names if original_column in new_column
-            ]
+            new_cols = [new_column for new_column in output_names if original_column in new_column]
             if new_cols:
-                # should only be 1 column collision
                 for column in new_cols:
                     if column not in names_transformed:
                         names_original.append(original_column)
                         names_transformed.append(column)
-        # if name is same from input schema means it was a used column, in op logic to mutate against selector columns
-        new_names = [name for name in output_names if name not in names_transformed and name not in input_schema.column_schemas]
+        # if name is same from input schema means it was a used column,
+        # in op logic to mutate against selector columns
+        new_names = [
+            name
+            for name in output_names
+            if name not in names_transformed and name not in input_schema.column_schemas
+        ]
         new_col_schemas = []
         # grab old column schemas and change the names
         for orig_col_name, new_column_name in zip(names_original, names_transformed):

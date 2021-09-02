@@ -9,6 +9,7 @@ from nvtabular import ColumnSchema, ColumnSelector, Schema, ops
     "op",
     [
         (ops.Bucketize, [1]),
+        (ops.Rename, {"postfix": "_trim"}),
         ops.Categorify,
         (ops.Categorify, {"encode_type": "combo"}),
         (ops.Clip, 0),
@@ -30,7 +31,10 @@ def test_schema_out(tags, properties, selection, op):
     column_schemas = []
     all_cols = []
     if isinstance(op, tuple):
-        op = op[0](op[1])
+        if isinstance(op[1], dict):
+            op = op[0](**op[1])
+        else:
+            op = op[0](op[1])
     else:
         op = op()
     for x in range(5):
@@ -47,16 +51,16 @@ def test_schema_out(tags, properties, selection, op):
         assert len(new_schema) == len(selection)
     # should have dtype float
     for col_name in selector.names:
-        name = [name for name in new_schema.column_schemas if name.startswith(col_name)]
-        if name:
-            assert len(name) == 1
-            name = name[0]
-            schema1 = new_schema.column_schemas[name]
-            assert schema1.dtype == op._get_dtype()
-            all_tags = op._get_tags() + tags
-            assert len(schema1.tags) == len(all_tags)
-            assert set(op._get_tags()).issubset(schema1.tags)
-            assert schema1.properties == properties
+        names_group = [name for name in new_schema.column_schemas if col_name in name]
+        if names_group:
+            for name in names_group:
+                schema1 = new_schema.column_schemas[name]
+                # should not be exactly the same name, having gone through operator
+                assert schema1.dtype == op._get_dtype()
+                all_tags = op._get_tags() + tags
+                assert len(schema1.tags) == len(all_tags)
+                assert set(op._get_tags()).issubset(schema1.tags)
+                assert schema1.properties == properties
     not_used = [col for col in all_cols if col not in selector.names]
     for col_name in not_used:
         assert col_name not in new_schema.column_schemas
