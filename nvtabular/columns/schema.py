@@ -59,22 +59,33 @@ def register_list(column_schema, feature):
 
 
 def set_protobuf_float(column_schema, feature):
-    if str(column_schema.dtype) == ["float32", "float64"]:
-        # add emebeddings, tuple in properties (min, max)
+    col_min, col_max = 0, 0
+    if "domain" in column_schema.properties:
         col_min, col_max = column_schema.properties.pop("domain")
-        feature.float_domain.min = col_min
-        feature.float_domain.max = col_max
-        feature.type = 3
+    feature.float_domain.CopyFrom(
+        schema_pb2.FloatDomain(
+            name=column_schema.name,
+            min=col_min,
+            max=col_max,
+        )
+    )
+    feature.type = schema_pb2.FeatureType.FLOAT
     return feature
 
 
 def set_protobuf_int(column_schema, feature):
-    if str(column_schema.dtype) == ["int8", "int32", "int64"]:
-        # add emebeddings, tuple in properties (min, max)
+    col_min, col_max = 0, 0
+    if "domain" in column_schema.properties:
         col_min, col_max = column_schema.properties.pop("domain")
-        feature.int_domain.min = col_min
-        feature.int_domain.max = col_max
-        feature.type = 2
+    feature.int_domain.CopyFrom(
+        schema_pb2.IntDomain(
+            name=column_schema.name,
+            min=col_min,
+            max=col_max,
+            is_categorical="categorical" in column_schema.tags,
+        )
+    )
+    feature.type = schema_pb2.FeatureType.INT
     return feature
 
 
@@ -97,7 +108,6 @@ proto_dict = {
     "float": set_protobuf_float,
     "int": set_protobuf_int,
     "uint": set_protobuf_int,
-    "properties": register_extra_metadata,
 }
 
 
@@ -129,7 +139,13 @@ class ColumnSchema:
         return self.name
 
     def with_name(self, name) -> "ColumnSchema":
-        return ColumnSchema(name, tags=self.tags)
+        return ColumnSchema(
+            name,
+            tags=self.tags,
+            properties=self.properties,
+            dtype=self.dtype,
+            _is_list=self._is_list,
+        )
 
     def with_tags(self, tags) -> "ColumnSchema":
         if not isinstance(tags, list):
@@ -137,7 +153,13 @@ class ColumnSchema:
 
         tags = list(set(list(self.tags) + tags))
 
-        return ColumnSchema(self.name, tags=tags, properties=self.properties)
+        return ColumnSchema(
+            self.name,
+            tags=tags,
+            properties=self.properties,
+            dtype=self.dtype,
+            _is_list=self._is_list,
+        )
 
     def with_properties(self, properties):
         if not isinstance(properties, dict):
@@ -146,7 +168,19 @@ class ColumnSchema:
         # Using new dictionary to avoid passing old ref to new schema
         properties.update(self.properties)
 
-        return ColumnSchema(self.name, tags=self.tags, properties=properties)
+        return ColumnSchema(
+            self.name,
+            tags=self.tags,
+            properties=properties,
+            dtype=self.dtype,
+            _is_list=self._is_list,
+        )
+
+    def with_dtype(self, dtype, is_list=None):
+        is_list = is_list or self._is_list
+        return ColumnSchema(
+            self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSchema):
@@ -156,11 +190,9 @@ class ColumnSchema:
             and self.tags == other.tags
             and len(other.properties) == len(self.properties)
             and self._is_list == other._is_list
+            and self.properties == other.properties
         ):
             # iterate through to ensure ALL keys AND values equal
-            for prop_name, prop_value in other.properties.items():
-                if prop_name not in self.properties or self.properties[prop_name] != prop_value:
-                    return False
             return True
         return False
 
@@ -227,6 +259,7 @@ class Schema:
 
         for feat in schema.feature:
             _is_list = False
+            dtype = None
             properties = {}
             tags = list(feat.annotation.tag) or []
             # only one item should ever be in extra_metadata
@@ -245,10 +278,14 @@ class Schema:
             field_name = feat.WhichOneof("domain_info")
             if field_name:
                 domain_values = getattr(feat, field_name)
-                min_max = domain_values.min, domain_values.max
-                properties["domain"] = min_max
+                # if zero no values were passed
+                if domain_values.max > 0:
+                    properties["domain"] = domain_values.min, domain_values.max
+                dtype = feat.type
             columns.append(
-                ColumnSchema(feat.name, tags=tags, properties=properties, _is_list=_is_list)
+                ColumnSchema(
+                    feat.name, tags=tags, properties=properties, dtype=dtype, _is_list=_is_list
+                )
             )
 
         return Schema(columns)
