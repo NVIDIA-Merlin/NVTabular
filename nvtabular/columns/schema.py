@@ -182,20 +182,6 @@ class ColumnSchema:
             self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
         )
 
-    def __eq__(self, other):
-        if not isinstance(other, ColumnSchema):
-            return False
-        if (
-            self.name == other.name
-            and self.tags == other.tags
-            and len(other.properties) == len(self.properties)
-            and self._is_list == other._is_list
-            and self.properties == other.properties
-        ):
-            # iterate through to ensure ALL keys AND values equal
-            return True
-        return False
-
 
 class Schema:
     """A collection of column schemas for a dataset."""
