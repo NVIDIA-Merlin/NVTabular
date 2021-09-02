@@ -212,6 +212,7 @@ def test_nested_workflow_node():
             "user": ["User_A", "User_A", "User_A", "User_B"],
         }
     )
+    dataset = Dataset(df)
 
     geo_selector = ColumnSelector(["geo"])
     country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
@@ -220,8 +221,8 @@ def test_nested_workflow_node():
     # as well as categorifying the country and user columns on their own
     cats = country + "user" + [country + "user"] >> Categorify(encode_type="combo")
 
-    workflow = Workflow(cats)
-    df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    workflow = Workflow(cats).fit(dataset)
+    df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     geo_country = df_out["geo_country"]
     assert geo_country[0] == geo_country[1]  # rows 0,1 are both 'US'
