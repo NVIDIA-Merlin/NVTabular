@@ -25,29 +25,37 @@ def test_workflow_node_converts_lists_to_selectors():
 
 
 def test_input_output_column_names():
+    schema = Schema(["a", "b", "c", "d", "e"])
+
     input_node = ["a", "b", "c"] >> FillMissing()
-    assert input_node.input_columns.names == ["a", "b", "c"]
-    assert input_node.output_columns.names == ["a", "b", "c"]
+    workflow = Workflow(input_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["a", "b", "c"]
 
     chained_node = input_node >> Categorify()
-    assert chained_node.input_columns.names == ["a", "b", "c"]
-    assert chained_node.output_columns.names == ["a", "b", "c"]
+    workflow = Workflow(chained_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["a", "b", "c"]
 
     selection_node = input_node[["b", "c"]]
-    assert selection_node.input_columns.names == ["b", "c"]
-    assert selection_node.output_columns.names == ["b", "c"]
+    workflow = Workflow(selection_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["b", "c"]
+    assert workflow.output_node.output_columns.names == ["b", "c"]
 
     addition_node = input_node + ["d"]
-    assert addition_node.input_columns.names == ["a", "b", "c", "d"]
-    assert addition_node.output_columns.names == ["a", "b", "c", "d"]
+    workflow = Workflow(addition_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c", "d"]
+    assert workflow.output_node.output_columns.names == ["a", "b", "c", "d"]
 
     rename_node = input_node >> Rename(postfix="_renamed")
-    assert rename_node.input_columns.names == ["a", "b", "c"]
-    assert rename_node.output_columns.names == ["a_renamed", "b_renamed", "c_renamed"]
+    workflow = Workflow(rename_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["a_renamed", "b_renamed", "c_renamed"]
 
     dependency_node = input_node >> TargetEncoding("d")
-    assert dependency_node.input_columns.names == ["a", "b", "c"]
-    assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
+    workflow = Workflow(dependency_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
 
 
 def test_dependency_column_names():
