@@ -313,11 +313,7 @@ class Schema:
     def __eq__(self, other):
         if not isinstance(other, Schema) or len(self.column_schemas) != len(other.column_schemas):
             return False
-        for col_name, col_schema in self.column_schemas.items():
-            # if not in or if not the same, Fail
-            if col_name not in other.column_schemas or other.column_schemas[col_name] != col_schema:
-                return False
-        return True
+        return self.column_schemas == other.column_schemas
 
     def __add__(self, other):
         if other is None:
