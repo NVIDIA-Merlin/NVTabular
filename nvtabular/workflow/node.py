@@ -168,6 +168,8 @@ class WorkflowNode:
         elif isinstance(right_arg, ColumnSelector):
             added_selectors.append(right_arg)
         elif isinstance(right_arg, list):
+            # TODO: How can we maintain grouping during addition
+            # when we add on a list of nodes and/or selectors?
             list_selector = ColumnSelector()
             for element in right_arg:
                 if isinstance(element, WorkflowNode):
@@ -217,6 +219,60 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
+        # In addition:
+        # - WorkflowNodes become parents
+        # - ColumnSelectors become dependencies
+
+        # In subtraction:
+        # - The order of WorkflowNodes matters (parents are kinda sorta ordered as a list)
+        # - ColumnSelectors as dependencies all get subtracted?
+
+        # We don't have schemas yet, because we're still in graph construction and haven't
+        # computed schemas yet
+        # We can't think about selectors as list of columns, because they might have tags
+
+        # ==============================================================================
+        # What node structure do we need to support subtraction between tag selectors?
+        # ==============================================================================
+
+        # Have to be able to store info for:
+        # WorkflowNode - WorkflowNode
+        # WorkflowNode - ColumnSelector
+        # ColumnSelector - WorkflowNode (maybe?)
+        # ColumnSelector - ColumnSelector (this should be easy,
+        # because there's no graph node)
+
+        # node = ["a", "b", "c"] >> Rename()
+        # node_selector = node - ColumnSelector(tags=[DefaultTags.CONTINUOUS])
+
+        # node_node = node - ColumnSelector(tags=[CONTINUOUS]) >> FillMissing()
+        # we add a subtraction node with SubsetColumns op
+        # original node becomes a parent
+        # where does the subtracted node get stored? is it a dependency?
+
+        # ColumnSelector(tags=[DefaultTags.CATEGORICAL]) - node
+        # selector becomes a subtraction node with SubsetColumns op
+        # where does the node get stored?
+        # can't be a parent, because that won't work for the node-node case
+
+        # We could make everything that should be subtracted (the right hand side)
+        # a dependency (both nodes and selectors)
+
+        # Then we might need to update the `Workflow.transform` code
+        # And now the order of dependencies matters
+
+        # node - ColumnSelector(CONTINUOUS) - ColumnSelector(CATEGORICAL)
+
+        # At schema computation time, iterate through the dependencies, grab or
+        # compute the schema for each of the dependencies,
+        # then subtract from the node's input schema one at a time,
+        # continue until finished with the deps
+
+        # What refactors will make this easy?
+        # - The schema <-> selector conversion methods
+        # - Methods for adding/removing parents and dependencies (getters and setters or...)
+        # - Maybe something in the `Workflow` code to handle nodes as dependencies(?)
+
         if isinstance(other, WorkflowNode):
             to_remove = set(other.output_columns)
         elif isinstance(other, str):
@@ -258,6 +314,12 @@ class WorkflowNode:
 
     @property
     def input_columns(self):
+        if not self.input_schema:
+            raise RuntimeError(
+                "The input columns aren't computed until the workflow "
+                "is fit to a dataset or input schema."
+            )
+
         if self.selector:
             # To maintain column groupings
             return self.selector
@@ -266,6 +328,12 @@ class WorkflowNode:
 
     @property
     def output_columns(self):
+        if not self.input_schema:
+            raise RuntimeError(
+                "The output columns aren't computed until the workflow "
+                "is fit to a dataset or input schema."
+            )
+
         return ColumnSelector(self.output_schema.column_names)
 
     @property
