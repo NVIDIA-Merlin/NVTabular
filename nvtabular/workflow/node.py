@@ -18,7 +18,6 @@ import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
-from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
 class WorkflowNode:
@@ -33,11 +32,12 @@ class WorkflowNode:
         Defines which columns to select from the input Dataset using column names and tags.
     """
 
-    def __init__(self, selector):
+    def __init__(self, selector=None):
         self.parents = []
         self.children = []
+        self.dependencies = []
+
         self.op = None
-        self.dependencies = None
         self.input_schema = None
         self.output_schema = None
 
@@ -49,7 +49,7 @@ class WorkflowNode:
             )
             selector = ColumnSelector(selector)
 
-        if not isinstance(selector, ColumnSelector):
+        if selector and not isinstance(selector, ColumnSelector):
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
         self._selector = selector
@@ -66,16 +66,14 @@ class WorkflowNode:
         self._selector = sel
 
     def compute_schemas(self, root_schema):
-        parent_outputs_schema = sum([parent.output_schema for parent in self.parents], Schema())
-
         if self.selector:
             upstream_schema = Schema()
             upstream_schema += root_schema
-            upstream_schema += parent_outputs_schema
+            upstream_schema += self.parents_schema
 
             self.input_schema = upstream_schema.apply(self.selector)
         else:
-            self.input_schema = parent_outputs_schema
+            self.input_schema = self.parents_schema
 
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
@@ -111,8 +109,6 @@ class WorkflowNode:
         dependencies = operator.dependencies()
 
         if dependencies:
-            child.dependencies = set()
-            child.dependencies = []
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
@@ -164,14 +160,6 @@ class WorkflowNode:
             added_selector = ColumnSelector(subgroups=added_selector)
         else:
             added_selector = ColumnSelector(right_arg)
-
-        # check if there are any columns with the same name in both column groups
-        overlap = set(left_arg.output_columns.grouped_names).intersection(
-            added_selector.grouped_names
-        )
-
-        if overlap:
-            raise ValueError(f"duplicate column names found: {overlap}")
 
         if isinstance(left_arg.op, internal.ConcatColumns):
             child = left_arg
@@ -251,33 +239,34 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
+    def dependencies_schema(self):
+        schema = Schema()
+        for dep in self.dependencies:
+            if isinstance(dep, ColumnSelector):
+                schema += Schema(dep.names)
+        return schema
+
+    @property
+    def parents_schema(self):
+        return sum([parent.output_schema for parent in self.parents], Schema())
+
+    @property
     def input_columns(self):
-        return self.selector
+        if self.selector:
+            return self.selector
+        else:
+            return ColumnSelector(self.input_schema.column_names)
 
     @property
     def output_columns(self):
-        if isinstance(self.op, SubsetColumns):
-            return self.selector
-        elif self.op:
+        if self.op:
             return self.op.output_column_names(self.input_columns)
         else:
             return self.input_columns
 
     @property
     def dependency_columns(self):
-        dependency_cols = []
-
-        if not self.dependencies:
-            return ColumnSelector(dependency_cols)
-
-        # Dependencies can be either WorkflowNodes or ColumnSelectors
-        # WorkflowNodes are already handled as parents, but we still
-        # need to account for the columns in raw (non-node) selectors
-        for selector in self.dependencies:
-            if isinstance(selector, ColumnSelector):
-                dependency_cols += selector.names
-
-        return ColumnSelector(dependency_cols)
+        return ColumnSelector(self.dependencies_schema.column_names)
 
     @property
     def label(self):

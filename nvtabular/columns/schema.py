@@ -207,7 +207,7 @@ class Schema:
         return list(self.column_schemas.keys())
 
     def apply(self, selector):
-        if selector:
+        if selector and selector.names:
             return self.select_by_name(selector.names)
         else:
             return self
