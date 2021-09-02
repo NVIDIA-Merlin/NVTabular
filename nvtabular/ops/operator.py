@@ -60,19 +60,24 @@ class Operator:
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
-         returns a set of schemas for the transformed columns this operator will produce
-         Parameters
-         -----------
-         input_schema: Schema
-             The schemas of the columns to apply this operator to
-         col_selector: ColumnSelector
-             The column selector to apply to the input schema
-         Returns
-         -------
+        returns a set of schemas for the transformed columns this operator will produce
+        Parameters
+        -----------
+        input_schema: Schema
+            The schemas of the columns to apply this operator to
+        col_selector: ColumnSelector
+            The column selector to apply to the input schema
+        Returns
+        -------
         Schema
-             The schemas of the columns produced by this operator
+            The schemas of the columns produced by this operator
         """
-        output_selector = self.output_column_names(col_selector)
+        if col_selector and col_selector.names:
+            input_selector = col_selector
+        else:
+            input_selector = ColumnSelector(input_schema.column_names)
+
+        output_selector = self.output_column_names(input_selector)
         output_names = (
             output_selector.names
             if isinstance(output_selector, ColumnSelector)

@@ -32,13 +32,13 @@ import pandas as pd
 from dask.core import flatten
 
 import nvtabular
-from nvtabular.columns import ColumnSchema, Schema
+from nvtabular.columns import Schema
 from nvtabular.dispatch import _concat_columns
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
-from nvtabular.workflow.node import WorkflowNode, _merge_add_nodes, iter_nodes
+from nvtabular.workflow.node import WorkflowNode, iter_nodes
 
 LOG = logging.getLogger("nvtabular")
 
@@ -77,10 +77,11 @@ class Workflow:
     """
 
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
-        self.output_node = _merge_add_nodes(output_node)
+        self.output_node = output_node
         self.client = client
         self.input_dtypes = None
         self.output_dtypes = None
+        self.output_schema = None
 
         # Warn user if there is an unused global
         # Dask client available
@@ -91,10 +92,6 @@ class Workflow:
                 "use the `client` argument to initialize a `Workflow` object "
                 "with distributed-execution enabled."
             )
-
-    @property
-    def output_schema(self):
-        return self.output_node.output_schema
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -113,6 +110,10 @@ class Workflow:
         Dataset
         """
         self._clear_worker_cache()
+
+        if not self.output_schema:
+            self.fit_schema(dataset.infer_schema())
+
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
             _transform_ddf(ddf, self.output_node, self.output_dtypes),
@@ -121,7 +122,7 @@ class Workflow:
             base_dataset=dataset.base_dataset,
         )
 
-    def fit_schema(self, input_schema: Schema):
+    def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
             node: _get_schemaless_nodes(node.parents)
             for node in _get_schemaless_nodes([self.output_node])
@@ -157,7 +158,11 @@ class Workflow:
             for dependencies in schemaless_nodes.values():
                 dependencies.difference_update(current_phase)
 
-    def fit(self, dataset: Dataset):
+        self.output_schema = self.output_node.output_schema
+
+        return self
+
+    def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
 
         Parameters
@@ -167,15 +172,11 @@ class Workflow:
             data should be the training dataset only.
         """
         self._clear_worker_cache()
+
+        if not self.output_schema:
+            self.fit_schema(dataset.infer_schema())
+
         ddf = dataset.to_ddf(columns=self._input_columns())
-
-        # Create a schema for the dataset
-        col_schemas = []
-        for column_name in ddf.columns:
-            col_schemas.append(ColumnSchema(column_name))
-        input_schema = Schema(col_schemas)
-
-        self.fit_schema(input_schema)
 
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
@@ -241,6 +242,8 @@ class Workflow:
         self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         output_dtypes = self.transform(dataset).sample_dtypes()
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
+
+        return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
