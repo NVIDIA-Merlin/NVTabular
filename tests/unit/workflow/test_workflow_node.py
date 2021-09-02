@@ -91,6 +91,36 @@ def test_workflow_node_addition():
     assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e", "f")]
 
 
+def test_addition_nodes_are_combined():
+    node1 = ["a", "b"] >> Operator()
+    node2 = ["c", "d"] >> Operator()
+    node3 = ["e", "f"] >> Operator()
+    node4 = ["g", "h"] >> Operator()
+
+    add_node = node1 + node2 + node3
+    assert set(add_node.parents) == {node1, node2, node3}
+    assert set(add_node.selector.names) == {"a", "b", "c", "d", "e", "f"}
+
+    add_node = node1 + "c" + "d"
+    assert set(add_node.parents) == {node1}
+    assert set(add_node.selector.names) == {"a", "b", "c", "d"}
+
+    add_node = "c" + node1 + "d"
+    assert set(add_node.parents) == {node1}
+    assert set(add_node.selector.names) == {"a", "b", "c", "d"}
+
+    add_node = node1 + "e" + node2
+    assert set(add_node.parents) == {node1, node2}
+    assert set(add_node.selector.names) == {"a", "b", "e", "c", "d"}
+
+    add_node1 = node1 + node2
+    add_node2 = node3 + node4
+
+    add_node = add_node1 + add_node2
+    assert set(add_node.parents) == {node1, node2, node3, node4}
+    assert set(add_node.selector.names) == {"a", "b", "c", "d", "e", "f", "g", "h"}
+
+
 def test_workflow_node_dependencies():
     # Full WorkflowNode case
     node1 = ["a", "b"] >> Operator()
