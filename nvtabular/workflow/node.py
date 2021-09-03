@@ -88,6 +88,19 @@ class WorkflowNode:
         return sum([parent.output_schema for parent in self.parents], Schema())
 
     def compute_schemas(self, root_schema):
+        # If parent is an addition node, we may need to propagate grouping
+        # unless we're a node that already has a selector
+        if not self.selector:
+            if (
+                len(self.parents) == 1
+                and isinstance(self.parents[0].op, internal.ConcatColumns)
+                and self.parents[0].selector
+                and self.parents[0].selector.names
+            ):
+
+                self.selector = self.parents[0].selector
+
+        # If we have a selector, apply it to upstream schemas from nodes/dataset
         if self.selector:
             upstream_schema = Schema()
             upstream_schema += root_schema
@@ -95,8 +108,38 @@ class WorkflowNode:
             upstream_schema += self.dependency_schema
             self.input_schema = upstream_schema.apply(self.selector)
         else:
+            # If we don't have a selector but we're an addition node,
             if isinstance(self.op, ConcatColumns):
+                upstream_selector = ColumnSelector()
+
+                for parent in self.parents:
+                    upstream_selector += ColumnSelector(parent.output_schema.column_names)
+
+                for dep in self.dependencies:
+                    if isinstance(dep, WorkflowNode):
+                        upstream_selector += ColumnSelector(dep.output_schema.column_names)
+                    elif isinstance(dep, ColumnSelector):
+                        upstream_selector += dep
+                    elif isinstance(dep, list):
+                        subgroup_selector = ColumnSelector()
+                        for elem in dep:
+                            if isinstance(elem, WorkflowNode):
+                                subgroup_selector += ColumnSelector(elem.output_schema.column_names)
+                            elif isinstance(elem, ColumnSelector):
+                                subgroup_selector += elem
+
+                        upstream_selector += ColumnSelector(subgroups=[subgroup_selector])
+
+                if upstream_selector.names:
+                    self.selector = upstream_selector
+
+                # For addition nodes, some of the operands are parents and
+                # others are dependencies so grab schemas from both
                 self.input_schema = self.parents_schema + self.dependency_schema
+
+            # If we're a subtraction node, we have to do some gymnastics to compute
+            # the schema, because operands may be in the parents or the dependencies
+            # or both
             elif isinstance(self.op, SubsetColumns):
                 operands = self.parents + self.dependencies
                 left_operand = operands.pop(0)
@@ -115,9 +158,14 @@ class WorkflowNode:
 
                 self.input_schema = left_operand_schema - operands_schema
 
+            # If none of the above apply, then we don't have a selector
+            # and we're not an add or sub node, so our input is just the
+            # parents output
             else:
                 self.input_schema = self.parents_schema
 
+        # Then we delegate to the op (if there is one) to compute this node's
+        # output schema. If there's no op, then outputs are just the inputs
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
         else:
