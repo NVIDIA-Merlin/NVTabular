@@ -22,12 +22,12 @@ from dask.delayed import Delayed
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
-CONTINUOUS = DefaultTags.CONTINUOUS
+CONTINUOUS = Tags.CONTINUOUS
 
 
 class JoinGroupby(StatOperator):
@@ -206,10 +206,10 @@ class JoinGroupby(StatOperator):
         self.categories = {}
         self.storage_name = {}
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CONTINUOUS]
 
-    def _get_dtype(self):
+    def output_dtype(self):
         return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__

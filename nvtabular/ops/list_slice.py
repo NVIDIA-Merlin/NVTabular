@@ -23,10 +23,10 @@ except ImportError:
 
 from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-LIST = DefaultTags.LIST
+LIST = Tags.LIST
 
 
 class ListSlice(Operator):
@@ -93,7 +93,7 @@ class ListSlice(Operator):
 
         return ret
 
-    def _get_tags(self):
+    def output_tags(self):
         return [LIST]
 
     transform.__doc__ = Operator.transform.__doc__

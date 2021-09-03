@@ -38,11 +38,11 @@ from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
-CATEGORICAL = DefaultTags.CATEGORICAL
+CATEGORICAL = Tags.CATEGORICAL
 
 
 class Categorify(StatOperator):
@@ -469,7 +469,7 @@ class Categorify(StatOperator):
 
         return nvtabular_cpp.inference.CategorifyTransform(self)
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CATEGORICAL]
 
     def _get_dtypes(self):

@@ -1,12 +1,11 @@
 from enum import Enum
 
 
-class DefaultTags(Enum):
+class Tags(Enum):
     # Feature types
     CATEGORICAL = "categorical"
     CONTINUOUS = "continuous"
     LIST = "list"
-    IMAGE = "image"
     TEXT = "text"
     TEXT_TOKENIZED = "text_tokenized"
     TIME = "time"

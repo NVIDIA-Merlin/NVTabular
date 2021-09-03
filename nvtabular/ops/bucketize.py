@@ -19,10 +19,10 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-CATEGORICAL = DefaultTags.CATEGORICAL
+CATEGORICAL = Tags.CATEGORICAL
 
 
 class Bucketize(Operator):
@@ -89,7 +89,7 @@ class Bucketize(Operator):
                 new_df[col] = val
         return new_df
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CATEGORICAL]
 
     def _get_dtypes(self):

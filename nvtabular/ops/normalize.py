@@ -17,12 +17,12 @@ import dask.dataframe as dd
 import numpy
 
 from ..dispatch import DataFrameType, annotate
-from ..tags import DefaultTags
+from ..tags import Tags
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator, Supports
 from .stat_operator import StatOperator
 
-CONTINUOUS = DefaultTags.CONTINUOUS
+CONTINUOUS = Tags.CONTINUOUS
 
 
 class Normalize(StatOperator):
@@ -80,7 +80,7 @@ class Normalize(StatOperator):
         self.means = {}
         self.stds = {}
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CONTINUOUS]
 
     def _get_dtypes(self):
@@ -152,7 +152,7 @@ class NormalizeMinMax(StatOperator):
             | Supports.GPU_DATAFRAME
         )
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CONTINUOUS]
 
     def _get_dtypes(self):

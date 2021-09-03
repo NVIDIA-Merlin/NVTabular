@@ -17,10 +17,10 @@ import numpy
 
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-CONTINUOUS = DefaultTags.CONTINUOUS
+CONTINUOUS = Tags.CONTINUOUS
 
 
 class DifferenceLag(Operator):
@@ -89,7 +89,7 @@ class DifferenceLag(Operator):
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CONTINUOUS]
 
     def _dtype(self):

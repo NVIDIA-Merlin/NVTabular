@@ -19,10 +19,10 @@ import numpy
 
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-CATEGORICAL = DefaultTags.CATEGORICAL
+CATEGORICAL = Tags.CATEGORICAL
 
 
 class HashedCross(Operator):
@@ -76,7 +76,7 @@ class HashedCross(Operator):
     def output_column_names(self, columns):
         return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CATEGORICAL]
 
     def _get_dtypes(self):

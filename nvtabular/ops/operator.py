@@ -87,6 +87,7 @@ class Operator:
         # group (old, new) names, grab old if in new columns
         names_original, names_transformed = [], []
         for original_column in col_selector.names:
+
             # logic works for all ops except TE
             new_cols = [new_column for new_column in output_names if original_column in new_column]
             if new_cols:
@@ -94,6 +95,7 @@ class Operator:
                     if column not in names_transformed:
                         names_original.append(original_column)
                         names_transformed.append(column)
+
         # if name is same from input schema means it was a used column,
         # in op logic to mutate against selector columns
         new_names = [
@@ -102,15 +104,19 @@ class Operator:
             if name not in names_transformed and name not in input_schema.column_schemas
         ]
         new_col_schemas = []
+
         # grab old column schemas and change the names
         for orig_col_name, new_column_name in zip(names_original, names_transformed):
             orig_col_schema = input_schema.column_schemas[orig_col_name]
             new_col_schemas.append(orig_col_schema.with_name(new_column_name))
+
         # create column Schemas for new columns
         for new_col_name in new_names:
             if new_col_name not in input_schema.column_schemas:
+
                 # needs to be filled in
                 new_col_schemas.append(ColumnSchema(new_col_name))
+
         # add in all tags properties and update dtypes
         final_new_cols = []
         for column in new_col_schemas:
@@ -121,18 +127,19 @@ class Operator:
         return Schema(final_new_cols)
 
     def _add_tags(self, column_schema):
-        return column_schema.with_tags(self._get_tags())
+        return column_schema.with_tags(self.output_tags())
 
     def _add_properties(self, column_schema):
+
         # get_properties should return the additional properties
         # for target column
-        target_column_properties = self._get_properties()[column_schema.name]
+        target_column_properties = self.output_properties()[column_schema.name]
         return column_schema.with_properties(target_column_properties)
 
     def _update_dtype(self, column_schema):
-        return column_schema.with_dtype(self._get_dtype())
+        return column_schema.with_dtype(self.output_dtype())
 
-    def _get_dtype(self):
+    def output_dtype(self):
         """
         Retrieves a dictionary of format; column_name: column_dtype. For all
         input(with output_names) and created columns
@@ -140,14 +147,14 @@ class Operator:
         # return dict of dtypes of all columns transformed and new columns formed
         return None
 
-    def _get_tags(self):
+    def output_tags(self):
         """
         Retrieves
         """
         # returns a dict of column_name: tags to add to the output columns
         return []
 
-    def _get_properties(self):
+    def output_properties(self):
         # returns dict with column_name: properties to add
         return {}
 

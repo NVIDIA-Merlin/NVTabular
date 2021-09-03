@@ -17,10 +17,10 @@ from dask.dataframe.utils import meta_nonempty
 
 from nvtabular.dispatch import DataFrameType, annotate
 
-from ..tags import DefaultTags
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-CATEGORICAL = DefaultTags.CATEGORICAL
+CATEGORICAL = Tags.CATEGORICAL
 
 
 class Groupby(Operator):
@@ -136,7 +136,7 @@ class Groupby(Operator):
 
         return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
-    def _get_tags(self):
+    def output_tags(self):
         return [CATEGORICAL]
 
     def _dtypes(self):
