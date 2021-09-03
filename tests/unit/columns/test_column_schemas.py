@@ -13,19 +13,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from pathlib import Path
+
+import numpy
 import pytest
 
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
 
 
-def test_column_schema():
-    column = ColumnSchema("name", tags=["tag-1"])
+@pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
+def test_dtype_column_schema(d_types):
+    column = ColumnSchema("name", tags=[], properties=[], dtype=d_types)
+    assert column.dtype == d_types
+
+
+def test_column_schema_meta():
+    column = ColumnSchema("name", tags=["tag-1"], properties={"p1": "prop-1"})
 
     assert column.name == "name"
     assert column.tags[0] == "tag-1"
     assert column.with_name("a").name == "a"
     assert set(column.with_tags("tag-2").tags) == set(["tag-1", "tag-2"])
+    assert column.with_properties({"p2": "prop-2"}).properties == {"p1": "prop-1", "p2": "prop-2"}
+    assert column.with_tags("tag-2").properties == {"p1": "prop-1"}
+    assert set(column.with_properties({"p2": "prop-2"}).tags) == set(["tag-1"])
+
+    assert column == ColumnSchema("name", tags=["tag-1"], properties={"p1": "prop-1"})
+    # should not be the same no properties
+    assert column != ColumnSchema("name", tags=["tag-1"])
+    # should not be the same no tags
+    assert column != ColumnSchema("name", properties={"p1": "prop-1"})
+
+
+@pytest.mark.parametrize("props1", [{}, {"p1": "p1", "p2": "p2"}])
+@pytest.mark.parametrize("props2", [{}, {"p3": "p3", "p4": "p4"}])
+@pytest.mark.parametrize("tags1", [[], ["a", "b", "c"]])
+@pytest.mark.parametrize("tags2", [[], ["c", "d", "e"]])
+@pytest.mark.parametrize("d_type", [numpy.float, numpy.int])
+@pytest.mark.parametrize("list_type", [True, False])
+def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type, list_type):
+    # create a schema
+    schema1 = ColumnSchema("col1", tags=tags1, properties=props1, dtype=d_type, _is_list=list_type)
+    schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type, _is_list=list_type)
+    column_schema_set = Schema([schema1, schema2])
+    # write schema out
+    schema_path = Path(tmpdir, "test.py")
+    column_schema_set = column_schema_set.save_protobuf(schema_path)
+    # read schema back in
+    target = Schema.load_protobuf(schema_path)
+    # compare read to origin
+    assert column_schema_set == target
 
 
 def test_dataset_schema_constructor():
@@ -131,5 +169,18 @@ def test_applying_selector_to_schema_selects_relevant_columns():
 
     selector = None
     result = schema.apply(selector)
+
+    assert result == schema
+
+
+def test_applying_inverse_selector_to_schema_selects_relevant_columns():
+    schema = Schema(["a", "b", "c", "d", "e"])
+    selector = ColumnSelector(["a", "b"])
+    result = schema.apply_inverse(selector)
+
+    assert result == Schema(["c", "d", "e"])
+
+    selector = None
+    result = schema.apply_inverse(selector)
 
     assert result == schema

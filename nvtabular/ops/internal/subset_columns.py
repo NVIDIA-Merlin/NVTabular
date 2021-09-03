@@ -45,6 +45,9 @@ class SubsetColumns(Operator):
         """
         return df[col_selector.names]
 
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
+        return col_selector
+
     @property
     def label(self) -> str:
         return self._label
