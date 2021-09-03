@@ -115,28 +115,29 @@ To run NVTabular on Databricks, do the following:
 4. We will extend the above container and add NVTabular and PyTorch to run inside Databricks. All versions of NVTabular conda repo are listed [here](https://anaconda.org/nvidia/nvtabular/files?version=). Select the required version from the list.
 
 5. Clone the cloud-ml-example repo
-```
-git clone https://github.com/rapidsai/cloud-ml-examples.git
-```
+    ```
+    git clone https://github.com/rapidsai/cloud-ml-examples.git
+    ```
 
 6. Now add the required NVTabular version of the conda repo to the [rapids-spec.txt](https://github.com/rapidsai/cloud-ml-examples/blob/main/databricks/docker/rapids-spec.txt).Change the version accordingly if you need the latest release.
-```
-cd databricks
-echo "https://conda.anaconda.org/nvidia/linux-64/nvtabular-0.6.1-py38_0.tar.bz2" >> docker/rapids-spec.txt
-```
+    ```
+    cd databricks
+    echo "https://conda.anaconda.org/nvidia/linux-64/nvtabular-0.6.1-py38_0.tar.bz2" >> docker/rapids-spec.txt
+    ```
 
 7. To install PyTorch, add the fastai pip package install to the Dockerfile
-```
-RUN pip install fastai
-```
+    ```
+    RUN pip install fastai
+    ```
+
 8. Now build the container and push it to either Dockerhub, AWS Elastic Container Registry.
 
-```
-docker build --tag <repo_name>/databricks_nvtabular:latest docker push <repo_name>/databricks_nvtabular:latest 
-```
+    ```
+    docker build --tag <repo_name>/databricks_nvtabular:latest docker push <repo_name>/databricks_nvtabular:latest 
+    ```
 
 9. Once the container is pushed to a repo. we can now use the custom container to spin up our databricks cluster.
 
-![Databricks NVTabular](/images/nvt_databricks.png)
+    ![Databricks NVTabular](/images/nvt_databricks.png)
 
 10. Now select a GPU node for both Worker and Driver. When the cluster comes up we will have NVTabular working inside Databricks cluster.

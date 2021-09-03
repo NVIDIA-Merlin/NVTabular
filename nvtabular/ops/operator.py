@@ -72,12 +72,18 @@ class Operator:
         Schema
             The schemas of the columns produced by this operator
         """
-        output_selector = self.output_column_names(col_selector)
+        if col_selector and col_selector.names:
+            input_selector = col_selector
+        else:
+            input_selector = ColumnSelector(input_schema.column_names)
+
+        output_selector = self.output_column_names(input_selector)
         output_names = (
             output_selector.names
             if isinstance(output_selector, ColumnSelector)
             else output_selector
         )
+
         return Schema(output_names)
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
