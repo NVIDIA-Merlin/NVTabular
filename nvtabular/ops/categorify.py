@@ -34,7 +34,7 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.dispatch import DataFrameType, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -892,7 +892,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [df._constructor_sliced([None], dtype=df[col].dtype), df[col]],
+                    [_nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
             else:
@@ -1079,7 +1079,7 @@ def _encode(
         value = type(df)()
         for c in selection_r:
             typ = df[selection_l[0]].dtype if len(selection_l) == 1 else df[c].dtype
-            value[c] = df._constructor_sliced([None], dtype=typ)
+            value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
@@ -1089,8 +1089,8 @@ def _encode(
             codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
-            for c in selection_l:
-                codes[c] = df[c].copy()
+            for cl, cr in zip(selection_l, selection_r):
+                codes[cl] = df[cl].copy().astype(value[cr].dtype)
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(df, buckets, selection_l, encode_type=encode_type)
         # apply frequency hashing

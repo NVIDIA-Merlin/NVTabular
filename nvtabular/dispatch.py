@@ -68,6 +68,13 @@ else:
     DataFrameType = Union[pd.DataFrame]
     SeriesType = Union[pd.Series]
 
+# Define mapping between non-nullable,
+# and nullable types in Pandas
+_PD_NULLABLE_MAP = {
+    "int32": "Int32",
+    "int64": "Int64",
+}
+
 
 class ExtData(enum.Enum):
     """Simple Enum to track external-data types"""
@@ -92,6 +99,17 @@ def _is_dataframe_object(x):
     if not HAS_GPU:
         return isinstance(x, pd.DataFrame)
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
+
+
+def _nullable_series(data, like_df, dtype):
+    # Return a Series containing the elements in `data`,
+    # with a nullable version of `dtype`, using `like_df`
+    # to infer the Series constructor
+    if isinstance(like_df, pd.DataFrame):
+        # Note that we cannot use "int32"/"int64" to
+        # represent nullable data in pandas
+        return like_df._constructor_sliced(data, dtype=_PD_NULLABLE_MAP.get(str(dtype), dtype))
+    return like_df._constructor_sliced(data, dtype=dtype)
 
 
 def _is_series_object(x):
