@@ -221,6 +221,7 @@ def test_compute_schemas():
 
 def test_workflow_node_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
+    dataset = Dataset(df)
 
     input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
@@ -229,7 +230,9 @@ def test_workflow_node_select():
     features = sqrt_features + plus_one_features
 
     workflow = Workflow(features)
-    df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    workflow.fit(dataset)
+
+    df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     expected = dispatch._make_df()
     expected["a"] = np.sqrt(df["a"])
