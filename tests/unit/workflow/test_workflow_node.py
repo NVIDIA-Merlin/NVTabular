@@ -111,6 +111,7 @@ def test_workflow_node_subtraction():
 
     node1 = ["a", "b", "c", "d"] >> Operator()
     node2 = ["c", "d"] >> Operator()
+    node3 = ["b"] >> Operator()
 
     output_node = node1 - ["c", "d"]
     workflow = Workflow(output_node).fit_schema(schema)
@@ -129,6 +130,12 @@ def test_workflow_node_subtraction():
     assert len(output_node.parents) == 0
     assert len(output_node.dependencies) == 2
     assert workflow.output_node.output_columns.names == ["a", "b"]
+
+    output_node = node1 - ["c", "d"] - node3
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert len(output_node.parents) == 1
+    assert len(output_node.dependencies) == 2
+    assert workflow.output_node.output_columns.names == ["a"]
 
 
 def test_addition_nodes_are_combined():

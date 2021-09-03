@@ -241,13 +241,16 @@ class WorkflowNode:
         WorkflowNode
         """
 
-        # Create a child node
-        child = WorkflowNode()
-        child.op = internal.SubsetColumns(label="-")
+        if isinstance(self.op, internal.SubsetColumns):
+            child = self
+        else:
+            # Create a child node
+            child = WorkflowNode()
+            child.op = internal.SubsetColumns(label="-")
 
-        # Add self as a parent
-        self.children.append(child)
-        child.parents.append(self)
+            # Add self as a parent
+            self.children.append(child)
+            child.parents.append(self)
 
         # The right operand becomes a dependency
         if not isinstance(other, (ColumnSelector, WorkflowNode)):
