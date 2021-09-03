@@ -110,7 +110,7 @@ class Workflow:
         Dataset
         """
         if not self.output_schema:
-            self.fit(dataset)
+            self.fit_schema(dataset.infer_schema())
 
         self._clear_worker_cache()
         ddf = dataset.to_ddf(columns=self._input_columns())
