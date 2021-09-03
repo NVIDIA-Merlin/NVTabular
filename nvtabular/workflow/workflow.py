@@ -471,6 +471,9 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
             unseen_columns = set(node.input_columns.names) - seen_columns
             addl_input_cols = addl_input_cols.union(unseen_columns)
 
+            # TODO: Find a better way to remove dupes
+            addl_input_cols = addl_input_cols - set(input_df.columns)
+
             if addl_input_cols:
                 input_df = _concat_columns([input_df, root_df[list(addl_input_cols)]])
         else:
