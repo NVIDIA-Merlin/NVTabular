@@ -75,6 +75,12 @@ class WorkflowNode:
                 schema += Schema(dep.names)
             elif isinstance(dep, WorkflowNode):
                 schema += dep.output_schema
+            elif isinstance(dep, list):
+                for nested_dep in dep:
+                    if isinstance(nested_dep, ColumnSelector):
+                        schema += Schema(nested_dep.names)
+                    elif isinstance(nested_dep, WorkflowNode):
+                        schema += nested_dep.output_schema
         return schema
 
     @property
@@ -341,7 +347,15 @@ class WorkflowNode:
 
     @property
     def dependency_nodes(self):
-        return [dep for dep in self.dependencies if isinstance(dep, WorkflowNode)]
+        nodes = []
+        for dep in self.dependencies:
+            if isinstance(dep, WorkflowNode):
+                nodes.append(dep)
+            elif isinstance(dep, list):
+                for nested_dep in dep:
+                    if isinstance(nested_dep, WorkflowNode):
+                        nodes.append(nested_dep)
+        return nodes
 
     @property
     def label(self):

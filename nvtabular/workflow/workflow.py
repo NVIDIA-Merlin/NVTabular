@@ -180,7 +180,10 @@ class Workflow:
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
-        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.output_node])}
+        stat_ops = {
+            op: _get_stat_ops(op.parents + op.dependency_nodes)
+            for op in _get_stat_ops([self.output_node])
+        }
 
         while stat_ops:
             # get all the StatOperators that we can currently call fit on (no outstanding
@@ -439,12 +442,15 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
         addl_input_cols = set(node.dependency_columns.names)
 
         # Build input dataframe
-        if node.parents:
+        if node.parents or node.dependency_nodes:
             # If there are parents, collect their outputs
             # to build the current node's input
             input_df = None
             seen_columns = None
-            for parent in node.parents:
+            upstream_nodes = []
+            upstream_nodes += node.parents or []
+            upstream_nodes += node.dependency_nodes or []
+            for parent in upstream_nodes:
                 parent_output_cols = _get_unique(parent.output_columns.names)
                 parent_df = _transform_partition(root_df, [parent])
                 if input_df is None or not len(input_df):
