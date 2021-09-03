@@ -178,56 +178,34 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-        left_arg = self
-        right_arg = other
 
-        added_nodes = []
-        added_selectors = []
-
-        if isinstance(right_arg, WorkflowNode):
-            # If an argument is already an addition node, make it
-            # the left arg and combine the right arg into it
-            if isinstance(right_arg.op, internal.ConcatColumns):
-                left_arg = other
-                right_arg = self
-
-            added_nodes.append(right_arg)
-        elif isinstance(right_arg, ColumnSelector):
-            added_selectors.append(right_arg)
-        elif isinstance(right_arg, list):
-            # TODO: How can we maintain grouping during addition
-            # when we add on a list of nodes and/or selectors?
-            list_selector = ColumnSelector()
-            for element in right_arg:
-                if isinstance(element, WorkflowNode):
-                    added_nodes.append(element)
-                else:
-                    list_selector += element
-            added_selectors.append(ColumnSelector(subgroups=list_selector))
+        if isinstance(self.op, internal.ConcatColumns):
+            child = self
         else:
-            added_selectors.append(ColumnSelector(right_arg))
-
-        if isinstance(left_arg.op, internal.ConcatColumns):
-            child = left_arg
-        else:
+            # Create a child node
             child = WorkflowNode()
             child.op = internal.ConcatColumns(label="+")
 
-            left_arg.children.append(child)
-            child.parents.append(left_arg)
+            # Add self as a parent
+            self.children.append(child)
+            child.parents.append(self)
 
-        for node in added_nodes:
-            if isinstance(node.op, internal.ConcatColumns):
-                child.parents += node.parents
-                for parent in node.parents:
-                    parent.children.append(child)
-                    parent.children.remove(node)
-            else:
-                child.parents.append(node)
-                node.children.append(child)
+        # The right operand becomes a dependency
+        if isinstance(other, list):
+            converted_elem = []
+            for elem in other:
+                if not isinstance(elem, (ColumnSelector, WorkflowNode)):
+                    elem = ColumnSelector(elem)
+                converted_elem.append(elem)
+            other = converted_elem
+        elif not isinstance(other, (ColumnSelector, WorkflowNode)):
+            other = ColumnSelector(other)
 
-        for selector in added_selectors:
-            child.dependencies.append(selector)
+        if isinstance(other, WorkflowNode) and isinstance(other.op, internal.ConcatColumns):
+            child.dependencies += other.parents
+            child.dependencies += other.dependencies
+        else:
+            child.dependencies.append(other)
 
         return child
 
