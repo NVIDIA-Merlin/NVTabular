@@ -106,3 +106,18 @@ class Schema:
 
     def __radd__(self, other):
         return self.__add__(other)
+
+    def __sub__(self, other):
+        if other is None:
+            return self
+
+        if not isinstance(other, Schema):
+            raise TypeError(f"unsupported operand type(s) for -: 'Schema' and {type(other)}")
+
+        result = Schema({**self.column_schemas})
+
+        for key in other.column_schemas.keys():
+            if key in self.column_schemas.keys():
+                result.column_schemas.pop(key, None)
+
+        return result
