@@ -366,11 +366,16 @@ class Workflow:
     def _input_columns(self):
         input_cols = []
         for node in iter_nodes([self.output_node]):
-            parent_output_cols = []
-            for parent in node.parents:
-                parent_output_cols += parent.output_columns.names
-            parent_output_cols = _get_unique(parent_output_cols)
-            input_cols += list(set(node.input_columns.names) - set(parent_output_cols))
+            upstream_output_cols = []
+            upstream_nodes = []
+            upstream_nodes += node.parents or []
+            upstream_nodes += node.dependency_nodes or []
+
+            for upstream_node in upstream_nodes:
+                upstream_output_cols += upstream_node.output_columns.names
+
+            upstream_output_cols = _get_unique(upstream_output_cols)
+            input_cols += list(set(node.input_columns.names) - set(upstream_output_cols))
             input_cols += node.dependency_columns.names
 
         return _get_unique(input_cols)
