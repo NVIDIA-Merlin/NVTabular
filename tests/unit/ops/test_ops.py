@@ -507,7 +507,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
 @pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
-@pytest.mark.parametrize("start_index", [0, 2, 16])
+@pytest.mark.parametrize("start_index", [1, 2, 16])
 def test_categorify_lists_with_start_index(tmpdir, cpu, dtype, vocabs, start_index):
     df = dispatch._make_df(
         {
@@ -520,7 +520,7 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, dtype, vocabs, start_ind
     label_name = ["Post"]
 
     cat_features = cat_names >> ops.Categorify(
-        out_path=str(tmpdir), dtype=dtype, vocabs=vocabs
+        out_path=str(tmpdir), dtype=dtype, vocabs=vocabs, start_index=start_index
     )
 
     workflow = nvt.Workflow(cat_features + label_name)
@@ -531,11 +531,11 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, dtype, vocabs, start_ind
     else:
         compare = df_out["Authors"].to_arrow().to_pylist()
 
-    if start_index == 0:
+    if start_index == 1:
         assert compare == [[1], [1, 4], [3, 2], [2]]
 
     if start_index == 2:
-        assert compare == [[3], [3, 6], [5, 4], [4]]
+        assert compare == [[2], [2, 5], [4, 3], [3]]
 
     if start_index == 16:
         assert compare == [[16], [16, 19], [18, 17], [17]]

@@ -174,7 +174,7 @@ class Categorify(StatOperator):
         value will be `max_size - num_buckets -1`.  Setting the max_size param means that
         freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
         smaller than the max_size value.
-    start_index: int, default 0
+    start_index: int, default 1
         The start index where Categorify will begin to translate dataframe entries
         into integer values. For instance, if our original translated dataframe entries appear 
         as [[1], [1, 4], [3, 2], [2]], then with a start_index of 16, Categorify will now be 
@@ -197,7 +197,7 @@ class Categorify(StatOperator):
         num_buckets=None,
         vocabs=None,
         max_size=0,
-        start_index=0,
+        start_index=1,
     ):
 
         # We need to handle three types of encoding here:
@@ -250,6 +250,7 @@ class Categorify(StatOperator):
         self.cat_cache = cat_cache
         self.encode_type = encode_type
         self.search_sorted = search_sorted
+        self.start_index = start_index
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -445,6 +446,7 @@ class Categorify(StatOperator):
                     cat_names=cat_names,
                     max_size=self.max_size,
                     dtype=self.dtype,
+                    start_index=self.start_index,
                 )
             except Exception as e:
                 raise RuntimeError(f"Failed to categorical encode column {name}") from e
@@ -859,6 +861,20 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
 
 @annotate("write_uniques", color="green", domain="nvt_python")
 def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+    """Writes out a dataframe to a parquet file.
+
+    Args:
+        dfs (DataFrame): [description]
+        base_path (string): [description]
+        col_selector (ColumnSelector): [description]
+        options (FitOptions): [description]
+
+    Raises:
+        ValueError: [description]
+
+    Returns:
+        string: the path to the output parquet file.
+    """
     if options.concat_groups and len(col_selector) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
@@ -1052,7 +1068,30 @@ def _encode(
     cat_names=None,
     max_size=0,
     dtype=None,
+    start_index=1
 ):
+    """The _encode method is responsible for transforming a dataframe (taking the written 
+    out vocabulary file and looking up values to translate from say string inputs to numeric 
+    outputs) 
+
+    Args:
+        name ([type]): [description]
+        storage_name ([type]): [description]
+        path ([type]): [description]
+        df ([type]): [description]
+        cat_cache ([type]): [description]
+        na_sentinel (int, optional): [description]. Defaults to -1.
+        freq_threshold (int, optional): [description]. Defaults to 0.
+        search_sorted (bool, optional): [description]. Defaults to False.
+        buckets ([type], optional): [description]. Defaults to None.
+        encode_type (str, optional): [description]. Defaults to "joint".
+        cat_names ([type], optional): [description]. Defaults to None.
+        max_size (int, optional): [description]. Defaults to 0.
+        dtype ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: labels
+    """
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
     # this is to apply freq_hashing logic
@@ -1142,6 +1181,11 @@ def _encode(
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
+    labels = [i + (start_index - 1) for i in labels]
+    if isinstance(labels, np.ndarray):
+        labels = np.array(labels)
+    elif isinstance(labels, pd.Series):
+        labels = pd.Series(labels)
     return labels
 
 
