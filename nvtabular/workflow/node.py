@@ -394,10 +394,18 @@ class WorkflowNode:
 
     @property
     def _cols_repr(self):
-        cols = ", ".join(map(str, self.selector[:3]))
-        if len(self.selector) > 3:
-            cols += "..."
-        return cols
+        if self.input_schema:
+            columns = self.input_schema.column_names
+        elif self.selector:
+            columns = self.selector.names
+        else:
+            columns = []
+
+        cols_repr = ", ".join(map(str, columns[:3]))
+        if len(columns) > 3:
+            cols_repr += "..."
+
+        return cols_repr
 
     @property
     def graph(self):
