@@ -72,12 +72,10 @@ def test_workflow_node_addition():
 
     output_node = node1 + node2
     workflow = Workflow(output_node).fit_schema(schema)
-    assert len(output_node.parents) == 2
     assert workflow.output_node.output_columns.names == ["a", "b", "c", "d"]
 
     output_node = node1 + "c"
     workflow = Workflow(output_node).fit_schema(schema)
-    assert len(output_node.parents) == 1
     assert workflow.output_node.output_columns.names == ["a", "b", "c"]
 
     output_node = node1 + "c" + "d"
