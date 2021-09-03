@@ -19,6 +19,7 @@ import warnings
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
 from nvtabular.ops.internal.concat_columns import ConcatColumns
+from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
 class WorkflowNode:
@@ -72,6 +73,8 @@ class WorkflowNode:
         for dep in self.dependencies:
             if isinstance(dep, ColumnSelector):
                 schema += Schema(dep.names)
+            elif isinstance(dep, WorkflowNode):
+                schema += dep.output_schema
         return schema
 
     @property
@@ -88,6 +91,24 @@ class WorkflowNode:
         else:
             if isinstance(self.op, ConcatColumns):
                 self.input_schema = self.parents_schema + self.dependency_schema
+            elif isinstance(self.op, SubsetColumns):
+                operands = self.parents + self.dependencies
+                left_operand = operands.pop(0)
+
+                if isinstance(left_operand, WorkflowNode):
+                    left_operand_schema = left_operand.output_schema
+                else:
+                    left_operand_schema = Schema(left_operand.names)
+
+                operands_schema = Schema()
+                for operand in operands:
+                    if isinstance(operand, WorkflowNode):
+                        operands_schema += operand.output_schema
+                    else:
+                        operands_schema += Schema(operand.names)
+
+                self.input_schema = left_operand_schema - operands_schema
+
             else:
                 self.input_schema = self.parents_schema
 
@@ -219,73 +240,36 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-        # In addition:
-        # - WorkflowNodes become parents
-        # - ColumnSelectors become dependencies
 
-        # In subtraction:
-        # - The order of WorkflowNodes matters (parents are kinda sorta ordered as a list)
-        # - ColumnSelectors as dependencies all get subtracted?
+        # Create a child node
+        child = WorkflowNode()
+        child.op = internal.SubsetColumns(label="-")
 
-        # We don't have schemas yet, because we're still in graph construction and haven't
-        # computed schemas yet
-        # We can't think about selectors as list of columns, because they might have tags
-
-        # ==============================================================================
-        # What node structure do we need to support subtraction between tag selectors?
-        # ==============================================================================
-
-        # Have to be able to store info for:
-        # WorkflowNode - WorkflowNode
-        # WorkflowNode - ColumnSelector
-        # ColumnSelector - WorkflowNode (maybe?)
-        # ColumnSelector - ColumnSelector (this should be easy,
-        # because there's no graph node)
-
-        # node = ["a", "b", "c"] >> Rename()
-        # node_selector = node - ColumnSelector(tags=[DefaultTags.CONTINUOUS])
-
-        # node_node = node - ColumnSelector(tags=[CONTINUOUS]) >> FillMissing()
-        # we add a subtraction node with SubsetColumns op
-        # original node becomes a parent
-        # where does the subtracted node get stored? is it a dependency?
-
-        # ColumnSelector(tags=[DefaultTags.CATEGORICAL]) - node
-        # selector becomes a subtraction node with SubsetColumns op
-        # where does the node get stored?
-        # can't be a parent, because that won't work for the node-node case
-
-        # We could make everything that should be subtracted (the right hand side)
-        # a dependency (both nodes and selectors)
-
-        # Then we might need to update the `Workflow.transform` code
-        # And now the order of dependencies matters
-
-        # node - ColumnSelector(CONTINUOUS) - ColumnSelector(CATEGORICAL)
-
-        # At schema computation time, iterate through the dependencies, grab or
-        # compute the schema for each of the dependencies,
-        # then subtract from the node's input schema one at a time,
-        # continue until finished with the deps
-
-        # What refactors will make this easy?
-        # - The schema <-> selector conversion methods
-        # - Methods for adding/removing parents and dependencies (getters and setters or...)
-        # - Maybe something in the `Workflow` code to handle nodes as dependencies(?)
-
-        if isinstance(other, WorkflowNode):
-            to_remove = set(other.output_columns)
-        elif isinstance(other, str):
-            to_remove = {other}
-        elif isinstance(other, collections.abc.Sequence):
-            to_remove = set(other)
-        else:
-            raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.output_columns if c not in to_remove]
-        child = WorkflowNode(new_columns)
-        child.parents = [self]
+        # Add self as a parent
         self.children.append(child)
-        child.op = internal.SubsetColumns(label=f"- {list(to_remove)}")
+        child.parents.append(self)
+
+        # The right operand becomes a dependency
+        if not isinstance(other, (ColumnSelector, WorkflowNode)):
+            other = ColumnSelector(other)
+
+        child.dependencies.append(other)
+
+        return child
+
+    def __rsub__(self, other):
+        # Create a child node
+        child = WorkflowNode()
+        child.op = internal.SubsetColumns(label="-")
+
+        # The left operand becomes a dependency
+        if not isinstance(other, (ColumnSelector, WorkflowNode)):
+            other = ColumnSelector(other)
+
+        # Add self as a dependency
+        child.dependencies.append(other)
+        child.dependencies.append(self)
+
         return child
 
     def __getitem__(self, columns):
@@ -353,6 +337,10 @@ class WorkflowNode:
         return ColumnSelector(dependency_cols)
 
     @property
+    def dependency_nodes(self):
+        return [dep for dep in self.dependencies if isinstance(dep, WorkflowNode)]
+
+    @property
     def label(self):
         if self.op:
             return self.op.label
@@ -381,6 +369,9 @@ def iter_nodes(nodes):
         # TODO: deduplicate nodes?
         for parent in current.parents:
             queue.append(parent)
+
+        for dep in current.dependency_nodes:
+            queue.append(dep)
 
 
 def _to_graphviz(workflow_node):

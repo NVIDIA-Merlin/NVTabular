@@ -123,7 +123,7 @@ class Workflow:
 
     def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents)
+            node: _get_schemaless_nodes(node.parents + node.dependency_nodes)
             for node in _get_schemaless_nodes([self.output_node])
         }
 
