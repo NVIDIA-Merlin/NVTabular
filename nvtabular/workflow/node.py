@@ -278,22 +278,6 @@ class WorkflowNode:
         return self.parents + self.dependency_nodes
 
     @property
-    def dependency_schema(self):
-        return _combine_schemas(self.dependencies)
-
-    @property
-    def dependencies_schema(self):
-        schema = Schema()
-        for dep in self.dependencies:
-            if isinstance(dep, ColumnSelector):
-                schema += Schema(dep.names)
-        return schema
-
-    @property
-    def parents_schema(self):
-        return sum([parent.output_schema for parent in self.parents], Schema())
-
-    @property
     def input_columns(self):
         if not self.input_schema:
             raise RuntimeError(
@@ -318,20 +302,20 @@ class WorkflowNode:
         return ColumnSelector(self.output_schema.column_names)
 
     @property
+    def dependency_schema(self):
+        return _combine_schemas(self.dependencies)
+
+    @property
     def dependency_columns(self):
-        return ColumnSelector(self.dependencies_schema.column_names)
+        return _combine_selectors(self.dependency_selectors)
 
     @property
     def dependency_nodes(self):
-        nodes = []
-        for dep in self.dependencies:
-            if isinstance(dep, WorkflowNode):
-                nodes.append(dep)
-            elif isinstance(dep, list):
-                for nested_dep in dep:
-                    if isinstance(nested_dep, WorkflowNode):
-                        nodes.append(nested_dep)
-        return nodes
+        return _filter_by_type(self.dependencies, WorkflowNode)
+
+    @property
+    def dependency_selectors(self):
+        return _filter_by_type(self.dependencies, ColumnSelector)
 
     @property
     def label(self):
@@ -373,6 +357,18 @@ def iter_nodes(nodes):
 
         for dep in current.dependency_nodes:
             queue.append(dep)
+
+
+def _filter_by_type(elements, type_):
+    results = []
+
+    for elem in elements:
+        if isinstance(elem, type_):
+            results.append(elem)
+        elif isinstance(elem, list):
+            results += _filter_by_type(elem, type_)
+
+    return results
 
 
 def _combine_schemas(elements):
