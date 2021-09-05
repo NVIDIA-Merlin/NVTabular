@@ -86,10 +86,7 @@ class WorkflowNode:
 
         # If we have a selector, apply it to upstream schemas from nodes/dataset
         if self.selector:
-            upstream_schema = Schema()
-            upstream_schema += root_schema
-            upstream_schema += self.parents_schema
-            upstream_schema += self.dependency_schema
+            upstream_schema = root_schema + _combine_schemas(self.parents_with_deps)
             self.input_schema = upstream_schema.apply(self.selector)
         else:
             # If we don't have a selector but we're an addition node,
@@ -102,7 +99,7 @@ class WorkflowNode:
 
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
-                self.input_schema = self.parents_schema + self.dependency_schema
+                self.input_schema = _combine_schemas(self.parents_with_deps)
 
             # If we're a subtraction node, we have to do some gymnastics to compute
             # the schema, because operands may be in the parents or the dependencies
@@ -111,17 +108,8 @@ class WorkflowNode:
                 operands = self.parents + self.dependencies
                 left_operand = operands.pop(0)
 
-                if isinstance(left_operand, WorkflowNode):
-                    left_operand_schema = left_operand.output_schema
-                else:
-                    left_operand_schema = Schema(left_operand.names)
-
-                operands_schema = Schema()
-                for operand in operands:
-                    if isinstance(operand, WorkflowNode):
-                        operands_schema += operand.output_schema
-                    else:
-                        operands_schema += Schema(operand.names)
+                left_operand_schema = _combine_schemas([left_operand])
+                operands_schema = _combine_schemas(operands)
 
                 self.input_schema = left_operand_schema - operands_schema
 
@@ -129,7 +117,7 @@ class WorkflowNode:
             # and we're not an add or sub node, so our input is just the
             # parents output
             else:
-                self.input_schema = self.parents_schema
+                self.input_schema = _combine_schemas(self.parents)
 
         # Then we delegate to the op (if there is one) to compute this node's
         # output schema. If there's no op, then outputs are just the inputs
