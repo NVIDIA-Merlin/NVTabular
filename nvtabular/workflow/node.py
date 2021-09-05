@@ -57,10 +57,6 @@ class WorkflowNode:
         self._selector = selector
 
     @property
-    def parents_with_deps(self):
-        return self.parents + self.dependency_nodes
-
-    @property
     def selector(self):
         return self._selector
 
@@ -86,7 +82,7 @@ class WorkflowNode:
 
         # If we have a selector, apply it to upstream schemas from nodes/dataset
         if self.selector:
-            upstream_schema = root_schema + _combine_schemas(self.parents_with_deps)
+            upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
             self.input_schema = upstream_schema.apply(self.selector)
         else:
             # If we don't have a selector but we're an addition node,
@@ -99,7 +95,7 @@ class WorkflowNode:
 
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
-                self.input_schema = _combine_schemas(self.parents_with_deps)
+                self.input_schema = _combine_schemas(self.parents_with_dep_nodes)
 
             # If we're a subtraction node, we have to do some gymnastics to compute
             # the schema, because operands may be in the parents or the dependencies
@@ -197,7 +193,7 @@ class WorkflowNode:
             other = ColumnSelector(other)
 
         if isinstance(other, WorkflowNode) and isinstance(other.op, internal.ConcatColumns):
-            child.dependencies += other.parents_with_deps
+            child.dependencies += other.parents_with_dep_nodes
         else:
             child.dependencies.append(other)
 
@@ -276,6 +272,10 @@ class WorkflowNode:
     def __repr__(self):
         output = " output" if not self.children else ""
         return f"<WorkflowNode {self.label}{output}>"
+
+    @property
+    def parents_with_dep_nodes(self):
+        return self.parents + self.dependency_nodes
 
     @property
     def dependency_schema(self):
