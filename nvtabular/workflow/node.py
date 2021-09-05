@@ -71,22 +71,6 @@ class WorkflowNode:
 
         self._selector = sel
 
-    @property
-    def dependency_schema(self):
-        schema = Schema()
-        for dep in self.dependencies:
-            if isinstance(dep, ColumnSelector):
-                schema += Schema(dep.names)
-            elif isinstance(dep, WorkflowNode):
-                schema += dep.output_schema
-            elif isinstance(dep, list):
-                for nested_dep in dep:
-                    if isinstance(nested_dep, ColumnSelector):
-                        schema += Schema(nested_dep.names)
-                    elif isinstance(nested_dep, WorkflowNode):
-                        schema += nested_dep.output_schema
-        return schema
-
     def compute_schemas(self, root_schema):
         # If parent is an addition node, we may need to propagate grouping
         # unless we're a node that already has a selector
@@ -323,6 +307,10 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
+    def dependency_schema(self):
+        return _combine_schemas(self.dependencies)
+
+    @property
     def dependencies_schema(self):
         schema = Schema()
         for dep in self.dependencies:
@@ -414,6 +402,18 @@ def iter_nodes(nodes):
 
         for dep in current.dependency_nodes:
             queue.append(dep)
+
+
+def _combine_schemas(elements):
+    combined = Schema()
+    for elem in elements:
+        if isinstance(elem, ColumnSelector):
+            combined += Schema(elem.names)
+        elif isinstance(elem, WorkflowNode):
+            combined += elem.output_schema
+        elif isinstance(elem, list):
+            combined += _combine_schemas(elem)
+    return combined
 
 
 def _to_selector(value):
