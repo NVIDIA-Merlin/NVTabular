@@ -247,8 +247,7 @@ class WorkflowNode:
             other = ColumnSelector(other)
 
         if isinstance(other, WorkflowNode) and isinstance(other.op, internal.ConcatColumns):
-            child.dependencies += other.parents
-            child.dependencies += other.dependencies
+            child.dependencies += other.parents_with_deps
         else:
             child.dependencies.append(other)
 
