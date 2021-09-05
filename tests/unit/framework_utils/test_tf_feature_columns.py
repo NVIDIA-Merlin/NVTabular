@@ -16,7 +16,7 @@ def test_feature_column_utils():
         ),
         tf.feature_column.embedding_column(
             tf.feature_column.categorical_column_with_vocabulary_list(
-                "vocab_2", ["1", "2", "3", "4"]
+                "vocab_2", ["1", "2", "3", "4", "5"]
             ),
             32,
         ),

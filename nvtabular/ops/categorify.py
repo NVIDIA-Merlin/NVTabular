@@ -34,7 +34,7 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.dispatch import DataFrameType, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -337,26 +337,26 @@ class Categorify(StatOperator):
     def process_vocabs(self, vocabs):
         categories = {}
 
-        if dispatch._is_dataframe_object(vocabs):
-            fit_options = self._create_fit_options_from_columns(list(vocabs.columns))
+        if isinstance(vocabs, dict) and all(dispatch._is_series_object(v) for v in vocabs.values()):
+            fit_options = self._create_fit_options_from_columns(list(vocabs.keys()))
             base_path = os.path.join(self.out_path, fit_options.stat_name)
             os.makedirs(base_path, exist_ok=True)
-            for col in list(vocabs.columns):
-                col_df = vocabs[[col]]
-                if col_df[col].iloc[0] is not None:
-                    with_empty = dispatch._add_to_series(col_df[col], [None]).reset_index()[0]
+            for col, vocab in vocabs.items():
+                vals = {col: vocab}
+                if vocab.iloc[0] is not None:
+                    with_empty = dispatch._add_to_series(vocab, [None]).reset_index()[0]
                     vals = {col: with_empty}
-                    col_df = dispatch._make_df(vals)
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")
+                col_df = dispatch._make_df(vals)
                 col_df.to_parquet(save_path)
                 categories[col] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
             categories = vocabs
         else:
             error = """Unrecognized vocab type,
-            please provide either a dictionary with paths to a parquet files
-            or a DataFrame that contains the vocabulary per column.
+            please provide either a dictionary with paths to parquet files
+            or a dictionary with pandas Series objects.
             """
             raise ValueError(error)
 
@@ -892,7 +892,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
                 nulls_missing = True
                 new_cols[col] = _concat(
-                    [df._constructor_sliced([None], dtype=df[col].dtype), df[col]],
+                    [_nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
             else:
@@ -1079,7 +1079,7 @@ def _encode(
         value = type(df)()
         for c in selection_r:
             typ = df[selection_l[0]].dtype if len(selection_l) == 1 else df[c].dtype
-            value[c] = df._constructor_sliced([None], dtype=typ)
+            value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
 
@@ -1089,8 +1089,8 @@ def _encode(
             codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
-            for c in selection_l:
-                codes[c] = df[c].copy()
+            for cl, cr in zip(selection_l, selection_r):
+                codes[cl] = df[cl].copy().astype(value[cr].dtype)
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(df, buckets, selection_l, encode_type=encode_type)
         # apply frequency hashing

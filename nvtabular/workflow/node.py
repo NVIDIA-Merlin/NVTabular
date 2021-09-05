@@ -204,8 +204,6 @@ class WorkflowNode:
         dependencies = operator.dependencies()
 
         if dependencies:
-            child.dependencies = set()
-            child.dependencies = []
             if not isinstance(dependencies, collections.abc.Sequence):
                 dependencies = [dependencies]
 
@@ -230,7 +228,6 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-
         if isinstance(self.op, internal.ConcatColumns):
             child = self
         else:
@@ -336,6 +333,18 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
+    def dependencies_schema(self):
+        schema = Schema()
+        for dep in self.dependencies:
+            if isinstance(dep, ColumnSelector):
+                schema += Schema(dep.names)
+        return schema
+
+    @property
+    def parents_schema(self):
+        return sum([parent.output_schema for parent in self.parents], Schema())
+
+    @property
     def input_columns(self):
         if not self.input_schema:
             raise RuntimeError(
@@ -361,19 +370,7 @@ class WorkflowNode:
 
     @property
     def dependency_columns(self):
-        dependency_cols = []
-
-        if not self.dependencies:
-            return ColumnSelector(dependency_cols)
-
-        # Dependencies can be either WorkflowNodes or ColumnSelectors
-        # WorkflowNodes are already handled as parents, but we still
-        # need to account for the columns in raw (non-node) selectors
-        for selector in self.dependencies:
-            if isinstance(selector, ColumnSelector):
-                dependency_cols += selector.names
-
-        return ColumnSelector(dependency_cols)
+        return ColumnSelector(self.dependencies_schema.column_names)
 
     @property
     def dependency_nodes(self):
