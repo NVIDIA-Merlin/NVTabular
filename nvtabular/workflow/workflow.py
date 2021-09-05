@@ -123,7 +123,7 @@ class Workflow:
 
     def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents + node.dependency_nodes)
+            node: _get_schemaless_nodes(node.parents_with_deps)
             for node in _get_schemaless_nodes([self.output_node])
         }
 
@@ -181,8 +181,7 @@ class Workflow:
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
         stat_ops = {
-            op: _get_stat_ops(op.parents + op.dependency_nodes)
-            for op in _get_stat_ops([self.output_node])
+            op: _get_stat_ops(op.parents_with_deps) for op in _get_stat_ops([self.output_node])
         }
 
         while stat_ops:
@@ -367,11 +366,8 @@ class Workflow:
         input_cols = []
         for node in iter_nodes([self.output_node]):
             upstream_output_cols = []
-            upstream_nodes = []
-            upstream_nodes += node.parents or []
-            upstream_nodes += node.dependency_nodes or []
 
-            for upstream_node in upstream_nodes:
+            for upstream_node in node.parents_with_deps:
                 upstream_output_cols += upstream_node.output_columns.names
 
             upstream_output_cols = _get_unique(upstream_output_cols)
@@ -447,15 +443,13 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
         addl_input_cols = set(node.dependency_columns.names)
 
         # Build input dataframe
-        if node.parents or node.dependency_nodes:
+        if node.parents_with_deps:
             # If there are parents, collect their outputs
             # to build the current node's input
             input_df = None
             seen_columns = None
-            upstream_nodes = []
-            upstream_nodes += node.parents or []
-            upstream_nodes += node.dependency_nodes or []
-            for parent in upstream_nodes:
+
+            for parent in node.parents_with_deps:
                 parent_output_cols = _get_unique(parent.output_columns.names)
                 parent_df = _transform_partition(root_df, [parent])
                 if input_df is None or not len(input_df):

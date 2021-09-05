@@ -57,6 +57,10 @@ class WorkflowNode:
         self._selector = selector
 
     @property
+    def parents_with_deps(self):
+        return self.parents + self.dependency_nodes
+
+    @property
     def selector(self):
         return self._selector
 
