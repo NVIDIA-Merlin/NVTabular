@@ -94,25 +94,8 @@ class WorkflowNode:
         else:
             # If we don't have a selector but we're an addition node,
             if isinstance(self.op, ConcatColumns):
-                upstream_selector = ColumnSelector()
-
-                for parent in self.parents:
-                    upstream_selector += ColumnSelector(parent.output_schema.column_names)
-
-                for dep in self.dependencies:
-                    if isinstance(dep, WorkflowNode):
-                        upstream_selector += ColumnSelector(dep.output_schema.column_names)
-                    elif isinstance(dep, ColumnSelector):
-                        upstream_selector += dep
-                    elif isinstance(dep, list):
-                        subgroup_selector = ColumnSelector()
-                        for elem in dep:
-                            if isinstance(elem, WorkflowNode):
-                                subgroup_selector += ColumnSelector(elem.output_schema.column_names)
-                            elif isinstance(elem, ColumnSelector):
-                                subgroup_selector += elem
-
-                        upstream_selector += ColumnSelector(subgroups=[subgroup_selector])
+                upstream_selector = _combine_selectors(self.parents)
+                upstream_selector += _combine_selectors(self.dependencies)
 
                 if upstream_selector.names:
                     self.selector = upstream_selector
@@ -407,12 +390,24 @@ def iter_nodes(nodes):
 def _combine_schemas(elements):
     combined = Schema()
     for elem in elements:
-        if isinstance(elem, ColumnSelector):
-            combined += Schema(elem.names)
-        elif isinstance(elem, WorkflowNode):
+        if isinstance(elem, WorkflowNode):
             combined += elem.output_schema
+        elif isinstance(elem, ColumnSelector):
+            combined += Schema(elem.names)
         elif isinstance(elem, list):
             combined += _combine_schemas(elem)
+    return combined
+
+
+def _combine_selectors(elements):
+    combined = ColumnSelector()
+    for elem in elements:
+        if isinstance(elem, WorkflowNode):
+            combined += ColumnSelector(elem.output_schema.column_names)
+        elif isinstance(elem, ColumnSelector):
+            combined += elem
+        elif isinstance(elem, list):
+            combined += ColumnSelector(subgroups=_combine_selectors(elem))
     return combined
 
 
