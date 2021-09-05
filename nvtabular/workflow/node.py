@@ -237,12 +237,7 @@ class WorkflowNode:
 
         # The right operand becomes a dependency
         if isinstance(other, list):
-            converted_elem = []
-            for elem in other:
-                if not isinstance(elem, (ColumnSelector, WorkflowNode)):
-                    elem = ColumnSelector(elem)
-                converted_elem.append(elem)
-            other = converted_elem
+            other = _strs_to_selectors(other)
         elif not isinstance(other, (ColumnSelector, WorkflowNode)):
             other = ColumnSelector(other)
 
@@ -419,6 +414,17 @@ def iter_nodes(nodes):
 
         for dep in current.dependency_nodes:
             queue.append(dep)
+
+
+def _to_selector(value):
+    if not isinstance(value, (ColumnSelector, WorkflowNode)):
+        return ColumnSelector(value)
+    else:
+        return value
+
+
+def _strs_to_selectors(elements):
+    return [_to_selector(elem) for elem in elements]
 
 
 def _to_graphviz(workflow_node):
