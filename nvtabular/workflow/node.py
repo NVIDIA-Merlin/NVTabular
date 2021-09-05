@@ -87,10 +87,6 @@ class WorkflowNode:
                         schema += nested_dep.output_schema
         return schema
 
-    @property
-    def parents_schema(self):
-        return sum([parent.output_schema for parent in self.parents], Schema())
-
     def compute_schemas(self, root_schema):
         # If parent is an addition node, we may need to propagate grouping
         # unless we're a node that already has a selector
