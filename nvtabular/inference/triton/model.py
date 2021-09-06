@@ -76,7 +76,7 @@ class TritonPythonModel:
             # to some of the operators (C++ categorify etc). set on the workflow_node instead
             workflow_node.inference_supports = supported
 
-        for parent in workflow_node.parents:
+        for parent in workflow_node.parents_with_dep_nodes:
             if parent not in visited:
                 visited.add(parent)
                 self._initialize_ops(parent, visited)
@@ -257,9 +257,9 @@ def get_hugectr_offsets(workflow, column_types):
 
 
 def _transform_tensors(input_tensors, workflow_node):
-    if workflow_node.parents:
+    if workflow_node.parents_with_dep_nodes:
         tensors, kind = None, None
-        for parent in workflow_node.parents:
+        for parent in workflow_node.parents_with_dep_nodes:
             transformed, transformed_kind = _transform_tensors(input_tensors, parent)
             if tensors is None:
                 tensors, kind = transformed, transformed_kind

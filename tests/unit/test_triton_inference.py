@@ -174,10 +174,6 @@ def test_concatenate_dataframe(tmpdir, output_model):
     dataset = Dataset(df)
     workflow = nvt.Workflow(cats + conts).fit_schema(dataset.infer_schema())
 
-    import pdb
-
-    pdb.set_trace()
-
     if output_model == "pytorch":
         model_info = {
             "cat": {"columns": ["cat"], "dtype": "int32"},
@@ -185,6 +181,7 @@ def test_concatenate_dataframe(tmpdir, output_model):
         }
     else:
         model_info = None
+
     _verify_workflow_on_tritonserver(
         tmpdir, workflow, df, "test_concatenate_dataframe", output_model, model_info
     )
