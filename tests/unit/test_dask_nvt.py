@@ -24,9 +24,9 @@ import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import read_parquet as dd_read_parquet
 
-from nvtabular import ColumnGroup, Dataset, Workflow, ops
+from nvtabular import ColumnSelector, Dataset, Workflow, ops
 from nvtabular.io.shuffle import Shuffle
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
 
 # Dummy operator logic to test stats
@@ -182,13 +182,20 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
 
-    cats = ColumnGroup(cat_names)
+    cats = ColumnSelector(cat_names)
     cat_features = cats >> ops.Categorify(out_path=str(tmpdir), freq_threshold=10, on_host=True)
     groupby_features = cats >> ops.JoinGroupby(
         cont_cols=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
     )
 
-    workflow = Workflow(cat_features + groupby_features, client=client)
+    # We have a global dask client defined in this context, so NVTabular
+    # should warn us if we initialze a `Workflow` with `client=None`
+    workflow = run_in_context(
+        Workflow,
+        cat_features + groupby_features,
+        context=None if use_client else pytest.warns(UserWarning),
+        client=client if use_client else None,
+    )
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
     result = workflow.fit_transform(dataset).to_ddf().compute()
 

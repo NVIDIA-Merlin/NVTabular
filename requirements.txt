@@ -1,7 +1,9 @@
-cudf>=0.18
-dask-cudf>=0.18
-dask-cuda>=0.18
 PyYAML>=5.3
-cupy>=7
-dask>=2.12.0
-distributed>=2.12.0
+dask==2021.4.1
+distributed==2021.4.1
+pandas>=1.0,<1.3.0dev0
+numba>=0.53.1
+tqdm>=4.0
+pyarrow>=1.0
+tensorflow-metadata>=1.2.0
+protobuf>=3.0.0

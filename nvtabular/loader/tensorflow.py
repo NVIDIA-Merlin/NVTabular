@@ -16,6 +16,7 @@
 import contextlib
 import os
 
+import numpy as np
 import tensorflow as tf
 
 from nvtabular.io.dataset import Dataset
@@ -288,7 +289,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # commenting out since device statements cause
         # RuntimeErrors when exiting if two dataloaders
         # are running at once (e.g. train and validation)
-        yield tf.device("/GPU:" + str(dev))
+        if dev != "cpu":
+            yield tf.device("/GPU:" + str(dev))
+        else:
+            # https://www.tensorflow.org/guide/gpu#manual_device_placement
+            yield tf.device("/device:CPU:0")
 
     def _split_fn(self, tensor, idx, axis=0):
         return tf.split(tensor, idx, axis=axis)
@@ -308,6 +313,20 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _FLOAT32_DTYPE(self):
         return tf.float32
 
+    def _pack(self, gdf):
+        if isinstance(gdf, np.ndarray):
+            return gdf
+        if hasattr(gdf, "to_dlpack") and callable(getattr(gdf, "to_dlpack")):
+            return gdf.to_dlpack()
+        elif hasattr(gdf, "to_numpy") and callable(getattr(gdf, "to_numpy")):
+            return gdf.to_numpy()
+        return gdf.toDlpack()
+
+    def _unpack(self, gdf):
+        if hasattr(gdf, "shape"):
+            return tf.convert_to_tensor(gdf)
+        return from_dlpack(gdf)
+
     def _to_tensor(self, gdf, dtype=None):
         if gdf.empty:
             return
@@ -315,19 +334,19 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # checks necessary because of this bug
         # https://github.com/tensorflow/tensorflow/issues/42660
         if len(gdf.shape) == 1 or gdf.shape[1] == 1:
-            dlpack = gdf.to_dlpack()
+            dlpack = self._pack(gdf)
         elif gdf.shape[0] == 1:
-            dlpack = gdf.values[0].toDlpack()
+            dlpack = self._pack(gdf.values[0])
         else:
-            dlpack = gdf.values.T.toDlpack()
+            dlpack = self._pack(gdf.values.T)
 
         # catch error caused by tf eager context
         # not being initialized
         try:
-            x = from_dlpack(dlpack)
+            x = self._unpack(dlpack)
         except AssertionError:
             tf.random.uniform((1,))
-            x = from_dlpack(dlpack)
+            x = self._unpack(dlpack)
 
         if gdf.shape[0] == 1:
             # batch size 1 so got squashed to a vector

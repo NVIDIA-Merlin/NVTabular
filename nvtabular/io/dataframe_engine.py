@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import dask_cudf
+try:
+    import cudf
+    import dask_cudf
+except ImportError:
+    cudf = None
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
 

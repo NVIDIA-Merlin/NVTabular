@@ -1,6 +1,6 @@
 ## [NVTabular](https://github.com/NVIDIA/NVTabular) | [Documentation](https://nvidia.github.io/NVTabular/main/Introduction.html)
 
-[NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to quickly and easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library. NVTabular is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that have been developed as extensions of native framework code. In our experiments, we were able to speed up existing TensorFlow pipelines by 9 times and existing PyTorch pipelines by 5 times with our highly optimized dataloaders.
+[NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library. NVTabular is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that have been developed as extensions of native framework code. In our experiments, we were able to speed up existing TensorFlow pipelines by nine times and existing PyTorch pipelines by five times with our highly-optimized dataloaders.
 
 NVTabular is a component of [NVIDIA Merlin Open Beta](https://developer.nvidia.com/nvidia-merlin). NVIDIA Merlin is used for building large-scale recommender systems. With NVTabular being a part of the Merlin ecosystem, it also works with the other Merlin components including [HugeCTR](https://github.com/NVIDIA/HugeCTR) and [Triton Inference Server](https://github.com/NVIDIA/tensorrt-inference-server) to provide end-to-end acceleration of recommender systems on the GPU. Extending beyond model training, with NVIDIA’s Triton Inference Server, the feature engineering and preprocessing steps performed on the data during training can be automatically applied to incoming data during inference.
 
@@ -36,13 +36,13 @@ To learn more about NVTabular's core features, see the following:
 
 ### Performance
 
-When running NVTabular on the Criteo 1TB Click Logs Dataset using a single V100 32GB GPU, feature engineering and preprocessing was able to be completed in 13 minutes. Futhermore, when running NVTabular on a DGX-1 cluster with eight V100 GPUs, feature engineering and preprocessing was able to be completed within 3 minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/), the dataset can be processed and a full model can be trained in only 6 minutes.
+When running NVTabular on the Criteo 1TB Click Logs Dataset using a single V100 32GB GPU, feature engineering and preprocessing was able to be completed in 13 minutes. Futhermore, when running NVTabular on a DGX-1 cluster with eight V100 GPUs, feature engineering and preprocessing was able to be completed within three minutes. Combined with [HugeCTR](http://www.github.com/NVIDIA/HugeCTR/), the dataset can be processed and a full model can be trained in only six minutes.
 
 The performance of the Criteo DRLM workflow also demonstrates the effectiveness of the NVTabular library. The original ETL script provided in Numpy took over five days to complete. Combined with CPU training, the total iteration time is over one week. By optimizing the ETL code in Spark and running on a DGX-1 equivalent cluster, the time to complete feature engineering and preprocessing was reduced to three hours. Meanwhile, training was completed in one hour.
 
 ### Installation
 
-To install NVTabular, ensure that you meet the following prerequisites:
+Prior to installing NVTabular, ensure that you meet the following prerequisites:
 
 * CUDA version 10.1+
 * Python version 3.7+
@@ -78,12 +78,12 @@ NVTabular Docker containers are available in the [NVIDIA Merlin container reposi
 
 | Container Name             | Container Location | Functionality |
 | -------------------------- | ------------------ | ------------- |
-| merlin-training            | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-training            | NVTabular and HugeCTR                                         |
+| merlin-inference           | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-inference           | NVTabular, HugeCTR, and Triton Inference |
+| merlin-training            | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-training            | NVTabular and HugeCTR                    |
 | merlin-tensorflow-training | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-tensorflow-training | NVTabular, TensorFlow, and HugeCTR Tensorflow Embedding plugin |
-| merlin-pytorch-training    | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-pytorch-training    | NVTabular and PyTorch                                         |
-| merlin-inference           | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-inference           | NVTabular, HugeCTR, and Triton Inference                       |
+| merlin-pytorch-training    | https://ngc.nvidia.com/catalog/containers/nvidia:merlin:merlin-pytorch-training    | NVTabular and PyTorch                    |
 
-To use these Docker containers, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers.
+To use these Docker containers, you'll first need to install the [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker) to provide GPU support for Docker. You can use the NGC links referenced in the table above to obtain more information about how to launch and run these containers. To obtain more information about the software and model versions that NVTabular supports per container, see [Support Matrix](https://github.com/NVIDIA/NVTabular/blob/main/docs/source/resources/support_matrix.rst).
 
 ### Notebook Examples and Tutorials
 
@@ -106,7 +106,7 @@ Each Jupyter notebook covers the following:
 
 ### Feedback and Support
 
-If you'd like to contribute to the library directly, please see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline using this [survey](https://developer.nvidia.com/merlin-devzone-survey).
+If you'd like to contribute to the library directly, see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this [survey](https://developer.nvidia.com/merlin-devzone-survey).
 
-If you're interested in learning more about how NVTabular works see
-[our documentation](https://nvidia.github.io/NVTabular/main/Introduction.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/api/index.html) that outlines the specifics of the available calls within the library.
+If you're interested in learning more about how NVTabular works, see
+[our NVTabular documentation](https://nvidia.github.io/NVTabular/main/Introduction.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/api/index.html) that outlines the specifics of the available calls within the library.

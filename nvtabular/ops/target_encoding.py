@@ -27,7 +27,7 @@ from nvtabular.dispatch import (
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -63,7 +63,7 @@ class TargetEncoding(StatOperator):
 
         # First, we can transform the label columns to binary targets
         LABEL_COLUMNS = ['label1', 'label2']
-        labels = nvt.ColumnGroup(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
+        labels = ColumnSelector(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
         # We target encode cat1, cat2 and the cross columns cat1 x cat2
         target_encode = (
             ['cat1', 'cat2', ['cat2','cat3']] >>
@@ -143,8 +143,8 @@ class TargetEncoding(StatOperator):
         self.target = [target] if isinstance(target, str) else target
         self.dependency = self.target
 
-        if hasattr(self.target, "columns"):
-            self.target = self.target.columns
+        if hasattr(self.target, "output_columns"):
+            self.target = self.target.output_columns
 
         self.target_mean = target_mean
         self.kfold = kfold or 3
@@ -162,13 +162,14 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
             moments = _custom_moments(ddf[self.target])
 
-        col_groups = columns[:]
+        col_groups = col_selector.grouped_names
+
         if self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
@@ -180,7 +181,7 @@ class TargetEncoding(StatOperator):
                 )
 
             # Add new col_groups with fold
-            for group in columns:
+            for group in col_selector.grouped_names:
                 if isinstance(group, tuple):
                     group = list(group)
                 if isinstance(group, list):
@@ -190,15 +191,17 @@ class TargetEncoding(StatOperator):
 
         dsk, key = nvt_cat._category_stats(
             ddf,
-            col_groups,
-            self.target,
-            ["count", "sum"],
-            self.out_path,
-            0,
-            self.tree_width,
-            self.on_host,
-            concat_groups=False,
-            name_sep=self.name_sep,
+            nvt_cat.FitOptions(
+                col_groups,
+                self.target,
+                ["count", "sum"],
+                self.out_path,
+                0,
+                self.tree_width,
+                self.on_host,
+                concat_groups=False,
+                name_sep=self.name_sep,
+            ),
         )
         return Delayed(key, dsk), moments
 
@@ -213,14 +216,14 @@ class TargetEncoding(StatOperator):
 
     def output_column_names(self, columns):
         ret = []
-        for cat in columns:
+        for cat in columns.grouped_names:
             cat = [cat] if isinstance(cat, str) else cat
             ret.extend(self._make_te_name(cat))
 
         if self.kfold > 1 and not self.drop_folds:
             ret.append(self.fold_name)
 
-        return ret
+        return ColumnSelector(ret)
 
     def set_storage_path(self, new_path, copy=False):
         self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)
@@ -317,7 +320,7 @@ class TargetEncoding(StatOperator):
 
         return tran_df
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
@@ -331,7 +334,7 @@ class TargetEncoding(StatOperator):
 
         # Loop over categorical-column groups and apply logic
         new_df = None
-        for ind, cat_group in enumerate(columns):
+        for ind, cat_group in enumerate(col_selector.grouped_names):
             if isinstance(cat_group, tuple):
                 cat_group = list(cat_group)
             elif isinstance(cat_group, str):

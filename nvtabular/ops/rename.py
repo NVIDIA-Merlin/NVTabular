@@ -13,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-
-from .operator import ColumnNames, Operator
+from ..dispatch import DataFrameType
+from .operator import ColumnSelector, Operator
 
 
 class Rename(Operator):
@@ -49,20 +48,21 @@ class Rename(Operator):
         self.postfix = postfix
         self.name = name
 
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        gdf.columns = self.output_column_names(columns)
-        return gdf
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        df = df[col_selector.names]
+        df.columns = self.output_column_names(col_selector)
+        return df
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
+    def output_column_names(self, col_selector):
         if self.f:
-            return [self.f(col) for col in columns]
+            return ColumnSelector([self.f(col) for col in col_selector])
         elif self.postfix:
-            return [col + self.postfix for col in columns]
+            return ColumnSelector([col + self.postfix for col in col_selector])
         elif self.name:
-            if len(columns) == 1:
-                return [self.name]
+            if len(col_selector) == 1:
+                return ColumnSelector([self.name])
             else:
                 raise RuntimeError("Single column name provided for renaming multiple columns")
         else:

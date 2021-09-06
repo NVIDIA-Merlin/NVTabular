@@ -13,16 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import cupy
-import cupy.sparse
+try:
+    import cupy
+    import cupy.sparse
+except ImportError:
+    cupy = None
+
 import numba
 import numpy
+import pandas as pd
 import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
-from nvtx import annotate
 
-from .operator import ColumnNames, Operator
+from nvtabular.dispatch import DataFrameType, annotate
+
+from .operator import ColumnSelector, Operator
 
 
 class ColumnSimilarity(Operator):
@@ -61,20 +66,37 @@ class ColumnSimilarity(Operator):
     def __init__(self, left_features, right_features=None, metric="tfidf", on_device=True):
         super(ColumnSimilarity, self).__init__()
 
-        self.left_features = _convert_features(left_features, metric, on_device)
-        self.right_features = (
-            _convert_features(right_features, metric, on_device)
-            if right_features is not None
-            else self.left_features
-        )
+        self.metric = metric
+        self.left_features = left_features
+        self.right_features = right_features
         self.on_device = on_device
+        self._initialized = False
+
+    def _initialize_features(self):
+        if not self._initialized:
+            self.left_features = _convert_features(self.left_features, self.metric, self.on_device)
+            self.right_features = (
+                _convert_features(self.right_features, self.metric, self.on_device)
+                if self.right_features is not None
+                else self.left_features.copy()
+            )
+            self._initialized = True
 
     @annotate("ColumnSimilarity_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        names = self.output_column_names(columns)
-        for name, (left, right) in zip(names, columns):
-            a = gdf[left].values if self.on_device else gdf[left].values_host
-            b = gdf[right].values if self.on_device else gdf[right].values_host
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        use_values = self.on_device
+        if isinstance(df, pd.DataFrame):
+            # Disallow on-device computation for cpu-backed data
+            self.on_device = False
+            use_values = True
+
+        # Check if features are initialized
+        self._initialize_features()
+
+        names = self.output_column_names(col_selector)
+        for name, (left, right) in zip(names, col_selector.grouped_names):
+            a = df[left].values if use_values else df[left].values_host
+            b = df[right].values if use_values else df[right].values_host
 
             if len(a) and len(b):
                 similarities = row_wise_inner_product(
@@ -82,14 +104,14 @@ class ColumnSimilarity(Operator):
                 )
             else:
                 similarities = []
-            gdf[name] = similarities
+            df[name] = similarities
 
-        return gdf
+        return df
 
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        return [f"{a}_{b}_sim" for a, b in columns]
+        return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
@@ -216,9 +238,9 @@ def _convert_features(features, metric, on_device):
     # with only the inner product
     np = cupy if on_device else numpy
     if metric == "tfidf":
-        features = _normalize(_tfidf_weight(features, np), np)
+        features = _normalize(_tfidf_weight(features.copy(), np), np)
     elif metric == "cosine":
-        features = _normalize(features, np)
+        features = _normalize(features.copy(), np)
     elif metric != "inner":
         raise ValueError(f"unknown distance metric {metric}")
 

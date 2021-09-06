@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtx import annotate
+from nvtabular.dispatch import DataFrameType, annotate
 
-from nvtabular.dispatch import DataFrameType
-
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class Clip(Operator):
@@ -28,7 +26,7 @@ class Clip(Operator):
 
         # clip all continuous columns to be positive only, and then take the log of the clipped
         # columns
-        columns = nvt.ColumnGroup(CONT_NAMES) >> Clip(min_value=0) >> LogOp()
+        columns = ColumnSelector(CONT_NAMES) >> Clip(min_value=0) >> LogOp()
 
     Parameters
     ----------
@@ -48,8 +46,8 @@ class Clip(Operator):
         self.max_value = max_value
 
     @annotate("Clip_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        z_df = df[columns]
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        z_df = df[col_selector.names]
         if self.min_value is not None:
             z_df[z_df < self.min_value] = self.min_value
         if self.max_value is not None:

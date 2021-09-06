@@ -14,11 +14,10 @@
 # limitations under the License.
 
 from dask.dataframe.utils import meta_nonempty
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+from nvtabular.dispatch import DataFrameType, annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class Groupby(Operator):
@@ -99,7 +98,7 @@ class Groupby(Operator):
         super().__init__()
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
 
         # Sort if necessary
         if self.sort_cols:
@@ -112,7 +111,7 @@ class Groupby(Operator):
 
         # Get "complete" aggregation dicts
         _list_aggs, _conv_aggs = _get_agg_dicts(
-            self.groupby_cols, self.list_aggs, self.conv_aggs, columns
+            self.groupby_cols, self.list_aggs, self.conv_aggs, col_selector
         )
 
         # Apply aggregations
@@ -132,7 +131,7 @@ class Groupby(Operator):
         _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
         _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
 
-        return list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs))
+        return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

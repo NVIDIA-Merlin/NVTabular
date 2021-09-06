@@ -54,7 +54,10 @@ class Model(torch.nn.Module):
         mh_shapes = None
         if isinstance(embedding_table_shapes, tuple):
             embedding_table_shapes, mh_shapes = embedding_table_shapes
-        self.initial_cat_layer = ConcatenatedEmbeddings(embedding_table_shapes, dropout=emb_dropout)
+        if embedding_table_shapes:
+            self.initial_cat_layer = ConcatenatedEmbeddings(
+                embedding_table_shapes, dropout=emb_dropout
+            )
         if mh_shapes:
             self.mh_cat_layer = MultiHotEmbeddings(mh_shapes, dropout=emb_dropout, mode=bag_mode)
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
@@ -82,17 +85,22 @@ class Model(torch.nn.Module):
         mh_cat = None
         concat_list = []
         if isinstance(x_cat, tuple):
-
             x_cat, mh_cat = x_cat
         if mh_cat:
             mh_cat = self.mh_cat_layer(mh_cat)
             concat_list.append(mh_cat)
-        x_cat = self.initial_cat_layer(x_cat)
-        concat_list.append(x_cat)
-        if x_cont is not None:
+        # must use is not None for tensor, and len logic for empty list
+        if x_cat is not None and len(x_cat) > 0:
+            x_cat = self.initial_cat_layer(x_cat)
+            concat_list.append(x_cat)
+        if x_cont is not None and len(x_cont) > 0:
             x_cont = self.initial_cont_layer(x_cont)
             concat_list.append(x_cont)
-        x = torch.cat(concat_list, 1)
+        # if no layers in concat_list this breaks by design
+        if len(concat_list) > 1:
+            x = torch.cat(concat_list, 1)
+        else:
+            x = concat_list[0]
         for layer in self.layers:
             x = layer(x)
         x = self.output_layer(x)
