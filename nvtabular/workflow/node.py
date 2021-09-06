@@ -319,8 +319,10 @@ class WorkflowNode:
 
     @property
     def label(self):
-        if self.op:
+        if self.op and hasattr(self.op, "label"):
             return self.op.label
+        elif self.op:
+            return str(type(self.op))
         elif not self.parents:
             return f"input cols=[{self._cols_repr}]"
         else:
