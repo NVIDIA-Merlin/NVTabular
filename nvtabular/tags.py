@@ -13,11 +13,24 @@ class Tags(Enum):
     # Feature context
     USER = "user"
     ITEM = "item"
-    ITEM_ID = ["item", "item_id"]
+    ID_ITEM = "item_id"
     CONTEXT = "context"
 
+    BINARY = "binary"
+    REGRESSION = "regression"
+    MULTI_CLASS = "multi_class"
+
     # Target related
-    TARGETS = ["target"]
-    TARGETS_BINARY = ["target", "binary"]
-    TARGETS_REGRESSION = ["target", "regression"]
-    TARGETS_MULTI_CLASS = ["target", "multi_class"]
+    TARGETS = "target"
+
+    @property
+    def TARGETS_BINARY(self):
+        return [self.TARGETS, self.BINARY]
+
+    @property
+    def TARGETS_REGRESSION(self):
+        return [self.TARGETS, self.REGRESSION]
+
+    @property
+    def TARGETS_MULTI_CLASS(self):
+        return [self.TARGETS, self.REGRESSION]

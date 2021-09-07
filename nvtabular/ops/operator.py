@@ -130,7 +130,6 @@ class Operator:
         return column_schema.with_tags(self.output_tags())
 
     def _add_properties(self, column_schema):
-
         # get_properties should return the additional properties
         # for target column
         target_column_properties = self.output_properties()[column_schema.name]
