@@ -546,6 +546,9 @@ class Dataset:
         elif not left.cpu and right.cpu:
             _right = cls(right.to_ddf())
             _right.to_gpu()
+        elif left.cpu == right.cpu:
+            # both left and right are already cudf / pandas df
+            _right = right
 
         return cls(
             left.to_ddf()
