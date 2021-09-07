@@ -29,14 +29,21 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
+from nvtabular.utils import global_dask_client
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
 from .dask import _ddf_to_dataset, _simple_shuffle
 from .dataframe_engine import DataFrameDatasetEngine
 from .parquet import ParquetDatasetEngine
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
 
 LOG = logging.getLogger("nvtabular")
 
@@ -209,7 +216,9 @@ class Dataset:
         self.client = client
 
         # Check if we are keeping data in cpu memory
-        self.cpu = cpu or False
+        self.cpu = cpu
+        if not self.cpu:
+            self.cpu = cudf is None
 
         # Keep track of base dataset (optional)
         self.base_dataset = base_dataset or self
@@ -254,7 +263,7 @@ class Dataset:
                         "Using very large partitions sizes for Dask. "
                         "Memory-related errors are likely."
                     )
-                part_size = int(device_mem_size(kind="total") * part_mem_fraction)
+                part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
             paths = path_or_source
@@ -460,10 +469,20 @@ class Dataset:
                 # multiple files from each partition directory at once.
                 # Generally speaking, we can optimize this code path
                 # much further.
-                return Dataset(_simple_shuffle(ddf, plan))
+                return Dataset(_simple_shuffle(ddf, plan), client=self.client)
+
+        # Warn user if there is an unused global
+        # Dask client available
+        if global_dask_client(self.client):
+            warnings.warn(
+                "A global dask.distributed client has been detected, but the "
+                "single-threaded scheduler is being used for this shuffle operation. "
+                "Please use the `client` argument to initialize a `Dataset` and/or "
+                "`Workflow` object with distributed-execution enabled."
+            )
 
         # Fall back to dask.dataframe algorithm
-        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions), client=self.client)
 
     def repartition(self, npartitions=None, partition_size=None):
         """Repartition the underlying ddf, and return a new Dataset
@@ -516,6 +535,9 @@ class Dataset:
         elif not left.cpu and right.cpu:
             _right = cls(right.to_ddf())
             _right.to_gpu()
+        elif left.cpu == right.cpu:
+            # both left and right are already cudf / pandas df
+            _right = right
 
         return cls(
             left.to_ddf()
@@ -600,6 +622,7 @@ class Dataset:
         labels=None,
         suffix=".parquet",
         partition_on=None,
+        method="subgraph",
     ):
         """Writes out to a parquet dataset
 
@@ -623,28 +646,29 @@ class Dataset:
             persist stage. The `FULL` option is not yet implemented.
         partition_on : str or list(str)
             Columns to use for hive-partitioning.  If this option is used,
-            `preserve_files`, `output_files`, and `out_files_per_proc` will
-            all be ignored.  Also, the `PER_WORKER` shuffle will not be
-            supported.
+            `preserve_files`, `output_files`, and `out_files_per_proc`
+            cannot be specified, and `method` will be ignored.  Also, the
+            `PER_WORKER` shuffle will not be supported.
         preserve_files : bool
             Whether to preserve the original file-to-partition mapping of
-            the base dataset. This option is only available if the base
-            dataset is known, and if it corresponds to csv or parquet format.
-            If True, the `out_files_per_proc` option will be ignored, but the
-            `output_files` option will take precedence. Default is False.
+            the base dataset. This option requires `method="subgraph"`, and is
+            only available if the base dataset is known, and if it corresponds
+            to csv or parquet format. If True, the `out_files_per_proc` option
+            will be ignored. Default is False.
         output_files : dict, list or int
-            Dictionary mapping of output file names to partition indices.
-            If a list of file names is specified, a contiguous range of
-            output partitions will be mapped to each file. The same procedure
-            is used if an integer is specified, but the file names will be
-            written as "part_*". If anything is specified for `output_files`,
-            the `output_files_per_proc` argument will be ignored.  Also, if
-            a dictionary is specified, excluded partition indices will not
-            be written to disk.
+            The total number of desired output files. This option requires
+            `method="subgraph"`, and the default value will be the number of Dask
+            workers, multiplied by `out_files_per_proc`. For further output-file
+            control, this argument may also be used to pass a dictionary mapping
+            the output file names to partition indices, or a list of desired
+            output-file names.
         out_files_per_proc : integer
-            Number of files to create (per process) after shuffling the
-            data. This option will be ignored if `output_files`
-            is specified.
+            Number of output files that each process will use to shuffle an input
+            partition. Deafult is 1. If `method="worker"`, the total number of output
+            files will always be the total number of Dask workers, multiplied by this
+            argument. If `method="subgraph"`, the total number of files is determined
+            by `output_files` (and `out_files_per_proc` must be 1 if a dictionary is
+            specified).
         num_threads : integer
             Number of IO threads to use for writing the output dataset.
             For `0` (default), no dedicated IO threads will be used.
@@ -664,8 +688,54 @@ class Dataset:
             List of continuous columns
         labels : list of str, optional
             List of label columns
+        method : {"subgraph", "worker"}
+            General algorithm to use for the parallel graph execution. In order
+            to minimize memory pressure, `to_parquet` will use a `"subgraph"` by
+            default. This means that we segment the full Dask task graph into a
+            distinct subgraph for each output file (or output-file group). Then,
+            each of these subgraphs is executed, in full, by the same worker (as
+            a single large task). In some cases, it may be more ideal to prioritize
+            concurrency. In that case, a worker-based approach can be used by
+            specifying `method="worker"`.
         """
 
+        if partition_on:
+
+            # Check that the user is not expecting a specific output-file
+            # count/structure that is not supported
+            if output_files:
+                raise ValueError("`output_files` not supported when `partition_on` is used.")
+            if out_files_per_proc:
+                raise ValueError("`out_files_per_proc` not supported when `partition_on` is used.")
+            if preserve_files:
+                raise ValueError("`preserve_files` not supported when `partition_on` is used.")
+
+        else:
+
+            # Check that method (algorithm) is valid
+            if method not in ("subgraph", "worker"):
+                raise ValueError(f"{method} not a recognized method for `Dataset.to_parquet`")
+
+            # Deal with method-specific defaults
+            if method == "worker":
+                if output_files or preserve_files:
+                    raise ValueError("output_files and preserve_files require `method='subgraph'`")
+                output_files = False
+            elif preserve_files and output_files:
+                raise ValueError("Cannot specify both preserve_files and output_files.")
+            elif not (output_files or preserve_files):
+                # Default "subgraph" behavior - Set output_files to the
+                # total umber of workers, multiplied by out_files_per_proc
+                try:
+                    nworkers = len(self.client.cluster.workers)
+                except AttributeError:
+                    nworkers = 1
+                output_files = nworkers * (out_files_per_proc or 1)
+
+        # Replace None/False suffix argument with ""
+        suffix = suffix or ""
+
+        # Check shuffle argument
         shuffle = _check_shuffle_arg(shuffle)
 
         if isinstance(output_files, dict) or (not output_files and preserve_files):
@@ -675,30 +745,68 @@ class Dataset:
         else:
             ddf = self.to_ddf(shuffle=shuffle)
 
-        # Replace None/False suffix argument with ""
-        suffix = suffix or ""
-
+        # Deal with `method=="subgraph"`.
         # Convert `output_files` argument to a dict mapping
         if output_files:
 
-            # First, repartition ddf if necessary
+            #   NOTES on `output_files`:
+            #
+            # - If a list of file names is specified, a contiguous range of
+            #   output partitions will be mapped to each file. The same
+            #   procedure is used if an integer is specified, but the file
+            #   names will be written as "part_*".
+            #
+            # - When `output_files` is used, the `output_files_per_proc`
+            #   argument will be interpreted as the desired number of output
+            #   files to write within the same task at run time (enabling
+            #   input partitions to be shuffled into multiple output files).
+            #
+            # - Passing a list or integer to `output_files` will preserve
+            #   the original ordering of the input data as long as
+            #   `out_files_per_proc` is set to `1` (or `None`), and
+            #   `shuffle==None`.
+            #
+            # - If a dictionary is specified, excluded partition indices
+            #   will not be written to disk.
+            #
+            # - To map multiple output files to a range of input partitions,
+            #   dictionary-input keys should correspond to a tuple of file
+            #   names.
+
+            # Use out_files_per_proc to calculate how
+            # many output files should be written within the
+            # same subgraph.  Note that we must a
+            files_per_task = out_files_per_proc or 1
             required_npartitions = ddf.npartitions
             if isinstance(output_files, int):
                 required_npartitions = output_files
+                files_per_task = min(files_per_task, output_files)
             elif isinstance(output_files, list):
                 required_npartitions = len(output_files)
+                files_per_task = min(files_per_task, len(output_files))
+            elif out_files_per_proc:
+                raise ValueError(
+                    "Cannot specify out_files_per_proc if output_files is "
+                    "defined as a dictionary mapping. Please define each "
+                    "key in output_files as a tuple of file names if you "
+                    "wish to have those files written by the same process."
+                )
+
+            # Repartition ddf if necessary
             if ddf.npartitions < required_npartitions:
                 ddf = ddf.clear_divisions().repartition(npartitions=required_npartitions)
 
+            # Construct an output_files dictionary if necessary
             if isinstance(output_files, int):
                 output_files = [f"part_{i}" + suffix for i in range(output_files)]
             if isinstance(output_files, list):
                 new = {}
                 split = math.ceil(ddf.npartitions / len(output_files))
-                for i, fn in enumerate(output_files):
+                for i in range(0, len(output_files), files_per_task):
+                    fns = output_files[i : i + files_per_task]
                     start = i * split
-                    stop = min(start + split, ddf.npartitions)
-                    new[fn] = np.arange(start, stop)
+                    stop = min(start + split * len(fns), ddf.npartitions)
+                    new[tuple(fns)] = np.arange(start, stop)
                 output_files = new
                 suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
@@ -765,7 +873,7 @@ class Dataset:
         num_threads=0,
         dtypes=None,
     ):
-        """Writes out to a parquet dataset
+        """Writes out to a hugectr dataset
 
         Parameters
         ----------
@@ -946,6 +1054,37 @@ class Dataset:
             return result.compute()
         else:
             return result
+
+    def infer_schema(self, n=1):
+        """Create a schema containing the column names and inferred dtypes of the Dataset
+
+        Args:
+            n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
+        """
+        sampled_dtypes = self.sample_dtypes(n)
+        dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+
+        column_schemas = []
+        for column, dtype in dtypes.items():
+            col_schema = ColumnSchema(column, dtype=dtype)
+            column_schemas.append(col_schema)
+
+        return Schema(column_schemas)
+
+    def sample_dtypes(self, n=1):
+        """Return the real dtypes of the Dataset
+
+        Sample the partitions of the underlying Dask collection
+        until a non-empty partition is found. Then, use the first
+        ``n`` rows of that partition to infer dtype info. If no
+        non-empty partitions are found, use the Dask dtypes.
+        """
+        _ddf = self.to_ddf()
+        for partition_index in range(_ddf.npartitions):
+            _head = _ddf.partitions[partition_index].head(n)
+            if len(_head):
+                return _head.dtypes
+        return _ddf.dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):

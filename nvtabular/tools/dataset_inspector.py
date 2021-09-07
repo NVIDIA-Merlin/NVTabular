@@ -19,6 +19,7 @@ import json
 import fsspec
 import numpy as np
 
+from nvtabular.columns import ColumnSelector
 from nvtabular.ops import DataStats
 from nvtabular.workflow import Workflow
 
@@ -70,7 +71,7 @@ class DatasetInspector:
 
         # Create Dataset, Workflow, and get Stats
         stats = DataStats()
-        features = cats + conts + labels >> stats
+        features = ColumnSelector(cats + conts + labels) >> stats
         workflow = Workflow(features, client=self.client)
         workflow.fit(dataset)
 

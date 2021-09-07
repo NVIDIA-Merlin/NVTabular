@@ -14,11 +14,10 @@
 # limitations under the License.
 #
 import numpy as np
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType, _natural_log
+from nvtabular.dispatch import DataFrameType, _natural_log, annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class LogOp(Operator):
@@ -35,7 +34,7 @@ class LogOp(Operator):
     """
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        return _natural_log(df[columns].astype(np.float32) + 1)
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        return _natural_log(df[col_selector.names].astype(np.float32) + 1)
 
     transform.__doc__ = Operator.transform.__doc__

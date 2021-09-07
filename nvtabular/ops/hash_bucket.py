@@ -15,13 +15,9 @@
 #
 from typing import Dict, Union
 
-import cudf
-from cudf.utils.dtypes import is_list_dtype
-from nvtx import annotate
-
-from ..dispatch import _encode_list_column
+from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
 from .categorify import _emb_sz_rule, _get_embedding_order
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class HashBucket(Operator):
@@ -78,18 +74,19 @@ class HashBucket(Operator):
         super(HashBucket, self).__init__()
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if isinstance(self.num_buckets, int):
-            num_buckets = {name: self.num_buckets for name in columns}
+            num_buckets = {name: self.num_buckets for name in col_selector}
         else:
             num_buckets = self.num_buckets
 
         for col, nb in num_buckets.items():
-            if is_list_dtype(gdf[col].dtype):
-                gdf[col] = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
+            if _is_list_dtype(df[col].dtype):
+                df[col] = _encode_list_column(df[col], _hash_series(df[col]) % nb)
             else:
-                gdf[col] = gdf[col].hash_values() % nb
-        return gdf
+                df[col] = _hash_series(df[col]) % nb
+
+        return df
 
     transform.__doc__ = Operator.transform.__doc__
 

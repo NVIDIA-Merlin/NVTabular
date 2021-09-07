@@ -15,6 +15,11 @@
 #
 import warnings
 
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
 import dask.dataframe as dd
 import pandas as pd
 
@@ -28,7 +33,7 @@ from nvtabular.dispatch import (
     _to_host,
 )
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class JoinExternal(Operator):
@@ -42,7 +47,7 @@ class JoinExternal(Operator):
         df_external = cudf.read_parquet('external.parquet')
 
         # Use JoinExternal to define a NVTabular workflow
-        joined = nvt.ColumnGroup(columns_left) >> nvt.ops.JoinExternal(
+        joined = ColumnSelector(columns_left) >> nvt.ops.JoinExternal(
             df_ext,
             on=['key1', 'key2'],
             on_ext=['key1_ext', 'key2_ext'],
@@ -104,6 +109,8 @@ class JoinExternal(Operator):
         self.kwargs = kwargs
         self.cpu = None
         self._ext_cache = None
+        if cudf is None:
+            self.cpu = True
         if self.how not in ("left", "inner"):
             raise ValueError("Only left join is currently supported.")
         if not isinstance(self.kind_ext, ExtData):
@@ -177,7 +184,7 @@ class JoinExternal(Operator):
         else:
             return df.merge(_ext, left_on=self.on, right_on=self.on_ext, how=self.how)
 
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         self.cpu = isinstance(df, pd.DataFrame)
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
@@ -191,9 +198,12 @@ class JoinExternal(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        if self.columns_ext:
-            return list(set(columns + self.columns_ext))
-        return list(set(columns + list(self._ext.columns)))
+        ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
+
+        # This maintains the order which set() does not
+        combined = dict.fromkeys(columns + list(ext_columns)).keys()
+
+        return ColumnSelector(list(combined))
 
 
 def _check_partition_count(df):

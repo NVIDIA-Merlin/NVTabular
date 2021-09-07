@@ -2,6 +2,8 @@
 
 ignore-patterns=_version.py,model_config_pb2.py
 
+extension-pkg-allow-list=hugectr
+
 [MESSAGES CONTROL]
 disable=fixme,
     # docstrings aren't required (yet).

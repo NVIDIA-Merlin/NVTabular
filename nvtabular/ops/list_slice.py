@@ -13,17 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import cupy as cp
 import numba.cuda
 import numpy as np
-import pandas as pd
-from cudf.core.column import as_column, build_column
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
-from .operator import ColumnNames, Operator
+from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
+
+from .operator import ColumnSelector, Operator
 
 
 class ListSlice(Operator):
@@ -56,10 +56,10 @@ class ListSlice(Operator):
             self.end = np.iinfo(np.int64).max
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
-        on_cpu = isinstance(df, pd.DataFrame)
-        ret = pd.DataFrame() if on_cpu else cudf.DataFrame()
-        for col in columns:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        on_cpu = _is_cpu_object(df)
+        ret = type(df)()
+        for col in col_selector:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]
@@ -86,12 +86,7 @@ class ListSlice(Operator):
                     )
 
                 # build up a list column with the sliced values
-                ret[col] = build_column(
-                    None,
-                    dtype=cudf.core.dtypes.ListDtype(new_elements.dtype),
-                    size=new_offsets.size - 1,
-                    children=(as_column(new_offsets), as_column(new_elements)),
-                )
+                ret[col] = _build_cudf_list_column(new_elements, new_offsets)
 
         return ret
 

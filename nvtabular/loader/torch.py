@@ -56,8 +56,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         enable/disable shuffling of dataset
     parts_per_chunk : int
         number of partitions from the iterator, an NVTabular Dataset, to concatenate into a "chunk"
-    devices : [int]
-        list representing all available GPU IDs
+    device : int
+        device id of selected GPU
     sparse_list : [str]
         list with column names of columns that should be represented as sparse tensors
     sparse_max : {str: int}
@@ -107,11 +107,23 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return DataLoader.__iter__(self)
 
     def _get_device_ctx(self, dev):
+        if dev == "cpu":
+            return torch.device("cpu")
         return torch.cuda.device("cuda:{}".format(dev))
 
+    def _pack(self, gdf):
+        if self.device == "cpu":
+            return gdf
+        return gdf.to_dlpack()
+
+    def _unpack(self, dlpack):
+        if self.device == "cpu":
+            return torch.Tensor(dlpack.values).squeeze(1)
+        return from_dlpack(dlpack)
+
     def _to_tensor(self, gdf, dtype=None):
-        dl_pack = gdf.to_dlpack()
-        tensor = from_dlpack(dl_pack)
+        dl_pack = self._pack(gdf)
+        tensor = self._unpack(dl_pack)
         return tensor.type(dtype)
 
     def _split_fn(self, tensor, idx, axis=0):
@@ -135,29 +147,28 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             offsets = values_offset[1].flatten()
         else:
             values = values_offset.flatten()
-            offsets = torch.arange(values.size()[0], device="cuda")
+            offsets = torch.arange(values.size()[0], device=self.device)
         num_rows = len(offsets)
         offsets = torch.cat([offsets, torch.cuda.LongTensor([len(values)])])
         diff_offsets = offsets[1:] - offsets[:-1]
         return values, offsets, diff_offsets, num_rows
 
     def _get_max_seq_len(self, diff_offsets):
-        # get_max_seq_len, return int
         return int(diff_offsets.max())
 
-        # Building the indices to reconstruct the sparse tensors
+    # Building the indices to reconstruct the sparse tensors
 
     def _get_indices(self, offsets, diff_offsets):
-        row_ids = torch.arange(len(offsets) - 1, device="cuda")
+        row_ids = torch.arange(len(offsets) - 1, device=self.device)
         row_ids_repeated = torch.repeat_interleave(row_ids, diff_offsets)
         row_offset_repeated = torch.repeat_interleave(offsets[:-1], diff_offsets)
-        col_ids = torch.arange(len(row_offset_repeated), device="cuda") - row_offset_repeated
+        col_ids = torch.arange(len(row_offset_repeated), device=self.device) - row_offset_repeated
         indices = torch.cat([row_ids_repeated.unsqueeze(-1), col_ids.unsqueeze(-1)], axis=1)
         return indices
 
     def _get_sparse_tensor(self, values, indices, num_rows, seq_limit):
         sparse_tensor = torch.sparse_coo_tensor(
-            indices.T, values, torch.Size([num_rows, seq_limit]), device="cuda"
+            indices.T, values, torch.Size([num_rows, seq_limit]), device=self.device
         )
         if self.sparse_as_dense:
             sparse_tensor = sparse_tensor.to_dense()

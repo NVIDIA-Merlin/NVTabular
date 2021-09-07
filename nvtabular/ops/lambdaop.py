@@ -15,10 +15,8 @@
 #
 from inspect import getsourcelines, signature
 
-from nvtx import annotate
-
-from ..dispatch import DataFrameType
-from .operator import ColumnNames, Operator
+from ..dispatch import DataFrameType, annotate
+from .operator import ColumnSelector, Operator
 
 
 class LambdaOp(Operator):
@@ -27,9 +25,9 @@ class LambdaOp(Operator):
 
     Example usage 1::
 
-        # Define a ColumnGroup that LamdaOp will apply to
+        # Define a ColumnSelector that LamdaOp will apply to
         # then define a custom function, e.g. extract first 5 character from a string
-        lambda_feature = ColumnGroup(["col1"])
+        lambda_feature = ColumnSelector(["col1"])
         new_lambda_feature = lambda_feature >> (lambda col: col.str.slice(0, 5))
         processor = nvtabular.Workflow(new_lambda_feature + 'label')
 
@@ -37,7 +35,7 @@ class LambdaOp(Operator):
 
         # define a custom function e.g. calculate probability for different events.
         # Rename the each new feature column name.
-        lambda_features = ColumnGroup(['event1', 'event2', 'event3']), # columns, f is applied to
+        lambda_features = ColumnSelector(['event1', 'event2', 'event3']), # columns, f is applied to
         def cond_prob(col, gdf):
             col = col.astype(np.float32)
             col = col / gdf['total_events']
@@ -49,7 +47,7 @@ class LambdaOp(Operator):
     Parameters
     -----------
     f : callable
-        Defines a function that takes a cudf.Series and an optional cudf.DataFrame as input,
+        Defines a function that takes a Series and an optional DataFrame as input,
         and returns a new Series as the output.
     dependency : list, default None
         Whether to provide a dependency column or not.
@@ -67,9 +65,9 @@ class LambdaOp(Operator):
         self._label = label
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for col in columns:
+        for col in col_selector:
             if self._param_count == 2:
                 new_df[col] = self.f(df[col], df)
             elif self._param_count == 1:

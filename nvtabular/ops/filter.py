@@ -15,10 +15,15 @@
 #
 from typing import Callable, Union
 
-import cudf
-from nvtx import annotate
+from nvtabular.dispatch import (
+    DataFrameType,
+    SeriesType,
+    _is_dataframe_object,
+    _is_series_object,
+    annotate,
+)
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class Filter(Operator):
@@ -38,23 +43,23 @@ class Filter(Operator):
         dataframe with unwanted rows filtered out.
     """
 
-    def __init__(self, f: Callable[[cudf.DataFrame], Union[cudf.DataFrame, cudf.Series]]):
+    def __init__(self, f: Callable[[DataFrameType], Union[DataFrameType, SeriesType]]):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. Filter op applies f to dataframe")
         self.f = f
 
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        filtered = self.f(gdf)
-        if isinstance(filtered, cudf.DataFrame):
-            new_gdf = filtered
-        elif isinstance(filtered, cudf.Series) and filtered.dtype == bool:
-            new_gdf = gdf[filtered]
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        filtered = self.f(df)
+        if _is_dataframe_object(filtered):
+            new_df = filtered
+        elif _is_series_object(filtered) and filtered.dtype == bool:
+            new_df = df[filtered]
         else:
             raise ValueError(f"Invalid output from filter op: f{filtered.__class__}")
 
-        new_gdf.reset_index(drop=True, inplace=True)
-        return new_gdf
+        new_df.reset_index(drop=True, inplace=True)
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
