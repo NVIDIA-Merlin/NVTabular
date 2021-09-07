@@ -279,7 +279,7 @@ class WorkflowNode:
 
     @property
     def input_columns(self):
-        if not self.input_schema:
+        if self.input_schema is None:
             raise RuntimeError(
                 "The input columns aren't computed until the workflow "
                 "is fit to a dataset or input schema."
@@ -293,7 +293,7 @@ class WorkflowNode:
 
     @property
     def output_columns(self):
-        if not self.input_schema:
+        if self.output_schema is None:
             raise RuntimeError(
                 "The output columns aren't computed until the workflow "
                 "is fit to a dataset or input schema."
