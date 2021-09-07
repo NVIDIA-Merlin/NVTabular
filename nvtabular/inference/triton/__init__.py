@@ -30,8 +30,10 @@ from google.protobuf import text_format  # noqa
 from tritonclient.utils import np_to_triton_dtype  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from nvtabular.columns import Schema  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
 from nvtabular.ops import get_embedding_sizes  # noqa
+from nvtabular.workflow.node import iter_nodes  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -627,8 +629,6 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
-    workflow.output_node = _remove_columns_from_workflow_node(workflow.output_node, to_remove)
-
     for label in to_remove:
         if label in workflow.input_dtypes:
             del workflow.input_dtypes[label]
@@ -636,16 +636,21 @@ def _remove_columns(workflow, to_remove):
         if label in workflow.output_dtypes:
             del workflow.output_dtypes[label]
 
-    return workflow
+    # Work backwards to form an input schema from redacted columns
+    new_schema = Schema(list(workflow.input_dtypes.keys()))
 
+    # Re-fit the workflow to altered input schema
+    for node in iter_nodes([workflow.output_node]):
+        node.input_schema = None
+        node.output_schema = None
 
-def _remove_columns_from_workflow_node(wfn, to_remove):
-    if wfn.selector:
-        wfn.selector = [col for col in wfn.selector if col not in to_remove]
+        if node.selector:
+            for column in to_remove:
+                # TODO: Handle selector sub-groups?
+                if column in node.selector:
+                    node.selector._names.remove(column)
 
-    parents = [_remove_columns_from_workflow_node(parent, to_remove) for parent in wfn.parents]
-    wfn.parents = [p for p in parents if p.selector]
-    return wfn
+    return workflow.fit_schema(new_schema)
 
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):
