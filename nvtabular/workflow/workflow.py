@@ -374,6 +374,9 @@ class Workflow:
             for upstream_node in node.parents_with_dep_nodes:
                 upstream_output_cols += upstream_node.output_columns.names
 
+            for upstream_selector in node.dependency_selectors:
+                upstream_output_cols += upstream_selector.names
+
             upstream_output_cols = _get_unique(upstream_output_cols)
             input_cols += list(set(node.input_columns.names) - set(upstream_output_cols))
             input_cols += node.dependency_columns.names
