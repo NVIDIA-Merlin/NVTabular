@@ -192,8 +192,11 @@ class WorkflowNode:
         elif not isinstance(other, (ColumnSelector, WorkflowNode)):
             other = ColumnSelector(other)
 
+        # If the other node is a `+` node, we want to collapse it into this `+` node to
+        # avoid creating a cascade of repeated `+`s that we'd need to optimize out by
+        # re-combining them later in order to clean up the graph
         if isinstance(other, WorkflowNode) and isinstance(other.op, internal.ConcatColumns):
-            child.dependencies += other.parents_with_dep_nodes
+            child.dependencies += other.parents + other.dependencies
         else:
             child.dependencies.append(other)
 
