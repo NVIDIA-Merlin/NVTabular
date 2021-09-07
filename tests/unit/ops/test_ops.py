@@ -65,7 +65,6 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
 
-# @pytest.mark.skipif(not _HAS_GPU, reason="TargetEncoding doesn't work without a GPU yet")
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
@@ -108,10 +107,11 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         else:
             name = "__fold___Author_Engaging-User"
             cols = ["__fold__", "Author", "Engaging-User"]
+
         check = df_lib.read_parquet(te_features.op.stats[name])
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
-        assert_eq(check, df_out_check)
+        assert_eq(check, df_out_check, check_dtype=False)
 
 
 @pytest.mark.parametrize("npartitions", [1, 2])
