@@ -39,10 +39,7 @@ from triton_python_backend_utils import (
     get_input_tensor_by_name,
 )
 
-from nvtabular.inference.triton import (
-    _convert_string2pytorch_dtype,
-    _convert_tensor,
-)
+from nvtabular.inference.triton import _convert_string2pytorch_dtype, _convert_tensor
 
 LOG = logging.getLogger("nvtabular")
 
@@ -69,6 +66,8 @@ class TritonPythonModel:
         if model_info_file.exists():
             with open(model_info_path) as json_file:
                 self.model_info = json.load(json_file)
+
+        self.use_fix_dtypes = True
 
         self.inputs = dict()
         self.sparse_inputs = dict()
@@ -108,6 +107,9 @@ class TritonPythonModel:
                 ).cuda()
 
             for name, dtype in self.sparse_inputs.items():
+                if self.use_fix_dtypes:
+                    dtype = _convert_dtype(dtype)
+
                 input_val = _convert_tensor(
                     get_input_tensor_by_name(request, name + sparse_value_marker)
                 )
@@ -164,3 +166,21 @@ def _build_sparse_tensor(values, nnzs, seq_limit, sparse_as_dense, device="cuda"
     indices = _get_indices(nnzs, device)
     num_rows = len(nnzs)
     return _get_sparse_tensor(values, indices, num_rows, seq_limit, sparse_as_dense, device)
+
+
+def _convert_dtype(dtype):
+    if dtype == torch.float64 or dtype == torch.float16 or dtype == torch.float32:
+        return torch.float32
+    if (
+        dtype == torch.int64
+        or dtype == torch.int32
+        or dtype == torch.int16
+        or dtype == torch.int8
+        or dtype == torch.uint64
+        or dtype == torch.uint32
+        or dtype == torch.uint16
+        or dtype == torch.uint8
+    ):
+        return torch.long
+
+    raise ValueError(f"Can't convert dtype {dtype})")
