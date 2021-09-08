@@ -1081,7 +1081,7 @@ def _encode(
 
     if value is None:
         value = type(df)()
-        for c in selection_r:
+        for c in selection_r.names:
             typ = df[selection_l.names[0]].dtype if len(selection_l.names) == 1 else df[c].dtype
             value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
