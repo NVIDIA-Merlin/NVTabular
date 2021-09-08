@@ -22,15 +22,3 @@ class Tags(Enum):
 
     # Target related
     TARGETS = "target"
-
-    @property
-    def TARGETS_BINARY(self):
-        return [self.TARGETS, self.BINARY]
-
-    @property
-    def TARGETS_REGRESSION(self):
-        return [self.TARGETS, self.REGRESSION]
-
-    @property
-    def TARGETS_MULTI_CLASS(self):
-        return [self.TARGETS, self.REGRESSION]
