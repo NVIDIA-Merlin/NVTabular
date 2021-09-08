@@ -143,9 +143,6 @@ class TargetEncoding(StatOperator):
         self.target = [target] if isinstance(target, str) else target
         self.dependency = self.target
 
-        if hasattr(self.target, "output_columns"):
-            self.target = self.target.output_columns
-
         self.target_mean = target_mean
         self.kfold = kfold or 3
         self.fold_seed = fold_seed
@@ -215,6 +212,9 @@ class TargetEncoding(StatOperator):
         return self.dependency
 
     def output_column_names(self, columns):
+        if hasattr(self.target, "output_columns"):
+            self.target = self.target.output_columns
+
         ret = []
         for cat in columns.grouped_names:
             cat = [cat] if isinstance(cat, str) else cat
