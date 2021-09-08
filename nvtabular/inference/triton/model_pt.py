@@ -134,7 +134,7 @@ class TritonPythonModel:
             out = self.model(input_dict)
 
             output_info = self.model_config["output"][0]
-            output_tensor = Tensor(output_info["name"], out.cpu().detach().numpy())
+            output_tensor = Tensor(output_info["name"], out["predictions"].cpu().detach().numpy())
             responses.append(InferenceResponse([output_tensor]))
 
         return responses
