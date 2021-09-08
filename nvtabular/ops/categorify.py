@@ -863,17 +863,23 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
 def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
     """Writes out a dataframe to a parquet file.
 
-    Args:
-        dfs (DataFrame): [description]
-        base_path (string): [description]
-        col_selector (ColumnSelector): [description]
-        options (FitOptions): [description]
+    Parameters
+    ----------
+    dfs : DataFrame
+    base_path : string
+    col_selector : 
+    options : FitOptions
 
-    Raises:
-        ValueError: [description]
+    Raises
+    ------
+    ValueError
+        If the computed nlargest value is non-positive.
 
-    Returns:
-        string: the path to the output parquet file.
+    Returns
+    -------
+    path : string
+        the path to the output parquet file.
+    
     """
     if options.concat_groups and len(col_selector) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
@@ -1070,27 +1076,45 @@ def _encode(
     dtype=None,
     start_index=1
 ):
-    """The _encode method is responsible for transforming a dataframe (taking the written 
-    out vocabulary file and looking up values to translate from say string inputs to numeric 
-    outputs) 
+    """The _encode method is responsible for transforming a dataframe by taking the written 
+    out vocabulary file and looking up values to translate inputs to numeric 
+    outputs.
 
-    Args:
-        name ([type]): [description]
-        storage_name ([type]): [description]
-        path ([type]): [description]
-        df ([type]): [description]
-        cat_cache ([type]): [description]
-        na_sentinel (int, optional): [description]. Defaults to -1.
-        freq_threshold (int, optional): [description]. Defaults to 0.
-        search_sorted (bool, optional): [description]. Defaults to False.
-        buckets ([type], optional): [description]. Defaults to None.
-        encode_type (str, optional): [description]. Defaults to "joint".
-        cat_names ([type], optional): [description]. Defaults to None.
-        max_size (int, optional): [description]. Defaults to 0.
-        dtype ([type], optional): [description]. Defaults to None.
+    Parameters
+    ----------
+    name :
+    storage_name : dict
+    path : string
+    df : DataFrame
+    cat_cache :
+    na_sentinel : int 
+        Sentinel for NA value. Defaults to -1.
+    freq_threshold :  int
+        Cateogires with a count or frequency below this threshold will
+        be ommitted from the encoding and corresponding data will be 
+        mapped to the "Null" category. Defaults to 0.
+    search_sorted : 
+        Defaults to False.
+    buckets :  
+        Defaults to None.
+    encode_type : 
+        Defaults to "joint".
+    cat_names : 
+        Defaults to None.
+    max_size : 
+        Defaults to 0.
+    dtype :  
+        Defaults to None.
+    start_index :  int
+        The index to start outputing categorical values to. This is useful
+        to, for instance, reserve an initial segment of non-negative
+        integers for out-of-vocabulary or other special values. Defaults
+        to 1.
 
-    Returns:
-        [type]: labels
+    Returns
+    -------
+    labels : numpy ndarray or Pandas Series
+
     """
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
