@@ -34,7 +34,7 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.dispatch import DataFrameType, _nullable_series, annotate
+from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -337,26 +337,26 @@ class Categorify(StatOperator):
     def process_vocabs(self, vocabs):
         categories = {}
 
-        if dispatch._is_dataframe_object(vocabs):
-            fit_options = self._create_fit_options_from_columns(list(vocabs.columns))
+        if isinstance(vocabs, dict) and all(dispatch._is_series_object(v) for v in vocabs.values()):
+            fit_options = self._create_fit_options_from_columns(list(vocabs.keys()))
             base_path = os.path.join(self.out_path, fit_options.stat_name)
             os.makedirs(base_path, exist_ok=True)
-            for col in list(vocabs.columns):
-                col_df = vocabs[[col]]
-                if col_df[col].iloc[0] is not None:
-                    with_empty = dispatch._add_to_series(col_df[col], [None]).reset_index()[0]
+            for col, vocab in vocabs.items():
+                vals = {col: vocab}
+                if vocab.iloc[0] is not None:
+                    with_empty = dispatch._add_to_series(vocab, [None]).reset_index()[0]
                     vals = {col: with_empty}
-                    col_df = dispatch._make_df(vals)
 
                 save_path = os.path.join(base_path, f"unique.{col}.parquet")
+                col_df = dispatch._make_df(vals)
                 col_df.to_parquet(save_path)
                 categories[col] = save_path
         elif isinstance(vocabs, dict) and all(isinstance(v, str) for v in vocabs.values()):
             categories = vocabs
         else:
             error = """Unrecognized vocab type,
-            please provide either a dictionary with paths to a parquet files
-            or a DataFrame that contains the vocabulary per column.
+            please provide either a dictionary with paths to parquet files
+            or a dictionary with pandas Series objects.
             """
             raise ValueError(error)
 
@@ -514,7 +514,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.selector))
+            output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
         elif isinstance(current.op, (ConcatColumns, SubsetColumns, Identity)):
             # only follow parents if its an internal (Workflow) operator node
             # (which could transform meaning of the get_embedding_sizes)
@@ -709,7 +709,7 @@ def _top_level_groupby(df, options: FitOptions):
         for j, split in shuffle_group(
             gb, cat_col_selector.names, 0, nsplits, nsplits, True, nsplits
         ).items():
-            if options.on_host:
+            if options.on_host and not _is_cpu_object(split):
                 output[k] = split.to_arrow(preserve_index=False)
             else:
                 output[k] = split
@@ -723,7 +723,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
     if options.concat_groups and len(col_selector) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector, sep=options.name_sep)])
 
-    if options.on_host:
+    if options.on_host and not _is_cpu_object(dfs[0]):
         # Construct gpu DataFrame from pyarrow data.
         # `on_host=True` implies gpu-backed data.
         df = pa.concat_tables(dfs, promote=True)
@@ -789,7 +789,7 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
                 required.append(name_std)
                 gb[name_std] = np.sqrt(result)
 
-    if options.on_host:
+    if options.on_host and not _is_cpu_object(gb[required]):
         gb_pd = gb[required].to_arrow(preserve_index=False)
         del gb
         return gb_pd
@@ -813,7 +813,7 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
     rel_path = "cat_stats.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = os.path.join(base_path, rel_path)
     pwriter = None
-    if not options.on_host and len(dfs):
+    if (not options.on_host or _is_cpu_object(dfs[0])) and len(dfs):
         # Want first non-empty df for schema (if there are any)
         _d = next((df for df in dfs if len(df)), dfs[0])
         pwriter = dispatch._parquet_writer_dispatch(_d, path=path, compression=None)
@@ -825,7 +825,8 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
     n_writes = 0
     for df in dfs:
         if len(df):
-            if options.on_host:
+
+            if options.on_host and not _is_cpu_object(df):
                 # Use pyarrow - df is already a pyarrow table
                 if pwriter is None:
                     pwriter = pq.ParquetWriter(path, df.schema, compression=None)

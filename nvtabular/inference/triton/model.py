@@ -76,7 +76,7 @@ class TritonPythonModel:
             # to some of the operators (C++ categorify etc). set on the workflow_node instead
             workflow_node.inference_supports = supported
 
-        for parent in workflow_node.parents:
+        for parent in workflow_node.parents_with_dep_nodes:
             if parent not in visited:
                 visited.add(parent)
                 self._initialize_ops(parent, visited)
@@ -257,32 +257,51 @@ def get_hugectr_offsets(workflow, column_types):
 
 
 def _transform_tensors(input_tensors, workflow_node):
-    if workflow_node.parents:
-        tensors, kind = None, None
-        for parent in workflow_node.parents:
-            transformed, transformed_kind = _transform_tensors(input_tensors, parent)
-            if tensors is None:
-                tensors, kind = transformed, transformed_kind
-            else:
-                if kind != transformed_kind:
-                    # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
-                    # we need to convert to a common format here first before concatentating.
-                    op = workflow_node.op
-                    target_kind = (
-                        workflow_node.inference_supports if op else Supports.CPU_DICT_ARRAY
-                    )
-                    # note : the 2nd convert_format call needs to be stricter in what the kind is
-                    # (exact match rather than a bitmask of values)
-                    tensors, kind = convert_format(tensors, kind, target_kind)
-                    transformed, _ = convert_format(transformed, transformed_kind, kind)
+    upstream_inputs = []
 
-                tensors = _concat_tensors([tensors, transformed], kind)
+    # Gather inputs from the parents and dependency nodes
+    if workflow_node.parents_with_dep_nodes:
+        for parent in workflow_node.parents_with_dep_nodes:
+            upstream_tensors, upstream_kind = _transform_tensors(input_tensors, parent)
+            if upstream_tensors and upstream_kind:
+                upstream_inputs.append((upstream_tensors, upstream_kind))
 
-    else:
-        tensors = {c: input_tensors[c] for c in workflow_node.selector}
-        kind = Supports.CPU_DICT_ARRAY
+    # Gather additional input columns from the original input tensors
+    if workflow_node.selector or workflow_node.dependency_selectors:
+        selector_columns = sum(
+            [selector.names for selector in workflow_node.dependency_selectors], []
+        )
+        selector_columns += workflow_node.selector.names
+        for upstream_tensors, upstream_kind in upstream_inputs:
+            for c in selector_columns:
+                if c in upstream_tensors:
+                    selector_columns.remove(c)
 
-    if workflow_node.op:
+        if selector_columns:
+            selected_tensors = {c: input_tensors[c] for c in selector_columns}
+            selected_kinds = Supports.CPU_DICT_ARRAY
+            upstream_inputs.append((selected_tensors, selected_kinds))
+
+    # Standardize the formats
+    tensors, kind = None, None
+    for upstream_tensors, upstream_kind in upstream_inputs:
+        if tensors is None:
+            tensors, kind = upstream_tensors, upstream_kind
+        else:
+            if kind != upstream_kind:
+                # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
+                # we need to convert to a common format here first before concatentating.
+                op = workflow_node.op
+                target_kind = workflow_node.inference_supports if op else Supports.CPU_DICT_ARRAY
+                # note : the 2nd convert_format call needs to be stricter in what the kind is
+                # (exact match rather than a bitmask of values)
+                tensors, kind = convert_format(tensors, kind, target_kind)
+                upstream_tensors, _ = convert_format(upstream_tensors, upstream_kind, kind)
+
+            tensors = _concat_tensors([tensors, upstream_tensors], kind)
+
+    # Run the transform
+    if tensors and kind and workflow_node.op:
         try:
             # if the op doesn't support the current kind - we need to convert
             if not workflow_node.inference_supports & kind:

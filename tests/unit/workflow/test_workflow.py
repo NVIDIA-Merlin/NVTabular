@@ -38,16 +38,16 @@ def test_grab_additional_input_columns(dataset, engine):
     node1 = ["x"] >> ops.FillMissing()
     node2 = node1 >> ops.Clip(min_value=0)
 
-    node2.selector = node2.selector + ["y"]
+    add_node = node2 + ["y"]
 
-    workflow = Workflow(node2).fit_schema(schema)
+    workflow = Workflow(add_node).fit_schema(schema)
     output_df = workflow.transform(dataset).to_ddf().compute()
 
-    assert len(node2.input_columns.names) == 2
-    assert node2.input_columns.names == ["x", "y"]
+    assert len(workflow.output_node.input_columns.names) == 2
+    assert workflow.output_node.input_columns.names == ["x", "y"]
 
-    assert len(node2.output_columns.names) == 2
-    assert node2.output_columns.names == ["x", "y"]
+    assert len(workflow.output_node.output_columns.names) == 2
+    assert workflow.output_node.output_columns.names == ["x", "y"]
 
     assert len(output_df.columns) == 2
     assert output_df.columns.tolist() == ["x", "y"]
