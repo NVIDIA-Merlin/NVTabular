@@ -11,7 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular import ColumnSelector
+from nvtabular import ColumnSelector, Dataset
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.ops.operator import Supports
 from tests.conftest import assert_eq
@@ -170,7 +170,9 @@ def test_concatenate_dataframe(tmpdir, output_model):
     # this bug only happened with a dataframe representation: force this by using a lambda
     cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
     conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
-    workflow = nvt.Workflow(cats + conts)
+
+    dataset = Dataset(df)
+    workflow = nvt.Workflow(cats + conts).fit_schema(dataset.infer_schema())
 
     if output_model == "pytorch":
         model_info = {
@@ -179,6 +181,7 @@ def test_concatenate_dataframe(tmpdir, output_model):
         }
     else:
         model_info = None
+
     _verify_workflow_on_tritonserver(
         tmpdir, workflow, df, "test_concatenate_dataframe", output_model, model_info
     )
