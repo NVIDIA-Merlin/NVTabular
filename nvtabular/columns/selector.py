@@ -53,6 +53,8 @@ class ColumnSelector:
                 plain_names.append(name)
             elif isinstance(name, nvtabular.WorkflowNode):
                 raise ValueError("ColumnSelectors can not contain WorkflowNodes")
+            elif isinstance(name, ColumnSelector):
+                self.subgroups.append(name)
             else:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
@@ -84,14 +86,14 @@ class ColumnSelector:
         for col_sel0 in self.subgroups:
             col_sel0._nested_check(nests=nests + 1)
 
-    def __getitem__(self, index):
-        return self._names[index]
+    # def __getitem__(self, index):
+    #     return self._names[index]
 
-    def __len__(self):
-        return len(self.names)
+    # def __len__(self):
+    #     return len(self.names)
 
-    def __iter__(self):
-        return iter(self.names)
+    # def __iter__(self):
+    #     return iter(self.names)
 
     def __add__(self, other):
         if other is None:

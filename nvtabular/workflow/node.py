@@ -105,6 +105,8 @@ class WorkflowNode:
                 left_operand = operands.pop(0)
 
                 left_operand_schema = _combine_schemas([left_operand])
+                # upstream schema gets lambda applied
+
                 operands_schema = _combine_schemas(operands)
 
                 self.input_schema = left_operand_schema - operands_schema
@@ -158,7 +160,7 @@ class WorkflowNode:
                 if isinstance(dependency, WorkflowNode):
                     dependency.children.append(child)
                     child.parents.append(dependency)
-                else:
+                elif not isinstance(dependency, ColumnSelector):
                     dependency = ColumnSelector(dependency)
                 child.dependencies.append(dependency)
 
@@ -376,7 +378,7 @@ def _filter_by_type(elements, type_):
     return results
 
 
-def _combine_schemas(elements):
+def _combine_schemas(elements, input_schema=None):
     combined = Schema()
     for elem in elements:
         if isinstance(elem, WorkflowNode):
