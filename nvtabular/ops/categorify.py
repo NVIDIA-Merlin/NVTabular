@@ -523,7 +523,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     while queue:
         current = queue.pop()
         if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.selector))
+            output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
         elif isinstance(current.op, (ConcatColumns, SubsetColumns, Identity)):
             # only follow parents if its an internal (Workflow) operator node
             # (which could transform meaning of the get_embedding_sizes)

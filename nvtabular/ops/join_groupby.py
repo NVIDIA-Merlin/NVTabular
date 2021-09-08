@@ -91,14 +91,6 @@ class JoinGroupby(StatOperator):
     ):
         super().__init__()
 
-        if isinstance(cont_cols, nvt.WorkflowNode):
-            self.cont_cols = cont_cols
-            self.cont_names = cont_cols.output_columns
-        elif isinstance(cont_cols, ColumnSelector):
-            self.cont_cols = self.cont_names = cont_cols
-        else:
-            self.cont_cols = self.cont_names = ColumnSelector(cont_cols)
-
         self.storage_name = {}
         self.name_sep = name_sep
         self.stats = stats
@@ -108,10 +100,31 @@ class JoinGroupby(StatOperator):
         self.cat_cache = cat_cache
         self.categories = {}
 
+        self._cont_names = None
+
+        if isinstance(cont_cols, nvt.WorkflowNode):
+            self.cont_cols = cont_cols
+        elif isinstance(cont_cols, ColumnSelector):
+            self.cont_cols = self._cont_names = cont_cols
+        else:
+            self.cont_cols = self._cont_names = ColumnSelector(cont_cols)
+
         supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
+
+    @property
+    def cont_names(self):
+        if self._cont_names:
+            return self._cont_names
+        elif self.cont_cols.output_schema:
+            return self.cont_cols.output_columns
+        else:
+            raise RuntimeError(
+                "Can't compute continuous columns used by `JoinGroupby` "
+                "until `Workflow` is fit to dataset or schema."
+            )
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         for group in col_selector.subgroups:
