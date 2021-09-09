@@ -506,10 +506,8 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
 
 
 @pytest.mark.parametrize("cpu", _CPU)
-@pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
-@pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
 @pytest.mark.parametrize("start_index", [1, 2, 16])
-def test_categorify_lists_with_start_index(tmpdir, cpu, dtype, vocabs, start_index):
+def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
     df = dispatch._make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -520,9 +518,7 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, dtype, vocabs, start_ind
     cat_names = ["Authors", "Engaging User"]
     label_name = ["Post"]
 
-    cat_features = cat_names >> ops.Categorify(
-        out_path=str(tmpdir), dtype=dtype, vocabs=vocabs, start_index=start_index
-    )
+    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), start_index=start_index)
 
     workflow = nvt.Workflow(cat_features + label_name)
     df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
