@@ -1205,11 +1205,7 @@ def _encode(
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
-    labels = [i + (start_index - 1) for i in labels]
-    if isinstance(labels, np.ndarray):
-        labels = np.array(labels)
-    elif isinstance(labels, pd.Series):
-        labels = pd.Series(labels)
+    labels += start_index - 1
     return labels
 
 
