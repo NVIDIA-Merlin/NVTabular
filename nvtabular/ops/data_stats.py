@@ -41,7 +41,7 @@ class DataStats(StatOperator):
         ddf_dtypes = ddf.head(1)
 
         # For each column, calculate the stats
-        for col in col_selector:
+        for col in col_selector.names:
             dask_stats[col] = {}
             self.col_names.append(col)
             # Get dtype for all

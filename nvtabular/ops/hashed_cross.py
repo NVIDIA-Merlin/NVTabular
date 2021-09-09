@@ -74,6 +74,8 @@ class HashedCross(Operator):
 
 def _nest_columns(columns):
     # if we have a list of flat column names, lets cross the whole group
+    if isinstance(columns, ColumnSelector):
+        columns = columns.names
     if all(isinstance(col, str) for col in columns):
         return [tuple(columns)]
     else:

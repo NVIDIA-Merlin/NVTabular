@@ -93,7 +93,7 @@ class ColumnSimilarity(Operator):
         # Check if features are initialized
         self._initialize_features()
 
-        names = self.output_column_names(col_selector)
+        names = self.output_column_names(col_selector).names
         for name, (left, right) in zip(names, col_selector.grouped_names):
             a = df[left].values if use_values else df[left].values_host
             b = df[right].values if use_values else df[right].values_host

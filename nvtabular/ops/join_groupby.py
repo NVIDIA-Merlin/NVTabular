@@ -199,7 +199,7 @@ class JoinGroupby(StatOperator):
         for name in columns.grouped_names:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name, sep=self.name_sep)
-            for cont in self.cont_names:
+            for cont in self.cont_names.names:
                 for stat in self.stats:
                     if stat == "count":
                         output.append(f"{name}_{stat}")

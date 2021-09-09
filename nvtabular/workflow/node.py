@@ -105,6 +105,7 @@ class WorkflowNode:
                 left_operand = operands.pop(0)
 
                 left_operand_schema = _combine_schemas([left_operand])
+
                 operands_schema = _combine_schemas(operands)
 
                 self.input_schema = left_operand_schema - operands_schema
@@ -158,7 +159,7 @@ class WorkflowNode:
                 if isinstance(dependency, WorkflowNode):
                     dependency.children.append(child)
                     child.parents.append(dependency)
-                else:
+                elif not isinstance(dependency, ColumnSelector):
                     dependency = ColumnSelector(dependency)
                 child.dependencies.append(dependency)
 
