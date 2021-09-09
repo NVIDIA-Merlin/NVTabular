@@ -272,10 +272,13 @@ def _transform_tensors(input_tensors, workflow_node):
             [selector.names for selector in workflow_node.dependency_selectors], []
         )
         selector_columns += workflow_node.selector.names
+        to_remove = []
         for upstream_tensors, upstream_kind in upstream_inputs:
-            for c in selector_columns:
-                if c in upstream_tensors:
-                    selector_columns.remove(c)
+            for col in selector_columns:
+                if col in upstream_tensors:
+                    to_remove.append(col)
+        for col in to_remove:
+            selector_columns.remove(col)
 
         if selector_columns:
             selected_tensors = {c: input_tensors[c] for c in selector_columns}
