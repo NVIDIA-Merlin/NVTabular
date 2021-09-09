@@ -1205,7 +1205,7 @@ def _encode(
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
-    labels += start_index - 1
+    labels = labels + (start_index - 1)
     return labels
 
 
