@@ -48,6 +48,9 @@ struct ColumnMapping {
             // so we're categorifying bool columns in the rossmann dataset - which makes little
             // sense but we have to handle I guess ?
             mapping_int[value.ptr() == Py_True] = i;
+          } else if (PyLong_Check(value.ptr())) {
+            auto key = py::cast<int64_t>(value);
+            mapping_int[key] = i;
           } else {
             std::stringstream error;
             error << "Don't know how to handle column " << column_name << " @ " << filename;
