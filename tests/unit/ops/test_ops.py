@@ -313,7 +313,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     # expect
     df = dataset.compute()
     cupy_inputs = {col: df[col].values for col in op_columns}
-    cupy_outputs = cont_features.op.transform(op_columns, cupy_inputs)
+    cupy_outputs = cont_features.op.transform(ColumnSelector(op_columns), cupy_inputs)
     for col in op_columns:
         assert np.allclose(cupy_outputs[col], new_gdf[col].values)
 
@@ -1168,32 +1168,33 @@ def test_list_slice(cpu):
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
     op = ops.ListSlice(0, 2)
-    transformed = op.transform(["y"], df)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(3, 5)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[2, 767], [3], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(4, 10)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[767], [], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(100, 20000)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[], [], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(-4)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(-3, -1)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
     assert_eq(transformed, expected)
 

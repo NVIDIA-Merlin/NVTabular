@@ -218,7 +218,7 @@ class TargetEncoding(StatOperator):
         ret = []
         for cat in columns.grouped_names:
             cat = [cat] if isinstance(cat, str) else cat
-            ret.extend(self._make_te_name(cat))
+            ret.extend(self._make_te_name(cat.names if isinstance(cat, ColumnSelector) else cat))
 
         if self.kfold > 1 and not self.drop_folds:
             ret.append(self.fold_name)
@@ -235,7 +235,10 @@ class TargetEncoding(StatOperator):
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        return [f"TE_{tag}_{x}" for x in self.target]
+        target = self.target
+        if isinstance(self.target, list):
+            target = ColumnSelector(self.target)
+        return [f"TE_{tag}_{x}" for x in target.names]
 
     def _op_group_logic(self, cat_group, df, y_mean, fit_folds, group_ind):
         # Define name of new TE column
