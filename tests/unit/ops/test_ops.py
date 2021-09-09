@@ -504,6 +504,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
 
+
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
 @pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
@@ -539,6 +540,7 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, dtype, vocabs, start_ind
 
     if start_index == 16:
         assert compare == [[16], [16, 19], [18, 17], [17]]
+
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
 @pytest.mark.parametrize("kind", ["joint", "combo"])

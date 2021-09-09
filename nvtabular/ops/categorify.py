@@ -176,10 +176,10 @@ class Categorify(StatOperator):
         smaller than the max_size value.
     start_index: int, default 1
         The start index where Categorify will begin to translate dataframe entries
-        into integer values. For instance, if our original translated dataframe entries appear 
-        as [[1], [1, 4], [3, 2], [2]], then with a start_index of 16, Categorify will now be 
-        [[16], [16, 19], [18, 17], [17]]. This option is useful to reserve an intial segment 
-        of non-negative translated integers for out-of-vocabulary or other special values. 
+        into integer values. For instance, if our original translated dataframe entries appear
+        as [[1], [1, 4], [3, 2], [2]], then with a start_index of 16, Categorify will now be
+        [[16], [16, 19], [18, 17], [17]]. This option is useful to reserve an intial segment
+        of non-negative translated integers for out-of-vocabulary or other special values.
     """
 
     def __init__(
@@ -613,7 +613,7 @@ class FitOptions:
             If specified will also do hashing operation for values that would otherwise be mapped
             to as unknown (by freq_limit or max_size parameters)
         start_index: int
-            The index to start mapping our output categorical values to. 
+            The index to start mapping our output categorical values to.
     """
 
     col_groups: list
@@ -867,7 +867,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
     ----------
     dfs : DataFrame
     base_path : string
-    col_selector : 
+    col_selector :
     options : FitOptions
 
     Raises
@@ -879,7 +879,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
     -------
     path : string
         the path to the output parquet file.
-    
+
     """
     if options.concat_groups and len(col_selector) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
@@ -1074,10 +1074,10 @@ def _encode(
     cat_names=None,
     max_size=0,
     dtype=None,
-    start_index=1
+    start_index=1,
 ):
-    """The _encode method is responsible for transforming a dataframe by taking the written 
-    out vocabulary file and looking up values to translate inputs to numeric 
+    """The _encode method is responsible for transforming a dataframe by taking the written
+    out vocabulary file and looking up values to translate inputs to numeric
     outputs.
 
     Parameters
@@ -1087,23 +1087,23 @@ def _encode(
     path : string
     df : DataFrame
     cat_cache :
-    na_sentinel : int 
+    na_sentinel : int
         Sentinel for NA value. Defaults to -1.
     freq_threshold :  int
         Cateogires with a count or frequency below this threshold will
-        be ommitted from the encoding and corresponding data will be 
+        be ommitted from the encoding and corresponding data will be
         mapped to the "Null" category. Defaults to 0.
-    search_sorted : 
+    search_sorted :
         Defaults to False.
-    buckets :  
+    buckets :
         Defaults to None.
-    encode_type : 
+    encode_type :
         Defaults to "joint".
-    cat_names : 
+    cat_names :
         Defaults to None.
-    max_size : 
+    max_size :
         Defaults to 0.
-    dtype :  
+    dtype :
         Defaults to None.
     start_index :  int
         The index to start outputing categorical values to. This is useful
