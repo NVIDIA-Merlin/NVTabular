@@ -1166,9 +1166,6 @@ def _get_multicolumn_names(col_selector, df_columns, name_sep):
 
 def _is_list_col(col_selector, df):
     if isinstance(col_selector, list):
-        import pdb
-
-        pdb.set_trace()
         col_selector = ColumnSelector(col_selector)
     has_lists = any(dispatch._is_list_dtype(df[col]) for col in col_selector.names)
     if has_lists and len(col_selector.names) != 1:

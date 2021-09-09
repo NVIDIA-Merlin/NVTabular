@@ -86,15 +86,6 @@ class ColumnSelector:
         for col_sel0 in self.subgroups:
             col_sel0._nested_check(nests=nests + 1)
 
-    # def __getitem__(self, index):
-    #     return self._names[index]
-
-    # def __len__(self):
-    #     return len(self.names)
-
-    # def __iter__(self):
-    #     return iter(self.names)
-
     def __add__(self, other):
         if other is None:
             return self

@@ -105,7 +105,6 @@ class WorkflowNode:
                 left_operand = operands.pop(0)
 
                 left_operand_schema = _combine_schemas([left_operand])
-                # upstream schema gets lambda applied
 
                 operands_schema = _combine_schemas(operands)
 
@@ -378,7 +377,7 @@ def _filter_by_type(elements, type_):
     return results
 
 
-def _combine_schemas(elements, input_schema=None):
+def _combine_schemas(elements):
     combined = Schema()
     for elem in elements:
         if isinstance(elem, WorkflowNode):
