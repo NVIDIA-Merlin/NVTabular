@@ -104,10 +104,11 @@ def export_tensorflow_ensemble(
 def export_pytorch_ensemble(
     model,
     workflow,
-    data_loader,
+    sparse_max,
     name,
     model_path,
     label_columns,
+    use_fix_dtypes=True,
     version=1,
     nvtabular_backend="python",
 ):
@@ -138,7 +139,7 @@ def export_pytorch_ensemble(
     # generate the TF saved model
     pt_path = os.path.join(model_path, name + "_pt")
     pt_config = export_pytorch_model(
-        model, workflow, data_loader, name + "_pt", pt_path, version=version
+        model, workflow, sparse_max, name + "_pt", pt_path, use_fix_dtypes, version=version
     )
 
     # override the output dtype of the nvtabular model if necessary (fixes mismatches
@@ -551,7 +552,7 @@ def export_tensorflow_model(model, name, output_path, version=1):
 
 
 def export_pytorch_model(
-    model, workflow, data_loader, name, output_path, version=1, backend="python"
+    model, workflow, sparse_max, name, output_path, use_fix_dtypes=True, version=1, backend="python"
 ):
     """Exports a PyTorch model for serving with Triton
 
@@ -567,7 +568,6 @@ def export_pytorch_model(
     import cloudpickle
     import torch
 
-    out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, str(version)), exist_ok=True)
 
     pt_model_path = os.path.join(output_path, str(version), "model.pth")
@@ -596,10 +596,11 @@ def export_pytorch_model(
         )
     )
 
-    if data_loader:
+    if sparse_max:
         with open(os.path.join(output_path, str(version), "model_info.json"), "w") as o:
             model_info = dict()
-            model_info["sparse_max"] = data_loader.sparse_max
+            model_info["sparse_max"] = sparse_max
+            model_info["use_fix_dtypes"] = use_fix_dtypes
             json.dump(model_info, o)
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
