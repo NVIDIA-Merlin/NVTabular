@@ -59,7 +59,7 @@ class ListSlice(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
-        for col in col_selector:
+        for col in col_selector.names:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]
