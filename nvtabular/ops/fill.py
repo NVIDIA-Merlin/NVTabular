@@ -69,6 +69,8 @@ class FillMissing(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
         output_schema = Schema()
         for column_name in col_selector.names:
             column_schema = input_schema.column_schemas[column_name]
@@ -138,6 +140,8 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
         output_schema = Schema()
         for column_name in col_selector.names:
             column_schema = input_schema.column_schemas[column_name]
