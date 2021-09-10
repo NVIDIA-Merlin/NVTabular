@@ -19,7 +19,7 @@ from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
 from nvtabular.columns import ColumnSelector
-from nvtabular.columns.schema import ColumnSchema, Schema
+from nvtabular.columns.schema import Schema
 from nvtabular.dispatch import DataFrameType
 
 
@@ -72,59 +72,17 @@ class Operator:
         Schema
             The schemas of the columns produced by this operator
         """
-        if col_selector and col_selector.names:
-            input_selector = col_selector
-        else:
-            input_selector = ColumnSelector(input_schema.column_names)
+        output_schema = Schema()
+        for column_schema in input_schema.apply(col_selector):
+            output_schema += Schema([self.transformed_schema(column_schema)])
 
-        output_selector = self.output_column_names(input_selector)
-        output_names = (
-            output_selector.names
-            if isinstance(output_selector, ColumnSelector)
-            else output_selector
-        )
+        return output_schema
 
-        # group (old, new) names, grab old if in new columns
-        names_original, names_transformed = [], []
-        for original_column in col_selector.names:
-
-            # logic works for all ops except TE
-            new_cols = [new_column for new_column in output_names if original_column in new_column]
-            if new_cols:
-                for column in new_cols:
-                    if column not in names_transformed:
-                        names_original.append(original_column)
-                        names_transformed.append(column)
-
-        # if name is same from input schema means it was a used column,
-        # in op logic to mutate against selector columns
-        new_names = [
-            name
-            for name in output_names
-            if name not in names_transformed and name not in input_schema.column_schemas
-        ]
-        new_col_schemas = []
-
-        # grab old column schemas and change the names
-        for orig_col_name, new_column_name in zip(names_original, names_transformed):
-            orig_col_schema = input_schema.column_schemas[orig_col_name]
-            new_col_schemas.append(orig_col_schema.with_name(new_column_name))
-
-        # create column Schemas for new columns
-        for new_col_name in new_names:
-            if new_col_name not in input_schema.column_schemas:
-
-                # needs to be filled in
-                new_col_schemas.append(ColumnSchema(new_col_name))
-
-        # add in all tags properties and update dtypes
-        final_new_cols = []
-        for column in new_col_schemas:
-            column = self._add_tags(column)
-            # column = self._add_properties(column)
-            column = self._update_dtype(column)
-            final_new_cols.append(column)
-        return Schema(final_new_cols)
+    def transformed_schema(self, column_schema):
+        column_schema = self._add_tags(column_schema)
+        column_schema = self._add_properties(column_schema)
+        column_schema = self._update_dtype(column_schema)
+        return column_schema
 
     def _add_tags(self, column_schema):
         return column_schema.with_tags(self.output_tags())
@@ -132,8 +90,10 @@ class Operator:
     def _add_properties(self, column_schema):
         # get_properties should return the additional properties
         # for target column
-        target_column_properties = self.output_properties()[column_schema.name]
-        return column_schema.with_properties(target_column_properties)
+        target_column_properties = self.output_properties().get(column_schema.name, None)
+        if target_column_properties:
+            return column_schema.with_properties(target_column_properties)
+        return column_schema
 
     def _update_dtype(self, column_schema):
         return column_schema.with_dtype(self.output_dtype())
@@ -172,6 +132,18 @@ class Operator:
             The names of columns produced by this operator
         """
         return col_selector
+
+    # def rename_column(self, in_column_name) -> str:
+    #     """Given an input column create the output column name.
+    #     May depend on support columns (i.e. dependencies) hosted
+    #     in the operator.
+
+    #     Parameters
+    #     -----------
+    #     in_column_name: the target input column to create
+    #             output name for
+    #     """
+    #     return in_column_name
 
     def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns

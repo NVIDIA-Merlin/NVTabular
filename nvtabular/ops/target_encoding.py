@@ -17,6 +17,7 @@ import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
+from nvtabular.columns import Schema
 from nvtabular.dispatch import (
     DataFrameType,
     _arange,
@@ -227,6 +228,13 @@ class TargetEncoding(StatOperator):
             ret.append(self.fold_name)
 
         return ColumnSelector(ret)
+
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        col_selector = self.output_column_names(col_selector)
+        for column_name in col_selector.names:
+            if column_name not in input_schema.column_schemas:
+                input_schema += Schema([column_name])
+        return super().compute_output_schema(input_schema, col_selector)
 
     def set_storage_path(self, new_path, copy=False):
         self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)

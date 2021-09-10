@@ -20,8 +20,6 @@ from nvtabular.dispatch import DataFrameType, _natural_log, annotate
 from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-CONTINUOUS = Tags.CONTINUOUS.value
-
 
 class LogOp(Operator):
     """
@@ -41,7 +39,7 @@ class LogOp(Operator):
         return _natural_log(df[col_selector.names].astype(np.float32) + 1)
 
     def output_tags(self):
-        return [CONTINUOUS]
+        return [Tags.CONTINUOUS]
 
     def output_dtype(self):
         return np.float

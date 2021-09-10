@@ -16,9 +16,8 @@ class Tags(Enum):
     ID_ITEM = "item_id"
     CONTEXT = "context"
 
+    # Target related
+    TARGETS = "target"
     BINARY = "binary"
     REGRESSION = "regression"
     MULTI_CLASS = "multi_class"
-
-    # Target related
-    TARGETS = "target"

@@ -301,7 +301,7 @@ class Schema:
         return self
 
     def __iter__(self):
-        return iter(self.column_schemas.values)
+        return iter(self.column_schemas.values())
 
     def __len__(self):
         return len(self.column_schemas)

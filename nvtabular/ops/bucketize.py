@@ -22,8 +22,6 @@ from nvtabular.dispatch import DataFrameType, _array, annotate
 from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
-CATEGORICAL = Tags.CATEGORICAL
-
 
 class Bucketize(Operator):
     """This operation transforms continuous features into categorical features
@@ -90,7 +88,7 @@ class Bucketize(Operator):
         return new_df
 
     def output_tags(self):
-        return [CATEGORICAL]
+        return [Tags.CATEGORICAL]
 
     def _get_dtypes(self):
         return np.int64

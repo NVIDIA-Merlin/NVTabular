@@ -22,8 +22,6 @@ from .moments import _custom_moments
 from .operator import ColumnSelector, Operator, Supports
 from .stat_operator import StatOperator
 
-CONTINUOUS = Tags.CONTINUOUS
-
 
 class Normalize(StatOperator):
     """
@@ -81,7 +79,7 @@ class Normalize(StatOperator):
         self.stds = {}
 
     def output_tags(self):
-        return [CONTINUOUS]
+        return [Tags.CONTINUOUS]
 
     def _get_dtypes(self):
         return numpy.float
@@ -153,7 +151,7 @@ class NormalizeMinMax(StatOperator):
         )
 
     def output_tags(self):
-        return [CONTINUOUS]
+        return [Tags.CONTINUOUS]
 
     def _get_dtypes(self):
         return numpy.float

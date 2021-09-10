@@ -79,7 +79,7 @@ class WorkflowNode:
             ):
 
                 self.selector = self.parents[0].selector
-
+        # import pdb; pdb.set_trace()
         # If we have a selector, apply it to upstream schemas from nodes/dataset
         if self.selector:
             upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
@@ -95,7 +95,8 @@ class WorkflowNode:
 
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
-                self.input_schema = _combine_schemas(self.parents_with_dep_nodes)
+                upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
+                self.input_schema = upstream_schema.apply(self.selector)
 
             # If we're a subtraction node, we have to do some gymnastics to compute
             # the schema, because operands may be in the parents or the dependencies

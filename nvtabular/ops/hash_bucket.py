@@ -22,8 +22,6 @@ from ..tags import Tags
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnSelector, Operator
 
-CATEGORICAL = Tags.CATEGORICAL
-
 
 class HashBucket(Operator):
     """
@@ -104,7 +102,7 @@ class HashBucket(Operator):
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
 
     def output_tags(self):
-        return [CATEGORICAL]
+        return [Tags.CATEGORICAL]
 
     def _get_dtypes(self):
         return numpy.int64
