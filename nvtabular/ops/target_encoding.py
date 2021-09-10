@@ -230,6 +230,8 @@ class TargetEncoding(StatOperator):
         return ColumnSelector(ret)
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
         col_selector = self.output_column_names(col_selector)
         for column_name in col_selector.names:
             if column_name not in input_schema.column_schemas:

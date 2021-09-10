@@ -82,11 +82,6 @@ class HashedCross(Operator):
         return numpy.int64
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        # output_schema = Schema()
-        # for column_schema in input_schema.apply(col_selector):
-        #     output_schema += Schema([self.transformed_schema(column_schema)])
-
-        # return output_schema
         col_selector = self.output_column_names(col_selector)
         for column_name in col_selector.names:
             if column_name not in input_schema.column_schemas:
