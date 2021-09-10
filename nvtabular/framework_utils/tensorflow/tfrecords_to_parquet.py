@@ -15,8 +15,10 @@
 
 import gc
 
-import pandas as pd
+import cudf
 import tensorflow as tf
+from cudf.core.column.lists import is_list_dtype
+from cudf.io.parquet import ParquetWriter
 from pandas_tfrecords.from_tfrecords import _get_feature_type, read_example
 from tqdm import tqdm
 
@@ -36,7 +38,7 @@ def convert_tfrecords_to_parquet(
     compression_type: str
         Compression type of the tfrecords. Options: `""` (no compression), `"ZLIB"`, or `"GZIP"`
     chunks: int
-        Split tfrecords into multiple parquet files
+        Chunks to convert tfrecords into parquet
     convert_lists: Boolean
         Output of tfrecords are lists. Set True to convert lists with fixed length to
         individual columns in the output dataframe
@@ -74,37 +76,40 @@ def _to_parquet(tfrecords, file, output_dir, chunks, convert_lists):
     out = []
     i = 0
     j = 0
+    w = ParquetWriter(output_dir + file.split("/")[-1].split(".")[0] + ".parquet")
     for tfrecord in tqdm(tfrecords):
         row = {key: val.numpy() for key, val in tfrecord.items()}
         out.append(row)
         i += 1
         if i == chunks:
-            df = pd.DataFrame(out)
+            df = cudf.DataFrame(out)
             if convert_lists:
                 df = _convert_lists(df)
-            df.to_parquet(
-                output_dir + file.split("/")[-1].split(".")[0] + "_" + str(j) + ".parquet"
-            )
+            w.write_table(df)
             i = 0
             out = []
             j += 1
             del df
             gc.collect()
     if len(out) > 0:
-        df = pd.DataFrame(out)
+        df = cudf.DataFrame(out)
         if convert_lists:
             df = _convert_lists(df)
-        df.to_parquet(output_dir + file.split("/")[-1].split(".")[0] + "_" + str(j) + ".parquet")
+        w.write_table(df)
         del df
+        gc.collect()
+    w.close()
 
 
 def _convert_lists(df):
     for col in df.columns:
-        series_length = df[col].apply(lambda x: len(x))
-        if series_length.var() == 0 and series_length.min() > 0:
-            if series_length.max() == 1:
-                df[col] = df[col].apply(lambda x: x[0])
-            else:
-                for i in range(series_length.max()):
-                    df[col + "_" + str(i)] = df[col].apply(lambda x: x[i])
+        if is_list_dtype(df[col]):
+            series_length = df[col].list.len()
+            if series_length.var() == 0 and series_length.min() > 0:
+                if series_length.max() == 1:
+                    df[col] = df[col].list.get(0)
+                else:
+                    for i in range(series_length.max()):
+                        df[col + "_" + str(i)] = df[col].list.get(i)
+                    df.drop([col], axis=1, inplace=True)
     return df
