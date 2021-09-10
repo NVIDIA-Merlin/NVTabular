@@ -69,7 +69,7 @@ class Bucketize(Operator):
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        boundaries = {name: self.boundaries(name) for name in col_selector}
+        boundaries = {name: self.boundaries(name) for name in col_selector.names}
         new_df = type(df)()
         for col, b in boundaries.items():
             if self.use_digitize:

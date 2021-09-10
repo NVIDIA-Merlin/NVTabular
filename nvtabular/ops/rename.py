@@ -52,7 +52,7 @@ class Rename(Operator):
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         df = df[col_selector.names]
-        df.columns = self.output_column_names(col_selector)
+        df.columns = self.output_column_names(col_selector).names
         return df
 
     transform.__doc__ = Operator.transform.__doc__
@@ -69,11 +69,11 @@ class Rename(Operator):
 
     def output_column_names(self, col_selector):
         if self.f:
-            return ColumnSelector([self.f(col) for col in col_selector])
+            return ColumnSelector([self.f(col) for col in col_selector.names])
         elif self.postfix:
-            return ColumnSelector([col + self.postfix for col in col_selector])
+            return ColumnSelector([col + self.postfix for col in col_selector.names])
         elif self.name:
-            if len(col_selector) == 1:
+            if len(col_selector.names) == 1:
                 return ColumnSelector([self.name])
             else:
                 raise RuntimeError("Single column name provided for renaming multiple columns")

@@ -79,7 +79,7 @@ class HashBucket(Operator):
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if isinstance(self.num_buckets, int):
-            num_buckets = {name: self.num_buckets for name in col_selector}
+            num_buckets = {name: self.num_buckets for name in col_selector.names}
         else:
             num_buckets = self.num_buckets
 

@@ -71,7 +71,7 @@ class DifferenceLag(Operator):
                 mask = mask.fillna(False).all(axis=1)
             mask[mask == False] = None  # noqa pylint: disable=singleton-comparison
 
-            for col in col_selector:
+            for col in col_selector.names:
                 output[self._column_name(col, shift)] = (df[col] - df[col].shift(shift)) * mask
         return type(df)(output)
 
@@ -82,7 +82,7 @@ class DifferenceLag(Operator):
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         return ColumnSelector(
-            [self._column_name(col, shift) for shift in self.shifts for col in col_selector]
+            [self._column_name(col, shift) for shift in self.shifts for col in col_selector.names]
         )
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:

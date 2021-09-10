@@ -50,7 +50,7 @@ class FillMissing(Operator):
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if self.add_binary_cols:
-            for col in col_selector:
+            for col in col_selector.names:
                 df[f"{col}_filled"] = df[col].isna()
                 df[col] = df[col].fillna(self.fill_val)
         else:
@@ -81,9 +81,9 @@ class FillMissing(Operator):
         return output_schema
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        output_cols = col_selector[:]
+        output_cols = col_selector.names[:]
         if self.add_binary_cols:
-            output_cols.extend([f"{col}_filled" for col in col_selector])
+            output_cols.extend([f"{col}_filled" for col in col_selector.names])
         return ColumnSelector(output_cols)
 
 
@@ -113,7 +113,7 @@ class FillMedian(StatOperator):
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
-        for col in col_selector:
+        for col in col_selector.names:
             if self.add_binary_cols:
                 df[f"{col}_filled"] = df[col].isna()
             df[col] = df[col].fillna(self.medians[col])
@@ -152,7 +152,7 @@ class FillMedian(StatOperator):
         return output_schema
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        output_cols = col_selector[:]
+        output_cols = col_selector.names[:]
         if self.add_binary_cols:
-            output_cols.extend([f"{col}_filled" for col in col_selector])
+            output_cols.extend([f"{col}_filled" for col in col_selector.names])
         return ColumnSelector(output_cols)
