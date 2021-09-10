@@ -174,12 +174,15 @@ class Categorify(StatOperator):
         value will be `max_size - num_buckets -1`.  Setting the max_size param means that
         freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
         smaller than the max_size value.
-    start_index: int, default 1
+    start_index: int, default 0
         The start index where Categorify will begin to translate dataframe entries
-        into integer values. For instance, if our original translated dataframe entries appear
-        as [[1], [1, 4], [3, 2], [2]], then with a start_index of 16, Categorify will now be
-        [[16], [16, 19], [18, 17], [17]]. This option is useful to reserve an intial segment
-        of non-negative translated integers for out-of-vocabulary or other special values.
+        into integer values, including an initial out-of-vocabulary encoding value.
+        For instance, if our original translated dataframe entries appear
+        as [[1], [1, 4], [3, 2], [2]], with an out-of-vocabulary value of 0, then with a
+        start_index of 16, Categorify will reserve 16 as the out-of-vocabulary encoding value,
+        and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
+        This parameter is useful to reserve an intial segment of non-negative translated integers
+        for special user-defined values.
     """
 
     def __init__(
@@ -197,7 +200,7 @@ class Categorify(StatOperator):
         num_buckets=None,
         vocabs=None,
         max_size=0,
-        start_index=1,
+        start_index=0,
     ):
 
         # We need to handle three types of encoding here:
@@ -1074,7 +1077,7 @@ def _encode(
     cat_names=None,
     max_size=0,
     dtype=None,
-    start_index=1,
+    start_index=0,
 ):
     """The _encode method is responsible for transforming a dataframe by taking the written
     out vocabulary file and looking up values to translate inputs to numeric
@@ -1090,7 +1093,7 @@ def _encode(
     na_sentinel : int
         Sentinel for NA value. Defaults to -1.
     freq_threshold :  int
-        Cateogires with a count or frequency below this threshold will
+        Categories with a count or frequency below this threshold will
         be ommitted from the encoding and corresponding data will be
         mapped to the "Null" category. Defaults to 0.
     search_sorted :
@@ -1205,7 +1208,7 @@ def _encode(
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
-    labels = labels + (start_index - 1)
+    labels = labels + start_index
     return labels
 
 

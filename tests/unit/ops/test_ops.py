@@ -528,14 +528,17 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
     else:
         compare = df_out["Authors"].to_arrow().to_pylist()
 
-    if start_index == 1:
+    # Note that start_index is the start_index of the range of encoding, which
+    # includes both an initial value for the encoding for out-of-vocabulary items,
+    # as well as the values for the rest of the in-vocabulary items.
+    # In this group of tests below, there are no out-of-vocabulary items, so our start index
+    # value does not appear in the expected comparison object.
+    if start_index == 0:
         assert compare == [[1], [1, 4], [3, 2], [2]]
-
-    if start_index == 2:
+    elif start_index == 1:
         assert compare == [[2], [2, 5], [4, 3], [3]]
-
-    if start_index == 16:
-        assert compare == [[16], [16, 19], [18, 17], [17]]
+    elif start_index == 16:
+        assert compare == [[17], [17, 20], [19, 18], [18]]
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
