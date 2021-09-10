@@ -18,6 +18,8 @@ import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
+from nvtabular.ops.internal.concat_columns import ConcatColumns
+from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
 class WorkflowNode:
@@ -66,15 +68,56 @@ class WorkflowNode:
         self._selector = sel
 
     def compute_schemas(self, root_schema):
-        if self.selector:
-            upstream_schema = Schema()
-            upstream_schema += root_schema
-            upstream_schema += self.parents_schema
+        # If parent is an addition node, we may need to propagate grouping
+        # unless we're a node that already has a selector
+        if not self.selector:
+            if (
+                len(self.parents) == 1
+                and isinstance(self.parents[0].op, internal.ConcatColumns)
+                and self.parents[0].selector
+                and self.parents[0].selector.names
+            ):
 
+                self.selector = self.parents[0].selector
+
+        # If we have a selector, apply it to upstream schemas from nodes/dataset
+        if self.selector:
+            upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
             self.input_schema = upstream_schema.apply(self.selector)
         else:
-            self.input_schema = self.parents_schema
+            # If we don't have a selector but we're an addition node,
+            if isinstance(self.op, ConcatColumns):
+                upstream_selector = _combine_selectors(self.parents)
+                upstream_selector += _combine_selectors(self.dependencies)
 
+                if upstream_selector.names:
+                    self.selector = upstream_selector
+
+                # For addition nodes, some of the operands are parents and
+                # others are dependencies so grab schemas from both
+                self.input_schema = _combine_schemas(self.parents_with_dep_nodes)
+
+            # If we're a subtraction node, we have to do some gymnastics to compute
+            # the schema, because operands may be in the parents or the dependencies
+            # or both
+            elif isinstance(self.op, SubsetColumns):
+                operands = self.parents + self.dependencies
+                left_operand = operands.pop(0)
+
+                left_operand_schema = _combine_schemas([left_operand])
+
+                operands_schema = _combine_schemas(operands)
+
+                self.input_schema = left_operand_schema - operands_schema
+
+            # If none of the above apply, then we don't have a selector
+            # and we're not an add or sub node, so our input is just the
+            # parents output
+            else:
+                self.input_schema = _combine_schemas(self.parents)
+
+        # Then we delegate to the op (if there is one) to compute this node's
+        # output schema. If there's no op, then outputs are just the inputs
         if self.op:
             self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
         else:
@@ -101,7 +144,7 @@ class WorkflowNode:
         if not isinstance(operator, Operator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
-        child = WorkflowNode(self.output_columns)
+        child = WorkflowNode()
         child.parents = [self]
         self.children.append(child)
         child.op = operator
@@ -116,7 +159,7 @@ class WorkflowNode:
                 if isinstance(dependency, WorkflowNode):
                     dependency.children.append(child)
                     child.parents.append(dependency)
-                else:
+                elif not isinstance(dependency, ColumnSelector):
                     dependency = ColumnSelector(dependency)
                 child.dependencies.append(dependency)
 
@@ -133,54 +176,30 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-        left_arg = self
-        right_arg = other
-
-        added_node = None
-        added_selector = None
-
-        if isinstance(right_arg, WorkflowNode):
-            # If an argument is already an addition node, make it
-            # the left arg and combine the right arg into it
-            if isinstance(other.op, internal.ConcatColumns):
-                left_arg = other
-                right_arg = self
-
-            added_node = right_arg
-            added_selector = right_arg.output_columns
-        elif isinstance(right_arg, ColumnSelector):
-            added_selector = right_arg
-        elif isinstance(right_arg, list):
-            added_selector = ColumnSelector()
-            for element in right_arg:
-                if isinstance(element, WorkflowNode):
-                    added_selector += element.output_columns
-                else:
-                    added_selector += element
-            added_selector = ColumnSelector(subgroups=added_selector)
+        if isinstance(self.op, internal.ConcatColumns):
+            child = self
         else:
-            added_selector = ColumnSelector(right_arg)
-
-        if isinstance(left_arg.op, internal.ConcatColumns):
-            child = left_arg
-        else:
-            child = WorkflowNode(left_arg.output_columns)
+            # Create a child node
+            child = WorkflowNode()
             child.op = internal.ConcatColumns(label="+")
 
-            left_arg.children.append(child)
-            child.parents.append(left_arg)
+            # Add self as a parent
+            self.children.append(child)
+            child.parents.append(self)
 
-        child.selector += added_selector
+        # The right operand becomes a dependency
+        if isinstance(other, list):
+            other = _strs_to_selectors(other)
+        elif not isinstance(other, (ColumnSelector, WorkflowNode)):
+            other = ColumnSelector(other)
 
-        if added_node:
-            if isinstance(added_node.op, internal.ConcatColumns):
-                child.parents += added_node.parents
-                for parent in added_node.parents:
-                    parent.children.append(child)
-                    parent.children.remove(added_node)
-            else:
-                child.parents.append(added_node)
-                added_node.children.append(child)
+        # If the other node is a `+` node, we want to collapse it into this `+` node to
+        # avoid creating a cascade of repeated `+`s that we'd need to optimize out by
+        # re-combining them later in order to clean up the graph
+        if isinstance(other, WorkflowNode) and isinstance(other.op, internal.ConcatColumns):
+            child.dependencies += other.parents + other.dependencies
+        else:
+            child.dependencies.append(other)
 
         return child
 
@@ -199,19 +218,39 @@ class WorkflowNode:
         -------
         WorkflowNode
         """
-        if isinstance(other, WorkflowNode):
-            to_remove = set(other.output_columns)
-        elif isinstance(other, str):
-            to_remove = {other}
-        elif isinstance(other, collections.abc.Sequence):
-            to_remove = set(other)
+
+        if isinstance(self.op, internal.SubsetColumns):
+            child = self
         else:
-            raise ValueError(f"Expected WorkflowNode, str, or list of str. Got {other.__class__}")
-        new_columns = [c for c in self.output_columns if c not in to_remove]
-        child = WorkflowNode(new_columns)
-        child.parents = [self]
-        self.children.append(child)
-        child.op = internal.SubsetColumns(label=f"- {list(to_remove)}")
+            # Create a child node
+            child = WorkflowNode()
+            child.op = internal.SubsetColumns(label="-")
+
+            # Add self as a parent
+            self.children.append(child)
+            child.parents.append(self)
+
+        # The right operand becomes a dependency
+        if not isinstance(other, (ColumnSelector, WorkflowNode)):
+            other = ColumnSelector(other)
+
+        child.dependencies.append(other)
+
+        return child
+
+    def __rsub__(self, other):
+        # Create a child node
+        child = WorkflowNode()
+        child.op = internal.SubsetColumns(label="-")
+
+        # The left operand becomes a dependency
+        if not isinstance(other, (ColumnSelector, WorkflowNode)):
+            other = ColumnSelector(other)
+
+        # Add self as a dependency
+        child.dependencies.append(other)
+        child.dependencies.append(self)
+
         return child
 
     def __getitem__(self, columns):
@@ -239,39 +278,55 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
-    def dependencies_schema(self):
-        schema = Schema()
-        for dep in self.dependencies:
-            if isinstance(dep, ColumnSelector):
-                schema += Schema(dep.names)
-        return schema
-
-    @property
-    def parents_schema(self):
-        return sum([parent.output_schema for parent in self.parents], Schema())
+    def parents_with_dep_nodes(self):
+        return self.parents + self.dependency_nodes
 
     @property
     def input_columns(self):
+        if self.input_schema is None:
+            raise RuntimeError(
+                "The input columns aren't computed until the workflow "
+                "is fit to a dataset or input schema."
+            )
+
         if self.selector:
+            # To maintain column groupings
             return self.selector
         else:
             return ColumnSelector(self.input_schema.column_names)
 
     @property
     def output_columns(self):
-        if self.op:
-            return self.op.output_column_names(self.input_columns)
-        else:
-            return self.input_columns
+        if self.output_schema is None:
+            raise RuntimeError(
+                "The output columns aren't computed until the workflow "
+                "is fit to a dataset or input schema."
+            )
+
+        return ColumnSelector(self.output_schema.column_names)
+
+    @property
+    def dependency_schema(self):
+        return _combine_schemas(self.dependencies)
 
     @property
     def dependency_columns(self):
-        return ColumnSelector(self.dependencies_schema.column_names)
+        return _combine_selectors(self.dependency_selectors)
+
+    @property
+    def dependency_nodes(self):
+        return _filter_by_type(self.dependencies, WorkflowNode)
+
+    @property
+    def dependency_selectors(self):
+        return _filter_by_type(self.dependencies, ColumnSelector)
 
     @property
     def label(self):
-        if self.op:
+        if self.op and hasattr(self.op, "label"):
             return self.op.label
+        elif self.op:
+            return str(type(self.op))
         elif not self.parents:
             return f"input cols=[{self._cols_repr}]"
         else:
@@ -279,10 +334,18 @@ class WorkflowNode:
 
     @property
     def _cols_repr(self):
-        cols = ", ".join(map(str, self.selector[:3]))
-        if len(self.selector) > 3:
-            cols += "..."
-        return cols
+        if self.input_schema:
+            columns = self.input_schema.column_names
+        elif self.selector:
+            columns = self.selector.names
+        else:
+            columns = []
+
+        cols_repr = ", ".join(map(str, columns[:3]))
+        if len(columns) > 3:
+            cols_repr += "..."
+
+        return cols_repr
 
     @property
     def graph(self):
@@ -297,6 +360,56 @@ def iter_nodes(nodes):
         # TODO: deduplicate nodes?
         for parent in current.parents:
             queue.append(parent)
+
+        for dep in current.dependency_nodes:
+            queue.append(dep)
+
+
+def _filter_by_type(elements, type_):
+    results = []
+
+    for elem in elements:
+        if isinstance(elem, type_):
+            results.append(elem)
+        elif isinstance(elem, list):
+            results += _filter_by_type(elem, type_)
+
+    return results
+
+
+def _combine_schemas(elements):
+    combined = Schema()
+    for elem in elements:
+        if isinstance(elem, WorkflowNode):
+            combined += elem.output_schema
+        elif isinstance(elem, ColumnSelector):
+            combined += Schema(elem.names)
+        elif isinstance(elem, list):
+            combined += _combine_schemas(elem)
+    return combined
+
+
+def _combine_selectors(elements):
+    combined = ColumnSelector()
+    for elem in elements:
+        if isinstance(elem, WorkflowNode):
+            combined += ColumnSelector(elem.output_schema.column_names)
+        elif isinstance(elem, ColumnSelector):
+            combined += elem
+        elif isinstance(elem, list):
+            combined += ColumnSelector(subgroups=_combine_selectors(elem))
+    return combined
+
+
+def _to_selector(value):
+    if not isinstance(value, (ColumnSelector, WorkflowNode)):
+        return ColumnSelector(value)
+    else:
+        return value
+
+
+def _strs_to_selectors(elements):
+    return [_to_selector(elem) for elem in elements]
 
 
 def _to_graphviz(workflow_node):
