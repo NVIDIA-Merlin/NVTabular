@@ -62,7 +62,7 @@ class Rename(Operator):
         for column_name in input_schema.column_schemas:
             new_names = self.output_column_names(ColumnSelector(column_name))
             column_schema = input_schema.column_schemas[column_name]
-            for new_name in new_names:
+            for new_name in new_names.names:
                 new_column_schema = column_schema.with_name(new_name)
                 output_schema += Schema([self.transformed_schema(new_column_schema)])
         return output_schema
