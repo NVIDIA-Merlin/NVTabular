@@ -113,21 +113,25 @@ def export_pytorch_ensemble(
     nvtabular_backend="python",
 ):
     """Creates an ensemble triton server model, with the first model being a nvtabular
-    preprocessing, and the second by a tensorflow savedmodel
+    preprocessing, and the second by a pytorch savedmodel
 
     Parameters
     ----------
     model:
-        The tensorflow model that should be served
+        The pytorch model that should be served
     workflow:
         The nvtabular workflow used in preprocessing
+    sparse_max:
+        Max length of the each row when the sparse data is converted to dense
     name:
         The base name of the various triton models
     model_path:
         The root path to write out files to
     label_columns:
-
         Labels in the dataset (will be removed from the dataset)
+    use_fix_dtypes:
+        Transformers4Rec is using fixed dtypes and this option is
+        whether to use fixed dtypes in inference or not
     version:
         Version of the model
     nvtabular_backend: "python" or "nvtabular"
@@ -560,10 +564,21 @@ def export_pytorch_model(
     ----------
     model:
         The PyTorch model that should be served
+    workflow:
+        The nvtabular workflow used in preprocessing
+    sparse_max:
+        Max length of the each row when the sparse data is converted to dense
     name:
         The name of the triton model to export
     output_path:
         The path to write the exported model to
+    use_fix_dtypes:
+        Transformers4Rec is using fixed dtypes and this option is
+        whether to use fixed dtypes in inference or not
+    version:
+        Version of the model
+    backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
     """
     import cloudpickle
     import torch
