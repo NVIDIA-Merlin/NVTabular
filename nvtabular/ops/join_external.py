@@ -201,7 +201,7 @@ class JoinExternal(Operator):
         ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
 
         # This maintains the order which set() does not
-        combined = dict.fromkeys(columns + list(ext_columns)).keys()
+        combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
 
         return ColumnSelector(list(combined))
 

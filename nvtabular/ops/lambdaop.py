@@ -67,7 +67,7 @@ class LambdaOp(Operator):
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for col in col_selector:
+        for col in col_selector.names:
             if self._param_count == 2:
                 new_df[col] = self.f(df[col], df)
             elif self._param_count == 1:
