@@ -884,7 +884,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         the path to the output parquet file.
 
     """
-    if options.concat_groups and len(col_selector) > 1:
+    if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
     if options.on_host:
