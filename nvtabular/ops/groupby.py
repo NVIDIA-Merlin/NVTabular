@@ -168,7 +168,7 @@ def _get_agg_dicts(groupby_cols, list_aggs, conv_aggs, columns):
     # Get updated aggregation dicts. This should map "__all__"
     # to specific columns, and remove elements that are not
     # in `columns`.
-    _allowed_cols = [c for c in columns if c not in groupby_cols]
+    _allowed_cols = [c for c in columns.names if c not in groupby_cols]
     _list_aggs = _ensure_agg_dict(list_aggs, _allowed_cols)
     _conv_aggs = _ensure_agg_dict(conv_aggs, _allowed_cols)
     return _list_aggs, _conv_aggs
