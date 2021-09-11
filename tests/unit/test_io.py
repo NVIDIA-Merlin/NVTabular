@@ -197,30 +197,37 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     assert_eq(df, ddf_check, check_index=False)
 
 
-@pytest.mark.parametrize("cpu", [None, True])
-def test_dask_datframe_methods(tmpdir, cpu):
+def test_dask_dataframe_methods(tmpdir):
     # Input DataFrame objects
     df1 = cudf.datasets.timeseries(seed=7)[["id", "y"]].iloc[:200]
     df2 = cudf.datasets.timeseries(seed=42)[["id", "x"]].iloc[:100]
 
     # Initialize and merge Dataset objects
-    ds1 = nvtabular.io.Dataset(df1, npartitions=3, cpu=cpu)
-    ds2 = nvtabular.io.Dataset(df2, npartitions=2, cpu=not cpu)
-    ds3 = nvtabular.io.Dataset.merge(ds1, ds2, on="id", how="inner")
+    ds1_cpu = nvtabular.io.Dataset(df1, npartitions=3, cpu=True)
+    ds1_gpu = nvtabular.io.Dataset(df1, npartitions=3, cpu=False)
+
+    ds2 = nvtabular.io.Dataset(df2, npartitions=2, cpu=False)
+
+    ds3_cpu = nvtabular.io.Dataset.merge(ds1_cpu, ds2, on="id", how="inner")
+    ds3_gpu = nvtabular.io.Dataset.merge(ds1_gpu, ds2, on="id", how="inner")
 
     # Check repartitioning
-    ds3 = ds3.repartition(npartitions=4)
-    assert ds3.npartitions == 4
+    ds3_cpu = ds3_cpu.repartition(npartitions=4)
+    ds3_gpu = ds3_gpu.repartition(npartitions=4)
+    assert ds3_cpu.npartitions == 4
+    assert ds3_gpu.npartitions == 4
 
     # Check that head, tail, and persist are recognized
-    ds1.head()
-    ds1.tail()
-    ds1.persist()
+    ds1_cpu.head()
+    ds1_cpu.tail()
+    ds1_cpu.persist()
 
     # Check merge result
-    result = ds3.compute().sort_values(["id", "x", "y"])
+    result_cpu = ds3_cpu.compute().sort_values(["id", "x", "y"])
+    result_gpu = ds3_gpu.compute().sort_values(["id", "x", "y"])
     expect = cudf.DataFrame.merge(df1, df2, on="id", how="inner").sort_values(["id", "x", "y"])
-    assert_eq(result, expect, check_index=False)
+    assert_eq(result_cpu, expect, check_index=False)
+    assert_eq(result_gpu, expect, check_index=False)
 
 
 @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])

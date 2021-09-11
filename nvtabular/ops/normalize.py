@@ -56,7 +56,7 @@ class Normalize(StatOperator):
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for name in col_selector:
+        for name in col_selector.names:
             if self.stds[name] > 0:
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
             else:
@@ -104,7 +104,7 @@ class NormalizeMinMax(StatOperator):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
         new_df = type(df)()
-        for name in col_selector:
+        for name in col_selector.names:
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
                 new_df[name] = (df[name] - self.mins[name]) / dif
