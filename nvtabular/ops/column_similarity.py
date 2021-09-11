@@ -25,8 +25,10 @@ import pandas as pd
 import scipy.sparse
 from cupyx.scipy.sparse import coo_matrix
 
+from nvtabular.columns import ColumnSchema, Schema
 from nvtabular.dispatch import DataFrameType, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -110,8 +112,26 @@ class ColumnSimilarity(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        output_schema = Schema()
+        for grouped_columns in col_selector.grouped_names:
+            output_schema += Schema([self.transformed_schema(grouped_columns)])
+
+        return output_schema
+
+    def transformed_schema(self, grouped_schemas):
+        a, b = grouped_schemas
+        column_schema = ColumnSchema(f"{a}_{b}_sim")
+        return super().transformed_schema(column_schema)
+
     def output_column_names(self, columns):
         return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
