@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy
+
+from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -81,5 +85,18 @@ class DifferenceLag(Operator):
             [self._column_name(col, shift) for shift in self.shifts for col in col_selector.names]
         )
 
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        col_selector = self.output_column_names(col_selector)
+        for column_name in col_selector.names:
+            if column_name not in input_schema.column_schemas:
+                input_schema += Schema([column_name])
+        return super().compute_output_schema(input_schema, col_selector)
+
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _dtype(self):
+        return numpy.float

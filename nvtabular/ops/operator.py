@@ -72,19 +72,50 @@ class Operator:
         Schema
             The schemas of the columns produced by this operator
         """
-        if col_selector and col_selector.names:
-            input_selector = col_selector
-        else:
-            input_selector = ColumnSelector(input_schema.column_names)
+        output_schema = Schema()
+        for column_schema in input_schema.apply(col_selector):
+            output_schema += Schema([self.transformed_schema(column_schema)])
 
-        output_selector = self.output_column_names(input_selector)
-        output_names = (
-            output_selector.names
-            if isinstance(output_selector, ColumnSelector)
-            else output_selector
-        )
+        return output_schema
 
-        return Schema(output_names)
+    def transformed_schema(self, column_schema):
+        column_schema = self._add_tags(column_schema)
+        column_schema = self._add_properties(column_schema)
+        column_schema = self._update_dtype(column_schema)
+        return column_schema
+
+    def _add_tags(self, column_schema):
+        return column_schema.with_tags(self.output_tags())
+
+    def _add_properties(self, column_schema):
+        # get_properties should return the additional properties
+        # for target column
+        target_column_properties = self.output_properties().get(column_schema.name, None)
+        if target_column_properties:
+            return column_schema.with_properties(target_column_properties)
+        return column_schema
+
+    def _update_dtype(self, column_schema):
+        return column_schema.with_dtype(self.output_dtype())
+
+    def output_dtype(self):
+        """
+        Retrieves a dictionary of format; column_name: column_dtype. For all
+        input(with output_names) and created columns
+        """
+        # return dict of dtypes of all columns transformed and new columns formed
+        return None
+
+    def output_tags(self):
+        """
+        Retrieves
+        """
+        # returns a dict of column_name: tags to add to the output columns
+        return []
+
+    def output_properties(self):
+        # returns dict with column_name: properties to add
+        return {}
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this
@@ -101,6 +132,18 @@ class Operator:
             The names of columns produced by this operator
         """
         return col_selector
+
+    # def rename_column(self, in_column_name) -> str:
+    #     """Given an input column create the output column name.
+    #     May depend on support columns (i.e. dependencies) hosted
+    #     in the operator.
+
+    #     Parameters
+    #     -----------
+    #     in_column_name: the target input column to create
+    #             output name for
+    #     """
+    #     return in_column_name
 
     def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns

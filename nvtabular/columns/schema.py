@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Text
 import numpy
 
 # this needs to be before any modules that import protobuf
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import json_format, text_format  # noqa
 from google.protobuf.any_pb2 import Any  # noqa
@@ -300,7 +301,7 @@ class Schema:
         return self
 
     def __iter__(self):
-        return iter(self.column_schemas.values)
+        return iter(self.column_schemas.values())
 
     def __len__(self):
         return len(self.column_schemas)
@@ -316,8 +317,6 @@ class Schema:
     def __add__(self, other):
         if other is None:
             return self
-        if not isinstance(other, Schema):
-            raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
