@@ -1203,12 +1203,12 @@ def _encode(
             )
         labels[labels >= len(value[selection_r])] = na_sentinel
 
+    labels = labels + start_index
     if list_col:
         labels = dispatch._encode_list_column(df[selection_l[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
 
-    labels = labels + start_index
     return labels
 
 
