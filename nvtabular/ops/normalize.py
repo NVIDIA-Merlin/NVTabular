@@ -13,10 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import dask.dataframe as dd
+import numpy
 
 from ..dispatch import DataFrameType, annotate
+from ..tags import Tags
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator, Supports
 from .stat_operator import StatOperator
@@ -76,6 +77,12 @@ class Normalize(StatOperator):
     def clear(self):
         self.means = {}
         self.stds = {}
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -142,6 +149,12 @@ class NormalizeMinMax(StatOperator):
             | Supports.CPU_DATAFRAME
             | Supports.GPU_DATAFRAME
         )
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
