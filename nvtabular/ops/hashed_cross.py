@@ -15,8 +15,12 @@
 
 from typing import Dict, Union
 
+import numpy
+
+from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -71,9 +75,24 @@ class HashedCross(Operator):
     def output_column_names(self, columns):
         return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
 
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64
+
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        col_selector = self.output_column_names(col_selector)
+        for column_name in col_selector.names:
+            if column_name not in input_schema.column_schemas:
+                input_schema += Schema([column_name])
+        return super().compute_output_schema(input_schema, col_selector)
+
 
 def _nest_columns(columns):
     # if we have a list of flat column names, lets cross the whole group
+    if isinstance(columns, ColumnSelector):
+        columns = columns.names
     if all(isinstance(col, str) for col in columns):
         return [tuple(columns)]
     else:

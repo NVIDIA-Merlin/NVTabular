@@ -12,11 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import numpy
 from dask.dataframe.utils import meta_nonempty
 
+from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -133,6 +135,25 @@ class Groupby(Operator):
 
         return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _dtypes(self):
+        return numpy.int64
+
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        new_col_selector = self.output_column_names(col_selector)
+        new_list = []
+        for name in col_selector.names:
+            for new_name in new_col_selector.names:
+                if name in new_name:
+                    new_list.append(new_name)
+        new_col_selector = ColumnSelector(new_list)
+        for column_name in new_col_selector.names:
+            if column_name not in input_schema.column_schemas:
+                input_schema += Schema([column_name])
+        return super().compute_output_schema(input_schema, new_col_selector)
+
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
     # Helper function for `output_column_names`
@@ -168,7 +189,7 @@ def _get_agg_dicts(groupby_cols, list_aggs, conv_aggs, columns):
     # Get updated aggregation dicts. This should map "__all__"
     # to specific columns, and remove elements that are not
     # in `columns`.
-    _allowed_cols = [c for c in columns if c not in groupby_cols]
+    _allowed_cols = [c for c in columns.names if c not in groupby_cols]
     _list_aggs = _ensure_agg_dict(list_aggs, _allowed_cols)
     _conv_aggs = _ensure_agg_dict(conv_aggs, _allowed_cols)
     return _list_aggs, _conv_aggs

@@ -15,7 +15,10 @@
 #
 from typing import Dict, Union
 
+import numpy
+
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
+from ..tags import Tags
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnSelector, Operator
 
@@ -76,7 +79,7 @@ class HashBucket(Operator):
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if isinstance(self.num_buckets, int):
-            num_buckets = {name: self.num_buckets for name in col_selector}
+            num_buckets = {name: self.num_buckets for name in col_selector.names}
         else:
             num_buckets = self.num_buckets
 
@@ -97,3 +100,9 @@ class HashBucket(Operator):
             return {col: embedding_size for col in columns}
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64

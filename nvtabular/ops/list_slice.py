@@ -23,6 +23,7 @@ except ImportError:
 
 from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -59,7 +60,7 @@ class ListSlice(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
-        for col in col_selector:
+        for col in col_selector.names:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]
@@ -89,6 +90,9 @@ class ListSlice(Operator):
                 ret[col] = _build_cudf_list_column(new_elements, new_offsets)
 
         return ret
+
+    def output_tags(self):
+        return [Tags.LIST]
 
     transform.__doc__ = Operator.transform.__doc__
 
