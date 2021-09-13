@@ -517,9 +517,11 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
     )
     cat_names = ["Authors", "Engaging User"]
     label_name = ["Post"]
+    dataset = nvt.Dataset(df, cpu=cpu)
     cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), start_index=start_index)
-    workflow = nvt.Workflow(cat_features + label_name)
-    df_out = workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    processor = nvt.Workflow(cat_features + label_name)
+    processor.fit(dataset)
+    df_out = processor.transform(dataset).to_ddf().compute()
 
     if cpu:
         compare = [list(row) for row in df_out["Authors"].tolist()]
@@ -540,8 +542,7 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
 
     # We expect five entries in the embedding size, one for each author,
     # plus start_index many additional entries for our offset start_index.
-    embedding_size = nvt.ops.get_embedding_sizes(workflow)["Authors"][0]
-    assert embedding_size == (5 + start_index)
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == (5 + start_index)
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
