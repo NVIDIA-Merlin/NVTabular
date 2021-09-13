@@ -23,6 +23,7 @@ from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 from nvtabular.ops import _get_embedding_order
+from nvtabular.tags import Tags
 
 from_dlpack = configure_tensorflow()
 
@@ -71,16 +72,21 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
     return Dataset(files, engine=engine, **reader_kwargs)
 
 
-def _validate_schema(feature_columns, cat_names, cont_names):
+def _validate_schema(feature_columns, cat_names, cont_names, schema=None):
     _uses_feature_columns = feature_columns is not None
     _uses_explicit_schema = (cat_names is not None) or (cont_names is not None)
+
+    cat_names = schema.select_by_tag([Tags.CATEGORICAL]).column_names
+    cont_names = schema.select_by_tag([Tags.CONTINUOUS]).column_names
+    _uses_dataset_schema = cat_names or cont_names
+
     if _uses_feature_columns and _uses_explicit_schema:
         raise ValueError(
             "Passed `feature_column`s and explicit column names, must be one or the other"
         )
     elif _uses_feature_columns:
         return get_dataset_schema_from_feature_columns(feature_columns)
-    elif _uses_explicit_schema:
+    elif _uses_explicit_schema or _uses_dataset_schema:
         cat_names = cat_names or []
         cont_names = cont_names or []
         return cat_names, cont_names
@@ -203,7 +209,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         self,
         paths_or_dataset,
         batch_size,
-        label_names,
+        label_names=None,
         feature_columns=None,
         cat_names=None,
         cont_names=None,
@@ -224,7 +230,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
         )
-        cat_names, cont_names = _validate_schema(feature_columns, cat_names, cont_names)
+        cat_names, cont_names = _validate_schema(
+            feature_columns, cat_names, cont_names, schema=dataset.schema
+        )
 
         # sort the ccolumns to avoid getting incorrect output
         # (https://github.com/NVIDIA/NVTabular/issues/412)
@@ -235,11 +243,11 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         DataLoader.__init__(
             self,
             dataset,
-            cat_names,
-            cont_names,
-            label_names,
             batch_size,
             shuffle,
+            cat_names=cat_names,
+            cont_names=cont_names,
+            label_names=label_names,
             seed_fn=seed_fn,
             parts_per_chunk=parts_per_chunk,
             device=device,
