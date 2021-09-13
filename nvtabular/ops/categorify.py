@@ -34,7 +34,6 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
@@ -499,7 +498,6 @@ class Categorify(StatOperator):
 
     def output_properties(self):
         return self.categories
-
 
 def _get_embedding_order(cat_names):
     """Returns a consistent sorder order for categorical variables
