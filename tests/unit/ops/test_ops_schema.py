@@ -1,6 +1,8 @@
+import numpy as np
 import pytest
 
-from nvtabular import ColumnSchema, ColumnSelector, Schema, ops
+import nvtabular as nvt
+from nvtabular import ColumnSchema, ColumnSelector, Schema, dispatch, ops
 
 
 @pytest.mark.parametrize("properties", [{}, {"p1": "1"}])
@@ -60,3 +62,37 @@ def test_schema_out(tags, properties, selection, op):
     not_used = [col for col in all_cols if col not in selector.names]
     for col_name in not_used:
         assert col_name not in new_schema.column_schemas
+
+
+@pytest.mark.parametrize("properties", [{}, {"p1": "1"}])
+@pytest.mark.parametrize("tags", [[], ["TAG1", "TAG2"]])
+def test_categorify_schema_properties(properties, tags):
+    # Create columnSchemas
+    column_schemas = []
+    all_cols = []
+    for x in range(5):
+        all_cols.append(str(x))
+        column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
+
+    # Turn to Schema
+    schema = Schema(column_schemas)
+    df_dict = {}
+    num_rows = 100
+    for column_name in schema.column_names:
+        df_dict[column_name] = np.random.randint(1, 10000, num_rows)
+
+    df = dispatch._make_df(df_dict)
+    dataset = nvt.Dataset(df)
+    test_node = ColumnSelector(schema.column_names) >> ops.Categorify()
+    processor = nvt.Workflow(test_node)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+    workflow_schema_out = processor.output_node.output_schema
+    for column_name in workflow_schema_out.column_names:
+        schema1 = workflow_schema_out.column_schemas[column_name]
+        assert "domain" in schema1.properties
+        embeddings_info = schema1.properties["domain"]
+        assert isinstance(embeddings_info, tuple)
+        # should always exist, represents unkown
+        assert embeddings_info[0] == 0
+        assert embeddings_info[1] == new_gdf[column_name].max() + 1

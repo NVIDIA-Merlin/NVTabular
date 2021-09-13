@@ -109,9 +109,6 @@ class Workflow:
         -------
         Dataset
         """
-        if not self.output_schema:
-            self.fit_schema(dataset.infer_schema())
-
         self._clear_worker_cache()
 
         if not self.output_schema:
@@ -248,6 +245,8 @@ class Workflow:
         output_dtypes = self.transform(dataset).sample_dtypes()
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
+        self._zero_output_schemas()
+        self.fit_schema(dataset.infer_schema())
         return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
@@ -389,6 +388,17 @@ class Workflow:
             self.client.run(clean_worker_cache)
         else:
             clean_worker_cache()
+
+    def _zero_output_schemas(self):
+        """
+        Zero out all schemas in order to rerun fit schema after operators
+        have run fit and have stats to add to schema.
+        """
+        for node in iter_nodes(self.output_node.parents_with_dep_nodes):
+            node.output_schema = None
+            node.input_schema = None
+        self.output_node.ouput_schema = None
+        self.output_node.input_schema = None
 
 
 def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):

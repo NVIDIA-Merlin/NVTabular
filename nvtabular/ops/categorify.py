@@ -487,6 +487,19 @@ class Categorify(StatOperator):
                 input_schema += Schema([column_name])
         return super().compute_output_schema(input_schema, col_selector)
 
+    def _add_properties(self, column_schema):
+        target_column_properties = self.output_properties().get(column_schema.name, None)
+        if target_column_properties:
+            col_df = dispatch._read_parquet_dispatch(target_column_properties)(
+                target_column_properties
+            )
+            val_tuple = 0, col_df.shape[0]
+            return column_schema.with_properties({"domain": val_tuple})
+        return column_schema
+
+    def output_properties(self):
+        return self.categories
+
 
 def _get_embedding_order(cat_names):
     """Returns a consistent sorder order for categorical variables
