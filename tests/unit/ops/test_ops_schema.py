@@ -76,39 +76,7 @@ def test_schema_out(tags, properties, selection, op):
     ],
 )
 def test_categorify_schema_properties(properties, tags, op_routine):
-    # Create columnSchemas
-    column_schemas = []
-    all_cols = []
-    for x in range(5):
-        all_cols.append(str(x))
-        column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
-
-    # Turn to Schema
-    schema = Schema(column_schemas)
-    df_dict = {}
-    num_rows = 10000
-    for column_name in schema.column_names:
-        df_dict[column_name] = np.random.randint(1, 1000, num_rows)
-
-    df = dispatch._make_df(df_dict)
-    dataset = nvt.Dataset(df)
-    test_node = ColumnSelector(schema.column_names) >> op_routine[0]
-    for op in op_routine[1:]:
-        test_node = test_node >> op
-    processor = nvt.Workflow(test_node)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    workflow_schema_out = processor.output_node.output_schema
-    for column_name in workflow_schema_out.column_names:
-        schema1 = workflow_schema_out.column_schemas[column_name]
-        assert "domain" in schema1.properties
-        embeddings_info = schema1.properties["domain"]
-        # should always exist, represents unkown
-        assert embeddings_info["min"] == 0
-        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
-    workflow_schema_out = {}
-    df_dict = {}
-    schema = {}
+    run_op_full(properties, tags, op_routine)
 
 
 @pytest.mark.parametrize("properties", [{}])
@@ -123,39 +91,7 @@ def test_categorify_schema_properties(properties, tags, op_routine):
     ],
 )
 def test_categorify_schema_properties_blank(properties, tags, op_routine):
-    # Create columnSchemas
-    column_schemas = []
-    all_cols = []
-    for x in range(5):
-        all_cols.append(str(x))
-        column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
-
-    # Turn to Schema
-    schema = Schema(column_schemas)
-    df_dict = {}
-    num_rows = 10000
-    for column_name in schema.column_names:
-        df_dict[column_name] = np.random.randint(1, 1000, num_rows)
-
-    df = dispatch._make_df(df_dict)
-    dataset = nvt.Dataset(df)
-    test_node = ColumnSelector(schema.column_names) >> op_routine[0]
-    for op in op_routine[1:]:
-        test_node = test_node >> op
-    processor = nvt.Workflow(test_node)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    workflow_schema_out = processor.output_node.output_schema
-    for column_name in workflow_schema_out.column_names:
-        schema1 = workflow_schema_out.column_schemas[column_name]
-        assert "domain" in schema1.properties
-        embeddings_info = schema1.properties["domain"]
-        # should always exist, represents unkown
-        assert embeddings_info["min"] == 0
-        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
-    workflow_schema_out = {}
-    df_dict = {}
-    schema = {}
+    run_op_full(properties, tags, op_routine)
 
 
 @pytest.mark.parametrize("properties", [{}])
@@ -170,39 +106,7 @@ def test_categorify_schema_properties_blank(properties, tags, op_routine):
     ],
 )
 def test_categorify_schema_properties_tag(properties, tags, op_routine):
-    # Create columnSchemas
-    column_schemas = []
-    all_cols = []
-    for x in range(5):
-        all_cols.append(str(x))
-        column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
-
-    # Turn to Schema
-    schema = Schema(column_schemas)
-    df_dict = {}
-    num_rows = 10000
-    for column_name in schema.column_names:
-        df_dict[column_name] = np.random.randint(1, 1000, num_rows)
-
-    df = dispatch._make_df(df_dict)
-    dataset = nvt.Dataset(df)
-    test_node = ColumnSelector(schema.column_names) >> op_routine[0]
-    for op in op_routine[1:]:
-        test_node = test_node >> op
-    processor = nvt.Workflow(test_node)
-    processor.fit(dataset)
-    new_gdf = processor.transform(dataset).to_ddf().compute()
-    workflow_schema_out = processor.output_node.output_schema
-    for column_name in workflow_schema_out.column_names:
-        schema1 = workflow_schema_out.column_schemas[column_name]
-        assert "domain" in schema1.properties
-        embeddings_info = schema1.properties["domain"]
-        # should always exist, represents unkown
-        assert embeddings_info["min"] == 0
-        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
-    workflow_schema_out = {}
-    df_dict = {}
-    schema = {}
+    run_op_full(properties, tags, op_routine)
 
 
 @pytest.mark.parametrize("properties", [{"p1": "1"}])
@@ -217,7 +121,10 @@ def test_categorify_schema_properties_tag(properties, tags, op_routine):
     ],
 )
 def test_categorify_schema_properties_props(properties, tags, op_routine):
-    # Create columnSchemas
+    run_op_full(properties, tags, op_routine)
+
+
+def run_op_full(properties, tags, op_routine):
     column_schemas = []
     all_cols = []
     for x in range(5):
@@ -247,6 +154,3 @@ def test_categorify_schema_properties_props(properties, tags, op_routine):
         # should always exist, represents unkown
         assert embeddings_info["min"] == 0
         assert embeddings_info["max"] == new_gdf[column_name].max() + 1
-    workflow_schema_out = {}
-    df_dict = {}
-    schema = {}

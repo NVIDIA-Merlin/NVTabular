@@ -395,11 +395,9 @@ class Workflow:
         Zero out all schemas in order to rerun fit schema after operators
         have run fit and have stats to add to schema.
         """
-        for node in iter_nodes(self.output_node.parents_with_dep_nodes):
+        for node in iter_nodes([self.output_node]):
             node.output_schema = None
             node.input_schema = None
-        self.output_node.ouput_schema = None
-        self.output_node.input_schema = None
 
 
 def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):

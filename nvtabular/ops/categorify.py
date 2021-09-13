@@ -477,15 +477,6 @@ class Categorify(StatOperator):
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        col_selector = self.output_column_names(col_selector)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                input_schema += Schema([column_name])
-        return super().compute_output_schema(input_schema, col_selector)
-
     def _add_properties(self, column_schema):
         target_column_properties = self.output_properties().get(column_schema.name, None)
         if target_column_properties:
@@ -497,6 +488,7 @@ class Categorify(StatOperator):
 
     def output_properties(self):
         return self.categories
+
 
 def _get_embedding_order(cat_names):
     """Returns a consistent sorder order for categorical variables
