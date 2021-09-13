@@ -493,8 +493,7 @@ class Categorify(StatOperator):
             col_df = dispatch._read_parquet_dispatch(target_column_properties)(
                 target_column_properties
             )
-            val_tuple = 0, col_df.shape[0]
-            return column_schema.with_properties({"domain": val_tuple})
+            return column_schema.with_properties({"domain": {"min": 0, "max": col_df.shape[0]}})
         return column_schema
 
     def output_properties(self):

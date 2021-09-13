@@ -112,7 +112,7 @@ class Workflow:
         self._clear_worker_cache()
 
         if not self.output_schema:
-            self.fit_schema(dataset.infer_schema())
+            self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
@@ -120,6 +120,7 @@ class Workflow:
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
+            schema=self.output_schema,
         )
 
     def fit_schema(self, input_schema: Schema) -> "Workflow":
@@ -174,7 +175,7 @@ class Workflow:
         self._clear_worker_cache()
 
         if not self.output_schema:
-            self.fit_schema(dataset.infer_schema())
+            self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
@@ -246,7 +247,7 @@ class Workflow:
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
         self._zero_output_schemas()
-        self.fit_schema(dataset.infer_schema())
+        self.fit_schema(dataset.schema)
         return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:

@@ -103,10 +103,9 @@ def test_categorify_schema_properties(properties, tags, op_routine):
         schema1 = workflow_schema_out.column_schemas[column_name]
         assert "domain" in schema1.properties
         embeddings_info = schema1.properties["domain"]
-        assert isinstance(embeddings_info, tuple)
         # should always exist, represents unkown
-        assert embeddings_info[0] == 0
-        assert embeddings_info[1] == new_gdf[column_name].max() + 1
+        assert embeddings_info["min"] == 0
+        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
     workflow_schema_out = {}
     df_dict = {}
     schema = {}
@@ -151,10 +150,9 @@ def test_categorify_schema_properties_blank(properties, tags, op_routine):
         schema1 = workflow_schema_out.column_schemas[column_name]
         assert "domain" in schema1.properties
         embeddings_info = schema1.properties["domain"]
-        assert isinstance(embeddings_info, tuple)
         # should always exist, represents unkown
-        assert embeddings_info[0] == 0
-        assert embeddings_info[1] == new_gdf[column_name].max() + 1
+        assert embeddings_info["min"] == 0
+        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
     workflow_schema_out = {}
     df_dict = {}
     schema = {}
@@ -199,10 +197,9 @@ def test_categorify_schema_properties_tag(properties, tags, op_routine):
         schema1 = workflow_schema_out.column_schemas[column_name]
         assert "domain" in schema1.properties
         embeddings_info = schema1.properties["domain"]
-        assert isinstance(embeddings_info, tuple)
         # should always exist, represents unkown
-        assert embeddings_info[0] == 0
-        assert embeddings_info[1] == new_gdf[column_name].max() + 1
+        assert embeddings_info["min"] == 0
+        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
     workflow_schema_out = {}
     df_dict = {}
     schema = {}
@@ -247,10 +244,9 @@ def test_categorify_schema_properties_props(properties, tags, op_routine):
         schema1 = workflow_schema_out.column_schemas[column_name]
         assert "domain" in schema1.properties
         embeddings_info = schema1.properties["domain"]
-        assert isinstance(embeddings_info, tuple)
         # should always exist, represents unkown
-        assert embeddings_info[0] == 0
-        assert embeddings_info[1] == new_gdf[column_name].max() + 1
+        assert embeddings_info["min"] == 0
+        assert embeddings_info["max"] == new_gdf[column_name].max() + 1
     workflow_schema_out = {}
     df_dict = {}
     schema = {}
