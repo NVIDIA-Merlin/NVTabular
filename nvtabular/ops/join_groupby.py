@@ -20,7 +20,6 @@ import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
 from ..tags import Tags
@@ -225,13 +224,6 @@ class JoinGroupby(StatOperator):
 
     def output_dtype(self):
         return numpy.float
-
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        col_selector = self.output_column_names(col_selector)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                input_schema += Schema([column_name])
-        return super().compute_output_schema(input_schema, col_selector)
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
