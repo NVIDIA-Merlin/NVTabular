@@ -72,10 +72,17 @@ class Operator:
         Schema
             The schemas of the columns produced by this operator
         """
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
+        col_selector = self.output_column_names(col_selector)
+
+        for column_name in col_selector.names:
+            if column_name not in input_schema.column_schemas:
+                input_schema += Schema([column_name])
+
         output_schema = Schema()
         for column_schema in input_schema.apply(col_selector):
             output_schema += Schema([self.transformed_schema(column_schema)])
-
         return output_schema
 
     def transformed_schema(self, column_schema):
