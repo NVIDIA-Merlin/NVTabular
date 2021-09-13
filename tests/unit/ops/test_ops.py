@@ -542,7 +542,13 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
 
     # We expect five entries in the embedding size, one for each author,
     # plus start_index many additional entries for our offset start_index.
-    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == (5 + start_index)
+    embeddings = nvt.ops.get_embedding_sizes(processor)
+
+    # MH embeddings on GPU are returned as a tuple of (singlehot, multihot)
+    if not cpu:
+        embeddings = embeddings[1]
+
+    assert embeddings["Authors"][0] == (5 + start_index)
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
