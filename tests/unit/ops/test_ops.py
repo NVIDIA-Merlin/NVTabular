@@ -373,7 +373,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(["name-cat", "name-string"] + substring)
+    processor = nvtabular.Workflow(substring + ["name-cat", "name-string"])
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 

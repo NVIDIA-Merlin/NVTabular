@@ -38,6 +38,7 @@ from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, 
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
@@ -477,6 +478,12 @@ class Categorify(StatOperator):
         import nvtabular_cpp
 
         return nvtabular_cpp.inference.CategorifyTransform(self)
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return np.int64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
