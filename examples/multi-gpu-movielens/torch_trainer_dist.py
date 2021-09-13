@@ -13,7 +13,7 @@ from nvtabular.framework_utils.torch.models import Model
 from nvtabular.framework_utils.torch.utils import process_epoch
 from nvtabular.loader.torch import DLDataLoader, TorchAsyncItr
 
-parser = argparse.ArgumentParser(description="Train a multi-gpu model with Torch and Horovod")
+parser = argparse.ArgumentParser(description="Train a multi-gpu model with Torch")
 parser.add_argument("--dir_in", default=None, help="Input directory")
 parser.add_argument("--batch_size", default=None, help="Batch size")
 parser.add_argument("--cats", default=None, help="Categorical columns")
@@ -60,7 +60,7 @@ def seed_fn():
     # Generate a seed fragment
     seed_fragment = cupy.random.randint(0, max_rand)
 
-    # Aggregate seed fragments from all Horovod workers
+    # Aggregate seed fragments from all workers
     seed_tensor = torch.tensor(seed_fragment)  # pylint: disable=not-callable
     dist.all_reduce(seed_tensor, op=dist.ReduceOp.SUM)
     return seed_tensor % max_rand
