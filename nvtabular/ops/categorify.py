@@ -887,7 +887,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
     Parameters
     ----------
     dfs : DataFrame
-    base_path : string
+    base_path : str
     col_selector :
     options : FitOptions
 
@@ -898,7 +898,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
     Returns
     -------
-    path : string
+    path : str
         the path to the output parquet file.
 
     """
@@ -1105,7 +1105,7 @@ def _encode(
     ----------
     name :
     storage_name : dict
-    path : string
+    path : str
     df : DataFrame
     cat_cache :
     na_sentinel : int
