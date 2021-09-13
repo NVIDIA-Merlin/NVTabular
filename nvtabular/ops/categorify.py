@@ -467,7 +467,12 @@ class Categorify(StatOperator):
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
-            self.categories, columns, self.num_buckets, self.freq_threshold, self.max_size
+            self.categories,
+            columns,
+            self.num_buckets,
+            self.freq_threshold,
+            self.max_size,
+            self.start_index,
         )
 
     def inference_initialize(self, columns, inference_config):
@@ -554,7 +559,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     return single_hots, multi_hots
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
+def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, start_index=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
@@ -576,6 +581,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
         else:
             num_rows += bucket_size
 
+        num_rows += start_index
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
