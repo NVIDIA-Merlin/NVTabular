@@ -58,6 +58,8 @@ class Rename(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
         output_schema = Schema()
         for column_name in input_schema.column_schemas:
             new_names = self.output_column_names(ColumnSelector(column_name))

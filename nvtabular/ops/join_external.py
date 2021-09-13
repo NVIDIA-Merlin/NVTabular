@@ -23,7 +23,6 @@ except ImportError:
 import dask.dataframe as dd
 import pandas as pd
 
-from nvtabular.columns import Schema
 from nvtabular.dispatch import (
     DataFrameType,
     ExtData,
@@ -198,18 +197,11 @@ class JoinExternal(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        col_selector = self.output_column_names(col_selector.names)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                input_schema += Schema([column_name])
-        return super().compute_output_schema(input_schema, col_selector)
-
     def output_column_names(self, columns):
         ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
 
         # This maintains the order which set() does not
-        combined = dict.fromkeys(columns + list(ext_columns)).keys()
+        combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
 
         return ColumnSelector(list(combined))
 

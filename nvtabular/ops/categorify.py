@@ -34,7 +34,6 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
@@ -477,15 +476,6 @@ class Categorify(StatOperator):
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
-
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        col_selector = self.output_column_names(col_selector)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                input_schema += Schema([column_name])
-        return super().compute_output_schema(input_schema, col_selector)
 
 
 def _get_embedding_order(cat_names):

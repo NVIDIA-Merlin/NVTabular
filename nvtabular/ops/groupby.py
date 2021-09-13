@@ -132,7 +132,6 @@ class Groupby(Operator):
         )
         _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
         _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
-
         return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
     def output_tags(self):
@@ -146,13 +145,18 @@ class Groupby(Operator):
         new_list = []
         for name in col_selector.names:
             for new_name in new_col_selector.names:
-                if name in new_name:
+                if name in new_name and new_name not in new_list:
                     new_list.append(new_name)
-        new_col_selector = ColumnSelector(new_list)
-        for column_name in new_col_selector.names:
+
+        col_selector = ColumnSelector(new_list)
+        for column_name in col_selector.names:
             if column_name not in input_schema.column_schemas:
                 input_schema += Schema([column_name])
-        return super().compute_output_schema(input_schema, new_col_selector)
+
+        output_schema = Schema()
+        for column_schema in input_schema.apply(col_selector):
+            output_schema += Schema([self.transformed_schema(column_schema)])
+        return output_schema
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
