@@ -776,6 +776,9 @@ def test_hive_partitioned_data(tmpdir, cpu):
     assert result_paths
     assert all(p.endswith(".parquet") for p in result_paths)
 
+    # reading into dask dastaframe cannot have schema in same directory
+    os.remove(os.path.join(path, "schema.pbtxt"))
+
     # Read back with dask.dataframe and check the data
     df_check = dd.read_parquet(path).compute()
     df_check["name"] = df_check["name"].astype("object")

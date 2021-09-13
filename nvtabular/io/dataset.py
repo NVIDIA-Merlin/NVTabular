@@ -1083,8 +1083,14 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
-        sampled_dtypes = self.sample_dtypes(n)
-        dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+        dtypes = {}
+        try:
+            sampled_dtypes = self.sample_dtypes(n)
+            dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+        except RuntimeError:
+            warnings.warn(
+                "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
+            )
 
         column_schemas = []
         for column, dtype in dtypes.items():

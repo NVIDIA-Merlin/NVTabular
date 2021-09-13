@@ -104,7 +104,8 @@ def register_dtype(column_schema, feature):
             string_name = type(column_schema.dtype(1).item()).__name__
         else:
             string_name = column_schema.dtype.__name__
-        feature = proto_dict[string_name](column_schema, feature)
+        if string_name in proto_dict:
+            feature = proto_dict[string_name](column_schema, feature)
     return feature
 
 
