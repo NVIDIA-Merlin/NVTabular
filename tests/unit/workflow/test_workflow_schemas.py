@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import glob
+
 import pytest
 
-from nvtabular import Workflow, ops
+from nvtabular import Dataset, Workflow, ops
 from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
 
 
@@ -163,3 +165,25 @@ def test_workflow_select_by_tags(op):
 
     output_cols = op.output_column_names(ColumnSelector(["col1", "col2"]))
     assert len(workflow.output_schema.column_names) == len(output_cols.names)
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_schema_write_read_dataset(tmpdir, dataset, engine):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    norms = ops.Normalize()
+    cat_features = cat_names >> ops.Categorify(cat_cache="host")
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
+
+    workflow = Workflow(cat_features + cont_features + label_name)
+
+    workflow.fit(dataset)
+    workflow.transform(dataset).to_parquet(
+        tmpdir,
+        out_files_per_proc=10,
+    )
+
+    new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
+    assert new_dataset.schema == workflow.output_schema

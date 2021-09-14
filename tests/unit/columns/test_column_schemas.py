@@ -58,7 +58,7 @@ def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type
     schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type, _is_list=list_type)
     column_schema_set = Schema([schema1, schema2])
     # write schema out
-    schema_path = Path(tmpdir, "test.py")
+    schema_path = Path(tmpdir)
     column_schema_set = column_schema_set.save_protobuf(schema_path)
     # read schema back in
     target = Schema.load_protobuf(schema_path)
