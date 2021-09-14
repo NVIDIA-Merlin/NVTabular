@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import glob
 
-from nvtabular import Workflow, ops
+import pytest
+
+from nvtabular import Dataset, Workflow, ops
 from nvtabular.columns import ColumnSelector, Schema
 
 
@@ -125,3 +128,25 @@ def test_fit_schema_works_with_node_dependencies():
     workflow1.fit_schema(schema)
 
     assert workflow1.output_schema.column_names == ["TE_x_cost_renamed", "TE_y_cost_renamed"]
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_schema_write_read_dataset(tmpdir, dataset, engine):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    norms = ops.Normalize()
+    cat_features = cat_names >> ops.Categorify(cat_cache="host")
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
+
+    workflow = Workflow(cat_features + cont_features + label_name)
+
+    workflow.fit(dataset)
+    workflow.transform(dataset).to_parquet(
+        tmpdir,
+        out_files_per_proc=10,
+    )
+
+    new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
+    assert new_dataset.schema == workflow.output_schema
