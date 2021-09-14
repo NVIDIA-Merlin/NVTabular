@@ -110,7 +110,9 @@ def test_fit_schema_works_with_grouped_node_inputs():
     workflow1 = Workflow(cat_features)
     workflow1.fit_schema(schema)
 
-    assert workflow1.output_schema.column_names == ["TE_x_cost", "TE_y_cost", "TE_x_y_cost"]
+    assert sorted(workflow1.output_schema.column_names) == sorted(
+        ["TE_x_cost", "TE_y_cost", "TE_x_y_cost"]
+    )
 
 
 def test_fit_schema_works_with_node_dependencies():

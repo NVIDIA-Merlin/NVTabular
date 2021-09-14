@@ -15,8 +15,11 @@
 
 from typing import Dict, Union
 
+import numpy
+
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -70,6 +73,12 @@ class HashedCross(Operator):
 
     def output_column_names(self, columns):
         return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64
 
 
 def _nest_columns(columns):
