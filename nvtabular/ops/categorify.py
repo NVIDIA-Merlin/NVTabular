@@ -34,7 +34,6 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
@@ -176,6 +175,15 @@ class Categorify(StatOperator):
         value will be `max_size - num_buckets -1`.  Setting the max_size param means that
         freq_threshold should not be given.  If the num_buckets parameter is set,  it must be
         smaller than the max_size value.
+    start_index: int, default 0
+        The start index where Categorify will begin to translate dataframe entries
+        into integer values, including an initial out-of-vocabulary encoding value.
+        For instance, if our original translated dataframe entries appear
+        as [[1], [1, 4], [3, 2], [2]], with an out-of-vocabulary value of 0, then with a
+        start_index of 16, Categorify will reserve 16 as the out-of-vocabulary encoding value,
+        and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
+        This parameter is useful to reserve an intial segment of non-negative translated integers
+        for special user-defined values.
     """
 
     def __init__(
@@ -193,6 +201,7 @@ class Categorify(StatOperator):
         num_buckets=None,
         vocabs=None,
         max_size=0,
+        start_index=0,
     ):
 
         # We need to handle three types of encoding here:
@@ -245,6 +254,7 @@ class Categorify(StatOperator):
         self.cat_cache = cat_cache
         self.encode_type = encode_type
         self.search_sorted = search_sorted
+        self.start_index = start_index
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -440,6 +450,7 @@ class Categorify(StatOperator):
                     cat_names=cat_names,
                     max_size=self.max_size,
                     dtype=self.dtype,
+                    start_index=self.start_index,
                 )
             except Exception as e:
                 raise RuntimeError(f"Failed to categorical encode column {name}") from e
@@ -456,7 +467,12 @@ class Categorify(StatOperator):
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
-            self.categories, columns, self.num_buckets, self.freq_threshold, self.max_size
+            self.categories,
+            columns,
+            self.num_buckets,
+            self.freq_threshold,
+            self.max_size,
+            self.start_index,
         )
 
     def inference_initialize(self, columns, inference_config):
@@ -478,14 +494,17 @@ class Categorify(StatOperator):
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        col_selector = self.output_column_names(col_selector)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                input_schema += Schema([column_name])
-        return super().compute_output_schema(input_schema, col_selector)
+    def _add_properties(self, column_schema):
+        target_column_properties = self.output_properties().get(column_schema.name, None)
+        if target_column_properties:
+            col_df = dispatch._read_parquet_dispatch(target_column_properties)(
+                target_column_properties
+            )
+            return column_schema.with_properties({"domain": {"min": 0, "max": col_df.shape[0]}})
+        return column_schema
+
+    def output_properties(self):
+        return self.categories
 
 
 def _get_embedding_order(cat_names):
@@ -552,7 +571,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     return single_hots, multi_hots
 
 
-def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
+def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, start_index=0):
     embeddings = {}
     if isinstance(freq_limit, int):
         freq_limit = {name: freq_limit for name in cat_names}
@@ -574,6 +593,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0):
         else:
             num_rows += bucket_size
 
+        num_rows += start_index
         embeddings[col] = _emb_sz_rule(num_rows)
     return embeddings
 
@@ -620,6 +640,8 @@ class FitOptions:
         num_buckets:
             If specified will also do hashing operation for values that would otherwise be mapped
             to as unknown (by freq_limit or max_size parameters)
+        start_index: int
+            The index to start mapping our output categorical values to.
     """
 
     col_groups: list
@@ -634,6 +656,7 @@ class FitOptions:
     name_sep: str = "-"
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
+    start_index: int = 0
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -871,6 +894,26 @@ def _write_gb_stats(dfs, base_path, col_selector: ColumnSelector, options: FitOp
 
 @annotate("write_uniques", color="green", domain="nvt_python")
 def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOptions):
+    """Writes out a dataframe to a parquet file.
+
+    Parameters
+    ----------
+    dfs : DataFrame
+    base_path : str
+    col_selector :
+    options : FitOptions
+
+    Raises
+    ------
+    ValueError
+        If the computed nlargest value is non-positive.
+
+    Returns
+    -------
+    path : str
+        the path to the output parquet file.
+
+    """
     if options.concat_groups and len(col_selector.names) > 1:
         col_selector = ColumnSelector([_make_name(*col_selector.names, sep=options.name_sep)])
 
@@ -1064,7 +1107,48 @@ def _encode(
     cat_names=None,
     max_size=0,
     dtype=None,
+    start_index=0,
 ):
+    """The _encode method is responsible for transforming a dataframe by taking the written
+    out vocabulary file and looking up values to translate inputs to numeric
+    outputs.
+
+    Parameters
+    ----------
+    name :
+    storage_name : dict
+    path : str
+    df : DataFrame
+    cat_cache :
+    na_sentinel : int
+        Sentinel for NA value. Defaults to -1.
+    freq_threshold :  int
+        Categories with a count or frequency below this threshold will
+        be ommitted from the encoding and corresponding data will be
+        mapped to the "Null" category. Defaults to 0.
+    search_sorted :
+        Defaults to False.
+    buckets :
+        Defaults to None.
+    encode_type :
+        Defaults to "joint".
+    cat_names :
+        Defaults to None.
+    max_size :
+        Defaults to 0.
+    dtype :
+        Defaults to None.
+    start_index :  int
+        The index to start outputing categorical values to. This is useful
+        to, for instance, reserve an initial segment of non-negative
+        integers for out-of-vocabulary or other special values. Defaults
+        to 1.
+
+    Returns
+    -------
+    labels : numpy ndarray or Pandas Series
+
+    """
     if isinstance(buckets, int):
         buckets = {name: buckets for name in cat_names}
     # this is to apply freq_hashing logic
@@ -1149,6 +1233,7 @@ def _encode(
             )
         labels[labels >= len(value[selection_r.names])] = na_sentinel
 
+    labels = labels + start_index
     if list_col:
         labels = dispatch._encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
     elif dtype:
