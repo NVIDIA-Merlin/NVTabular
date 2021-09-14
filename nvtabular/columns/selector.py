@@ -104,7 +104,7 @@ class ColumnSelector:
         elif isinstance(other, nvtabular.WorkflowNode):
             return other + self
         elif isinstance(other, ColumnSelector):
-            # return ColumnSelector(self._tags + other._tags)
+
             return ColumnSelector(
                 self._names + other._names,
                 self.subgroups + other.subgroups,
