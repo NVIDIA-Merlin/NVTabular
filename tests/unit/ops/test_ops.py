@@ -505,6 +505,52 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
         assert compare == [[1], [1, 0], [0, 2], [2]]
 
 
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("start_index", [1, 2, 16])
+def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
+    df = dispatch._make_df(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Engaging User"]
+    label_name = ["Post"]
+    dataset = nvt.Dataset(df, cpu=cpu)
+    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), start_index=start_index)
+    processor = nvt.Workflow(cat_features + label_name)
+    processor.fit(dataset)
+    df_out = processor.transform(dataset).to_ddf().compute()
+
+    if cpu:
+        compare = [list(row) for row in df_out["Authors"].tolist()]
+    else:
+        compare = df_out["Authors"].to_arrow().to_pylist()
+
+    # Note that start_index is the start_index of the range of encoding, which
+    # includes both an initial value for the encoding for out-of-vocabulary items,
+    # as well as the values for the rest of the in-vocabulary items.
+    # In this group of tests below, there are no out-of-vocabulary items, so our start index
+    # value does not appear in the expected comparison object.
+    if start_index == 0:
+        assert compare == [[1], [1, 4], [3, 2], [2]]
+    elif start_index == 1:
+        assert compare == [[2], [2, 5], [4, 3], [3]]
+    elif start_index == 16:
+        assert compare == [[17], [17, 20], [19, 18], [18]]
+
+    # We expect five entries in the embedding size, one for each author,
+    # plus start_index many additional entries for our offset start_index.
+    embeddings = nvt.ops.get_embedding_sizes(processor)
+
+    # MH embeddings on GPU are returned as a tuple of (singlehot, multihot)
+    if not cpu:
+        embeddings = embeddings[1]
+
+    assert embeddings["Authors"][0] == (5 + start_index)
+
+
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
 @pytest.mark.parametrize("kind", ["joint", "combo"])
 @pytest.mark.parametrize("cpu", _CPU)
