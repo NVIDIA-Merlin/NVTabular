@@ -76,9 +76,9 @@ def _validate_schema(feature_columns, cat_names, cont_names, schema=None):
     _uses_feature_columns = feature_columns is not None
     _uses_explicit_schema = (cat_names is not None) or (cont_names is not None)
 
-    cat_names = schema.select_by_tag([Tags.CATEGORICAL]).column_names
-    cont_names = schema.select_by_tag([Tags.CONTINUOUS]).column_names
-    _uses_dataset_schema = cat_names or cont_names
+    cat_tag_names = schema.select_by_tag([Tags.CATEGORICAL]).column_names
+    cont_tag_names = schema.select_by_tag([Tags.CONTINUOUS]).column_names
+    _uses_dataset_schema = cat_tag_names or cont_tag_names
 
     if _uses_feature_columns and _uses_explicit_schema:
         raise ValueError(
@@ -86,10 +86,14 @@ def _validate_schema(feature_columns, cat_names, cont_names, schema=None):
         )
     elif _uses_feature_columns:
         return get_dataset_schema_from_feature_columns(feature_columns)
-    elif _uses_explicit_schema or _uses_dataset_schema:
+    elif _uses_explicit_schema:
         cat_names = cat_names or []
         cont_names = cont_names or []
         return cat_names, cont_names
+    elif _uses_dataset_schema:
+        cat_tag_names = cat_tag_names or []
+        cont_tag_names = cont_tag_names or []
+        return cat_tag_names, cont_tag_names
     else:
         raise ValueError(
             "Must either pass a list of TensorFlow `feature_column`s "
