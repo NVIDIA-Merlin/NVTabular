@@ -39,11 +39,11 @@ class ColumnSelector:
     def __init__(
         self,
         names: List[str] = None,
-        tags=List[Union[Tags, str]],
         subgroups: List["ColumnSelector"] = None,
+        tags: List[Union[Tags, str]] = None,
     ):
         self._names = names if names is not None else []
-        self.tags = tags if tags is not None else []
+        self._tags = tags if tags is not None else []
         self.subgroups = subgroups if subgroups is not None else []
 
         if isinstance(self._names, nvtabular.WorkflowNode):
@@ -67,6 +67,10 @@ class ColumnSelector:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
         self._nested_check()
+
+    @property
+    def tags(self):
+        return list(dict.fromkeys(self._tags).keys())
 
     @property
     def names(self):
@@ -100,7 +104,14 @@ class ColumnSelector:
         elif isinstance(other, nvtabular.WorkflowNode):
             return other + self
         elif isinstance(other, ColumnSelector):
-            return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
+            # return ColumnSelector(self._tags + other._tags)
+            return ColumnSelector(
+                self._names + other._names,
+                self.subgroups + other.subgroups,
+                tags=self._tags + other._tags,
+            )
+        elif isinstance(other, Tags):
+            return ColumnSelector(self._names, self.subgroups, tags=self._tags + [other])
         else:
             if isinstance(other, str):
                 other = [other]
