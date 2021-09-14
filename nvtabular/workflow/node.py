@@ -79,7 +79,7 @@ class WorkflowNode:
             ):
 
                 self.selector = self.parents[0].selector
-        # import pdb; pdb.set_trace()
+
         # If we have a selector, apply it to upstream schemas from nodes/dataset
         if self.selector:
             upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
