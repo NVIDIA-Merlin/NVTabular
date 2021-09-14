@@ -38,6 +38,36 @@ from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
 
+def test_validate_dataset_bad_schema(tmpdir):
+    if LooseVersion(dask.__version__) <= "2.30.0":
+        # Older versions of Dask will not handle schema mismatch
+        pytest.skip("Test requires newer version of Dask.")
+
+    path = str(tmpdir)
+    for (fn, df) in [
+        ("part.0.parquet", pd.DataFrame({"a": range(10), "b": range(10)})),
+        ("part.1.parquet", pd.DataFrame({"a": [None] * 10, "b": range(10)})),
+    ]:
+        df.to_parquet(os.path.join(path, fn))
+
+    # Initial dataset has mismatched schema and is missing a _metadata file.
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # Schema issue should cause validation failure, even if _metadata is ignored
+        assert not dataset.validate_dataset(require_metadata_file=False)
+        # File size should cause validation error, even if _metadata is generated
+        assert not dataset.validate_dataset(add_metadata_file=True)
+        # Make sure the last call added a `_metadata` file
+        assert len(glob.glob(os.path.join(path, "_metadata")))
+
+        # New datset has a _metadata file, but the file size is still too small
+        dataset = nvtabular.io.Dataset(path, engine="parquet")
+        assert not dataset.validate_dataset()
+        # Ignore file size to get validation success
+        assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_dataset_infer_schema(dataset, engine):
     schema = dataset.infer_schema()
@@ -578,36 +608,6 @@ def test_validate_dataset(datasets, engine):
             assert not dataset.validate_dataset()
 
 
-def test_validate_dataset_bad_schema(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
-        # Older versions of Dask will not handle schema mismatch
-        pytest.skip("Test requires newer version of Dask.")
-
-    path = str(tmpdir)
-    for (fn, df) in [
-        ("part.0.parquet", pd.DataFrame({"a": range(10), "b": range(10)})),
-        ("part.1.parquet", pd.DataFrame({"a": [None] * 10, "b": range(10)})),
-    ]:
-        df.to_parquet(os.path.join(path, fn))
-
-    # Initial dataset has mismatched schema and is missing a _metadata file.
-    dataset = nvtabular.io.Dataset(path, engine="parquet")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        # Schema issue should cause validation failure, even if _metadata is ignored
-        assert not dataset.validate_dataset(require_metadata_file=False)
-        # File size should cause validation error, even if _metadata is generated
-        assert not dataset.validate_dataset(add_metadata_file=True)
-        # Make sure the last call added a `_metadata` file
-        assert len(glob.glob(os.path.join(path, "_metadata")))
-
-        # New datset has a _metadata file, but the file size is still too small
-        dataset = nvtabular.io.Dataset(path, engine="parquet")
-        assert not dataset.validate_dataset()
-        # Ignore file size to get validation success
-        assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
-
-
 def test_validate_and_regenerate_dataset(tmpdir):
 
     # Initial timeseries dataset (in cpu memory)
@@ -783,6 +783,9 @@ def test_hive_partitioned_data(tmpdir, cpu):
     )
     assert result_paths
     assert all(p.endswith(".parquet") for p in result_paths)
+
+    # reading into dask dastaframe cannot have schema in same directory
+    os.remove(os.path.join(path, "schema.pbtxt"))
 
     # Read back with dask.dataframe and check the data
     df_check = dd.read_parquet(path, engine="pyarrow").compute()

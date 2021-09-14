@@ -28,6 +28,8 @@ from google.protobuf.any_pb2 import Any  # noqa
 from google.protobuf.struct_pb2 import Struct  # noqa
 from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
 
+from nvtabular.tags import Tags  # noqa
+
 
 def register_extra_metadata(column_schema, feature):
     msg_struct = Struct()
@@ -102,7 +104,8 @@ def register_dtype(column_schema, feature):
             string_name = type(column_schema.dtype(1).item()).__name__
         else:
             string_name = column_schema.dtype.__name__
-        feature = proto_dict[string_name](column_schema, feature)
+        if string_name in proto_dict:
+            feature = proto_dict[string_name](column_schema, feature)
     return feature
 
 
@@ -120,7 +123,9 @@ def create_protobuf_feature(column_schema):
     if column_schema.dtype:
         feature = register_dtype(column_schema, feature)
     annotation = feature.annotation
-    annotation.tag.extend(column_schema.tags)
+    annotation.tag.extend(
+        [tag.value if hasattr(tag, "value") else tag for tag in column_schema.tags]
+    )
     # can be instantiated with no values
     # if  so, unnecessary to dump
     if len(column_schema.properties) > 0:
@@ -247,16 +252,21 @@ class Schema:
         return schema
 
     @classmethod
-    def load_protobuf(cls, schema) -> "Schema":
+    def load_protobuf(cls, schema_path) -> "Schema":
         columns = []
-        if isinstance(schema, (str, Path)):
-            schema = cls.read_protobuf(schema)
+        if isinstance(schema_path, (str, Path)):
+            if isinstance(schema_path, str):
+                schema_path = Path(schema_path)
+            if schema_path.is_dir():
+                schema_path = schema_path / "schema.pbtxt"
+            schema = cls.read_protobuf(schema_path)
 
         for feat in schema.feature:
             _is_list = False
             dtype = None
             properties = {}
             tags = list(feat.annotation.tag) or []
+            tags = [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]
             # only one item should ever be in extra_metadata
             if len(feat.annotation.extra_metadata) > 1:
                 raise ValueError(
@@ -290,13 +300,18 @@ class Schema:
         return Schema(columns)
 
     def save_protobuf(self, schema_path):
+        schema_path = Path(schema_path)
+        if not schema_path.is_dir():
+            raise ValueError(f"The path provided is not a valid directory: {schema_path}")
+
         # traverse list of column schema
         schema = schema_pb2.Schema()
         features = []
         for col_name, col_schema in self.column_schemas.items():
             features.append(create_protobuf_feature(col_schema))
         schema.feature.extend(features)
-        with open(schema_path, "w") as f:
+
+        with open(schema_path / "schema.pbtxt", "w") as f:
             f.write(text_format.MessageToString(schema))
         return self
 

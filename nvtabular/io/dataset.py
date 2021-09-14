@@ -19,6 +19,7 @@ import logging
 import math
 import random
 import warnings
+from pathlib import Path
 
 import dask
 import numpy as np
@@ -217,10 +218,12 @@ class Dataset:
         client=None,
         cpu=None,
         base_dataset=None,
+        schema=None,
         **kwargs,
     ):
         self.dtypes = dtypes
         self.client = client
+        self.schema = schema
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
@@ -310,6 +313,23 @@ class Dataset:
                 self.engine = engine(
                     paths, part_size, cpu=self.cpu, storage_options=storage_options
                 )
+
+        # load in schema or infer if not available
+        # path is always a list at this point
+
+        if not self.schema:
+            if isinstance(path_or_source, list) and isinstance(path_or_source[0], (str, Path)):
+                # list of paths to files
+                schema_path = Path(path_or_source[0])
+                if schema_path.is_file():
+                    schema_path = schema_path.parent
+                if (schema_path / "schema.pbtxt").exists():
+                    self.schema = Schema.load_protobuf(schema_path)
+                else:
+                    self.infer_schema()
+            else:
+                # df with no schema
+                self.infer_schema()
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`
@@ -852,6 +872,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
+        self.schema.save_protobuf(output_path)
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
@@ -941,6 +962,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
+        self.schema.save_protobuf(output_path)
 
         # Output dask_cudf DataFrame to dataset,
         _ddf_to_dataset(
@@ -1072,15 +1094,22 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
-        sampled_dtypes = self.sample_dtypes(n)
-        dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+        dtypes = {}
+        try:
+            sampled_dtypes = self.sample_dtypes(n)
+            dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+        except RuntimeError:
+            warnings.warn(
+                "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
+            )
 
         column_schemas = []
         for column, dtype in dtypes.items():
             col_schema = ColumnSchema(column, dtype=dtype)
             column_schemas.append(col_schema)
 
-        return Schema(column_schemas)
+        self.schema = Schema(column_schemas)
+        return self.schema
 
     def sample_dtypes(self, n=1):
         """Return the real dtypes of the Dataset
