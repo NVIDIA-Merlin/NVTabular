@@ -42,7 +42,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     batches are the specified size until the final batch.
 
     Parameters
-    -----------
+    ----------
     dataset : NVTabular dataset
     cats : [str]
         the list of categorical columns in the dataset
