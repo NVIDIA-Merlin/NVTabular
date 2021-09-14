@@ -16,4 +16,3 @@
 
 # flake8: noqa
 from .feature_column_utils import make_feature_column_workflow
-from .tfrecords_to_parquet import convert_tfrecords_to_parquet

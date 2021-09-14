@@ -44,8 +44,6 @@ def convert_tfrecords_to_parquet(
         individual columns in the output dataframe
 
     """
-    # TODO: provide row_groupby_size parameter for parquet files
-    # TODO: optimize parquet files
 
     for file in filenames:
         dataset = tf.data.TFRecordDataset(file, compression_type=compression_type)
@@ -75,7 +73,6 @@ def _detect_schema(dataset):
 def _to_parquet(tfrecords, file, output_dir, chunks, convert_lists):
     out = []
     i = 0
-    j = 0
     w = ParquetWriter(output_dir + file.split("/")[-1].split(".")[0] + ".parquet")
     for tfrecord in tqdm(tfrecords):
         row = {key: val.numpy() for key, val in tfrecord.items()}
@@ -88,7 +85,6 @@ def _to_parquet(tfrecords, file, output_dir, chunks, convert_lists):
             w.write_table(df)
             i = 0
             out = []
-            j += 1
             del df
             gc.collect()
     if len(out) > 0:
