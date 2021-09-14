@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import List
+from typing import List, Union
 
 import nvtabular
+from nvtabular.tags import Tags
 
 
 class ColumnSelector:
@@ -35,9 +36,16 @@ class ColumnSelector:
         of nesting tuples inside the list of names)
     """
 
-    def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
+    def __init__(
+        self,
+        names: List[str] = None,
+        tags=List[Union[Tags, str]],
+        subgroups: List["ColumnSelector"] = None,
+    ):
         self._names = names if names is not None else []
-        self.subgroups = subgroups if subgroups else []
+        self.tags = tags if tags is not None else []
+        self.subgroups = subgroups if subgroups is not None else []
+
         if isinstance(self._names, nvtabular.WorkflowNode):
             raise TypeError("ColumnSelectors can not contain WorkflowNodes")
 

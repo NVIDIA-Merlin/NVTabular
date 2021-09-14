@@ -17,6 +17,7 @@ import pytest
 
 from nvtabular.columns import ColumnSelector
 from nvtabular.ops import Operator
+from nvtabular.tags import Tags
 from nvtabular.workflow import WorkflowNode
 
 
@@ -147,3 +148,9 @@ def test_rshift_operator_onto_selector_creates_node_with_selector():
     assert isinstance(output_node, WorkflowNode)
     assert output_node.selector == selector
     assert output_node.parents == []
+
+
+def test_construct_column_selector_with_tags():
+    target_tags = [Tags.CATEGORICAL, "custom"]
+    selector = ColumnSelector(tags=target_tags)
+    assert selector.tags == target_tags
