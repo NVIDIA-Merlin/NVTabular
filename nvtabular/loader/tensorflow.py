@@ -140,20 +140,20 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     Iterator output is of the form `(dict(features), list(labels))`,
     where each element of the features dict is a
-    `feature_name: feature_tensor`  and each element of the labels
+    `feature_name: feature_tensor`  and each elemtn of the labels
     list is a tensor, and all tensors are of shape `(batch_size, 1)`.
     Note that this means vectorized continuous and multi-hot categorical
     features are not currently supported.
     The underlying NVTabular `Dataset` object is stored in the `data`
     attribute, and should be used for updating NVTabular `Workflow`
-    statistics:
+    statistics::
 
         workflow = nvt.Workflow(...)
         dataset = KerasSequenceLoader(...)
         workflow.update_stats(dataset.data.to_iter(), record_stats=True)
 
     Parameters
-    ----------
+    -------------
     - paths_or_dataset: str or list(str)
         Either a string representing a file pattern (see `tf.glob` for
         pattern rules), a list of filenames to be iterated through, or
@@ -205,7 +205,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         dictionary of key: column_name + value: integer representing max sequence length for column
     sparse_dense : bool
         bool value to activate transforming sparse tensors to dense
-
     """
 
     _use_nnz = True
@@ -239,7 +238,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             feature_columns, cat_names, cont_names, schema=dataset.schema
         )
 
-        # Sort the columns to avoid getting incorrect output.
+        # sort the ccolumns to avoid getting incorrect output
         # (https://github.com/NVIDIA/NVTabular/issues/412)
         cat_names = _get_embedding_order(cat_names)
         cont_names = _get_embedding_order(cont_names)
@@ -266,7 +265,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         self._map_fns = []
 
     def __len__(self):
-        """Recreating since otherwise Keras yells at you."""
+        """
+        recreating since otherwise Keras yells at you
+        """
         # TODO: what's a better way to do this inheritance
         # of the appropriate methods? A Metaclass?
         DataLoader.stop(self)
@@ -274,10 +275,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
 
     def __getitem__(self, idx):
         """
-        Implemented exclusively for consistency
+        implemented exclusively for consistency
         with Keras model.fit. Does not leverage
-        passed idx in any way.
-
+        passed idx in any way
         """
         return DataLoader.__next__(self)
 
@@ -286,7 +286,6 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         Applying a function to each batch.
 
         This can for instance be used to add `sample_weight` to the model.
-
         """
         self._map_fns.append(fn)
 

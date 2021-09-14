@@ -61,7 +61,7 @@ class ListSlice(Operator):
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
         for col in col_selector.names:
-            # Handle CPU via normal python slicing (not very efficient).
+            # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 ret[col] = [row[self.start : self.end] for row in df[col]]
             else:
@@ -99,8 +99,8 @@ class ListSlice(Operator):
 
 @numba.cuda.jit
 def _calculate_row_sizes(start, end, offsets, row_sizes):
-    """Given a slice (start/end) and existing offsets indicating row lengths, this
-    calculates the size for each new row after slicing."""
+    """given a slice (start/end) and existing offsets indicating row lengths, this
+    calculates the size for each new row after slicing"""
     rowid = numba.cuda.grid(1)
     if rowid < offsets.size - 1:
         original_row_size = offsets[rowid + 1] - offsets[rowid]
@@ -120,9 +120,9 @@ def _calculate_row_sizes(start, end, offsets, row_sizes):
 
 @numba.cuda.jit
 def _slice_rows(start, offsets, elements, new_offsets, new_elements):
-    """Slices rows of a list column. requires the 'new_offsets' to
+    """slices rows of a list column. requires the 'new_offsets' to
     be previously calculated (meaning that we don't need the 'end' slice index
-    since thats baked into the new_offsets."""
+    since thats baked into the new_offsets"""
     rowid = numba.cuda.grid(1)
     if rowid < (new_offsets.size - 1):
         if start >= 0:
