@@ -115,8 +115,8 @@ def test_dataloader_seeding(datasets, engine, batch_size):
 @pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("device", [None, 0])
-@pytest.mark.parametrize("torch_on", [False, True])
-def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device, torch_on):
+@pytest.mark.parametrize("framework", ["tf", "torch"])
+def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device, framework):
     cat_names = ["name-cat", "name-string"]
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
@@ -141,20 +141,22 @@ def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device, torc
 
     nvt_data = nvt.Dataset(tar_paths, engine="parquet")
 
-    if torch_on:
+    if framework == "torch":
         data_loader = TorchAsyncItr(
             nvt_data,
             batch_size=batch_size,
             shuffle=False,
             labels=label_name,
         )
-    else:
+    elif framework == "tf":
         data_loader = KerasSequenceLoader(
             nvt_data,
             batch_size=batch_size,
             shuffle=False,
             label_names=label_name,
         )
+    else:
+        assert False, "Unknown dataloader framework"
 
     batch = next(iter(data_loader))
     assert all(name in batch[0] for name in cat_names)
