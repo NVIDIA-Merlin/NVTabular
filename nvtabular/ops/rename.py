@@ -60,6 +60,13 @@ class Rename(Operator):
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         if not col_selector:
             col_selector = ColumnSelector(input_schema.column_names)
+        if col_selector.tags:
+            tags_col_selector = ColumnSelector(tags=col_selector.tags)
+            filtered_schema = input_schema.apply(tags_col_selector)
+            col_selector += ColumnSelector(filtered_schema.column_names)
+
+            # zero tags because already filtered
+            col_selector._tags = []
         output_schema = Schema()
         for column_name in input_schema.column_schemas:
             new_names = self.output_column_names(ColumnSelector(column_name))

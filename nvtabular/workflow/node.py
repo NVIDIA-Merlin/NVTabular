@@ -75,7 +75,7 @@ class WorkflowNode:
                 len(self.parents) == 1
                 and isinstance(self.parents[0].op, internal.ConcatColumns)
                 and self.parents[0].selector
-                and self.parents[0].selector.names
+                and (self.parents[0].selector.names)
             ):
 
                 self.selector = self.parents[0].selector

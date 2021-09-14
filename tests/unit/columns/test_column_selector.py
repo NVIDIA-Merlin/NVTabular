@@ -17,6 +17,7 @@ import pytest
 
 from nvtabular.columns import ColumnSelector
 from nvtabular.ops import Operator
+from nvtabular.tags import Tags
 from nvtabular.workflow import WorkflowNode
 
 
@@ -147,3 +148,45 @@ def test_rshift_operator_onto_selector_creates_node_with_selector():
     assert isinstance(output_node, WorkflowNode)
     assert output_node.selector == selector
     assert output_node.parents == []
+
+
+def test_construct_column_selector_with_tags():
+    target_tags = [Tags.CATEGORICAL, "custom"]
+    selector = ColumnSelector(tags=target_tags)
+    assert selector.tags == target_tags
+
+
+def test_returned_tags_are_unique():
+    selector = ColumnSelector(tags=["a", "b", "a"])
+    assert selector.tags == ["a", "b"]
+
+
+def test_addition_combines_tags():
+    selector1 = ColumnSelector(tags=["a", "b", "c"])
+    selector2 = ColumnSelector(tags=["g", "h", "i"])
+    combined = selector1 + selector2
+
+    assert combined.tags == ["a", "b", "c", "g", "h", "i"]
+
+
+def test_addition_combines_names_and_tags():
+    selector1 = ColumnSelector(["a", "b", "c"])
+    selector2 = ColumnSelector(tags=["g", "h", "i"])
+    combined = selector1 + selector2
+
+    assert combined.names == ["a", "b", "c"]
+    assert combined.tags == ["g", "h", "i"]
+
+
+def test_addition_enum_tags():
+    selector1 = ColumnSelector(tags=["a", "b", "c"])
+    combined = selector1 + Tags.CATEGORICAL
+
+    assert combined.tags == ["a", "b", "c", Tags.CATEGORICAL]
+
+    selector2 = ColumnSelector(["a", "b", "c", ["d", "e", "f"]])
+    combined = selector2 + Tags.CATEGORICAL
+
+    assert combined._names == ["a", "b", "c"]
+    assert combined.subgroups == [ColumnSelector(["d", "e", "f"])]
+    assert combined.tags == [Tags.CATEGORICAL]
