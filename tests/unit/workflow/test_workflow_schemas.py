@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pytest
 
 from nvtabular import Workflow, ops
-from nvtabular.columns import ColumnSelector, Schema
+from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
 
 
 def test_fit_schema():
@@ -125,3 +126,40 @@ def test_fit_schema_works_with_node_dependencies():
     workflow1.fit_schema(schema)
 
     assert workflow1.output_schema.column_names == ["TE_x_cost_renamed", "TE_y_cost_renamed"]
+
+
+# initial column selector works with tags
+# filter within the workflow by tags
+# test tags correct at output
+@pytest.mark.parametrize(
+    "op",
+    [
+        ops.Bucketize([1]),
+        ops.Rename(postfix="_trim"),
+        ops.Categorify(),
+        ops.Categorify(encode_type="combo"),
+        ops.Clip(0),
+        ops.DifferenceLag("col1"),
+        ops.FillMissing(),
+        ops.Groupby(["col1"]),
+        ops.HashBucket(1),
+        ops.HashedCross(1),
+        ops.JoinGroupby(["col1"]),
+        ops.ListSlice(0),
+        ops.LogOp(),
+        ops.Normalize(),
+        ops.TargetEncoding(["col1"]),
+    ],
+)
+def test_workflow_select_by_tags(op):
+    schema1 = ColumnSchema("col1", tags=["b", "c", "d"])
+    schema2 = ColumnSchema("col2", tags=["c", "d"])
+    schema3 = ColumnSchema("col3", tags=["d"])
+    schema = Schema([schema1, schema2, schema3])
+
+    cont_features = ColumnSelector(tags=["c"]) >> op
+    workflow = Workflow(cont_features)
+    workflow.fit_schema(schema)
+
+    output_cols = op.output_column_names(ColumnSelector(["col1", "col2"]))
+    assert len(workflow.output_schema.column_names) == len(output_cols.names)
