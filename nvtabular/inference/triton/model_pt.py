@@ -155,7 +155,7 @@ class TritonPythonModel:
                 # Call forward function to get the predictions
                 # Forward function should return a dict with the "predictions" bucket
                 out = self.model(input_dict, training=False)
-                if type(out) is not dict:
+                if not isinstance(out, dict):
                     raise ValueError("output of the forward function should be a dict")
 
                 # Get the predictions from the out
@@ -206,18 +206,15 @@ def _build_sparse_tensor(values, nnzs, seq_limit, sparse_as_dense, device="cuda"
 def _convert_dtype(dtype):
     """Transformer4Rec uses these fixed dtypes and this function converts the original dtype
     to this fixed dtypes"""
-    if dtype == torch.float64 or dtype == torch.float16 or dtype == torch.float32:
+    if dtype in [torch.float64, torch.float32, torch.float16]:
         return torch.float32
-    if (
-        dtype == torch.int64
-        or dtype == torch.int32
-        or dtype == torch.int16
-        or dtype == torch.int8
-        or dtype == torch.uint64
-        or dtype == torch.uint32
-        or dtype == torch.uint16
-        or dtype == torch.uint8
-    ):
+    if dtype in [
+        torch.int64,
+        torch.int32,
+        torch.int16,
+        torch.int8,
+        torch.uint8,
+    ]:
         return torch.long
 
     raise ValueError(f"Can't convert dtype {dtype})")
