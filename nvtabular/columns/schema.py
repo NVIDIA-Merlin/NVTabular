@@ -213,16 +213,19 @@ class Schema:
         return list(self.column_schemas.keys())
 
     def apply(self, selector):
-        if selector and selector.names:
-            return self.select_by_name(selector.names)
-        else:
-            return self
+        if selector:
+            schema = Schema()
+            if selector.names:
+                schema += self.select_by_name(selector.names)
+            if selector.tags:
+                schema += self.select_by_tag(selector.tags)
+            return schema
+        return self
 
     def apply_inverse(self, selector):
         if selector:
             return self - self.select_by_name(selector.names)
-        else:
-            return self
+        return self
 
     def select_by_tag(self, tags):
         if not isinstance(tags, list):
@@ -231,7 +234,7 @@ class Schema:
         selected_schemas = {}
 
         for _, column_schema in self.column_schemas.items():
-            if all(x in column_schema.tags for x in tags):
+            if any(x in column_schema.tags for x in tags):
                 selected_schemas[column_schema.name] = column_schema
 
         return Schema(selected_schemas)

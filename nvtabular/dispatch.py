@@ -28,6 +28,7 @@ try:
     import cudf
     import cupy as cp
     import dask_cudf
+    import rmm
     from cudf.core.column import as_column, build_column
     from cudf.utils.dtypes import is_list_dtype, is_string_dtype
 
@@ -36,6 +37,7 @@ except ImportError:
     HAS_GPU = False
     cp = None
     cudf = None
+    rmm = None
 
 try:
     # Dask >= 2021.5.1
@@ -91,6 +93,29 @@ class ExtData(enum.Enum):
 
 def get_lib():
     return cudf if HAS_GPU else pd
+
+
+def reinitialize(managed_memory=False):
+    if rmm:
+        rmm.reinitialize(managed_memory=managed_memory)
+    return
+
+
+def random_uniform(size):
+    """Dispatch for numpy.random.RandomState"""
+    if HAS_GPU:
+        return cp.random.uniform(size=size)
+    else:
+        return np.random.uniform(size=size)
+
+
+def coo_matrix(data, row, col):
+    if HAS_GPU:
+        return cp.sparse.coo_matrix((data, row, col))
+    else:
+        import scipy
+
+        return scipy.sparse.coo_matrix((data, row, col))
 
 
 def _is_dataframe_object(x):
