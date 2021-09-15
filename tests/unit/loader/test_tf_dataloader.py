@@ -593,7 +593,6 @@ def test_horovod_multigpu(tmpdir):
         assert "Loss:" in str(stdout)
 
 
-
 @pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("device", [None, 0])
@@ -628,7 +627,6 @@ def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device):
         shuffle=False,
         label_names=label_name,
     )
-
 
     batch = next(iter(data_loader))
     assert all(name in batch[0] for name in cat_names)
