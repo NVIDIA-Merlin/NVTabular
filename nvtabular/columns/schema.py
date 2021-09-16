@@ -32,10 +32,11 @@ from nvtabular.tags import Tags  # noqa
 
 
 def register_extra_metadata(column_schema, feature):
+    filtered_properties = {k: v for k, v in column_schema.properties.items() if k != "domain"}
     msg_struct = Struct()
     # must pack message into "Any" type
     any_pack = Any()
-    any_pack.Pack(json_format.ParseDict(column_schema.properties, msg_struct))
+    any_pack.Pack(json_format.ParseDict(filtered_properties, msg_struct))
     # extra_metadata only takes type "Any" messages
     feature.annotation.extra_metadata.add().CopyFrom(any_pack)
     return feature
@@ -62,14 +63,13 @@ def register_list(column_schema, feature):
 
 
 def set_protobuf_float(column_schema, feature):
-    col_min, col_max = 0, 0
     if "domain" in column_schema.properties:
-        col_min, col_max = column_schema.properties.pop("domain")
+        domain = column_schema.properties.get("domain")
     feature.float_domain.CopyFrom(
         schema_pb2.FloatDomain(
             name=column_schema.name,
-            min=col_min,
-            max=col_max,
+            min=domain["min"],
+            max=domain["max"],
         )
     )
     feature.type = schema_pb2.FeatureType.FLOAT
@@ -77,14 +77,13 @@ def set_protobuf_float(column_schema, feature):
 
 
 def set_protobuf_int(column_schema, feature):
-    col_min, col_max = 0, 0
     if "domain" in column_schema.properties:
-        col_min, col_max = column_schema.properties.pop("domain")
+        domain = column_schema.properties.get("domain")
     feature.int_domain.CopyFrom(
         schema_pb2.IntDomain(
             name=column_schema.name,
-            min=col_min,
-            max=col_max,
+            min=domain["min"],
+            max=domain["max"],
             is_categorical="categorical" in column_schema.tags,
         )
     )
@@ -288,7 +287,7 @@ class Schema:
                 domain_values = getattr(feat, field_name)
                 # if zero no values were passed
                 if domain_values.max > 0:
-                    properties["domain"] = domain_values.min, domain_values.max
+                    properties["domain"] = {"min": domain_values.min, "max": domain_values.max}
                 if feat.type:
                     if feat.type == 2:
                         dtype = numpy.int
