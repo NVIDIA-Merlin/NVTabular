@@ -36,7 +36,6 @@ from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
-from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..tags import Tags
@@ -506,8 +505,20 @@ class Categorify(StatOperator):
         target_column_path = self.output_properties().get(column_schema.name, None)
         if target_column_path:
             col_df = dispatch._read_parquet_dispatch(target_column_path)(target_column_path)
-            to_add = {"domain": {"min": 0, "max": col_df.shape[0]}}
-            to_add.update({"cat_path": target_column_path})
+            to_add = {
+                "num_buckets": self.num_buckets[column_schema.name]
+                if isinstance(self.num_buckets, dict)
+                else self.num_buckets,
+                "freq_threshold": self.freq_threshold[column_schema.name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+                "max_size": self.max_size[column_schema.name]
+                if isinstance(self.max_size, dict)
+                else self.max_size,
+                "start_index": self.start_index,
+                "cat_path": target_column_path,
+                "domain": {"min": 0, "max": col_df.shape[0]},
+            }
             return column_schema.with_properties(to_add)
         return column_schema
 
@@ -545,30 +556,48 @@ def get_embedding_sizes(source, output_dtypes=None):
     # have to lazy import Workflow to avoid circular import errors
     from nvtabular.workflow import Workflow
 
+    output_node = source.output_node if isinstance(source, Workflow) else source
+
     if isinstance(source, Workflow):
-        queue = [source.output_node]
         output_dtypes = output_dtypes or source.output_dtypes
     else:
         # passed in a column group
-        queue = [source]
         output_dtypes = output_dtypes or {}
 
     output = {}
     multihot_columns = set()
-    while queue:
-        current = queue.pop()
-        if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
-        elif isinstance(current.op, (ConcatColumns, SubsetColumns, Identity)):
-            # only follow parents if its an internal (Workflow) operator node
-            # (which could transform meaning of the get_embedding_sizes)
-            queue.extend(current.parents)
-
-    for column in output:
-        dtype = output_dtypes.get(column)
-        if dtype and dispatch._is_list_dtype(dtype):
+    # nodes = list(set(nvt.workflow.node.iter_nodes([output_node])))
+    # for current in reversed(nodes):
+    #     if current.op and hasattr(current.op, "get_embedding_sizes"):
+    #         output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
+    cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
+    for col_name, col_schema in cats_schema.column_schemas.items():
+        if col_schema.dtype and col_schema._is_list:
             # multi hot so remove from output and add to multihot
-            multihot_columns.add(column)
+            multihot_columns.add(col_name)
+
+        domain = col_schema.properties.get("domain", {})
+        buckets = col_schema.properties.get("num_buckets", {})
+        freq_limit = col_schema.properties.get("freq_threshold", {})
+        max_size = col_schema.properties.get("max_size", {})
+        start_index = col_schema.properties.get("start_index", 0)
+
+        num_rows = 0
+        if domain:
+            num_rows = domain["max"]
+
+        if not buckets:
+            bucket_size = 0
+        else:
+            bucket_size = buckets.get(col_name, 0)
+        if bucket_size and not freq_limit[col_name] and not max_size[col_name]:
+            # pure hashing (no categorical lookup)
+            num_rows = bucket_size
+        else:
+            num_rows += bucket_size
+
+        num_rows += start_index
+        output[col_name] = _emb_sz_rule(num_rows)
     # TODO: returning differnt return types like this (based off the presence
     # of multihot features) is pretty janky. fix.
     if not multihot_columns:

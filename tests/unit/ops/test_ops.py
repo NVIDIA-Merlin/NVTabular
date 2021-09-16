@@ -27,6 +27,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular.ops.categorify import get_embedding_sizes
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -245,7 +246,7 @@ def test_hash_bucket_lists(tmpdir):
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
-    assert nvt.ops.get_embedding_sizes(processor)[1]["Authors"][0] == 10
+    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == 10
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -1296,3 +1297,14 @@ def test_categorify_single_table():
         assert old_max <= curr_min
         curr_max = new_gdf[name].max()
         old_max += curr_max
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_categorify_embedding_sizes(dataset, engine):
+    cat_1 = ColumnSelector(["name-cat"]) >> ops.Categorify()
+    cat_2 = ColumnSelector(["name-string"]) >> ops.Categorify() >> ops.Rename(postfix="_test")
+
+    workflow = nvt.Workflow(cat_1 + cat_2)
+    workflow.fit_transform(dataset)
+
+    assert get_embedding_sizes(workflow) == {"name-cat": (27, 16), "name-string_test": (27, 16)}
