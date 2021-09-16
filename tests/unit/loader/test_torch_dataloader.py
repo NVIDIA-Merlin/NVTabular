@@ -691,7 +691,6 @@ def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device):
         labels=label_name,
     )
 
-
     batch = next(iter(data_loader))
     assert all(name in batch[0] for name in cat_names)
     assert all(name in batch[0] for name in cont_names)

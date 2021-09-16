@@ -13,14 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import os
-
 import cupy
 import pytest
 
-import nvtabular as nvt
-import nvtabular.ops as ops
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 
