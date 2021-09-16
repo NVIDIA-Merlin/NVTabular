@@ -63,13 +63,12 @@ def register_list(column_schema, feature):
 
 
 def set_protobuf_float(column_schema, feature):
-    if "domain" in column_schema.properties:
-        domain = column_schema.properties.get("domain")
+    domain = column_schema.properties.get("domain", {})
     feature.float_domain.CopyFrom(
         schema_pb2.FloatDomain(
             name=column_schema.name,
-            min=domain["min"],
-            max=domain["max"],
+            min=domain.get("min", None),
+            max=domain.get("max", None),
         )
     )
     feature.type = schema_pb2.FeatureType.FLOAT
@@ -77,13 +76,12 @@ def set_protobuf_float(column_schema, feature):
 
 
 def set_protobuf_int(column_schema, feature):
-    if "domain" in column_schema.properties:
-        domain = column_schema.properties.get("domain")
+    domain = column_schema.properties.get("domain", {})
     feature.int_domain.CopyFrom(
         schema_pb2.IntDomain(
             name=column_schema.name,
-            min=domain["min"],
-            max=domain["max"],
+            min=domain.get("min", None),
+            max=domain.get("max", None),
             is_categorical="categorical" in column_schema.tags,
         )
     )
