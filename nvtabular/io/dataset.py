@@ -316,8 +316,11 @@ class Dataset:
                 schema_path = Path(path_or_source[0])
                 if schema_path.is_file():
                     schema_path = schema_path.parent
+
                 if (schema_path / "schema.pbtxt").exists():
                     self.schema = Schema.load_protobuf(schema_path)
+                elif (schema_path.parent / "schema.pbtxt").exists():
+                    self.schema = Schema.load_protobuf(schema_path.parent)
                 else:
                     self.infer_schema()
             else:
