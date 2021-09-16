@@ -175,8 +175,32 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return sparse_tensor
 
     def _build_sparse_tensor(
-        self, values, offsets, diff_offsets, num_rows, seq_limit, padding=None
+        self, values, offsets, diff_offsets, num_rows, seq_limit, padding: str = ""
     ):
+        """Builds sparse tensors in our torch dataloader.
+
+        Parameters
+        ----------
+        values :
+        offsets :
+        diff_offsets :
+        num_rows :
+        seq_limit :
+        padding : str, optional
+            Padding mode, choose among 'left' for left padding, 'right' for right padding,
+            or '' for no padding, by default ''
+
+        Returns
+        -------
+        torch.sparse
+            Our built torch sparse tensor.
+
+        Raises
+        ------
+        NotImplementedError
+            Raises this error when this method is called with a not implemented
+           padding mode string.
+        """
         indices = self._get_indices(offsets, diff_offsets)
         if padding == "left":
             indices[:, 1] = seq_limit - 1 - indices[:, 1]
