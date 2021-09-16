@@ -58,6 +58,7 @@ else:
     aggregate_row_groups = None
 
 from .dataset_engine import DatasetEngine
+from .fsspec_utils import _optimized_read_partition_remote, _optimized_read_remote
 from .shuffle import Shuffle, _shuffle_df
 from .writer import ThreadedWriter
 
@@ -85,6 +86,21 @@ if cudf is not None:
         @classmethod
         def multi_support(cls):
             return hasattr(CudfEngine, "multi_support") and CudfEngine.multi_support()
+
+        @classmethod
+        def read_partition(cls, fs, pieces, *args, **kwargs):
+            if not isinstance(pieces, list):
+                pieces = [pieces]
+            if (
+                LooseVersion(cudf.__version__) < "21.10"
+                and not cudf.utils.ioutils._is_local_filesystem(fs)
+                and len(pieces) == 1
+            ):
+                # This version of cudf does not include optimized
+                # fsspec usage for remote storage - use custom code path
+                return _optimized_read_partition_remote(fs, pieces, *args, **kwargs)
+            # Newer versions of cudf are already optimized for s3/gcs
+            return CudfEngine.read_partition(fs, pieces, *args, **kwargs)
 
 
 def _override_read_metadata(
@@ -222,8 +238,7 @@ class ParquetDatasetEngine(DatasetEngine):
                     # system (can be significantly faster in this case)
                     rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0))
                 else:
-                    with self.fs.open(path0, "rb") as f0:
-                        rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(f0, row_groups=0))
+                    rg_byte_size_0 = _memory_usage(_optimized_read_remote(path0, 0, None, self.fs))
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
