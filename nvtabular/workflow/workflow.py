@@ -112,7 +112,7 @@ class Workflow:
         self._clear_worker_cache()
 
         if not self.output_schema:
-            self.fit_schema(dataset.infer_schema())
+            self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
@@ -120,11 +120,12 @@ class Workflow:
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
+            schema=self.output_schema,
         )
 
-    def fit_schema(self, input_schema: Schema):
+    def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents)
+            node: _get_schemaless_nodes(node.parents_with_dep_nodes)
             for node in _get_schemaless_nodes([self.output_node])
         }
 
@@ -160,7 +161,9 @@ class Workflow:
 
         self.output_schema = self.output_node.output_schema
 
-    def fit(self, dataset: Dataset):
+        return self
+
+    def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
 
         Parameters
@@ -172,14 +175,16 @@ class Workflow:
         self._clear_worker_cache()
 
         if not self.output_schema:
-            self.fit_schema(dataset.infer_schema())
+            self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
         # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
-        stat_ops = {op: _get_stat_ops(op.parents) for op in _get_stat_ops([self.output_node])}
+        stat_ops = {
+            op: _get_stat_ops(op.parents_with_dep_nodes) for op in _get_stat_ops([self.output_node])
+        }
 
         while stat_ops:
             # get all the StatOperators that we can currently call fit on (no outstanding
@@ -240,6 +245,10 @@ class Workflow:
         self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         output_dtypes = self.transform(dataset).sample_dtypes()
         self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
+
+        self._zero_output_schemas()
+        self.fit_schema(dataset.schema)
+        return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
         """Convenience method to both fit the workflow and transform the dataset in a single
@@ -360,11 +369,16 @@ class Workflow:
     def _input_columns(self):
         input_cols = []
         for node in iter_nodes([self.output_node]):
-            parent_output_cols = []
-            for parent in node.parents:
-                parent_output_cols += parent.output_columns.names
-            parent_output_cols = _get_unique(parent_output_cols)
-            input_cols += list(set(node.input_columns.names) - set(parent_output_cols))
+            upstream_output_cols = []
+
+            for upstream_node in node.parents_with_dep_nodes:
+                upstream_output_cols += upstream_node.output_columns.names
+
+            for upstream_selector in node.dependency_selectors:
+                upstream_output_cols += upstream_selector.names
+
+            upstream_output_cols = _get_unique(upstream_output_cols)
+            input_cols += list(set(node.input_columns.names) - set(upstream_output_cols))
             input_cols += node.dependency_columns.names
 
         return _get_unique(input_cols)
@@ -375,6 +389,15 @@ class Workflow:
             self.client.run(clean_worker_cache)
         else:
             clean_worker_cache()
+
+    def _zero_output_schemas(self):
+        """
+        Zero out all schemas in order to rerun fit schema after operators
+        have run fit and have stats to add to schema.
+        """
+        for node in iter_nodes([self.output_node]):
+            node.output_schema = None
+            node.input_schema = None
 
 
 def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
@@ -436,12 +459,13 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
         addl_input_cols = set(node.dependency_columns.names)
 
         # Build input dataframe
-        if node.parents:
+        if node.parents_with_dep_nodes:
             # If there are parents, collect their outputs
             # to build the current node's input
             input_df = None
             seen_columns = None
-            for parent in node.parents:
+
+            for parent in node.parents_with_dep_nodes:
                 parent_output_cols = _get_unique(parent.output_columns.names)
                 parent_df = _transform_partition(root_df, [parent])
                 if input_df is None or not len(input_df):
@@ -456,6 +480,9 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
             # and fetch them from the root dataframe
             unseen_columns = set(node.input_columns.names) - seen_columns
             addl_input_cols = addl_input_cols.union(unseen_columns)
+
+            # TODO: Find a better way to remove dupes
+            addl_input_cols = addl_input_cols - set(input_df.columns)
 
             if addl_input_cols:
                 input_df = _concat_columns([input_df, root_df[list(addl_input_cols)]])

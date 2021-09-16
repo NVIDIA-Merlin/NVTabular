@@ -13,9 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import glob
 
-from nvtabular import Workflow, ops
-from nvtabular.columns import ColumnSelector, Schema
+import pytest
+
+from nvtabular import Dataset, Workflow, ops
+from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
 
 
 def test_fit_schema():
@@ -110,7 +113,9 @@ def test_fit_schema_works_with_grouped_node_inputs():
     workflow1 = Workflow(cat_features)
     workflow1.fit_schema(schema)
 
-    assert workflow1.output_schema.column_names == ["TE_x_cost", "TE_y_cost", "TE_x_y_cost"]
+    assert sorted(workflow1.output_schema.column_names) == sorted(
+        ["TE_x_cost", "TE_y_cost", "TE_x_y_cost"]
+    )
 
 
 def test_fit_schema_works_with_node_dependencies():
@@ -123,3 +128,62 @@ def test_fit_schema_works_with_node_dependencies():
     workflow1.fit_schema(schema)
 
     assert workflow1.output_schema.column_names == ["TE_x_cost_renamed", "TE_y_cost_renamed"]
+
+
+# initial column selector works with tags
+# filter within the workflow by tags
+# test tags correct at output
+@pytest.mark.parametrize(
+    "op",
+    [
+        ops.Bucketize([1]),
+        ops.Rename(postfix="_trim"),
+        ops.Categorify(),
+        ops.Categorify(encode_type="combo"),
+        ops.Clip(0),
+        ops.DifferenceLag("col1"),
+        ops.FillMissing(),
+        ops.Groupby(["col1"]),
+        ops.HashBucket(1),
+        ops.HashedCross(1),
+        ops.JoinGroupby(["col1"]),
+        ops.ListSlice(0),
+        ops.LogOp(),
+        ops.Normalize(),
+        ops.TargetEncoding(["col1"]),
+    ],
+)
+def test_workflow_select_by_tags(op):
+    schema1 = ColumnSchema("col1", tags=["b", "c", "d"])
+    schema2 = ColumnSchema("col2", tags=["c", "d"])
+    schema3 = ColumnSchema("col3", tags=["d"])
+    schema = Schema([schema1, schema2, schema3])
+
+    cont_features = ColumnSelector(tags=["c"]) >> op
+    workflow = Workflow(cont_features)
+    workflow.fit_schema(schema)
+
+    output_cols = op.output_column_names(ColumnSelector(["col1", "col2"]))
+    assert len(workflow.output_schema.column_names) == len(output_cols.names)
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_schema_write_read_dataset(tmpdir, dataset, engine):
+    cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    norms = ops.Normalize()
+    cat_features = cat_names >> ops.Categorify(cat_cache="host")
+    cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
+
+    workflow = Workflow(cat_features + cont_features + label_name)
+
+    workflow.fit(dataset)
+    workflow.transform(dataset).to_parquet(
+        tmpdir,
+        out_files_per_proc=10,
+    )
+
+    new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
+    assert new_dataset.schema == workflow.output_schema

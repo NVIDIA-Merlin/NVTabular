@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import List
+from typing import List, Union
 
 import nvtabular
+from nvtabular.tags import Tags
 
 
 class ColumnSelector:
@@ -35,9 +36,16 @@ class ColumnSelector:
         of nesting tuples inside the list of names)
     """
 
-    def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
+    def __init__(
+        self,
+        names: List[str] = None,
+        subgroups: List["ColumnSelector"] = None,
+        tags: List[Union[Tags, str]] = None,
+    ):
         self._names = names if names is not None else []
-        self.subgroups = subgroups if subgroups else []
+        self._tags = tags if tags is not None else []
+        self.subgroups = subgroups if subgroups is not None else []
+
         if isinstance(self._names, nvtabular.WorkflowNode):
             raise TypeError("ColumnSelectors can not contain WorkflowNodes")
 
@@ -53,10 +61,16 @@ class ColumnSelector:
                 plain_names.append(name)
             elif isinstance(name, nvtabular.WorkflowNode):
                 raise ValueError("ColumnSelectors can not contain WorkflowNodes")
+            elif isinstance(name, ColumnSelector):
+                self.subgroups.append(name)
             else:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
         self._nested_check()
+
+    @property
+    def tags(self):
+        return list(dict.fromkeys(self._tags).keys())
 
     @property
     def names(self):
@@ -84,22 +98,20 @@ class ColumnSelector:
         for col_sel0 in self.subgroups:
             col_sel0._nested_check(nests=nests + 1)
 
-    def __getitem__(self, index):
-        return self._names[index]
-
-    def __len__(self):
-        return len(self.names)
-
-    def __iter__(self):
-        return iter(self.names)
-
     def __add__(self, other):
         if other is None:
             return self
         elif isinstance(other, nvtabular.WorkflowNode):
             return other + self
         elif isinstance(other, ColumnSelector):
-            return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
+
+            return ColumnSelector(
+                self._names + other._names,
+                self.subgroups + other.subgroups,
+                tags=self._tags + other._tags,
+            )
+        elif isinstance(other, Tags):
+            return ColumnSelector(self._names, self.subgroups, tags=self._tags + [other])
         else:
             if isinstance(other, str):
                 other = [other]

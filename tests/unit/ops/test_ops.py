@@ -65,7 +65,6 @@ def test_normalize_minmax(tmpdir, dataset, gpu_memory_frac, engine, op_columns, 
         assert np.all((df[col] - new_gdf[col]).abs().values <= 1e-2)
 
 
-@pytest.mark.skipif(not _HAS_GPU, reason="TargetEncoding doesn't work without a GPU yet")
 @pytest.mark.parametrize("cat_groups", ["Author", [["Author", "Engaging-User"]]])
 @pytest.mark.parametrize("kfold", [1, 3])
 @pytest.mark.parametrize("fold_seed", [None, 42])
@@ -98,6 +97,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
     workflow = nvt.Workflow(te_features + cont_features + ["Author", "Engaging-User"])
     df_out = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
+    df_lib = dispatch.get_lib()
     if kfold > 1:
         # Cat columns are unique.
         # Make sure __fold__ mapping is correct
@@ -107,13 +107,13 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         else:
             name = "__fold___Author_Engaging-User"
             cols = ["__fold__", "Author", "Engaging-User"]
-        check = cudf.io.read_parquet(te_features.op.stats[name])
+
+        check = df_lib.read_parquet(te_features.op.stats[name])
         check = check[cols].sort_values(cols).reset_index(drop=True)
         df_out_check = df_out[cols].sort_values(cols).reset_index(drop=True)
-        assert_eq(check, df_out_check)
+        assert_eq(check, df_out_check, check_dtype=False)
 
 
-@pytest.mark.skipif(not _HAS_GPU, reason="TargetEncoding doesn't work without a GPU yet")
 @pytest.mark.parametrize("npartitions", [1, 2])
 @pytest.mark.parametrize("cpu", _CPU)
 def test_target_encode_multi(tmpdir, npartitions, cpu):
@@ -121,7 +121,7 @@ def test_target_encode_multi(tmpdir, npartitions, cpu):
     cat_2 = np.asarray(["baaaa"] * 6 + ["bbaaa"] * 3 + ["bcaaa"] * 3)
     num_1 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4])
     num_2 = np.asarray([1, 1, 2, 2, 2, 1, 1, 5, 4, 4, 4, 4]) * 2
-    df = cudf.DataFrame({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
+    df = dispatch._make_df({"cat": cat_1, "cat2": cat_2, "num": num_1, "num_2": num_2})
     if cpu:
         df = dd.from_pandas(
             df if isinstance(df, pd.DataFrame) else df.to_pandas(), npartitions=npartitions
@@ -313,7 +313,7 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     # expect
     df = dataset.compute()
     cupy_inputs = {col: df[col].values for col in op_columns}
-    cupy_outputs = cont_features.op.transform(op_columns, cupy_inputs)
+    cupy_outputs = cont_features.op.transform(ColumnSelector(op_columns), cupy_inputs)
     for col in op_columns:
         assert np.allclose(cupy_outputs[col], new_gdf[col].values)
 
@@ -373,7 +373,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(["name-cat", "name-string"] + substring)
+    processor = nvtabular.Workflow(substring + ["name-cat", "name-string"])
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -472,7 +472,7 @@ def test_lambdaop_misalign(cpu):
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
-@pytest.mark.parametrize("vocabs", [None, pd.DataFrame({"Authors": [f"User_{x}" for x in "ACBE"]})])
+@pytest.mark.parametrize("vocabs", [None, {"Authors": pd.Series([f"User_{x}" for x in "ACBE"])}])
 def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
     df = dispatch._make_df(
         {
@@ -503,6 +503,52 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
         assert compare == [[1], [1, 4], [3, 2], [2]]
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("start_index", [1, 2, 16])
+def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
+    df = dispatch._make_df(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Engaging User"]
+    label_name = ["Post"]
+    dataset = nvt.Dataset(df, cpu=cpu)
+    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), start_index=start_index)
+    processor = nvt.Workflow(cat_features + label_name)
+    processor.fit(dataset)
+    df_out = processor.transform(dataset).to_ddf().compute()
+
+    if cpu:
+        compare = [list(row) for row in df_out["Authors"].tolist()]
+    else:
+        compare = df_out["Authors"].to_arrow().to_pylist()
+
+    # Note that start_index is the start_index of the range of encoding, which
+    # includes both an initial value for the encoding for out-of-vocabulary items,
+    # as well as the values for the rest of the in-vocabulary items.
+    # In this group of tests below, there are no out-of-vocabulary items, so our start index
+    # value does not appear in the expected comparison object.
+    if start_index == 0:
+        assert compare == [[1], [1, 4], [3, 2], [2]]
+    elif start_index == 1:
+        assert compare == [[2], [2, 5], [4, 3], [3]]
+    elif start_index == 16:
+        assert compare == [[17], [17, 20], [19, 18], [18]]
+
+    # We expect five entries in the embedding size, one for each author,
+    # plus start_index many additional entries for our offset start_index.
+    embeddings = nvt.ops.get_embedding_sizes(processor)
+
+    # MH embeddings on GPU are returned as a tuple of (singlehot, multihot)
+    if not cpu:
+        embeddings = embeddings[1]
+
+    assert embeddings["Authors"][0] == (5 + start_index)
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
@@ -1168,32 +1214,33 @@ def test_list_slice(cpu):
     df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
 
     op = ops.ListSlice(0, 2)
-    transformed = op.transform(["y"], df)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[0, 1], [1, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(3, 5)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[2, 767], [3], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(4, 10)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[767], [], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(100, 20000)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[], [], []]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(-4)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
     assert_eq(transformed, expected)
 
     op = ops.ListSlice(-3, -1)
-    transformed = op.transform(["y"], df)
+    transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
     assert_eq(transformed, expected)
 
@@ -1226,3 +1273,26 @@ def test_rename(cpu):
     transformed = op.transform(selector, df)
     expected = DataFrame({"X": [1, 2, 3, 4, 5]})
     assert_eq(transformed, expected)
+
+
+def test_categorify_single_table():
+    df = dispatch._make_df(
+        {
+            "Authors": [None, "User_A", "User_A", "User_E", "User_B", "User_C"],
+            "Engaging_User": [None, "User_B", "User_B", "User_A", "User_D", "User_D"],
+            "Post": [1, 2, 3, 4, None, 5],
+        }
+    )
+    cat_names = ["Authors", "Engaging_User"]
+    dataset = nvt.Dataset(df)
+    features = cat_names >> ops.Categorify(single_table=True)
+    processor = nvt.Workflow(features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    old_max = 0
+    for name in cat_names:
+        curr_min = new_gdf[name].min()
+        assert old_max <= curr_min
+        curr_max = new_gdf[name].max()
+        old_max += curr_max

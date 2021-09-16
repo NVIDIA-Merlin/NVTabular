@@ -30,8 +30,10 @@ from google.protobuf import text_format  # noqa
 from tritonclient.utils import np_to_triton_dtype  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from nvtabular.columns import Schema  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
 from nvtabular.ops import get_embedding_sizes  # noqa
+from nvtabular.workflow.node import iter_nodes  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -101,15 +103,78 @@ def export_tensorflow_ensemble(
 
 def export_pytorch_ensemble(
     model,
-    model_info,
-    sample_input_data,
     workflow,
+    sparse_max,
     name,
     model_path,
     label_columns,
+    use_fix_dtypes=True,
     version=1,
     nvtabular_backend="python",
 ):
+    """Creates an ensemble triton server model, with the first model being a nvtabular
+    preprocessing, and the second by a pytorch savedmodel
+
+    Parameters
+    ----------
+    model:
+        The pytorch model that should be served
+    workflow:
+        The nvtabular workflow used in preprocessing
+    sparse_max:
+        Max length of the each row when the sparse data is converted to dense
+    name:
+        The base name of the various triton models
+    model_path:
+        The root path to write out files to
+    label_columns:
+        Labels in the dataset (will be removed from the dataset)
+    use_fix_dtypes:
+        Transformers4Rec is using fixed dtypes and this option is
+        whether to use fixed dtypes in inference or not
+    version:
+        Version of the model
+    nvtabular_backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
+    """
+
+    workflow = _remove_columns(workflow, label_columns)
+
+    # generate the TF saved model
+    pt_path = os.path.join(model_path, name + "_pt")
+    pt_config = export_pytorch_model(
+        model, workflow, sparse_max, name + "_pt", pt_path, use_fix_dtypes, version=version
+    )
+
+    # override the output dtype of the nvtabular model if necessary (fixes mismatches
+    # in dtypes between tf inputs and nvt outputs)
+    for column in pt_config.input:
+        pt_dtype = _triton_datatype_to_dtype(column.data_type)
+        nvt_dtype = workflow.output_dtypes.get(column.name)
+        if nvt_dtype and nvt_dtype != pt_dtype:
+            warnings.warn(
+                f"PyTorch model expects {pt_dtype} for column {column.name}, but workflow "
+                f" is producing type {nvt_dtype}. Overriding dtype in NVTabular workflow."
+            )
+            workflow.output_dtypes[column.name] = pt_dtype
+
+    # generate the nvtabular triton model
+    preprocessing_path = os.path.join(model_path, name + "_nvt")
+    nvt_config = generate_nvtabular_model(
+        workflow,
+        name + "_nvt",
+        preprocessing_path,
+        backend=nvtabular_backend,
+    )
+
+    # generate the triton ensemble
+    ensemble_path = os.path.join(model_path, name)
+    os.makedirs(ensemble_path, exist_ok=True)
+    os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
+    _generate_ensemble_config(name, ensemble_path, nvt_config, pt_config)
+
+
+def export_pytorch_onnx_ensemble(model, workflow, name, model_path, label_columns, version=1):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch saved model
 
@@ -117,11 +182,6 @@ def export_pytorch_ensemble(
     ----------
     model:
         The pytorch model that should be served
-    model_info:
-        Extra info about the model such as input dtype and shape
-    sample_input_data:
-        Sample input data to use it for converting PyTorch model
-        to Onnx model
     workflow:
         The nvtabular workflow used in preprocessing
     name:
@@ -129,56 +189,26 @@ def export_pytorch_ensemble(
     model_path:
         The root path to write out files to
     label_columns:
-        Labels in the dataset (will be removed from the dataset)
-    version:
-        Version of the model
-    nvtabular_backend: "python" or "nvtabular"
-        The backend that will be used for inference in Triton.
+        Labels in the dataset (will be removed f
     """
+
     import torch
 
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
-    nvt_config = generate_nvtabular_model(
-        workflow=workflow,
-        name=name + "_nvt",
-        output_path=preprocessing_path,
-        version=version,
-        output_model="pytorch",
-        output_info=model_info["input"],
-        backend=nvtabular_backend,
-    )
-
-    dynamic_axes = dict()
-    model_input_names = []
-    for model_input_name in model_info["input"]:
-        model_input_names.append(model_input_name)
-        dynamic_axes[model_input_name] = {0: "batch_size"}
-
-    model_output_names = []
-    for model_output_name in model_info["output"]:
-        model_output_names.append(model_output_name)
-        dynamic_axes[model_output_name] = {0: "batch_size"}
+    nvt_config = generate_nvtabular_model(workflow, name + "_nvt", preprocessing_path)
 
     # generate the PT saved model
     pt_path = os.path.join(model_path, name + "_pt")
-    pt_model_path = os.path.join(pt_path, str(version), "model.onnx")
+    pt_model_path = os.path.join(pt_path, str(version), "model.pt")
+    torch.save(model, pt_model_path)
+    pt_config = _generate_pytorch_config(model, name + "_pt", pt_path)
 
-    os.makedirs(pt_path, exist_ok=True)
-    os.makedirs(os.path.join(pt_path, str(version)), exist_ok=True)
-
-    pt_config = _generate_pytorch_config(name + "_pt", pt_path, model_info)
-
-    torch.onnx.export(
-        model,
-        sample_input_data,
-        pt_model_path,
-        export_params=True,
-        input_names=model_input_names,  # the model's input names
-        output_names=model_output_names,
-        dynamic_axes=dynamic_axes,
+    copyfile(
+        os.path.join(os.path.dirname(__file__), "model_pytorch.py"),
+        os.path.join(pt_path, str(version), "model.py"),
     )
 
     # generate the triton ensemble
@@ -525,27 +555,89 @@ def export_tensorflow_model(model, name, output_path, version=1):
     return config
 
 
-def _generate_pytorch_config(name, output_path, model_info, max_batch_size=None):
-    """given a workflow generates the trton modelconfig proto object describing the inputs
-    and outputs to that workflow"""
-    config = model_config.ModelConfig(
-        name=name, platform="onnxruntime_onnx", max_batch_size=max_batch_size
+def export_pytorch_model(
+    model, workflow, sparse_max, name, output_path, use_fix_dtypes=True, version=1, backend="python"
+):
+    """Exports a PyTorch model for serving with Triton
+
+    Parameters
+    ----------
+    model:
+        The PyTorch model that should be served
+    workflow:
+        The nvtabular workflow used in preprocessing
+    sparse_max:
+        Max length of the each row when the sparse data is converted to dense
+    name:
+        The name of the triton model to export
+    output_path:
+        The path to write the exported model to
+    use_fix_dtypes:
+        Transformers4Rec is using fixed dtypes and this option is
+        whether to use fixed dtypes in inference or not
+    version:
+        Version of the model
+    backend: "python" or "nvtabular"
+        The backend that will be used for inference in Triton.
+    """
+    import cloudpickle
+    import torch
+
+    os.makedirs(os.path.join(output_path, str(version)), exist_ok=True)
+
+    pt_model_path = os.path.join(output_path, str(version), "model.pth")
+    torch.save(model.state_dict(), pt_model_path)
+
+    pt_model_path = os.path.join(output_path, str(version), "model.pkl")
+    with open(pt_model_path, "wb") as o:
+        cloudpickle.dump(model, o)
+
+    copyfile(
+        os.path.join(os.path.dirname(__file__), "model_pt.py"),
+        os.path.join(output_path, str(version), "model.py"),
     )
 
-    for col, val in model_info["input"].items():
+    config = model_config.ModelConfig(name=name, backend=backend)
+
+    for column, dtype in workflow.output_dtypes.items():
+        _add_model_param(column, dtype, model_config.ModelInput, config.input)
+
+    *_, last_layer = model.parameters()
+    dims = last_layer.shape[0]
+    dtype = last_layer.dtype
+    config.output.append(
+        model_config.ModelOutput(
+            name="output", data_type=_convert_pytorch_dtype(dtype), dims=[-1, dims]
+        )
+    )
+
+    if sparse_max:
+        with open(os.path.join(output_path, str(version), "model_info.json"), "w") as o:
+            model_info = dict()
+            model_info["sparse_max"] = sparse_max
+            model_info["use_fix_dtypes"] = use_fix_dtypes
+            json.dump(model_info, o)
+
+    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+        text_format.PrintMessage(config, o)
+    return config
+
+
+def _generate_pytorch_config(model, name, output_path, max_batch_size=None):
+    """given a workflow generates the trton modelconfig proto object describing the inputs
+    and outputs to that workflow"""
+    config = model_config.ModelConfig(name=name, backend="python", max_batch_size=max_batch_size)
+
+    for col in model.inputs:
         config.input.append(
-            model_config.ModelInput(
-                name=col, data_type=_convert_dtype(val["dtype"]), dims=[-1, len(val["columns"])]
-            )
+            model_config.ModelInput(name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1])
         )
 
-    for col, val in model_info["output"].items():
-        if len(val["columns"]) == 1:
-            dims = [-1]
-        else:
-            dims = [-1, len(val["columns"])]
+    for col in model.outputs:
         config.output.append(
-            model_config.ModelOutput(name=col, data_type=_convert_dtype(val["dtype"]), dims=dims)
+            model_config.ModelOutput(
+                name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1]
+            )
         )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
@@ -627,8 +719,6 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
-    workflow.output_node = _remove_columns_from_workflow_node(workflow.output_node, to_remove)
-
     for label in to_remove:
         if label in workflow.input_dtypes:
             del workflow.input_dtypes[label]
@@ -636,14 +726,21 @@ def _remove_columns(workflow, to_remove):
         if label in workflow.output_dtypes:
             del workflow.output_dtypes[label]
 
-    return workflow
+    # Work backwards to form an input schema from redacted columns
+    new_schema = Schema(list(workflow.input_dtypes.keys()))
 
+    # Re-fit the workflow to altered input schema
+    for node in iter_nodes([workflow.output_node]):
+        node.input_schema = None
+        node.output_schema = None
 
-def _remove_columns_from_workflow_node(wfn, to_remove):
-    wfn.selector = [col for col in wfn.selector if col not in to_remove]
-    parents = [_remove_columns_from_workflow_node(parent, to_remove) for parent in wfn.parents]
-    wfn.parents = [p for p in parents if p.selector]
-    return wfn
+        if node.selector:
+            for column in to_remove:
+                # TODO: Handle selector sub-groups?
+                if column in node.selector.names:
+                    node.selector._names.remove(column)
+
+    return workflow.fit_schema(new_schema)
 
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):
@@ -712,6 +809,70 @@ def _convert_dtype(dtype):
         return model_config.TYPE_BOOL
     if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
+    raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _convert_pytorch_dtype(dtype):
+    """converts a dtype to the appropriate triton proto type"""
+
+    import torch
+
+    if dtype == torch.float64:
+        return model_config.TYPE_FP64
+    if dtype == torch.float32:
+        return model_config.TYPE_FP32
+    if dtype == torch.float16:
+        return model_config.TYPE_FP16
+    if dtype == torch.int64:
+        return model_config.TYPE_INT64
+    if dtype == torch.int32:
+        return model_config.TYPE_INT32
+    if dtype == torch.int16:
+        return model_config.TYPE_INT16
+    if dtype == torch.int8:
+        return model_config.TYPE_INT8
+    if dtype == torch.uint64:
+        return model_config.TYPE_UINT64
+    if dtype == torch.uint32:
+        return model_config.TYPE_UINT32
+    if dtype == torch.uint16:
+        return model_config.TYPE_UINT16
+    if dtype == torch.uint8:
+        return model_config.TYPE_UINT8
+    if dtype == torch.bool:
+        return model_config.TYPE_BOOL
+    raise ValueError(f"Can't convert dtype {dtype})")
+
+
+def _convert_string2pytorch_dtype(dtype):
+    """converts a dtype to the appropriate torch type"""
+
+    import torch
+
+    if dtype == "TYPE_FP64":
+        return torch.float64
+    if dtype == "TYPE_FP32":
+        return torch.float32
+    if dtype == "TYPE_FP16":
+        return torch.float16
+    if dtype == "TYPE_INT64":
+        return torch.int64
+    if dtype == "TYPE_INT32":
+        return torch.int32
+    if dtype == "TYPE_INT16":
+        return torch.int16
+    if dtype == "TYPE_INT8":
+        return torch.int8
+    if dtype == "TYPE_UINT64":
+        return torch.uint64
+    if dtype == "TYPE_UINT32":
+        return torch.uint32
+    if dtype == "TYPE_UINT16":
+        return torch.uint16
+    if dtype == "TYPE_UINT8":
+        return torch.uint8
+    if dtype == "TYPE_BOOL":
+        return torch.bool
     raise ValueError(f"Can't convert dtype {dtype})")
 
 

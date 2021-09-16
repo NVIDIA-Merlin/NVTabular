@@ -19,6 +19,7 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -68,7 +69,7 @@ class Bucketize(Operator):
 
     @annotate("Bucketize_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        boundaries = {name: self.boundaries(name) for name in col_selector}
+        boundaries = {name: self.boundaries(name) for name in col_selector.names}
         new_df = type(df)()
         for col, b in boundaries.items():
             if self.use_digitize:
@@ -85,5 +86,11 @@ class Bucketize(Operator):
                     val += (df[col] >= boundary).astype("int")
                 new_df[col] = val
         return new_df
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return np.int64
 
     transform.__doc__ = Operator.transform.__doc__

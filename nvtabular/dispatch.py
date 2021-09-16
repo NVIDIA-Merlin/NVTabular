@@ -28,6 +28,7 @@ try:
     import cudf
     import cupy as cp
     import dask_cudf
+    import rmm
     from cudf.core.column import as_column, build_column
     from cudf.utils.dtypes import is_list_dtype, is_string_dtype
 
@@ -36,6 +37,7 @@ except ImportError:
     HAS_GPU = False
     cp = None
     cudf = None
+    rmm = None
 
 try:
     # Dask >= 2021.5.1
@@ -68,6 +70,13 @@ else:
     DataFrameType = Union[pd.DataFrame]
     SeriesType = Union[pd.Series]
 
+# Define mapping between non-nullable,
+# and nullable types in Pandas
+_PD_NULLABLE_MAP = {
+    "int32": "Int32",
+    "int64": "Int64",
+}
+
 
 class ExtData(enum.Enum):
     """Simple Enum to track external-data types"""
@@ -86,12 +95,46 @@ def get_lib():
     return cudf if HAS_GPU else pd
 
 
+def reinitialize(managed_memory=False):
+    if rmm:
+        rmm.reinitialize(managed_memory=managed_memory)
+    return
+
+
+def random_uniform(size):
+    """Dispatch for numpy.random.RandomState"""
+    if HAS_GPU:
+        return cp.random.uniform(size=size)
+    else:
+        return np.random.uniform(size=size)
+
+
+def coo_matrix(data, row, col):
+    if HAS_GPU:
+        return cp.sparse.coo_matrix((data, row, col))
+    else:
+        import scipy
+
+        return scipy.sparse.coo_matrix((data, row, col))
+
+
 def _is_dataframe_object(x):
     # Simple check if object is a cudf or pandas
     # DataFrame object
     if not HAS_GPU:
         return isinstance(x, pd.DataFrame)
     return isinstance(x, (cudf.DataFrame, pd.DataFrame))
+
+
+def _nullable_series(data, like_df, dtype):
+    # Return a Series containing the elements in `data`,
+    # with a nullable version of `dtype`, using `like_df`
+    # to infer the Series constructor
+    if isinstance(like_df, pd.DataFrame):
+        # Note that we cannot use "int32"/"int64" to
+        # represent nullable data in pandas
+        return like_df._constructor_sliced(data, dtype=_PD_NULLABLE_MAP.get(str(dtype), dtype))
+    return like_df._constructor_sliced(data, dtype=dtype)
 
 
 def _is_series_object(x):

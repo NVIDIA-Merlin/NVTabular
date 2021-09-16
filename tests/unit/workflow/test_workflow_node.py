@@ -25,29 +25,37 @@ def test_workflow_node_converts_lists_to_selectors():
 
 
 def test_input_output_column_names():
+    schema = Schema(["a", "b", "c", "d", "e"])
+
     input_node = ["a", "b", "c"] >> FillMissing()
-    assert input_node.input_columns.names == ["a", "b", "c"]
-    assert input_node.output_columns.names == ["a", "b", "c"]
+    workflow = Workflow(input_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["a", "b", "c"]
 
     chained_node = input_node >> Categorify()
-    assert chained_node.input_columns.names == ["a", "b", "c"]
-    assert chained_node.output_columns.names == ["a", "b", "c"]
+    workflow = Workflow(chained_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["a", "b", "c"]
 
     selection_node = input_node[["b", "c"]]
-    assert selection_node.input_columns.names == ["b", "c"]
-    assert selection_node.output_columns.names == ["b", "c"]
+    workflow = Workflow(selection_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["b", "c"]
+    assert workflow.output_node.output_columns.names == ["b", "c"]
 
     addition_node = input_node + ["d"]
-    assert addition_node.input_columns.names == ["a", "b", "c", "d"]
-    assert addition_node.output_columns.names == ["a", "b", "c", "d"]
+    workflow = Workflow(addition_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c", "d"]
+    assert workflow.output_node.output_columns.names == ["a", "b", "c", "d"]
 
     rename_node = input_node >> Rename(postfix="_renamed")
-    assert rename_node.input_columns.names == ["a", "b", "c"]
-    assert rename_node.output_columns.names == ["a_renamed", "b_renamed", "c_renamed"]
+    workflow = Workflow(rename_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["a_renamed", "b_renamed", "c_renamed"]
 
     dependency_node = input_node >> TargetEncoding("d")
-    assert dependency_node.input_columns.names == ["a", "b", "c"]
-    assert dependency_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
+    workflow = Workflow(dependency_node).fit_schema(schema)
+    assert workflow.output_node.input_columns.names == ["a", "b", "c"]
+    assert workflow.output_node.output_columns.names == ["TE_a_d", "TE_b_d", "TE_c_d"]
 
 
 def test_dependency_column_names():
@@ -56,69 +64,126 @@ def test_dependency_column_names():
 
 
 def test_workflow_node_addition():
+    schema = Schema(["a", "b", "c", "d", "e", "f"])
+
     node1 = ["a", "b"] >> Operator()
     node2 = ["c", "d"] >> Operator()
     node3 = ["e", "f"] >> Operator()
 
     output_node = node1 + node2
-    assert len(output_node.parents) == 2
-    assert output_node.output_columns.names == ["a", "b", "c", "d"]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.names == ["a", "b", "c", "d"]
 
     output_node = node1 + "c"
-    assert len(output_node.parents) == 1
-    assert output_node.output_columns.names == ["a", "b", "c"]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.names == ["a", "b", "c"]
 
     output_node = node1 + "c" + "d"
-    assert output_node.output_columns.names == ["a", "b", "c", "d"]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.names == ["a", "b", "c", "d"]
 
     output_node = node1 + node2 + "e"
-    assert output_node.output_columns.names == ["a", "b", "c", "d", "e"]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.names == ["a", "b", "c", "d", "e"]
 
     output_node = node1 + node2 + node3
-    assert output_node.output_columns.names == ["a", "b", "c", "d", "e", "f"]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.names == ["a", "b", "c", "d", "e", "f"]
 
     # Addition with groups
     output_node = node1 + ["c", "d"]
-    assert output_node.output_columns.names == ["a", "b", "c", "d"]
-    assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d")]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.grouped_names == ["a", "b", "c", "d"]
 
     output_node = node1 + [node2, "e"]
-    assert output_node.output_columns.names == ["a", "b", "c", "d", "e"]
-    assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e")]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.grouped_names == ["a", "b", "c", "d", "e"]
 
     output_node = node1 + [node2, node3]
-    assert output_node.output_columns.names == ["a", "b", "c", "d", "e", "f"]
-    assert output_node.output_columns.grouped_names == ["a", "b", ("c", "d", "e", "f")]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert workflow.output_node.output_columns.grouped_names == ["a", "b", "c", "d", "e", "f"]
+
+
+def test_workflow_node_subtraction():
+    schema = Schema(["a", "b", "c", "d", "e", "f"])
+
+    node1 = ["a", "b", "c", "d"] >> Operator()
+    node2 = ["c", "d"] >> Operator()
+    node3 = ["b"] >> Operator()
+
+    output_node = node1 - ["c", "d"]
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert len(output_node.parents) == 1
+    assert len(output_node.dependencies) == 1
+    assert workflow.output_node.output_columns.names == ["a", "b"]
+
+    output_node = node1 - node2
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert len(output_node.parents) == 1
+    assert len(output_node.dependencies) == 1
+    assert workflow.output_node.output_columns.names == ["a", "b"]
+
+    output_node = ["a", "b", "c", "d"] - node2
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert len(output_node.parents) == 0
+    assert len(output_node.dependencies) == 2
+    assert workflow.output_node.output_columns.names == ["a", "b"]
+
+    output_node = node1 - ["c", "d"] - node3
+    workflow = Workflow(output_node).fit_schema(schema)
+    assert len(output_node.parents) == 1
+    assert len(output_node.dependencies) == 2
+    assert workflow.output_node.output_columns.names == ["a"]
 
 
 def test_addition_nodes_are_combined():
+    schema = Schema(["a", "b", "c", "d", "e", "f", "g", "h"])
+
     node1 = ["a", "b"] >> Operator()
     node2 = ["c", "d"] >> Operator()
     node3 = ["e", "f"] >> Operator()
     node4 = ["g", "h"] >> Operator()
 
     add_node = node1 + node2 + node3
-    assert set(add_node.parents) == {node1, node2, node3}
-    assert set(add_node.selector.names) == {"a", "b", "c", "d", "e", "f"}
+    workflow = Workflow(add_node).fit_schema(schema)
+    assert set(workflow.output_node.parents) == {node1}
+    assert set(workflow.output_node.dependency_nodes) == {node2, node3}
+    assert set(workflow.output_node.output_columns.names) == {"a", "b", "c", "d", "e", "f"}
 
     add_node = node1 + "c" + "d"
-    assert set(add_node.parents) == {node1}
-    assert set(add_node.selector.names) == {"a", "b", "c", "d"}
+    workflow = Workflow(add_node).fit_schema(schema)
+    assert set(workflow.output_node.parents) == {node1}
+    assert set(workflow.output_node.output_columns.names) == {"a", "b", "c", "d"}
 
     add_node = "c" + node1 + "d"
-    assert set(add_node.parents) == {node1}
-    assert set(add_node.selector.names) == {"a", "b", "c", "d"}
+    workflow = Workflow(add_node).fit_schema(schema)
+    assert set(workflow.output_node.parents) == {node1}
+    assert set(workflow.output_node.output_columns.names) == {"a", "b", "c", "d"}
 
     add_node = node1 + "e" + node2
-    assert set(add_node.parents) == {node1, node2}
-    assert set(add_node.selector.names) == {"a", "b", "e", "c", "d"}
+    workflow = Workflow(add_node).fit_schema(schema)
+    assert set(workflow.output_node.parents) == {node1}
+    assert set(workflow.output_node.dependency_nodes) == {node2}
+    assert set(workflow.output_node.output_columns.names) == {"a", "b", "e", "c", "d"}
 
     add_node1 = node1 + node2
     add_node2 = node3 + node4
 
     add_node = add_node1 + add_node2
-    assert set(add_node.parents) == {node1, node2, node3, node4}
-    assert set(add_node.selector.names) == {"a", "b", "c", "d", "e", "f", "g", "h"}
+    workflow = Workflow(add_node).fit_schema(schema)
+
+    assert set(workflow.output_node.parents) == {node1}
+    assert set(workflow.output_node.dependency_nodes) == {node2, node3, node4}
+    assert set(workflow.output_node.output_columns.names) == {
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+    }
 
 
 def test_workflow_node_dependencies():
@@ -156,6 +221,7 @@ def test_compute_schemas():
 
 def test_workflow_node_select():
     df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
+    dataset = Dataset(df)
 
     input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
@@ -164,7 +230,9 @@ def test_workflow_node_select():
     features = sqrt_features + plus_one_features
 
     workflow = Workflow(features)
-    df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    workflow.fit(dataset)
+
+    df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     expected = dispatch._make_df()
     expected["a"] = np.sqrt(df["a"])
@@ -181,6 +249,7 @@ def test_nested_workflow_node():
             "user": ["User_A", "User_A", "User_A", "User_B"],
         }
     )
+    dataset = Dataset(df)
 
     geo_selector = ColumnSelector(["geo"])
     country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
@@ -189,8 +258,8 @@ def test_nested_workflow_node():
     # as well as categorifying the country and user columns on their own
     cats = country + "user" + [country + "user"] >> Categorify(encode_type="combo")
 
-    workflow = Workflow(cats)
-    df_out = workflow.fit_transform(Dataset(df)).to_ddf().compute(scheduler="synchronous")
+    workflow = Workflow(cats).fit(dataset)
+    df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     geo_country = df_out["geo_country"]
     assert geo_country[0] == geo_country[1]  # rows 0,1 are both 'US'

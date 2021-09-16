@@ -15,15 +15,19 @@
 #
 
 import dask.dataframe as dd
+import numpy
 import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 
+from ..tags import Tags
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
+
+CONTINUOUS = Tags.CONTINUOUS
 
 
 class JoinGroupby(StatOperator):
@@ -87,14 +91,6 @@ class JoinGroupby(StatOperator):
     ):
         super().__init__()
 
-        if isinstance(cont_cols, nvt.WorkflowNode):
-            self.cont_cols = cont_cols
-            self.cont_names = cont_cols.output_columns
-        elif isinstance(cont_cols, ColumnSelector):
-            self.cont_cols = self.cont_names = cont_cols
-        else:
-            self.cont_cols = self.cont_names = ColumnSelector(cont_cols)
-
         self.storage_name = {}
         self.name_sep = name_sep
         self.stats = stats
@@ -104,10 +100,31 @@ class JoinGroupby(StatOperator):
         self.cat_cache = cat_cache
         self.categories = {}
 
+        self._cont_names = None
+
+        if isinstance(cont_cols, nvt.WorkflowNode):
+            self.cont_cols = cont_cols
+        elif isinstance(cont_cols, ColumnSelector):
+            self.cont_cols = self._cont_names = cont_cols
+        else:
+            self.cont_cols = self._cont_names = ColumnSelector(cont_cols)
+
         supported_ops = ["count", "sum", "mean", "std", "var", "min", "max"]
         for op in self.stats:
             if op not in supported_ops:
                 raise ValueError(op + " operation is not supported.")
+
+    @property
+    def cont_names(self):
+        if self._cont_names:
+            return self._cont_names
+        elif self.cont_cols.output_schema:
+            return self.cont_cols.output_columns
+        else:
+            raise RuntimeError(
+                "Can't compute continuous columns used by `JoinGroupby` "
+                "until `Workflow` is fit to dataset or schema."
+            )
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         for group in col_selector.subgroups:
@@ -186,7 +203,7 @@ class JoinGroupby(StatOperator):
         for name in columns.grouped_names:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name, sep=self.name_sep)
-            for cont in self.cont_names:
+            for cont in self.cont_names.names:
                 for stat in self.stats:
                     if stat == "count":
                         output.append(f"{name}_{stat}")
@@ -201,6 +218,12 @@ class JoinGroupby(StatOperator):
     def clear(self):
         self.categories = {}
         self.storage_name = {}
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def output_dtype(self):
+        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
