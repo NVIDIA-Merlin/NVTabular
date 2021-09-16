@@ -174,8 +174,12 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_tensor = sparse_tensor.to_dense()
         return sparse_tensor
 
-    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+    def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit, padding=None):
         indices = self._get_indices(offsets, diff_offsets)
+        if padding == "left":
+            indices[:,1] = seq_limit - 1 - indices[:,1]
+        if padding == "right":
+            raise NotImplementedError
         return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 
