@@ -25,10 +25,13 @@ from nvtabular.dispatch import (
     _read_parquet_dispatch,
 )
 
+from ..tags import Tags
 from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
+
+CATEGORICAL = Tags.CATEGORICAL
 
 
 class TargetEncoding(StatOperator):
@@ -143,9 +146,6 @@ class TargetEncoding(StatOperator):
         self.target = [target] if isinstance(target, str) else target
         self.dependency = self.target
 
-        if hasattr(self.target, "output_columns"):
-            self.target = self.target.output_columns
-
         self.target_mean = target_mean
         self.kfold = kfold or 3
         self.fold_seed = fold_seed
@@ -215,10 +215,13 @@ class TargetEncoding(StatOperator):
         return self.dependency
 
     def output_column_names(self, columns):
+        if hasattr(self.target, "output_columns"):
+            self.target = self.target.output_columns
+
         ret = []
         for cat in columns.grouped_names:
             cat = [cat] if isinstance(cat, str) else cat
-            ret.extend(self._make_te_name(cat))
+            ret.extend(self._make_te_name(cat.names if isinstance(cat, ColumnSelector) else cat))
 
         if self.kfold > 1 and not self.drop_folds:
             ret.append(self.fold_name)
@@ -235,7 +238,10 @@ class TargetEncoding(StatOperator):
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        return [f"TE_{tag}_{x}" for x in self.target]
+        target = self.target
+        if isinstance(self.target, list):
+            target = ColumnSelector(self.target)
+        return [f"TE_{tag}_{x}" for x in target.names]
 
     def _op_group_logic(self, cat_group, df, y_mean, fit_folds, group_ind):
         # Define name of new TE column
@@ -351,6 +357,9 @@ class TargetEncoding(StatOperator):
         if fit_folds and not self.drop_folds:
             new_df[self.fold_name] = df[self.fold_name]
         return new_df
+
+    def _get_tags(self):
+        return [CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy
+
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 
+from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -67,7 +70,7 @@ class DifferenceLag(Operator):
                 mask = mask.fillna(False).all(axis=1)
             mask[mask == False] = None  # noqa pylint: disable=singleton-comparison
 
-            for col in col_selector:
+            for col in col_selector.names:
                 output[self._column_name(col, shift)] = (df[col] - df[col].shift(shift)) * mask
         return type(df)(output)
 
@@ -78,8 +81,14 @@ class DifferenceLag(Operator):
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         return ColumnSelector(
-            [self._column_name(col, shift) for shift in self.shifts for col in col_selector]
+            [self._column_name(col, shift) for shift in self.shifts for col in col_selector.names]
         )
 
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _dtype(self):
+        return numpy.float
