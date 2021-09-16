@@ -1273,3 +1273,26 @@ def test_rename(cpu):
     transformed = op.transform(selector, df)
     expected = DataFrame({"X": [1, 2, 3, 4, 5]})
     assert_eq(transformed, expected)
+
+
+def test_categorify_single_table():
+    df = dispatch._make_df(
+        {
+            "Authors": [None, "User_A", "User_A", "User_E", "User_B", "User_C"],
+            "Engaging_User": [None, "User_B", "User_B", "User_A", "User_D", "User_D"],
+            "Post": [1, 2, 3, 4, None, 5],
+        }
+    )
+    cat_names = ["Authors", "Engaging_User"]
+    dataset = nvt.Dataset(df)
+    features = cat_names >> ops.Categorify(single_table=True)
+    processor = nvt.Workflow(features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    old_max = 0
+    for name in cat_names:
+        curr_min = new_gdf[name].min()
+        assert old_max <= curr_min
+        curr_max = new_gdf[name].max()
+        old_max += curr_max

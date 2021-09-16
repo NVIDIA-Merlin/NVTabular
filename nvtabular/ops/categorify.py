@@ -18,6 +18,7 @@ import warnings
 from copy import deepcopy
 from dataclasses import dataclass
 from operator import getitem
+from pathlib import Path
 from typing import Optional, Union
 
 import dask.dataframe as dd
@@ -202,6 +203,7 @@ class Categorify(StatOperator):
         vocabs=None,
         max_size=0,
         start_index=0,
+        single_table=False,
     ):
 
         # We need to handle three types of encoding here:
@@ -245,6 +247,7 @@ class Categorify(StatOperator):
 
         # Other self-explanatory initialization
         super().__init__()
+        self.single_table = single_table
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
@@ -340,8 +343,13 @@ class Categorify(StatOperator):
         return Delayed(key, dsk)
 
     def fit_finalize(self, categories):
+        idx_count = 0
         for col in categories:
+            # this is a path
             self.categories[col] = categories[col]
+            # check the argument
+            if self.single_table:
+                idx_count = _reset_df_index(col, self.categories, idx_count)
 
     def clear(self):
         self.categories = deepcopy(self.vocabs)
@@ -495,12 +503,12 @@ class Categorify(StatOperator):
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
     def _add_properties(self, column_schema):
-        target_column_properties = self.output_properties().get(column_schema.name, None)
-        if target_column_properties:
-            col_df = dispatch._read_parquet_dispatch(target_column_properties)(
-                target_column_properties
-            )
-            return column_schema.with_properties({"domain": {"min": 0, "max": col_df.shape[0]}})
+        target_column_path = self.output_properties().get(column_schema.name, None)
+        if target_column_path:
+            col_df = dispatch._read_parquet_dispatch(target_column_path)(target_column_path)
+            to_add = {"domain": {"min": 0, "max": col_df.shape[0]}}
+            to_add.update({"cat_path": target_column_path})
+            return column_schema.with_properties(to_add)
         return column_schema
 
     def output_properties(self):
@@ -1308,3 +1316,17 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
         new_locations[column] = new_file
 
     return new_locations
+
+
+def _reset_df_index(col_name, categories, idx_count):
+    cat_file_path = categories[col_name]
+    cat_df = dispatch._read_parquet_dispatch(cat_file_path)(cat_file_path)
+    # change indexes for category
+    cat_df.index += idx_count
+    # update count
+    idx_count += cat_df.shape[0]
+    # save the new indexes in file
+    write_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
+    cat_df.to_parquet(write_path)
+    categories[col_name] = write_path
+    return idx_count
