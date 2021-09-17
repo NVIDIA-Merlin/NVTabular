@@ -505,7 +505,9 @@ class Categorify(StatOperator):
     def _add_properties(self, column_schema):
         target_column_path = self.output_properties().get(column_schema.name, None)
         if target_column_path:
-            to_add = {"domain": {"min": 0, "max": pq.ParquetFile(target_column_path).metadata.num_rows}}}
+            to_add = {
+                "domain": {"min": 0, "max": pq.ParquetFile(target_column_path).metadata.num_rows}
+            }
             to_add.update({"cat_path": target_column_path})
             return column_schema.with_properties(to_add)
         return column_schema
