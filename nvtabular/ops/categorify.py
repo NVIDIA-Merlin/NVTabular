@@ -351,14 +351,17 @@ class Categorify(StatOperator):
             self.categories[col] = categories[col]
             # check the argument
             if self.single_table:
-                idx_count_delayed = delayed(_reset_df_index)(col, self.categories, idx_count)
+                cat_file_path = self.categories[col]
+                idx_count_delayed = delayed(_reset_df_index)(col, cat_file_path, idx_count)
                 if global_dask_client(None):
                     # There is a global Dask client detected. Use it
-                    idx_count, new_path = idx_count_delayed.compute()
+                    idx_count, new_cat_file_path = idx_count_delayed.compute()
                 else:
                     # No client detected. Use single-threaded scheduler to be safe
-                    idx_count, new_path = idx_count_delayed.compute(scheduler="synchronous")
-                self.categories[col] = new_path
+                    idx_count, new_cat_file_path = idx_count_delayed.compute(
+                        scheduler="synchronous"
+                    )
+                self.categories[col] = new_cat_file_path
 
     def clear(self):
         self.categories = deepcopy(self.vocabs)
@@ -1328,14 +1331,13 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
     return new_locations
 
 
-def _reset_df_index(col_name, categories, idx_count):
-    cat_file_path = categories[col_name]
+def _reset_df_index(col_name, cat_file_path, idx_count):
     cat_df = dispatch._read_parquet_dispatch(None)(cat_file_path)
     # change indexes for category
     cat_df.index += idx_count
     # update count
     idx_count += cat_df.shape[0]
     # save the new indexes in file
-    write_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
-    cat_df.to_parquet(write_path)
-    return idx_count, write_path
+    new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
+    cat_df.to_parquet(new_cat_file_path)
+    return idx_count, new_cat_file_path
