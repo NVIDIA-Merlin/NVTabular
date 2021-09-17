@@ -112,7 +112,9 @@ class Operator:
         return column_schema
 
     def _update_dtype(self, column_schema):
-        return column_schema.with_dtype(self.output_dtype())
+        if self.output_dtype():
+            return column_schema.with_dtype(self.output_dtype())
+        return column_schema
 
     def output_dtype(self):
         """
