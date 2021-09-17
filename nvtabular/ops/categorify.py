@@ -505,8 +505,7 @@ class Categorify(StatOperator):
     def _add_properties(self, column_schema):
         target_column_path = self.output_properties().get(column_schema.name, None)
         if target_column_path:
-            col_df = dispatch._read_parquet_dispatch(target_column_path)(target_column_path)
-            to_add = {"domain": {"min": 0, "max": col_df.shape[0]}}
+            to_add = {"domain": {"min": 0, "max": pq.ParquetFile(target_column_path).metadata.num_rows}}}
             to_add.update({"cat_path": target_column_path})
             return column_schema.with_properties(to_add)
         return column_schema
@@ -1320,7 +1319,7 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
 
 def _reset_df_index(col_name, categories, idx_count):
     cat_file_path = categories[col_name]
-    cat_df = dispatch._read_parquet_dispatch(cat_file_path)(cat_file_path)
+    cat_df = pd.read_parquet(cat_file_path)
     # change indexes for category
     cat_df.index += idx_count
     # update count
