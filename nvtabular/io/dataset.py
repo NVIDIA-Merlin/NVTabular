@@ -197,6 +197,13 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    **kwargs :
+        Key-word arguments to pass through to Dask.dataframe IO function.
+        For the Parquet engine(s), notable arguments include `filters`,
+        `aggregate_files`, and `gather_statistics`. Note that users who
+        do not need to know the number of rows in their dataset (and do
+        not plan to preserve a file-partition mapping) may wish to use
+        `gather_statistics=False` for better client-side performance.
     """
 
     def __init__(
@@ -454,6 +461,10 @@ class Dataset:
                 for c in keys:
                     typ = ddf._meta[c].dtype
                     if c in cols:
+                        if typ == "category":
+                            # Cannot cast directly to categorical unless we
+                            # first cast to the underlying dtype of the categories
+                            hive_mapping[c] = hive_mapping[c].astype(typ.categories.dtype)
                         hive_mapping[c] = hive_mapping[c].astype(typ)
 
                 # Generate simple-shuffle plan
