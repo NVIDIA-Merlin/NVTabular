@@ -354,10 +354,11 @@ class Categorify(StatOperator):
                 idx_count_delayed = delayed(_reset_df_index)(col, self.categories, idx_count)
                 if global_dask_client(None):
                     # There is a global Dask client detected. Use it
-                    idx_count = idx_count_delayed.compute()
+                    idx_count, new_path = idx_count_delayed.compute()
                 else:
                     # No client detected. Use single-threaded scheduler to be safe
-                    idx_count = idx_count_delayed.compute(scheduler="synchronous")
+                    idx_count, new_path = idx_count_delayed.compute(scheduler="synchronous")
+                self.categories[col] = new_path
 
     def clear(self):
         self.categories = deepcopy(self.vocabs)
@@ -1337,5 +1338,4 @@ def _reset_df_index(col_name, categories, idx_count):
     # save the new indexes in file
     write_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
     cat_df.to_parquet(write_path)
-    categories[col_name] = write_path
-    return idx_count
+    return idx_count, write_path
