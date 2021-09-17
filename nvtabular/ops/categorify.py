@@ -502,22 +502,24 @@ class Categorify(StatOperator):
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
     def _add_properties(self, column_schema):
-        target_column_path = self.output_properties().get(column_schema.name, None)
+        col_name = column_schema.name
+        target_column_path = self.output_properties().get(col_name, None)
+        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
         if target_column_path:
-            col_df = dispatch._read_parquet_dispatch(target_column_path)(target_column_path)
             to_add = {
-                "num_buckets": self.num_buckets[column_schema.name]
+                "num_buckets": self.num_buckets[col_name]
                 if isinstance(self.num_buckets, dict)
                 else self.num_buckets,
-                "freq_threshold": self.freq_threshold[column_schema.name]
+                "freq_threshold": self.freq_threshold[col_name]
                 if isinstance(self.freq_threshold, dict)
                 else self.freq_threshold,
-                "max_size": self.max_size[column_schema.name]
+                "max_size": self.max_size[col_name]
                 if isinstance(self.max_size, dict)
                 else self.max_size,
                 "start_index": self.start_index,
                 "cat_path": target_column_path,
-                "domain": {"min": 0, "max": col_df.shape[0]},
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
             }
             return column_schema.with_properties(to_add)
         return column_schema
@@ -576,28 +578,11 @@ def get_embedding_sizes(source, output_dtypes=None):
             # multi hot so remove from output and add to multihot
             multihot_columns.add(col_name)
 
-        domain = col_schema.properties.get("domain", {})
-        buckets = col_schema.properties.get("num_buckets", {})
-        freq_limit = col_schema.properties.get("freq_threshold", {})
-        max_size = col_schema.properties.get("max_size", {})
-        start_index = col_schema.properties.get("start_index", 0)
+        embeddings_sizes = col_schema.properties.get("embedding_sizes", {})
+        cardinality = embeddings_sizes["cardinality"]
+        dimensions = embeddings_sizes["dimension"]
+        output[col_name] = (cardinality, dimensions)
 
-        num_rows = 0
-        if domain:
-            num_rows = domain["max"]
-
-        if not buckets:
-            bucket_size = 0
-        else:
-            bucket_size = buckets.get(col_name, 0)
-        if bucket_size and not freq_limit[col_name] and not max_size[col_name]:
-            # pure hashing (no categorical lookup)
-            num_rows = bucket_size
-        else:
-            num_rows += bucket_size
-
-        num_rows += start_index
-        output[col_name] = _emb_sz_rule(num_rows)
     # TODO: returning differnt return types like this (based off the presence
     # of multihot features) is pretty janky. fix.
     if not multihot_columns:
@@ -619,12 +604,17 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
-
-        if not buckets:
-            bucket_size = 0
-        else:
+        if isinstance(buckets, dict):
             bucket_size = buckets.get(col, 0)
-        if bucket_size and not freq_limit[col] and not max_size[col]:
+        elif isinstance(buckets, int):
+            bucket_size = buckets
+        else:
+            bucket_size = 0
+
+        _has_frequency_limit = col in freq_limit and freq_limit[col] > 0
+        _has_max_size = col in max_size and max_size[col] > 0
+
+        if bucket_size and not _has_frequency_limit and not _has_max_size:
             # pure hashing (no categorical lookup)
             num_rows = bucket_size
         else:
