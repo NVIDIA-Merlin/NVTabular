@@ -199,7 +199,7 @@ class Dataset:
         used to preserve file-partition mapping information.
     **kwargs :
         Key-word arguments to pass through to Dask.dataframe IO function.
-        For the Parquet enngine(s), notable arguments include `filters`,
+        For the Parquet engine(s), notable arguments include `filters`,
         `aggregate_files`, and `gather_statistics`. Note that users who
         do not need to know the number of rows in their dataset (and do
         not plan to preserve a file-partition mapping) may wish to use
