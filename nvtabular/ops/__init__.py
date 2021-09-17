@@ -16,6 +16,7 @@
 
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
+from .add_metadata import AddMetadata
 from .bucketize import Bucketize
 from .categorify import Categorify, _get_embedding_order, get_embedding_sizes
 from .clip import Clip
