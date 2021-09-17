@@ -40,6 +40,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
 import toolz as tlz
+from dask import delayed
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.arrow import ArrowDatasetEngine
@@ -57,6 +58,7 @@ if LooseVersion(dask.__version__) >= "2021.07.1":
 else:
     aggregate_row_groups = None
 
+from ..utils import global_dask_client
 from .dataset_engine import DatasetEngine
 from .fsspec_utils import _optimized_read_partition_remote, _optimized_read_remote
 from .shuffle import Shuffle, _shuffle_df
@@ -227,18 +229,13 @@ class ParquetDatasetEngine(DatasetEngine):
 
         if row_groups_per_part is None:
             path0 = next(self._dataset.get_fragments()).path
-            if cpu:
-                with self.fs.open(path0, "rb") as f0:
-                    # Use pyarrow for CPU version.
-                    # Pandas does not enable single-row-group access.
-                    rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+            rg_byte_size_0_delayed = delayed(_get_row_group_memory_usage)(path0, self.fs, cpu=cpu)
+            if global_dask_client(None):
+                # There is a global Dask client detected. Use it
+                rg_byte_size_0 = rg_byte_size_0_delayed.compute()
             else:
-                if cudf.utils.ioutils._is_local_filesystem(self.fs):
-                    # Allow cudf to open the file if this is a local file
-                    # system (can be significantly faster in this case)
-                    rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path0, row_groups=0))
-                else:
-                    rg_byte_size_0 = _memory_usage(_optimized_read_remote(path0, 0, None, self.fs))
+                # No client detected. Use single-threaded scheduler to be safe
+                rg_byte_size_0 = rg_byte_size_0_delayed.compute(scheduler="synchronous")
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -1081,3 +1078,20 @@ def _split_part(x, split):
     for k, v in split.items():
         out[k] = x.iloc[v[0] : v[1]]
     return out
+
+
+def _get_row_group_memory_usage(path, fs, cpu=False):
+    """Return the total memory usage of a Parquet Row-Group"""
+    if cpu:
+        with fs.open(path, "rb") as f0:
+            # Use pyarrow for CPU version.
+            # Pandas does not enable single-row-group access.
+            rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+    else:
+        if cudf.utils.ioutils._is_local_filesystem(fs):
+            # Allow cudf to open the file if this is a local file
+            # system (can be significantly faster in this case)
+            rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path, row_groups=0))
+        else:
+            rg_byte_size_0 = _memory_usage(_optimized_read_remote(path, 0, None, fs))
+    return rg_byte_size_0

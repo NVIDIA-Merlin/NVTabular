@@ -25,6 +25,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from dask import delayed
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -37,6 +38,7 @@ from pyarrow import parquet as pq
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
+from nvtabular.utils import global_dask_client
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..tags import Tags
@@ -349,7 +351,17 @@ class Categorify(StatOperator):
             self.categories[col] = categories[col]
             # check the argument
             if self.single_table:
-                idx_count = _reset_df_index(col, self.categories, idx_count)
+                cat_file_path = self.categories[col]
+                idx_count_delayed = delayed(_reset_df_index)(col, cat_file_path, idx_count)
+                if global_dask_client(None):
+                    # There is a global Dask client detected. Use it
+                    idx_count, new_cat_file_path = idx_count_delayed.compute()
+                else:
+                    # No client detected. Use single-threaded scheduler to be safe
+                    idx_count, new_cat_file_path = idx_count_delayed.compute(
+                        scheduler="synchronous"
+                    )
+                self.categories[col] = new_cat_file_path
 
     def clear(self):
         self.categories = deepcopy(self.vocabs)
@@ -505,8 +517,9 @@ class Categorify(StatOperator):
     def _add_properties(self, column_schema):
         target_column_path = self.output_properties().get(column_schema.name, None)
         if target_column_path:
-            col_df = dispatch._read_parquet_dispatch(target_column_path)(target_column_path)
-            to_add = {"domain": {"min": 0, "max": col_df.shape[0]}}
+            to_add = {
+                "domain": {"min": 0, "max": pq.ParquetFile(target_column_path).metadata.num_rows}
+            }
             to_add.update({"cat_path": target_column_path})
             return column_schema.with_properties(to_add)
         return column_schema
@@ -1318,15 +1331,13 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
     return new_locations
 
 
-def _reset_df_index(col_name, categories, idx_count):
-    cat_file_path = categories[col_name]
-    cat_df = dispatch._read_parquet_dispatch(cat_file_path)(cat_file_path)
+def _reset_df_index(col_name, cat_file_path, idx_count):
+    cat_df = dispatch._read_parquet_dispatch(None)(cat_file_path)
     # change indexes for category
     cat_df.index += idx_count
     # update count
     idx_count += cat_df.shape[0]
     # save the new indexes in file
-    write_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
-    cat_df.to_parquet(write_path)
-    categories[col_name] = write_path
-    return idx_count
+    new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
+    cat_df.to_parquet(new_cat_file_path)
+    return idx_count, new_cat_file_path
