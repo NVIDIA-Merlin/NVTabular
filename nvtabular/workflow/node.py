@@ -425,12 +425,26 @@ def _to_graphviz(workflow_node):
     node_ids = {v: str(k) for k, v in enumerate(allnodes)}
     for node, nodeid in node_ids.items():
         graph.node(nodeid, node.label)
-        for parent in node.parents:
+        for parent in node.parents_with_dep_nodes:
             graph.edge(node_ids[parent], nodeid)
+
+        full_selector = ColumnSelector()
+
+        if node.selector and not node.parents:
+            full_selector += node.selector
+        full_selector += sum(node.dependency_selectors, full_selector)
+
+        if full_selector.names:
+            selector_id = f"{nodeid}_selector"
+            graph.node(selector_id, str(full_selector.names))
+            graph.edge(selector_id, nodeid)
 
     # add a single 'output' node representing the final state
     output_node_id = str(len(allnodes))
-    graph.node(output_node_id, f"output cols=[{workflow_node._cols_repr}]")
+    output_string = "output cols"
+    if workflow_node._cols_repr:
+        output_string += f"=[{workflow_node._cols_repr}]"
+    graph.node(output_node_id, output_string)
     graph.edge(node_ids[workflow_node], output_node_id)
     return graph
 
