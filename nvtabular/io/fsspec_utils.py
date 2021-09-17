@@ -124,7 +124,7 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
 
     # Call cudf.read_parquet on the dummy buffer
     strings_to_cats = kwargs.get("strings_to_categorical", False)
-    return cudf.read_parquet(
+    df = cudf.read_parquet(
         dummy_buffer,
         engine="cudf",
         columns=columns,
@@ -132,6 +132,8 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
         strings_to_categorical=strings_to_cats,
         **kwargs.get("read", {}),
     )
+    del dummy_buffer
+    return df
 
 
 def _get_parquet_byte_ranges(
@@ -213,7 +215,7 @@ def _fsspec_data_transfer(
 
     # Check if a direct read makes the most sense
     if not byte_ranges and bytes_per_thread >= file_size:
-        return fs.open(path_or_fob, mode=mode, cache_type="bytes").read()
+        return fs.open(path_or_fob, mode=mode, cache_type="none").read()
 
     # Threaded read into "dummy" buffer
     buf = np.zeros(file_size, dtype="b")
