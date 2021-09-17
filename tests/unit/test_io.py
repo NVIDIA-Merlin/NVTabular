@@ -649,10 +649,18 @@ def test_validate_and_regenerate_dataset(tmpdir):
     ds2.validate_dataset(file_min_size=1)
 
     # Check that dataset content is correct
-    assert_eq(ddf, ds2.to_ddf().compute())
+    assert_eq(
+        ddf.reset_index(drop=False),
+        ds2.to_ddf().compute(),
+        check_index=False,
+    )
 
     # Check cpu version of `to_ddf`
-    assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
+    assert_eq(
+        ddf.reset_index(drop=False),
+        ds2.engine.to_ddf(cpu=True).compute(),
+        check_index=False,
+    )
 
 
 @pytest.mark.parametrize("preserve_files", [True, False])
@@ -791,7 +799,7 @@ def test_hive_partitioned_data(tmpdir, cpu):
     os.remove(os.path.join(path, "schema.pbtxt"))
 
     # Read back with dask.dataframe and check the data
-    df_check = dd.read_parquet(path).compute()
+    df_check = dd.read_parquet(path, engine="pyarrow").compute()
     df_check["name"] = df_check["name"].astype("object")
     df_check["timestamp"] = df_check["timestamp"].astype("int64")
     df_check = df_check.sort_values(["id", "x", "y"]).reset_index(drop=True)
@@ -858,3 +866,89 @@ def test_dataset_shuffle_on_keys(tmpdir, cpu, partition_on, keys, npartitions):
     for col in df1:
         # Order of columns can change after round-trip partitioning
         assert_eq(df1[col], df2[col], check_index=False)
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_filtered_flat(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf1 = dd.from_pandas(pd.DataFrame({"a": [1] * 10}), 1)
+    ddf1.to_parquet(path, engine="pyarrow", write_index=False)
+    ddf2 = dd.from_pandas(pd.DataFrame({"a": [2] * 10}), 1)
+    ddf2.to_parquet(path, engine="pyarrow", append=True, write_index=False)
+    ddf3 = dd.from_pandas(pd.DataFrame({"a": [3] * 10}), 1)
+    ddf3.to_parquet(path, engine="pyarrow", append=True, write_index=False)
+
+    # Convert to nvt.Dataset
+    ds = nvt.Dataset(path, engine="parquet", filters=[("a", ">", 1)])
+
+    # Make sure partitions were filtered
+    assert len(ds.to_ddf().a.unique()) == 2
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_filtered_hive(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
+
+    # Convert to nvt.Dataset
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", filters=[("timestamp", "==", 1)])
+
+    # Make sure partitions were filtered
+    assert len(ds.to_ddf().timestamp.unique()) == 1
+
+
+@pytest.mark.skipif(
+    LooseVersion(dask.__version__) < "2021.07.1",
+    reason="Dask>=2021.07.1 required for file aggregation",
+)
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_aggregate_files(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
+
+    # Setting `aggregate_files=True` should result
+    # in one large partition
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", aggregate_files=True, part_size="1GB")
+    assert ds.to_ddf().npartitions == 1
+
+    # Setting `aggregate_files="timestamp"` should result
+    # in one partition for each unique value of "timestamp"
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", aggregate_files="timestamp", part_size="1GB")
+    assert ds.to_ddf().npartitions == len(ddf.timestamp.unique())
+
+    # Combining `aggregate_files` and `filters` should work
+    ds = nvt.Dataset(
+        path,
+        cpu=cpu,
+        engine="parquet",
+        aggregate_files="timestamp",
+        filters=[("timestamp", "==", 1)],
+        part_size="1GB",
+    )
+    assert ds.to_ddf().npartitions == 1
+    assert len(ds.to_ddf().timestamp.unique()) == 1
