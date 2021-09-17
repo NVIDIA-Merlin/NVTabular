@@ -25,6 +25,7 @@ from nvtabular import ColumnSchema, ColumnSelector, Schema, dispatch, ops
         ops.LogOp(),
         ops.Normalize(),
         ops.TargetEncoding(["1"]),
+        ops.AddMetadata(tags=["excellent"], properties={"domain": {"min": 0, "max": 20}}),
     ],
 )
 @pytest.mark.parametrize("selection", [["1"], ["2", "3"], ["1", "2", "3", "4"]])
