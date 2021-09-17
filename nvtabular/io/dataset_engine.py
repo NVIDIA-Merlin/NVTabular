@@ -26,7 +26,10 @@ class DatasetEngine:
         self.paths = paths
         self.part_size = part_size
         self.storage_options = storage_options
-        fs, fs_token, _ = get_fs_token_paths(paths, mode="rb", storage_options=self.storage_options)
+        fs, fs_token, paths2 = get_fs_token_paths(
+            paths, mode="rb", storage_options=self.storage_options
+        )
+        self.stripped_paths = paths2
         self.fs = fs
         self.fs_token = fs_token
         self.cpu = cpu

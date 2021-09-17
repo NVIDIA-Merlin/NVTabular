@@ -593,5 +593,44 @@ def test_horovod_multigpu(tmpdir):
         assert "Loss:" in str(stdout)
 
 
-#
-#
+@pytest.mark.parametrize("batch_size", [1000])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("device", [None, 0])
+def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
+
+    processor = nvt.Workflow(conts + cats + label_name)
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    processor.fit_transform(dataset).to_parquet(
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
+        output_path=output_train,
+        out_files_per_proc=2,
+    )
+
+    tar_paths = [
+        os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
+    ]
+
+    nvt_data = nvt.Dataset(tar_paths, engine="parquet")
+
+    data_loader = tf_dataloader.KerasSequenceLoader(
+        nvt_data,
+        batch_size=batch_size,
+        shuffle=False,
+        label_names=label_name,
+    )
+
+    batch = next(iter(data_loader))
+    assert all(name in batch[0] for name in cat_names)
+    assert all(name in batch[0] for name in cont_names)
+
+    num_label_cols = batch[1].shape[1] if len(batch[1].shape) > 1 else 1
+    assert num_label_cols == len(label_name)

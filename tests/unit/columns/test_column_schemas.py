@@ -58,7 +58,7 @@ def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type
     schema2 = ColumnSchema("col2", tags=tags2, properties=props2, dtype=d_type, _is_list=list_type)
     column_schema_set = Schema([schema1, schema2])
     # write schema out
-    schema_path = Path(tmpdir, "test.py")
+    schema_path = Path(tmpdir)
     column_schema_set = column_schema_set.save_protobuf(schema_path)
     # read schema back in
     target = Schema.load_protobuf(schema_path)
@@ -160,7 +160,7 @@ def test_dataset_schema_column_names():
     assert ds_schema.column_names == ["x", "y", "z"]
 
 
-def test_applying_selector_to_schema_selects_relevant_columns():
+def test_applying_selector_to_schema_selects_by_name():
     schema = Schema(["a", "b", "c", "d", "e"])
     selector = ColumnSelector(["a", "b"])
     result = schema.apply(selector)
@@ -171,6 +171,28 @@ def test_applying_selector_to_schema_selects_relevant_columns():
     result = schema.apply(selector)
 
     assert result == schema
+
+
+def test_applying_selector_to_schema_selects_by_tags():
+    schema1 = ColumnSchema("col1", tags=["a", "b", "c"])
+    schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
+
+    schema = Schema([schema1, schema2])
+    selector = ColumnSelector(tags=["a", "b"])
+    result = schema.apply(selector)
+
+    assert result.column_names == schema.column_names
+
+
+def test_applying_selector_to_schema_selects_by_name_or_tags():
+    schema1 = ColumnSchema("col1")
+    schema2 = ColumnSchema("col2", tags=["b", "c", "d"])
+
+    schema = Schema([schema1, schema2])
+    selector = ColumnSelector(["col1"], tags=["a", "b"])
+    result = schema.apply(selector)
+
+    assert result.column_names == schema.column_names
 
 
 def test_applying_inverse_selector_to_schema_selects_relevant_columns():

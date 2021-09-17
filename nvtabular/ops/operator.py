@@ -74,6 +74,15 @@ class Operator:
         """
         if not col_selector:
             col_selector = ColumnSelector(input_schema.column_names)
+
+        if col_selector.tags:
+            tags_col_selector = ColumnSelector(tags=col_selector.tags)
+            filtered_schema = input_schema.apply(tags_col_selector)
+            col_selector += ColumnSelector(filtered_schema.column_names)
+
+            # zero tags because already filtered
+            col_selector._tags = []
+
         col_selector = self.output_column_names(col_selector)
 
         for column_name in col_selector.names:

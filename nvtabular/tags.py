@@ -13,7 +13,7 @@ class Tags(Enum):
     # Feature context
     USER = "user"
     ITEM = "item"
-    ID_ITEM = "item_id"
+    ITEM_ID = "item_id"
     CONTEXT = "context"
 
     # Target related

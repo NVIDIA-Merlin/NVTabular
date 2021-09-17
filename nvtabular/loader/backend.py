@@ -24,6 +24,7 @@ import cupy as cp
 from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
+from nvtabular.tags import Tags
 
 
 def _num_steps(num_samples, step_size):
@@ -173,11 +174,11 @@ class DataLoader:
     def __init__(
         self,
         dataset,
-        cat_names,
-        cont_names,
-        label_names,
         batch_size,
         shuffle,
+        cat_names=None,
+        cont_names=None,
+        label_names=None,
         seed_fn=None,
         parts_per_chunk=1,
         device=None,
@@ -198,9 +199,10 @@ class DataLoader:
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
-        self.cat_names = cat_names or []
-        self.cont_names = cont_names or []
-        self.label_names = label_names
+        self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
+        self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
+        self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGETS).column_names
+
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed_fn = seed_fn
