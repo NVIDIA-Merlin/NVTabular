@@ -495,8 +495,8 @@ class Categorify(StatOperator):
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return np.int64
+    def output_dtype(self):
+        return np.int
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
