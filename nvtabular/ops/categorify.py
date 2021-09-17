@@ -25,6 +25,7 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from dask import delayed
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -37,6 +38,7 @@ from pyarrow import parquet as pq
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
+from nvtabular.utils import global_dask_client
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..tags import Tags
@@ -349,7 +351,13 @@ class Categorify(StatOperator):
             self.categories[col] = categories[col]
             # check the argument
             if self.single_table:
-                idx_count = _reset_df_index(col, self.categories, idx_count)
+                idx_count_delayed = delayed(_reset_df_index)(col, self.categories, idx_count)
+                if global_dask_client(None):
+                    # There is a global Dask client detected. Use it
+                    idx_count = idx_count_delayed.compute()
+                else:
+                    # No client detected. Use single-threaded scheduler to be safe
+                    idx_count = idx_count_delayed.compute(scheduler="synchronous")
 
     def clear(self):
         self.categories = deepcopy(self.vocabs)
@@ -1321,7 +1329,7 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
 
 def _reset_df_index(col_name, categories, idx_count):
     cat_file_path = categories[col_name]
-    cat_df = pd.read_parquet(cat_file_path)
+    cat_df = dispatch._read_parquet_dispatch(None)(cat_file_path)
     # change indexes for category
     cat_df.index += idx_count
     # update count

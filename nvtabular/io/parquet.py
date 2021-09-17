@@ -58,6 +58,7 @@ if LooseVersion(dask.__version__) >= "2021.07.1":
 else:
     aggregate_row_groups = None
 
+from ..utils import global_dask_client
 from .dataset_engine import DatasetEngine
 from .shuffle import Shuffle, _shuffle_df
 from .writer import ThreadedWriter
@@ -212,7 +213,13 @@ class ParquetDatasetEngine(DatasetEngine):
 
         if row_groups_per_part is None:
             path0 = next(self._dataset.get_fragments()).path
-            rg_byte_size_0 = delayed(_get_row_group_memory_usage)(path0, self.fs, cpu=cpu).compute()
+            rg_byte_size_0_delayed = delayed(_get_row_group_memory_usage)(path0, self.fs, cpu=cpu)
+            if global_dask_client(None):
+                # There is a global Dask client detected. Use it
+                rg_byte_size_0 = rg_byte_size_0_delayed.compute()
+            else:
+                # No client detected. Use single-threaded scheduler to be safe
+                rg_byte_size_0 = rg_byte_size_0_delayed.compute(scheduler="synchronous")
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
