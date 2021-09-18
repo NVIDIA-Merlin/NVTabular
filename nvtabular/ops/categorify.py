@@ -352,15 +352,14 @@ class Categorify(StatOperator):
             # check the argument
             if self.single_table:
                 cat_file_path = self.categories[col]
-                idx_count_delayed = delayed(_reset_df_index)(col, cat_file_path, idx_count)
                 if global_dask_client(None):
                     # There is a global Dask client detected. Use it
-                    idx_count, new_cat_file_path = idx_count_delayed.compute()
+                    idx_count, new_cat_file_path = delayed(_reset_df_index)(
+                        col, cat_file_path, idx_count
+                    ).compute()
                 else:
                     # No client detected. Use single-threaded scheduler to be safe
-                    idx_count, new_cat_file_path = idx_count_delayed.compute(
-                        scheduler="synchronous"
-                    )
+                    idx_count, new_cat_file_path = _reset_df_index(col, cat_file_path, idx_count)
                 self.categories[col] = new_cat_file_path
 
     def clear(self):

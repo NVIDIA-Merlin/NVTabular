@@ -15,7 +15,6 @@
 #
 
 import io
-from queue import Queue
 from threading import Thread
 
 import numpy as np
@@ -323,7 +322,6 @@ def _read_byte_ranges(
     ranges,
     local_buffer,
     fs,
-    num_threads=None,
     **kwargs,
 ):
 
@@ -343,23 +341,15 @@ def _read_byte_ranges(
             )
         return
 
-    # No reason to generate more threads than byte-ranges
-    if num_threads is None:
-        num_threads = len(ranges)
-    num_threads = min(num_threads, len(ranges))
-
-    if num_threads > 1:
-        queue = Queue()
-        for x in range(num_threads):
-            worker = ReadBlockWorker(queue, fs, path_or_fob, local_buffer)
-            worker.daemon = True
-            worker.start()
-
+    workers = []
     for (offset, nbytes) in ranges:
-        if num_threads > 1:
-            queue.put((offset, nbytes))
+        if len(ranges) > 1:
+            workers.append(
+                Thread(target=_assign_block, args=(fs, path_or_fob, local_buffer, offset, nbytes))
+            )
+            workers[-1].start()
         else:
             _assign_block(fs, path_or_fob, local_buffer, offset, nbytes)
 
-    if num_threads > 1:
-        queue.join()
+    for worker in workers:
+        worker.join()

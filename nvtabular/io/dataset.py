@@ -1122,6 +1122,10 @@ class Dataset:
         ``n`` rows of that partition to infer dtype info. If no
         non-empty partitions are found, use the Dask dtypes.
         """
+
+        if hasattr(self.engine, "_dtypes") and self.dtypes is None:
+            return self.engine._dtypes
+
         _ddf = self.to_ddf()
         for partition_index in range(_ddf.npartitions):
             _head = _ddf.partitions[partition_index].head(n)
