@@ -379,9 +379,8 @@ def _make_df(_like_df=None, device=None):
         return pd.DataFrame(_like_df)
     elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(_like_df)
-    elif isinstance(_like_df, dict) and len(_like_df) > 0:
+    elif device is None and isinstance(_like_df, dict) and len(_like_df) > 0:
         is_pandas = all(isinstance(v, pd.Series) for v in _like_df.values())
-
         return pd.DataFrame(_like_df) if is_pandas else cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame(_like_df)

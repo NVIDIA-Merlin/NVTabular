@@ -15,6 +15,8 @@
 #
 import copy
 import math
+import os
+import random
 import string
 
 import dask.dataframe as dd
@@ -467,6 +469,50 @@ def test_lambdaop_misalign(cpu):
         transformed.to_ddf().compute()[["a", "b"]],
         check_index=False,
     )
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("include_nulls", [True, False])
+def test_categorify_counts(tmpdir, cpu, include_nulls):
+    num_rows = 50
+    num_distinct = 10
+
+    possible_session_ids = list(range(num_distinct))
+    if include_nulls:
+        possible_session_ids.append(None)
+
+    df = dispatch._make_df(
+        {"session_id": [random.choice(possible_session_ids) for _ in range(num_rows)]},
+        device="cpu" if cpu else None,
+    )
+
+    cat_features = ["session_id"] >> nvt.ops.Categorify(out_path=str(tmpdir))
+    workflow = nvt.Workflow(cat_features)
+    workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+
+    vals = df["session_id"].value_counts()
+    vocab = dispatch._read_dispatch(cpu=cpu)(
+        os.path.join(tmpdir, "categories", "unique.session_id.parquet")
+    )
+
+    if cpu:
+        expected = dict(zip(vals.index, vals))
+        computed = {
+            session: count
+            for session, count in zip(vocab["session_id"], vocab["session_id_count"])
+            if count
+        }
+    else:
+        expected = dict(zip(vals.index.values_host, vals.values_host))
+        computed = {
+            session: count
+            for session, count in zip(
+                vocab["session_id"].values_host, vocab["session_id_count"].values_host
+            )
+            if count
+        }
+
+    assert computed == expected
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
