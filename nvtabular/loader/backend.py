@@ -203,6 +203,13 @@ class DataLoader:
         self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
         self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGETS).column_names
 
+        if not self.cat_names and not self.cont_names:
+            raise ValueError(
+                "Neither Categorical or Continuous columns were found by the dataloader. "
+                "You must either specify the cat_names, cont_names and "
+                "label_names properties or supply a schema.pbtxt file in dataset directory."
+            )
+
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed_fn = seed_fn
