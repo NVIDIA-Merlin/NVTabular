@@ -301,22 +301,6 @@ def _read_byte_ranges(
     **kwargs,
 ):
 
-    # If we have a fs object that supports `cat_ranges`,
-    # the ranges should be collected concurrently
-    if hasattr(fs, "cat_ranges"):
-        paths, starts, ends = [], [], []
-        for offset, nbytes in ranges:
-            paths.append(path_or_fob)
-            starts.append(offset)
-            ends.append(offset + nbytes)
-        blocks = fs.cat_ranges(paths, starts, ends)
-        for block, (offset, nbytes) in zip(blocks, ranges):
-            local_buffer[offset : offset + nbytes] = np.frombuffer(
-                block,
-                dtype="b",
-            )
-        return
-
     workers = []
     for (offset, nbytes) in ranges:
         if len(ranges) > 1:
