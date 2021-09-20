@@ -147,7 +147,7 @@ class Categorify(StatOperator):
         groupby reduction. The extra host <-> device data movement can reduce
         performance.  However, using `on_host=True` typically improves stability
         (by avoiding device-level memory pressure).
-    na_sentinel : default 0
+    na_sentinel : default -1
         Label to use for null-category mapping
     cat_cache : {"device", "host", "disk"} or dict
         Location to cache the list of unique categories for
@@ -194,7 +194,7 @@ class Categorify(StatOperator):
         freq_threshold=0,
         out_path=None,
         tree_width=None,
-        na_sentinel=None,
+        na_sentinel=-1,
         cat_cache="host",
         dtype=None,
         on_host=True,
@@ -253,7 +253,7 @@ class Categorify(StatOperator):
         self.freq_threshold = freq_threshold or 0
         self.out_path = out_path or "./"
         self.tree_width = tree_width
-        self.na_sentinel = na_sentinel or 0
+        self.na_sentinel = na_sentinel
         self.dtype = dtype
         self.on_host = on_host
         self.cat_cache = cat_cache
@@ -1244,7 +1244,7 @@ def _encode(
             labels = na_sentinel
         # no hashing
         else:
-            na_sentinel = 0
+            na_sentinel = -1
             labels = codes.merge(
                 value, left_on=selection_l.names, right_on=selection_r.names, how="left"
             ).sort_values("order")["labels"]
