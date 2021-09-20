@@ -246,7 +246,7 @@ def test_hash_bucket_lists(tmpdir):
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
-    assert nvt.ops.get_embedding_sizes(processor)["Authors"][0] == 10
+    assert nvt.ops.get_embedding_sizes(processor)[1]["Authors"][0] == 10
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -545,11 +545,7 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
     # plus start_index many additional entries for our offset start_index.
     embeddings = nvt.ops.get_embedding_sizes(processor)
 
-    # MH embeddings on GPU are returned as a tuple of (singlehot, multihot)
-    # if not cpu:
-    #     embeddings = embeddings[1]
-
-    assert embeddings["Authors"][0] == (5 + start_index)
+    assert embeddings[1]["Authors"][0] == (5 + start_index)
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])

@@ -237,6 +237,15 @@ def _series_has_nulls(s):
         return s._column.has_nulls
 
 
+def _list_val_dtype(ser):
+    if _is_list_dtype(ser):
+        if HAS_GPU and isinstance(ser, cudf.Series):
+            return ser.dtype.leaf_type
+        elif isinstance(ser, pd.Series):
+            return type(ser[0][0])
+    return None
+
+
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
     if isinstance(ser, pd.Series):
