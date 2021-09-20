@@ -974,6 +974,12 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     [_nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
+                if name_count in df:
+                    new_cols[name_count] = _concat(
+                        [_nullable_series([0], df, df[name_count].dtype), df[name_count]],
+                        ignore_index=True,
+                    )
+
             else:
                 # ensure None aka "unknown" stays at index 0
                 if name_count in df:
@@ -981,8 +987,9 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     df_1 = df.iloc[1:].sort_values(name_count, ascending=False, ignore_index=True)
                     df = _concat([df_0, df_1])
                 new_cols[col] = df[col].copy(deep=False)
-            if name_count in df:
-                new_cols[name_count] = df[name_count].copy(deep=False)
+
+                if name_count in df:
+                    new_cols[name_count] = df[name_count].copy(deep=False)
         if nulls_missing:
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
@@ -991,6 +998,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_null.to_parquet(path, index=False, compression=None)
+
     del df
     return path
 
