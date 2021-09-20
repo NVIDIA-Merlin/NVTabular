@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import glob
+from pathlib import Path
 
 import pytest
 
@@ -185,5 +186,8 @@ def test_schema_write_read_dataset(tmpdir, dataset, engine):
         out_files_per_proc=10,
     )
 
+    schema_path = Path(tmpdir)
+    proto_schema = Schema.read_protobuf(schema_path / "schema.pbtxt")
     new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
+    assert """name: "name-cat"\n    min: 0\n    max: 27\n""" in str(proto_schema)
     assert new_dataset.schema == workflow.output_schema
