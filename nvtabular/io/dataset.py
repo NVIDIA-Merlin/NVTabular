@@ -23,6 +23,7 @@ from pathlib import Path
 
 import dask
 import numpy as np
+import py
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -280,6 +281,8 @@ class Dataset:
             paths = path_or_source
             if hasattr(paths, "name"):
                 paths = stringify_path(paths)
+            if isinstance(paths, (py._path.local.LocalPath, Path)):
+                paths = str(paths)
             if isinstance(paths, str):
                 paths = [paths]
             paths = sorted(paths, key=natural_sort_key)
@@ -1098,6 +1101,7 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
+
         dtypes = {}
         try:
             _ddf = self.to_ddf()
@@ -1114,6 +1118,7 @@ class Dataset:
                             "dtype": dispatch._list_val_dtype(_head[col]) or _head[col].dtype,
                             "is_list": dispatch._is_list_dtype(_head[col]),
                         }
+
         except RuntimeError:
             warnings.warn(
                 "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
