@@ -225,6 +225,9 @@ class Dataset:
         self.client = client
         self.schema = schema
 
+        # Cache for "real" (sampled) metadata
+        self._real_meta = {}
+
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
         if not self.cpu:
@@ -1117,21 +1120,16 @@ class Dataset:
     def sample_dtypes(self, n=1):
         """Return the real dtypes of the Dataset
 
-        Sample the partitions of the underlying Dask collection
-        until a non-empty partition is found. Then, use the first
-        ``n`` rows of that partition to infer dtype info. If no
-        non-empty partitions are found, use the Dask dtypes.
+        Use cached metadata if this operation was
+        already performed. Otherwise, call down to the
+        underlying engine for sampling logic.
         """
-
-        if hasattr(self.engine, "_dtypes") and self.dtypes is None:
-            return self.engine._dtypes
-
-        _ddf = self.to_ddf()
-        for partition_index in range(_ddf.npartitions):
-            _head = _ddf.partitions[partition_index].head(n)
-            if len(_head):
-                return _head.dtypes
-        return _ddf.dtypes
+        if self._real_meta.get(n, None) is None:
+            _real_meta = self.engine.sample_data(n=n)
+            if self.dtypes:
+                _real_meta = _set_dtypes(_real_meta, self.dtypes)
+            self._real_meta[n] = _real_meta
+        return self._real_meta[n].dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):

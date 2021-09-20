@@ -25,7 +25,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from dask import delayed
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -38,7 +37,7 @@ from pyarrow import parquet as pq
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
-from nvtabular.utils import global_dask_client
+from nvtabular.utils import run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..tags import Tags
@@ -352,14 +351,9 @@ class Categorify(StatOperator):
             # check the argument
             if self.single_table:
                 cat_file_path = self.categories[col]
-                if global_dask_client(None):
-                    # There is a global Dask client detected. Use it
-                    idx_count, new_cat_file_path = delayed(_reset_df_index)(
-                        col, cat_file_path, idx_count
-                    ).compute()
-                else:
-                    # No client detected. Use single-threaded scheduler to be safe
-                    idx_count, new_cat_file_path = _reset_df_index(col, cat_file_path, idx_count)
+                idx_count, new_cat_file_path = run_on_worker(
+                    _reset_df_index, col, cat_file_path, idx_count
+                )
                 self.categories[col] = new_cat_file_path
 
     def clear(self):

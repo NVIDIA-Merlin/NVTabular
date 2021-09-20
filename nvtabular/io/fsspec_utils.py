@@ -293,30 +293,6 @@ def _assign_block(fs, path_or_fob, local_buffer, offset, nbytes):
         )
 
 
-class ReadBlockWorker(Thread):
-    def __init__(self, queue, fs, path_or_fob, local_buffer):
-        Thread.__init__(self)
-        self.queue = queue
-        self.fs = fs
-        self.path_or_fob = path_or_fob
-        self.local_buffer = local_buffer
-
-    def run(self):
-        while True:
-            # Get the work from the queue and expand the tuple
-            offset, nbytes = self.queue.get()
-            try:
-                _assign_block(
-                    self.fs,
-                    self.path_or_fob,
-                    self.local_buffer,
-                    offset,
-                    nbytes,
-                )
-            finally:
-                self.queue.task_done()
-
-
 def _read_byte_ranges(
     path_or_fob,
     ranges,
