@@ -148,6 +148,10 @@ class ColumnSchema:
     dtype: Optional[object] = None
     _is_list: bool = False
 
+    def __post_init__(self):
+        tags = _normalize_tags(self.tags or [])
+        object.__setattr__(self, "tags", tags)
+
     def __str__(self) -> str:
         return self.name
 
@@ -274,7 +278,6 @@ class Schema:
             dtype = None
             properties = {}
             tags = list(feat.annotation.tag) or []
-            tags = [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]
             # only one item should ever be in extra_metadata
             if len(feat.annotation.extra_metadata) > 1:
                 raise ValueError(
@@ -362,3 +365,7 @@ class Schema:
                 result.column_schemas.pop(key, None)
 
         return result
+
+
+def _normalize_tags(tags):
+    return [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]

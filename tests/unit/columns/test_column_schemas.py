@@ -20,6 +20,7 @@ import pytest
 
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
+from nvtabular.tags import Tags
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
@@ -96,6 +97,11 @@ def test_column_schema_protobuf_domain_check(tmpdir):
 
     assert """name: "col1"\n    min: 0\n    max: 10\n""" in str(proto_schema)
     assert """name: "col2"\n    min: 0.0\n    max: 10.0\n""" in str(proto_schema)
+
+
+def test_column_schema_tags_normalize():
+    schema1 = ColumnSchema("col1", tags=["categorical", "continuous", "item_id"])
+    assert schema1.tags == [Tags.CATEGORICAL, Tags.CONTINUOUS, Tags.ITEM_ID]
 
 
 def test_dataset_schema_constructor():
