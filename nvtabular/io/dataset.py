@@ -894,6 +894,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
+            schema=self.schema,
         )
 
     def to_hugectr(
