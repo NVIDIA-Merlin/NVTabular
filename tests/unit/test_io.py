@@ -277,16 +277,11 @@ def test_dask_dataframe_methods(tmpdir):
     assert_eq(result_gpu, expect, check_index=False)
 
 
-# @pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
-@pytest.mark.parametrize("output_format", ["parquet"])
-# @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
-@pytest.mark.parametrize("engine", ["parquet"])
-# @pytest.mark.parametrize("op_columns", [["x"], None])
-@pytest.mark.parametrize("op_columns", [["x"]])
-# @pytest.mark.parametrize("num_io_threads", [0, 2])
-@pytest.mark.parametrize("num_io_threads", [0])
-# @pytest.mark.parametrize("use_client", [True, False])
-@pytest.mark.parametrize("use_client", [True])
+@pytest.mark.parametrize("output_format", ["hugectr", "parquet"])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("op_columns", [["x"], None])
+@pytest.mark.parametrize("num_io_threads", [0, 2])
+@pytest.mark.parametrize("use_client", [True, False])
 def test_hugectr(
     tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
 ):

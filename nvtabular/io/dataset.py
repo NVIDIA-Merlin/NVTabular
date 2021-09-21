@@ -990,6 +990,7 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            schema=self.schema,
         )
 
     @property

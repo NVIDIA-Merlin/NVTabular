@@ -285,9 +285,8 @@ class ThreadedWriter(Writer):
         keyset_writer = open(os.path.join(out_dir, "_hugectr.keyset"), "wb")
         for col in schema:
             try:
-                keys = col.properties["domain"]
-                for v in range(keys["min"], keys["max"] + 1):
-                    keyset_writer.write(v.to_bytes(4, "little"))
+                for v in range(col.properties["embedding_sizes"]["cardinality"] + 1):
+                    keyset_writer.write(v.to_bytes(4, "big"))
             except KeyError:
                 pass
         keyset_writer.close()

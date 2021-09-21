@@ -383,10 +383,10 @@ def _ddf_to_dataset(
 
     if cached_writers:
         # Follow-up Shuffling and _metadata creation
-        _finish_dataset(client, ddf, output_path, fs, output_format, cpu)
+        _finish_dataset(client, ddf, output_path, fs, output_format, cpu, schema)
 
 
-def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
+def _finish_dataset(client, ddf, output_path, fs, output_format, cpu, schema):
     # Finish data writing
     if client:
         client.cancel(ddf)
@@ -411,7 +411,7 @@ def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
         output_path = str(output_path)
 
     wc, fs = _writer_cls_factory(output_format, output_path, cpu)
-    wc.write_general_metadata(general_md, fs, output_path)
+    wc.write_general_metadata(general_md, fs, output_path, schema)
     wc.write_special_metadata(special_md, fs, output_path)
 
     # Clean writer caches
