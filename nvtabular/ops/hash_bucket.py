@@ -101,6 +101,16 @@ class HashBucket(Operator):
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
 
+    def _add_properties(self, column_schema):
+        cardinality, dimensions = self.get_embedding_sizes([column_schema.name])[column_schema.name]
+        if cardinality and dimensions:
+            to_add = {
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
+            }
+            column_schema = column_schema.with_properties(to_add)
+        return column_schema
+
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
