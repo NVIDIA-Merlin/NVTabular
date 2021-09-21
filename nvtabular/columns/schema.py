@@ -102,8 +102,13 @@ def register_dtype(column_schema, feature):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
         elif hasattr(column_schema.dtype, "item"):
             string_name = type(column_schema.dtype(1).item()).__name__
-        else:
+        elif isinstance(column_schema.dtype, str):
+            string_name = column_schema.dtype
+        elif hasattr(column_schema.dtype, "__name__"):
             string_name = column_schema.dtype.__name__
+        else:
+            raise TypeError(f"unsupported dtype for column schema: {column_schema.dtype}")
+
         if string_name in proto_dict:
             feature = proto_dict[string_name](column_schema, feature)
     return feature
