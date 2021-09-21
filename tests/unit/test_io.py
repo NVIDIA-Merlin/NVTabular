@@ -33,7 +33,8 @@ from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ops
+from nvtabular import dispatch, ops
+from nvtabular.columns import Schema
 from nvtabular.io.parquet import GPUParquetWriter
 from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
@@ -80,6 +81,22 @@ def test_dataset_infer_schema(dataset, engine):
     schema = dataset.infer_schema()
     expected_columns = ["timestamp", "id", "label", "name-cat", "name-string", "x", "y", "z"]
     assert schema.column_names == expected_columns
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_string_datatypes(tmpdir, engine, cpu):
+    df_lib = dispatch.get_lib()
+    df = df_lib.DataFrame({"column": [[0.1, 0.2]]})
+    dataset = nvt.Dataset(df)
+
+    column_schema = dataset.schema.column_schemas["column"]
+    assert not isinstance(column_schema.dtype, str)
+
+    dataset.schema.save_protobuf(tmpdir)
+    loaded_schema = Schema.load_protobuf(str(tmpdir))
+    column_schema = loaded_schema.column_schemas["column"]
+    assert not isinstance(column_schema.dtype, str)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
