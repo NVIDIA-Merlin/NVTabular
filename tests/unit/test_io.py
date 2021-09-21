@@ -69,6 +69,12 @@ def test_validate_dataset_bad_schema(tmpdir):
         assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
 
 
+def test_incorrect_schema_dataset():
+    with pytest.raises(TypeError) as err:
+        nvt.Dataset("", schema={})
+    assert "unsupported schema type for nvt.Dataset:" in str(err.value)
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_dataset_infer_schema(dataset, engine):
     schema = dataset.infer_schema()
