@@ -54,7 +54,10 @@ def test_schema_out(tags, properties, selection, op):
                 # should not be exactly the same name, having gone through operator
                 assert schema1.dtype == op.output_dtype()
                 if name in selector.names:
-                    assert schema1.properties == properties
+                    assert (
+                        schema1.properties
+                        == op._add_properties(schema.column_schemas[schema1.name]).properties
+                    )
                     all_tags = op.output_tags() + tags
                     assert len(schema1.tags) == len(all_tags)
                 else:

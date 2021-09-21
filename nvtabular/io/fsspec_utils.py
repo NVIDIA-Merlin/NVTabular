@@ -36,8 +36,8 @@ def _optimized_read_partition_remote(
 ):
     # This is a specialized version of `CudfEngine.read_partition`
     # for remote filesystems. This implementation is intended to
-    # replace the upstream `read_partition` classmethod for
-    # cudf<=21.08 only.
+    # replace the upstream `read_partition` classmethod until
+    # remote-filesystem handling is optimized in cudf/dask-cudf
 
     if columns is not None:
         columns = list(columns)

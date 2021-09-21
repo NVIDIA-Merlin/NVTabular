@@ -23,6 +23,7 @@ from pathlib import Path
 
 import dask
 import numpy as np
+import py
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -30,6 +31,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
@@ -282,6 +284,8 @@ class Dataset:
             paths = path_or_source
             if hasattr(paths, "name"):
                 paths = stringify_path(paths)
+            if isinstance(paths, (py._path.local.LocalPath, Path)):
+                paths = str(paths)
             if isinstance(paths, str):
                 paths = [paths]
             paths = sorted(paths, key=natural_sort_key)
@@ -1100,18 +1104,33 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
+
         dtypes = {}
         try:
-            sampled_dtypes = self.sample_dtypes(n)
-            dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+            _ddf = self.to_ddf()
+            dtypes = {
+                col_name: {"dtype": dtype, "is_list": False}
+                for col_name, dtype in _ddf.dtypes.items()
+            }
+            for partition_index in range(_ddf.npartitions):
+                _head = _ddf.partitions[partition_index].head(n)
+
+                if len(_head):
+                    for col in _head.columns:
+                        dtypes[col] = {
+                            "dtype": dispatch._list_val_dtype(_head[col]) or _head[col].dtype,
+                            "is_list": dispatch._is_list_dtype(_head[col]),
+                        }
+
         except RuntimeError:
             warnings.warn(
                 "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
             )
-
         column_schemas = []
-        for column, dtype in dtypes.items():
-            col_schema = ColumnSchema(column, dtype=dtype)
+        for column, dtype_info in dtypes.items():
+            dtype_val = dtype_info["dtype"]
+            is_list = dtype_info["is_list"]
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
             column_schemas.append(col_schema)
 
         self.schema = Schema(column_schemas)

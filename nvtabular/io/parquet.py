@@ -90,10 +90,8 @@ if cudf is not None:
 
         @classmethod
         def read_partition(cls, fs, pieces, *args, **kwargs):
-            if (
-                LooseVersion(cudf.__version__) < "21.10"
-                and not cudf.utils.ioutils._is_local_filesystem(fs)
-                and (not isinstance(pieces, list) or len(pieces) == 1)
+            if not cudf.utils.ioutils._is_local_filesystem(fs) and (
+                not isinstance(pieces, list) or len(pieces) == 1
             ):
                 # This version of cudf does not include optimized
                 # fsspec usage for remote storage - use custom code path

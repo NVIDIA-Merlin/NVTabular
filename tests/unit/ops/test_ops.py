@@ -29,6 +29,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular.ops.categorify import get_embedding_sizes
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -590,11 +591,7 @@ def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
     # plus start_index many additional entries for our offset start_index.
     embeddings = nvt.ops.get_embedding_sizes(processor)
 
-    # MH embeddings on GPU are returned as a tuple of (singlehot, multihot)
-    if not cpu:
-        embeddings = embeddings[1]
-
-    assert embeddings["Authors"][0] == (5 + start_index)
+    assert embeddings[1]["Authors"][0] == (5 + start_index)
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
@@ -1342,3 +1339,14 @@ def test_categorify_single_table():
         assert old_max <= curr_min
         curr_max = new_gdf[name].max()
         old_max += curr_max
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_categorify_embedding_sizes(dataset, engine):
+    cat_1 = ColumnSelector(["name-cat"]) >> ops.Categorify()
+    cat_2 = ColumnSelector(["name-string"]) >> ops.Categorify() >> ops.Rename(postfix="_test")
+
+    workflow = nvt.Workflow(cat_1 + cat_2)
+    workflow.fit_transform(dataset)
+
+    assert get_embedding_sizes(workflow) == {"name-cat": (27, 16), "name-string_test": (27, 16)}
