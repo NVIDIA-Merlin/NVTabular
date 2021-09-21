@@ -37,7 +37,6 @@ from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
-from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
 from nvtabular.utils import global_dask_client
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -515,12 +514,25 @@ class Categorify(StatOperator):
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
     def _add_properties(self, column_schema):
-        target_column_path = self.output_properties().get(column_schema.name, None)
+        col_name = column_schema.name
+        target_column_path = self.output_properties().get(col_name, None)
+        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
         if target_column_path:
             to_add = {
-                "domain": {"min": 0, "max": pq.ParquetFile(target_column_path).metadata.num_rows}
+                "num_buckets": self.num_buckets[col_name]
+                if isinstance(self.num_buckets, dict)
+                else self.num_buckets,
+                "freq_threshold": self.freq_threshold[col_name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+                "max_size": self.max_size[col_name]
+                if isinstance(self.max_size, dict)
+                else self.max_size,
+                "start_index": self.start_index,
+                "cat_path": target_column_path,
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
             }
-            to_add.update({"cat_path": target_column_path})
             return column_schema.with_properties(to_add)
         return column_schema
 
@@ -558,30 +570,31 @@ def get_embedding_sizes(source, output_dtypes=None):
     # have to lazy import Workflow to avoid circular import errors
     from nvtabular.workflow import Workflow
 
+    output_node = source.output_node if isinstance(source, Workflow) else source
+
     if isinstance(source, Workflow):
-        queue = [source.output_node]
         output_dtypes = output_dtypes or source.output_dtypes
     else:
         # passed in a column group
-        queue = [source]
         output_dtypes = output_dtypes or {}
 
     output = {}
     multihot_columns = set()
-    while queue:
-        current = queue.pop()
-        if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
-        elif isinstance(current.op, (ConcatColumns, SubsetColumns, Identity)):
-            # only follow parents if its an internal (Workflow) operator node
-            # (which could transform meaning of the get_embedding_sizes)
-            queue.extend(current.parents)
-
-    for column in output:
-        dtype = output_dtypes.get(column)
-        if dtype and dispatch._is_list_dtype(dtype):
+    # nodes = list(set(nvt.workflow.node.iter_nodes([output_node])))
+    # for current in reversed(nodes):
+    #     if current.op and hasattr(current.op, "get_embedding_sizes"):
+    #         output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
+    cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
+    for col_name, col_schema in cats_schema.column_schemas.items():
+        if col_schema.dtype and col_schema._is_list:
             # multi hot so remove from output and add to multihot
-            multihot_columns.add(column)
+            multihot_columns.add(col_name)
+
+        embeddings_sizes = col_schema.properties.get("embedding_sizes", {})
+        cardinality = embeddings_sizes["cardinality"]
+        dimensions = embeddings_sizes["dimension"]
+        output[col_name] = (cardinality, dimensions)
+
     # TODO: returning differnt return types like this (based off the presence
     # of multihot features) is pretty janky. fix.
     if not multihot_columns:
@@ -603,12 +616,17 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
-
-        if not buckets:
-            bucket_size = 0
-        else:
+        if isinstance(buckets, dict):
             bucket_size = buckets.get(col, 0)
-        if bucket_size and not freq_limit[col] and not max_size[col]:
+        elif isinstance(buckets, int):
+            bucket_size = buckets
+        else:
+            bucket_size = 0
+
+        _has_frequency_limit = col in freq_limit and freq_limit[col] > 0
+        _has_max_size = col in max_size and max_size[col] > 0
+
+        if bucket_size and not _has_frequency_limit and not _has_max_size:
             # pure hashing (no categorical lookup)
             num_rows = bucket_size
         else:
