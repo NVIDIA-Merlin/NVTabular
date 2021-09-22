@@ -18,10 +18,38 @@ import glob
 import os
 import platform
 import random
+import signal
 import socket
+import subprocess
+import time
 
-import cudf
+import dask
 import numpy as np
+import pandas as pd
+
+try:
+    import cudf
+
+    try:
+        import cudf.testing._utils
+
+        assert_eq = cudf.testing._utils.assert_eq
+    except ImportError:
+        import cudf.tests.utils
+
+        assert_eq = cudf.tests.utils.assert_eq
+except ImportError:
+    cudf = None
+
+    def assert_eq(a, b, *args, **kwargs):
+        if isinstance(a, pd.DataFrame):
+            return pd.testing.assert_frame_equal(a, b, *args, **kwargs)
+        elif isinstance(a, pd.Series):
+            return pd.testing.assert_series_equal(a, b, *args, **kwargs)
+        else:
+            return np.testing.assert_allclose(a, b)
+
+
 import psutil
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
@@ -87,7 +115,9 @@ def get_cuda_cluster():
 
 @pytest.fixture(scope="session")
 def datasets(tmpdir_factory):
-    df = cudf.datasets.timeseries(
+    _lib = cudf if cudf else pd
+    _datalib = cudf if cudf else dask
+    df = _datalib.datasets.timeseries(
         start="2000-01-01",
         end="2000-01-04",
         freq="60s",
@@ -101,7 +131,11 @@ def datasets(tmpdir_factory):
             "z": float,
         },
     ).reset_index()
-    df["name-string"] = cudf.Series(np.random.choice(mynames, df.shape[0])).astype("O")
+
+    if _datalib is dask:
+        df = df.compute()
+
+    df["name-string"] = _lib.Series(np.random.choice(mynames, df.shape[0])).astype("O")
 
     # Add two random null values to each column
     imax = len(df) - 1
@@ -153,19 +187,20 @@ def paths(engine, datasets):
 
 @pytest.fixture(scope="function")
 def df(engine, paths):
+    _lib = cudf if cudf else pd
     if engine == "parquet":
-        df1 = cudf.read_parquet(paths[0])[mycols_pq]
-        df2 = cudf.read_parquet(paths[1])[mycols_pq]
+        df1 = _lib.read_parquet(paths[0])[mycols_pq]
+        df2 = _lib.read_parquet(paths[1])[mycols_pq]
     elif engine == "csv-no-header":
-        df1 = cudf.read_csv(paths[0], header=None, names=allcols_csv)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=None, names=allcols_csv)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=None, names=allcols_csv)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], header=None, names=allcols_csv)[mycols_csv]
     elif engine == "csv":
-        df1 = cudf.read_csv(paths[0], header=0)[mycols_csv]
-        df2 = cudf.read_csv(paths[1], header=0)[mycols_csv]
+        df1 = _lib.read_csv(paths[0], header=0)[mycols_csv]
+        df2 = _lib.read_csv(paths[1], header=0)[mycols_csv]
     else:
         raise ValueError("unknown engine:" + engine)
 
-    gdf = cudf.concat([df1, df2], axis=0)
+    gdf = _lib.concat([df1, df2], axis=0)
     gdf["id"] = gdf["id"].astype("int64")
     return gdf
 
@@ -177,11 +212,16 @@ def dataset(request, paths, engine):
     except Exception:  # pylint: disable=broad-except
         gpu_memory_frac = 0.01
 
+    try:
+        cpu = request.getfixturevalue("cpu")
+    except Exception:  # pylint: disable=broad-except
+        cpu = False
+
     kwargs = {}
     if engine == "csv-no-header":
         kwargs["names"] = allcols_csv
 
-    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, **kwargs)
+    return nvtabular.Dataset(paths, part_mem_fraction=gpu_memory_frac, cpu=cpu, **kwargs)
 
 
 @pytest.fixture(scope="session")
@@ -221,16 +261,94 @@ def bench_info():
     return bInfo
 
 
-def get_cats(workflow, col, stat_name="categories"):
+def get_cats(workflow, col, stat_name="categories", cpu=False):
+    _lib = cudf if cudf and not cpu else pd
     # figure out the categorify node from the workflow graph
     cats = [
         cg.op
-        for cg in nvtabular.column_group.iter_nodes([workflow.column_group])
+        for cg in nvtabular.workflow.node.iter_nodes([workflow.output_node])
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:
         raise RuntimeError(f"Found {len(cats)} categorical ops, expected 1")
     filename = cats[0].categories[col]
-    gdf = cudf.read_parquet(filename)
-    gdf.reset_index(drop=True, inplace=True)
-    return gdf[col].values_host
+    df = _lib.read_parquet(filename)
+    df.reset_index(drop=True, inplace=True)
+    if cudf and not cpu:
+        return df[col].values_host
+    else:
+        return df[col]
+
+
+@contextlib.contextmanager
+def run_triton_server(
+    modelpath, model_name, triton_server_path, device_id="0", backend="tensorflow", ps_path=None
+):
+    import tritonclient
+    import tritonclient.grpc as grpcclient
+
+    if backend == "tensorflow":
+        backend_config = "tensorflow,version=2"
+    elif backend == "hugectr":
+        backend_config = "hugectr,ps=" + ps_path
+    else:
+        raise ValueError("unknown backend:" + backend)
+
+    cmdline = [
+        triton_server_path,
+        "--model-repository",
+        modelpath,
+        "--backend-config",
+        backend_config,
+        "--model-control-mode=explicit",
+        "--load-model",
+        model_name,
+    ]
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = device_id
+    with subprocess.Popen(cmdline, env=env) as process:
+        try:
+            with grpcclient.InferenceServerClient("localhost:8001") as client:
+                # wait until server is ready
+                for _ in range(60):
+                    if process.poll() is not None:
+                        retcode = process.returncode
+                        raise RuntimeError(f"Tritonserver failed to start (ret={retcode})")
+
+                    try:
+                        ready = client.is_server_ready()
+                    except tritonclient.utils.InferenceServerException:
+                        ready = False
+
+                    if ready:
+                        yield client
+                        return
+
+                    time.sleep(1)
+
+                raise RuntimeError("Timed out waiting for tritonserver to become ready")
+        finally:
+            # signal triton to shutdown
+            process.send_signal(signal.SIGINT)
+
+
+def run_in_context(func, *args, context=None, **kwargs):
+    # Convenience utility to execute a function within
+    # a specific `context`.  For example, this can be
+    # used to test that a function raises a `UserWarning`
+    # by setting `context=pytest.warns(UserWarning)`
+    if context is None:
+        context = contextlib.suppress()
+    with context:
+        result = func(*args, **kwargs)
+    return result
+
+
+# Allow to pass devices as parameters
+def pytest_addoption(parser):
+    parser.addoption("--devices", action="store", default="0", help="0,1,..,n-1")
+
+
+@pytest.fixture
+def devices(request):
+    return request.config.getoption("--devices")

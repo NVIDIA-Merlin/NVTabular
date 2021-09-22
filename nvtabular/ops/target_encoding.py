@@ -13,18 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import cupy
-import dask_cudf
+import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
 
-from nvtabular.dispatch import _read_parquet_dispatch
+from nvtabular.dispatch import (
+    DataFrameType,
+    _arange,
+    _concat_columns,
+    _random_state,
+    _read_parquet_dispatch,
+)
 
+from ..tags import Tags
 from . import categorify as nvt_cat
 from .moments import _custom_moments
-from .operator import ColumnNames, DataFrameType, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
+
+CATEGORICAL = Tags.CATEGORICAL
 
 
 class TargetEncoding(StatOperator):
@@ -59,7 +66,7 @@ class TargetEncoding(StatOperator):
 
         # First, we can transform the label columns to binary targets
         LABEL_COLUMNS = ['label1', 'label2']
-        labels = nvt.ColumnGroup(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
+        labels = ColumnSelector(LABEL_COLUMNS) >> (lambda col: (col>0).astype('int8'))
         # We target encode cat1, cat2 and the cross columns cat1 x cat2
         target_encode = (
             ['cat1', 'cat2', ['cat2','cat3']] >>
@@ -83,7 +90,7 @@ class TargetEncoding(StatOperator):
     kfold : int, default 3
         Number of cross-validation folds to use while gathering statistics.
     fold_seed : int, default 42
-        Random seed to use for cupy-based fold assignment.
+        Random seed to use for numpy-based fold assignment.
     p_smooth : int, default 20
         Smoothing factor.
     out_col : str or list of str, default is problem-specific
@@ -139,9 +146,6 @@ class TargetEncoding(StatOperator):
         self.target = [target] if isinstance(target, str) else target
         self.dependency = self.target
 
-        if hasattr(self.target, "columns"):
-            self.target = self.target.columns
-
         self.target_mean = target_mean
         self.kfold = kfold or 3
         self.fold_seed = fold_seed
@@ -158,13 +162,14 @@ class TargetEncoding(StatOperator):
         self.stats = {}
         self.means = {}  # TODO: just update target_mean?
 
-    def fit(self, columns: ColumnNames, ddf: dask_cudf.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
             moments = _custom_moments(ddf[self.target])
 
-        col_groups = columns[:]
+        col_groups = col_selector.grouped_names
+
         if self.kfold > 1:
             # Add new fold column if necessary
             if self.fold_name not in ddf.columns:
@@ -176,7 +181,7 @@ class TargetEncoding(StatOperator):
                 )
 
             # Add new col_groups with fold
-            for group in columns:
+            for group in col_selector.grouped_names:
                 if isinstance(group, tuple):
                     group = list(group)
                 if isinstance(group, list):
@@ -186,15 +191,17 @@ class TargetEncoding(StatOperator):
 
         dsk, key = nvt_cat._category_stats(
             ddf,
-            col_groups,
-            self.target,
-            ["count", "sum"],
-            self.out_path,
-            0,
-            self.tree_width,
-            self.on_host,
-            concat_groups=False,
-            name_sep=self.name_sep,
+            nvt_cat.FitOptions(
+                col_groups,
+                self.target,
+                ["count", "sum"],
+                self.out_path,
+                0,
+                self.tree_width,
+                self.on_host,
+                concat_groups=False,
+                name_sep=self.name_sep,
+            ),
         )
         return Delayed(key, dsk), moments
 
@@ -208,15 +215,18 @@ class TargetEncoding(StatOperator):
         return self.dependency
 
     def output_column_names(self, columns):
+        if hasattr(self.target, "output_columns"):
+            self.target = self.target.output_columns
+
         ret = []
-        for cat in columns:
+        for cat in columns.grouped_names:
             cat = [cat] if isinstance(cat, str) else cat
-            ret.extend(self._make_te_name(cat))
+            ret.extend(self._make_te_name(cat.names if isinstance(cat, ColumnSelector) else cat))
 
         if self.kfold > 1 and not self.drop_folds:
             ret.append(self.fold_name)
 
-        return ret
+        return ColumnSelector(ret)
 
     def set_storage_path(self, new_path, copy=False):
         self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)
@@ -228,9 +238,12 @@ class TargetEncoding(StatOperator):
 
     def _make_te_name(self, cat_group):
         tag = nvt_cat._make_name(*cat_group, sep=self.name_sep)
-        return [f"TE_{tag}_{x}" for x in self.target]
+        target = self.target
+        if isinstance(self.target, list):
+            target = ColumnSelector(self.target)
+        return [f"TE_{tag}_{x}" for x in target.names]
 
-    def _op_group_logic(self, cat_group, gdf, y_mean, fit_folds, group_ind):
+    def _op_group_logic(self, cat_group, df, y_mean, fit_folds, group_ind):
         # Define name of new TE column
         if isinstance(self.out_col, list):
             if group_ind >= len(self.out_col):
@@ -244,7 +257,7 @@ class TargetEncoding(StatOperator):
             out_col = self._make_te_name(cat_group)
 
         # Initialize new data
-        _read_pq_func = _read_parquet_dispatch(gdf)
+        _read_pq_func = _read_parquet_dispatch(df)
         tmp = "__tmp__"
 
         if fit_folds:
@@ -284,7 +297,7 @@ class TargetEncoding(StatOperator):
                 + [x + "_sum_y_all" for x in self.target],
                 axis=1,
             )
-            tran_gdf = gdf[cols + [tmp]].merge(agg_each_fold, on=cols, how="left")
+            tran_df = df[cols + [tmp]].merge(agg_each_fold, on=cols, how="left")
             del agg_each_fold
         else:
             for i, x in enumerate(self.target):
@@ -294,58 +307,59 @@ class TargetEncoding(StatOperator):
             agg_all = agg_all.drop(
                 ["count_y_all"] + [x + "_sum_y_all" for x in self.target], axis=1
             )
-            tran_gdf = gdf[cols + [tmp]].merge(agg_all, on=cols, how="left")
+            tran_df = df[cols + [tmp]].merge(agg_all, on=cols, how="left")
             del agg_all
 
         # TODO: There is no need to perform the `agg_each_fold.merge(agg_all, ...)` merge
         #     for every partition.  We can/should cache the result for better performance.
 
         for i, x in enumerate(self.target):
-            tran_gdf[out_col[i]] = tran_gdf[out_col[i]].fillna(y_mean[x])
+            tran_df[out_col[i]] = tran_df[out_col[i]].fillna(y_mean[x])
         if self.out_dtype is not None:
-            tran_gdf[out_col] = tran_gdf[out_col].astype(self.out_dtype)
+            tran_df[out_col] = tran_df[out_col].astype(self.out_dtype)
 
-        tran_gdf = tran_gdf.sort_values(tmp, ignore_index=True)
-        tran_gdf.drop(columns=cols + [tmp], inplace=True)
+        tran_df = tran_df.sort_values(tmp, ignore_index=True)
+        tran_df.drop(columns=cols + [tmp], inplace=True)
 
-        # Make sure we are preserving the index of gdf
-        tran_gdf.index = gdf.index
+        # Make sure we are preserving the index of df
+        tran_df.index = df.index
 
-        return tran_gdf
+        return tran_df
 
-    def transform(self, columns: ColumnNames, gdf: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # Add temporary column for sorting
         tmp = "__tmp__"
-        gdf[tmp] = cupy.arange(len(gdf), dtype="int32")
+        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
 
         fit_folds = self.kfold > 1
         if fit_folds:
-            gdf[self.fold_name] = _add_fold(gdf.index, self.kfold, self.fold_seed)
+            df[self.fold_name] = _add_fold(df.index, self.kfold, self.fold_seed)
 
         # Need mean of contiuous target column
         y_mean = self.target_mean or self.means
 
         # Loop over categorical-column groups and apply logic
-        new_gdf = None
-        for ind, cat_group in enumerate(columns):
+        new_df = None
+        for ind, cat_group in enumerate(col_selector.grouped_names):
             if isinstance(cat_group, tuple):
                 cat_group = list(cat_group)
             elif isinstance(cat_group, str):
                 cat_group = [cat_group]
 
-            if new_gdf is None:
-                new_gdf = self._op_group_logic(cat_group, gdf, y_mean, fit_folds, ind)
+            if new_df is None:
+                new_df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind)
             else:
-                _df = self._op_group_logic(cat_group, gdf, y_mean, fit_folds, ind)
-                new_gdf = cudf.concat([new_gdf, _df], axis=1)
+                _df = self._op_group_logic(cat_group, df, y_mean, fit_folds, ind)
+                new_df = _concat_columns([new_df, _df])
 
         # Drop temporary columns
-        gdf.drop(
-            columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True
-        )
+        df.drop(columns=[tmp, "__fold__"] if fit_folds and self.drop_folds else [tmp], inplace=True)
         if fit_folds and not self.drop_folds:
-            new_gdf[self.fold_name] = gdf[self.fold_name]
-        return new_gdf
+            new_df[self.fold_name] = df[self.fold_name]
+        return new_df
+
+    def _get_tags(self):
+        return [CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -359,9 +373,9 @@ def _add_fold(s, kfold, fold_seed=None):
     if fold_seed is None:
         # If we don't have a specific seed,
         # just use a simple modulo-based mapping
-        fold = cupy.arange(len(s), dtype=typ)
-        cupy.mod(fold, kfold, out=fold)
+        fold = _arange(len(s), like_df=s, dtype=typ)
+        np.mod(fold, kfold, out=fold)
         return fold
     else:
-        state = cupy.random.RandomState(fold_seed)
-        return state.choice(cupy.arange(kfold, dtype=typ), len(s))
+        state = _random_state(fold_seed, like_df=s)
+        return state.choice(_arange(kfold, like_df=s, dtype=typ), len(s))

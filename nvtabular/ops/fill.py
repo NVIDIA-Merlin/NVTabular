@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
-from nvtx import annotate
 
-from nvtabular.dispatch import DataFrameType
+from nvtabular.columns import Schema
+from nvtabular.dispatch import DataFrameType, annotate
 
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -45,25 +45,53 @@ class FillMissing(Operator):
         super().__init__()
         self.fill_val = fill_val
         self.add_binary_cols = add_binary_cols
+        self._inference_transform = None
 
     @annotate("FillMissing_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if self.add_binary_cols:
-            for col in columns:
+            for col in col_selector.names:
                 df[f"{col}_filled"] = df[col].isna()
                 df[col] = df[col].fillna(self.fill_val)
         else:
-            df[columns] = df[columns].fillna(self.fill_val)
+            df[col_selector.names] = df[col_selector.names].fillna(self.fill_val)
 
         return df
 
+    def inference_initialize(self, col_selector, inference_config):
+        """load up extra configuration about this op."""
+        if self.add_binary_cols:
+            return None
+        import nvtabular_cpp
+
+        return nvtabular_cpp.inference.FillTransform(self)
+
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
-        output_cols = columns[:]
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
+        if col_selector.tags:
+            tags_col_selector = ColumnSelector(tags=col_selector.tags)
+            filtered_schema = input_schema.apply(tags_col_selector)
+            col_selector += ColumnSelector(filtered_schema.column_names)
+
+            # zero tags because already filtered
+            col_selector._tags = []
+        output_schema = Schema()
+        for column_name in col_selector.names:
+            column_schema = input_schema.column_schemas[column_name]
+            output_schema += Schema([self.transformed_schema(column_schema)])
+            if self.add_binary_cols:
+                column_schema = column_schema.with_name(f"{column_name}_filled")
+                output_schema += Schema([column_schema])
+        return output_schema
+
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
+        output_cols = col_selector.names[:]
         if self.add_binary_cols:
-            output_cols.extend([f"{col}_filled" for col in columns])
-        return output_cols
+            output_cols.extend([f"{col}_filled" for col in col_selector.names])
+        return ColumnSelector(output_cols)
 
 
 class FillMedian(StatOperator):
@@ -88,20 +116,20 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     @annotate("FillMedian_transform", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if not self.medians:
             raise RuntimeError("need to call 'fit' before running transform")
 
-        for col in columns:
+        for col in col_selector.names:
             if self.add_binary_cols:
                 df[f"{col}_filled"] = df[col].isna()
             df[col] = df[col].fillna(self.medians[col])
         return df
 
     @annotate("FillMedian_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         # TODO: Use `method="tidigest"` when crick supports device
-        dask_stats = ddf[columns].quantile(q=0.5, method="dask")
+        dask_stats = ddf[col_selector.names].quantile(q=0.5, method="dask")
         return dask_stats
 
     @annotate("FillMedian_finalize", color="green", domain="nvt_python")
@@ -118,8 +146,20 @@ class FillMedian(StatOperator):
     def clear(self):
         self.medians = {}
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
-        output_cols = columns[:]
+    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
+        output_schema = Schema()
+        for column_name in col_selector.names:
+            column_schema = input_schema.column_schemas[column_name]
+            output_schema += Schema([self.transformed_schema(column_schema)])
+            if self.add_binary_cols:
+                column_schema = column_schema.with_name(f"{column_name}_filled")
+                output_schema += Schema([column_schema])
+        return output_schema
+
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
+        output_cols = col_selector.names[:]
         if self.add_binary_cols:
-            output_cols.extend([f"{col}_filled" for col in columns])
-        return output_cols
+            output_cols.extend([f"{col}_filled" for col in col_selector.names])
+        return ColumnSelector(output_cols)

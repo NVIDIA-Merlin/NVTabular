@@ -6,12 +6,12 @@
 version: '2.3'
 
 volumes:
-  models:
+  model:
 
 services:
   triton:
-    command: "/bin/bash -c 'pip install grpcio-channelz && tritonserver --model-repository=/models/ --model-control-mode=explicit --backend-config=hugectr,supportlonglong=true --backend-config=hugectr,criteo=/models/criteo/1/criteo.json'"
-    image: nvcr.io/nvidia/merlin/merlin-inference:0.5.1
+    command: "/bin/bash -c 'tritonserver --model-repository=/model/ --backend-config=hugectr,ps=/model/ps.json --model-control-mode=explicit'"
+    image: nvcr.io/nvidia/merlin/merlin-inference:0.6
     runtime: nvidia
     shm_size: "1g"
     ulimits:
@@ -22,14 +22,14 @@ services:
       - 8001:8001
       - 8002:8002
     volumes:
-      - models:/models
+      - model:/model
 
   lab:
     runtime: nvidia
-    image: nvcr.io/nvidia/merlin/merlin-training:0.5.1
-    command: "/bin/bash -c 'pip install jupyterlab jupytext pydot nvidia-pyindex tritonclient geventhttpclient && apt-get update && apt-get install -y tree && python -m ipykernel install --user --name=merlin && jupyter notebook --no-browser --allow-root --port=8888 --ip=0.0.0.0 --NotebookApp.token='demotoken' --NotebookApp.allow_origin='*' --notebook-dir=/'"
+    image: nvcr.io/nvidia/merlin/merlin-training:0.6
+    command: "/bin/bash -c 'pip install jupyterlab jupytext pydot nvidia-pyindex tritonclient geventhttpclient && apt-get update && apt-get install -y tree && jupyter notebook --no-browser --allow-root --port=8888 --ip=0.0.0.0 --NotebookApp.token='demotoken' --NotebookApp.allow_origin='*' --notebook-dir=/'"
     volumes:
-      - models:/models
+      - model:/model
       - /raid/:/raid/
     links:
       - triton

@@ -1,10 +1,44 @@
-# NVTabular v0.5.2 (18 May 2021)
+# NVTabular v0.6.1 (11 August 2021)
 
 ## Bug Fixes
 
-* Fix Movielens TF example running on 1080ti [#792](https://github.com/NVIDIA/NVTabular/issues/792)
-* Fix Multihot output from get_embedding_sizes [#808](https://github.com/NVIDIA/NVTabular/pull/808)
-* Fix accelerated training documentation [#791](https://github.com/NVIDIA/NVTabular/pull/791)
+* Fix installing package via pip [#1030](https://github.com/NVIDIA/NVTabular/pull/1030)
+* Fix inference with groupby operator [#1019](https://github.com/NVIDIA/NVTabular/issues/1019)
+* Install tqdm with conda package [#1030](https://github.com/NVIDIA/NVTabular/pull/1030)
+* Fix workflow output_dtypes with empty partitions [#1028](https://github.com/NVIDIA/NVTabular/pull/1028)
+
+# NVTabular v0.6.0 (5 August 2021)
+
+## Improvements
+* Add CPU support [#534](https://github.com/NVIDIA/NVTabular/issues/534)
+* Speed up inference on Triton Inference Server [#744](https://github.com/NVIDIA/NVTabular/issues/744)
+* Add support for session based recommenders [#355](https://github.com/NVIDIA/NVTabular/issues/355)
+* Add PyTorch Dataloader support for Sparse Tensors [#500](https://github.com/NVIDIA/NVTabular/issues/500)
+* Add ListSlice operator for truncating list columns [#734](https://github.com/NVIDIA/NVTabular/issues/734)
+* Categorical ids sorted by frequency [#799](https://github.com/NVIDIA/NVTabular/issues/799)
+* Add ability to select a subset of a ColumnGroup [#809](https://github.com/NVIDIA/NVTabular/issues/809)
+* Add option to use Rename op to give a single column a new fixed name [#825](https://github.com/NVIDIA/NVTabular/issues/824)
+* Add a 'map' function to KerasSequenceLoader, which enables sample weights [#667](https://github.com/NVIDIA/NVTabular/issues/667)
+* Add JoinExternal option on nvt.Dataset in addition to cudf [#370](https://github.com/NVIDIA/NVTabular/issues/370)
+* Allow passing ColumnGroup to get_embedding_sizes [#732](https://github.com/NVIDIA/NVTabular/issues/732)
+* Add ability to name LambdaOp and provide a better default name in graph visualizations [#860](https://github.com/NVIDIA/NVTabular/issues/860)
+
+## Bug Fixes
+
+* Fix make_feature_column_workflow for Categorical columns [#763](https://github.com/NVIDIA/NVTabular/issues/763)
+* Fix Categorify output dtypes for list columns [#963](https://github.com/NVIDIA/NVTabular/issues/963)
+* Fix inference for Outbrain example [#669](https://github.com/NVIDIA/NVTabular/issues/669)
+* Fix dask metadata after calling workflow.to_ddf() [#852](https://github.com/NVIDIA/NVTabular/issues/734)
+* Fix out of memory errors [#896](https://github.com/NVIDIA/NVTabular/issues/896), [#971](https://github.com/NVIDIA/NVTabular/pull/971)
+* Fix normalize output when stdev is zero [#993](https://github.com/NVIDIA/NVTabular/pull/993)
+* Fix using UCX with a dask cluster on Merlin containers [#872](https://github.com/NVIDIA/NVTabular/pull/872)
+
+# NVTabular v0.5.3 (1 June 2021)
+
+## Bug Fixes
+* Fix Shuffling in Torch DataLoader [#818](https://github.com/NVIDIA/NVTabular/pull/818)
+* Fix "Unsupported type_id conversion" in triton inference for string columns [#813](https://github.com/NVIDIA/NVTabular/issues/813)
+* Fix HugeCTR inference backend [Merlin#8](https://github.com/NVIDIA-Merlin/Merlin/pull/8)
 
 # NVTabular v0.5.1 (4 May 2021)
 

@@ -15,10 +15,11 @@
 #
 import enum
 import warnings
+from distutils.version import LooseVersion
 
-import cupy as cp
-import numpy as np
 import pandas as pd
+
+_IGNORE_INDEX_SUPPORTED = pd.__version__ >= LooseVersion("1.3.0")
 
 
 class Shuffle(enum.Enum):
@@ -49,21 +50,17 @@ def _check_shuffle_arg(shuffle):
     return shuffle
 
 
-def _shuffle_df(df, size=None):
+def _shuffle_df(df, size=None, keep_index=False):
     """Shuffles a DataFrame, returning a new dataframe with randomly
     ordered rows"""
     size = size or len(df)
-    # NOTE: We can use np.arange for both gpu and cpu-backed
-    # dataframes once NEP-35 is fully accepted (`like` argument).
-    # This should be available in numpy>=1.20
     if isinstance(df, pd.DataFrame):
-        arr = np.arange(size)
-        np.random.shuffle(arr)
+        if _IGNORE_INDEX_SUPPORTED:
+            return df.sample(n=size, ignore_index=not keep_index)
+        else:
+            # Pandas<1.3.0
+            if keep_index:
+                return df.sample(n=size)
+            return df.sample(n=size).reset_index(drop=True)
     else:
-        arr = cp.arange(size)
-        # Note that np.random.shuffle "should" Work for both gpu
-        # and cpu (via NEP-18), but it seems the cupy API is
-        # still needed here for correct behavior.  (Probably related
-        # to https://github.com/cupy/cupy/issues/2824)
-        cp.random.shuffle(arr)
-    return df.iloc[arr]
+        return df.sample(n=size, keep_index=keep_index)

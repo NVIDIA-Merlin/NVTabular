@@ -101,6 +101,7 @@ EMBEDDING_TABLE_SHAPES_TUPLE = (
     },
     {CATEGORICAL_MH_COLUMNS[0]: EMBEDDING_TABLE_SHAPES[CATEGORICAL_MH_COLUMNS[0]]},
 )
+
 model = Model(
     embedding_table_shapes=EMBEDDING_TABLE_SHAPES_TUPLE,
     num_continuous=0,
@@ -121,7 +122,12 @@ optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_par
 for epoch in range(args.epochs):
     start = time()
     print(f"Training epoch {epoch}")
-    train_loss, y_pred, y = process_epoch(train_loader, model, train=True, optimizer=optimizer)
+    train_loss, y_pred, y = process_epoch(
+        train_loader,
+        model,
+        train=True,
+        optimizer=optimizer,
+    )
     hvd.join(gpu_to_use)
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
     print(f"Epoch {epoch:02d}. Train loss: {train_loss:.4f}.")

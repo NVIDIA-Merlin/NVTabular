@@ -26,7 +26,11 @@ converting all the parquet files. If the schema is inconsistent across all files
 raise an exception. For additional information, see [this
 issue](https://github.com/NVIDIA/NVTabular/issues/429).
 
-## Setting the Row Group Size for the Parquet Files
+## Reducing Memory Consumption for NVTabular Workflows
+
+NVTabular is designed to scale to larger than GPU or host memory datasets. In our experiments, we are able to [scale to 1.3TB of uncompressed click logs](https://github.com/NVIDIA/NVTabular/tree/main/examples/scaling-criteo). However, some workflows can result in OOM errors `cudaErrorMemoryAllocation out of memory`, which can be addressed by small configuration changes.
+
+### 1. Setting the Row Group Size for the Parquet Files
 
 You can use most Data Frame frameworks to set the row group size (number of rows) for your parquet files. In the following Pandas and cuDF examples, the ```row_group_size``` is the number of rows that will be stored in each row group (internal structure within the parquet file):
 ```python
@@ -55,3 +59,37 @@ def _memory_usage(df):
     size += df.index.memory_usage(deep=True)
     return size
 ```
+
+### 2. Initializing a Dask CUDA Cluster
+
+Even if you only have a single GPU to work with, it is best practice to use a distributed Dask-CUDA cluster to execute memory-intensive NVTabular workflows. If there is no distributed `client` object passed to an NVTabular `Workflow`, it will fall back on Dask’s single-threaded “synchronous” scheduler at computation time. The primary advantage of using a Dask-CUDA cluster is that the Dask-CUDA workers enable GPU-aware memory spilling.  In our experience, many OOM errors can be resolved by initializing a dask-CUDA cluster with an appropriate `device_memory_limit` setting, and by passing a corresponding client to NVTabular.  It is easy to deploy a single-machine dask-CUDA cluster using `LocalCUDACluster`.
+
+```python
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
+
+import nvtabular as nvt
+
+cluster = LocalCUDACluster(
+    n_workers=1,                        # Number of GPU workers
+    device_memory_limit="24GB",         # GPU->CPU spill threshold (~75% of GPU memory)
+    rmm_pool_size="28GB",               # Memory pool size on each worker
+    local_directory="/nvme/scratch/",   # Fast directory for disk spilling
+)
+client = Client(cluster)
+
+features = ['col'] >> nvt.ops.Normalize()
+
+workflow = nvt.Workflow(features, client=client)
+
+client.shutdown()
+client.close()
+```
+
+###  3. String Column Error
+
+If you run into a problem an error that states the size of your string column is too large, like:
+```
+Exception: RuntimeError('cuDF failure at: /opt/conda/envs/rapids/conda-bld/libcudf_1618503955512/work/cpp/src/copying/concatenate.cu:368: Total number of concatenated rows exceeds size_type range')
+```
+This is usually caused by string columns in parquet files. If you encounter this error, to fix it you need to decrease the size of the partitions of your dataset. If, after decreasing the size of the partitions, you get a warning about picking a partition size smaller than the row group size, you will need to reformat the dataset with a smaller row group size (refer to #1). There is a 2GB max size for concatenated string columns in cudf currently, for details refer to [this](https://github.com/rapidsai/cudf/issues/3958).   

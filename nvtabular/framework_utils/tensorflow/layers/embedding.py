@@ -99,25 +99,10 @@ def _validate_stack_dimensions(feature_columns):
 
 def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
     # check for sparse embeddings by name
-    if feature_name + "__values" in inputs:
-        if feature_name in inputs:
-            raise ValueError(
-                "Feature {} has both a dense entry and a sparse entry "
-                "with __values postfix in input dict. If {}__values "
-                "is another dense feature, please rename your features"
-                "as this syntax is reserved for identifying multi-valent"
-                "categorical variables".format(feature_name, feature_name)
-            )
-        if feature_name + "__nnzs" not in inputs:
-            raise ValueError(
-                "Feature {} had __values entry in input dictionary, "
-                "but no __nnzs entry. Make sure all the relevant data "
-                "is being passed".format(feature_name)
-            )
-
-        # build values and nnz tensors into ragged array, convert to sparse
-        values = inputs[feature_name + "__values"][:, 0]
-        row_lengths = inputs[feature_name + "__nnzs"][:, 0]
+    # build values and nnz tensors into ragged array, convert to sparse
+    if isinstance(inputs[feature_name], tuple):
+        values = inputs[feature_name][0][:, 0]
+        row_lengths = inputs[feature_name][1][:, 0]
         x = tf.RaggedTensor.from_row_lengths(values, row_lengths).to_sparse()
 
         # use ragged array for sparse embedding lookup.
@@ -132,7 +117,9 @@ def _categorical_embedding_lookup(table, inputs, feature_name, combiner):
 
 def _handle_continuous_feature(inputs, feature_column):
     if feature_column.shape[0] > 1:
-        x = inputs[feature_column.name + "__values"]
+        x = inputs[feature_column.name]
+        if isinstance(x, tuple):
+            x = x[0]
         return tf.reshape(x, (-1, feature_column.shape[0]))
     return inputs[feature_column.name]
 
@@ -198,8 +185,8 @@ class DenseFeatures(tf.keras.layers.Layer):
         super(DenseFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
-        assert all(shape[1] == 1 for shape in input_shapes.values())
-
+        assert all(shape[1] == 1 for shape in input_shapes.values() if not isinstance(shape, tuple))
+        assert all(shape[0][1] == 1 for shape in input_shapes.values() if isinstance(shape, tuple))
         self.embedding_tables = {}
         for feature_column in self.feature_columns:
             if isinstance(feature_column, fc.NumericColumn):
@@ -324,8 +311,8 @@ class LinearFeatures(tf.keras.layers.Layer):
         super(LinearFeatures, self).__init__(name=name, **kwargs)
 
     def build(self, input_shapes):
-        assert all(shape[1] == 1 for shape in input_shapes.values())
-
+        assert all(shape[1] == 1 for shape in input_shapes.values() if not isinstance(shape, tuple))
+        assert all(shape[0][1] == 1 for shape in input_shapes.values() if isinstance(shape, tuple))
         # TODO: I've tried combining all the categorical tables
         # into a single giant lookup op, but it ends up turning
         # out the adding the offsets to lookup indices at call

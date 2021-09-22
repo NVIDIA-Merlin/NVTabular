@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import column_group, io, workflow  # noqa
+from . import columns, io, workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -24,12 +24,30 @@ warnings.filterwarnings("ignore", module="cudf.io.dlpack")
 warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 
 
-ColumnGroup = column_group.ColumnGroup
+WorkflowNode = workflow.WorkflowNode
+ColumnSelector = columns.selector.ColumnSelector
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
+ColumnSchema = columns.schema.ColumnSchema
+Schema = columns.schema.Schema
 
 
-__all__ = ["Workflow", "Dataset", "ColumnGroup"]
+# Provides an alias of ColumnSelector so that old usages of ColumnGroup to
+# select columns at the beginning of an operator chain don't break
+def ColumnGroup(columns):
+    warnings.warn("ColumnGroup is deprecated, use ColumnSelector instead", DeprecationWarning)
+    return ColumnSelector(columns)
+
+
+__all__ = [
+    "Workflow",
+    "Dataset",
+    "WorkflowNode",
+    "ColumnGroup",
+    "ColumnSelector",
+    "ColumnSchema",
+    "Schema",
+]
 
 # cudf warns about column ordering with dlpack methods, ignore it
 warnings.filterwarnings("ignore", module="cudf.io.dlpack")

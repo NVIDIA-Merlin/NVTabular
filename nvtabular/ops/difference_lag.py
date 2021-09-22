@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-from nvtx import annotate
+import numpy
 
-from .operator import ColumnNames, Operator
+from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
+
+from ..tags import Tags
+from .operator import ColumnSelector, Operator
 
 
 class DifferenceLag(Operator):
@@ -58,27 +60,35 @@ class DifferenceLag(Operator):
         self.shifts = [shift] if isinstance(shift, int) else shift
 
     @annotate("DifferenceLag_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         # compute a mask indicating partition boundaries, handling multiple partition_cols
         # represent partition boundaries by None values
         output = {}
         for shift in self.shifts:
-            mask = gdf[self.partition_cols] == gdf[self.partition_cols].shift(shift)
-            if isinstance(mask, cudf.DataFrame):
+            mask = df[self.partition_cols] == df[self.partition_cols].shift(shift)
+            if _is_dataframe_object(mask):
                 mask = mask.fillna(False).all(axis=1)
             mask[mask == False] = None  # noqa pylint: disable=singleton-comparison
 
-            for col in columns:
-                output[self._column_name(col, shift)] = (gdf[col] - gdf[col].shift(shift)) * mask
-        return cudf.DataFrame(output)
+            for col in col_selector.names:
+                output[self._column_name(col, shift)] = (df[col] - df[col].shift(shift)) * mask
+        return type(df)(output)
 
     transform.__doc__ = Operator.transform.__doc__
 
     def dependencies(self):
         return self.partition_cols
 
-    def output_column_names(self, columns: ColumnNames) -> ColumnNames:
-        return [self._column_name(col, shift) for shift in self.shifts for col in columns]
+    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
+        return ColumnSelector(
+            [self._column_name(col, shift) for shift in self.shifts for col in col_selector.names]
+        )
 
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _dtype(self):
+        return numpy.float

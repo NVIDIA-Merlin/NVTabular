@@ -14,36 +14,35 @@
 # limitations under the License.
 #
 
-import itertools
-import json
 import os
-import shutil
-import subprocess
-import sys
 from os.path import dirname, realpath
 
 import pytest
-from benchmark_parsers import send_results
-from criteo_parsers import CriteoBenchFastAI, CriteoBenchHugeCTR
-from rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
+from common.parsers.benchmark_parsers import send_results
+from common.parsers.criteo_parsers import CriteoBenchFastAI, CriteoBenchHugeCTR
+from common.parsers.rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
+from common.utils import _run_notebook
 
+DATA_DIR = os.environ.get("DATASET_DIR", "/raid/data/")
 TEST_PATH = dirname(dirname(realpath(__file__)))
-DATA_START = os.environ.get("DATASET_DIR", "/raid/data/")
 
 INFERENCE_BASE_DIR = "/model/"
 INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 
+CRITEO_DIR = "examples/scaling-criteo"
+ROSSMAN_DIR = "examples/tabular-data-rossmann"
+MOVIELENS_DIR = "examples/getting-started-movielens"
 
-def test_criteo_example(asv_db, bench_info, tmpdir):
-    input_path = os.path.join(DATA_START, "tests/crit_int_pq")
-    output_path = os.path.join(DATA_START, "tests/crit_test")
 
-    notebook_etl = os.path.join(
-        dirname(TEST_PATH), "examples/scaling-criteo", "02-ETL-with-NVTabular.ipynb"
-    )
+def test_criteo(asv_db, bench_info, tmpdir):
+    input_path = os.path.join(DATA_DIR, "tests/crit_int_pq")
+    output_path = os.path.join(DATA_DIR, "tests/crit_test")
+
+    # Run ETL for all containerss
+    notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "02-ETL-with-NVTabular.ipynb")
     out = _run_notebook(
         tmpdir,
-        notebook_etl,
+        notebook,
         input_path,
         output_path,
         gpu_id="0",
@@ -52,111 +51,98 @@ def test_criteo_example(asv_db, bench_info, tmpdir):
         main_block=39,
     )
 
-    # Only run if PyTorch installed
+    # Run training for PyTorch container
     try:
+        notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "03-Training-with-FastAI.ipynb")
         import torch
 
         print(torch.__version__)
-
-        notebook_pytorch = os.path.join(
-            dirname(TEST_PATH), "examples/scaling-criteo", "03d-Training-with-FastAI.ipynb"
-        )
-
-        out = _run_notebook(
-            tmpdir, notebook_pytorch, input_path, output_path, gpu_id="0", clean_up=False
-        )
-
+        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
         bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
         bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
-        print("Pytorch not installed in this container, skipping 03d-Training-with-FastAI.ipynb")
+        print("Pytorch not installed, skipping " + notebook)
 
-    # Only run if HugeCTR installed
+    # Run training for HugeCTR container
     try:
+        notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "03-Training-with-HugeCTR.ipynb")
         import hugectr
 
         print(hugectr.__version__)
-
-        notebook_hugectr = os.path.join(
-            dirname(TEST_PATH), "examples/scaling-criteo", "03c-Training-with-HugeCTR.ipynb"
-        )
-
-        out = _run_notebook(
-            tmpdir, notebook_hugectr, input_path, output_path, gpu_id="0", clean_up=False
-        )
-
+        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
         bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
         bench_results += CriteoBenchHugeCTR().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
-        print("HugeCTR not installed in this container, skipping 03c-Training-with-HugeCTR.ipynb")
+        print("HugeCTR not installed, skipping " + notebook)
 
-
-def test_rossman_example(asv_db, bench_info, tmpdir):
-    data_path = os.path.join(DATA_START, "rossman/data")
-    input_path = os.path.join(DATA_START, "rossman/input")
-    output_path = os.path.join(DATA_START, "rossman/output")
-
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/tabular-data-rossmann", "01-Download-Convert.ipynb"
-    )
-
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="4", clean_up=False)
-
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/tabular-data-rossmann", "02-ETL-with-NVTabular.ipynb"
-    )
-
-    out = _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="4", clean_up=False)
-
-    # Only run if PyTorch installed
+    # Run training for TensorFlow container
     try:
+        notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "03-Training-with-TF.ipynb")
+        import tensorflow
+
+        print(tensorflow.__version__)
+        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
+    except ImportError:
+        print("Tensorflow not installed, skipping " + notebook)
+
+
+def test_rossman(asv_db, bench_info, tmpdir, devices):
+    data_path = os.path.join(DATA_DIR, "rossman/data")
+    input_path = os.path.join(DATA_DIR, "rossman/input")
+    output_path = os.path.join(DATA_DIR, "rossman/output")
+
+    # Run Donwload & Convert for all
+    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "01-Download-Convert.ipynb")
+    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+
+    # Run ETL for all
+    notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "02-ETL-with-NVTabular.ipynb")
+    out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+
+    os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
+
+    # Run training for PyTorch container
+    try:
+        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-FastAI.ipynb")
         import torch
 
         print(torch.__version__)
-
-        notebookex_path = os.path.join(
-            dirname(TEST_PATH), "examples/tabular-data-rossmann", "04-Training-with-FastAI.ipynb"
+        out = _run_notebook(
+            tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False
         )
-        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
         bench_results = RossBenchFastAI().get_epochs(out.splitlines())
         bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
 
-        notebookex_path = os.path.join(
-            dirname(TEST_PATH), "examples/tabular-data-rossmann", "03b-Training-with-PyTorch.ipynb"
-        )
-        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
+        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
+        out = _run_notebook(tmpdir, notebook, input_path, input_path, gpu_id=devices)
         bench_results = RossBenchPytorch().get_epochs(out.splitlines())
         bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
-
     except ImportError:
-        print("Pytorch not installed in this container, skipping tests")
+        print("PyTorch not installed, skipping " + notebook)
 
-    # Only run if TensorFlow installed
+    # Run training for TensorFlow container
     try:
+        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-TF.ipynb")
         import tensorflow
 
         print(tensorflow.__version__)
-
-        notebookex_path = os.path.join(
-            dirname(TEST_PATH), "examples/tabular-data-rossmann", "03a-Training-with-TF.ipynb"
+        out = _run_notebook(
+            tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False
         )
-        out = _run_notebook(tmpdir, notebookex_path, input_path, output_path, gpu_id="4")
         bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
         bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
-        print("TensorFlow not installed in this container, skipping 03a-Training-with-TF.ipynb")
+        print("Tensorflow not installed, skipping " + notebook)
 
 
-def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
-    # Tensorflow required to run this test
-    pytest.importorskip("tensorflow")
-    data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
+def test_movielens(asv_db, bench_info, tmpdir, devices):
+    data_path = os.path.join(DATA_DIR, "movielens/data")
+    input_path = os.path.join(DATA_DIR, "movielens/input")
 
     os.environ["BASE_DIR"] = INFERENCE_BASE_DIR
     os.environ["MODEL_NAME_NVT"] = "movielens_nvt"
@@ -165,105 +151,59 @@ def test_tf_inference_training_examples(asv_db, bench_info, tmpdir):
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
     os.environ["MODEL_PATH"] = INFERENCE_MULTI_HOT
 
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/getting-started-movielens", "01-Download-Convert.ipynb"
-    )
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    # Run Tensorflow or PyTorch
+    # Run Download & Convert for all
+    notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "01-Download-Convert.ipynb")
+    _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/getting-started-movielens", "02-ETL-with-NVTabular.ipynb"
-    )
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    # Run ETL for all
+    notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "02-ETL-with-NVTabular.ipynb")
+    _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH), "examples/getting-started-movielens", "03a-Training-with-TF.ipynb"
-    )
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=False)
+    # Run training for PyTorch container
+    try:
+        notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "03-Training-with-PyTorch.ipynb")
+        import torch
+
+        print(torch.__version__)
+        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+    except ImportError:
+        print("Pytorch not installed, skipping " + notebook)
+
+    # Run training for TensorFlow container
+    try:
+        notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "03-Training-with-TF.ipynb")
+        import tensorflow
+
+        print(tensorflow.__version__)
+        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+    except ImportError:
+        print("Tensorflow not installed, skipping " + notebook)
 
 
-def test_tf_inference_multihot_examples(asv_db, bench_info, tmpdir):
+def test_inference(asv_db, bench_info, tmpdir, devices):
     # Tritonclient required for this test
     pytest.importorskip("tritonclient")
-
-    data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
+    # data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
     input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
+    output_path = os.path.join(INFERENCE_BASE_DIR, "data/output")
 
     os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
 
-    notebookpre_path = os.path.join(
-        dirname(TEST_PATH),
-        "examples/getting-started-movielens",
-        "04a-Triton-Inference-with-TF.ipynb",
+    # Run Criteo inference
+    notebook = os.path.join(
+        dirname(TEST_PATH), CRITEO_DIR, "04-Triton-Inference-with-HugeCTR.ipynb"
     )
+    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)
 
-    _run_notebook(tmpdir, notebookpre_path, data_path, input_path, gpu_id="0", clean_up=True)
+    notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "04-Triton-Inference-with-TF.ipynb")
+    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)
 
+    # Run Movielens inference
+    notebook = os.path.join(
+        dirname(TEST_PATH), MOVIELENS_DIR, "inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb"
+    )
+    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)
 
-def _run_notebook(
-    tmpdir,
-    notebook_path,
-    input_path,
-    output_path,
-    batch_size=None,
-    gpu_id=0,
-    clean_up=True,
-    transform=None,
-    params=[],
-    main_block=-1,
-):
-    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("GPU_TARGET_ID", gpu_id)
-
-    if not os.path.exists(input_path):
-        os.makedirs(input_path)
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    if batch_size:
-        os.environ["BATCH_SIZE"] = os.environ.get("BATCH_SIZE", batch_size)
-
-    os.environ["INPUT_DATA_DIR"] = input_path
-    os.environ["OUTPUT_DATA_DIR"] = output_path
-    # read in the notebook as JSON, and extract a python script from it
-    notebook = json.load(open(notebook_path))
-    source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
-
-    lines = [
-        transform(line.rstrip()) if transform else line
-        for line in itertools.chain(*source_cells)
-        if not (line.startswith("%") or line.startswith("!"))
-    ]
-
-    # Replace config parms
-    if params:
-
-        def transform(line):
-            line = line.replace("device_limit_frac = 0.7", "device_limit_frac = " + str(params[0]))
-            line = line.replace("device_pool_frac = 0.8", "device_pool_frac = " + str(params[1]))
-            return line.replace("part_mem_frac = 0.15", "part_mem_frac = " + str(params[2]))
-
-        lines = [transform(line) for line in lines]
-
-    # Add guarding block and indentation
-    if main_block >= 0:
-        lines.insert(main_block, 'if __name__ == "__main__":')
-        for i in range(main_block + 1, len(lines)):
-            lines[i] = "    " + lines[i]
-
-    # save the script to a file, and run with the current python executable
-    # we're doing this in a subprocess to avoid some issues using 'exec'
-    # that were causing a segfault with globals of the exec'ed function going
-    # out of scope
-    script_path = os.path.join(tmpdir, "notebook.py")
-    with open(script_path, "w") as script:
-        script.write("\n".join(lines))
-    output = subprocess.check_output([sys.executable, script_path])
-    # save location will default to run location
-    output = output.decode("utf-8")
-    _, note_name = os.path.split(notebook_path)
-    note_name = note_name.split(".")[0]
-    if output:
-        with open(f"test_res_{note_name}", "w+") as w_file:
-            w_file.write(output)
-    # clear out products
-    if clean_up:
-        shutil.rmtree(output_path)
-    return output
+    notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "04-Triton-Inference-with-TF.ipynb")
+    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)

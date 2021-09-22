@@ -15,13 +15,12 @@
 #
 from typing import Dict, Union
 
-import cudf
-from cudf.utils.dtypes import is_list_dtype
-from nvtx import annotate
+import numpy
 
-from ..dispatch import _encode_list_column
+from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
+from ..tags import Tags
 from .categorify import _emb_sz_rule, _get_embedding_order
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator
 
 
 class HashBucket(Operator):
@@ -78,18 +77,19 @@ class HashBucket(Operator):
         super(HashBucket, self).__init__()
 
     @annotate("HashBucket_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         if isinstance(self.num_buckets, int):
-            num_buckets = {name: self.num_buckets for name in columns}
+            num_buckets = {name: self.num_buckets for name in col_selector.names}
         else:
             num_buckets = self.num_buckets
 
         for col, nb in num_buckets.items():
-            if is_list_dtype(gdf[col].dtype):
-                gdf[col] = _encode_list_column(gdf[col], gdf[col].list.leaves.hash_values() % nb)
+            if _is_list_dtype(df[col].dtype):
+                df[col] = _encode_list_column(df[col], _hash_series(df[col]) % nb)
             else:
-                gdf[col] = gdf[col].hash_values() % nb
-        return gdf
+                df[col] = _hash_series(df[col]) % nb
+
+        return df
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -100,3 +100,19 @@ class HashBucket(Operator):
             return {col: embedding_size for col in columns}
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
+
+    def _add_properties(self, column_schema):
+        cardinality, dimensions = self.get_embedding_sizes([column_schema.name])[column_schema.name]
+        if cardinality and dimensions:
+            to_add = {
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
+            }
+            column_schema = column_schema.with_properties(to_add)
+        return column_schema
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64

@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import dask.dataframe as dd
-from nvtx import annotate
+import numpy
 
-from ..dispatch import DataFrameType
+from ..dispatch import DataFrameType, annotate
+from ..tags import Tags
 from .moments import _custom_moments
-from .operator import ColumnNames, Operator
+from .operator import ColumnSelector, Operator, Supports
 from .stat_operator import StatOperator
 
 
@@ -46,8 +46,8 @@ class Normalize(StatOperator):
         self.stds = {}
 
     @annotate("Normalize_fit", color="green", domain="nvt_python")
-    def fit(self, columns: ColumnNames, ddf: dd.DataFrame):
-        return _custom_moments(ddf[columns])
+    def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
+        return _custom_moments(ddf[col_selector.names])
 
     def fit_finalize(self, dask_stats):
         for col in dask_stats.index:
@@ -55,17 +55,34 @@ class Normalize(StatOperator):
             self.stds[col] = float(dask_stats["std"].loc[col])
 
     @annotate("Normalize_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, df: DataFrameType) -> DataFrameType:
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
-        for name in columns:
+        for name in col_selector.names:
             if self.stds[name] > 0:
                 new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
-                new_df[name] = new_df[name].astype("float32")
+            else:
+                new_df[name] = df[name] - self.means[name]
+            new_df[name] = new_df[name].astype("float32")
         return new_df
+
+    @property
+    def supports(self):
+        return (
+            Supports.CPU_DICT_ARRAY
+            | Supports.GPU_DICT_ARRAY
+            | Supports.CPU_DATAFRAME
+            | Supports.GPU_DATAFRAME
+        )
 
     def clear(self):
         self.means = {}
         self.stds = {}
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -90,11 +107,11 @@ class NormalizeMinMax(StatOperator):
         self.maxs = {}
 
     @annotate("NormalizeMinMax_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns, df: DataFrameType):
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType):
         # TODO: should we clip values if they are out of bounds (below 0 or 1)
         # (could happen in validation dataset if datapoint)
         new_df = type(df)()
-        for name in columns:
+        for name in col_selector.names:
             dif = self.maxs[name] - self.mins[name]
             if dif > 0:
                 new_df[name] = (df[name] - self.mins[name]) / dif
@@ -106,10 +123,10 @@ class NormalizeMinMax(StatOperator):
     transform.__doc__ = Operator.transform.__doc__
 
     @annotate("NormalizeMinMax_fit", color="green", domain="nvt_python")
-    def fit(self, columns, ddf):
+    def fit(self, col_selector: ColumnSelector, ddf):
         return {
-            "mins": ddf[columns].min(),
-            "maxs": ddf[columns].max(),
+            "mins": ddf[col_selector.names].min(),
+            "maxs": ddf[col_selector.names].max(),
         }
 
     @annotate("NormalizeMinMax_finalize", color="green", domain="nvt_python")
@@ -123,6 +140,21 @@ class NormalizeMinMax(StatOperator):
     def clear(self):
         self.mins = {}
         self.maxs = {}
+
+    @property
+    def supports(self):
+        return (
+            Supports.CPU_DICT_ARRAY
+            | Supports.GPU_DICT_ARRAY
+            | Supports.CPU_DATAFRAME
+            | Supports.GPU_DATAFRAME
+        )
+
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    def _get_dtypes(self):
+        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

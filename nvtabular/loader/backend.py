@@ -19,12 +19,12 @@ import threading
 import warnings
 from collections import OrderedDict
 
-import cudf
 import cupy as cp
-from cudf.utils.dtypes import is_list_dtype
 
+from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
+from nvtabular.tags import Tags
 
 
 def _num_steps(num_samples, step_size):
@@ -104,37 +104,42 @@ class ChunkQueue:
                 yield current
                 current = []
 
+    def chunk_logic(self, itr):
+        spill = None
+        for chunks in self.batch(itr):
+            if self.stopped:
+                return
+
+            if spill and not spill.empty:
+                chunks.insert(0, spill)
+
+            chunks = _concat(chunks)
+            chunks.reset_index(drop=True, inplace=True)
+            chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
+            if self.shuffle:
+                chunks = _shuffle_df(chunks)
+
+            if len(chunks) > 0:
+                chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
+                # put returns True if buffer is stopped before
+                # packet can be put in queue. Keeps us from
+                # freezing on a put on a full queue
+                if self.put(chunks):
+                    return
+            chunks = None
+        # takes care final batch, which is less than batch size
+        if not self.dataloader.drop_last and spill is not None and not spill.empty:
+            spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
+            self.put(spill)
+
     def load_chunks(self, dev):
         try:
             itr = iter(self.itr)
-            with self.dataloader._get_device_ctx(dev):
-                spill = None
-                for chunks in self.batch(itr):
-                    if self.stopped:
-                        return
-
-                    if spill and not spill.empty:
-                        chunks.insert(0, spill)
-
-                    chunks = cudf.core.reshape.concat(chunks)
-                    chunks.reset_index(drop=True, inplace=True)
-                    chunks, spill = self.get_batch_div_chunk(chunks, self.dataloader.batch_size)
-                    if self.shuffle:
-                        chunks = _shuffle_df(chunks)
-
-                    if len(chunks) > 0:
-                        chunks = self.dataloader.make_tensors(chunks, self.dataloader._use_nnz)
-                        # put returns True if buffer is stopped before
-                        # packet can be put in queue. Keeps us from
-                        # freezing on a put on a full queue
-                        if self.put(chunks):
-                            return
-                    chunks = None
-
-                # takes care final batch, which is less than batch size
-                if not self.dataloader.drop_last and spill is not None and not spill.empty:
-                    spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
-                    self.put(spill)
+            if self.dataloader.device != "cpu":
+                with self.dataloader._get_device_ctx(dev):
+                    self.chunk_logic(itr)
+            else:
+                self.chunk_logic(itr)
         except Exception as e:  # pylint: disable=broad-except
             self.put(e)
 
@@ -152,8 +157,8 @@ class ChunkQueue:
     def get_batch_div_chunk(self, chunks, batch_size):
         # TODO: is there a way to do this using cupy?
         spill_idx = int(chunks.shape[0] / batch_size) * batch_size
-        spill = cudf.DataFrame(chunks.iloc[spill_idx:])
-        chunks = cudf.DataFrame(chunks.iloc[:spill_idx])
+        spill = _make_df(chunks.iloc[spill_idx:])
+        chunks = _make_df(chunks.iloc[:spill_idx])
         if not chunks.empty:
             chunks.reset_index(drop=True, inplace=True)
         if not spill.empty:
@@ -169,29 +174,42 @@ class DataLoader:
     def __init__(
         self,
         dataset,
-        cat_names,
-        cont_names,
-        label_names,
         batch_size,
         shuffle,
+        cat_names=None,
+        cont_names=None,
+        label_names=None,
         seed_fn=None,
         parts_per_chunk=1,
         device=None,
         global_size=None,
         global_rank=None,
         drop_last=False,
+        sparse_names=None,
+        sparse_max=None,
+        sparse_as_dense=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         self.drop_last = drop_last
         self.device = device or 0
-
+        self.sparse_names = sparse_names or []
+        self.sparse_max = sparse_max or {}
+        self.sparse_as_dense = sparse_as_dense
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 
-        self.cat_names = cat_names or []
-        self.cont_names = cont_names or []
-        self.label_names = label_names
+        self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
+        self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
+        self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGETS).column_names
+
+        if not self.cat_names and not self.cont_names:
+            raise ValueError(
+                "Neither Categorical or Continuous columns were found by the dataloader. "
+                "You must either specify the cat_names, cont_names and "
+                "label_names properties or supply a schema.pbtxt file in dataset directory."
+            )
+
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.seed_fn = seed_fn
@@ -424,6 +442,22 @@ class DataLoader:
         idx.append(num_samples - num_full_batches * self.batch_size)
         return idx
 
+    def _to_sparse_tensor(self, values_offset, column_name):
+        """
+        Create a sparse representation of the input tensor.
+        values_offset is either a tensor or a tuple of tensor, offset.
+        """
+        seq_limit = self.sparse_max[column_name]
+        values, offsets, diff_offsets, num_rows = self._pull_values_offsets(values_offset)
+        max_seq_len = self._get_max_seq_len(diff_offsets)
+        if max_seq_len > seq_limit:
+            raise ValueError(
+                "The default sequence length has been configured "
+                + f"to {seq_limit} but the "
+                + f"largest sequence in this batch have {max_seq_len} length"
+            )
+        return self._build_sparse_tensor(values, offsets, diff_offsets, num_rows, seq_limit)
+
     def _to_tensor(self, gdf, dtype=None):
         """
         One of the mandatory functions a child class needs
@@ -455,7 +489,7 @@ class DataLoader:
     def _separate_list_columns(self, gdf):
         lists, scalars = [], []
         for col in gdf.columns:
-            if is_list_dtype(gdf[col]):
+            if _is_list_dtype(gdf[col]):
                 lists.append(col)
             else:
                 scalars.append(col)
@@ -467,11 +501,11 @@ class DataLoader:
         categorical, continuous, and label tensors.
         Can be overrideen
         """
-        column_groups = (self.cat_names, self.cont_names, self.label_names)
+        workflow_nodes = (self.cat_names, self.cont_names, self.label_names)
         dtypes = (self._LONG_DTYPE, self._FLOAT32_DTYPE, self._FLOAT32_DTYPE)
         tensors = []
-        offsets = cudf.DataFrame()
-        for column_names, dtype in zip(column_groups, dtypes):
+        offsets = _make_df(device=self.device)
+        for column_names, dtype in zip(workflow_nodes, dtypes):
             if len(column_names) == 0:
                 tensors.append(None)
                 continue
@@ -480,17 +514,17 @@ class DataLoader:
             gdf.drop(columns=column_names, inplace=True)
 
             scalars, lists = self._separate_list_columns(gdf_i)
+
             x = None
             if scalars:
+                # should always return dict column_name: values, offsets (optional)
                 x = self._to_tensor(gdf_i[scalars], dtype)
             if lists:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-                    leaves = column.list.leaves
+                    leaves, offsets[column_name] = _pull_apart_list(column)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
-
-                    offsets[column_name] = column._column.offsets
                 x = x, list_tensors
             tensors.append(x)
 
@@ -504,4 +538,31 @@ class DataLoader:
         return tensors
 
     def _handle_tensors(self, cats, conts, labels):
-        return cats, conts, labels
+        X = {}
+        for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
+            lists = {}
+            if isinstance(tensor, tuple):
+                tensor, lists = tensor
+            names = [i for i in names if i not in lists]
+
+            # now add in any scalar tensors
+            if len(names) > 1:
+                tensors = self._tensor_split(tensor, len(names), axis=1)
+                lists.update(zip(names, tensors))
+            elif len(names) == 1:
+                lists[names[0]] = tensor
+            X.update(lists)
+
+        for column_name in X:
+            if column_name in self.sparse_names:
+                if column_name not in self.sparse_max:
+                    raise ValueError(
+                        f"Did not convert {column_name} to sparse due to missing sparse_max entry"
+                    )
+                X[column_name] = self._to_sparse_tensor(X[column_name], column_name)
+
+        # TODO: use dict for labels as well?
+        # would require output layers to match naming
+        if len(self.label_names) > 1:
+            labels = self._tensor_split(labels, len(self.label_names), axis=1)
+        return X, labels

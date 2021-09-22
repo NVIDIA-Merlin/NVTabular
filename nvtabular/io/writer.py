@@ -19,10 +19,15 @@ import queue
 import threading
 from typing import Optional
 
-import cupy as cp
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
 import numpy as np
 from fsspec.core import get_fs_token_paths
-from nvtx import annotate
+
+from nvtabular.dispatch import annotate
 
 from .shuffle import _shuffle_df
 
@@ -124,6 +129,11 @@ class ThreadedWriter(Writer):
 
     @annotate("add_data", color="orange", domain="nvt_python")
     def add_data(self, df):
+
+        # Early return
+        if isinstance(df, list) and not df:
+            return
+
         # Populate columns idxs
         if not self.col_idx:
             _df = df[0] if isinstance(df, list) else df
@@ -172,6 +182,8 @@ class ThreadedWriter(Writer):
             gdf.scatter_by_map(ind, map_size=self.num_out_files, keep_index=False)
         ):
             self.num_samples[x] += len(group)
+            if self.shuffle:
+                group = _shuffle_df(group)
             if self.num_threads > 1:
                 self.queue.put((x, group))
             else:

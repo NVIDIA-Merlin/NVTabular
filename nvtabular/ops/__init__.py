@@ -16,6 +16,7 @@
 
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
+from .add_metadata import AddMetadata
 from .bucketize import Bucketize
 from .categorify import Categorify, _get_embedding_order, get_embedding_sizes
 from .clip import Clip
@@ -33,7 +34,7 @@ from .lambdaop import LambdaOp
 from .list_slice import ListSlice
 from .logop import LogOp
 from .normalize import Normalize, NormalizeMinMax
-from .operator import Operator
+from .operator import ColumnSelector, Operator
 from .rename import Rename
 from .stat_operator import StatOperator
 from .target_encoding import TargetEncoding

@@ -71,3 +71,5 @@ ipython_config.py
 .dmypy.json
 dmypy.json
 
+# PyCharm
+.idea

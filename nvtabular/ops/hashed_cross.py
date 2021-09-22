@@ -15,10 +15,12 @@
 
 from typing import Dict, Union
 
-import cudf
-from nvtx import annotate
+import numpy
 
-from .operator import ColumnNames, Operator
+from nvtabular.dispatch import DataFrameType, _hash_series, annotate
+
+from ..tags import Tags
+from .operator import ColumnSelector, Operator
 
 
 class HashedCross(Operator):
@@ -53,28 +55,36 @@ class HashedCross(Operator):
         self.num_buckets = num_buckets
 
     @annotate("HashedCross_op", color="darkgreen", domain="nvt_python")
-    def transform(self, columns: ColumnNames, gdf: cudf.DataFrame) -> cudf.DataFrame:
-        new_gdf = cudf.DataFrame()
-        for cross in _nest_columns(columns):
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        new_df = type(df)()
+        for cross in _nest_columns(col_selector.names):
             val = 0
             for column in cross:
-                val ^= gdf[column].hash_values()  # or however we want to do this aggregation
+                val ^= _hash_series(df[column])  # or however we want to do this aggregation
 
             if isinstance(self.num_buckets, dict):
                 val = val % self.num_buckets[cross]
             else:
                 val = val % self.num_buckets
-            new_gdf["_X_".join(cross)] = val
-        return new_gdf
+            new_df["_X_".join(cross)] = val
+        return new_df
 
     transform.__doc__ = Operator.transform.__doc__
 
     def output_column_names(self, columns):
-        return ["_X_".join(cross) for cross in _nest_columns(columns)]
+        return ColumnSelector(["_X_".join(cross) for cross in _nest_columns(columns)])
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _get_dtypes(self):
+        return numpy.int64
 
 
 def _nest_columns(columns):
     # if we have a list of flat column names, lets cross the whole group
+    if isinstance(columns, ColumnSelector):
+        columns = columns.names
     if all(isinstance(col, str) for col in columns):
         return [tuple(columns)]
     else:
