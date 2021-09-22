@@ -573,10 +573,6 @@ def get_embedding_sizes(source, output_dtypes=None):
 
     output = {}
     multihot_columns = set()
-    # nodes = list(set(nvt.workflow.node.iter_nodes([output_node])))
-    # for current in reversed(nodes):
-    #     if current.op and hasattr(current.op, "get_embedding_sizes"):
-    #         output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
     cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
     for col_name, col_schema in cats_schema.column_schemas.items():
         if col_schema.dtype and col_schema._is_list:

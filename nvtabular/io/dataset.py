@@ -1107,21 +1107,7 @@ class Dataset:
 
         dtypes = {}
         try:
-            _ddf = self.to_ddf()
-            dtypes = {
-                col_name: {"dtype": dtype, "is_list": False}
-                for col_name, dtype in _ddf.dtypes.items()
-            }
-            for partition_index in range(_ddf.npartitions):
-                _head = _ddf.partitions[partition_index].head(n)
-
-                if len(_head):
-                    for col in _head.columns:
-                        dtypes[col] = {
-                            "dtype": dispatch._list_val_dtype(_head[col]) or _head[col].dtype,
-                            "is_list": dispatch._is_list_dtype(_head[col]),
-                        }
-
+            dtypes = self.sample_dtypes(n=n, annotate_lists=True)
         except RuntimeError:
             warnings.warn(
                 "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
@@ -1136,7 +1122,7 @@ class Dataset:
         self.schema = Schema(column_schemas)
         return self.schema
 
-    def sample_dtypes(self, n=1):
+    def sample_dtypes(self, n=1, annotate_lists=False):
         """Return the real dtypes of the Dataset
 
         Use cached metadata if this operation was
@@ -1148,6 +1134,17 @@ class Dataset:
             if self.dtypes:
                 _real_meta = _set_dtypes(_real_meta, self.dtypes)
             self._real_meta[n] = _real_meta
+
+        if annotate_lists:
+            _real_meta = self._real_meta[n]
+            return {
+                col: {
+                    "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
+                    "is_list": dispatch._is_list_dtype(_real_meta[col]),
+                }
+                for col in _real_meta.columns
+            }
+
         return self._real_meta[n].dtypes
 
     @classmethod
