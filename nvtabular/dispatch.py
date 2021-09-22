@@ -255,7 +255,7 @@ def _series_has_nulls(s):
 def _list_val_dtype(ser):
     if _is_list_dtype(ser):
         if HAS_GPU and isinstance(ser, cudf.Series):
-            return ser.dtype.leaf_type
+            return ser.dtype._typ.value_type.to_pandas_dtype()
         elif isinstance(ser, pd.Series):
             return type(ser[0][0])
     return None

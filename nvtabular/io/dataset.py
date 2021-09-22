@@ -223,6 +223,9 @@ class Dataset:
         schema=None,
         **kwargs,
     ):
+        if schema is not None and not isinstance(schema, Schema):
+            raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
+
         self.dtypes = dtypes
         self.client = client
         self.schema = schema
