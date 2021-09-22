@@ -73,7 +73,7 @@ def _detect_schema(dataset):
 def _to_parquet(tfrecords, file, output_dir, chunks, convert_lists):
     out = []
     i = 0
-    w = ParquetWriter(output_dir + file.split("/")[-1].split(".")[0] + ".parquet")
+    w = ParquetWriter(output_dir + file.split("/")[-1].split(".")[0] + ".parquet", index=False)
     for tfrecord in tqdm(tfrecords):
         row = {key: val.numpy() for key, val in tfrecord.items()}
         out.append(row)
