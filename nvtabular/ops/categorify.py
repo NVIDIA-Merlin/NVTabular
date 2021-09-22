@@ -25,7 +25,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from dask import delayed
 from dask.base import tokenize
 from dask.core import flatten
 from dask.dataframe.core import _concat
@@ -37,7 +36,7 @@ from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
-from nvtabular.utils import global_dask_client
+from nvtabular.utils import run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..tags import Tags
@@ -351,15 +350,9 @@ class Categorify(StatOperator):
             # check the argument
             if self.single_table:
                 cat_file_path = self.categories[col]
-                idx_count_delayed = delayed(_reset_df_index)(col, cat_file_path, idx_count)
-                if global_dask_client(None):
-                    # There is a global Dask client detected. Use it
-                    idx_count, new_cat_file_path = idx_count_delayed.compute()
-                else:
-                    # No client detected. Use single-threaded scheduler to be safe
-                    idx_count, new_cat_file_path = idx_count_delayed.compute(
-                        scheduler="synchronous"
-                    )
+                idx_count, new_cat_file_path = run_on_worker(
+                    _reset_df_index, col, cat_file_path, idx_count
+                )
                 self.categories[col] = new_cat_file_path
 
     def clear(self):
@@ -580,10 +573,6 @@ def get_embedding_sizes(source, output_dtypes=None):
 
     output = {}
     multihot_columns = set()
-    # nodes = list(set(nvt.workflow.node.iter_nodes([output_node])))
-    # for current in reversed(nodes):
-    #     if current.op and hasattr(current.op, "get_embedding_sizes"):
-    #         output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
     cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
     for col_name, col_schema in cats_schema.column_schemas.items():
         if col_schema.dtype and col_schema._is_list:
