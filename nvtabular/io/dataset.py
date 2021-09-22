@@ -23,7 +23,6 @@ from pathlib import Path
 
 import dask
 import numpy as np
-import py
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.highlevelgraph import HighLevelGraph
@@ -284,11 +283,7 @@ class Dataset:
                 part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
-            paths = path_or_source
-            if hasattr(paths, "name"):
-                paths = stringify_path(paths)
-            if isinstance(paths, (py._path.local.LocalPath, Path)):
-                paths = str(paths)
+            paths = stringify_path(path_or_source)
             if isinstance(paths, str):
                 paths = [paths]
             paths = sorted(paths, key=natural_sort_key)
