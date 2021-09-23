@@ -419,7 +419,6 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
         meta = type(ddf._meta)({k: [] for k in columns})
         for column, dtype in dtypes.items():
             meta[column] = meta[column].astype(dtype)
-        enforce_metadata = True
 
     elif not meta:
         # TODO: constructing meta like this loses dtype information on the ddf
@@ -428,14 +427,13 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
         # happesn during intermediate 'fit' transforms, so as long as statoperators
         # don't require dtype information on the DDF this doesn't matter all that much
         meta = type(ddf._meta)({k: [] for k in columns})
-        enforce_metadata = False
 
     return ddf.map_partitions(
         _transform_partition,
         workflow_nodes,
         additional_columns=additional_columns,
         meta=meta,
-        enforce_metadata=enforce_metadata,
+        enforce_metadata=False,
     )
 
 
