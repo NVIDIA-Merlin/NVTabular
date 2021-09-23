@@ -21,18 +21,22 @@ from typing import Dict, List, Optional, Text
 import numpy
 
 # this needs to be before any modules that import protobuf
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import json_format, text_format  # noqa
 from google.protobuf.any_pb2 import Any  # noqa
 from google.protobuf.struct_pb2 import Struct  # noqa
 from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
 
+from nvtabular.tags import Tags  # noqa
+
 
 def register_extra_metadata(column_schema, feature):
+    filtered_properties = {k: v for k, v in column_schema.properties.items() if k != "domain"}
     msg_struct = Struct()
     # must pack message into "Any" type
     any_pack = Any()
-    any_pack.Pack(json_format.ParseDict(column_schema.properties, msg_struct))
+    any_pack.Pack(json_format.ParseDict(filtered_properties, msg_struct))
     # extra_metadata only takes type "Any" messages
     feature.annotation.extra_metadata.add().CopyFrom(any_pack)
     return feature
@@ -59,14 +63,12 @@ def register_list(column_schema, feature):
 
 
 def set_protobuf_float(column_schema, feature):
-    col_min, col_max = 0, 0
-    if "domain" in column_schema.properties:
-        col_min, col_max = column_schema.properties.pop("domain")
+    domain = column_schema.properties.get("domain", {})
     feature.float_domain.CopyFrom(
         schema_pb2.FloatDomain(
             name=column_schema.name,
-            min=col_min,
-            max=col_max,
+            min=domain.get("min", None),
+            max=domain.get("max", None),
         )
     )
     feature.type = schema_pb2.FeatureType.FLOAT
@@ -74,15 +76,16 @@ def set_protobuf_float(column_schema, feature):
 
 
 def set_protobuf_int(column_schema, feature):
-    col_min, col_max = 0, 0
-    if "domain" in column_schema.properties:
-        col_min, col_max = column_schema.properties.pop("domain")
+    domain = column_schema.properties.get("domain", {})
     feature.int_domain.CopyFrom(
         schema_pb2.IntDomain(
             name=column_schema.name,
-            min=col_min,
-            max=col_max,
-            is_categorical="categorical" in column_schema.tags,
+            min=domain.get("min", None),
+            max=domain.get("max", None),
+            is_categorical=(
+                Tags.CATEGORICAL in column_schema.tags
+                or Tags.CATEGORICAL.value in column_schema.tags
+            ),
         )
     )
     feature.type = schema_pb2.FeatureType.INT
@@ -99,9 +102,15 @@ def register_dtype(column_schema, feature):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
         elif hasattr(column_schema.dtype, "item"):
             string_name = type(column_schema.dtype(1).item()).__name__
-        else:
+        elif isinstance(column_schema.dtype, str):
+            string_name = column_schema.dtype
+        elif hasattr(column_schema.dtype, "__name__"):
             string_name = column_schema.dtype.__name__
-        feature = proto_dict[string_name](column_schema, feature)
+        else:
+            raise TypeError(f"unsupported dtype for column schema: {column_schema.dtype}")
+
+        if string_name in proto_dict:
+            feature = proto_dict[string_name](column_schema, feature)
     return feature
 
 
@@ -116,12 +125,14 @@ proto_dict = {
 def create_protobuf_feature(column_schema):
     feature = schema_pb2.Feature()
     feature.name = column_schema.name
-    if column_schema.dtype:
-        feature = register_dtype(column_schema, feature)
+    feature = register_dtype(column_schema, feature)
     annotation = feature.annotation
-    annotation.tag.extend(column_schema.tags)
+    annotation.tag.extend(
+        [tag.value if hasattr(tag, "value") else tag for tag in column_schema.tags]
+    )
     # can be instantiated with no values
     # if  so, unnecessary to dump
+    # import pdb; pdb.set_trace()
     if len(column_schema.properties) > 0:
         feature = register_extra_metadata(column_schema, feature)
     return feature
@@ -136,6 +147,10 @@ class ColumnSchema:
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
     dtype: Optional[object] = None
     _is_list: bool = False
+
+    def __post_init__(self):
+        tags = _normalize_tags(self.tags or [])
+        object.__setattr__(self, "tags", tags)
 
     def __str__(self) -> str:
         return self.name
@@ -207,16 +222,19 @@ class Schema:
         return list(self.column_schemas.keys())
 
     def apply(self, selector):
-        if selector and selector.names:
-            return self.select_by_name(selector.names)
-        else:
-            return self
+        if selector:
+            schema = Schema()
+            if selector.names:
+                schema += self.select_by_name(selector.names)
+            if selector.tags:
+                schema += self.select_by_tag(selector.tags)
+            return schema
+        return self
 
     def apply_inverse(self, selector):
         if selector:
             return self - self.select_by_name(selector.names)
-        else:
-            return self
+        return self
 
     def select_by_tag(self, tags):
         if not isinstance(tags, list):
@@ -225,7 +243,7 @@ class Schema:
         selected_schemas = {}
 
         for _, column_schema in self.column_schemas.items():
-            if all(x in column_schema.tags for x in tags):
+            if any(x in column_schema.tags for x in tags):
                 selected_schemas[column_schema.name] = column_schema
 
         return Schema(selected_schemas)
@@ -246,10 +264,14 @@ class Schema:
         return schema
 
     @classmethod
-    def load_protobuf(cls, schema) -> "Schema":
+    def load_protobuf(cls, schema_path) -> "Schema":
         columns = []
-        if isinstance(schema, (str, Path)):
-            schema = cls.read_protobuf(schema)
+        if isinstance(schema_path, (str, Path)):
+            if isinstance(schema_path, str):
+                schema_path = Path(schema_path)
+            if schema_path.is_dir():
+                schema_path = schema_path / "schema.pbtxt"
+            schema = cls.read_protobuf(schema_path)
 
         for feat in schema.feature:
             _is_list = False
@@ -274,7 +296,7 @@ class Schema:
                 domain_values = getattr(feat, field_name)
                 # if zero no values were passed
                 if domain_values.max > 0:
-                    properties["domain"] = domain_values.min, domain_values.max
+                    properties["domain"] = {"min": domain_values.min, "max": domain_values.max}
                 if feat.type:
                     if feat.type == 2:
                         dtype = numpy.int
@@ -289,18 +311,23 @@ class Schema:
         return Schema(columns)
 
     def save_protobuf(self, schema_path):
+        schema_path = Path(schema_path)
+        if not schema_path.is_dir():
+            raise ValueError(f"The path provided is not a valid directory: {schema_path}")
+
         # traverse list of column schema
         schema = schema_pb2.Schema()
         features = []
         for col_name, col_schema in self.column_schemas.items():
             features.append(create_protobuf_feature(col_schema))
         schema.feature.extend(features)
-        with open(schema_path, "w") as f:
+
+        with open(schema_path / "schema.pbtxt", "w") as f:
             f.write(text_format.MessageToString(schema))
         return self
 
     def __iter__(self):
-        return iter(self.column_schemas.values)
+        return iter(self.column_schemas.values())
 
     def __len__(self):
         return len(self.column_schemas)
@@ -316,8 +343,6 @@ class Schema:
     def __add__(self, other):
         if other is None:
             return self
-        if not isinstance(other, Schema):
-            raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
@@ -340,3 +365,7 @@ class Schema:
                 result.column_schemas.pop(key, None)
 
         return result
+
+
+def _normalize_tags(tags):
+    return [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]

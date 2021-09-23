@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import cupy
 import pytest
 
@@ -104,3 +103,20 @@ def test_dataloader_seeding(datasets, engine, batch_size):
     # Test that after the shuffle each worker generates different random numbers
     # (i.e. the random seeds are different on each worker after the shuffle)
     assert dl0_next_rand != dl1_next_rand
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("batch_size", [128])
+def test_dataloader_empty_error(datasets, engine, batch_size):
+    dataset = Dataset(str(datasets["parquet"]), engine=engine)
+
+    with pytest.raises(ValueError) as exc_info:
+        DataLoader(
+            dataset,
+            batch_size=batch_size,
+            label_names=["label"],
+            shuffle=False,
+        )
+    assert "Neither Categorical or Continuous columns were found by the dataloader. " in str(
+        exc_info.value
+    )

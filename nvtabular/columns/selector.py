@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import List
+from typing import List, Union
 
 import nvtabular
+from nvtabular.tags import Tags
 
 
 class ColumnSelector:
@@ -35,9 +36,16 @@ class ColumnSelector:
         of nesting tuples inside the list of names)
     """
 
-    def __init__(self, names: List[str] = None, subgroups: List["ColumnSelector"] = None):
+    def __init__(
+        self,
+        names: List[str] = None,
+        subgroups: List["ColumnSelector"] = None,
+        tags: List[Union[Tags, str]] = None,
+    ):
         self._names = names if names is not None else []
-        self.subgroups = subgroups if subgroups else []
+        self._tags = tags if tags is not None else []
+        self.subgroups = subgroups if subgroups is not None else []
+
         if isinstance(self._names, nvtabular.WorkflowNode):
             raise TypeError("ColumnSelectors can not contain WorkflowNodes")
 
@@ -59,6 +67,10 @@ class ColumnSelector:
                 self.subgroups.append(ColumnSelector(name))
         self._names = plain_names
         self._nested_check()
+
+    @property
+    def tags(self):
+        return list(dict.fromkeys(self._tags).keys())
 
     @property
     def names(self):
@@ -92,7 +104,14 @@ class ColumnSelector:
         elif isinstance(other, nvtabular.WorkflowNode):
             return other + self
         elif isinstance(other, ColumnSelector):
-            return ColumnSelector(self._names + other._names, self.subgroups + other.subgroups)
+
+            return ColumnSelector(
+                self._names + other._names,
+                self.subgroups + other.subgroups,
+                tags=self._tags + other._tags,
+            )
+        elif isinstance(other, Tags):
+            return ColumnSelector(self._names, self.subgroups, tags=self._tags + [other])
         else:
             if isinstance(other, str):
                 other = [other]

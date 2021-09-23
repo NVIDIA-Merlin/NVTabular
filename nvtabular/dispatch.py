@@ -28,6 +28,7 @@ try:
     import cudf
     import cupy as cp
     import dask_cudf
+    import rmm
     from cudf.core.column import as_column, build_column
     from cudf.utils.dtypes import is_list_dtype, is_string_dtype
 
@@ -36,6 +37,7 @@ except ImportError:
     HAS_GPU = False
     cp = None
     cudf = None
+    rmm = None
 
 try:
     # Dask >= 2021.5.1
@@ -89,8 +91,46 @@ class ExtData(enum.Enum):
     CSV = 7
 
 
+def _create_nvt_dataset(df):
+    from nvtabular import Dataset
+
+    if not isinstance(df, Dataset):
+        # turn arrow format into readable for dispatch
+        df_ext_format = _detect_format(df)
+        if df_ext_format == ExtData.ARROW:
+            df = df.to_pandas() if not cudf else cudf.DataFrame.from_arrow(df)
+            # run through make df to safely cast to df
+        elif df_ext_format in [ExtData.DASK_CUDF, ExtData.DASK_PANDAS]:
+            df = df.compute()
+        return Dataset(df)
+    return df
+
+
 def get_lib():
     return cudf if HAS_GPU else pd
+
+
+def reinitialize(managed_memory=False):
+    if rmm:
+        rmm.reinitialize(managed_memory=managed_memory)
+    return
+
+
+def random_uniform(size):
+    """Dispatch for numpy.random.RandomState"""
+    if HAS_GPU:
+        return cp.random.uniform(size=size)
+    else:
+        return np.random.uniform(size=size)
+
+
+def coo_matrix(data, row, col):
+    if HAS_GPU:
+        return cp.sparse.coo_matrix((data, row, col))
+    else:
+        import scipy
+
+        return scipy.sparse.coo_matrix((data, row, col))
 
 
 def _is_dataframe_object(x):
@@ -210,6 +250,15 @@ def _series_has_nulls(s):
         return s.isnull().values.any()
     else:
         return s._column.has_nulls
+
+
+def _list_val_dtype(ser):
+    if _is_list_dtype(ser):
+        if HAS_GPU and isinstance(ser, cudf.Series):
+            return ser.dtype._typ.value_type.to_pandas_dtype()
+        elif isinstance(ser, pd.Series):
+            return type(ser[0][0])
+    return None
 
 
 def _is_list_dtype(ser):
@@ -354,9 +403,8 @@ def _make_df(_like_df=None, device=None):
         return pd.DataFrame(_like_df)
     elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(_like_df)
-    elif isinstance(_like_df, dict) and len(_like_df) > 0:
+    elif device is None and isinstance(_like_df, dict) and len(_like_df) > 0:
         is_pandas = all(isinstance(v, pd.Series) for v in _like_df.values())
-
         return pd.DataFrame(_like_df) if is_pandas else cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame(_like_df)

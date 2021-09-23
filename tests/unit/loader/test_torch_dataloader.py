@@ -20,6 +20,7 @@ import subprocess
 import time
 
 import cudf
+import cupy
 import numpy as np
 import pandas as pd
 import pytest
@@ -179,55 +180,62 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
 
     df_out = processor.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
-    data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df_out),
-        cats=cat_names + mh_names,
-        conts=cont_names,
-        labels=label_name,
-        batch_size=2,
+    data_itr = None
+
+    with pytest.raises(ValueError) as exc_info:
+        data_itr = torch_dataloader.TorchAsyncItr(
+            nvt.Dataset(df_out),
+            cats=cat_names + mh_names,
+            conts=cont_names,
+            labels=label_name,
+            batch_size=2,
+        )
+    assert "Neither Categorical or Continuous columns were found by the dataloader. " in str(
+        exc_info.value
     )
 
-    for nvt_batch in data_itr:
-        cats_conts, labels = nvt_batch
-        if cat_names:
-            assert set(cat_names).issubset(set(list(cats_conts.keys())))
-        if cont_names:
-            assert set(cont_names).issubset(set(list(cats_conts.keys())))
+    if data_itr:
+        for nvt_batch in data_itr:
+            cats_conts, labels = nvt_batch
+            if cat_names:
+                assert set(cat_names).issubset(set(list(cats_conts.keys())))
+            if cont_names:
+                assert set(cont_names).issubset(set(list(cats_conts.keys())))
 
-    if cat_names or cont_names or mh_names:
-        emb_sizes = nvt.ops.get_embedding_sizes(processor)
+        if cat_names or cont_names or mh_names:
+            emb_sizes = nvt.ops.get_embedding_sizes(processor)
 
-        EMBEDDING_DROPOUT_RATE = 0.04
-        DROPOUT_RATES = [0.001, 0.01]
-        HIDDEN_DIMS = [1000, 500]
-        LEARNING_RATE = 0.001
-        model = Model(
-            embedding_table_shapes=emb_sizes,
-            num_continuous=len(cont_names),
-            emb_dropout=EMBEDDING_DROPOUT_RATE,
-            layer_hidden_dims=HIDDEN_DIMS,
-            layer_dropout_rates=DROPOUT_RATES,
-        ).cuda()
-        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+            EMBEDDING_DROPOUT_RATE = 0.04
+            DROPOUT_RATES = [0.001, 0.01]
+            HIDDEN_DIMS = [1000, 500]
+            LEARNING_RATE = 0.001
+            model = Model(
+                embedding_table_shapes=emb_sizes,
+                num_continuous=len(cont_names),
+                emb_dropout=EMBEDDING_DROPOUT_RATE,
+                layer_hidden_dims=HIDDEN_DIMS,
+                layer_dropout_rates=DROPOUT_RATES,
+            ).cuda()
+            optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-        def rmspe_func(y_pred, y):
-            "Return y_pred and y to non-log space and compute RMSPE"
-            y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
-            pct_var = (y_pred - y) / y
-            return (pct_var ** 2).mean().pow(0.5)
+            def rmspe_func(y_pred, y):
+                "Return y_pred and y to non-log space and compute RMSPE"
+                y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
+                pct_var = (y_pred - y) / y
+                return (pct_var ** 2).mean().pow(0.5)
 
-        train_loss, y_pred, y = process_epoch(
-            data_itr,
-            model,
-            train=True,
-            optimizer=optimizer,
-            amp=False,
-        )
-        train_rmspe = None
-        train_rmspe = rmspe_func(y_pred, y)
-        assert train_rmspe is not None
-        assert len(y_pred) > 0
-        assert len(y) > 0
+            train_loss, y_pred, y = process_epoch(
+                data_itr,
+                model,
+                train=True,
+                optimizer=optimizer,
+                amp=False,
+            )
+            train_rmspe = None
+            train_rmspe = rmspe_func(y_pred, y)
+            assert train_rmspe is not None
+            assert len(y_pred) > 0
+            assert len(y) > 0
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
@@ -574,6 +582,9 @@ def test_mh_model_support(tmpdir):
 
 
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+)
 def test_horovod_multigpu(tmpdir):
 
     json_sample = {
@@ -728,3 +739,47 @@ def test_distributed_multigpu(tmpdir):
         print(str(stdout))
         print(str(stderr))
         assert "Training complete" in str(stdout)
+
+
+@pytest.mark.parametrize("batch_size", [1000])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("device", [None, 0])
+def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
+
+    processor = nvt.Workflow(conts + cats + label_name)
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    processor.fit_transform(dataset).to_parquet(
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
+        output_path=output_train,
+        out_files_per_proc=2,
+    )
+
+    tar_paths = [
+        os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
+    ]
+
+    nvt_data = nvt.Dataset(tar_paths, engine="parquet")
+
+    data_loader = torch_dataloader.TorchAsyncItr(
+        nvt_data,
+        batch_size=batch_size,
+        shuffle=False,
+        labels=label_name,
+    )
+
+    batch = next(iter(data_loader))
+    assert all(name in batch[0] for name in cat_names)
+    assert all(name in batch[0] for name in cont_names)
+
+    num_label_cols = batch[1].shape[1] if len(batch[1].shape) > 1 else 1
+    assert num_label_cols == len(label_name)
+    

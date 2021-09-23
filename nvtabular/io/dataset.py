@@ -19,6 +19,7 @@ import logging
 import math
 import random
 import warnings
+from pathlib import Path
 
 import dask
 import numpy as np
@@ -29,6 +30,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
@@ -196,6 +198,13 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    **kwargs :
+        Key-word arguments to pass through to Dask.dataframe IO function.
+        For the Parquet engine(s), notable arguments include `filters`,
+        `aggregate_files`, and `gather_statistics`. Note that users who
+        do not need to know the number of rows in their dataset (and do
+        not plan to preserve a file-partition mapping) may wish to use
+        `gather_statistics=False` for better client-side performance.
     """
 
     def __init__(
@@ -210,10 +219,18 @@ class Dataset:
         client=None,
         cpu=None,
         base_dataset=None,
+        schema=None,
         **kwargs,
     ):
+        if schema is not None and not isinstance(schema, Schema):
+            raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
+
         self.dtypes = dtypes
         self.client = client
+        self.schema = schema
+
+        # Cache for "real" (sampled) metadata
+        self._real_meta = {}
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
@@ -266,9 +283,7 @@ class Dataset:
                 part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
-            paths = path_or_source
-            if hasattr(paths, "name"):
-                paths = stringify_path(paths)
+            paths = stringify_path(path_or_source)
             if isinstance(paths, str):
                 paths = [paths]
             paths = sorted(paths, key=natural_sort_key)
@@ -303,6 +318,26 @@ class Dataset:
                 self.engine = engine(
                     paths, part_size, cpu=self.cpu, storage_options=storage_options
                 )
+
+        # load in schema or infer if not available
+        # path is always a list at this point
+
+        if not self.schema:
+            if isinstance(path_or_source, list) and isinstance(path_or_source[0], (str, Path)):
+                # list of paths to files
+                schema_path = Path(path_or_source[0])
+                if schema_path.is_file():
+                    schema_path = schema_path.parent
+
+                if (schema_path / "schema.pbtxt").exists():
+                    self.schema = Schema.load_protobuf(schema_path)
+                elif (schema_path.parent / "schema.pbtxt").exists():
+                    self.schema = Schema.load_protobuf(schema_path.parent)
+                else:
+                    self.infer_schema()
+            else:
+                # df with no schema
+                self.infer_schema()
 
     def to_ddf(self, columns=None, shuffle=False, seed=None):
         """Convert `Dataset` object to `dask_cudf.DataFrame`
@@ -434,6 +469,10 @@ class Dataset:
                 for c in keys:
                     typ = ddf._meta[c].dtype
                     if c in cols:
+                        if typ == "category":
+                            # Cannot cast directly to categorical unless we
+                            # first cast to the underlying dtype of the categories
+                            hive_mapping[c] = hive_mapping[c].astype(typ.categories.dtype)
                         hive_mapping[c] = hive_mapping[c].astype(typ)
 
                 # Generate simple-shuffle plan
@@ -841,6 +880,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
+        self.schema.save_protobuf(output_path)
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
@@ -930,6 +970,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
+        self.schema.save_protobuf(output_path)
 
         # Output dask_cudf DataFrame to dataset,
         _ddf_to_dataset(
@@ -1061,30 +1102,48 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
-        sampled_dtypes = self.sample_dtypes(n)
-        dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
 
+        dtypes = {}
+        try:
+            dtypes = self.sample_dtypes(n=n, annotate_lists=True)
+        except RuntimeError:
+            warnings.warn(
+                "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
+            )
         column_schemas = []
-        for column, dtype in dtypes.items():
-            col_schema = ColumnSchema(column, dtype=dtype)
+        for column, dtype_info in dtypes.items():
+            dtype_val = dtype_info["dtype"]
+            is_list = dtype_info["is_list"]
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
             column_schemas.append(col_schema)
 
-        return Schema(column_schemas)
+        self.schema = Schema(column_schemas)
+        return self.schema
 
-    def sample_dtypes(self, n=1):
+    def sample_dtypes(self, n=1, annotate_lists=False):
         """Return the real dtypes of the Dataset
 
-        Sample the partitions of the underlying Dask collection
-        until a non-empty partition is found. Then, use the first
-        ``n`` rows of that partition to infer dtype info. If no
-        non-empty partitions are found, use the Dask dtypes.
+        Use cached metadata if this operation was
+        already performed. Otherwise, call down to the
+        underlying engine for sampling logic.
         """
-        _ddf = self.to_ddf()
-        for partition_index in range(_ddf.npartitions):
-            _head = _ddf.partitions[partition_index].head(n)
-            if len(_head):
-                return _head.dtypes
-        return _ddf.dtypes
+        if self._real_meta.get(n, None) is None:
+            _real_meta = self.engine.sample_data(n=n)
+            if self.dtypes:
+                _real_meta = _set_dtypes(_real_meta, self.dtypes)
+            self._real_meta[n] = _real_meta
+
+        if annotate_lists:
+            _real_meta = self._real_meta[n]
+            return {
+                col: {
+                    "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
+                    "is_list": dispatch._is_list_dtype(_real_meta[col]),
+                }
+                for col in _real_meta.columns
+            }
+
+        return self._real_meta[n].dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):

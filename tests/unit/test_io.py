@@ -33,9 +33,47 @@ from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ops
+from nvtabular import dispatch, ops
+from nvtabular.columns import Schema
 from nvtabular.io.parquet import GPUParquetWriter
+from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+
+
+def test_validate_dataset_bad_schema(tmpdir):
+    if LooseVersion(dask.__version__) <= "2.30.0":
+        # Older versions of Dask will not handle schema mismatch
+        pytest.skip("Test requires newer version of Dask.")
+
+    path = str(tmpdir)
+    for (fn, df) in [
+        ("part.0.parquet", pd.DataFrame({"a": range(10), "b": range(10)})),
+        ("part.1.parquet", pd.DataFrame({"a": [None] * 10, "b": range(10)})),
+    ]:
+        df.to_parquet(os.path.join(path, fn))
+
+    # Initial dataset has mismatched schema and is missing a _metadata file.
+    dataset = nvtabular.io.Dataset(path, engine="parquet")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # Schema issue should cause validation failure, even if _metadata is ignored
+        assert not dataset.validate_dataset(require_metadata_file=False)
+        # File size should cause validation error, even if _metadata is generated
+        assert not dataset.validate_dataset(add_metadata_file=True)
+        # Make sure the last call added a `_metadata` file
+        assert len(glob.glob(os.path.join(path, "_metadata")))
+
+        # New datset has a _metadata file, but the file size is still too small
+        dataset = nvtabular.io.Dataset(path, engine="parquet")
+        assert not dataset.validate_dataset()
+        # Ignore file size to get validation success
+        assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
+
+
+def test_incorrect_schema_dataset():
+    with pytest.raises(TypeError) as err:
+        nvt.Dataset("", schema={})
+    assert "unsupported schema type for nvt.Dataset:" in str(err.value)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -43,6 +81,32 @@ def test_dataset_infer_schema(dataset, engine):
     schema = dataset.infer_schema()
     expected_columns = ["timestamp", "id", "label", "name-cat", "name-string", "x", "y", "z"]
     assert schema.column_names == expected_columns
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_string_datatypes(tmpdir, engine, cpu):
+    df_lib = dispatch.get_lib()
+    df = df_lib.DataFrame({"column": [[0.1, 0.2]]})
+    dataset = nvt.Dataset(df)
+
+    column_schema = dataset.schema.column_schemas["column"]
+    assert not isinstance(column_schema.dtype, str)
+
+    dataset.schema.save_protobuf(tmpdir)
+    loaded_schema = Schema.load_protobuf(str(tmpdir))
+    column_schema = loaded_schema.column_schemas["column"]
+    assert not isinstance(column_schema.dtype, str)
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_dataset_partition_parquets_schema_load(tmpdir, dataset, engine):
+    dataset.schema.column_schemas["id"] = dataset.schema.column_schemas["id"].with_tags(
+        ["categorical"]
+    )
+    dataset.to_parquet(str(tmpdir), partition_on=["name-cat"])
+    loaded_dataset = nvt.Dataset(glob.glob(str(tmpdir) + "/*/*." + engine.split("-")[0]))
+    assert loaded_dataset.schema.column_schemas["id"].tags == [Tags.CATEGORICAL]
 
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
@@ -578,36 +642,6 @@ def test_validate_dataset(datasets, engine):
             assert not dataset.validate_dataset()
 
 
-def test_validate_dataset_bad_schema(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
-        # Older versions of Dask will not handle schema mismatch
-        pytest.skip("Test requires newer version of Dask.")
-
-    path = str(tmpdir)
-    for (fn, df) in [
-        ("part.0.parquet", pd.DataFrame({"a": range(10), "b": range(10)})),
-        ("part.1.parquet", pd.DataFrame({"a": [None] * 10, "b": range(10)})),
-    ]:
-        df.to_parquet(os.path.join(path, fn))
-
-    # Initial dataset has mismatched schema and is missing a _metadata file.
-    dataset = nvtabular.io.Dataset(path, engine="parquet")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        # Schema issue should cause validation failure, even if _metadata is ignored
-        assert not dataset.validate_dataset(require_metadata_file=False)
-        # File size should cause validation error, even if _metadata is generated
-        assert not dataset.validate_dataset(add_metadata_file=True)
-        # Make sure the last call added a `_metadata` file
-        assert len(glob.glob(os.path.join(path, "_metadata")))
-
-        # New datset has a _metadata file, but the file size is still too small
-        dataset = nvtabular.io.Dataset(path, engine="parquet")
-        assert not dataset.validate_dataset()
-        # Ignore file size to get validation success
-        assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
-
-
 def test_validate_and_regenerate_dataset(tmpdir):
 
     # Initial timeseries dataset (in cpu memory)
@@ -638,10 +672,18 @@ def test_validate_and_regenerate_dataset(tmpdir):
     ds2.validate_dataset(file_min_size=1)
 
     # Check that dataset content is correct
-    assert_eq(ddf, ds2.to_ddf().compute())
+    assert_eq(
+        ddf.reset_index(drop=False),
+        ds2.to_ddf().compute(),
+        check_index=False,
+    )
 
     # Check cpu version of `to_ddf`
-    assert_eq(ddf, ds2.engine.to_ddf(cpu=True).compute())
+    assert_eq(
+        ddf.reset_index(drop=False),
+        ds2.engine.to_ddf(cpu=True).compute(),
+        check_index=False,
+    )
 
 
 @pytest.mark.parametrize("preserve_files", [True, False])
@@ -776,8 +818,11 @@ def test_hive_partitioned_data(tmpdir, cpu):
     assert result_paths
     assert all(p.endswith(".parquet") for p in result_paths)
 
+    # reading into dask dastaframe cannot have schema in same directory
+    os.remove(os.path.join(path, "schema.pbtxt"))
+
     # Read back with dask.dataframe and check the data
-    df_check = dd.read_parquet(path).compute()
+    df_check = dd.read_parquet(path, engine="pyarrow").compute()
     df_check["name"] = df_check["name"].astype("object")
     df_check["timestamp"] = df_check["timestamp"].astype("int64")
     df_check = df_check.sort_values(["id", "x", "y"]).reset_index(drop=True)
@@ -844,3 +889,89 @@ def test_dataset_shuffle_on_keys(tmpdir, cpu, partition_on, keys, npartitions):
     for col in df1:
         # Order of columns can change after round-trip partitioning
         assert_eq(df1[col], df2[col], check_index=False)
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_filtered_flat(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf1 = dd.from_pandas(pd.DataFrame({"a": [1] * 10}), 1)
+    ddf1.to_parquet(path, engine="pyarrow", write_index=False)
+    ddf2 = dd.from_pandas(pd.DataFrame({"a": [2] * 10}), 1)
+    ddf2.to_parquet(path, engine="pyarrow", append=True, write_index=False)
+    ddf3 = dd.from_pandas(pd.DataFrame({"a": [3] * 10}), 1)
+    ddf3.to_parquet(path, engine="pyarrow", append=True, write_index=False)
+
+    # Convert to nvt.Dataset
+    ds = nvt.Dataset(path, engine="parquet", filters=[("a", ">", 1)])
+
+    # Make sure partitions were filtered
+    assert len(ds.to_ddf().a.unique()) == 2
+
+
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_filtered_hive(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
+
+    # Convert to nvt.Dataset
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", filters=[("timestamp", "==", 1)])
+
+    # Make sure partitions were filtered
+    assert len(ds.to_ddf().timestamp.unique()) == 1
+
+
+@pytest.mark.skipif(
+    LooseVersion(dask.__version__) < "2021.07.1",
+    reason="Dask>=2021.07.1 required for file aggregation",
+)
+@pytest.mark.parametrize("cpu", [True, False])
+def test_parquet_aggregate_files(tmpdir, cpu):
+
+    # Initial timeseries dataset (in cpu memory).
+    # Round the full "timestamp" to the hour for partitioning.
+    path = str(tmpdir)
+    ddf = dask.datasets.timeseries(
+        start="2000-01-01",
+        end="2000-01-03",
+        freq="600s",
+        partition_freq="6h",
+        seed=42,
+    ).reset_index()
+    ddf["timestamp"] = ddf["timestamp"].dt.round("D").dt.day
+    ddf.to_parquet(path, partition_on=["timestamp"], engine="pyarrow")
+
+    # Setting `aggregate_files=True` should result
+    # in one large partition
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", aggregate_files=True, part_size="1GB")
+    assert ds.to_ddf().npartitions == 1
+
+    # Setting `aggregate_files="timestamp"` should result
+    # in one partition for each unique value of "timestamp"
+    ds = nvt.Dataset(path, cpu=cpu, engine="parquet", aggregate_files="timestamp", part_size="1GB")
+    assert ds.to_ddf().npartitions == len(ddf.timestamp.unique())
+
+    # Combining `aggregate_files` and `filters` should work
+    ds = nvt.Dataset(
+        path,
+        cpu=cpu,
+        engine="parquet",
+        aggregate_files="timestamp",
+        filters=[("timestamp", "==", 1)],
+        part_size="1GB",
+    )
+    assert ds.to_ddf().npartitions == 1
+    assert len(ds.to_ddf().timestamp.unique()) == 1

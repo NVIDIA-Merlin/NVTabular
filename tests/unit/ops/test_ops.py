@@ -15,6 +15,8 @@
 #
 import copy
 import math
+import os
+import random
 import string
 
 import dask.dataframe as dd
@@ -27,6 +29,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular.ops.categorify import get_embedding_sizes
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -373,7 +376,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
         >> (lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
-    processor = nvtabular.Workflow(["name-cat", "name-string"] + substring)
+    processor = nvtabular.Workflow(substring + ["name-cat", "name-string"])
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
 
@@ -469,6 +472,50 @@ def test_lambdaop_misalign(cpu):
     )
 
 
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("include_nulls", [True, False])
+def test_categorify_counts(tmpdir, cpu, include_nulls):
+    num_rows = 50
+    num_distinct = 10
+
+    possible_session_ids = list(range(num_distinct))
+    if include_nulls:
+        possible_session_ids.append(None)
+
+    df = dispatch._make_df(
+        {"session_id": [random.choice(possible_session_ids) for _ in range(num_rows)]},
+        device="cpu" if cpu else None,
+    )
+
+    cat_features = ["session_id"] >> nvt.ops.Categorify(out_path=str(tmpdir))
+    workflow = nvt.Workflow(cat_features)
+    workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+
+    vals = df["session_id"].value_counts()
+    vocab = dispatch._read_dispatch(cpu=cpu)(
+        os.path.join(tmpdir, "categories", "unique.session_id.parquet")
+    )
+
+    if cpu:
+        expected = dict(zip(vals.index, vals))
+        computed = {
+            session: count
+            for session, count in zip(vocab["session_id"], vocab["session_id_count"])
+            if count
+        }
+    else:
+        expected = dict(zip(vals.index.values_host, vals.values_host))
+        computed = {
+            session: count
+            for session, count in zip(
+                vocab["session_id"].values_host, vocab["session_id_count"].values_host
+            )
+            if count
+        }
+
+    assert computed == expected
+
+
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
@@ -503,6 +550,48 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
         assert compare == [[1], [1, 4], [3, 2], [2]]
     else:
         assert compare == [[1], [1, 0], [0, 2], [2]]
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+@pytest.mark.parametrize("start_index", [1, 2, 16])
+def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
+    df = dispatch._make_df(
+        {
+            "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
+            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+            "Post": [1, 2, 3, 4],
+        }
+    )
+    cat_names = ["Authors", "Engaging User"]
+    label_name = ["Post"]
+    dataset = nvt.Dataset(df, cpu=cpu)
+    cat_features = cat_names >> ops.Categorify(out_path=str(tmpdir), start_index=start_index)
+    processor = nvt.Workflow(cat_features + label_name)
+    processor.fit(dataset)
+    df_out = processor.transform(dataset).to_ddf().compute()
+
+    if cpu:
+        compare = [list(row) for row in df_out["Authors"].tolist()]
+    else:
+        compare = df_out["Authors"].to_arrow().to_pylist()
+
+    # Note that start_index is the start_index of the range of encoding, which
+    # includes both an initial value for the encoding for out-of-vocabulary items,
+    # as well as the values for the rest of the in-vocabulary items.
+    # In this group of tests below, there are no out-of-vocabulary items, so our start index
+    # value does not appear in the expected comparison object.
+    if start_index == 0:
+        assert compare == [[1], [1, 4], [3, 2], [2]]
+    elif start_index == 1:
+        assert compare == [[2], [2, 5], [4, 3], [3]]
+    elif start_index == 16:
+        assert compare == [[17], [17, 20], [19, 18], [18]]
+
+    # We expect five entries in the embedding size, one for each author,
+    # plus start_index many additional entries for our offset start_index.
+    embeddings = nvt.ops.get_embedding_sizes(processor)
+
+    assert embeddings[1]["Authors"][0] == (5 + start_index)
 
 
 @pytest.mark.parametrize("cat_names", [[["Author", "Engaging User"]], ["Author", "Engaging User"]])
@@ -1227,3 +1316,37 @@ def test_rename(cpu):
     transformed = op.transform(selector, df)
     expected = DataFrame({"X": [1, 2, 3, 4, 5]})
     assert_eq(transformed, expected)
+
+
+def test_categorify_single_table():
+    df = dispatch._make_df(
+        {
+            "Authors": [None, "User_A", "User_A", "User_E", "User_B", "User_C"],
+            "Engaging_User": [None, "User_B", "User_B", "User_A", "User_D", "User_D"],
+            "Post": [1, 2, 3, 4, None, 5],
+        }
+    )
+    cat_names = ["Authors", "Engaging_User"]
+    dataset = nvt.Dataset(df)
+    features = cat_names >> ops.Categorify(single_table=True)
+    processor = nvt.Workflow(features)
+    processor.fit(dataset)
+    new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    old_max = 0
+    for name in cat_names:
+        curr_min = new_gdf[name].min()
+        assert old_max <= curr_min
+        curr_max = new_gdf[name].max()
+        old_max += curr_max
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_categorify_embedding_sizes(dataset, engine):
+    cat_1 = ColumnSelector(["name-cat"]) >> ops.Categorify()
+    cat_2 = ColumnSelector(["name-string"]) >> ops.Categorify() >> ops.Rename(postfix="_test")
+
+    workflow = nvt.Workflow(cat_1 + cat_2)
+    workflow.fit_transform(dataset)
+
+    assert get_embedding_sizes(workflow) == {"name-cat": (27, 16), "name-string_test": (27, 16)}

@@ -75,7 +75,7 @@ class WorkflowNode:
                 len(self.parents) == 1
                 and isinstance(self.parents[0].op, internal.ConcatColumns)
                 and self.parents[0].selector
-                and self.parents[0].selector.names
+                and (self.parents[0].selector.names)
             ):
 
                 self.selector = self.parents[0].selector
@@ -95,7 +95,8 @@ class WorkflowNode:
 
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
-                self.input_schema = _combine_schemas(self.parents_with_dep_nodes)
+                upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
+                self.input_schema = upstream_schema.apply(self.selector)
 
             # If we're a subtraction node, we have to do some gymnastics to compute
             # the schema, because operands may be in the parents or the dependencies
@@ -424,12 +425,26 @@ def _to_graphviz(workflow_node):
     node_ids = {v: str(k) for k, v in enumerate(allnodes)}
     for node, nodeid in node_ids.items():
         graph.node(nodeid, node.label)
-        for parent in node.parents:
+        for parent in node.parents_with_dep_nodes:
             graph.edge(node_ids[parent], nodeid)
+
+        full_selector = ColumnSelector()
+
+        if node.selector and not node.parents:
+            full_selector += node.selector
+        full_selector += sum(node.dependency_selectors, full_selector)
+
+        if full_selector.names:
+            selector_id = f"{nodeid}_selector"
+            graph.node(selector_id, str(full_selector.names))
+            graph.edge(selector_id, nodeid)
 
     # add a single 'output' node representing the final state
     output_node_id = str(len(allnodes))
-    graph.node(output_node_id, f"output cols=[{workflow_node._cols_repr}]")
+    output_string = "output cols"
+    if workflow_node._cols_repr:
+        output_string += f"=[{workflow_node._cols_repr}]"
+    graph.node(output_node_id, output_string)
     graph.edge(node_ids[workflow_node], output_node_id)
     return graph
 
