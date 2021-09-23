@@ -33,7 +33,8 @@ from dask.dataframe.io.demo import names as name_list
 
 import nvtabular as nvt
 import nvtabular.io
-from nvtabular import ops
+from nvtabular import dispatch, ops
+from nvtabular.columns import Schema
 from nvtabular.io.parquet import GPUParquetWriter
 from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
@@ -69,11 +70,33 @@ def test_validate_dataset_bad_schema(tmpdir):
         assert dataset.validate_dataset(file_min_size=1, row_group_max_size="1GB")
 
 
+def test_incorrect_schema_dataset():
+    with pytest.raises(TypeError) as err:
+        nvt.Dataset("", schema={})
+    assert "unsupported schema type for nvt.Dataset:" in str(err.value)
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_dataset_infer_schema(dataset, engine):
     schema = dataset.infer_schema()
     expected_columns = ["timestamp", "id", "label", "name-cat", "name-string", "x", "y", "z"]
     assert schema.column_names == expected_columns
+
+
+@pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
+@pytest.mark.parametrize("cpu", [None, True])
+def test_string_datatypes(tmpdir, engine, cpu):
+    df_lib = dispatch.get_lib()
+    df = df_lib.DataFrame({"column": [[0.1, 0.2]]})
+    dataset = nvt.Dataset(df)
+
+    column_schema = dataset.schema.column_schemas["column"]
+    assert not isinstance(column_schema.dtype, str)
+
+    dataset.schema.save_protobuf(tmpdir)
+    loaded_schema = Schema.load_protobuf(str(tmpdir))
+    column_schema = loaded_schema.column_schemas["column"]
+    assert not isinstance(column_schema.dtype, str)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -330,6 +353,9 @@ def test_hugectr(
 
     # Check for _metadata.json
     assert os.path.isfile(outdir + "/_metadata.json")
+
+    # Check for _hugetcr.keyset
+    assert os.path.isfile(outdir + "/_hugectr.keyset")
 
     # Check contents of _metadata.json
     data = {}

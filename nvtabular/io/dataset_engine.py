@@ -57,3 +57,18 @@ class DatasetEngine:
     @classmethod
     def regenerate_dataset(cls, dataset, output_path, columns=None, **kwargs):
         raise NotImplementedError(""" Regenerate a dataset with optimal properties """)
+
+    def sample_data(self, n=1):
+        """Return a sample of real data from the dataset
+
+        Sample the partitions of the underlying Dask collection
+        until a non-empty partition is found. Then, use the first
+        ``n`` rows of that partition to infer dtype info. If no
+        non-empty partitions are found, use the Dask metadata.
+        """
+        _ddf = self.to_ddf()
+        for partition_index in range(_ddf.npartitions):
+            _head = _ddf.partitions[partition_index].head(n)
+            if len(_head):
+                return _head
+        return _ddf._meta

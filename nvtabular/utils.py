@@ -168,3 +168,13 @@ def global_dask_client(client):
         except ValueError:
             return None
     return None
+
+
+def run_on_worker(func, *args, **kwargs):
+    # Run a function on a Dask worker using `delayed`
+    # execution (if a Dask client is detected)
+    if global_dask_client(kwargs.get("client", None)):
+        # There is a specified or global Dask client. Use it
+        return dask.delayed(func)(*args, **kwargs).compute()
+    # No Dask client - Use simple function call
+    return func(*args, **kwargs)

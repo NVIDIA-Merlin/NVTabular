@@ -91,6 +91,21 @@ class ExtData(enum.Enum):
     CSV = 7
 
 
+def _create_nvt_dataset(df):
+    from nvtabular import Dataset
+
+    if not isinstance(df, Dataset):
+        # turn arrow format into readable for dispatch
+        df_ext_format = _detect_format(df)
+        if df_ext_format == ExtData.ARROW:
+            df = df.to_pandas() if not cudf else cudf.DataFrame.from_arrow(df)
+            # run through make df to safely cast to df
+        elif df_ext_format in [ExtData.DASK_CUDF, ExtData.DASK_PANDAS]:
+            df = df.compute()
+        return Dataset(df)
+    return df
+
+
 def get_lib():
     return cudf if HAS_GPU else pd
 
@@ -235,6 +250,15 @@ def _series_has_nulls(s):
         return s.isnull().values.any()
     else:
         return s._column.has_nulls
+
+
+def _list_val_dtype(ser):
+    if _is_list_dtype(ser):
+        if HAS_GPU and isinstance(ser, cudf.Series):
+            return ser.dtype._typ.value_type.to_pandas_dtype()
+        elif isinstance(ser, pd.Series):
+            return type(ser[0][0])
+    return None
 
 
 def _is_list_dtype(ser):

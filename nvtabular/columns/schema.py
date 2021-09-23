@@ -102,8 +102,13 @@ def register_dtype(column_schema, feature):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
         elif hasattr(column_schema.dtype, "item"):
             string_name = type(column_schema.dtype(1).item()).__name__
-        else:
+        elif isinstance(column_schema.dtype, str):
+            string_name = column_schema.dtype
+        elif hasattr(column_schema.dtype, "__name__"):
             string_name = column_schema.dtype.__name__
+        else:
+            raise TypeError(f"unsupported dtype for column schema: {column_schema.dtype}")
+
         if string_name in proto_dict:
             feature = proto_dict[string_name](column_schema, feature)
     return feature
@@ -142,6 +147,10 @@ class ColumnSchema:
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
     dtype: Optional[object] = None
     _is_list: bool = False
+
+    def __post_init__(self):
+        tags = _normalize_tags(self.tags or [])
+        object.__setattr__(self, "tags", tags)
 
     def __str__(self) -> str:
         return self.name
@@ -269,7 +278,6 @@ class Schema:
             dtype = None
             properties = {}
             tags = list(feat.annotation.tag) or []
-            tags = [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]
             # only one item should ever be in extra_metadata
             if len(feat.annotation.extra_metadata) > 1:
                 raise ValueError(
@@ -357,3 +365,7 @@ class Schema:
                 result.column_schemas.pop(key, None)
 
         return result
+
+
+def _normalize_tags(tags):
+    return [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]

@@ -28,6 +28,7 @@ from nvtabular.dispatch import (
     ExtData,
     _arange,
     _convert_data,
+    _create_nvt_dataset,
     _detect_format,
     _read_dispatch,
     _to_host,
@@ -99,7 +100,7 @@ class JoinExternal(Operator):
     ):
         super(JoinExternal).__init__()
         self.on = on
-        self.df_ext = df_ext
+        self.df_ext = _create_nvt_dataset(df_ext)
         self.on_ext = on_ext or self.on
         self.how = how
         self.kind_ext = kind_ext or _detect_format(self.df_ext)
@@ -204,6 +205,11 @@ class JoinExternal(Operator):
         combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
 
         return ColumnSelector(list(combined))
+
+    def compute_output_schema(self, input_schema, col_selector):
+        # must load in the schema from the external dataset
+        input_schema = input_schema + self.df_ext.schema
+        return super().compute_output_schema(input_schema, col_selector)
 
 
 def _check_partition_count(df):

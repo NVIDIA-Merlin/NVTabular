@@ -40,7 +40,6 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.dataset as pa_ds
 import toolz as tlz
-from dask import delayed
 from dask.base import tokenize
 from dask.dataframe.core import _concat, new_dd_object
 from dask.dataframe.io.parquet.arrow import ArrowDatasetEngine
@@ -58,8 +57,9 @@ if LooseVersion(dask.__version__) >= "2021.07.1":
 else:
     aggregate_row_groups = None
 
-from ..utils import global_dask_client
+from ..utils import run_on_worker
 from .dataset_engine import DatasetEngine
+from .fsspec_utils import _optimized_read_partition_remote, _optimized_read_remote
 from .shuffle import Shuffle, _shuffle_df
 from .writer import ThreadedWriter
 
@@ -87,6 +87,17 @@ if cudf is not None:
         @classmethod
         def multi_support(cls):
             return hasattr(CudfEngine, "multi_support") and CudfEngine.multi_support()
+
+        @classmethod
+        def read_partition(cls, fs, pieces, *args, **kwargs):
+            if not cudf.utils.ioutils._is_local_filesystem(fs) and (
+                not isinstance(pieces, list) or len(pieces) == 1
+            ):
+                # This version of cudf does not include optimized
+                # fsspec usage for remote storage - use custom code path
+                return _optimized_read_partition_remote(fs, pieces, *args, **kwargs)
+            # Newer versions of cudf are already optimized for s3/gcs
+            return CudfEngine.read_partition(fs, pieces, *args, **kwargs)
 
 
 def _override_read_metadata(
@@ -204,6 +215,7 @@ class ParquetDatasetEngine(DatasetEngine):
         self._pp_map = None
         self._pp_nrows = None
         self._pp_metadata = None
+        self._real_meta = None
 
         # Process `kwargs`
         self.read_parquet_kwargs = kwargs.copy()
@@ -212,14 +224,9 @@ class ParquetDatasetEngine(DatasetEngine):
         self.dataset_kwargs = self.read_parquet_kwargs.pop("dataset", {})
 
         if row_groups_per_part is None:
-            path0 = next(self._dataset.get_fragments()).path
-            rg_byte_size_0_delayed = delayed(_get_row_group_memory_usage)(path0, self.fs, cpu=cpu)
-            if global_dask_client(None):
-                # There is a global Dask client detected. Use it
-                rg_byte_size_0 = rg_byte_size_0_delayed.compute()
-            else:
-                # No client detected. Use single-threaded scheduler to be safe
-                rg_byte_size_0 = rg_byte_size_0_delayed.compute(scheduler="synchronous")
+            self._real_meta, rg_byte_size_0 = run_on_worker(
+                _sample_row_group, self._path0, self.fs, cpu=self.cpu, memory_usage=True
+            )
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
                 warnings.warn(
@@ -235,6 +242,11 @@ class ParquetDatasetEngine(DatasetEngine):
         self.row_groups_per_part = int(row_groups_per_part)
 
         assert self.row_groups_per_part > 0
+
+    @property
+    @functools.lru_cache(1)
+    def _path0(self):
+        return next(self._dataset.get_fragments()).path
 
     @property
     @functools.lru_cache(1)
@@ -348,6 +360,33 @@ class ParquetDatasetEngine(DatasetEngine):
 
     def to_gpu(self):
         self.cpu = False
+
+    def sample_data(self, n=1):
+        """Return a real data sample from the Dataset"""
+        if self._real_meta is not None:
+            # First check is we already cached a data sample
+            # while calculating `row_groups_per_part`
+            _len = len(self._real_meta)
+            if _len >= n:
+                if _len == n:
+                    _real_meta = self._real_meta
+                else:
+                    _real_meta = self._real_meta.take(list(range(n)))
+                # We can clear self._real_meta, because the data
+                # will still be cached at the Dataset level
+                self._real_meta = None
+                return _real_meta
+
+        # Real metadata sample is not cached - Sample from
+        # the first row-group in the Dataset
+        return run_on_worker(
+            _sample_row_group,
+            self._path0,
+            self.fs,
+            cpu=self.cpu,
+            n=n,
+            memory_usage=False,
+        ).take(list(range(n)))
 
     def validate_dataset(
         self,
@@ -1064,19 +1103,25 @@ def _split_part(x, split):
     return out
 
 
-def _get_row_group_memory_usage(path, fs, cpu=False):
-    """Return the total memory usage of a Parquet Row-Group"""
+def _sample_row_group(path, fs, cpu=False, n=1, memory_usage=False):
+    """Return the first Parquet Row-Group for a given path
+
+    The memory_usage of the row-group will also be returned
+    if `memory_usage=True`.
+    """
     if cpu:
         with fs.open(path, "rb") as f0:
             # Use pyarrow for CPU version.
             # Pandas does not enable single-row-group access.
-            rg_byte_size_0 = _memory_usage(pq.ParquetFile(f0).read_row_group(0).to_pandas())
+            _df = pq.ParquetFile(f0).read_row_group(0).to_pandas()
     else:
         if cudf.utils.ioutils._is_local_filesystem(fs):
             # Allow cudf to open the file if this is a local file
             # system (can be significantly faster in this case)
-            rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(path, row_groups=0))
+            _df = cudf.io.read_parquet(path, row_groups=0)
         else:
-            with fs.open(path, "rb") as f0:
-                rg_byte_size_0 = _memory_usage(cudf.io.read_parquet(f0, row_groups=0))
-    return rg_byte_size_0
+            _df = _optimized_read_remote(path, 0, None, fs)
+    _indices = list(range(n))
+    if memory_usage:
+        return _df.take(_indices), _memory_usage(_df)
+    return _df.take(_indices)

@@ -30,6 +30,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
@@ -221,9 +222,15 @@ class Dataset:
         schema=None,
         **kwargs,
     ):
+        if schema is not None and not isinstance(schema, Schema):
+            raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
+
         self.dtypes = dtypes
         self.client = client
         self.schema = schema
+
+        # Cache for "real" (sampled) metadata
+        self._real_meta = {}
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
@@ -276,9 +283,7 @@ class Dataset:
                 part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
-            paths = path_or_source
-            if hasattr(paths, "name"):
-                paths = stringify_path(paths)
+            paths = stringify_path(path_or_source)
             if isinstance(paths, str):
                 paths = [paths]
             paths = sorted(paths, key=natural_sort_key)
@@ -894,6 +899,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
+            schema=self.schema,
         )
 
     def to_hugectr(
@@ -982,6 +988,7 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            schema=self.schema,
         )
 
     @property
@@ -1097,37 +1104,48 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
+
         dtypes = {}
         try:
-            sampled_dtypes = self.sample_dtypes(n)
-            dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+            dtypes = self.sample_dtypes(n=n, annotate_lists=True)
         except RuntimeError:
             warnings.warn(
                 "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
             )
-
         column_schemas = []
-        for column, dtype in dtypes.items():
-            col_schema = ColumnSchema(column, dtype=dtype)
+        for column, dtype_info in dtypes.items():
+            dtype_val = dtype_info["dtype"]
+            is_list = dtype_info["is_list"]
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
             column_schemas.append(col_schema)
 
         self.schema = Schema(column_schemas)
         return self.schema
 
-    def sample_dtypes(self, n=1):
+    def sample_dtypes(self, n=1, annotate_lists=False):
         """Return the real dtypes of the Dataset
 
-        Sample the partitions of the underlying Dask collection
-        until a non-empty partition is found. Then, use the first
-        ``n`` rows of that partition to infer dtype info. If no
-        non-empty partitions are found, use the Dask dtypes.
+        Use cached metadata if this operation was
+        already performed. Otherwise, call down to the
+        underlying engine for sampling logic.
         """
-        _ddf = self.to_ddf()
-        for partition_index in range(_ddf.npartitions):
-            _head = _ddf.partitions[partition_index].head(n)
-            if len(_head):
-                return _head.dtypes
-        return _ddf.dtypes
+        if self._real_meta.get(n, None) is None:
+            _real_meta = self.engine.sample_data(n=n)
+            if self.dtypes:
+                _real_meta = _set_dtypes(_real_meta, self.dtypes)
+            self._real_meta[n] = _real_meta
+
+        if annotate_lists:
+            _real_meta = self._real_meta[n]
+            return {
+                col: {
+                    "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
+                    "is_list": dispatch._is_list_dtype(_real_meta[col]),
+                }
+                for col in _real_meta.columns
+            }
+
+        return self._real_meta[n].dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):
