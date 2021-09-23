@@ -433,6 +433,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
         workflow_nodes,
         additional_columns=additional_columns,
         meta=meta,
+        enforce_metadata=False,
     )
 
 
