@@ -899,6 +899,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
+            schema=self.schema,
         )
 
     def to_hugectr(
@@ -987,6 +988,7 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            schema=self.schema,
         )
 
     @property
