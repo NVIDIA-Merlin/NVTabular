@@ -16,8 +16,10 @@
 import cupy
 import pytest
 
+from nvtabular.dispatch import _concat
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
+from tests.conftest import assert_eq
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -119,4 +121,48 @@ def test_dataloader_empty_error(datasets, engine, batch_size):
         )
     assert "Neither Categorical or Continuous columns were found by the dataloader. " in str(
         exc_info.value
+    )
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("batch_size", [128])
+@pytest.mark.parametrize("epochs", [1, 3])
+def test_dataloader_epochs(datasets, engine, batch_size, epochs):
+    dataset = Dataset(str(datasets["parquet"]), engine=engine)
+    cont_names = ["x", "y", "id"]
+    cat_names = ["name-string", "name-cat"]
+    label_name = ["label"]
+
+    data_loader_1 = DataLoader(
+        dataset,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        label_names=label_name,
+        shuffle=False,
+    )
+
+    data_loader_2 = DataLoader(
+        dataset,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        label_names=label_name,
+        shuffle=False,
+        epochs=epochs,
+    )
+
+    # Check DataLoader lengths
+    assert len(data_loader_2) == epochs * len(data_loader_1)
+
+    # Convert to iterators and then to DataFrames
+    iter_1 = data_loader_1._buff.itr
+    iter_2 = data_loader_2._buff.itr
+    df1 = _concat(list(iter_1))
+    df2 = _concat(list(iter_2))
+
+    # Check that the DataFrame sizes make sense
+    assert_eq(
+        _concat([df1 for i in range(epochs)]).reset_index(drop=True),
+        df2.reset_index(drop=True),
     )

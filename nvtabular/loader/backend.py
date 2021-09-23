@@ -57,7 +57,7 @@ class ChunkQueue:
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
         indices = dataloader._gather_indices_for_dev(0)
-        self.itr = dataloader.data.to_iter(indices=indices)
+        self.itr = dataloader.data.to_iter(indices=indices, epochs=dataloader.epochs)
         self.dataloader = dataloader
 
     def __len__(self):
@@ -188,6 +188,7 @@ class DataLoader:
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        epochs=1,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
@@ -198,6 +199,7 @@ class DataLoader:
         self.sparse_as_dense = sparse_as_dense
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
+        self.epochs = epochs
 
         self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
         self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names

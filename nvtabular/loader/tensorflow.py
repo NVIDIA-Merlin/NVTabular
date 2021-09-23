@@ -205,6 +205,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         dictionary of key: column_name + value: integer representing max sequence length for column
     sparse_dense : bool
         bool value to activate transforming sparse tensors to dense
+    epochs : int
+        Number of dataset passes to perform within a single data-loader pass.
+        Using this option for multi-epoch training enable data for epoch N+1
+        to be pre-fetched while epoch N is still running. Default is 1.
     """
 
     _use_nnz = True
@@ -230,6 +234,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        epochs=1,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -261,6 +266,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             sparse_names=sparse_names,
             sparse_max=sparse_max,
             sparse_as_dense=sparse_as_dense,
+            epochs=epochs,
         )
         self._map_fns = []
 

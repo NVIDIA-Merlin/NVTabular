@@ -64,6 +64,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         dictionary of key: column_name + value: integer representing max sequence length for column
     sparse_dense : bool
         bool value to activate transforming sparse tensors to dense
+    epochs : int
+        Number of dataset passes to perform within a single data-loader pass.
+        Using this option for multi-epoch training enable data for epoch N+1
+        to be pre-fetched while epoch N is still running. Default is 1.
     """
 
     def __init__(
@@ -83,6 +87,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        epochs=1,
     ):
         DataLoader.__init__(
             self,
@@ -101,6 +106,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_names=sparse_names,
             sparse_max=sparse_max,
             sparse_as_dense=sparse_as_dense,
+            epochs=epochs,
         )
 
     def __iter__(self):
