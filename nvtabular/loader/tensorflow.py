@@ -146,7 +146,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     features are not currently supported.
     The underlying NVTabular `Dataset` object is stored in the `data`
     attribute, and should be used for updating NVTabular `Workflow`
-    statistics:
+    statistics::
 
         workflow = nvt.Workflow(...)
         dataset = KerasSequenceLoader(...)
