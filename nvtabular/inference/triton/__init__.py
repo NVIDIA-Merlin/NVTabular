@@ -427,11 +427,8 @@ def _generate_nvtabular_config(
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
 
-        for column in workflow.output_node.input_columns.names:
-            dtype = workflow.input_dtypes[column]
-            config.input.append(
-                model_config.ModelInput(name=column, data_type=_convert_dtype(dtype), dims=[-1])
-            )
+        for column, dtype in workflow.input_dtypes.items():
+            _add_model_param(column, dtype, model_config.ModelInput, config.input, dims=[-1])
 
         config.output.append(
             model_config.ModelOutput(name="DES", data_type=model_config.TYPE_FP32, dims=[-1])

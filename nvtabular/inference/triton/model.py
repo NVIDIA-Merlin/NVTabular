@@ -203,21 +203,34 @@ class TritonPythonModel:
             output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
 
         if "cats" in self.column_types:
+            output_col_names = []
             for name in self.column_types["cats"]:
-                tensors[name] += self.offsets[name]
-            cats_np = _convert_to_hugectr(self.column_types["cats"], tensors, np.int64)
+                if name in tensors.keys():
+                    tensors[name] += self.offsets[name]
+                    output_col_names.append(name)
+                else:
+                    new_name = name + "__values"
+                    tensors[new_name] += self.offsets[name]
+                    output_col_names.append(new_name)
+
+            cats_np = _convert_to_hugectr(output_col_names, tensors, np.int64)
             output_tensors.append(
                 Tensor(
                     "CATCOLUMN",
                     cats_np,
                 )
             )
+
+            n_rows = max(len(tensors[name]) for name in output_col_names)
+            n_total = n_rows * len(output_col_names)
+
+            row_index = np.full((1, n_total), 1, dtype=np.int32)
+            row_index = np.insert(row_index, 0, 0)
+            row_index = np.cumsum(row_index).astype(np.int32).reshape(1, n_total + 1)
+            output_tensors.append(Tensor("ROWINDEX", row_index))
         else:
             output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
-
-        len_cats_np = cats_np.shape[1]
-        row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
-        output_tensors.append(Tensor("ROWINDEX", row_index))
+            output_tensors.append(Tensor("ROWINDEX", np.array([[]], np.int32)))
 
         return InferenceResponse(output_tensors)
 
