@@ -126,7 +126,7 @@ def test_dataloader_empty_error(datasets, engine, batch_size):
 
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [128])
-@pytest.mark.parametrize("epochs", [1, 3])
+@pytest.mark.parametrize("epochs", [1, 5])
 def test_dataloader_epochs(datasets, engine, batch_size, epochs):
     dataset = Dataset(str(datasets["parquet"]), engine=engine)
     cont_names = ["x", "y", "id"]
@@ -152,16 +152,12 @@ def test_dataloader_epochs(datasets, engine, batch_size, epochs):
         epochs=epochs,
     )
 
-    # Check DataLoader lengths
-    assert len(data_loader_2) == epochs * len(data_loader_1)
-
     # Convert to iterators and then to DataFrames
-    iter_1 = data_loader_1._buff.itr
-    iter_2 = data_loader_2._buff.itr
-    df1 = _concat(list(iter_1))
-    df2 = _concat(list(iter_2))
+    df1 = _concat(list(data_loader_1._buff.itr))
+    df2 = _concat(list(data_loader_2._buff.itr))
 
-    # Check that the DataFrame sizes make sense
+    # Check that the DataFrame sizes and rows make sense
+    assert len(df2) == epochs * len(df1)
     assert_eq(
         _concat([df1 for i in range(epochs)]).reset_index(drop=True),
         df2.reset_index(drop=True),
