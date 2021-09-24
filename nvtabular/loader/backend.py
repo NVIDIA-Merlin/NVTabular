@@ -188,6 +188,7 @@ class DataLoader:
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        pad_left=False,
     ):
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
@@ -196,6 +197,7 @@ class DataLoader:
         self.sparse_names = sparse_names or []
         self.sparse_max = sparse_max or {}
         self.sparse_as_dense = sparse_as_dense
+        self.pad_left = pad_left
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
 

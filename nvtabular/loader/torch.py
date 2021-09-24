@@ -83,6 +83,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        pad_left=False,
     ):
         DataLoader.__init__(
             self,
@@ -101,6 +102,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_names=sparse_names,
             sparse_max=sparse_max,
             sparse_as_dense=sparse_as_dense,
+            pad_left=pad_left,
         )
 
     def __iter__(self):
@@ -175,7 +177,12 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         return sparse_tensor
 
     def _build_sparse_tensor(
-        self, values, offsets, diff_offsets, num_rows, seq_limit, padding: str = ""
+        self,
+        values,
+        offsets,
+        diff_offsets,
+        num_rows,
+        seq_limit,
     ):
         """Builds sparse tensors in our torch dataloader.
 
@@ -202,10 +209,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
            padding mode string.
         """
         indices = self._get_indices(offsets, diff_offsets)
-        if padding == "left":
+        if self.pad_left:
             indices[:, 1] = seq_limit - 1 - indices[:, 1]
-        if padding == "right":
-            raise NotImplementedError
         return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 

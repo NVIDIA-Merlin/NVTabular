@@ -231,6 +231,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         sparse_names=None,
         sparse_max=None,
         sparse_as_dense=False,
+        pad_left=False,
     ):
         dataset = _validate_dataset(
             paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
@@ -262,6 +263,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             sparse_names=sparse_names,
             sparse_max=sparse_max,
             sparse_as_dense=sparse_as_dense,
+            pad_left=pad_left,
         )
         self._map_fns = []
 
