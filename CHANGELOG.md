@@ -1,3 +1,30 @@
+
+# NVTabular v0.7.0 (23 September 2021)
+
+## Improvements
+
+* Add column tagging API [#943](https://github.com/NVIDIA/NVTabular/issues/943)
+* Export dataset schema when writing out datasets [#948](https://github.com/NVIDIA/NVTabular/issues/948)
+* Make dataloaders aware of schema [#947](https://github.com/NVIDIA/NVTabular/issues/947)
+* Standardize a Workflows representation of its output columns [#372](https://github.com/NVIDIA/NVTabular/issues/372)
+* Add multi-gpu training example using PyTorch Distributed [#775](https://github.com/NVIDIA/NVTabular/issues/775)
+* Speed up reading Parquet files from remote storage like GCS or S3 [#1119](https://github.com/NVIDIA/NVTabular/pull/1119)
+* Add utility to convert TFRecord datasets to Parquet [#1085](https://github.com/NVIDIA/NVTabular/pull/1085)
+* Add multi-gpu training example using PyTorch Distributed [#775](https://github.com/NVIDIA/NVTabular/issues/775)
+* Add multihot support for PyTorch inference [#719](https://github.com/NVIDIA/NVTabular/issues/719)
+* Add options to reserve categorical indices in the Categorify() op [#1074](https://github.com/NVIDIA/NVTabular/issues/1074)
+* Update notebooks to work with CPU only systems [#960](https://github.com/NVIDIA/NVTabular/issues/960)
+* Save output from Categorify op in a single table for HugeCTR [#946](https://github.com/NVIDIA/NVTabular/issues/946)
+* Add a keyset file for HugeCTR integration [#1049](https://github.com/NVIDIA/NVTabular/issues/1049)
+
+## Bug Fixes
+
+* Fix category counts written out by the Categorify op [#1128](https://github.com/NVIDIA/NVTabular/issues/1128)
+* Fix HugeCTR inference example [#1130](https://github.com/NVIDIA/NVTabular/pull/1130)
+* Fix make_feature_column_workflow bug in Categorify if features have vocabularies of varying size. [#1062](https://github.com/NVIDIA/NVTabular/issues/1062)
+* Fix TargetEncoding op on CPU only systems [#976](https://github.com/NVIDIA/NVTabular/issues/976)
+* Fix writing empty partitions to Parquet files [#1097](https://github.com/NVIDIA/NVTabular/issues/1097)
+
 # NVTabular v0.6.1 (11 August 2021)
 
 ## Bug Fixes

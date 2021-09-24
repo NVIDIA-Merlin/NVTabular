@@ -55,16 +55,16 @@ Prior to installing NVTabular, ensure that you meet the following prerequisites:
 NVTabular can be installed with Anaconda from the ```nvidia``` channel by running the following command:
 
 ```
-conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=10.2
+conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7 cudatoolkit=11.0
 ```
 
 If you'd like to create a full conda environment to run the example notebooks, do the following:
 
-1. Use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) that have been provided to install the CUDA Toolkit (10.1, 10.2, or 11.0). 
+1. Use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) that have been provided to install the CUDA Toolkit (11.0 or 11.2). 
 2. Clone the NVTabular repo and run the following commands from the root directory:
    ```
-   conda env create -f=conda/environments/nvtabular_dev_cuda10.1.yml
-   conda activate nvtabular_dev_10.1
+   conda env create -f=conda/environments/nvtabular_dev_cuda11.2.yml
+   conda activate nvtabular_dev_11.2
    python -m ipykernel install --user --name=nvt
    pip install -e .
    jupyter notebook
