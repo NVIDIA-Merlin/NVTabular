@@ -511,6 +511,35 @@ def test_sparse_tensors(sparse_dense):
     # ensure they are correct structurally
 
 
+@pytest.mark.parametrize("pad_left", [False, True])
+def test_torch_dataloader_left_padding(pad_left):
+    """Tests the pad_left functionality of our Torch dataloader
+    to pad data on the left."""
+    df = cudf.DataFrame({"A": [[3, 1, 5, 1], [9, 2], [6]], "B": [[3, 1, 5, 1, 9], [2], [6, 5, 3]]})
+
+    print("df is:\n{}".format(df))
+
+    categorical_columns = ["A", "B"]
+    batch_size = 2
+    data_itr = torch_dataloader.TorchAsyncItr(
+        nvt.Dataset(df), pad_left=pad_left, cats=categorical_columns, batch_size=batch_size
+    )
+
+    print("data_itr is:\n{}".format(data_itr))
+
+    for batch in data_itr:
+        features, labels = batch
+        print("batch is:\n{}".format(batch))
+        print("features, labels are:\n{}, {}".format(features, labels))
+
+        expected_feature_length_with_padding = 5
+        for categorical_column in categorical_columns:
+            feature_tensor = features[categorical_column]
+            print("feature_tensor is:\n{}".format(feature_tensor))
+            if pad_left:
+                assert len(feature_tensor[0]) == expected_feature_length_with_padding
+
+
 def test_mh_model_support(tmpdir):
     df = cudf.DataFrame(
         {
