@@ -354,6 +354,9 @@ def test_hugectr(
     # Check for _metadata.json
     assert os.path.isfile(outdir + "/_metadata.json")
 
+    # Check for _hugetcr.keyset
+    assert os.path.isfile(outdir + "/_hugectr.keyset")
+
     # Check contents of _metadata.json
     data = {}
     col_summary = {}
