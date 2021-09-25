@@ -64,6 +64,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         dictionary of key: column_name + value: integer representing max sequence length for column
     sparse_dense : bool
         bool value to activate transforming sparse tensors to dense
+    pad_left : bool
+        Boolean value to indicate whether to pad on the left. Use True to pad on the left,
+        False to pad on the right. Default: False
     """
 
     def __init__(
@@ -193,9 +196,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         diff_offsets :
         num_rows :
         seq_limit :
-        padding : str, optional
-            Padding mode, choose among 'left' for left padding, 'right' for right padding,
-            or '' for no padding, by default ''
 
         Returns
         -------
@@ -209,8 +209,38 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
            padding mode string.
         """
         indices = self._get_indices(offsets, diff_offsets)
+        # print("indices is:\n{}\n".format(indices))
+        # print("indices.T is:\n{}\n".format(indices.T))
         if self.pad_left:
-            indices[:, 1] = seq_limit - 1 - indices[:, 1]
+            indices[:, 1] = (seq_limit - 1) - indices[:, 1]
+
+            # We make sure that the elements of our sparse matrix indices are in the correct
+            # non-reversed order. We do this by flipping increasing blocks in the second column
+            # of indices.
+            def _process_row(row: torch.Tensor) -> torch.Tensor:
+                """Process row by blocks for use in left padding."""
+                row = row.tolist()
+                prev, curr = 0, 0
+                while curr < len(row):
+                    # print("prev, curr are:\n{}".format((prev, curr)))
+                    if row[curr] >= row[curr - 1]:
+                        # print("flipping block at: {}".format((prev, curr)))
+                        row[prev:curr] = row[prev:curr][::-1]
+                        prev = curr
+                    if curr == (len(row) - 1):
+                        # print("flipping final block at: {}".format((prev, curr)))
+                        row[prev : curr + 1] = row[prev : curr + 1][::-1]
+                    curr += 1
+                return torch.Tensor(row)
+
+            out_indices = indices.T
+            row_to_process = indices.T[1]
+            # print("row_to_process is:\n{}".format(row_to_process))
+            processed_row = _process_row(row_to_process)
+            # print("processed_row is:\n{}".format(processed_row))
+            out_indices[1] = processed_row
+            indices = out_indices.T
+            # print("indices is now:\n{}\n".format(indices))
         return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 
