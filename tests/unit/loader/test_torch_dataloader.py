@@ -516,9 +516,7 @@ def test_torch_dataloader_left_padding(pad_left):
     """Tests the pad_left functionality of our Torch dataloader
     to pad data on the left."""
     df = cudf.DataFrame({"A": [[3, 1, 5, 1], [9, 2], [6]], "B": [[3, 1, 5, 1, 9], [2], [6, 5, 3]]})
-
     # print("df is:\n{}".format(df))
-
     categorical_columns = ["A", "B"]
     sparse_max = {"A": 5, "B": 8}
     batch_size = 4
@@ -534,21 +532,43 @@ def test_torch_dataloader_left_padding(pad_left):
         pad_left=pad_left,
     )
     # print("data_itr is:\n{}".format(data_itr))
-
     for batch in data_itr:
         features, labels = batch
         # print("batch is:\n{}".format(batch))
         # print("features, labels are:\n{}, {}".format(features, labels))
-
-        # expected_feature_length_with_padding = 5
         for categorical_column in categorical_columns:
             feature_tensor = features[categorical_column]
-            print("feature_tensor is:\n{}".format(feature_tensor))
+            # print("feature_tensor is:\n{}".format(feature_tensor))
             if pad_left:
-                pass
-                # assert len(feature_tensor[0]) == expected_feature_length_with_padding
+                if categorical_column == "A":
+                    expected_tensor = torch.tensor(
+                        [[0, 3, 1, 5, 1], [0, 0, 0, 9, 2], [0, 0, 0, 0, 6]], dtype=torch.int64
+                    ).cuda()
+                if categorical_column == "B":
+                    expected_tensor = torch.tensor(
+                        [
+                            [0, 0, 0, 3, 1, 5, 1, 9],
+                            [0, 0, 0, 0, 0, 0, 0, 2],
+                            [0, 0, 0, 0, 0, 6, 5, 3],
+                        ],
+                        dtype=torch.int64,
+                    ).cuda()
 
-    # assert False
+            elif not pad_left:
+                if categorical_column == "A":
+                    expected_tensor = torch.tensor(
+                        [[3, 1, 5, 1, 0], [9, 2, 0, 0, 0], [6, 0, 0, 0, 0]], dtype=torch.int64
+                    ).cuda()
+                if categorical_column == "B":
+                    expected_tensor = torch.tensor(
+                        [
+                            [3, 1, 5, 1, 9, 0, 0, 0],
+                            [2, 0, 0, 0, 0, 0, 0, 0],
+                            [6, 5, 3, 0, 0, 0, 0, 0],
+                        ],
+                        dtype=torch.int64,
+                    ).cuda()
+            assert torch.allclose(feature_tensor, expected_tensor)
 
 
 def test_mh_model_support(tmpdir):
