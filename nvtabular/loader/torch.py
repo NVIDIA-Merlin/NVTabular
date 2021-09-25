@@ -209,38 +209,29 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
            padding mode string.
         """
         indices = self._get_indices(offsets, diff_offsets)
-        # print("indices is:\n{}\n".format(indices))
-        # print("indices.T is:\n{}\n".format(indices.T))
         if self.pad_left:
             indices[:, 1] = (seq_limit - 1) - indices[:, 1]
 
             # We make sure that the elements of our sparse matrix indices are in the correct
             # non-reversed order. We do this by flipping increasing blocks in the second column
-            # of indices.
+            # of indices. We find it convienient and more efficient to modify the transpose
+            # of indices and transpose indices back before returning the indices matrix.
             def _process_row(row: torch.Tensor) -> torch.Tensor:
                 """Process row by blocks for use in left padding."""
                 row = row.tolist()
                 prev, curr = 0, 0
                 while curr < len(row):
-                    # print("prev, curr are:\n{}".format((prev, curr)))
                     if row[curr] >= row[curr - 1]:
-                        # print("flipping block at: {}".format((prev, curr)))
                         row[prev:curr] = row[prev:curr][::-1]
                         prev = curr
                     if curr == (len(row) - 1):
-                        # print("flipping final block at: {}".format((prev, curr)))
                         row[prev : curr + 1] = row[prev : curr + 1][::-1]
                     curr += 1
                 return torch.Tensor(row)
 
-            out_indices = indices.T
-            row_to_process = indices.T[1]
-            # print("row_to_process is:\n{}".format(row_to_process))
-            processed_row = _process_row(row_to_process)
-            # print("processed_row is:\n{}".format(processed_row))
-            out_indices[1] = processed_row
-            indices = out_indices.T
-            # print("indices is now:\n{}\n".format(indices))
+            indices = indices.T
+            indices[1] = _process_row(indices[1])
+            indices = indices.T
         return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 
