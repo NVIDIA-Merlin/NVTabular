@@ -512,9 +512,9 @@ def test_sparse_tensors(sparse_dense):
 
 
 @pytest.mark.parametrize("pad_left", [False, True])
-def test_torch_dataloader_left_padding(pad_left):
+def test_sparse_tensor_left_padding(pad_left):
     """Tests the pad_left functionality of our Torch dataloader
-    to pad data on the left."""
+    to pad data on the left for sparse tensors."""
     df = cudf.DataFrame({"A": [[3, 1, 5, 1], [9, 2], [6]], "B": [[3, 1, 5, 1, 9], [2], [6, 5, 3]]})
     categorical_columns = ["A", "B"]
     sparse_max = {"A": 5, "B": 8}
