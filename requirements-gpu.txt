@@ -1,5 +1,5 @@
 -r requirements.txt
-cudf>=21.06
-dask-cudf>=21.06
-dask-cuda>=21.06
+cudf>=21.08
+dask-cudf>=21.08
+dask-cuda>=21.08
 cupy>=7
