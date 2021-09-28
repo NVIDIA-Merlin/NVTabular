@@ -180,6 +180,19 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             sparse_tensor = sparse_tensor.to_dense()
         return sparse_tensor
 
+    def _build_sparse_tensor_helper_process_column(self, col: torch.Tensor) -> torch.Tensor:
+        """Process column by increasing blocks for use in left padding."""
+        col = col.tolist()
+        prev, curr = 0, 0
+        while curr < len(col):
+            if col[curr] >= col[curr - 1]:
+                col[prev:curr] = col[prev:curr][::-1]
+                prev = curr
+            if curr == (len(col) - 1):
+                col[prev : curr + 1] = col[prev : curr + 1][::-1]
+            curr += 1
+        return torch.Tensor(col)
+
     def _build_sparse_tensor(
         self,
         values,
@@ -207,27 +220,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         indices = self._get_indices(offsets, diff_offsets)
         if self.pad_left:
             indices[:, 1] = (seq_limit - 1) - indices[:, 1]
-
             # We make sure that the elements of our sparse matrix indices are in the correct
             # non-reversed order. We do this by flipping increasing blocks in the second column
-            # of indices. We find it convienient and more efficient to modify the transpose
-            # of indices and transpose indices back before returning the indices matrix.
-            def _process_row(row: torch.Tensor) -> torch.Tensor:
-                """Process row by blocks for use in left padding."""
-                row = row.tolist()
-                prev, curr = 0, 0
-                while curr < len(row):
-                    if row[curr] >= row[curr - 1]:
-                        row[prev:curr] = row[prev:curr][::-1]
-                        prev = curr
-                    if curr == (len(row) - 1):
-                        row[prev : curr + 1] = row[prev : curr + 1][::-1]
-                    curr += 1
-                return torch.Tensor(row)
-
-            indices = indices.T
-            indices[1] = _process_row(indices[1])
-            indices = indices.T
+            # of indices.
+            indices[:, 1] = self._build_sparse_tensor_helper_process_column(indices[:, 1])
         return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 
