@@ -422,7 +422,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         return sparse_tensor
 
     def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
-        """Builds sparse tensors in the TensorFlwo dataloader.
+        """Builds sparse tensors in the TensorFlow dataloader.
 
         Parameters
         ----------
