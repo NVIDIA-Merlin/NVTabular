@@ -67,6 +67,7 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
     pad_left : bool
         Boolean value to indicate whether to pad on the left. Use True to pad on the left,
         False to pad on the right. Default: False
+
     """
 
     def __init__(
@@ -202,11 +203,6 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         torch.sparse
             Our built torch sparse tensor.
 
-        Raises
-        ------
-        NotImplementedError
-            Raises this error when this method is called with a not implemented
-           padding mode string.
         """
         indices = self._get_indices(offsets, diff_offsets)
         if self.pad_left:
