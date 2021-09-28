@@ -422,7 +422,22 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         return sparse_tensor
 
     def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        """Builds sparse tensors in the TensorFlwo dataloader.
 
+        Parameters
+        ----------
+        values :
+        offsets :
+        diff_offsets :
+        num_rows :
+        seq_limit :
+
+        Returns
+        -------
+        tf.sparse
+            Our built TensorFlow sparse tensor.
+
+        """
         ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
         if self.pad_left:
             max_len = max(max(len(row) for row in ragged), seq_limit)
