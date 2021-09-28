@@ -205,6 +205,9 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         dictionary of key: column_name + value: integer representing max sequence length for column
     sparse_dense : bool
         bool value to activate transforming sparse tensors to dense
+    pad_left : bool
+        Boolean value to indicate whether to pad on the left. Use True to pad on the left,
+        False to pad on the right. Default: False
 
     """
 
@@ -419,10 +422,29 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         return sparse_tensor
 
     def _build_sparse_tensor(self, values, offsets, diff_offsets, num_rows, seq_limit):
+        print(f"values is:\n {values}")
+        print(f"diff_offsets is:\n {diff_offsets}")
+        print(f"seq_limit is:\n {seq_limit}")
+
         ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
-        tensor = tf.RaggedTensor.from_tensor(ragged.to_tensor(shape=[None, seq_limit])).to_sparse()
+        print(f"ragged is:\n{ragged}")
+
+        if self.pad_left:
+            max_len = max(max(len(row) for row in ragged), seq_limit)
+            tensor = tf.stack([tf.pad(row, [[max_len - len(row), 0]]) for row in ragged], axis=0)
+            print(f"tensor is mapped to:\n{tensor}")
+        else:
+            tensor = ragged.to_tensor(shape=[None, seq_limit])
+            print(f"tensor is:\n{tensor}")
+
+        tensor = tf.RaggedTensor.from_tensor(tensor)
+        print(f"tensor is mapped now to:\n{tensor}")
+        tensor = tensor.to_sparse()
+        print(f"tensor is now the sparse:\n{tensor}")
+
         if self.sparse_as_dense:
             tensor = tf.sparse.to_dense(tensor)
+            print(f"tensor is transformed to to the dense:\n{tensor}")
         return tensor
 
     def _handle_tensors(self, cats, conts, labels):
