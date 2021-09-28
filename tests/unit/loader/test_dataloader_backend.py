@@ -133,7 +133,7 @@ def test_dataloader_epochs(datasets, engine, batch_size, epochs):
     cat_names = ["name-string", "name-cat"]
     label_name = ["label"]
 
-    data_loader_1 = DataLoader(
+    data_loader = DataLoader(
         dataset,
         cat_names=cat_names,
         cont_names=cont_names,
@@ -142,18 +142,9 @@ def test_dataloader_epochs(datasets, engine, batch_size, epochs):
         shuffle=False,
     )
 
-    data_loader_2 = DataLoader(
-        dataset,
-        cat_names=cat_names,
-        cont_names=cont_names,
-        batch_size=batch_size,
-        label_names=label_name,
-        shuffle=False,
-    ).epochs(epochs)
-
     # Convert to iterators and then to DataFrames
-    df1 = _concat(list(data_loader_1._buff.itr))
-    df2 = _concat(list(data_loader_2._buff.itr))
+    df1 = _concat(list(data_loader._buff.itr))
+    df2 = _concat(list(data_loader.epochs(epochs)._buff.itr))
 
     # Check that the DataFrame sizes and rows make sense
     assert len(df2) == epochs * len(df1)
