@@ -149,8 +149,7 @@ def test_dataloader_epochs(datasets, engine, batch_size, epochs):
         batch_size=batch_size,
         label_names=label_name,
         shuffle=False,
-        epochs=epochs,
-    )
+    ).epochs(epochs)
 
     # Convert to iterators and then to DataFrames
     df1 = _concat(list(data_loader_1._buff.itr))
