@@ -219,11 +219,9 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         """
         indices = self._get_indices(offsets, diff_offsets)
         if self.pad_left:
-            indices[:, 1] = (seq_limit - 1) - indices[:, 1]
-            # We make sure that the elements of our sparse matrix indices are in the correct
-            # non-reversed order. We do this by flipping increasing blocks in the second column
-            # of indices.
-            indices[:, 1] = self._build_sparse_tensor_helper_process_column(indices[:, 1])
+            indices[:, 1] = self._build_sparse_tensor_helper_process_column(
+                (seq_limit - 1) - indices[:, 1]
+            )
         return self._get_sparse_tensor(values, indices, num_rows, seq_limit)
 
 
