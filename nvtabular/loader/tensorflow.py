@@ -427,23 +427,46 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         Parameters
         ----------
         values :
+            The values to build our intermediate ragged tensor from.
         offsets :
+            Not currently used.
         diff_offsets :
+            The row lengths to build our intermediate ragged tensor from.
         num_rows :
-        seq_limit :
+            Not currently used.
+        seq_limit : int
+            The desired length of output sequences.
 
         Returns
         -------
         tf.sparse
-            Our built TensorFlow sparse tensor.
+            The built TensorFlow sparse tensor.
 
         """
         ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
+
+        # Get vector of padding lengths using tf ops like reduce_sum.
+        non_zero_entries_by_row = tf.math.reduce_sum(ragged / ragged, axis=1)
+        paddings = seq_limit - non_zero_entries_by_row.numpy()
+        # print(f"paddings is:\n{paddings}")
+
+        # Make zeros ragged tensor.
+        total_entries = ragged.shape[0] * seq_limit
+        non_zero_entries = tf.reduce_sum(ragged / ragged).numpy()
+        zeros_count = total_entries - non_zero_entries
+        zeros_values = tf.zeros(shape=(int(zeros_count)), dtype=tf.dtypes.int64)
+        print(f"zeros_values is:\n{zeros_values}")
+        print(f"paddings is:\n{paddings}")
+        zeros = tf.RaggedTensor.from_row_lengths(values=zeros_values, row_lengths=paddings)
+        print(f"zeros is:\n{zeros}")
+
+        # Concatenate zeros ragged tensor with ragged tensor on either the left or the right,
+        # depending on either left_pad or not.
+        # Pad our minor matrix up to the sequence limit.
         if self.pad_left:
-            max_len = max(max(len(row) for row in ragged), seq_limit)
-            tensor = tf.stack([tf.pad(row, [[max_len - len(row), 0]]) for row in ragged], axis=0)
+            tensor = tf.concat([zeros, ragged], axis=1).to_tensor()
         else:
-            tensor = ragged.to_tensor(shape=[None, seq_limit])
+            tensor = tf.concat([ragged, zeros], axis=1).to_tensor()
 
         tensor = tf.RaggedTensor.from_tensor(tensor).to_sparse()
         if self.sparse_as_dense:
