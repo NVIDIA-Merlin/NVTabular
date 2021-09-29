@@ -448,21 +448,16 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         # Get vector of padding lengths using tf ops like reduce_sum.
         non_zero_entries_by_row = tf.math.reduce_sum(ragged / ragged, axis=1)
         paddings = seq_limit - non_zero_entries_by_row.numpy()
-        # print(f"paddings is:\n{paddings}")
 
-        # Make zeros ragged tensor.
+        # Make zeros ragged tensor to pad our data tensor with.
         total_entries = ragged.shape[0] * seq_limit
         non_zero_entries = tf.reduce_sum(ragged / ragged).numpy()
         zeros_count = total_entries - non_zero_entries
         zeros_values = tf.zeros(shape=(int(zeros_count)), dtype=tf.dtypes.int64)
-        print(f"zeros_values is:\n{zeros_values}")
-        print(f"paddings is:\n{paddings}")
         zeros = tf.RaggedTensor.from_row_lengths(values=zeros_values, row_lengths=paddings)
-        print(f"zeros is:\n{zeros}")
 
-        # Concatenate zeros ragged tensor with ragged tensor on either the left or the right,
+        # Concatenate zeros ragged tensor with our data tensor on either the left or the right,
         # depending on either left_pad or not.
-        # Pad our minor matrix up to the sequence limit.
         if self.pad_left:
             tensor = tf.concat([zeros, ragged], axis=1).to_tensor()
         else:
