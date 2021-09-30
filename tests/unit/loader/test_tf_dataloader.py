@@ -519,7 +519,7 @@ def test_sparse_tensors(tmpdir, sparse_dense):
 
 
 @pytest.mark.parametrize("pad_left", [False, True])
-def test_sparse_tensor_left_padding(pad_left):
+def test_sparse_tensors_left_padding(pad_left):
     """Tests the pad_left functionality of our TensorFlow dataloader
     to pad data on the left for sparse tensors."""
     df = cudf.DataFrame({"A": [[3, 1, 5, 1], [9, 2], [6]], "B": [[3, 1, 5, 1, 9], [2], [6, 5, 3]]})
@@ -543,14 +543,12 @@ def test_sparse_tensor_left_padding(pad_left):
         features, labels = batch
         for categorical_column in categorical_columns:
             feature_tensor = features[categorical_column]
-            print("feature_tensor is:\n{}".format(feature_tensor))
             print("categorical_column is:\n{}".format(categorical_column))
             if pad_left:
                 if categorical_column == "A":
                     expected_tensor = tf.constant(
                         [[0, 3, 1, 5, 1], [0, 0, 0, 9, 2], [0, 0, 0, 0, 6]], dtype=tf.int64
                     )
-                    print("expected_tensor is:\n{}".format(expected_tensor))
                 if categorical_column == "B":
                     expected_tensor = tf.constant(
                         [
@@ -560,13 +558,11 @@ def test_sparse_tensor_left_padding(pad_left):
                         ],
                         dtype=tf.int64,
                     )
-                    print("expected_tensor is:\n{}".format(expected_tensor))
             elif not pad_left:
                 if categorical_column == "A":
                     expected_tensor = tf.constant(
                         [[3, 1, 5, 1, 0], [9, 2, 0, 0, 0], [6, 0, 0, 0, 0]], dtype=tf.int64
                     )
-                    print("expected_tensor is:\n{}".format(expected_tensor))
                 if categorical_column == "B":
                     expected_tensor = tf.constant(
                         [
@@ -576,7 +572,8 @@ def test_sparse_tensor_left_padding(pad_left):
                         ],
                         dtype=tf.int64,
                     )
-                    print("expected_tensor is:\n{}".format(expected_tensor))
+            print("expected_tensor is:\n{}".format(expected_tensor))
+            print("feature_tensor is:\n{}".format(feature_tensor))
             assert tf.experimental.numpy.allclose(feature_tensor, expected_tensor)
 
 
