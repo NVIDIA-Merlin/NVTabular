@@ -445,23 +445,10 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         """
         ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
 
-        # Get vector of padding lengths using tf ops like reduce_sum.
-        non_zero_entries_by_row = tf.math.reduce_sum(ragged / ragged, axis=1)
-        paddings = seq_limit - non_zero_entries_by_row.numpy()
-
-        # Make zeros ragged tensor to pad our data tensor with.
-        total_entries = ragged.shape[0] * seq_limit
-        non_zero_entries = tf.reduce_sum(ragged / ragged).numpy()
-        zeros_count = total_entries - non_zero_entries
-        zeros_values = tf.zeros(shape=(int(zeros_count)), dtype=tf.dtypes.int64)
-        zeros = tf.RaggedTensor.from_row_lengths(values=zeros_values, row_lengths=paddings)
-
-        # Concatenate zeros ragged tensor with our data tensor on either the left or the right,
-        # depending on either left_pad or not.
-        if self.pad_left:
-            tensor = tf.concat([zeros, ragged], axis=1).to_tensor()
-        else:
-            tensor = tf.concat([ragged, zeros], axis=1).to_tensor()
+        reverse = tf.reverse(ragged, [-1]).to_tensor(0)
+        tensor = tf.reverse(reverse, [-1])
+        paddings = tf.constant([[0, 0], [seq_limit - tensor.shape[1], 0]])
+        tensor = tf.pad(tensor, paddings)
 
         tensor = tf.RaggedTensor.from_tensor(tensor).to_sparse()
         if self.sparse_as_dense:
