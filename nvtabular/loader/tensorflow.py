@@ -443,11 +443,15 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             The built TensorFlow sparse tensor.
 
         """
-        ragged = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
+        tensor = tf.RaggedTensor.from_row_lengths(values=values, row_lengths=diff_offsets)
 
-        reverse = tf.reverse(ragged, [-1]).to_tensor(0)
-        tensor = tf.reverse(reverse, [-1])
-        paddings = tf.constant([[0, 0], [seq_limit - tensor.shape[1], 0]])
+        if self.pad_left:
+            reverse = tf.reverse(tensor, [-1]).to_tensor(default_value=0)
+            tensor = tf.reverse(reverse, [-1])
+            paddings = tf.constant([[0, 0], [seq_limit - tensor.shape[1], 0]])
+        else:
+            tensor = tensor.to_tensor(default_value=0)
+            paddings = tf.constant([[0, 0], [0, seq_limit - tensor.shape[1]]])
         tensor = tf.pad(tensor, paddings)
 
         tensor = tf.RaggedTensor.from_tensor(tensor).to_sparse()
