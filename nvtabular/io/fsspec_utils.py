@@ -124,7 +124,7 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
     # Call cudf.read_parquet on the dummy buffer
     strings_to_cats = kwargs.get("strings_to_categorical", False)
     df = cudf.read_parquet(
-        dummy_buffer,
+        io.BytesIO(dummy_buffer),
         engine="cudf",
         columns=columns,
         row_groups=row_groups,
