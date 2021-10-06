@@ -535,10 +535,9 @@ def test_na_value_count(tmpdir):
     workflow.fit(train_dataset)
     workflow.transform(train_dataset).to_ddf().compute()
 
-    single_cat = cudf.read_parquet("./categories/unique.brand.parquet")
-    import pdb
-
-    pdb.set_trace()
+    single_cat = dispatch._read_dispatch("./categories/unique.brand.parquet")(
+        "./categories/unique.brand.parquet"
+    )
     assert single_cat["brand_count"][0] == 5
 
 
