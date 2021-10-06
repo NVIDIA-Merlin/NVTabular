@@ -16,7 +16,7 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        target: ["11.0", "10.2", "10.1"]
+        target: ["11.0", "11.2"]
 
     steps:
     - uses: actions/checkout@v2
