@@ -118,7 +118,7 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
 
 
 def test_target_encode_group():
-    df = cudf.DataFrame(
+    df = dispatch._make_df(
         {
             "Cost": range(15),
             "Post": [1, 2, 3, 4, 5] * 3,
