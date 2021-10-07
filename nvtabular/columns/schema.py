@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,9 +24,8 @@ import numpy
 # this needs to be before any modules that import protobuf
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-from google.protobuf import json_format, text_format  # noqa
+from google.protobuf import json_format, text_format, wrappers_pb2  # noqa
 from google.protobuf.any_pb2 import Any  # noqa
-from google.protobuf.struct_pb2 import Struct  # noqa
 from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
 
 from nvtabular.tags import Tags  # noqa
@@ -33,10 +33,10 @@ from nvtabular.tags import Tags  # noqa
 
 def register_extra_metadata(column_schema, feature):
     filtered_properties = {k: v for k, v in column_schema.properties.items() if k != "domain"}
-    msg_struct = Struct()
+    prop_string = json.dumps(filtered_properties)
     # must pack message into "Any" type
     any_pack = Any()
-    any_pack.Pack(json_format.ParseDict(filtered_properties, msg_struct))
+    any_pack.Pack(wrappers_pb2.StringValue(value=prop_string))
     # extra_metadata only takes type "Any" messages
     feature.annotation.extra_metadata.add().CopyFrom(any_pack)
     return feature
@@ -285,7 +285,12 @@ class Schema:
                     {len(feat.annotation.extra_metadata)}"
                 )
             if feat.annotation.extra_metadata:
-                properties = json_format.MessageToDict(feat.annotation.extra_metadata[0])["value"]
+                str_data = wrappers_pb2.StringValue.FromString(
+                    feat.annotation.extra_metadata[0].value
+                )
+                str_data = json_format.MessageToDict(str_data)
+                properties = json.loads(str_data)
+                # properties = json_format.MessageToJson(feat.annotation.extra_metadata)
             # what domain
             # load the domain values
             shape_name = feat.WhichOneof("shape_type")
