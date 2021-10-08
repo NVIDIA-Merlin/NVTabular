@@ -86,7 +86,7 @@
 
 * Adding Horovod integration to NVTabular's dataloaders, allowing you to use multiple GPU's to train TensorFlow and PyTorch models
 * Adding a Groupby operation for use with session based recommender models
-* Added ability to read and write datasets partitioned by a column, allowing 
+* Added ability to read and write datasets partitioned by a column, allowing
 * Add example notebooks for using Triton Inference Server with NVTabular
 * Restructure and simplify Criteo example notebooks
 * Add support for PyTorch inference with Triton Inference Server
@@ -101,7 +101,7 @@
 
 * The API for NVTabular has been signficantly refactored, and existing code targetting the 0.3 API will need to be updated.
 Workflows are now represented as graphs of operations, and applied using a sklearn 'transformers' style api. Read more by
-checking out the [examples](https://nvidia.github.io/NVTabular/v0.4.0/examples/index.html)
+checking out the [examples](https://nvidia-merlin.github.io/NVTabular/v0.4.0/examples/index.html)
 
 ## Improvements
 

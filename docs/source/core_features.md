@@ -17,7 +17,7 @@ In addition to providing mechanisms for transforming the data to prepare it for 
 
 ## HugeCTR Interoperability ##
 
-NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the [HugeCTR Example Notebook](https://nvidia.github.io/NVTabular/main/examples/scaling-criteo/02-03c-ETL-with-NVTabular-HugeCTR.html) for details about how this works.
+NVTabular is also capable of preprocessing datasets that can be passed to HugeCTR for training. For additional information, see the [HugeCTR Example Notebook](https://nvidia-merlin.github.io/NVTabular/main/examples/scaling-criteo/02-03c-ETL-with-NVTabular-HugeCTR.html) for details about how this works.
 
 ## Multi-GPU Support ##
 
@@ -60,7 +60,7 @@ NVTabular supports the:
 * passing of continuous vector features like pre-trained embeddings, which includes basic preprocessing and feature engineering, as well as full support in the dataloaders for training models with both TensorFlow and PyTorch.
 
 Multi-hot lets you represent a set of categories as a single feature. For example, in a movie recommendation system, each movie might have a list of genres associated with it like comedy, drama, horror, or science fiction. Since movies can belong to more than one genre, we can't use single-hot encoding like we are doing for scalar
-columns. Instead we train models with multi-hot embeddings for these features by having the deep learning model look up an embedding for each category in the list and then average all the embeddings for each row. Both multi-hot categoricals and vector continuous features are represented using list columns in our datasets. cuDF has recently added support for list columns, and we're leveraging that support in NVTabular to power this feature. 
+columns. Instead we train models with multi-hot embeddings for these features by having the deep learning model look up an embedding for each category in the list and then average all the embeddings for each row. Both multi-hot categoricals and vector continuous features are represented using list columns in our datasets. cuDF has recently added support for list columns, and we're leveraging that support in NVTabular to power this feature.
 
 Our Categorify and HashBucket operators can map list columns down to small contiguous integers, which are suitable for use in an embedding lookup table. This is only possible if the dataset contains two rows like ```[['comedy', 'horror'], ['comedy', 'sciencefiction']]``` so that NVTabular can transform the strings for each row into categorical IDs like ```[[0, 1], [0, 2]]``` to be used in our embedding layers.
 
