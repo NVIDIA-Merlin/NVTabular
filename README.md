@@ -1,4 +1,4 @@
-## [NVTabular](https://github.com/NVIDIA/NVTabular) | [Documentation](https://nvidia.github.io/NVTabular/main/Introduction.html)
+## [NVTabular](https://github.com/NVIDIA/NVTabular) | [Documentation](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html)
 
 [NVTabular](https://github.com/NVIDIA/NVTabular) is a feature engineering and preprocessing library for tabular data that is designed to easily manipulate terabyte scale datasets and train deep learning (DL) based recommender systems. It provides high-level abstraction to simplify code and accelerates computation on the GPU using the [RAPIDS Dask-cuDF](https://github.com/rapidsai/cudf/tree/main/python/dask_cudf) library. NVTabular is designed to be interoperable with both PyTorch and TensorFlow using dataloaders that have been developed as extensions of native framework code. In our experiments, we were able to speed up existing TensorFlow pipelines by nine times and existing PyTorch pipelines by five times with our highly-optimized dataloaders.
 
@@ -60,7 +60,7 @@ conda install -c nvidia -c rapidsai -c numba -c conda-forge nvtabular python=3.7
 
 If you'd like to create a full conda environment to run the example notebooks, do the following:
 
-1. Use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) that have been provided to install the CUDA Toolkit (11.0 or 11.2). 
+1. Use the [environment files](https://github.com/NVIDIA/NVTabular/tree/main/conda/environments) that have been provided to install the CUDA Toolkit (11.0 or 11.2).
 2. Clone the NVTabular repo and run the following commands from the root directory:
    ```
    conda env create -f=conda/environments/nvtabular_dev_cuda11.2.yml
@@ -109,4 +109,4 @@ Each Jupyter notebook covers the following:
 If you'd like to contribute to the library directly, see the [Contributing.md](https://github.com/NVIDIA/NVTabular/blob/main/CONTRIBUTING.md). We're particularly interested in contributions or feature requests for our feature engineering and preprocessing operations. To further advance our Merlin Roadmap, we encourage you to share all the details regarding your recommender system pipeline in this [survey](https://developer.nvidia.com/merlin-devzone-survey).
 
 If you're interested in learning more about how NVTabular works, see
-[our NVTabular documentation](https://nvidia.github.io/NVTabular/main/Introduction.html). We also have [API documentation](https://nvidia.github.io/NVTabular/main/api/index.html) that outlines the specifics of the available calls within the library.
+[our NVTabular documentation](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html). We also have [API documentation](https://nvidia-merlin.github.io/NVTabular/main/api/index.html) that outlines the specifics of the available calls within the library.
