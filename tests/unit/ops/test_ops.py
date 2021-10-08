@@ -538,7 +538,11 @@ def test_na_value_count(tmpdir):
     single_cat = dispatch._read_dispatch("./categories/unique.brand.parquet")(
         "./categories/unique.brand.parquet"
     )
+    second_cat = dispatch._read_dispatch("./categories/unique.productID.parquet")(
+        "./categories/unique.productID.parquet"
+    )
     assert single_cat["brand_count"][0] == 5
+    assert second_cat["productID_count"][0] == 3
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])

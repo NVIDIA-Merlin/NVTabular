@@ -685,7 +685,7 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
     start_index: int = 0
-    df_size: int = 0
+    dataset_size: int = 0
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -714,7 +714,6 @@ def _top_level_groupby(df, options: FitOptions):
     sum_sq = "std" in options.agg_list or "var" in options.agg_list
     calculate_min = "min" in options.agg_list
     calculate_max = "max" in options.agg_list
-    options.df_size += len(df)
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
@@ -963,7 +962,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
             name_count = col + "_count"
             null_size = 0
             if name_count in df:
-                null_size = options.df_size - df[name_count].sum()
+                null_size = options.dataset_size - df[name_count].sum()
             if options.max_size:
                 max_emb_size = options.max_size
                 if isinstance(options.max_size, dict):
@@ -1069,6 +1068,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = options.stat_name + "-" + token
+    options.dataset_size = len(ddf)
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), options)
         k = 0
