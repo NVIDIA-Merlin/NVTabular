@@ -18,7 +18,7 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from nvtabular.dispatch import DataFrameType, is_list_dtype
+from nvtabular.dispatch import DataFrameType, _is_list_dtype
 
 from .operator import ColumnSelector
 from .stat_operator import StatOperator
@@ -36,7 +36,7 @@ class ValueCount(StatOperator):
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame) -> Any:
         stats = {}
         for col in col_selector.names:
-            if is_list_dtype(ddf[col].compute()):
+            if _is_list_dtype(ddf[col].compute()):
                 offs = ddf[col].list.len()
                 stats[col] = stats[col] if col in stats else {}
                 stats[col]["value_count"] = (
