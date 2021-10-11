@@ -46,7 +46,7 @@ class ValueCount(StatOperator):
                 offs = _pull_apart_list(series.compute())[1]
                 lh, rh = offs[1:], offs[:-1]
                 if isinstance(offs, pd.Series):
-                    rh.reset_index(drop=True)
+                    rh = rh.reset_index(drop=True)
                 deltas = lh - rh
                 stats[col]["value_count"]["min"] = deltas.min()
                 stats[col]["value_count"]["max"] = deltas.max()
