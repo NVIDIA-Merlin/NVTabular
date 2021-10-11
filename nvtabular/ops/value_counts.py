@@ -17,6 +17,7 @@
 from typing import Any
 
 import dask.dataframe as dd
+import pandas as pd
 
 from nvtabular.dispatch import DataFrameType, _is_list_dtype, _pull_apart_list
 
@@ -43,7 +44,10 @@ class ValueCount(StatOperator):
                     {} if "value_count" not in stats[col] else stats[col]["value_count"]
                 )
                 offs = _pull_apart_list(series.compute())[1]
-                deltas = offs[1:] - offs[:-1].reset_index(drop=True)
+                lh, rh = offs[1:], offs[:-1]
+                if isinstance(offs, pd.Series):
+                    rh.reset_index(drop=True)
+                deltas = lh - rh
                 stats[col]["value_count"]["min"] = deltas.min()
                 stats[col]["value_count"]["max"] = deltas.max()
         return stats
