@@ -13,10 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Dict, List, Optional, Text
+
 from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.tags import Tags  # noqa
 
@@ -139,7 +138,6 @@ class Schema:
 
         selected_schemas = {key: self.column_schemas[key] for key in names}
         return Schema(selected_schemas)
-
 
     @classmethod
     def load_schema(cls, schema_path) -> "Schema":
