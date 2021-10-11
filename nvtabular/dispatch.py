@@ -373,7 +373,9 @@ def _encode_list_column(original, encoded, dtype=None):
 
 def _pull_apart_list(original):
     values = _flatten_list_column(original)
-    if isinstance(original, pd.Series) or not cudf:
+    if isinstance(original, pd.Series) or (
+        isinstance(original, dd.DataFrame) and isinstance(original._meta, pd.DataFrame)
+    ):
         offsets = pd.Series([0]).append(original.map(len).cumsum())
     else:
         offsets = original._column.offsets
