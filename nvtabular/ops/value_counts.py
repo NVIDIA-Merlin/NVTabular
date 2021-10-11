@@ -37,15 +37,15 @@ class ValueCount(StatOperator):
         stats = {}
         for col in col_selector.names:
             series = ddf[col]
-            if _is_list_dtype(series):
+            if _is_list_dtype(series.compute()):
                 stats[col] = stats[col] if col in stats else {}
                 stats[col]["value_count"] = (
                     {} if "value_count" not in stats[col] else stats[col]["value_count"]
                 )
                 offs = _pull_apart_list(series.compute())[1]
-                offs = offs[1:] - offs[:-1]
-                stats[col]["value_count"]["min"] = offs.min()
-                stats[col]["value_count"]["max"] = offs.max()
+                deltas = offs[1:] - offs[:-1].reset_index(drop=True)
+                stats[col]["value_count"]["min"] = deltas.min()
+                stats[col]["value_count"]["max"] = deltas.max()
         return stats
 
     def fit_finalize(self, dask_stats):
