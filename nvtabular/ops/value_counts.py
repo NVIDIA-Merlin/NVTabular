@@ -36,18 +36,15 @@ class ValueCount(StatOperator):
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame) -> Any:
         stats = {}
         for col in col_selector.names:
-            if _is_list_dtype(ddf[col].compute()):
-                offs = (
-                    ddf[col].list.len()
-                    if hasattr(ddf[col], "list")
-                    else _pull_apart_list(ddf[col])[1]
-                )
+            series = ddf[col].compute()
+            if _is_list_dtype(series):
+                offs = series.list.len() if hasattr(series, "list") else _pull_apart_list(series)[1]
                 stats[col] = stats[col] if col in stats else {}
                 stats[col]["value_count"] = (
                     {} if "value_count" not in stats[col] else stats[col]["value_count"]
                 )
-                stats[col]["value_count"]["min"] = offs.compute().min()
-                stats[col]["value_count"]["max"] = offs.compute().max()
+                stats[col]["value_count"]["min"] = offs.min()
+                stats[col]["value_count"]["max"] = offs.max()
         return stats
 
     def fit_finalize(self, dask_stats):
