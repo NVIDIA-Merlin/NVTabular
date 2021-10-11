@@ -6,7 +6,7 @@ import cudf
 import fsspec
 import numpy as np
 import pytest
-from cudf.utils.dtypes import is_string_dtype
+from cudf.api.types import is_string_dtype
 
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
