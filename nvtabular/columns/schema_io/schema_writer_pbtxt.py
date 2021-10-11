@@ -14,22 +14,22 @@
 # limitations under the License.
 #
 import os
-import numpy
 from pathlib import Path
-import os
+
+import numpy
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-import nvtabular as nvt
-from nvtabular.columns.schema_io.schema_writer_base import SchemaWriter
 from google.protobuf import json_format, text_format  # noqa
 from google.protobuf.any_pb2 import Any  # noqa
 from google.protobuf.struct_pb2 import Struct  # noqa
 from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
+
+import nvtabular as nvt  # noqa
+from nvtabular.columns.schema_io.schema_writer_base import SchemaWriter  # noqa
 from nvtabular.tags import Tags  # noqa
 
 
-
 class PbTxt_SchemaWriter(SchemaWriter):
-
     @classmethod
     def _read_schema(cls, schema_path):
         with open(schema_path, "r") as f:
@@ -117,10 +117,9 @@ def register_extra_metadata(column_schema, feature):
 def register_list(column_schema, feature):
     if str(column_schema._is_list):
         min_length, max_length = None, None
-        if "min_length" in column_schema.properties:
-            min_length = column_schema.properties["min_length"]
-        if "max_length" in column_schema.properties:
-            max_length = column_schema.properties["max_length"]
+        if "value_count" in column_schema.properties:
+            min_length = column_schema.properties["value_count"]["min"]
+            max_length = column_schema.properties["value_count"]["max"]
         if min_length and max_length and min_length == max_length:
             shape = schema_pb2.FixedShape()
             dim = shape.dim.add()

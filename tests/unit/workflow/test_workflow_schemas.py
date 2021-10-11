@@ -20,6 +20,7 @@ import pytest
 
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
+from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 
 
 def test_fit_schema():
@@ -187,7 +188,7 @@ def test_schema_write_read_dataset(tmpdir, dataset, engine):
     )
 
     schema_path = Path(tmpdir)
-    proto_schema = Schema.read_protobuf(schema_path / "schema.pbtxt")
+    proto_schema = PbTxt_SchemaWriter._read_schema(schema_path / "schema.pbtxt")
     new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
     assert """name: "name-cat"\n    min: 0\n    max: 27\n""" in str(proto_schema)
     assert new_dataset.schema == workflow.output_schema
