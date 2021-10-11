@@ -17,7 +17,6 @@
 from typing import Any
 
 import dask.dataframe as dd
-import dask_cudf
 
 from nvtabular.dispatch import DataFrameType, _is_list_dtype, _pull_apart_list
 
@@ -43,14 +42,10 @@ class ValueCount(StatOperator):
                 stats[col]["value_count"] = (
                     {} if "value_count" not in stats[col] else stats[col]["value_count"]
                 )
-                if isinstance(series, dask_cudf.Series):
-                    offs = series.list.len()
-                    stats[col]["value_count"]["min"] = offs.compute().min()
-                    stats[col]["value_count"]["max"] = offs.compute().max()
-                else:
-                    offs = _pull_apart_list(series.compute())[1]
-                    stats[col]["value_count"]["min"] = offs.min()
-                    stats[col]["value_count"]["max"] = offs.max()
+                offs = _pull_apart_list(series.compute())[1]
+                offs = offs[1:] - offs[:-1]
+                stats[col]["value_count"]["min"] = offs.min()
+                stats[col]["value_count"]["max"] = offs.max()
         return stats
 
     def fit_finalize(self, dask_stats):
