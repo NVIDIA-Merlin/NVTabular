@@ -144,6 +144,7 @@ class TargetEncoding(StatOperator):
         super().__init__()
 
         self.target = [target] if isinstance(target, str) else target
+        self.target = self.target.names if isinstance(self.target, ColumnSelector) else self.target
         self.dependency = self.target
 
         self.target_mean = target_mean
@@ -166,9 +167,7 @@ class TargetEncoding(StatOperator):
         moments = None
         if self.target_mean is None:
             # calcualte the mean if we don't have it already
-            self.target = (
-                self.target.names if isinstance(self.target, ColumnSelector) else self.target
-            )
+
             moments = _custom_moments(ddf[self.target])
 
         col_groups = col_selector.grouped_names
