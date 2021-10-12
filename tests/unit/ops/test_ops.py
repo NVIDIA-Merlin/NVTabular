@@ -536,8 +536,37 @@ def test_categorify_counts(tmpdir, cpu, include_nulls):
             )
             if count
         }
-
+    first_key = list(computed.keys())[0]
+    if math.isnan(first_key):
+        computed.pop(first_key)
     assert computed == expected
+
+
+def test_na_value_count(tmpdir):
+    gdf = dispatch._make_df(
+        {
+            "productID": ["B00406YHLI"] * 5
+            + ["B002YXS8E6"] * 5
+            + ["B00011KM38"] * 2
+            + [np.nan] * 3,
+            "brand": ["Coby"] * 5 + [np.nan] * 5 + ["Cooler Master"] * 2 + ["Asus"] * 3,
+        }
+    )
+
+    cat_features = ["brand", "productID"] >> nvt.ops.Categorify()
+    workflow = nvt.Workflow(cat_features)
+    train_dataset = nvt.Dataset(gdf, engine="parquet")
+    workflow.fit(train_dataset)
+    workflow.transform(train_dataset).to_ddf().compute()
+
+    single_cat = dispatch._read_dispatch("./categories/unique.brand.parquet")(
+        "./categories/unique.brand.parquet"
+    )
+    second_cat = dispatch._read_dispatch("./categories/unique.productID.parquet")(
+        "./categories/unique.productID.parquet"
+    )
+    assert single_cat["brand_count"][0] == 5
+    assert second_cat["productID_count"][0] == 3
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])

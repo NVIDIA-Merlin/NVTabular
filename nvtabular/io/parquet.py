@@ -234,7 +234,7 @@ class ParquetDatasetEngine(DatasetEngine):
                     f" than requested part_size ({self.part_size}) for the NVTabular dataset."
                     f"A row group memory size of 128 MB is generally recommended. You can find"
                     f" info on how to set the row group size of parquet files in "
-                    f"https://nvidia.github.io/NVTabular/main/resources/troubleshooting.html"
+                    f"https://nvidia-merlin.github.io/NVTabular/main/resources/troubleshooting.html"
                     f"#setting-the-row-group-size-for-the-parquet-files"
                 )
                 row_groups_per_part = 1.0
