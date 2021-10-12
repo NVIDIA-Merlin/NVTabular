@@ -38,3 +38,4 @@ from .operator import ColumnSelector, Operator
 from .rename import Rename
 from .stat_operator import StatOperator
 from .target_encoding import TargetEncoding
+from .value_counts import ValueCount

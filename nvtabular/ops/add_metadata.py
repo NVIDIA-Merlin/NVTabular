@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .operator import Operator
+from nvtabular.dispatch import DataFrameType
+
+from .operator import ColumnSelector, Operator
 
 
 class AddMetadata(Operator):
@@ -26,8 +28,19 @@ class AddMetadata(Operator):
         self.tags = tags or []
         self.properties = properties or {}
 
+    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
+        return df
+
     def output_tags(self):
         return self.tags
 
     def output_properties(self):
         return self.properties
+
+    def _add_properties(self, column_schema):
+        # get_properties should return the additional properties
+        # for target column
+        target_column_properties = self.output_properties()
+        if target_column_properties:
+            return column_schema.with_properties(target_column_properties)
+        return column_schema
