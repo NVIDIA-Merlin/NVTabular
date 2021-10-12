@@ -223,6 +223,29 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
+def test_valuecount():
+    df = dispatch._make_df(
+        {
+            "list1": [[1, 2, 3, 4], [3, 2, 1], [1, 4], [0]],
+            "list2": [[1, 4], [3, 2, 1], [0, 4], [1, 4, 5]],
+        }
+    )
+    ds = nvt.Dataset(df)
+    val_count = nvt.ops.ValueCount()
+    feats = ["list1", "list2"] >> val_count
+    processor = nvt.Workflow(feats)
+    processor.fit(ds)
+    processor.transform(ds)
+    assert "list1" in list(val_count.stats.keys())
+    assert "list2" in list(val_count.stats.keys())
+    assert processor.output_schema.column_schemas["list1"].properties == {
+        "value_count": {"min": 1, "max": 4}
+    }
+    assert processor.output_schema.column_schemas["list2"].properties == {
+        "value_count": {"min": 2, "max": 3}
+    }
+
+
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["name-string"], None])

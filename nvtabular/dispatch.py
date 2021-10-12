@@ -281,7 +281,7 @@ def _is_string_dtype(obj):
 
 def _flatten_list_column(s):
     """Flatten elements of a list-based column"""
-    if isinstance(s, pd.Series):
+    if isinstance(s, pd.Series) or not cudf:
         return pd.DataFrame({s.name: itertools.chain(*s)})
     else:
         return cudf.DataFrame({s.name: s.list.leaves})
