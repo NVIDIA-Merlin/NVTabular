@@ -117,6 +117,30 @@ def test_target_encode(tmpdir, cat_groups, kfold, fold_seed, cpu):
         assert_eq(check, df_out_check, check_dtype=False)
 
 
+def test_target_encode_group():
+    df = dispatch._make_df(
+        {
+            "Cost": range(15),
+            "Post": [1, 2, 3, 4, 5] * 3,
+            "Author": ["A"] * 5 + ["B"] * 5 + ["C"] * 2 + ["D"] * 3,
+            "Engaging_User": ["A"] * 5 + ["B"] * 3 + ["E"] * 2 + ["D"] * 3 + ["G"] * 2,
+        }
+    )
+
+    cat_groups = ["Author", "Engaging_User"]
+    labels = ColumnSelector(["Post"]) >> (lambda col: (col > 3).astype("int8"))
+    te_features = cat_groups >> ops.TargetEncoding(
+        labels,
+        out_path="./",
+        kfold=1,
+        out_dtype="float32",
+        drop_folds=False,  # Keep folds to validate
+    )
+
+    workflow = nvt.Workflow(te_features + ["Author", "Engaging_User"])
+    workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
+
+
 @pytest.mark.parametrize("npartitions", [1, 2])
 @pytest.mark.parametrize("cpu", _CPU)
 def test_target_encode_multi(tmpdir, npartitions, cpu):
@@ -512,8 +536,37 @@ def test_categorify_counts(tmpdir, cpu, include_nulls):
             )
             if count
         }
-
+    first_key = list(computed.keys())[0]
+    if math.isnan(first_key):
+        computed.pop(first_key)
     assert computed == expected
+
+
+def test_na_value_count(tmpdir):
+    gdf = dispatch._make_df(
+        {
+            "productID": ["B00406YHLI"] * 5
+            + ["B002YXS8E6"] * 5
+            + ["B00011KM38"] * 2
+            + [np.nan] * 3,
+            "brand": ["Coby"] * 5 + [np.nan] * 5 + ["Cooler Master"] * 2 + ["Asus"] * 3,
+        }
+    )
+
+    cat_features = ["brand", "productID"] >> nvt.ops.Categorify()
+    workflow = nvt.Workflow(cat_features)
+    train_dataset = nvt.Dataset(gdf, engine="parquet")
+    workflow.fit(train_dataset)
+    workflow.transform(train_dataset).to_ddf().compute()
+
+    single_cat = dispatch._read_dispatch("./categories/unique.brand.parquet")(
+        "./categories/unique.brand.parquet"
+    )
+    second_cat = dispatch._read_dispatch("./categories/unique.productID.parquet")(
+        "./categories/unique.productID.parquet"
+    )
+    assert single_cat["brand_count"][0] == 5
+    assert second_cat["productID_count"][0] == 3
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
