@@ -141,12 +141,14 @@ class Groupby(Operator):
         return numpy.int64
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if col_selector and col_selector.tags:
+        if not col_selector:
+            col_selector = (
+                ColumnSelector(self.target) if isinstance(self.target, list) else self.target
+            )
+        if col_selector.tags:
             tags_col_selector = ColumnSelector(tags=col_selector.tags)
             filtered_schema = input_schema.apply(tags_col_selector)
             col_selector += ColumnSelector(filtered_schema.column_names)
-        else:
-            col_selector = ColumnSelector(input_schema.column_names)
 
             # zero tags because already filtered
             col_selector._tags = []
