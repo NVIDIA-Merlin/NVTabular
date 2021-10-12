@@ -19,9 +19,9 @@ import numpy
 import pytest
 
 from nvtabular.columns.schema import ColumnSchema, Schema
+from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.columns.selector import ColumnSelector
 from nvtabular.tags import Tags
-from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
