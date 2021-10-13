@@ -1288,7 +1288,9 @@ def test_groupby_op(keys, cpu):
     # Create a ddf, and be sure to shuffle by the groupby keys
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
     dataset = nvt.Dataset(ddf1, cpu=cpu)
-
+    dataset.schema.column_schemas["x"] = dataset.schema.column_schemas["name"].with_tags(
+        "custom_tag"
+    )
     # Define Groupby Workflow
     groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
@@ -1303,6 +1305,8 @@ def test_groupby_op(keys, cpu):
     processor = nvtabular.Workflow(groupby_features)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
+
+    assert "custom_tag" in processor.output_schema.column_schemas["x-list"].tags
 
     if not cpu:
         # Make sure we are capturing the list type in `output_dtypes`
