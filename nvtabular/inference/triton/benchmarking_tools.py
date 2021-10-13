@@ -58,7 +58,7 @@ def _convert_df_to_triton_json(df, input_dtypes=None):
     for col in input_dtypes:
         values = df[col].values_host
         # we need to fill None values in strings
-        if cudf.utils.dtypes.is_string_dtype(values.dtype):
+        if cudf.api.types.is_string_dtype(values.dtype):
             json_columns[col] = [v if v is not None else "" for v in values]
         else:
             json_columns[col] = values.tolist()
