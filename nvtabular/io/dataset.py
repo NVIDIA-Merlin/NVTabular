@@ -567,7 +567,7 @@ class Dataset:
             Key-word arguments to be passed through to Dask-Dataframe.
         """
 
-        # Ensure both Dataset objects are with cudf or pandas based
+        # Ensure both Dataset objects are either cudf or pandas based
         if left.cpu and not right.cpu:
             _right = cls(right.to_ddf())
             _right.to_cpu()
