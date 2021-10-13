@@ -93,7 +93,7 @@ def test_rossman(asv_db, bench_info, tmpdir, devices):
     input_path = os.path.join(DATA_DIR, "rossman/input")
     output_path = os.path.join(DATA_DIR, "rossman/output")
 
-    # Run Donwload & Convert for all
+    # Run Download & Convert for all
     notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "01-Download-Convert.ipynb")
     out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
 

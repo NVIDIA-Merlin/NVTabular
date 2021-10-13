@@ -218,7 +218,7 @@ class DataLoader:
 
         # we set size of chunk queue to 1 we only want one chunk in queue at a time.
         self._buff = ChunkQueue(self, 1, num_parts=parts_per_chunk, shuffle=shuffle)
-        # run once instead of everytime len called
+        # run once instead of every time len called
         self._buff_len = len(self._buff)
         self._batch_itr = None
         self._workers = None

@@ -270,7 +270,7 @@ def test_nested_workflow_node():
     assert user[3] != user[2]
 
     geo_country_user = df_out["geo_country_user"]
-    assert geo_country_user[0] == geo_country_user[1]  # US / userA
+    assert geo_country_user[0] == geo_country_user[1]  # US / users
     assert geo_country_user[2] != geo_country_user[0]  # same user but in canada
 
     # make sure we get an exception if we nest too deeply (can't handle arbitrarily deep

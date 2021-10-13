@@ -20,7 +20,7 @@ from nvtabular.framework_utils.torch.layers import ConcatenatedEmbeddings, Multi
 
 class Model(torch.nn.Module):
     """
-    Generic Base Pytorch Model, that contains support for Categorical and Continous values.
+    Generic Base Pytorch Model, that contains support for Categorical and Continuous values.
 
     Parameters
     ----------

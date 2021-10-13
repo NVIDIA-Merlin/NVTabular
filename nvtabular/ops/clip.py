@@ -32,7 +32,7 @@ class Clip(Operator):
     Parameters
     ----------
     min_value : float, default None
-        The mininum value to clip values to: values less than this will be replaced with
+        The minimum value to clip values to: values less than this will be replaced with
         this value. Specifying ``None`` means don't apply a minimum threshold.
     max_value : float, default None
         The maximum value to clip values to: values greater than this will be replaced with

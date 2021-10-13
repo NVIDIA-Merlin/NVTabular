@@ -156,7 +156,7 @@ def run_op_full(properties, tags, op_routine):
         schema1 = workflow_schema_out.column_schemas[column_name]
         assert "domain" in schema1.properties
         embeddings_info = schema1.properties["domain"]
-        # should always exist, represents unkown
+        # should always exist, represents unknown
         assert embeddings_info["min"] == 0
         assert embeddings_info["max"] == new_gdf[column_name].max() + 1
 
