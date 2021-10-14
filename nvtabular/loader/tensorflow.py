@@ -237,7 +237,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             feature_columns, cat_names, cont_names, schema=dataset.schema
         )
 
-        # sort the ccolumns to avoid getting incorrect output
+        # sort the columns to avoid getting incorrect output
         # (https://github.com/NVIDIA/NVTabular/issues/412)
         cat_names = _get_embedding_order(cat_names)
         cont_names = _get_embedding_order(cont_names)
