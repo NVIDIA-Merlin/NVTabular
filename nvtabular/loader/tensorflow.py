@@ -44,9 +44,8 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
     # from paths or glob pattern
     if isinstance(paths_or_dataset, str):
         files = tf.io.gfile.glob(paths_or_dataset)
-        _is_empty_msg = "Couldn't find file pattern {} in directory {}".format(
-            *os.path.split(paths_or_dataset)
-        )
+        parent, file = os.path.split(paths_or_dataset)
+        _is_empty_msg = f"Couldn't find file pattern {file} in directory {parent}"
     else:
         # TODO: some checking around attribute
         # error here?
