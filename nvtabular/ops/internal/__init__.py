@@ -18,4 +18,5 @@
 # flake8: noqa
 from .concat_columns import ConcatColumns
 from .identity import Identity
+from .selection import SelectionOp
 from .subset_columns import SubsetColumns
