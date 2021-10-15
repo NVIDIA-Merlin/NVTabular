@@ -19,8 +19,6 @@ from typing import Dict, List, Optional, Text
 from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.tags import Tags  # noqa
 
-# this needs to be before any modules that import protobuf
-
 
 @dataclass(frozen=True)
 class ColumnSchema:
