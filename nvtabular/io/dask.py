@@ -240,7 +240,7 @@ def _simple_shuffle(ddf, plan):
         final_tasks[(name, p)].append((ddf._name, i))
     dsk = {k: (_concat, v, ignore_index) for k, v in final_tasks.items()}
 
-    # Conver to a DataFrame collection
+    # Convert to a DataFrame collection
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
     divisions = [None] * (len(dsk) + 1)
     return new_dd_object(graph, name, ddf._meta, divisions)

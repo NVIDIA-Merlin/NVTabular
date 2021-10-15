@@ -50,6 +50,6 @@ class StatOperator(Operator):
         """Certain stat operators need external storage - for instance Categorify writes out
         parquet files containing the categorical mapping. When we save the operator, we
         also want to save these files as part of the bundle. Implementing this method
-        lets statoperators bundle their dependant files into the new path that we're writing
+        lets statoperators bundle their dependent files into the new path that we're writing
         out (note that this could happen after the operator is created)
         """
