@@ -41,7 +41,7 @@ class Bucketize(Operator):
     Parameters
     ----------
     boundaries : int, dict or callable
-        Defines how to transform the continous values into bins
+        Defines how to transform the continuous values into bins
     """
 
     def __init__(self, boundaries):

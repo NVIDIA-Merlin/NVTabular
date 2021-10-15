@@ -253,7 +253,7 @@ def export_hugectr_ensemble(
     cats:
         Names of the categorical columns
     conts:
-        Names of the continous columns
+        Names of the continuous columns
     max_batch_size:
         Max batch size that Triton can receive
     nvtabular_backend: "python" or "nvtabular"
