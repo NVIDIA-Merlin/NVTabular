@@ -76,7 +76,7 @@ class TritonPythonModel:
             # to some of the operators (C++ categorify etc). set on the workflow_node instead
             workflow_node.inference_supports = supported
 
-        for parent in workflow_node.parents_with_dep_nodes:
+        for parent in workflow_node.parents_with_dependencies:
             if parent not in visited:
                 visited.add(parent)
                 self._initialize_ops(parent, visited)
@@ -260,8 +260,8 @@ def _transform_tensors(input_tensors, workflow_node):
     upstream_inputs = []
 
     # Gather inputs from the parents and dependency nodes
-    if workflow_node.parents_with_dep_nodes:
-        for parent in workflow_node.parents_with_dep_nodes:
+    if workflow_node.parents_with_dependencies:
+        for parent in workflow_node.parents_with_dependencies:
             upstream_tensors, upstream_kind = _transform_tensors(input_tensors, parent)
             if upstream_tensors and upstream_kind:
                 upstream_inputs.append((upstream_tensors, upstream_kind))

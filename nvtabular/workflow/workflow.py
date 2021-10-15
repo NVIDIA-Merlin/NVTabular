@@ -125,7 +125,7 @@ class Workflow:
 
     def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents_with_dep_nodes)
+            node: _get_schemaless_nodes(node.parents_with_dependencies)
             for node in _get_schemaless_nodes([self.output_node])
         }
 
@@ -183,7 +183,8 @@ class Workflow:
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
         stat_ops = {
-            op: _get_stat_ops(op.parents_with_dep_nodes) for op in _get_stat_ops([self.output_node])
+            op: _get_stat_ops(op.parents_with_dependencies)
+            for op in _get_stat_ops([self.output_node])
         }
 
         while stat_ops:
@@ -371,15 +372,11 @@ class Workflow:
         for node in iter_nodes([self.output_node]):
             upstream_output_cols = []
 
-            for upstream_node in node.parents_with_dep_nodes:
+            for upstream_node in node.parents_with_dependencies:
                 upstream_output_cols += upstream_node.output_columns.names
-
-            for upstream_selector in node.dependency_selectors:
-                upstream_output_cols += upstream_selector.names
 
             upstream_output_cols = _get_unique(upstream_output_cols)
             input_cols += list(set(node.input_columns.names) - set(upstream_output_cols))
-            input_cols += node.dependency_columns.names
 
         return _get_unique(input_cols)
 
@@ -457,16 +454,16 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
     for node in workflow_nodes:
         node_input_cols = _get_unique(node.input_columns.names)
         node_output_cols = _get_unique(node.output_columns.names)
-        addl_input_cols = set(node.dependency_columns.names)
+        addl_input_cols = set()
 
         # Build input dataframe
-        if node.parents_with_dep_nodes:
+        if node.parents_with_dependencies:
             # If there are parents, collect their outputs
             # to build the current node's input
             input_df = None
             seen_columns = None
 
-            for parent in node.parents_with_dep_nodes:
+            for parent in node.parents_with_dependencies:
                 parent_output_cols = _get_unique(parent.output_columns.names)
                 parent_df = _transform_partition(root_df, [parent])
                 if input_df is None or not len(input_df):

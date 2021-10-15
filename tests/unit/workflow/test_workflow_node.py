@@ -147,7 +147,7 @@ def test_addition_nodes_are_combined():
     add_node = node1 + node2 + node3
     workflow = Workflow(add_node).fit_schema(schema)
     assert set(workflow.output_node.parents) == {node1}
-    assert set(workflow.output_node.dependency_nodes) == {node2, node3}
+    assert set(workflow.output_node.dependencies) == {node2, node3}
     assert set(workflow.output_node.output_columns.names) == {"a", "b", "c", "d", "e", "f"}
 
     add_node = node1 + "c" + "d"
@@ -163,7 +163,7 @@ def test_addition_nodes_are_combined():
     add_node = node1 + "e" + node2
     workflow = Workflow(add_node).fit_schema(schema)
     assert set(workflow.output_node.parents) == {node1}
-    assert set(workflow.output_node.dependency_nodes) == {node2}
+    assert set(workflow.output_node.dependencies) == {node2}
     assert set(workflow.output_node.output_columns.names) == {"a", "b", "e", "c", "d"}
 
     add_node1 = node1 + node2
@@ -173,7 +173,7 @@ def test_addition_nodes_are_combined():
     workflow = Workflow(add_node).fit_schema(schema)
 
     assert set(workflow.output_node.parents) == {node1}
-    assert set(workflow.output_node.dependency_nodes) == {node2, node3, node4}
+    assert set(workflow.output_node.dependencies) == {node2, node3, node4}
     assert set(workflow.output_node.output_columns.names) == {
         "a",
         "b",

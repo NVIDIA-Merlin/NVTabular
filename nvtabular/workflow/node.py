@@ -103,7 +103,7 @@ class WorkflowNode:
 
         # If we have a selector, apply it to upstream schemas from nodes/dataset
         if self.selector:
-            upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
+            upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
             self.input_schema = upstream_schema.apply(self.selector)
         else:
             # If we don't have a selector but we're an addition node,
@@ -116,7 +116,7 @@ class WorkflowNode:
 
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
-                upstream_schema = root_schema + _combine_schemas(self.parents_with_dep_nodes)
+                upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
                 self.input_schema = upstream_schema.apply(self.selector)
 
             # If we're a subtraction node, we have to do some gymnastics to compute
@@ -178,7 +178,6 @@ class WorkflowNode:
 
             for dependency in dependencies:
                 child.add_dependency(dependency)
-                child.add_parent(dependency)
 
         return child
 
@@ -288,8 +287,8 @@ class WorkflowNode:
         return f"<WorkflowNode {self.label}{output}>"
 
     @property
-    def parents_with_dep_nodes(self):
-        return self.parents + self.dependency_nodes
+    def parents_with_dependencies(self):
+        return self.parents + self.dependencies
 
     @property
     def input_columns(self):
@@ -318,18 +317,6 @@ class WorkflowNode:
     @property
     def dependency_schema(self):
         return _combine_schemas(self.dependencies)
-
-    @property
-    def dependency_columns(self):
-        return _combine_selectors(self.dependency_selectors)
-
-    @property
-    def dependency_nodes(self):
-        return _filter_by_type(self.dependencies, WorkflowNode)
-
-    @property
-    def dependency_selectors(self):
-        return _filter_by_type(self.dependencies, ColumnSelector)
 
     @property
     def label(self):
@@ -371,7 +358,7 @@ def iter_nodes(nodes):
         for parent in current.parents:
             queue.append(parent)
 
-        for dep in current.dependency_nodes:
+        for dep in current.dependencies:
             queue.append(dep)
 
 
@@ -434,7 +421,7 @@ def _to_graphviz(workflow_node):
     node_ids = {v: str(k) for k, v in enumerate(allnodes)}
     for node, nodeid in node_ids.items():
         graph.node(nodeid, node.label)
-        for parent in node.parents_with_dep_nodes:
+        for parent in node.parents_with_dependencies:
             graph.edge(node_ids[parent], nodeid)
 
         full_selector = ColumnSelector()
