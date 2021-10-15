@@ -19,6 +19,7 @@ import warnings
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
 from nvtabular.ops.internal.concat_columns import ConcatColumns
+from nvtabular.ops.internal.selection import SelectionOp
 from nvtabular.ops.internal.subset_columns import SubsetColumns
 
 
@@ -54,6 +55,9 @@ class WorkflowNode:
         if selector and not isinstance(selector, ColumnSelector):
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
+        if selector:
+            self.op = SelectionOp(selector)
+
         self._selector = selector
 
     @property
@@ -66,6 +70,23 @@ class WorkflowNode:
             sel = ColumnSelector(sel)
 
         self._selector = sel
+
+    def add_dependency(self, dep):
+        dep_node = _nodify(dep)
+
+        self.dependencies.append(dep_node)
+
+    def add_child(self, child):
+        child_node = _nodify(child)
+
+        self.children.append(child_node)
+        child_node.parents.append(self)
+
+    def add_parent(self, parent):
+        parent_node = _nodify(parent)
+
+        parent_node.children.append(self)
+        self.parents.append(parent_node)
 
     def compute_schemas(self, root_schema):
         # If parent is an addition node, we may need to propagate grouping
@@ -157,12 +178,8 @@ class WorkflowNode:
                 dependencies = [dependencies]
 
             for dependency in dependencies:
-                if isinstance(dependency, WorkflowNode):
-                    dependency.children.append(child)
-                    child.parents.append(dependency)
-                elif not isinstance(dependency, ColumnSelector):
-                    dependency = ColumnSelector(dependency)
-                child.dependencies.append(dependency)
+                child.add_dependency(dependency)
+                child.add_parent(dependency)
 
         return child
 
@@ -456,3 +473,18 @@ def _convert_col(col):
         return tuple(col)
     else:
         raise ValueError(f"Invalid column value for WorkflowNode: {col}")
+
+
+def _nodify(nodable):
+    if isinstance(nodable, str):
+        return WorkflowNode(ColumnSelector([nodable]))
+    if isinstance(nodable, list):
+        return WorkflowNode(ColumnSelector(nodable))
+    elif isinstance(nodable, ColumnSelector):
+        return WorkflowNode(nodable)
+    elif isinstance(nodable, WorkflowNode):
+        return nodable
+    else:
+        raise TypeError(
+            "Unsupported type: Cannot convert object " f"of type {type(nodable)} to WorkflowNode."
+        )
