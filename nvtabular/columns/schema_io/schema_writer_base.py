@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from abc import ABC, abstractmethod
+from abc import ABC
+
 
 class SchemaWriter(ABC):
-
     @classmethod
     def _read(cls, schema_path):
         raise NotImplementedError("Must have logic to read schema from file")
