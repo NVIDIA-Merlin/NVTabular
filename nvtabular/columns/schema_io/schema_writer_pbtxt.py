@@ -31,7 +31,7 @@ from nvtabular.tags import Tags  # noqa
 
 class PbTxt_SchemaWriter(SchemaWriter):
     @classmethod
-    def _read_schema(cls, schema_path):
+    def _read(cls, schema_path):
         with open(schema_path, "r") as f:
             schema = schema_pb2.Schema()
             text_format.Parse(f.read(), schema)
@@ -39,7 +39,7 @@ class PbTxt_SchemaWriter(SchemaWriter):
         return schema
 
     @classmethod
-    def write_schema(cls, schema, schema_path):
+    def write(cls, schema, schema_path):
         schema_path = Path(schema_path)
         if not schema_path.is_dir():
             raise ValueError(f"The path provided is not a valid directory: {schema_path}")
@@ -56,14 +56,14 @@ class PbTxt_SchemaWriter(SchemaWriter):
         return schema
 
     @classmethod
-    def load_schema(cls, schema_path):
+    def load(cls, schema_path):
         columns = []
         if isinstance(schema_path, (str, Path)):
             if isinstance(schema_path, str):
                 schema_path = Path(schema_path)
             if schema_path.is_dir():
                 schema_path = schema_path / "schema.pbtxt"
-            schema = cls._read_schema(schema_path)
+            schema = cls._read(schema_path)
 
         for feat in schema.feature:
             _is_list = False

@@ -61,9 +61,9 @@ def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type
     column_schema_set = Schema([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir)
-    column_schema_set = column_schema_set.save_schema(schema_path)
+    column_schema_set = column_schema_set.write(schema_path)
     # read schema back in
-    target = Schema.load_schema(schema_path)
+    target = Schema.load(schema_path)
     # compare read to origin
     assert column_schema_set == target
 
@@ -87,14 +87,14 @@ def test_column_schema_protobuf_domain_check(tmpdir):
     column_schema_set = Schema([schema1, schema2])
     # write schema out
     schema_path = Path(tmpdir)
-    saved_schema = column_schema_set.save_schema(schema_path)
+    saved_schema = column_schema_set.write(schema_path)
     # read schema back in
-    loaded_schema = Schema.load_schema(schema_path)
+    loaded_schema = Schema.load(schema_path)
     # compare read to origin
     assert saved_schema == loaded_schema
 
     # load in protobuf file to tensorflow schema representation
-    proto_schema = PbTxt_SchemaWriter._read_schema(schema_path / "schema.pbtxt")
+    proto_schema = PbTxt_SchemaWriter._read(schema_path / "schema.pbtxt")
 
     assert """name: "col1"\n    min: 0\n    max: 10\n""" in str(proto_schema)
     assert """name: "col2"\n    min: 0.0\n    max: 10.0\n""" in str(proto_schema)

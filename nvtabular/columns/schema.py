@@ -140,11 +140,11 @@ class Schema:
         return Schema(selected_schemas)
 
     @classmethod
-    def load_schema(cls, schema_path) -> "Schema":
-        return PbTxt_SchemaWriter.load_schema(schema_path)
+    def load(cls, schema_path) -> "Schema":
+        return PbTxt_SchemaWriter.load(schema_path)
 
-    def save_schema(self, schema_path):
-        return PbTxt_SchemaWriter.write_schema(self, schema_path)
+    def write(self, schema_path):
+        return PbTxt_SchemaWriter.write(self, schema_path)
 
     def __iter__(self):
         return iter(self.column_schemas.values())
