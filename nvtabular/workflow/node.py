@@ -167,9 +167,8 @@ class WorkflowNode:
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
         child = WorkflowNode()
-        child.parents = [self]
-        self.children.append(child)
         child.op = operator
+        child.add_parent(self)
 
         dependencies = operator.dependencies()
 
@@ -200,10 +199,7 @@ class WorkflowNode:
             # Create a child node
             child = WorkflowNode()
             child.op = internal.ConcatColumns(label="+")
-
-            # Add self as a parent
-            self.children.append(child)
-            child.parents.append(self)
+            child.add_parent(self)
 
         # The right operand becomes a dependency
         if isinstance(other, list):
@@ -217,7 +213,7 @@ class WorkflowNode:
         if isinstance(other, WorkflowNode) and isinstance(other.op, internal.ConcatColumns):
             child.dependencies += other.parents + other.dependencies
         else:
-            child.dependencies.append(other)
+            child.add_dependency(other)
 
         return child
 
@@ -243,16 +239,13 @@ class WorkflowNode:
             # Create a child node
             child = WorkflowNode()
             child.op = internal.SubsetColumns(label="-")
-
-            # Add self as a parent
-            self.children.append(child)
-            child.parents.append(self)
+            child.add_parent(self)
 
         # The right operand becomes a dependency
         if not isinstance(other, (ColumnSelector, WorkflowNode)):
             other = ColumnSelector(other)
 
-        child.dependencies.append(other)
+        child.add_dependency(other)
 
         return child
 
@@ -266,8 +259,8 @@ class WorkflowNode:
             other = ColumnSelector(other)
 
         # Add self as a dependency
-        child.dependencies.append(other)
-        child.dependencies.append(self)
+        child.add_dependency(other)
+        child.add_dependency(self)
 
         return child
 
@@ -286,9 +279,8 @@ class WorkflowNode:
         """
         col_selector = ColumnSelector(columns)
         child = WorkflowNode(col_selector)
-        child.parents = [self]
-        self.children.append(child)
         child.op = internal.SubsetColumns(label=str(list(columns)))
+        child.add_parent(self)
         return child
 
     def __repr__(self):
