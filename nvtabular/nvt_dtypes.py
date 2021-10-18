@@ -18,7 +18,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 # import cudf
-# import numpy as np
+import numpy as np
+
 # import pandas as pd
 
 
@@ -59,9 +60,29 @@ class NumpyDtypes:
     @classmethod
     def _from(cls, dtype):
         # return nvt dtype, input must be pandas dtype
-        pass
+        if not isinstance(dtype, np.dtype):
+            raise ValueError(f"Cannot convert non support numpy dtype: {type(dtype)}")
+        name = cls.dtypes_to_nvt[dtype.kind]
+        size = dtype.itemsize
+        signed = bool(name == "signed")
+        is_list = bool(dtype.subdtype)
+        return NVTDtype(name, size, signed, is_list)
 
-    dtypes_dict = {}
+    dtypes_to_nvt = {
+        "b": "bool",
+        "i": "signed",
+        "u": "unsigned",
+        "f": "float",
+        "c": "cfloat",
+        "m": "timedelta",
+        "M": "datetime",
+        "O": "object",
+        "S": "byte-string",
+        "U": "unicode",
+        "V": "void",
+    }
+
+    nvt_to_dtypes = {}
 
 
 class NVT_Dtypes(Enum):
