@@ -69,7 +69,7 @@ LOG = logging.getLogger("nvtabular")
 class CPUParquetEngine(ArrowDatasetEngine):
     @staticmethod
     def read_metadata(*args, **kwargs):
-        return _override_read_metadata(ArrowDatasetEngine, *args, **kwargs)
+        return _override_read_metadata(ArrowDatasetEngine.read_metadata, *args, **kwargs)
 
     @classmethod
     def multi_support(cls):
@@ -82,7 +82,7 @@ if cudf is not None:
     class GPUParquetEngine(CudfEngine):
         @staticmethod
         def read_metadata(*args, **kwargs):
-            return _override_read_metadata(CudfEngine, *args, **kwargs)
+            return _override_read_metadata(_cudf_read_metadata, *args, **kwargs)
 
         @classmethod
         def multi_support(cls):
@@ -99,9 +99,59 @@ if cudf is not None:
             # Newer versions of cudf are already optimized for s3/gcs
             return CudfEngine.read_partition(fs, pieces, *args, **kwargs)
 
+    def _cudf_read_metadata(*args, **kwargs):
+        #
+        # NOTE: This function was copied directly from
+        #       cudf:branch-21.12 to avoid bugs in
+        #       cudf:branch-21.10. This work-around can
+        #       be removed when NVTabular is pinned
+        #       to cudf>=21.12
+        #
+        meta, stats, parts, index = ArrowDatasetEngine.read_metadata(*args, **kwargs)
+        new_meta = cudf.from_pandas(meta)
+        if parts:
+            # Re-set "object" dtypes align with pa schema
+            set_object_dtypes_from_pa_schema(
+                new_meta,
+                parts[0].get("common_kwargs", {}).get("schema", None),
+            )
+
+        # If `strings_to_categorical==True`, convert objects to int32
+        strings_to_cats = kwargs.get("strings_to_categorical", False)
+        for col in new_meta._data.names:
+            if isinstance(new_meta._data[col], cudf.core.column.StringColumn) and strings_to_cats:
+                new_meta._data[col] = new_meta._data[col].astype("int32")
+        return (new_meta, stats, parts, index)
+
+    def set_object_dtypes_from_pa_schema(df, schema):
+        #
+        # NOTE: This utility was copied directly from
+        #       cudf:branch-21.12 to avoid bugs in
+        #       cudf:branch-21.10. This work-around can
+        #       be removed when NVTabular is pinned
+        #       to cudf>=21.12
+        #
+        # Simple utility to modify cudf DataFrame
+        # "object" dtypes to agree with a specific
+        # pyarrow schema
+        if schema:
+            for col_name, col in df._data.items():
+                if col_name is None:
+                    # Pyarrow cannot handle `None` as a field name.
+                    # However, this should be a simple range index that
+                    # we can ignore anyway
+                    continue
+                typ = cudf.utils.dtypes.cudf_dtype_from_pa_type(schema.field(col_name).type)
+                if (
+                    col_name in schema.names
+                    and not isinstance(typ, (cudf.ListDtype, cudf.StructDtype))
+                    and isinstance(col, cudf.core.column.StringColumn)
+                ):
+                    df._data[col_name] = col.astype(typ)
+
 
 def _override_read_metadata(
-    engine,
+    parent_read_metadata,
     fs,
     paths,
     index=None,
@@ -153,7 +203,7 @@ def _override_read_metadata(
         raise ValueError("This version of Dask does not support the `aggregate_files` argument.")
 
     # Start with "super-class" read_metadata logic
-    read_metadata_result = engine.read_metadata(
+    read_metadata_result = parent_read_metadata(
         fs,
         paths,
         **local_kwargs,
