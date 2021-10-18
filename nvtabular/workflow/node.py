@@ -62,7 +62,10 @@ class WorkflowNode:
 
     @property
     def selector(self):
-        return self._selector
+        if not self._selector and any(parent._selector for parent in self.parents):
+            return _combine_selectors(self.parents)
+        else:
+            return self._selector
 
     @selector.setter
     def selector(self, sel):
@@ -108,12 +111,6 @@ class WorkflowNode:
         else:
             # If we don't have a selector but we're an addition node,
             if isinstance(self.op, ConcatColumns):
-                upstream_selector = _combine_selectors(self.parents)
-                upstream_selector += _combine_selectors(self.dependencies)
-
-                if upstream_selector.names:
-                    self.selector = upstream_selector
-
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
                 upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
@@ -394,7 +391,10 @@ def _combine_selectors(elements):
     combined = ColumnSelector()
     for elem in elements:
         if isinstance(elem, WorkflowNode):
-            combined += ColumnSelector(elem.output_schema.column_names)
+            if elem.selector:
+                combined += elem.selector
+            else:
+                combined += ColumnSelector(elem.output_schema.column_names)
         elif isinstance(elem, ColumnSelector):
             combined += elem
         elif isinstance(elem, list):
