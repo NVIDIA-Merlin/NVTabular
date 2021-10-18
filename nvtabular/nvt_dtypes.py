@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import inspect
 from dataclasses import dataclass
 from enum import Enum
 
@@ -65,41 +64,45 @@ class NumpyDtypes:
     @classmethod
     def _from(cls, dtype):
         # return nvt dtype, input must be pandas dtype
+        if "numpy" not in str(dtype):
+            try:
+                dtype = np.dtype(dtype)
+            except TypeError as err:
+                raise ValueError(f"Cannot convert non supported numpy dtype: {dtype}") from err
         if not isinstance(dtype, np.dtype):
-            raise ValueError(f"Cannot convert non support numpy dtype: {type(dtype)}")
+            dtype = np.dtype(dtype)
         if dtype.kind not in cls.dtypes_to_nvt:
             raise ValueError(f"NVTabular does not currently support numpy dtype kind: {dtype.kind}")
-        name = cls.dtypes_to_nvt[dtype.kind]
-        size = dtype.itemsize
-        signed = bool(name == "signed")
+        name, signed = cls.dtypes_to_nvt[dtype.kind]
+        # account for bytes to bits
+        size = dtype.itemsize * 8
         is_list = bool(dtype.subdtype)
         return NVTDtype(name, size, signed, is_list)
 
+    # should this use None (aka unsupported) as a third option
     dtypes_to_nvt = {
-        "b": "bool",
-        "i": "signed",
-        "u": "unsigned",
-        "f": "float",
-        "c": "cfloat",
-        "m": "timedelta",
-        "M": "datetime",
-        "O": "object",
-        "S": "byte-string",
-        "U": "unicode",
-        "V": "void",
+        "b": ("bool", False),
+        "i": ("int", True),
+        "u": ("int", False),
+        "f": ("float", True),
+        "c": ("cfloat", False),
+        "m": ("timedelta", False),
+        "M": ("datetime", False),
+        "O": ("object", False),
+        "S": ("byte-string", False),
+        "U": ("unicode", False),
+        "V": ("void", False),
     }
 
     nvt_to_dtypes = {
         "int": {
             "signed": {
-                0: np.int,
                 8: np.int8,
                 16: np.int16,
                 32: np.int32,
                 64: np.int64,
             },
             "unsigned": {
-                0: np.uint,
                 8: np.uint8,
                 16: np.uint16,
                 32: np.uint32,
@@ -107,10 +110,11 @@ class NumpyDtypes:
             },
         },
         "float": {
-            0: np.float,
-            16: np.float16,
-            32: np.float32,
-            64: np.float64,
+            "signed": {
+                16: np.float16,
+                32: np.float32,
+                64: np.float64,
+            },
         },
     }
 
@@ -122,7 +126,7 @@ class NVT_Dtypes(Enum):
 
 @dataclass(frozen=True)
 class NVTDtype:
-    dtype: str
+    name: str
     size: int = 0
     signed: bool = False
     is_list: bool = False
@@ -139,12 +143,17 @@ class NVTDtype:
             f"did not find appropriate framework, currently support: {self.dtypes_dict.keys()}"
         )
 
-    def _from(self, dtype):
-        dtype_type = inspect.getmembers(dtype, inspect.isclass)[0][1]
-        dtype_type = str(dtype_type)
-        for dtype_key in list(self.dtypes_dict.keys()):
+    @classmethod
+    def _from(cls, dtype):
+        dtype_type = str(dtype)
+        for dtype_key in list(cls.dtypes_dict.keys()):
             if dtype_key in dtype_type:
-                return self.dtypes_dict[dtype_type]._from(dtype)
-        raise ValueError(
-            f"did not find appropriate dtype base, currently support: {self.dtypes_dict.keys()}"
-        )
+                return cls.dtypes_dict[dtype_key]._from(dtype)
+        try:
+            dtype = np.dtype(dtype)
+            return cls.dtypes_dict["numpy"]._from(dtype)
+        except TypeError as err:
+            raise ValueError(
+                f"""did not find appropriate dtype base for {dtype},
+                currently support: {cls.dtypes_dict.keys()}"""
+            ) from err
