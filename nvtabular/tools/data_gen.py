@@ -20,8 +20,8 @@ import string
 import cudf
 import cupy
 import numpy as np
+from cudf.api.types import is_list_dtype
 from cudf.core.column import as_column, build_column
-from cudf.utils.dtypes import is_list_dtype
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
