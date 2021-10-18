@@ -55,13 +55,20 @@ class NumpyDtypes:
     @classmethod
     def _to(cls, dtype):
         # return pandas dtype, input must be nvt.dtype
-        pass
+        if not isinstance(dtype, NVTDtype):
+            raise ValueError(
+                f"The supplied dtype({type(dtype)}) does not extend the NVTDtype class"
+            )
+        signed = "signed" if dtype.signed else "unsigned"
+        return cls.nvt_to_dtypes[dtype.name][signed][dtype.size]
 
     @classmethod
     def _from(cls, dtype):
         # return nvt dtype, input must be pandas dtype
         if not isinstance(dtype, np.dtype):
             raise ValueError(f"Cannot convert non support numpy dtype: {type(dtype)}")
+        if dtype.kind not in cls.dtypes_to_nvt:
+            raise ValueError(f"NVTabular does not currently support numpy dtype kind: {dtype.kind}")
         name = cls.dtypes_to_nvt[dtype.kind]
         size = dtype.itemsize
         signed = bool(name == "signed")
@@ -82,7 +89,30 @@ class NumpyDtypes:
         "V": "void",
     }
 
-    nvt_to_dtypes = {}
+    nvt_to_dtypes = {
+        "int": {
+            "signed": {
+                0: np.int,
+                8: np.int8,
+                16: np.int16,
+                32: np.int32,
+                64: np.int64,
+            },
+            "unsigned": {
+                0: np.uint,
+                8: np.uint8,
+                16: np.uint16,
+                32: np.uint32,
+                64: np.uint64,
+            },
+        },
+        "float": {
+            0: np.float,
+            16: np.float16,
+            32: np.float32,
+            64: np.float64,
+        },
+    }
 
 
 class NVT_Dtypes(Enum):
