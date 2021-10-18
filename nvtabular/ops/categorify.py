@@ -120,7 +120,7 @@ class Categorify(StatOperator):
     -----------
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
         Categories with a count/frequency below this threshold will be
-        ommited from the encoding and corresponding data will be mapped
+        omitted from the encoding and corresponding data will be mapped
         to the "null" category. Can be represented as both an integer or
         a dictionary with column names as keys and frequency limit as
         value. If dictionary is used, all columns targeted must be included
@@ -183,7 +183,7 @@ class Categorify(StatOperator):
         as [[1], [1, 4], [3, 2], [2]], with an out-of-vocabulary value of 0, then with a
         start_index of 16, Categorify will reserve 16 as the out-of-vocabulary encoding value,
         and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
-        This parameter is useful to reserve an intial segment of non-negative translated integers
+        This parameter is useful to reserve an initial segment of non-negative translated integers
         for special user-defined values.
     """
 
@@ -584,7 +584,7 @@ def get_embedding_sizes(source, output_dtypes=None):
         dimensions = embeddings_sizes["dimension"]
         output[col_name] = (cardinality, dimensions)
 
-    # TODO: returning differnt return types like this (based off the presence
+    # TODO: returning different return types like this (based off the presence
     # of multihot features) is pretty janky. fix.
     if not multihot_columns:
         return output
@@ -651,7 +651,7 @@ class FitOptions:
             Where to write statistics in parquet format
         freq_limit: int or dict
             Categories with a count/frequency below this threshold will be
-            ommited from the encoding and corresponding data will be mapped
+            omitted from the encoding and corresponding data will be mapped
             to the "null" category.
         tree_width:
            Tree width of the hash-based groupby reduction for each categorical column.
@@ -1163,7 +1163,7 @@ def _encode(
         Sentinel for NA value. Defaults to -1.
     freq_threshold :  int
         Categories with a count or frequency below this threshold will
-        be ommitted from the encoding and corresponding data will be
+        be omitted from the encoding and corresponding data will be
         mapped to the "Null" category. Defaults to 0.
     search_sorted :
         Defaults to False.
@@ -1178,7 +1178,7 @@ def _encode(
     dtype :
         Defaults to None.
     start_index :  int
-        The index to start outputing categorical values to. This is useful
+        The index to start outputting categorical values to. This is useful
         to, for instance, reserve an initial segment of non-negative
         integers for out-of-vocabulary or other special values. Defaults
         to 1.

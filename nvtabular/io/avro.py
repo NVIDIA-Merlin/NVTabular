@@ -153,7 +153,7 @@ class AvroDatasetEngine(DatasetEngine):
         if "rows" in piece:
 
             # See: (https://github.com/rapidsai/cudf/issues/6529)
-            # Using `uavro` library for now. This means we must covert
+            # Using `uavro` library for now. This means we must convert
             # data to pandas, and then to cudf (which is much slower
             # than `cudf.read_avro`). TODO: Once `num_rows` is fixed,
             # this can be changed to:

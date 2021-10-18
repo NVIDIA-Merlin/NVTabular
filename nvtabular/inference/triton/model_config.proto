@@ -115,7 +115,7 @@ message ModelRateLimiter
   //@@
   //@@     The resources required to execute the request on a model instance.
   //@@     Resources are just names with a corresponding count. The execution
-  //@@     of the instance will be blocked until the specificied resources are
+  //@@     of the instance will be blocked until the specified resources are
   //@@     available. By default an instance uses no rate-limiter resources.
   //@@
   repeated Resource resources = 1;
@@ -215,7 +215,7 @@ message ModelInstanceGroup
   //@@
   //@@     GPU(s) where instances should be available. For each GPU listed,
   //@@     'count' instances of the model will be available. Setting 'gpus'
-  //@@     to empty (or not specifying at all) is eqivalent to listing all
+  //@@     to empty (or not specifying at all) is equivalent to listing all
   //@@     available GPUs.
   //@@
   repeated int32 gpus = 3;
@@ -371,7 +371,7 @@ message ModelOutput
   //@@  .. cpp:var:: ModelTensorReshape reshape
   //@@
   //@@     The shape produced for this output by the backend. The output will
-  //@@     be reshaped from this to the shape specifed in 'dims' before being
+  //@@     be reshaped from this to the shape specified in 'dims' before being
   //@@     returned in the inference response. The reshape must have the same
   //@@     number of elements as the output shape specified by 'dims'. Optional.
   //@@
@@ -786,7 +786,7 @@ message ModelOptimizationPolicy
 
       //@@    .. cpp:var:: map<string, string> parameters
       //@@
-      //@@       Additional paremeters used to configure the accelerator.
+      //@@       Additional parameters used to configure the accelerator.
       //@@
       map<string, string> parameters = 2;
     }
@@ -1211,7 +1211,7 @@ message ModelSequenceBatching
     //@@    .. cpp:var:: int32 max_candidate_sequences
     //@@
     //@@       Maximum number of candidate sequences that the batcher
-    //@@       maintains. Excess seqences are kept in an ordered backlog
+    //@@       maintains. Excess sequences are kept in an ordered backlog
     //@@       and become candidates when existing candidate sequences
     //@@       complete.
     //@@

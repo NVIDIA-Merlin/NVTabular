@@ -84,7 +84,7 @@ class ThreadedWriter(Writer):
         self.num_threads = num_threads
         self.fns = [fns] if isinstance(fns, str) else fns
         if self.fns:
-            # If sepecific file names were specified,
+            # If specific file names were specified,
             # ignore `num_out_files` argument
             self.num_out_files = len(self.fns)
         else:

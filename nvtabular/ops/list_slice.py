@@ -105,7 +105,7 @@ def _calculate_row_sizes(start, end, offsets, row_sizes):
     if rowid < offsets.size - 1:
         original_row_size = offsets[rowid + 1] - offsets[rowid]
 
-        # handle negative slicing appropiately
+        # handle negative slicing appropriately
         if start < 0:
             start = original_row_size + start
         if end < 0:
@@ -122,7 +122,7 @@ def _calculate_row_sizes(start, end, offsets, row_sizes):
 def _slice_rows(start, offsets, elements, new_offsets, new_elements):
     """slices rows of a list column. requires the 'new_offsets' to
     be previously calculated (meaning that we don't need the 'end' slice index
-    since thats baked into the new_offsets"""
+    since that's baked into the new_offsets"""
     rowid = numba.cuda.grid(1)
     if rowid < (new_offsets.size - 1):
         if start >= 0:
