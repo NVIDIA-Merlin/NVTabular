@@ -51,7 +51,7 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
-def test_valuecount():
+def test_valuecount(tmpdir):
     df = dispatch._make_df(
         {
             "list1": [[1, 2, 3, 4], [3, 2, 1], [1, 4], [0]],
@@ -63,7 +63,7 @@ def test_valuecount():
     feats = ["list1", "list2"] >> val_count
     processor = nvt.Workflow(feats)
     processor.fit(ds)
-    processor.transform(ds)
+    processor.transform(ds).to_parquet(tmpdir, out_files_per_proc=1)
     assert "list1" in list(val_count.stats.keys())
     assert "list2" in list(val_count.stats.keys())
     assert processor.output_schema.column_schemas["list1"].properties == {
