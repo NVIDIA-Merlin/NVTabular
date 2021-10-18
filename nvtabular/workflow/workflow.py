@@ -454,7 +454,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
     for node in workflow_nodes:
         node_input_cols = _get_unique(node.input_columns.names)
         node_output_cols = _get_unique(node.output_columns.names)
-        addl_input_cols = set()
+        addl_input_cols = set(node.dependency_columns.names)
 
         # Build input dataframe
         if node.parents_with_dependencies:

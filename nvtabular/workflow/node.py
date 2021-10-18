@@ -319,6 +319,10 @@ class WorkflowNode:
         return _combine_schemas(self.dependencies)
 
     @property
+    def dependency_columns(self):
+        return _combine_selectors(self.dependencies)
+
+    @property
     def label(self):
         if self.op and hasattr(self.op, "label"):
             return self.op.label
