@@ -210,7 +210,7 @@ def test_movielens_example(tmpdir):
         else:
             _run_notebook(tmpdir, notebook_path)
 
-    # test out the TF inference movielens notebook if appropiate
+    # test out the TF inference movielens notebook if appropriate
     if has_tf and TRITON_SERVER_PATH:
         notebook = "04-Triton-Inference-with-TF.ipynb"
         notebook_path = os.path.join(

@@ -191,7 +191,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     )
 
     # We have a global dask client defined in this context, so NVTabular
-    # should warn us if we initialze a `Workflow` with `client=None`
+    # should warn us if we initialize a `Workflow` with `client=None`
     workflow = run_in_context(
         Workflow,
         cat_features + groupby_features,

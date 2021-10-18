@@ -172,14 +172,14 @@ def _get_parquet_byte_ranges(
     byte_ranges = []
     md = pq.ParquetFile(io.BytesIO(footer_sample)).metadata
     for r in range(md.num_row_groups):
-        # Skip this row-group if we are targetting
+        # Skip this row-group if we are targeting
         # specific row-groups
         if rgs is None or r in rgs:
             row_group = md.row_group(r)
             for c in range(row_group.num_columns):
                 column = row_group.column(c)
                 name = column.path_in_schema
-                # Skip this column if we are targetting a
+                # Skip this column if we are targeting a
                 # specific columns
                 if columns is None or name in columns:
                     file_offset0 = column.dictionary_page_offset
@@ -192,7 +192,7 @@ def _get_parquet_byte_ranges(
 
 
 #
-# Genral Fsspec Data-transfer Optimization Code
+# General Fsspec Data-transfer Optimization Code
 #
 
 
