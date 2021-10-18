@@ -48,8 +48,9 @@ class ValueCount(StatOperator):
                 if isinstance(offs, pd.Series):
                     rh = rh.reset_index(drop=True)
                 deltas = lh - rh
-                stats[col]["value_count"]["min"] = deltas.min()
-                stats[col]["value_count"]["max"] = deltas.max()
+                # must be regular python class otherwise protobuf fails
+                stats[col]["value_count"]["min"] = int(deltas.min())
+                stats[col]["value_count"]["max"] = int(deltas.max())
         return stats
 
     def fit_finalize(self, dask_stats):
