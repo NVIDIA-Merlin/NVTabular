@@ -113,8 +113,7 @@ class WorkflowNode:
             if isinstance(self.op, ConcatColumns):
                 # For addition nodes, some of the operands are parents and
                 # others are dependencies so grab schemas from both
-                upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
-                self.input_schema = upstream_schema.apply(self.selector)
+                self.input_schema = _combine_schemas(self.parents_with_dependencies)
 
             # If we're a subtraction node, we have to do some gymnastics to compute
             # the schema, because operands may be in the parents or the dependencies
