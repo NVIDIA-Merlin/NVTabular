@@ -187,7 +187,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         be equal to `int(buffer_size*batch_size)`. Otherwise, if `buffer_size >
         batch_size`, `buffer_size` rows will be read in each chunk (except for
         the last chunk in a dataset, which will, in general, be smaller).
-        Larger chunk sizes will lead to more efficieny and randomness,
+        Larger chunk sizes will lead to more efficiency and randomness,
         but require more memory.
     - device: None
         Which GPU device to load from. Ignored for now

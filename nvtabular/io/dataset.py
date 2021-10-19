@@ -426,7 +426,7 @@ class Dataset:
             data, this value should be <= the number of unique key
             combinations (the default), otherwise it will be ignored. For
             data that is not hive-partitioned, the ``npartitions`` input
-            should be <= the orginal partition count, otherwise it will be
+            should be <= the original partition count, otherwise it will be
             ignored.
         """
 
@@ -567,7 +567,7 @@ class Dataset:
             Key-word arguments to be passed through to Dask-Dataframe.
         """
 
-        # Ensure both Dataset objects are eith cudf or pandas based
+        # Ensure both Dataset objects are either cudf or pandas based
         if left.cpu and not right.cpu:
             _right = cls(right.to_ddf())
             _right.to_cpu()
@@ -680,7 +680,7 @@ class Dataset:
             If `PER_WORKER` is specified, each worker will follow the same
             procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
-            data processed by each worker.  To improve performace, this option
+            data processed by each worker.  To improve performance, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
         partition_on : str or list(str)
@@ -703,7 +703,7 @@ class Dataset:
             output-file names.
         out_files_per_proc : integer
             Number of output files that each process will use to shuffle an input
-            partition. Deafult is 1. If `method="worker"`, the total number of output
+            partition. Default is 1. If `method="worker"`, the total number of output
             files will always be the total number of Dask workers, multiplied by this
             argument. If `method="subgraph"`, the total number of files is determined
             by `output_files` (and `out_files_per_proc` must be 1 if a dictionary is
@@ -938,7 +938,7 @@ class Dataset:
             If `PER_WORKER` is specified, each worker will follow the same
             procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
-            data processed by each worker.  To improve performace, this option
+            data processed by each worker.  To improve performance, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
         file_partition_map : dict

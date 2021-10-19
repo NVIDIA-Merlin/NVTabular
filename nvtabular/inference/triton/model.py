@@ -293,7 +293,7 @@ def _transform_tensors(input_tensors, workflow_node):
         else:
             if kind != upstream_kind:
                 # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
-                # we need to convert to a common format here first before concatentating.
+                # we need to convert to a common format here first before concatenating.
                 op = workflow_node.op
                 target_kind = workflow_node.inference_supports if op else Supports.CPU_DICT_ARRAY
                 # note : the 2nd convert_format call needs to be stricter in what the kind is
