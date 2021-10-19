@@ -82,7 +82,8 @@ if cudf is not None:
     class GPUParquetEngine(CudfEngine):
         @staticmethod
         def read_metadata(*args, **kwargs):
-            if LooseVersion(cudf.__version__) < "21.12":
+            if LooseVersion(cudf.__version__).version[:2] == [21, 10]:
+                # We only need this work-around for cudf-21.10
                 return _override_read_metadata(_cudf_read_metadata, *args, **kwargs)
             return _override_read_metadata(CudfEngine.read_metadata, *args, **kwargs)
 
