@@ -65,7 +65,7 @@ def _run_notebook(
         if not (line.startswith("%") or line.startswith("!"))
     ]
 
-    # Replace config parms
+    # Replace config params
     if params:
 
         def transform_fracs(line):

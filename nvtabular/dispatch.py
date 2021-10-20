@@ -281,7 +281,7 @@ def _is_string_dtype(obj):
 
 def _flatten_list_column(s):
     """Flatten elements of a list-based column"""
-    if isinstance(s, pd.Series):
+    if isinstance(s, pd.Series) or not cudf:
         return pd.DataFrame({s.name: itertools.chain(*s)})
     else:
         return cudf.DataFrame({s.name: s.list.leaves})
@@ -480,7 +480,7 @@ def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
             return dd.from_pandas(_x, sort=False, npartitions=npartitions) if to_collection else _x
     else:
         if isinstance(x, dd.DataFrame):
-            # If input is a Dask collection, covert to dask_cudf
+            # If input is a Dask collection, convert to dask_cudf
             if isinstance(x, dask_cudf.DataFrame):
                 # Already a cudf-backed Dask collection
                 return x

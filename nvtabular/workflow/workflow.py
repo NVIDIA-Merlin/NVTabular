@@ -179,7 +179,7 @@ class Workflow:
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
-        # Get a dictionary mapping all StatOperators we need to fit to a set of any dependant
+        # Get a dictionary mapping all StatOperators we need to fit to a set of any dependent
         # StatOperators (having StatOperators that depend on the output of other StatOperators
         # means that will have multiple phases in the fit cycle here)
         stat_ops = {
@@ -422,7 +422,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
 
     elif not meta:
         # TODO: constructing meta like this loses dtype information on the ddf
-        # and sets it all to 'float64'. We should propogate dtype information along
+        # and sets it all to 'float64'. We should propagate dtype information along
         # with column names in the columngroup graph. This currently only
         # happesn during intermediate 'fit' transforms, so as long as statoperators
         # don't require dtype information on the DDF this doesn't matter all that much

@@ -164,8 +164,9 @@ class TargetEncoding(StatOperator):
 
     def fit(self, col_selector: ColumnSelector, ddf: dd.DataFrame):
         moments = None
+        self.target = self.target.names if isinstance(self.target, ColumnSelector) else self.target
         if self.target_mean is None:
-            # calcualte the mean if we don't have it already
+            # calculate the mean if we don't have it already
             moments = _custom_moments(ddf[self.target])
 
         col_groups = col_selector.grouped_names
