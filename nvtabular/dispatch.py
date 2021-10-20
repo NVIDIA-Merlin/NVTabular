@@ -29,8 +29,8 @@ try:
     import cupy as cp
     import dask_cudf
     import rmm
-    from cudf.core.column import as_column, build_column
     from cudf.api.types import is_list_dtype, is_string_dtype
+    from cudf.core.column import as_column, build_column
 
     HAS_GPU = True
 except ImportError:
