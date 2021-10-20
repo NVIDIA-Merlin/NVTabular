@@ -35,7 +35,7 @@ except ImportError:
 import numpy as np
 import pandas as pd
 
-from nvtabular.dispatch import _build_cudf_list_column
+from nvtabular.dispatch import _build_cudf_list_column, _is_list_dtype
 from nvtabular.ops.operator import Supports
 
 
@@ -140,7 +140,7 @@ def _cudf_to_array(df, cpu=True):
     output = {}
     for name in df.columns:
         col = df[name]
-        if cudf.api.types.is_list_dtype(col.dtype):
+        if _is_list_dtype(col.dtype):
             offsets = col._column.offsets.values_host if cpu else col._column.offsets.values
             values = col.list.leaves.values_host if cpu else col.list.leaves.values
             output[name] = (values, offsets)

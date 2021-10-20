@@ -6,10 +6,10 @@ import cudf
 import fsspec
 import numpy as np
 import pytest
-from cudf.api.types import is_string_dtype
 
 import nvtabular.tools.data_gen as datagen
 import nvtabular.tools.dataset_inspector as datains
+from nvtabular.dispatch import _is_string_dtype
 from nvtabular.io import Dataset
 
 json_sample = {
@@ -144,7 +144,7 @@ def test_full_df(num_rows, tmpdir, distro):
     assert df.shape[1] == len(conts_rep) + len(cats_rep) + len(labels_rep)
     for idx, cat in enumerate(cats[1:]):
         dist = cats_rep[idx + 1].distro or df_gen.dist
-        if not is_string_dtype(full_df[cat]._column):
+        if not _is_string_dtype(full_df[cat]._column):
             sts, ps = dist.verify(full_df[cat].to_pandas())
             assert all(s > 0.9 for s in sts)
         assert full_df[cat].nunique() == cats_rep[idx + 1].cardinality
