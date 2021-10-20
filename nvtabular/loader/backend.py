@@ -22,7 +22,7 @@ from collections import OrderedDict
 
 import cupy as cp
 
-from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list
+from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list, annotate
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
 from nvtabular.tags import Tags
@@ -86,6 +86,7 @@ class ChunkQueue:
             except queue.Full:
                 continue
 
+    @annotate("batch", color="darkgreen", domain="nvt_python")
     def batch(self, itr):
         """
         iterates through gpu_mem_frac size chunks of dataset
@@ -105,6 +106,7 @@ class ChunkQueue:
                 yield current
                 current = []
 
+    @annotate("chunk_logic", color="darkgreen", domain="nvt_python")
     def chunk_logic(self, itr):
         spill = None
         for chunks in self.batch(itr):
@@ -133,6 +135,7 @@ class ChunkQueue:
             spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
             self.put(spill)
 
+    @annotate("load_chunks", color="darkgreen", domain="nvt_python")
     def load_chunks(self, dev):
         try:
             itr = iter(self.itr)
@@ -298,6 +301,7 @@ class DataLoader:
         local_seed = seeds[self.global_rank]
         cp.random.seed(local_seed.get())
 
+    @annotate("_shuffle_indices", color="darkgreen", domain="nvt_python")
     def _shuffle_indices(self):
         self._generate_local_seed()
         if self.seed_fn:
@@ -378,6 +382,7 @@ class DataLoader:
                 break
         return batch
 
+    @annotate("make_tensors", color="darkgreen", domain="nvt_python")
     def make_tensors(self, gdf, use_nnz=False):
         split_idx = self._get_segment_lengths(len(gdf))
 
@@ -526,6 +531,7 @@ class DataLoader:
                 scalars.append(col)
         return _get_embedding_order(scalars), _get_embedding_order(lists)
 
+    @annotate("_create_tensors", color="darkgreen", domain="nvt_python")
     def _create_tensors(self, gdf):
         """
         Breaks a dataframe down into the relevant
@@ -568,6 +574,7 @@ class DataLoader:
 
         return tensors
 
+    @annotate("_handle_tensors", color="darkgreen", domain="nvt_python")
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):
