@@ -21,9 +21,10 @@ import cudf
 import cupy
 import numpy as np
 from cudf.core.column import as_column, build_column
-from cudf.utils.dtypes import is_list_dtype
 from scipy import stats
 from scipy.stats import powerlaw, uniform
+
+from nvtabular.dispatch import _is_list_dtype
 
 from ..io.dataset import Dataset
 from ..utils import device_mem_size
@@ -135,7 +136,7 @@ class DatasetGen:
         # df and cats are both series
         # set cats to dfs
         offs = None
-        if is_list_dtype(ser.dtype):
+        if _is_list_dtype(ser.dtype):
             offs = ser._column.offsets
             ser = ser.list.leaves
         ser = cudf.DataFrame({"vals": ser})
@@ -303,7 +304,7 @@ class DatasetGen:
         """
         size = 0
         for col in row.columns:
-            if is_list_dtype(row[col].dtype):
+            if _is_list_dtype(row[col].dtype):
                 # second from last position is max list length
                 # find correct cats_rep by scanning through all for column name
                 tar = self.find_target_rep(col, cats_rep)
