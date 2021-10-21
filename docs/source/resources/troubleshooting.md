@@ -51,7 +51,7 @@ def _memory_usage(df):
     when using cudf 0.17, which has been fixed as noted on https://github.com/rapidsai/cudf/pull/6549)"""
     size = 0
     for col in df._data.columns:
-        if cudf.utils.dtypes.is_list_dtype(col.dtype):
+        if cudf.api.types.is_list_dtype(col.dtype):
             for child in col.base_children:
                 size += child.__sizeof__()
         else:
