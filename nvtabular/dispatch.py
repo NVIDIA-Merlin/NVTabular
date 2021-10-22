@@ -280,7 +280,7 @@ def _is_string_dtype(obj):
 def _flatten_list_column_values(s):
     """returns a flattened list from a list column"""
     if isinstance(s, pd.Series) or not cudf:
-        return itertools.chain(*s)
+        return pd.Series(itertools.chain(*s))
     else:
         return s.list.leaves
 
