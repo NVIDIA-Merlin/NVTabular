@@ -621,7 +621,7 @@ def test_workflow_input_output_dtypes():
 
 
 def test_workflow_transform_ddf_dtypes():
-    # Inital Dataset
+    # Initial Dataset
     df = cudf.datasets.timeseries().reset_index()
     ddf = dask_cudf.from_cudf(df, npartitions=2)
     dataset = Dataset(ddf)
@@ -637,6 +637,6 @@ def test_workflow_transform_ddf_dtypes():
     for col in cols:
         assert_eq(ddf.dtypes[col], transformed_ddf.dtypes[col])
 
-    # Followup dask-cudf sorting used to thow an exception  because of dtype issues,
+    # Followup dask-cudf sorting used to throw an exception because of dtype issues,
     # check that it works now
     transformed_ddf.sort_values(["id", "timestamp"]).compute()

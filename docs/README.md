@@ -1,7 +1,7 @@
 # Documentation
 
 This folder contains the scripts necessary to build NVTabular's documentation.
-You can view the generated [NVTabular documentation here](https://nvidia.github.io/NVTabular/main/Introduction.html).
+You can view the generated [NVTabular documentation here](https://nvidia-merlin.github.io/NVTabular/main/Introduction.html).
 
 # Contributing to Docs
 

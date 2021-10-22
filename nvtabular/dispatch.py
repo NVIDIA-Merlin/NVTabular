@@ -30,7 +30,13 @@ try:
     import dask_cudf
     import rmm
     from cudf.core.column import as_column, build_column
-    from cudf.utils.dtypes import is_list_dtype, is_string_dtype
+
+    try:
+        # cudf >= 21.08
+        from cudf.api.types import is_list_dtype, is_string_dtype
+    except ImportError:
+        # cudf < 21.08
+        from cudf.utils.dtypes import is_list_dtype, is_string_dtype
 
     HAS_GPU = True
 except ImportError:
@@ -89,6 +95,21 @@ class ExtData(enum.Enum):
     DASK_PANDAS = 5
     PARQUET = 6
     CSV = 7
+
+
+def _create_nvt_dataset(df):
+    from nvtabular import Dataset
+
+    if not isinstance(df, Dataset):
+        # turn arrow format into readable for dispatch
+        df_ext_format = _detect_format(df)
+        if df_ext_format == ExtData.ARROW:
+            df = df.to_pandas() if not cudf else cudf.DataFrame.from_arrow(df)
+            # run through make df to safely cast to df
+        elif df_ext_format in [ExtData.DASK_CUDF, ExtData.DASK_PANDAS]:
+            df = df.compute()
+        return Dataset(df)
+    return df
 
 
 def get_lib():
@@ -237,6 +258,15 @@ def _series_has_nulls(s):
         return s._column.has_nulls
 
 
+def _list_val_dtype(ser):
+    if _is_list_dtype(ser):
+        if HAS_GPU and isinstance(ser, cudf.Series):
+            return ser.dtype._typ.value_type.to_pandas_dtype()
+        elif isinstance(ser, pd.Series):
+            return type(ser[0][0])
+    return None
+
+
 def _is_list_dtype(ser):
     """Check if Series contains list elements"""
     if isinstance(ser, pd.Series):
@@ -257,7 +287,7 @@ def _is_string_dtype(obj):
 
 def _flatten_list_column(s):
     """Flatten elements of a list-based column"""
-    if isinstance(s, pd.Series):
+    if isinstance(s, pd.Series) or not cudf:
         return pd.DataFrame({s.name: itertools.chain(*s)})
     else:
         return cudf.DataFrame({s.name: s.list.leaves})
@@ -379,9 +409,8 @@ def _make_df(_like_df=None, device=None):
         return pd.DataFrame(_like_df)
     elif isinstance(_like_df, (cudf.DataFrame, cudf.Series)):
         return cudf.DataFrame(_like_df)
-    elif isinstance(_like_df, dict) and len(_like_df) > 0:
+    elif device is None and isinstance(_like_df, dict) and len(_like_df) > 0:
         is_pandas = all(isinstance(v, pd.Series) for v in _like_df.values())
-
         return pd.DataFrame(_like_df) if is_pandas else cudf.DataFrame(_like_df)
     if device == "cpu":
         return pd.DataFrame(_like_df)
@@ -457,7 +486,7 @@ def _convert_data(x, cpu=True, to_collection=None, npartitions=1):
             return dd.from_pandas(_x, sort=False, npartitions=npartitions) if to_collection else _x
     else:
         if isinstance(x, dd.DataFrame):
-            # If input is a Dask collection, covert to dask_cudf
+            # If input is a Dask collection, convert to dask_cudf
             if isinstance(x, dask_cudf.DataFrame):
                 # Already a cudf-backed Dask collection
                 return x

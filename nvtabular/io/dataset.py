@@ -30,6 +30,7 @@ from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
 
+import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.io.shuffle import _check_shuffle_arg
@@ -197,6 +198,13 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    **kwargs :
+        Key-word arguments to pass through to Dask.dataframe IO function.
+        For the Parquet engine(s), notable arguments include `filters`,
+        `aggregate_files`, and `gather_statistics`. Note that users who
+        do not need to know the number of rows in their dataset (and do
+        not plan to preserve a file-partition mapping) may wish to use
+        `gather_statistics=False` for better client-side performance.
     """
 
     def __init__(
@@ -214,9 +222,15 @@ class Dataset:
         schema=None,
         **kwargs,
     ):
+        if schema is not None and not isinstance(schema, Schema):
+            raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
+
         self.dtypes = dtypes
         self.client = client
         self.schema = schema
+
+        # Cache for "real" (sampled) metadata
+        self._real_meta = {}
 
         # Check if we are keeping data in cpu memory
         self.cpu = cpu
@@ -269,9 +283,7 @@ class Dataset:
                 part_size = int(device_mem_size(kind="total", cpu=self.cpu) * part_mem_fraction)
 
             # Engine-agnostic path handling
-            paths = path_or_source
-            if hasattr(paths, "name"):
-                paths = stringify_path(paths)
+            paths = stringify_path(path_or_source)
             if isinstance(paths, str):
                 paths = [paths]
             paths = sorted(paths, key=natural_sort_key)
@@ -316,8 +328,11 @@ class Dataset:
                 schema_path = Path(path_or_source[0])
                 if schema_path.is_file():
                     schema_path = schema_path.parent
+
                 if (schema_path / "schema.pbtxt").exists():
                     self.schema = Schema.load_protobuf(schema_path)
+                elif (schema_path.parent / "schema.pbtxt").exists():
+                    self.schema = Schema.load_protobuf(schema_path.parent)
                 else:
                     self.infer_schema()
             else:
@@ -411,7 +426,7 @@ class Dataset:
             data, this value should be <= the number of unique key
             combinations (the default), otherwise it will be ignored. For
             data that is not hive-partitioned, the ``npartitions`` input
-            should be <= the orginal partition count, otherwise it will be
+            should be <= the original partition count, otherwise it will be
             ignored.
         """
 
@@ -454,6 +469,10 @@ class Dataset:
                 for c in keys:
                     typ = ddf._meta[c].dtype
                     if c in cols:
+                        if typ == "category":
+                            # Cannot cast directly to categorical unless we
+                            # first cast to the underlying dtype of the categories
+                            hive_mapping[c] = hive_mapping[c].astype(typ.categories.dtype)
                         hive_mapping[c] = hive_mapping[c].astype(typ)
 
                 # Generate simple-shuffle plan
@@ -548,7 +567,7 @@ class Dataset:
             Key-word arguments to be passed through to Dask-Dataframe.
         """
 
-        # Ensure both Dataset objects are eith cudf or pandas based
+        # Ensure both Dataset objects are either cudf or pandas based
         if left.cpu and not right.cpu:
             _right = cls(right.to_ddf())
             _right.to_cpu()
@@ -568,7 +587,9 @@ class Dataset:
             )
         )
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
+    def to_iter(
+        self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None, epochs=1
+    ):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -600,6 +621,9 @@ class Dataset:
             optimization will only be used if the current Dataset is
             backed by a file-based engine. Otherwise, it is possible
             that an intermediate transform has modified the row-count.
+        epochs : int
+            Number of dataset passes to include within a single iterator.
+            This option is used for multi-epoch data-loading. Default is 1.
         """
         if isinstance(columns, str):
             columns = [columns]
@@ -626,6 +650,7 @@ class Dataset:
             self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
             indices=indices,
             partition_lens=partition_lens_meta,
+            epochs=epochs,
         )
 
     def to_parquet(
@@ -661,7 +686,7 @@ class Dataset:
             If `PER_WORKER` is specified, each worker will follow the same
             procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
-            data processed by each worker.  To improve performace, this option
+            data processed by each worker.  To improve performance, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
         partition_on : str or list(str)
@@ -684,7 +709,7 @@ class Dataset:
             output-file names.
         out_files_per_proc : integer
             Number of output files that each process will use to shuffle an input
-            partition. Deafult is 1. If `method="worker"`, the total number of output
+            partition. Default is 1. If `method="worker"`, the total number of output
             files will always be the total number of Dask workers, multiplied by this
             argument. If `method="subgraph"`, the total number of files is determined
             by `output_files` (and `out_files_per_proc` must be 1 if a dictionary is
@@ -880,6 +905,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
+            schema=self.schema,
         )
 
     def to_hugectr(
@@ -918,7 +944,7 @@ class Dataset:
             If `PER_WORKER` is specified, each worker will follow the same
             procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
-            data processed by each worker.  To improve performace, this option
+            data processed by each worker.  To improve performance, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
         file_partition_map : dict
@@ -968,6 +994,7 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            schema=self.schema,
         )
 
     @property
@@ -1083,37 +1110,48 @@ class Dataset:
         Args:
             n (int, optional): Number of rows to sample to infer the dtypes. Defaults to 1.
         """
+
         dtypes = {}
         try:
-            sampled_dtypes = self.sample_dtypes(n)
-            dtypes = dict(zip(sampled_dtypes.index, sampled_dtypes))
+            dtypes = self.sample_dtypes(n=n, annotate_lists=True)
         except RuntimeError:
             warnings.warn(
                 "Unable to sample column dtypes to infer nvt.Dataset schema, schema is empty."
             )
-
         column_schemas = []
-        for column, dtype in dtypes.items():
-            col_schema = ColumnSchema(column, dtype=dtype)
+        for column, dtype_info in dtypes.items():
+            dtype_val = dtype_info["dtype"]
+            is_list = dtype_info["is_list"]
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
             column_schemas.append(col_schema)
 
         self.schema = Schema(column_schemas)
         return self.schema
 
-    def sample_dtypes(self, n=1):
+    def sample_dtypes(self, n=1, annotate_lists=False):
         """Return the real dtypes of the Dataset
 
-        Sample the partitions of the underlying Dask collection
-        until a non-empty partition is found. Then, use the first
-        ``n`` rows of that partition to infer dtype info. If no
-        non-empty partitions are found, use the Dask dtypes.
+        Use cached metadata if this operation was
+        already performed. Otherwise, call down to the
+        underlying engine for sampling logic.
         """
-        _ddf = self.to_ddf()
-        for partition_index in range(_ddf.npartitions):
-            _head = _ddf.partitions[partition_index].head(n)
-            if len(_head):
-                return _head.dtypes
-        return _ddf.dtypes
+        if self._real_meta.get(n, None) is None:
+            _real_meta = self.engine.sample_data(n=n)
+            if self.dtypes:
+                _real_meta = _set_dtypes(_real_meta, self.dtypes)
+            self._real_meta[n] = _real_meta
+
+        if annotate_lists:
+            _real_meta = self._real_meta[n]
+            return {
+                col: {
+                    "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
+                    "is_list": dispatch._is_list_dtype(_real_meta[col]),
+                }
+                for col in _real_meta.columns
+            }
+
+        return self._real_meta[n].dtypes
 
     @classmethod
     def _bind_dd_method(cls, name):
@@ -1142,11 +1180,12 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None, epochs=1):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
         self.partition_lens = partition_lens
+        self.epochs = epochs
 
     def __len__(self):
         if self.partition_lens:
@@ -1154,16 +1193,17 @@ class DataFrameIter:
             # if/when it is available.  Note that this metadata
             # will not be correct if rows where added or dropped
             # after IO (within Ops).
-            return sum(self.partition_lens[i] for i in self.indices)
+            return sum(self.partition_lens[i] for i in self.indices) * self.epochs
         if len(self.indices) < self._ddf.npartitions:
-            return len(self._ddf.partitions[self.indices])
-        return len(self._ddf)
+            return len(self._ddf.partitions[self.indices]) * self.epochs
+        return len(self._ddf) * self.epochs
 
     def __iter__(self):
-        for i in self.indices:
-            part = self._ddf.get_partition(i)
-            if self.columns:
-                yield part[self.columns].compute(scheduler="synchronous")
-            else:
-                yield part.compute(scheduler="synchronous")
+        for epoch in range(self.epochs):
+            for i in self.indices:
+                part = self._ddf.get_partition(i)
+                if self.columns:
+                    yield part[self.columns].compute(scheduler="synchronous")
+                else:
+                    yield part.compute(scheduler="synchronous")
         part = None

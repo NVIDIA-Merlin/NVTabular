@@ -59,7 +59,7 @@ class DatasetInspector:
         dataset_format: str
             Dataset format (i.e parquet or csv)
         columns_dict: dict
-            Dictionary indicating the diferent columns type
+            Dictionary indicating the different columns type
         output_file: str
             Filename to write the output statistics
         """

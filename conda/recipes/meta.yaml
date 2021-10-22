@@ -32,9 +32,9 @@ requirements:
     - {{ req }}
   {% endfor %}
     - python
-    - cudf>=21.06.*
-    - dask-cudf>=21.06.*
-    - cupy>=7.2.0,<9.0.0a
+    - cudf>=21.08.*
+    - dask-cudf>=21.08.*
+    - cupy>=7.2.0,<10.0.0a
     - nvtx>=0.2.1
 
 about:

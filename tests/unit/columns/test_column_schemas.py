@@ -20,6 +20,7 @@ import pytest
 
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.columns.selector import ColumnSelector
+from nvtabular.tags import Tags
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
@@ -64,6 +65,43 @@ def test_column_schema_set_protobuf(tmpdir, props1, props2, tags1, tags2, d_type
     target = Schema.load_protobuf(schema_path)
     # compare read to origin
     assert column_schema_set == target
+
+
+def test_column_schema_protobuf_domain_check(tmpdir):
+    # create a schema
+    schema1 = ColumnSchema(
+        "col1",
+        tags=[],
+        properties={"domain": {"min": 0, "max": 10}},
+        dtype=numpy.int,
+        _is_list=False,
+    )
+    schema2 = ColumnSchema(
+        "col2",
+        tags=[],
+        properties={"domain": {"min": 0.0, "max": 10.0}},
+        dtype=numpy.float,
+        _is_list=False,
+    )
+    column_schema_set = Schema([schema1, schema2])
+    # write schema out
+    schema_path = Path(tmpdir)
+    saved_schema = column_schema_set.save_protobuf(schema_path)
+    # read schema back in
+    loaded_schema = Schema.load_protobuf(schema_path)
+    # compare read to origin
+    assert saved_schema == loaded_schema
+
+    # load in protobuf file to tensorflow schema representation
+    proto_schema = Schema.read_protobuf(schema_path / "schema.pbtxt")
+
+    assert """name: "col1"\n    min: 0\n    max: 10\n""" in str(proto_schema)
+    assert """name: "col2"\n    min: 0.0\n    max: 10.0\n""" in str(proto_schema)
+
+
+def test_column_schema_tags_normalize():
+    schema1 = ColumnSchema("col1", tags=["categorical", "continuous", "item_id"])
+    assert schema1.tags == [Tags.CATEGORICAL, Tags.CONTINUOUS, Tags.ITEM_ID]
 
 
 def test_dataset_schema_constructor():

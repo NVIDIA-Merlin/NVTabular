@@ -141,6 +141,10 @@ class Groupby(Operator):
         return numpy.int64
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        if not col_selector:
+            col_selector = (
+                ColumnSelector(self.target) if isinstance(self.target, list) else self.target
+            )
         if col_selector.tags:
             tags_col_selector = ColumnSelector(tags=col_selector.tags)
             filtered_schema = input_schema.apply(tags_col_selector)
@@ -155,10 +159,20 @@ class Groupby(Operator):
                 if name in new_name and new_name not in new_list:
                     new_list.append(new_name)
 
+        base_cols_map = {}
+        for new_col in new_list:
+            base_cols_map[new_col] = []
+            for old_col in input_schema.column_schemas:
+                if old_col in new_col:
+                    base_cols_map[new_col].append(old_col)
+
         col_selector = ColumnSelector(new_list)
         for column_name in col_selector.names:
             if column_name not in input_schema.column_schemas:
-                input_schema += Schema([column_name])
+                # grab the first collision
+                base_col_name = base_cols_map[column_name][0]
+                base_col_schema = input_schema.column_schemas[base_col_name]
+                input_schema += Schema([base_col_schema.with_name(column_name)])
 
         output_schema = Schema()
         for column_schema in input_schema.apply(col_selector):

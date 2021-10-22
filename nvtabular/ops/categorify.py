@@ -36,7 +36,7 @@ from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
-from nvtabular.ops.internal import ConcatColumns, Identity, SubsetColumns
+from nvtabular.utils import run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
 from ..tags import Tags
@@ -120,7 +120,7 @@ class Categorify(StatOperator):
     -----------
     freq_threshold : int or dictionary:{column: freq_limit_value}, default 0
         Categories with a count/frequency below this threshold will be
-        ommited from the encoding and corresponding data will be mapped
+        omitted from the encoding and corresponding data will be mapped
         to the "null" category. Can be represented as both an integer or
         a dictionary with column names as keys and frequency limit as
         value. If dictionary is used, all columns targeted must be included
@@ -183,7 +183,7 @@ class Categorify(StatOperator):
         as [[1], [1, 4], [3, 2], [2]], with an out-of-vocabulary value of 0, then with a
         start_index of 16, Categorify will reserve 16 as the out-of-vocabulary encoding value,
         and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
-        This parameter is useful to reserve an intial segment of non-negative translated integers
+        This parameter is useful to reserve an initial segment of non-negative translated integers
         for special user-defined values.
     """
 
@@ -349,7 +349,11 @@ class Categorify(StatOperator):
             self.categories[col] = categories[col]
             # check the argument
             if self.single_table:
-                idx_count = _reset_df_index(col, self.categories, idx_count)
+                cat_file_path = self.categories[col]
+                idx_count, new_cat_file_path = run_on_worker(
+                    _reset_df_index, col, cat_file_path, idx_count
+                )
+                self.categories[col] = new_cat_file_path
 
     def clear(self):
         self.categories = deepcopy(self.vocabs)
@@ -495,19 +499,33 @@ class Categorify(StatOperator):
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return np.int64
+    def output_dtype(self):
+        return np.int
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
 
     def _add_properties(self, column_schema):
-        target_column_path = self.output_properties().get(column_schema.name, None)
+        col_name = column_schema.name
+        target_column_path = self.output_properties().get(col_name, None)
+        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
         if target_column_path:
-            col_df = dispatch._read_parquet_dispatch(target_column_path)(target_column_path)
-            to_add = {"domain": {"min": 0, "max": col_df.shape[0]}}
-            to_add.update({"cat_path": target_column_path})
+            to_add = {
+                "num_buckets": self.num_buckets[col_name]
+                if isinstance(self.num_buckets, dict)
+                else self.num_buckets,
+                "freq_threshold": self.freq_threshold[col_name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+                "max_size": self.max_size[col_name]
+                if isinstance(self.max_size, dict)
+                else self.max_size,
+                "start_index": self.start_index,
+                "cat_path": target_column_path,
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
+            }
             return column_schema.with_properties(to_add)
         return column_schema
 
@@ -545,31 +563,28 @@ def get_embedding_sizes(source, output_dtypes=None):
     # have to lazy import Workflow to avoid circular import errors
     from nvtabular.workflow import Workflow
 
+    output_node = source.output_node if isinstance(source, Workflow) else source
+
     if isinstance(source, Workflow):
-        queue = [source.output_node]
         output_dtypes = output_dtypes or source.output_dtypes
     else:
         # passed in a column group
-        queue = [source]
         output_dtypes = output_dtypes or {}
 
     output = {}
     multihot_columns = set()
-    while queue:
-        current = queue.pop()
-        if current.op and hasattr(current.op, "get_embedding_sizes"):
-            output.update(current.op.get_embedding_sizes(current.output_schema.column_names))
-        elif isinstance(current.op, (ConcatColumns, SubsetColumns, Identity)):
-            # only follow parents if its an internal (Workflow) operator node
-            # (which could transform meaning of the get_embedding_sizes)
-            queue.extend(current.parents)
-
-    for column in output:
-        dtype = output_dtypes.get(column)
-        if dtype and dispatch._is_list_dtype(dtype):
+    cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
+    for col_name, col_schema in cats_schema.column_schemas.items():
+        if col_schema.dtype and col_schema._is_list:
             # multi hot so remove from output and add to multihot
-            multihot_columns.add(column)
-    # TODO: returning differnt return types like this (based off the presence
+            multihot_columns.add(col_name)
+
+        embeddings_sizes = col_schema.properties.get("embedding_sizes", {})
+        cardinality = embeddings_sizes["cardinality"]
+        dimensions = embeddings_sizes["dimension"]
+        output[col_name] = (cardinality, dimensions)
+
+    # TODO: returning different return types like this (based off the presence
     # of multihot features) is pretty janky. fix.
     if not multihot_columns:
         return output
@@ -590,12 +605,17 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
     for col in _get_embedding_order(cat_names):
         path = paths.get(col)
         num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
-
-        if not buckets:
-            bucket_size = 0
-        else:
+        if isinstance(buckets, dict):
             bucket_size = buckets.get(col, 0)
-        if bucket_size and not freq_limit[col] and not max_size[col]:
+        elif isinstance(buckets, int):
+            bucket_size = buckets
+        else:
+            bucket_size = 0
+
+        _has_frequency_limit = col in freq_limit and freq_limit[col] > 0
+        _has_max_size = col in max_size and max_size[col] > 0
+
+        if bucket_size and not _has_frequency_limit and not _has_max_size:
             # pure hashing (no categorical lookup)
             num_rows = bucket_size
         else:
@@ -631,7 +651,7 @@ class FitOptions:
             Where to write statistics in parquet format
         freq_limit: int or dict
             Categories with a count/frequency below this threshold will be
-            ommited from the encoding and corresponding data will be mapped
+            omitted from the encoding and corresponding data will be mapped
             to the "null" category.
         tree_width:
            Tree width of the hash-based groupby reduction for each categorical column.
@@ -665,6 +685,7 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
     start_index: int = 0
+    dataset_size: int = 0
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -693,7 +714,6 @@ def _top_level_groupby(df, options: FitOptions):
     sum_sq = "std" in options.agg_list or "var" in options.agg_list
     calculate_min = "min" in options.agg_list
     calculate_max = "max" in options.agg_list
-
     # Top-level operation for category-based groupby aggregations
     output = {}
     k = 0
@@ -753,7 +773,6 @@ def _top_level_groupby(df, options: FitOptions):
         ]
         gb.reset_index(inplace=True, drop=False)
         del df_gb
-
         # Split the result by the hash value of the categorical column
         nsplits = options.tree_width[cat_col_selector_str]
         for j, split in shuffle_group(
@@ -941,6 +960,9 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         nulls_missing = False
         for col in col_selector.names:
             name_count = col + "_count"
+            null_size = 0
+            if name_count in df:
+                null_size = options.dataset_size - df[name_count].sum()
             if options.max_size:
                 max_emb_size = options.max_size
                 if isinstance(options.max_size, dict):
@@ -958,7 +980,6 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
                 if nlargest < len(df):
                     df = df.nlargest(n=nlargest, columns=name_count)
-
             if not dispatch._series_has_nulls(df[col]):
                 if name_count in df:
                     df = df.sort_values(name_count, ascending=False, ignore_index=True)
@@ -968,15 +989,23 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     [_nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
+                if name_count in df:
+                    new_cols[name_count] = _concat(
+                        [_nullable_series([null_size], df, df[name_count].dtype), df[name_count]],
+                        ignore_index=True,
+                    )
+
             else:
                 # ensure None aka "unknown" stays at index 0
                 if name_count in df:
                     df_0 = df.iloc[0:1]
+                    df_0[name_count] = null_size
                     df_1 = df.iloc[1:].sort_values(name_count, ascending=False, ignore_index=True)
                     df = _concat([df_0, df_1])
                 new_cols[col] = df[col].copy(deep=False)
-            if name_count in df:
-                new_cols[name_count] = df[name_count].copy(deep=False)
+
+                if name_count in df:
+                    new_cols[name_count] = df[name_count].copy(deep=False)
         if nulls_missing:
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
@@ -985,6 +1014,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         for c in col_selector.names:
             df_null[c] = df_null[c].astype(df[c].dtype)
         df_null.to_parquet(path, index=False, compression=None)
+
     del df
     return path
 
@@ -1038,6 +1068,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = options.stat_name + "-" + token
+    options.dataset_size = len(ddf)
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), options)
         k = 0
@@ -1132,7 +1163,7 @@ def _encode(
         Sentinel for NA value. Defaults to -1.
     freq_threshold :  int
         Categories with a count or frequency below this threshold will
-        be ommitted from the encoding and corresponding data will be
+        be omitted from the encoding and corresponding data will be
         mapped to the "Null" category. Defaults to 0.
     search_sorted :
         Defaults to False.
@@ -1147,7 +1178,7 @@ def _encode(
     dtype :
         Defaults to None.
     start_index :  int
-        The index to start outputing categorical values to. This is useful
+        The index to start outputting categorical values to. This is useful
         to, for instance, reserve an initial segment of non-negative
         integers for out-of-vocabulary or other special values. Defaults
         to 1.
@@ -1318,15 +1349,13 @@ def _copy_storage(existing_stats, existing_path, new_path, copy):
     return new_locations
 
 
-def _reset_df_index(col_name, categories, idx_count):
-    cat_file_path = categories[col_name]
-    cat_df = dispatch._read_parquet_dispatch(cat_file_path)(cat_file_path)
+def _reset_df_index(col_name, cat_file_path, idx_count):
+    cat_df = dispatch._read_parquet_dispatch(None)(cat_file_path)
     # change indexes for category
     cat_df.index += idx_count
     # update count
     idx_count += cat_df.shape[0]
     # save the new indexes in file
-    write_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
-    cat_df.to_parquet(write_path)
-    categories[col_name] = write_path
-    return idx_count
+    new_cat_file_path = Path(cat_file_path).parent / f"unique.{col_name}.all.parquet"
+    cat_df.to_parquet(new_cat_file_path)
+    return idx_count, new_cat_file_path

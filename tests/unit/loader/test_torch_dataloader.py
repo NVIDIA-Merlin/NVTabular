@@ -180,55 +180,62 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
 
     df_out = processor.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
-    data_itr = torch_dataloader.TorchAsyncItr(
-        nvt.Dataset(df_out),
-        cats=cat_names + mh_names,
-        conts=cont_names,
-        labels=label_name,
-        batch_size=2,
+    data_itr = None
+
+    with pytest.raises(ValueError) as exc_info:
+        data_itr = torch_dataloader.TorchAsyncItr(
+            nvt.Dataset(df_out),
+            cats=cat_names + mh_names,
+            conts=cont_names,
+            labels=label_name,
+            batch_size=2,
+        )
+    assert "Neither Categorical or Continuous columns were found by the dataloader. " in str(
+        exc_info.value
     )
 
-    for nvt_batch in data_itr:
-        cats_conts, labels = nvt_batch
-        if cat_names:
-            assert set(cat_names).issubset(set(list(cats_conts.keys())))
-        if cont_names:
-            assert set(cont_names).issubset(set(list(cats_conts.keys())))
+    if data_itr:
+        for nvt_batch in data_itr:
+            cats_conts, labels = nvt_batch
+            if cat_names:
+                assert set(cat_names).issubset(set(list(cats_conts.keys())))
+            if cont_names:
+                assert set(cont_names).issubset(set(list(cats_conts.keys())))
 
-    if cat_names or cont_names or mh_names:
-        emb_sizes = nvt.ops.get_embedding_sizes(processor)
+        if cat_names or cont_names or mh_names:
+            emb_sizes = nvt.ops.get_embedding_sizes(processor)
 
-        EMBEDDING_DROPOUT_RATE = 0.04
-        DROPOUT_RATES = [0.001, 0.01]
-        HIDDEN_DIMS = [1000, 500]
-        LEARNING_RATE = 0.001
-        model = Model(
-            embedding_table_shapes=emb_sizes,
-            num_continuous=len(cont_names),
-            emb_dropout=EMBEDDING_DROPOUT_RATE,
-            layer_hidden_dims=HIDDEN_DIMS,
-            layer_dropout_rates=DROPOUT_RATES,
-        ).cuda()
-        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+            EMBEDDING_DROPOUT_RATE = 0.04
+            DROPOUT_RATES = [0.001, 0.01]
+            HIDDEN_DIMS = [1000, 500]
+            LEARNING_RATE = 0.001
+            model = Model(
+                embedding_table_shapes=emb_sizes,
+                num_continuous=len(cont_names),
+                emb_dropout=EMBEDDING_DROPOUT_RATE,
+                layer_hidden_dims=HIDDEN_DIMS,
+                layer_dropout_rates=DROPOUT_RATES,
+            ).cuda()
+            optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-        def rmspe_func(y_pred, y):
-            "Return y_pred and y to non-log space and compute RMSPE"
-            y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
-            pct_var = (y_pred - y) / y
-            return (pct_var ** 2).mean().pow(0.5)
+            def rmspe_func(y_pred, y):
+                "Return y_pred and y to non-log space and compute RMSPE"
+                y_pred, y = torch.exp(y_pred) - 1, torch.exp(y) - 1
+                pct_var = (y_pred - y) / y
+                return (pct_var ** 2).mean().pow(0.5)
 
-        train_loss, y_pred, y = process_epoch(
-            data_itr,
-            model,
-            train=True,
-            optimizer=optimizer,
-            amp=False,
-        )
-        train_rmspe = None
-        train_rmspe = rmspe_func(y_pred, y)
-        assert train_rmspe is not None
-        assert len(y_pred) > 0
-        assert len(y) > 0
+            train_loss, y_pred, y = process_epoch(
+                data_itr,
+                model,
+                train=True,
+                optimizer=optimizer,
+                amp=False,
+            )
+            train_rmspe = None
+            train_rmspe = rmspe_func(y_pred, y)
+            assert train_rmspe is not None
+            assert len(y_pred) > 0
+            assert len(y) > 0
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.001, 0.06])
@@ -654,3 +661,128 @@ def test_horovod_multigpu(tmpdir):
         print(str(stdout))
         print(str(stderr))
         assert "Training complete" in str(stdout)
+
+
+@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+)
+def test_distributed_multigpu(tmpdir):
+    json_sample = {
+        "conts": {},
+        "cats": {
+            "genres": {
+                "dtype": None,
+                "cardinality": 50,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+                "multi_min": 2,
+                "multi_max": 4,
+                "multi_avg": 3,
+            },
+            "movieId": {
+                "dtype": None,
+                "cardinality": 500,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+            },
+            "userId": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
+        },
+        "labels": {"rating": {"dtype": None, "cardinality": 2}},
+    }
+    cols = datagen._get_cols_from_schema(json_sample)
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.0001)
+
+    target_path = os.path.join(tmpdir, "input/")
+    os.mkdir(target_path)
+    df_files = df_gen.full_df_create(10000, cols, output=target_path)
+
+    # process them
+    cat_features = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
+    ratings = ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    output = cat_features + ratings
+
+    proc = nvt.Workflow(output)
+    train_iter = nvt.Dataset(df_files, part_size="10MB")
+    proc.fit(train_iter)
+
+    target_path_train = os.path.join(tmpdir, "train/")
+    os.mkdir(target_path_train)
+
+    proc.transform(train_iter).to_parquet(output_path=target_path_train, out_files_per_proc=5)
+
+    # add new location
+    target_path = os.path.join(tmpdir, "workflow/")
+    os.mkdir(target_path)
+    proc.save(target_path)
+
+    curr_path = os.path.abspath(__file__)
+    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../../..")))
+    hvd_example_path = os.path.join(repo_root, "examples/multi-gpu-movielens/torch_trainer_dist.py")
+
+    with subprocess.Popen(
+        [
+            "mpirun",
+            "--allow-run-as-root",
+            "-np",
+            "2",
+            "-H",
+            "localhost:2",
+            "python",
+            hvd_example_path,
+            "--dir_in",
+            f"{tmpdir}",
+            "--batch_size",
+            "1024",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as process:
+        process.wait()
+        stdout, stderr = process.communicate()
+        print(str(stdout))
+        print(str(stderr))
+        assert "Training complete" in str(stdout)
+
+
+@pytest.mark.parametrize("batch_size", [1000])
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("device", [None, 0])
+def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device):
+    cat_names = ["name-cat", "name-string"]
+    cont_names = ["x", "y", "id"]
+    label_name = ["label"]
+
+    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
+    cats = cat_names >> ops.Categorify()
+
+    processor = nvt.Workflow(conts + cats + label_name)
+
+    output_train = os.path.join(tmpdir, "train/")
+    os.mkdir(output_train)
+
+    processor.fit_transform(dataset).to_parquet(
+        shuffle=nvt.io.Shuffle.PER_PARTITION,
+        output_path=output_train,
+        out_files_per_proc=2,
+    )
+
+    tar_paths = [
+        os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
+    ]
+
+    nvt_data = nvt.Dataset(tar_paths, engine="parquet")
+
+    data_loader = torch_dataloader.TorchAsyncItr(
+        nvt_data,
+        batch_size=batch_size,
+        shuffle=False,
+        labels=label_name,
+    )
+
+    batch = next(iter(data_loader))
+    assert all(name in batch[0] for name in cat_names)
+    assert all(name in batch[0] for name in cont_names)
+
+    num_label_cols = batch[1].shape[1] if len(batch[1].shape) > 1 else 1
+    assert num_label_cols == len(label_name)

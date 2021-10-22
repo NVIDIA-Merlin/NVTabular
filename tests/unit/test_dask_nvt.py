@@ -20,8 +20,10 @@ import os
 
 import cudf
 import dask_cudf
+import pandas as pd
 import pytest
 from dask.dataframe import assert_eq
+from dask.dataframe import from_pandas as dd_from_pandas
 from dask.dataframe import read_parquet as dd_read_parquet
 
 from nvtabular import ColumnSelector, Dataset, Workflow, ops
@@ -189,7 +191,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
     )
 
     # We have a global dask client defined in this context, so NVTabular
-    # should warn us if we initialze a `Workflow` with `client=None`
+    # should warn us if we initialize a `Workflow` with `client=None`
     workflow = run_in_context(
         Workflow,
         cat_features + groupby_features,
@@ -276,3 +278,18 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
         df_disk.sort_values(["id", "x"])[["name-string", "label"]],
         check_index=False,
     )
+
+
+@pytest.mark.parametrize("cpu", [None, True])
+def test_filtered_partition(tmpdir, cpu):
+    # Toy DataFrame example
+    df = pd.DataFrame({"col": range(100)})
+    ddf = dd_from_pandas(df, npartitions=5)
+    dataset = Dataset(ddf, cpu=cpu)
+
+    # Workflow
+    filtered = ["col"] >> ops.Filter(lambda df: df["col"] < 75)
+    workflow = Workflow(filtered)
+
+    # Write result to disk
+    workflow.transform(dataset).to_parquet(str(tmpdir))

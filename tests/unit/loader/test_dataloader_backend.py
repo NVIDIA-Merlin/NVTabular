@@ -13,18 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import os
-
 import cupy
 import pytest
 
-import nvtabular as nvt
-import nvtabular.ops as ops
+from nvtabular.dispatch import _concat
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
-from nvtabular.loader.tensorflow import KerasSequenceLoader
-from nvtabular.loader.torch import TorchAsyncItr
+from tests.conftest import assert_eq
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -112,55 +107,48 @@ def test_dataloader_seeding(datasets, engine, batch_size):
     assert dl0_next_rand != dl1_next_rand
 
 
-@pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("device", [None, 0])
-@pytest.mark.parametrize("framework", ["tf", "torch"])
-def test_dataloader_schema(tmpdir, df, dataset, batch_size, engine, device, framework):
-    cat_names = ["name-cat", "name-string"]
-    cont_names = ["x", "y", "id"]
-    label_name = ["label"]
+@pytest.mark.parametrize("batch_size", [128])
+def test_dataloader_empty_error(datasets, engine, batch_size):
+    dataset = Dataset(str(datasets["parquet"]), engine=engine)
 
-    conts = cont_names >> ops.FillMedian() >> ops.Normalize()
-    cats = cat_names >> ops.Categorify()
-
-    processor = nvt.Workflow(conts + cats + label_name)
-
-    output_train = os.path.join(tmpdir, "train/")
-    os.mkdir(output_train)
-
-    processor.fit_transform(dataset).to_parquet(
-        shuffle=nvt.io.Shuffle.PER_PARTITION,
-        output_path=output_train,
-        out_files_per_proc=2,
+    with pytest.raises(ValueError) as exc_info:
+        DataLoader(
+            dataset,
+            batch_size=batch_size,
+            label_names=["label"],
+            shuffle=False,
+        )
+    assert "Neither Categorical or Continuous columns were found by the dataloader. " in str(
+        exc_info.value
     )
 
-    tar_paths = [
-        os.path.join(output_train, x) for x in os.listdir(output_train) if x.endswith("parquet")
-    ]
 
-    nvt_data = nvt.Dataset(tar_paths, engine="parquet")
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("batch_size", [128])
+@pytest.mark.parametrize("epochs", [1, 5])
+def test_dataloader_epochs(datasets, engine, batch_size, epochs):
+    dataset = Dataset(str(datasets["parquet"]), engine=engine)
+    cont_names = ["x", "y", "id"]
+    cat_names = ["name-string", "name-cat"]
+    label_name = ["label"]
 
-    if framework == "torch":
-        data_loader = TorchAsyncItr(
-            nvt_data,
-            batch_size=batch_size,
-            shuffle=False,
-            labels=label_name,
-        )
-    elif framework == "tf":
-        data_loader = KerasSequenceLoader(
-            nvt_data,
-            batch_size=batch_size,
-            shuffle=False,
-            label_names=label_name,
-        )
-    else:
-        assert False, "Unknown dataloader framework"
+    data_loader = DataLoader(
+        dataset,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        label_names=label_name,
+        shuffle=False,
+    )
 
-    batch = next(iter(data_loader))
-    assert all(name in batch[0] for name in cat_names)
-    assert all(name in batch[0] for name in cont_names)
+    # Convert to iterators and then to DataFrames
+    df1 = _concat(list(data_loader._buff.itr))
+    df2 = _concat(list(data_loader.epochs(epochs)._buff.itr))
 
-    num_label_cols = batch[1].shape[1] if len(batch[1].shape) > 1 else 1
-    assert num_label_cols == len(label_name)
+    # Check that the DataFrame sizes and rows make sense
+    assert len(df2) == epochs * len(df1)
+    assert_eq(
+        _concat([df1 for i in range(epochs)]).reset_index(drop=True),
+        df2.reset_index(drop=True),
+    )
