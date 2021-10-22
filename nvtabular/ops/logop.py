@@ -44,7 +44,7 @@ class LogOp(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         for name in col_selector.names:
             column = df[name]
-            if _is_list_dtype(column.dtype):
+            if _is_list_dtype(column):
                 transformed = np.log(_flatten_list_column_values(column).astype(np.float32) + 1)
                 df[name] = _encode_list_column(column, transformed)
             else:
