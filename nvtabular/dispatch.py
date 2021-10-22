@@ -242,14 +242,6 @@ def _hash_series(s):
             return s.hash_values()
 
 
-def _natural_log(df):
-    """Natural logarithm of all columns in a DataFrame"""
-    if isinstance(df, pd.DataFrame):
-        return pd.DataFrame(np.log(df.values), columns=df.columns, index=df.index)
-    else:
-        return df.log()
-
-
 def _series_has_nulls(s):
     """Check if Series contains any null values"""
     if isinstance(s, pd.Series):
@@ -285,12 +277,21 @@ def _is_string_dtype(obj):
         return is_string_dtype(obj)
 
 
-def _flatten_list_column(s):
-    """Flatten elements of a list-based column"""
+def _flatten_list_column_values(s):
+    """returns a flattened list from a list column"""
     if isinstance(s, pd.Series) or not cudf:
-        return pd.DataFrame({s.name: itertools.chain(*s)})
+        return itertools.chain(*s)
     else:
-        return cudf.DataFrame({s.name: s.list.leaves})
+        return s.list.leaves
+
+
+def _flatten_list_column(s):
+    """Flatten elements of a list-based column, and return as a DataFrame"""
+    values = _flatten_list_column_values(s)
+    if isinstance(s, pd.Series) or not cudf:
+        return pd.DataFrame({s.name: values})
+    else:
+        return cudf.DataFrame({s.name: values})
 
 
 def _concat_columns(args: list):

@@ -51,6 +51,21 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
+@pytest.mark.parametrize("cpu", _CPU)
+def test_logop_lists(tmpdir, cpu):
+    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df["vals"] = [[np.exp(0) - 1, np.exp(1) - 1], [np.exp(2) - 1], []]
+
+    features = ["vals"] >> nvt.ops.LogOp()
+    workflow = nvt.Workflow(features)
+    new_df = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+
+    expected = dispatch._make_df(device="cpu" if cpu else "gpu")
+    expected["vals"] = [[0.0, 1.0], [2.0], []]
+
+    assert_eq(expected, new_df)
+
+
 def test_valuecount(tmpdir):
     df = dispatch._make_df(
         {
