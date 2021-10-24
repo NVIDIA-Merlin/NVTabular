@@ -22,6 +22,8 @@ from dask.dataframe.core import _concat
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 
+from nvtabular.dispatch import _flatten_list_column_values, _is_list_dtype
+
 
 def _custom_moments(ddf, split_every=32):
 
@@ -62,17 +64,18 @@ def _custom_moments(ddf, split_every=32):
 
 
 def _chunkwise_moments(df):
-    df2 = type(df)()
-    for col in df.columns:
-        df2[col] = df[col].astype("float64").pow(2)
-    vals = {
-        "df-count": df.count().to_frame().transpose(),
-        "df-sum": df.sum().astype("float64").to_frame().transpose(),
-        "df2-sum": df2.sum().to_frame().transpose(),
-    }
+    vals = {name: type(df)() for name in ["df-count", "df-sum", "df2-sum"]}
+    for name in df.columns:
+        column = df[name]
+        if _is_list_dtype(column):
+            column = _flatten_list_column_values(column)
+
+        vals["df-count"][name] = [column.count()]
+        vals["df-sum"][name] = [column.sum().astype("float64")]
+        vals["df2-sum"][name] = [column.astype("float64").pow(2).sum()]
+
     # NOTE: Perhaps we should convert to pandas here
     # (since we know the results should be small)?
-    del df2
     return vals
 
 

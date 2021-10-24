@@ -285,12 +285,21 @@ def _is_string_dtype(obj):
         return is_string_dtype(obj)
 
 
-def _flatten_list_column(s):
-    """Flatten elements of a list-based column"""
+def _flatten_list_column_values(s):
+    """returns a flattened list from a list column"""
     if isinstance(s, pd.Series) or not cudf:
-        return pd.DataFrame({s.name: itertools.chain(*s)})
+        return pd.Series(itertools.chain(*s))
     else:
-        return cudf.DataFrame({s.name: s.list.leaves})
+        return s.list.leaves
+
+
+def _flatten_list_column(s):
+    """Flatten elements of a list-based column, and return as a DataFrame"""
+    values = _flatten_list_column_values(s)
+    if isinstance(s, pd.Series) or not cudf:
+        return pd.DataFrame({s.name: values})
+    else:
+        return cudf.DataFrame({s.name: values})
 
 
 def _concat_columns(args: list):
