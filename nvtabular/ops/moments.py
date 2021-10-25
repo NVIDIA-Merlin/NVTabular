@@ -64,15 +64,15 @@ def _custom_moments(ddf, split_every=32):
 
 
 def _chunkwise_moments(df):
-    vals = {name: type(df)() for name in ["df-count", "df-sum", "df2-sum"]}
+    vals = {name: type(df)() for name in ["count", "sum", "squaredsum"]}
     for name in df.columns:
         column = df[name]
         if _is_list_dtype(column):
             column = _flatten_list_column_values(column)
 
-        vals["df-count"][name] = [column.count()]
-        vals["df-sum"][name] = [column.sum().astype("float64")]
-        vals["df2-sum"][name] = [column.astype("float64").pow(2).sum()]
+        vals["count"][name] = [column.count()]
+        vals["sum"][name] = [column.sum().astype("float64")]
+        vals["squaredsum"][name] = [column.astype("float64").pow(2).sum()]
 
     # NOTE: Perhaps we should convert to pandas here
     # (since we know the results should be small)?
@@ -81,7 +81,7 @@ def _chunkwise_moments(df):
 
 def _tree_node_moments(inputs):
     out = {}
-    for val in ["df-count", "df-sum", "df2-sum"]:
+    for val in ["count", "sum", "squaredsum"]:
         df_list = [x.get(val, None) for x in inputs]
         df_list = [df for df in df_list if df is not None]
         out[val] = _concat(df_list, ignore_index=True).sum().to_frame().transpose()
@@ -89,9 +89,9 @@ def _tree_node_moments(inputs):
 
 
 def _finalize_moments(inp, ddof=1):
-    n = inp["df-count"].iloc[0]
-    x = inp["df-sum"].iloc[0]
-    x2 = inp["df2-sum"].iloc[0]
+    n = inp["count"].iloc[0]
+    x = inp["sum"].iloc[0]
+    x2 = inp["squaredsum"].iloc[0]
     if hasattr(n, "to_pandas"):
         n = n.to_pandas()
         x = x.to_pandas()
@@ -108,7 +108,7 @@ def _finalize_moments(inp, ddof=1):
     var[(n - ddof) == 0] = np.nan
 
     # Construct output DataFrame
-    out = pd.DataFrame(index=inp["df-count"].columns)
+    out = pd.DataFrame(index=inp["count"].columns)
     out["count"] = n
     out["sum"] = x
     out["sum2"] = x2
