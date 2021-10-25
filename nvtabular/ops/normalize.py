@@ -16,7 +16,13 @@
 import dask.dataframe as dd
 import numpy
 
-from ..dispatch import DataFrameType, annotate
+from ..dispatch import (
+    DataFrameType,
+    _encode_list_column,
+    _flatten_list_column_values,
+    _is_list_dtype,
+    annotate,
+)
 from ..tags import Tags
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator, Supports
@@ -58,11 +64,22 @@ class Normalize(StatOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         for name in col_selector.names:
+            values = df[name]
+            list_col = _is_list_dtype(values)
+            if list_col:
+                values = _flatten_list_column_values(values)
+
             if self.stds[name] > 0:
-                new_df[name] = (df[name] - self.means[name]) / (self.stds[name])
+                values = (values - self.means[name]) / (self.stds[name])
             else:
-                new_df[name] = df[name] - self.means[name]
-            new_df[name] = new_df[name].astype("float32")
+                values = values - self.means[name]
+
+            values = values.astype("float32")
+
+            if list_col:
+                values = _encode_list_column(df[name], values)
+
+            new_df[name] = values
         return new_df
 
     @property
