@@ -242,14 +242,6 @@ def _hash_series(s):
             return s.hash_values()
 
 
-def _natural_log(df):
-    """Natural logarithm of all columns in a DataFrame"""
-    if isinstance(df, pd.DataFrame):
-        return pd.DataFrame(np.log(df.values), columns=df.columns, index=df.index)
-    else:
-        return df.log()
-
-
 def _series_has_nulls(s):
     """Check if Series contains any null values"""
     if isinstance(s, pd.Series):
