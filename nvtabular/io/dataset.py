@@ -426,7 +426,7 @@ class Dataset:
             data, this value should be <= the number of unique key
             combinations (the default), otherwise it will be ignored. For
             data that is not hive-partitioned, the ``npartitions`` input
-            should be <= the orginal partition count, otherwise it will be
+            should be <= the original partition count, otherwise it will be
             ignored.
         """
 
@@ -567,7 +567,7 @@ class Dataset:
             Key-word arguments to be passed through to Dask-Dataframe.
         """
 
-        # Ensure both Dataset objects are eith cudf or pandas based
+        # Ensure both Dataset objects are either cudf or pandas based
         if left.cpu and not right.cpu:
             _right = cls(right.to_ddf())
             _right.to_cpu()
@@ -587,7 +587,9 @@ class Dataset:
             )
         )
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
+    def to_iter(
+        self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None, epochs=1
+    ):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -619,6 +621,9 @@ class Dataset:
             optimization will only be used if the current Dataset is
             backed by a file-based engine. Otherwise, it is possible
             that an intermediate transform has modified the row-count.
+        epochs : int
+            Number of dataset passes to include within a single iterator.
+            This option is used for multi-epoch data-loading. Default is 1.
         """
         if isinstance(columns, str):
             columns = [columns]
@@ -645,6 +650,7 @@ class Dataset:
             self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
             indices=indices,
             partition_lens=partition_lens_meta,
+            epochs=epochs,
         )
 
     def to_parquet(
@@ -680,7 +686,7 @@ class Dataset:
             If `PER_WORKER` is specified, each worker will follow the same
             procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
-            data processed by each worker.  To improve performace, this option
+            data processed by each worker.  To improve performance, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
         partition_on : str or list(str)
@@ -703,7 +709,7 @@ class Dataset:
             output-file names.
         out_files_per_proc : integer
             Number of output files that each process will use to shuffle an input
-            partition. Deafult is 1. If `method="worker"`, the total number of output
+            partition. Default is 1. If `method="worker"`, the total number of output
             files will always be the total number of Dask workers, multiplied by this
             argument. If `method="subgraph"`, the total number of files is determined
             by `output_files` (and `out_files_per_proc` must be 1 if a dictionary is
@@ -899,6 +905,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
+            schema=self.schema,
         )
 
     def to_hugectr(
@@ -937,7 +944,7 @@ class Dataset:
             If `PER_WORKER` is specified, each worker will follow the same
             procedure as `PER_PARTITION`, but will re-shuffle each file after
             all data is persisted.  This results in a full shuffle of the
-            data processed by each worker.  To improve performace, this option
+            data processed by each worker.  To improve performance, this option
             currently uses host-memory `BytesIO` objects for the intermediate
             persist stage. The `FULL` option is not yet implemented.
         file_partition_map : dict
@@ -987,6 +994,7 @@ class Dataset:
             self.client,
             num_threads,
             self.cpu,
+            schema=self.schema,
         )
 
     @property
@@ -1172,11 +1180,12 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None, epochs=1):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
         self.partition_lens = partition_lens
+        self.epochs = epochs
 
     def __len__(self):
         if self.partition_lens:
@@ -1184,16 +1193,17 @@ class DataFrameIter:
             # if/when it is available.  Note that this metadata
             # will not be correct if rows where added or dropped
             # after IO (within Ops).
-            return sum(self.partition_lens[i] for i in self.indices)
+            return sum(self.partition_lens[i] for i in self.indices) * self.epochs
         if len(self.indices) < self._ddf.npartitions:
-            return len(self._ddf.partitions[self.indices])
-        return len(self._ddf)
+            return len(self._ddf.partitions[self.indices]) * self.epochs
+        return len(self._ddf) * self.epochs
 
     def __iter__(self):
-        for i in self.indices:
-            part = self._ddf.get_partition(i)
-            if self.columns:
-                yield part[self.columns].compute(scheduler="synchronous")
-            else:
-                yield part.compute(scheduler="synchronous")
+        for epoch in range(self.epochs):
+            for i in self.indices:
+                part = self._ddf.get_partition(i)
+                if self.columns:
+                    yield part[self.columns].compute(scheduler="synchronous")
+                else:
+                    yield part.compute(scheduler="synchronous")
         part = None

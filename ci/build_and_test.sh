@@ -37,4 +37,4 @@ echo "Building docs"
 make -C docs html SPHINXOPTS="-W -q"
 
 # test out our codebase
-py.test -rsx --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/
+py.test -x -rsx --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/

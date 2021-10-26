@@ -253,7 +253,7 @@ def export_hugectr_ensemble(
     cats:
         Names of the categorical columns
     conts:
-        Names of the continous columns
+        Names of the continuous columns
     max_batch_size:
         Max batch size that Triton can receive
     nvtabular_backend: "python" or "nvtabular"
@@ -736,9 +736,12 @@ def _remove_columns(workflow, to_remove):
 
         if node.selector:
             for column in to_remove:
-                # TODO: Handle selector sub-groups?
-                if column in node.selector.names:
+                if column in node.selector._names:
                     node.selector._names.remove(column)
+
+                for subgroup in node.selector.subgroups:
+                    if column in subgroup._names:
+                        subgroup._names.remove(column)
 
     return workflow.fit_schema(new_schema)
 

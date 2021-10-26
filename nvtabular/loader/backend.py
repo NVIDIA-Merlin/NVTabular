@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import copy
 import math
 import queue
 import threading
@@ -21,7 +22,7 @@ from collections import OrderedDict
 
 import cupy as cp
 
-from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list
+from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list, annotate
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
 from nvtabular.tags import Tags
@@ -50,14 +51,14 @@ class ChunkQueue:
         before checking for errors and trying again
     """
 
-    def __init__(self, dataloader, qsize, num_parts=1, shuffle=False, put_wait=1e-6):
+    def __init__(self, dataloader, qsize, num_parts=1, shuffle=False, put_wait=1e-6, epochs=1):
         self.num_parts = num_parts
         self.shuffle = shuffle
         self.put_wait = put_wait
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
         indices = dataloader._gather_indices_for_dev(0)
-        self.itr = dataloader.data.to_iter(indices=indices)
+        self.itr = dataloader.data.to_iter(indices=indices, epochs=epochs)
         self.dataloader = dataloader
 
     def __len__(self):
@@ -85,6 +86,7 @@ class ChunkQueue:
             except queue.Full:
                 continue
 
+    @annotate("batch", color="darkgreen", domain="nvt_python")
     def batch(self, itr):
         """
         iterates through gpu_mem_frac size chunks of dataset
@@ -104,6 +106,7 @@ class ChunkQueue:
                 yield current
                 current = []
 
+    @annotate("chunk_logic", color="darkgreen", domain="nvt_python")
     def chunk_logic(self, itr):
         spill = None
         for chunks in self.batch(itr):
@@ -132,6 +135,7 @@ class ChunkQueue:
             spill = self.dataloader.make_tensors(spill, self.dataloader._use_nnz)
             self.put(spill)
 
+    @annotate("load_chunks", color="darkgreen", domain="nvt_python")
     def load_chunks(self, dev):
         try:
             itr = iter(self.itr)
@@ -198,6 +202,7 @@ class DataLoader:
         self.sparse_as_dense = sparse_as_dense
         self.global_size = global_size or 1
         self.global_rank = global_rank or 0
+        self._epochs = 1
 
         self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
         self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
@@ -216,12 +221,41 @@ class DataLoader:
 
         self.num_rows_processed = 0
 
-        # we set size of chunk queue to 1 we only want one chunk in queue at a time.
-        self._buff = ChunkQueue(self, 1, num_parts=parts_per_chunk, shuffle=shuffle)
-        # run once instead of everytime len called
-        self._buff_len = len(self._buff)
+        self.parts_per_chunk = parts_per_chunk
+        self.shuffle = shuffle
+        self.__buff = None
+        self.__buff_len = None
         self._batch_itr = None
         self._workers = None
+
+    @property
+    def _buff(self):
+        if self.__buff is None:
+            # we set size of chunk queue to 1 we only want one chunk in queue at a time.
+            self.__buff = ChunkQueue(
+                self, 1, num_parts=self.parts_per_chunk, shuffle=self.shuffle, epochs=self._epochs
+            )
+        return self.__buff
+
+    @property
+    def _buff_len(self):
+        if self.__buff_len is None:
+            # run once instead of everytime len called
+            self.__buff_len = len(self._buff)
+        return self.__buff_len
+
+    def epochs(self, epochs=1):
+        if epochs == self._epochs:
+            return self
+        new_dataloader = copy.copy(self)
+        new_dataloader._set_epochs(epochs)
+        return new_dataloader
+
+    def _set_epochs(self, epochs):
+        self.stop()
+        self.__buff = None
+        self.__buff_len = None
+        self._epochs = epochs
 
     def __len__(self):
         batches = _num_steps(self._buff_len, self.batch_size)
@@ -267,6 +301,7 @@ class DataLoader:
         local_seed = seeds[self.global_rank]
         cp.random.seed(local_seed.get())
 
+    @annotate("_shuffle_indices", color="darkgreen", domain="nvt_python")
     def _shuffle_indices(self):
         self._generate_local_seed()
         if self.seed_fn:
@@ -347,6 +382,7 @@ class DataLoader:
                 break
         return batch
 
+    @annotate("make_tensors", color="darkgreen", domain="nvt_python")
     def make_tensors(self, gdf, use_nnz=False):
         split_idx = self._get_segment_lengths(len(gdf))
 
@@ -495,6 +531,7 @@ class DataLoader:
                 scalars.append(col)
         return _get_embedding_order(scalars), _get_embedding_order(lists)
 
+    @annotate("_create_tensors", color="darkgreen", domain="nvt_python")
     def _create_tensors(self, gdf):
         """
         Breaks a dataframe down into the relevant
@@ -537,6 +574,7 @@ class DataLoader:
 
         return tensors
 
+    @annotate("_handle_tensors", color="darkgreen", domain="nvt_python")
     def _handle_tensors(self, cats, conts, labels):
         X = {}
         for tensor, names in zip([cats, conts], [self.cat_names, self.cont_names]):

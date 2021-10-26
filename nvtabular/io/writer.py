@@ -15,6 +15,7 @@
 #
 import json
 import math
+import os
 import queue
 import threading
 from typing import Optional
@@ -40,7 +41,7 @@ class Writer:
         raise NotImplementedError()
 
     @classmethod
-    def write_general_metadata(cls, data, fs, out_dir):
+    def write_general_metadata(cls, data, fs, out_dir, schema):
         raise NotImplementedError()
 
     @classmethod
@@ -83,7 +84,7 @@ class ThreadedWriter(Writer):
         self.num_threads = num_threads
         self.fns = [fns] if isinstance(fns, str) else fns
         if self.fns:
-            # If sepecific file names were specified,
+            # If specific file names were specified,
             # ignore `num_out_files` argument
             self.num_out_files = len(self.fns)
         else:
@@ -262,7 +263,7 @@ class ThreadedWriter(Writer):
         return data
 
     @classmethod
-    def write_general_metadata(cls, data, fs, out_dir):
+    def write_general_metadata(cls, data, fs, out_dir, schema=None):
         if not data:
             return
         data_paths = data.pop("data_paths", [])
@@ -279,6 +280,17 @@ class ThreadedWriter(Writer):
         metadata_writer = fs.open(fs.sep.join([out_dir, "_metadata.json"]), "w")
         json.dump(data, metadata_writer)
         metadata_writer.close()
+
+        # Write keyset file
+        if schema:
+            keyset_writer = open(os.path.join(out_dir, "_hugectr.keyset"), "wb")
+            for col in schema:
+                try:
+                    for v in range(col.properties["embedding_sizes"]["cardinality"] + 1):
+                        keyset_writer.write(v.to_bytes(4, "big"))
+                except KeyError:
+                    pass
+            keyset_writer.close()
 
     @classmethod
     def write_special_metadata(cls, data, fs, out_dir):

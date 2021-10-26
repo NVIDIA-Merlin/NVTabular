@@ -663,6 +663,88 @@ def test_horovod_multigpu(tmpdir):
         assert "Training complete" in str(stdout)
 
 
+@pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
+@pytest.mark.skipif(
+    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+)
+def test_distributed_multigpu(tmpdir):
+    json_sample = {
+        "conts": {},
+        "cats": {
+            "genres": {
+                "dtype": None,
+                "cardinality": 50,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+                "multi_min": 2,
+                "multi_max": 4,
+                "multi_avg": 3,
+            },
+            "movieId": {
+                "dtype": None,
+                "cardinality": 500,
+                "min_entry_size": 1,
+                "max_entry_size": 5,
+            },
+            "userId": {"dtype": None, "cardinality": 500, "min_entry_size": 1, "max_entry_size": 5},
+        },
+        "labels": {"rating": {"dtype": None, "cardinality": 2}},
+    }
+    cols = datagen._get_cols_from_schema(json_sample)
+    df_gen = datagen.DatasetGen(datagen.UniformDistro(), gpu_frac=0.0001)
+
+    target_path = os.path.join(tmpdir, "input/")
+    os.mkdir(target_path)
+    df_files = df_gen.full_df_create(10000, cols, output=target_path)
+
+    # process them
+    cat_features = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
+    ratings = ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    output = cat_features + ratings
+
+    proc = nvt.Workflow(output)
+    train_iter = nvt.Dataset(df_files, part_size="10MB")
+    proc.fit(train_iter)
+
+    target_path_train = os.path.join(tmpdir, "train/")
+    os.mkdir(target_path_train)
+
+    proc.transform(train_iter).to_parquet(output_path=target_path_train, out_files_per_proc=5)
+
+    # add new location
+    target_path = os.path.join(tmpdir, "workflow/")
+    os.mkdir(target_path)
+    proc.save(target_path)
+
+    curr_path = os.path.abspath(__file__)
+    repo_root = os.path.relpath(os.path.normpath(os.path.join(curr_path, "../../../..")))
+    hvd_example_path = os.path.join(repo_root, "examples/multi-gpu-movielens/torch_trainer_dist.py")
+
+    with subprocess.Popen(
+        [
+            "mpirun",
+            "--allow-run-as-root",
+            "-np",
+            "2",
+            "-H",
+            "localhost:2",
+            "python",
+            hvd_example_path,
+            "--dir_in",
+            f"{tmpdir}",
+            "--batch_size",
+            "1024",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as process:
+        process.wait()
+        stdout, stderr = process.communicate()
+        print(str(stdout))
+        print(str(stderr))
+        assert "Training complete" in str(stdout)
+
+
 @pytest.mark.parametrize("batch_size", [1000])
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("device", [None, 0])

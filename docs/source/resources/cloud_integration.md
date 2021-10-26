@@ -1,14 +1,14 @@
 Cloud Integration
 =================
 
-You can run NVTabular on the cloud using: 
+You can run NVTabular on the cloud using:
 * [Amazon Web Services (AWS)](#amazon-web-services)
 * [Google Cloud Platform (GCP)](#google-cloud-platform)
 * [Databricks](#databricks)
 
 ## Amazon Web Services ##
 
-Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x, or 8x GPU instances or multiple nodes. We're using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Check out the $/h for this instance type and adjust the type. 
+Amazon Web Services (AWS) offers [EC2 instances with NVIDIA GPU support](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing). NVTabular can be used with 1x, 4x, or 8x GPU instances or multiple nodes. We're using an EC2 instance with 8x NVIDIA A100 GPUs to demonstrate the steps below. Check out the $/h for this instance type and adjust the type.
 
 To run NVTabular on the cloud using AWS, do the following:
 
@@ -19,10 +19,10 @@ To run NVTabular on the cloud using AWS, do the following:
    ```
 
 2. SSH into the machine.
-    
+
 3. Create a RAID volume by running the following command:
 
-   Depending on the EC2 instance, the machine may include local disk storage. We can optimize the performance by creating a 
+   Depending on the EC2 instance, the machine may include local disk storage. We can optimize the performance by creating a
    [RAID volume](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html). Based on our experience, two NVMe volumes yield the best performance.
 
    ```
@@ -69,12 +69,12 @@ To run NVTabular on the cloud using GCP, do the following:
    sudo apt -y install cuda
    nvidia-smi # Check installation
    ```
-   
+
 3. [Install Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) by running the following commands:
    ```
    distribution=$(. /etc/os-release;echo $ID$VERSION_ID) \
-      && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
-      && curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+      && curl -s -L https://nvidia-merlin.github.io/nvidia-docker/gpgkey | sudo apt-key add - \
+      && curl -s -L https://nvidia-merlin.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
    sudo apt-get -y update
    sudo apt-get install -y nvidia-docker2
    sudo systemctl restart docker
@@ -104,10 +104,10 @@ Databricks has developed a web-based platform on top of Apache Spark to provide 
 
 To run NVTabular on Databricks, do the following:
 
-1. Create a custom NVTabular container using Databricks runtime. 
+1. Create a custom NVTabular container using Databricks runtime.
 
-   **NOTE**: If any of the default dependencies that come with the Databricks cluster are changed to a different version, the Databricks cluster won't be able to detect the Spark 
-   driver. As a workaround, the NVIDIA RAPIDS team has created a 
+   **NOTE**: If any of the default dependencies that come with the Databricks cluster are changed to a different version, the Databricks cluster won't be able to detect the Spark
+   driver. As a workaround, the NVIDIA RAPIDS team has created a
    [Docker container](https://github.com/rapidsai/cloud-ml-examples/tree/main/databricks/docker) so that RAPIDS can run inside a Databricks cluster.
 
 2. Extend the container and add NVTabular and PyTorch so that they can run inside Databricks.
@@ -121,7 +121,7 @@ To run NVTabular on Databricks, do the following:
    git clone https://github.com/rapidsai/cloud-ml-examples.git
    ```
 
-5. Add the selected version of the NVTabular Conda repo to the [rapids-spec.txt](https://github.com/rapidsai/cloud-ml-examples/blob/main/databricks/docker/rapids-spec.txt) file by 
+5. Add the selected version of the NVTabular Conda repo to the [rapids-spec.txt](https://github.com/rapidsai/cloud-ml-examples/blob/main/databricks/docker/rapids-spec.txt) file by
    running the following command:
    ```
    cd databricks
@@ -135,7 +135,7 @@ To run NVTabular on Databricks, do the following:
 
 7. Build the container and push it to Docker Hub or the AWS Elastic Container Registry by running the following command:
    ```
-   docker build --tag <repo_name>/databricks_nvtabular:latest docker push <repo_name>/databricks_nvtabular:latest 
+   docker build --tag <repo_name>/databricks_nvtabular:latest docker push <repo_name>/databricks_nvtabular:latest
    ```
 
 8. Use the custom container to spin up the Databricks cluster.

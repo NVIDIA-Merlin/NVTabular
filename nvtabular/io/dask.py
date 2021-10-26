@@ -210,7 +210,7 @@ def _write_subgraph(
     return writer.close()
 
 
-def _write_metadata_files(md_list, output_path, output_format, cpu):
+def _write_metadata_files(md_list, output_path, output_format, cpu, schema):
 
     # Separate and merge metadata
     general_md = []
@@ -225,7 +225,7 @@ def _write_metadata_files(md_list, output_path, output_format, cpu):
     if not isinstance(output_path, str):
         output_path = str(output_path)
     wc, fs = _writer_cls_factory(output_format, output_path, cpu)
-    wc.write_general_metadata(general_md, fs, output_path)
+    wc.write_general_metadata(general_md, fs, output_path, schema)
     wc.write_special_metadata(special_md, fs, output_path)
 
 
@@ -240,7 +240,7 @@ def _simple_shuffle(ddf, plan):
         final_tasks[(name, p)].append((ddf._name, i))
     dsk = {k: (_concat, v, ignore_index) for k, v in final_tasks.items()}
 
-    # Conver to a DataFrame collection
+    # Convert to a DataFrame collection
     graph = HighLevelGraph.from_collections(name, dsk, dependencies=[ddf])
     divisions = [None] * (len(dsk) + 1)
     return new_dd_object(graph, name, ddf._meta, divisions)
@@ -262,6 +262,7 @@ def _ddf_to_dataset(
     cpu,
     suffix="",
     partition_on=None,
+    schema=None,
 ):
 
     # Construct graph for Dask-based dataset write
@@ -302,6 +303,7 @@ def _ddf_to_dataset(
             output_path,
             output_format,
             cpu,
+            schema,
         )
     elif file_partition_map is not None:
         # Use specified mapping of data to output files
@@ -332,6 +334,7 @@ def _ddf_to_dataset(
             output_path,
             output_format,
             cpu,
+            schema,
         )
     else:
         cached_writers = True
@@ -380,10 +383,10 @@ def _ddf_to_dataset(
 
     if cached_writers:
         # Follow-up Shuffling and _metadata creation
-        _finish_dataset(client, ddf, output_path, fs, output_format, cpu)
+        _finish_dataset(client, ddf, output_path, fs, output_format, cpu, schema)
 
 
-def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
+def _finish_dataset(client, ddf, output_path, fs, output_format, cpu, schema):
     # Finish data writing
     if client:
         client.cancel(ddf)
@@ -408,7 +411,7 @@ def _finish_dataset(client, ddf, output_path, fs, output_format, cpu):
         output_path = str(output_path)
 
     wc, fs = _writer_cls_factory(output_format, output_path, cpu)
-    wc.write_general_metadata(general_md, fs, output_path)
+    wc.write_general_metadata(general_md, fs, output_path, schema)
     wc.write_special_metadata(special_md, fs, output_path)
 
     # Clean writer caches

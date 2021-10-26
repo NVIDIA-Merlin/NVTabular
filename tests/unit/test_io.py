@@ -63,7 +63,7 @@ def test_validate_dataset_bad_schema(tmpdir):
         # Make sure the last call added a `_metadata` file
         assert len(glob.glob(os.path.join(path, "_metadata")))
 
-        # New datset has a _metadata file, but the file size is still too small
+        # New dataset has a _metadata file, but the file size is still too small
         dataset = nvtabular.io.Dataset(path, engine="parquet")
         assert not dataset.validate_dataset()
         # Ignore file size to get validation success
@@ -255,7 +255,7 @@ def test_dask_dataset_from_dataframe(tmpdir, origin, cpu):
     dataset.to_parquet(path, out_files_per_proc=1, shuffle=None)
     ddf_check = dask_cudf.read_parquet(path).compute()
     if origin in ("dd", "dask_cudf"):
-        # Multiple partitions are not guarenteed the same
+        # Multiple partitions are not guaranteed the same
         # order in output file.
         ddf_check = ddf_check.sort_values("a")
     assert_eq(df, ddf_check, check_index=False)
@@ -316,7 +316,7 @@ def test_hugectr(
     conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
     # We have a global dask client defined in this context, so NVTabular
-    # should warn us if we initialze a `Workflow` with `client=None`
+    # should warn us if we initialize a `Workflow` with `client=None`
     workflow = run_in_context(
         nvt.Workflow,
         conts + cats + label_names,
@@ -353,6 +353,9 @@ def test_hugectr(
 
     # Check for _metadata.json
     assert os.path.isfile(outdir + "/_metadata.json")
+
+    # Check for _hugetcr.keyset
+    assert os.path.isfile(outdir + "/_hugectr.keyset")
 
     # Check contents of _metadata.json
     data = {}
@@ -735,7 +738,7 @@ def test_dataset_conversion(tmpdir, cpu, preserve_files):
     ds2.to_parquet(pq_path, preserve_files=preserve_files, suffix=".pq")
 
     # Check output.
-    # Note that we are converting the inital hex strings to int32.
+    # Note that we are converting the initial hex strings to int32.
     ds_check = nvt.Dataset(pq_path, engine="parquet")
     df["C0"] = df["C0"].apply(int, base=16).astype("int32")
     assert_eq(ds_check.to_ddf().compute(), df, check_index=False)
