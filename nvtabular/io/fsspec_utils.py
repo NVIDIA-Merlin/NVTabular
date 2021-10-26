@@ -179,8 +179,14 @@ def _get_parquet_byte_ranges(
             for c in range(row_group.num_columns):
                 column = row_group.column(c)
                 name = column.path_in_schema
-                # Skip this column if we are targeting a
-                # specific columns
+                # Skip this column if we are targeting
+                # specific columns, and this name is not
+                # in the list.
+                #
+                # Note that `column.path_in_schema` may
+                # modify the column name for list and struct
+                # columns. For example, a column named "a"
+                # may become "a.list.element"
                 split_name = name.split(".")[0]
                 if columns is None or name in columns or split_name in columns:
                     file_offset0 = column.dictionary_page_offset
