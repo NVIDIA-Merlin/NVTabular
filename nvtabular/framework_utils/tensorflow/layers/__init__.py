@@ -17,5 +17,12 @@
 from .embedding import DenseFeatures, LinearFeatures
 from .interaction import DotProductInteraction
 from .outer_product import XDeepFmOuterProduct
+from .sparse_layer import SparseTensor
 
-__all__ = ["LinearFeatures", "DenseFeatures", "DotProductInteraction", "XDeepFmOuterProduct"]
+__all__ = [
+    "LinearFeatures",
+    "DenseFeatures",
+    "DotProductInteraction",
+    "XDeepFmOuterProduct",
+    "SparseTensor",
+]

@@ -285,6 +285,18 @@ def test_multigpu_dask_example(tmpdir):
         _run_notebook(tmpdir, notebook_path, _nb_modify)
 
 
+def test_sparse_tf_notebook(tmpdir):
+    tor = pytest.importorskip("tensorflow")  # noqa
+    _run_notebook(
+        tmpdir,
+        os.path.join(
+            dirname(TEST_PATH),
+            "examples/tensorflow/",
+            "SparseFeatures.ipynb",
+        ),
+    )
+
+
 def _run_notebook(tmpdir, notebook_path, transform=None):
     # read in the notebook as JSON, and extract a python script from it
     notebook = json.load(open(notebook_path))

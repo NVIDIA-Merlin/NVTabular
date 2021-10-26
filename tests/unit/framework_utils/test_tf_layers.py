@@ -319,3 +319,41 @@ def test_multihot_empty_rows():
 
     y_hat = model(x).numpy()
     np.testing.assert_allclose(y_hat, multi_hot_embedding_rows, rtol=1e-06)
+
+
+def test_sparse_layer():
+    index = [[2], [5], [9], [7], [4], [3], [4], [9], [3], [8], [1], [0], [3], [5]]
+    row_lengths = [[2], [4], [4], [1], [3]]
+    values = [
+        [0.1],
+        [3.4],
+        [3.5],
+        [5.3],
+        [3.0],
+        [1.0],
+        [0.1],
+        [2.0],
+        [0.4],
+        [0.8],
+        [0.5],
+        [1.0],
+        [2.0],
+        [5.0],
+    ]
+    out = [
+        [0.0, 0.0, 0.1, 0.0, 0.0, 3.4, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0, 3.0, 0.0, 0.0, 5.3, 0.0, 3.5],
+        [0.0, 0.0, 0.0, 0.4, 0.1, 0.0, 0.0, 0.0, 0.8, 2.0],
+        [0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0, 2.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0],
+    ]
+
+    tf_index = tf.convert_to_tensor(index)
+    tf_row_lengths = tf.convert_to_tensor(row_lengths)
+    tf_values = tf.convert_to_tensor(values)
+
+    x = layers.SparseTensor(dense_dim=10)(tf_index, tf_row_lengths, tf_values)
+
+    np.testing.assert_allclose(
+        np.asarray(out), tf.sparse.to_dense(tf.sparse.reorder(x)).numpy(), rtol=1e-06
+    )
