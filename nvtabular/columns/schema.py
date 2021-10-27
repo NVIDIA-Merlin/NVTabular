@@ -326,7 +326,7 @@ class Schema:
         for col_name, col_schema in self.column_schemas.items():
             features.append(create_protobuf_feature(col_schema))
         schema.feature.extend(features)
-
+        breakpoint()
         with open(schema_path / "schema.pbtxt", "w") as f:
             f.write(text_format.MessageToString(schema))
         return self
