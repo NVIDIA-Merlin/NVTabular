@@ -444,8 +444,6 @@ def _get_stat_ops(nodes):
 
 
 def _get_schemaless_nodes(nodes):
-    # schemaless_nodes = [node for node in iter_nodes(nodes) if node.input_schema is None]
-
     schemaless_nodes = []
     for node in iter_nodes(nodes):
         if node.input_schema is None:
