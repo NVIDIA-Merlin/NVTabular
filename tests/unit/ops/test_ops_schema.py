@@ -197,7 +197,7 @@ def test_ops_list_vc(properties, tags, op_routine):
         schema1 = workflow_schema_out.column_schemas[column_name]
         assert "domain" in schema1.properties
         embeddings_info = schema1.properties["domain"]
-        # should always exist, represents unkown
+        # should always exist, represents unknown
         assert embeddings_info["min"] == 0
         assert embeddings_info["max"] == new_gdf[column_name]._column.elements.max() + 1
         assert "value_count" in schema1.properties
