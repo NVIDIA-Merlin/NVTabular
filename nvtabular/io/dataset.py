@@ -587,7 +587,9 @@ class Dataset:
             )
         )
 
-    def to_iter(self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None):
+    def to_iter(
+        self, columns=None, indices=None, shuffle=False, seed=None, use_file_metadata=None, epochs=1
+    ):
         """Convert `Dataset` object to a `cudf.DataFrame` iterator.
 
         Note that this method will use `to_ddf` to produce a
@@ -619,6 +621,9 @@ class Dataset:
             optimization will only be used if the current Dataset is
             backed by a file-based engine. Otherwise, it is possible
             that an intermediate transform has modified the row-count.
+        epochs : int
+            Number of dataset passes to include within a single iterator.
+            This option is used for multi-epoch data-loading. Default is 1.
         """
         if isinstance(columns, str):
             columns = [columns]
@@ -645,6 +650,7 @@ class Dataset:
             self.to_ddf(columns=columns, shuffle=shuffle, seed=seed),
             indices=indices,
             partition_lens=partition_lens_meta,
+            epochs=epochs,
         )
 
     def to_parquet(
@@ -1174,11 +1180,12 @@ def _set_dtypes(chunk, dtypes):
 
 
 class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None, partition_lens=None):
+    def __init__(self, ddf, columns=None, indices=None, partition_lens=None, epochs=1):
         self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
         self._ddf = ddf
         self.columns = columns
         self.partition_lens = partition_lens
+        self.epochs = epochs
 
     def __len__(self):
         if self.partition_lens:
@@ -1186,16 +1193,17 @@ class DataFrameIter:
             # if/when it is available.  Note that this metadata
             # will not be correct if rows where added or dropped
             # after IO (within Ops).
-            return sum(self.partition_lens[i] for i in self.indices)
+            return sum(self.partition_lens[i] for i in self.indices) * self.epochs
         if len(self.indices) < self._ddf.npartitions:
-            return len(self._ddf.partitions[self.indices])
-        return len(self._ddf)
+            return len(self._ddf.partitions[self.indices]) * self.epochs
+        return len(self._ddf) * self.epochs
 
     def __iter__(self):
-        for i in self.indices:
-            part = self._ddf.get_partition(i)
-            if self.columns:
-                yield part[self.columns].compute(scheduler="synchronous")
-            else:
-                yield part.compute(scheduler="synchronous")
+        for epoch in range(self.epochs):
+            for i in self.indices:
+                part = self._ddf.get_partition(i)
+                if self.columns:
+                    yield part[self.columns].compute(scheduler="synchronous")
+                else:
+                    yield part.compute(scheduler="synchronous")
         part = None

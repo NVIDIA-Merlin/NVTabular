@@ -17,7 +17,7 @@ sphinx_rtd_theme
 recommonmark>=0.6
 scikit-learn>=0.20
 moto>=2
-boto3>=1.0
+boto3==1.17
 s3fs>=2021.4
 git+https://github.com/rapidsai/asvdb.git
 graphviz>=0.16
