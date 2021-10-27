@@ -267,11 +267,8 @@ def _transform_tensors(input_tensors, workflow_node):
                 upstream_inputs.append((upstream_tensors, upstream_kind))
 
     # Gather additional input columns from the original input tensors
-    if workflow_node.selector or workflow_node.dependency_selectors:
-        selector_columns = sum(
-            [selector.names for selector in workflow_node.dependency_selectors], []
-        )
-        selector_columns += workflow_node.selector.names if workflow_node.selector else []
+    if workflow_node.selector:
+        selector_columns = workflow_node.selector.names
         to_remove = []
         for upstream_tensors, upstream_kind in upstream_inputs:
             for col in selector_columns:
