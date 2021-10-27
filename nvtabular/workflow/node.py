@@ -118,8 +118,6 @@ class WorkflowNode:
             self.input_schema = _combine_schemas(self.parents_with_dependencies)
 
         elif isinstance(self.op, SubtractionOp):  # -
-            # TODO: Fix the implementation of pulling a subset of columns
-            # (This is sort of the inverse of the subtraction logic)
             left_operand = _combine_schemas(self.parents)
 
             if self.dependencies:
