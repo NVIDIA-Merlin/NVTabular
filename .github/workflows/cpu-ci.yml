@@ -40,6 +40,9 @@ jobs:
     - name: Lint with isort
       run: |
         isort -c .
+    - name: Lint with codespell
+      run: |
+        codespell
     - name: Build
       run: |
         python setup.py develop --user
