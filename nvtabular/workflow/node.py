@@ -422,16 +422,6 @@ def _combine_selectors(elements):
     combined = ColumnSelector()
     for elem in elements:
         if isinstance(elem, WorkflowNode):
-            # TODO: Either order of these clauses breaks one of the WorkflowNode tests
-            #
-            # If we rely on the selectors first, then we sometimes pull the input columns
-            # instead of the output columns (e.g. with Rename.)
-            #
-            # If we rely on schemas first, then we lose the grouping from the selectors
-            # (e.g. with a + node followed by a Categorify, like in the nested test)
-            #
-            # How can we decide which of the following clauses we want to run?
-
             if elem.selector:
                 selector = elem.op.output_column_names(elem.selector)
             elif elem.output_schema:
