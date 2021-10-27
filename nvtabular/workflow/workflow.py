@@ -115,16 +115,13 @@ class Workflow:
             self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
-        result = Dataset(
+        return Dataset(
             _transform_ddf(ddf, self.output_node, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
             schema=self.output_schema,
         )
-        # should only be set if tranform succeeds
-        dataset.transformed_schema = self.output_schema
-        return result
 
     def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {

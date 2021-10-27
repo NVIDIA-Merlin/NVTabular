@@ -232,10 +232,6 @@ class Dataset:
         self.dtypes = dtypes
         self.client = client
         self.schema = schema
-        # transformed schema is a place holder that is set when a workflow completes
-        # the transform of the target dataset. Used to be able to export schema
-        # changes when writing transformed dataset to disk.
-        self.transformed_schema = None
 
         # Cache for "real" (sampled) metadata
         self._real_meta = {}
@@ -895,8 +891,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        schema_to_write = self.transformed_schema if self.transformed_schema else self.schema
-        schema_to_write.save_protobuf(output_path)
+        self.schema.save_protobuf(output_path)
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
