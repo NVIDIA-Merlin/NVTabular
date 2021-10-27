@@ -115,13 +115,16 @@ class Workflow:
             self.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(
+        result = Dataset(
             _transform_ddf(ddf, self.output_node, self.output_dtypes),
             client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
             schema=self.output_schema,
         )
+        # should only be set if tranform succeeds
+        dataset.transformed_schema = self.output_schema
+        return result
 
     def fit_schema(self, input_schema: Schema) -> "Workflow":
         schemaless_nodes = {
@@ -147,7 +150,9 @@ class Workflow:
                         [parent.output_schema for parent in node.parents if parent.output_schema],
                         Schema(),
                     )
-                    combined_schema += input_schema
+                    # we want to update the input_schema with new values
+                    # from combined schema
+                    combined_schema = input_schema + combined_schema
                     node.compute_schemas(combined_schema)
 
                 processed_nodes.append(node)

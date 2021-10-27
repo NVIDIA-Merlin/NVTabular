@@ -131,7 +131,6 @@ def create_protobuf_feature(column_schema):
     )
     # can be instantiated with no values
     # if  so, unnecessary to dump
-    # import pdb; pdb.set_trace()
     if len(column_schema.properties) > 0:
         feature = register_extra_metadata(column_schema, feature)
     return feature
@@ -197,6 +196,13 @@ class ColumnSchema:
         return ColumnSchema(
             self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
         )
+
+    def __merge__(self, other):
+        col_schema = self.with_tags(other.tags)
+        col_schema = col_schema.with_properties(other.properties)
+        col_schema = col_schema.with_dtype(other.dtype)
+        col_schema = col_schema.with_name(other.name)
+        return col_schema
 
 
 class Schema:
@@ -345,7 +351,23 @@ class Schema:
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
-        return Schema({**self.column_schemas, **other.column_schemas})
+        # must account for same columns in both schemas,
+        # use the one with more information for each field
+        keys_other_not_self = [
+            schema for schema in other.column_schemas if schema not in self.column_schemas
+        ]
+        col_schemas = []
+        for col_name, col_schema in self.column_schemas.items():
+            if col_name in other.column_schemas:
+                # check which one
+                other_schema = other.column_schemas[col_name]
+                col_schemas.append(col_schema.__merge__(other_schema))
+            else:
+                col_schemas.append(col_schema)
+        for key in keys_other_not_self:
+            col_schemas.append(other.column_schemas[key])
+
+        return Schema(col_schemas)
 
     def __radd__(self, other):
         return self.__add__(other)
