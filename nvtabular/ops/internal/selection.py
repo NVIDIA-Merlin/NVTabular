@@ -22,14 +22,17 @@ from nvtabular.ops import Operator
 
 
 class SelectionOp(Operator):
-    def __init__(self, selector):
+    def __init__(self, selector=None):
         self.selector = selector
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        return df[self.selector.names]
+        selector = self.selector or col_selector
+        return df[selector.names]
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        return super().compute_output_schema(input_schema, self.selector)
+        selector = self.selector or col_selector
+        return super().compute_output_schema(input_schema, selector)
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        return super().output_column_names(self.selector)
+        selector = self.selector or col_selector
+        return super().output_column_names(selector)
