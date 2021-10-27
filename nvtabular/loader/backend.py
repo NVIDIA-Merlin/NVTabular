@@ -240,7 +240,7 @@ class DataLoader:
     @property
     def _buff_len(self):
         if self.__buff_len is None:
-            # run once instead of everytime len called
+            # run once instead of every time len called
             self.__buff_len = len(self._buff)
         return self.__buff_len
 
