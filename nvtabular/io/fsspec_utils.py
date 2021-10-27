@@ -179,13 +179,20 @@ def _get_parquet_byte_ranges(
             for c in range(row_group.num_columns):
                 column = row_group.column(c)
                 name = column.path_in_schema
-                # Skip this column if we are targeting a
-                # specific columns
-                if columns is None or name in columns:
+                # Skip this column if we are targeting
+                # specific columns, and this name is not
+                # in the list.
+                #
+                # Note that `column.path_in_schema` may
+                # modify the column name for list and struct
+                # columns. For example, a column named "a"
+                # may become "a.list.element"
+                split_name = name.split(".")[0]
+                if columns is None or name in columns or split_name in columns:
                     file_offset0 = column.dictionary_page_offset
                     if file_offset0 is None:
                         file_offset0 = column.data_page_offset
-                    num_bytes = column.total_uncompressed_size
+                    num_bytes = column.total_compressed_size
                     byte_ranges.append((file_offset0, num_bytes))
 
     return byte_ranges, footer_sample, file_size
