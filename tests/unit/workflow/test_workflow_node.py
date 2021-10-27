@@ -114,7 +114,7 @@ def test_workflow_node_subtraction():
     output_node = node1 - ["c", "d"]
     workflow = Workflow(output_node).fit_schema(schema)
     assert len(output_node.parents) == 1
-    assert len(output_node.dependencies) == 1
+    assert len(output_node.dependencies) == 0
     assert workflow.output_node.output_columns.names == ["a", "b"]
 
     output_node = node1 - node2
@@ -125,14 +125,14 @@ def test_workflow_node_subtraction():
 
     output_node = ["a", "b", "c", "d"] - node2
     workflow = Workflow(output_node).fit_schema(schema)
-    assert len(output_node.parents) == 0
-    assert len(output_node.dependencies) == 2
+    assert len(output_node.parents) == 1
+    assert len(output_node.dependencies) == 1
     assert workflow.output_node.output_columns.names == ["a", "b"]
 
     output_node = node1 - ["c", "d"] - node3
     workflow = Workflow(output_node).fit_schema(schema)
     assert len(output_node.parents) == 1
-    assert len(output_node.dependencies) == 2
+    assert len(output_node.dependencies) == 1
     assert workflow.output_node.output_columns.names == ["a"]
 
 
@@ -163,7 +163,7 @@ def test_addition_nodes_are_combined():
     add_node = node1 + "e" + node2
     workflow = Workflow(add_node).fit_schema(schema)
     assert set(workflow.output_node.parents) == {node1}
-    assert set(workflow.output_node.dependencies) == {node2}
+    assert node2 in workflow.output_node.dependencies
     assert set(workflow.output_node.output_columns.names) == {"a", "b", "e", "c", "d"}
 
     add_node1 = node1 + node2
@@ -194,19 +194,21 @@ def test_workflow_node_dependencies():
 
     # ColumnSelector case
     output_node = ["timestamp"] >> DifferenceLag(partition_cols=["userid"], shift=[1, -1])
-    assert list(output_node.dependencies) == [ColumnSelector(["userid"])]
+    assert output_node.dependencies[0].selector == ColumnSelector(["userid"])
 
 
 def test_compute_schemas():
     root_schema = Schema(["a", "b", "c", "d", "e"])
 
     node1 = ["a", "b"] >> Rename(postfix="_renamed")
+    node1.parents[0].compute_schemas(root_schema)
     node1.compute_schemas(root_schema)
 
     assert node1.input_columns.names == ["a", "b"]
     assert node1.output_columns.names == ["a_renamed", "b_renamed"]
 
     node2 = node1 + "c"
+    node2.dependencies[0].compute_schemas(root_schema)
     node2.compute_schemas(root_schema)
 
     assert node2.input_columns.names == ["a_renamed", "b_renamed", "c"]
@@ -253,13 +255,19 @@ def test_nested_workflow_node():
 
     geo_selector = ColumnSelector(["geo"])
     country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
+    # country1 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country1")
+    # country2 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country2")
+    user = "user"
+    # user2 = "user2"
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
-    cats = country + "user" + [country + "user"] >> Categorify(encode_type="combo")
+    cats = country + user + [country + user] >> Categorify(encode_type="combo")
 
-    workflow = Workflow(cats).fit(dataset)
-    df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
+    workflow = Workflow(cats)
+    workflow.fit_schema(dataset.infer_schema())
+
+    df_out = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     geo_country = df_out["geo_country"]
     assert geo_country[0] == geo_country[1]  # rows 0,1 are both 'US'
