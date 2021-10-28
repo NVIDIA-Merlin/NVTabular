@@ -313,9 +313,10 @@ def test_groupby_op(keys, cpu):
     # Create a ddf, and be sure to shuffle by the groupby keys
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
     dataset = nvt.Dataset(ddf1, cpu=cpu)
-    dataset.schema.column_schemas["x"] = dataset.schema.column_schemas["name"].with_tags(
-        "custom_tag"
+    dataset.schema.column_schemas["x"] = (
+        dataset.schema.column_schemas["name"].with_tags("custom_tag").with_name("x")
     )
+
     # Define Groupby Workflow
     groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
