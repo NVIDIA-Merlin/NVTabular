@@ -17,11 +17,11 @@
 import os
 from io import BytesIO
 
+import aiobotocore
 import cudf
 import pytest
 from dask.dataframe.io.parquet.core import create_metadata_file
 from dask_cudf.io.tests import test_s3
-import aiobotocore
 
 import nvtabular as nvt
 from nvtabular import ops
@@ -42,7 +42,7 @@ def patch_aiobotocore(s3so):
 
     # note we can't use moto 'mock_s3' here because of
     # https://github.com/aio-libs/aiobotocore/issues/755
-    # but potentially when thats fixed we can drop this entire method
+    # but potentially when that's fixed we can drop this entire method
 
     def patched_create_client(*args, **kwargs):
         if "endpoint_url" not in kwargs:

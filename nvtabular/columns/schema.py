@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Text
 
 import fsspec
-
 import numpy
 
 # this needs to be before any modules that import protobuf
@@ -324,9 +323,11 @@ class Schema:
         try:
             with fs.open(fs.sep.join([schema_path, "schema.pbtxt"]), "w") as f:
                 f.write(text_format.MessageToString(schema))
-        except:
+        except Exception as e:
             if not fs.isdir(schema_path):
-               raise ValueError(f"The path provided is not a valid directory: {schema_path}")
+                raise ValueError(
+                    f"The path provided is not a valid directory: {schema_path}"
+                ) from e
             raise
 
         return self
