@@ -321,7 +321,7 @@ class Schema:
         schema.feature.extend(features)
 
         try:
-            with fs.open(fs.sep.join([schema_path, "schema.pbtxt"]), "w") as f:
+            with fs.open(fs.sep.join([str(schema_path), "schema.pbtxt"]), "w") as f:
                 f.write(text_format.MessageToString(schema))
         except Exception as e:
             if not fs.isdir(schema_path):
