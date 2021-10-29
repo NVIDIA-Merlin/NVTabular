@@ -685,7 +685,6 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
     start_index: int = 0
-    dataset_size: int = 0
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -742,7 +741,9 @@ def _top_level_groupby(df, options: FitOptions):
             df_gb = df[combined_col_selector.names].copy(deep=False)
 
         agg_dict = {}
-        agg_dict[cat_col_selector.names[0]] = ["count"]
+        agg_dict[cat_col_selector.names[0]] = (
+            ["count", "size"] if "size" in options.agg_list else ["count"]
+        )
         if isinstance(options.agg_cols, list):
             options.agg_cols = ColumnSelector(options.agg_cols)
         for col in options.agg_cols.names:
@@ -807,13 +808,15 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
     gb.reset_index(drop=False, inplace=True)
 
     name_count = _make_name(*(col_selector.names + ["count"]), sep=options.name_sep)
+    name_size = _make_name(*(col_selector.names + ["size"]), sep=options.name_sep)
     if options.freq_limit and not options.max_size:
         gb = gb[gb[name_count] >= freq_limit_val]
 
     required = col_selector.names.copy()
     if "count" in options.agg_list:
         required.append(name_count)
-
+    if "size" in options.agg_list:
+        required.append(name_size)
     ddof = 1
     if isinstance(options.agg_cols, list):
         options.agg_cols = ColumnSelector(options.agg_cols)
@@ -960,9 +963,11 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         nulls_missing = False
         for col in col_selector.names:
             name_count = col + "_count"
+            name_size = col + "_size"
             null_size = 0
-            if name_count in df:
-                null_size = options.dataset_size - df[name_count].sum()
+            if name_count in df and name_size in df:
+                total_size = df[name_size].sum()
+                null_size = total_size - df[name_count].sum()
             if options.max_size:
                 max_emb_size = options.max_size
                 if isinstance(options.max_size, dict):
@@ -1028,8 +1033,10 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         return {}
 
     if options.concat_groups:
-        if options.agg_list and options.agg_list != ["count"]:
-            raise ValueError("Cannot use concat_groups=True with aggregations other than count")
+        if options.agg_list and set(options.agg_list) != {"count", "size"}:
+            raise ValueError(
+                "Cannot use concat_groups=True with aggregations other than count and size"
+            )
         if options.agg_cols:
             raise ValueError("Cannot aggregate continuous-column stats with concat_groups=True")
 
@@ -1068,7 +1075,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = options.stat_name + "-" + token
-    options.dataset_size = len(ddf)
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), options)
         k = 0
@@ -1120,7 +1126,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
 def _category_stats(ddf, options: FitOptions):
     # Check if we only need categories
     if options.agg_cols == [] and options.agg_list == []:
-        options.agg_list = ["count"]
+        options.agg_list = ["count", "size"]
         return _groupby_to_disk(ddf, _write_uniques, options)
 
     # Otherwise, getting category-statistics
