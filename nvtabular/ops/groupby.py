@@ -138,9 +138,12 @@ class Groupby(Operator):
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         if not col_selector:
-            col_selector = (
-                ColumnSelector(self.target) if isinstance(self.target, list) else self.target
-            )
+            if hasattr(self, "target"):
+                col_selector = (
+                    ColumnSelector(self.target) if isinstance(self.target, list) else self.target
+                )
+            else:
+                col_selector = ColumnSelector(input_schema.column_names)
         if col_selector.tags:
             tags_col_selector = ColumnSelector(tags=col_selector.tags)
             filtered_schema = input_schema.apply(tags_col_selector)

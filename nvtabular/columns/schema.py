@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Text
 
+import fsspec
 import numpy
 
 # this needs to be before any modules that import protobuf
@@ -43,21 +44,16 @@ def register_extra_metadata(column_schema, feature):
 
 
 def register_list(column_schema, feature):
-    if str(column_schema._is_list):
-        min_length, max_length = None, None
-        if "value_count" in column_schema.properties:
-            min_length = column_schema.properties["value_count"]["min"]
-            max_length = column_schema.properties["value_count"]["max"]
+    if "value_count" in column_schema.properties:
+        min_length = column_schema.properties["value_count"].get("min", None)
+        max_length = column_schema.properties["value_count"].get("max", None)
         if min_length and max_length and min_length == max_length:
             shape = schema_pb2.FixedShape()
             dim = shape.dim.add()
             dim.size = min_length
             feature.shape.CopyFrom(shape)
-        elif min_length and max_length and min_length < max_length:
-            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
         else:
-            # if no min max available set dummy value, to signal this is list
-            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=0, max=0))
+            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
     return feature
 
 
@@ -95,8 +91,7 @@ def register_dtype(column_schema, feature):
     #  column_schema is a dict, changes are held
     #  TODO: this double check can be refactored
     if column_schema.dtype:
-        if column_schema._is_list:
-            feature = proto_dict["list"](column_schema, feature)
+        feature = proto_dict["list"](column_schema, feature)
         if hasattr(column_schema.dtype, "kind"):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
         elif hasattr(column_schema.dtype, "item"):
@@ -316,9 +311,7 @@ class Schema:
         return Schema(columns)
 
     def save_protobuf(self, schema_path):
-        schema_path = Path(schema_path)
-        if not schema_path.is_dir():
-            raise ValueError(f"The path provided is not a valid directory: {schema_path}")
+        fs = fsspec.get_fs_token_paths(schema_path)[0]
 
         # traverse list of column schema
         schema = schema_pb2.Schema()
@@ -326,9 +319,17 @@ class Schema:
         for col_name, col_schema in self.column_schemas.items():
             features.append(create_protobuf_feature(col_schema))
         schema.feature.extend(features)
-        breakpoint()
-        with open(schema_path / "schema.pbtxt", "w") as f:
-            f.write(text_format.MessageToString(schema))
+
+        try:
+            with fs.open(fs.sep.join([str(schema_path), "schema.pbtxt"]), "w") as f:
+                f.write(text_format.MessageToString(schema))
+        except Exception as e:
+            if not fs.isdir(schema_path):
+                raise ValueError(
+                    f"The path provided is not a valid directory: {schema_path}"
+                ) from e
+            raise
+
         return self
 
     def __iter__(self):

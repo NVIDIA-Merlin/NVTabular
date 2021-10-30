@@ -99,7 +99,7 @@
 
 ## Breaking Changes
 
-* The API for NVTabular has been signficantly refactored, and existing code targetting the 0.3 API will need to be updated.
+* The API for NVTabular has been significantly refactored, and existing code targeting the 0.3 API will need to be updated.
 Workflows are now represented as graphs of operations, and applied using a sklearn 'transformers' style api. Read more by
 checking out the [examples](https://nvidia-merlin.github.io/NVTabular/v0.4.0/examples/index.html)
 
@@ -139,7 +139,7 @@ checking out the [examples](https://nvidia-merlin.github.io/NVTabular/v0.4.0/exa
 
 ## Bug Fixes
 
-* Fix PyTorch dataloader for compatability with deep learning examples
+* Fix PyTorch dataloader for compatibility with deep learning examples
 * Fix FillMissing operator with constant fill
 * Fix missing yaml dependency on conda install
 * Fix get_emb_sz off-by-one error
