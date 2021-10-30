@@ -743,8 +743,12 @@ def _top_level_groupby(df, options: FitOptions):
         agg_dict = {}
         base_aggs = []
         if "size" in options.agg_list:
+            # This is either for a Categorify operation,
+            # or "size" is in the list of aggregations
             base_aggs.append("size")
-        if "count" in options.agg_list:
+        if set(options.agg_list).difference({"size", "min", "max"}):
+            # This is a groupby aggregation that may
+            # require "count" statistics
             base_aggs.append("count")
         agg_dict[cat_col_selector.names[0]] = base_aggs
         if isinstance(options.agg_cols, list):
