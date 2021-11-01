@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import math
 import os
 import random
 
@@ -37,7 +36,7 @@ except ImportError:
 
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("include_nulls", [True, False])
-def test_categorify_counts(tmpdir, cpu, include_nulls):
+def test_categorify_size(tmpdir, cpu, include_nulls):
     num_rows = 50
     num_distinct = 10
 
@@ -62,21 +61,21 @@ def test_categorify_counts(tmpdir, cpu, include_nulls):
     if cpu:
         expected = dict(zip(vals.index, vals))
         computed = {
-            session: count
-            for session, count in zip(vocab["session_id"], vocab["session_id_count"])
-            if count
+            session: size
+            for session, size in zip(vocab["session_id"], vocab["session_id_size"])
+            if size
         }
     else:
         expected = dict(zip(vals.index.values_host, vals.values_host))
         computed = {
-            session: count
-            for session, count in zip(
-                vocab["session_id"].values_host, vocab["session_id_count"].values_host
+            session: size
+            for session, size in zip(
+                vocab["session_id"].values_host, vocab["session_id_size"].values_host
             )
-            if count
+            if size
         }
     first_key = list(computed.keys())[0]
-    if math.isnan(first_key):
+    if pd.isna(first_key):
         computed.pop(first_key)
     assert computed == expected
 
@@ -104,8 +103,8 @@ def test_na_value_count(tmpdir):
     second_cat = dispatch._read_dispatch("./categories/unique.productID.parquet")(
         "./categories/unique.productID.parquet"
     )
-    assert single_cat["brand_count"][0] == 5
-    assert second_cat["productID_count"][0] == 3
+    assert single_cat["brand_size"][0] == 5
+    assert second_cat["productID_size"][0] == 3
 
 
 @pytest.mark.parametrize("freq_threshold", [0, 1, 2])
