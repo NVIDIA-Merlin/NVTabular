@@ -17,7 +17,6 @@
 import os
 from io import BytesIO
 
-import aiobotocore
 import cudf
 import pytest
 from dask.dataframe.io.parquet.core import create_metadata_file
@@ -31,6 +30,9 @@ from tests.conftest import assert_eq, mycols_csv, mycols_pq
 s3_base = test_s3.s3_base
 s3_context = test_s3.s3_context
 s3so = test_s3.s3so
+
+
+aiobotocore = pytest.importorskip("aiobotocore")
 
 
 @pytest.fixture()
