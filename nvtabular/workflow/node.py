@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import collections.abc
-import warnings
 
 from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.ops import LambdaOp, Operator, internal
@@ -43,11 +42,6 @@ class WorkflowNode:
         self.output_schema = None
 
         if isinstance(selector, list):
-            warnings.warn(
-                'The `["a", "b", "c"] >> ops.Operator` syntax for creating a `ColumnGroup` '
-                "has been deprecated in NVTabular 21.09 and will be removed in a future version.",
-                FutureWarning,
-            )
             selector = ColumnSelector(selector)
 
         if selector and not isinstance(selector, ColumnSelector):
