@@ -673,6 +673,7 @@ class Dataset:
         suffix=".parquet",
         partition_on=None,
         method="subgraph",
+        write_hugectr_keyset=False,
     ):
         """Writes out to a parquet dataset
 
@@ -747,6 +748,10 @@ class Dataset:
             a single large task). In some cases, it may be more ideal to prioritize
             concurrency. In that case, a worker-based approach can be used by
             specifying `method="worker"`.
+        write_hugectr_keyset : bool, optional
+            Whether to write a HugeCTR keyset output file ("_hugectr.keyset").
+            Writing this file can be very slow, and should only be done if you
+            are planning to ingest the output data with HugeCTR. Default is False.
         """
 
         if partition_on:
@@ -910,7 +915,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
-            schema=self.schema,
+            schema=self.schema if write_hugectr_keyset else None,
         )
 
     def to_hugectr(
