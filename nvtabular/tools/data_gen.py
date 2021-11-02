@@ -17,14 +17,25 @@ import os
 import random
 import string
 
-import cudf
-import cupy
 import numpy as np
-from cudf.core.column import as_column, build_column
+import psutil
+
+try:
+    import cupy
+except ImportError:
+    cupy = np
+
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
-from nvtabular.dispatch import _is_list_dtype
+from nvtabular.dispatch import (
+    HAS_GPU,
+    _concat,
+    _is_list_dtype,
+    _make_df,
+    _pull_apart_list,
+    create_multihot_col,
+)
 
 from ..io.dataset import Dataset
 from ..utils import device_mem_size
@@ -32,7 +43,8 @@ from ..utils import device_mem_size
 
 class UniformDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
-        ser = cudf.Series(cupy.random.uniform(min_val, max_val, size=num_rows), dtype=dtype)
+        ser = _make_df(np.random.uniform(min_val, max_val, size=num_rows))[0]
+        ser = ser.astype(dtype)
         return ser
 
     def verify(self, pandas_series):
@@ -46,7 +58,7 @@ class PowerLawDistro:
     def create_col(self, num_rows, dtype=np.float32, min_val=0, max_val=1):
         gamma = 1 - self.alpha
         # range 1.0 - 2.0 to avoid using 0, which represents unknown, null, None
-        ser = cudf.Series(cupy.random.uniform(0.0, 1.0, size=num_rows))
+        ser = _make_df(cupy.random.uniform(0.0, 1.0, size=num_rows))[0]
         factor = cupy.power(max_val, gamma) - cupy.power(min_val, gamma)
         ser = (ser * factor.item()) + cupy.power(min_val, gamma).item()
         exp = 1.0 / gamma
@@ -76,7 +88,7 @@ class DatasetGen:
         size = number of rows wanted
         conts_rep = list of tuples representing values of each column
         """
-        df = cudf.DataFrame()
+        df = _make_df()
         for col in conts_rep:
             dist = col.distro or self.dist
             for y in range(col.width):
@@ -84,7 +96,7 @@ class DatasetGen:
                     size, min_val=col.min_val, max_val=col.max_val, dtype=col.dtype
                 )
                 ser.name = col.name if y == 0 else f"{col.name}_{y}"
-                df = cudf.concat([df, ser], axis=1)
+                df = _concat([df, ser], axis=1)
         return df
 
     def create_cats(self, size, cats_rep, entries=False):
@@ -95,22 +107,35 @@ class DatasetGen:
                   minimum and maximum categorical string length
         """
         # should alpha also be exposed? related to dist... should be part of that
-        df = cudf.DataFrame()
+        df = _make_df()
         for col in cats_rep:
             # if mh resets size
             col_size = size
             offs = None
             dist = col.distro or self.dist
+            ser = None
             if col.multi_min and col.multi_max:
-                entrys_lens = dist.create_col(
-                    col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
-                ).ceil()
+                if HAS_GPU:
+                    ser = dist.create_col(
+                        col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
+                    ).ceil()
+                else:
+                    ser = dist.create_col(
+                        col_size + 1, dtype=np.long, min_val=col.multi_min, max_val=col.multi_max
+                    )
+                    ser = _make_df(np.ceil(ser))[0]
                 # sum returns numpy dtype
-                col_size = int(entrys_lens.sum())
-                offs = cupy.cumsum(entrys_lens.values)
-            ser = dist.create_col(
-                col_size, dtype=np.long, min_val=0, max_val=col.cardinality
-            ).ceil()
+                col_size = int(ser.sum())
+                offs = _make_df(cupy.cumsum(ser.values))[0]
+                offs = offs.astype("int32")
+            if HAS_GPU:
+                ser = dist.create_col(
+                    col_size, dtype=np.long, min_val=0, max_val=col.cardinality
+                ).ceil()
+            else:
+                ser = dist.create_col(col_size, dtype=np.long, min_val=0, max_val=col.cardinality)
+                ser = _make_df(np.ceil(ser))[0]
+                ser = ser.astype("int32")
             if entries:
                 cat_names = self.create_cat_entries(
                     col.cardinality, min_size=col.min_entry_size, max_size=col.max_entry_size
@@ -118,31 +143,37 @@ class DatasetGen:
                 ser, _ = self.merge_cats_encoding(ser, cat_names)
             if offs is not None:
                 # create multi_column from offs and ser
-                ser = self.create_multihot_col(offs, ser)
+                ser = create_multihot_col(offs, ser)
             ser.name = col.name
-            df = cudf.concat([df, ser], axis=1)
+            df = _concat([df, ser], axis=1)
         return df
 
     def create_labels(self, size, labs_rep):
-        df = cudf.DataFrame()
+        df = _make_df()
         for col in labs_rep:
             dist = col.distro or self.dist
-            ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality).ceil()
+            if HAS_GPU:
+                ser = dist.create_col(
+                    size, dtype=col.dtype, min_val=0, max_val=col.cardinality
+                ).ceil()
+            else:
+                ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality)
+                ser = _make_df(np.ceil(ser))[0]
             ser.name = col.name
-            df = cudf.concat([df, ser], axis=1)
+            df = _concat([df, ser], axis=1)
         return df
 
     def merge_cats_encoding(self, ser, cats):
         # df and cats are both series
         # set cats to dfs
         offs = None
-        if _is_list_dtype(ser.dtype):
-            offs = ser._column.offsets
-            ser = ser.list.leaves
-        ser = cudf.DataFrame({"vals": ser})
-        cats = cudf.DataFrame({"names": cats})
+        if _is_list_dtype(ser.dtype) or _is_list_dtype(ser):
+            ser, offs = _pull_apart_list(ser)
+        ser = _make_df({"vals": ser})
+        cats = _make_df({"names": cats})
         cats["vals"] = cats.index
         ser = ser.merge(cats, on=["vals"], how="left")
+
         return ser["names"], offs
 
     def create_cat_entries(self, cardinality, min_size=1, max_size=5):
@@ -155,21 +186,6 @@ class DatasetGen:
                 set_entries.append(entry)
         return set_entries
 
-    def create_multihot_col(self, offsets, data):
-        """
-        offsets = cudf series with offset values for list data
-        data = cudf series with the list data flattened to 1-d
-        """
-        offs = as_column(offsets, dtype="int32")
-        encoded = as_column(data)
-        col = build_column(
-            None,
-            size=offs.size - 1,
-            dtype=cudf.core.dtypes.ListDtype(encoded.dtype),
-            children=(offs, encoded),
-        )
-        return cudf.Series(col)
-
     def create_df(
         self,
         size,
@@ -179,11 +195,11 @@ class DatasetGen:
         conts_rep = cols["conts"] if "conts" in cols else None
         cats_rep = cols["cats"] if "cats" in cols else None
         labs_rep = cols["labels"] if "labels" in cols else None
-        df = cudf.DataFrame()
+        df = _make_df()
         if conts_rep:
-            df = cudf.concat([df, self.create_conts(size, conts_rep)], axis=1)
+            df = _concat([df, self.create_conts(size, conts_rep)], axis=1)
         if cats_rep:
-            df = cudf.concat(
+            df = _concat(
                 [
                     df,
                     self.create_cats(size, cats_rep=cats_rep, entries=entries),
@@ -191,7 +207,7 @@ class DatasetGen:
                 axis=1,
             )
         if labs_rep:
-            df = cudf.concat([df, self.create_labels(size, labs_rep)], axis=1)
+            df = _concat([df, self.create_labels(size, labs_rep)], axis=1)
         return df
 
     def full_df_create(
@@ -245,13 +261,15 @@ class DatasetGen:
             size = col.cardinality
             while size > completed_vocab:
                 x = min(batch, size)
-                ser = cudf.Series(
+                # ensure stopping at desired cardinality
+                x = min(x, size - x)
+                ser = _make_df(
                     self.create_cat_entries(
                         x, min_size=col.min_entry_size, max_size=col.max_entry_size
                     )
-                )
+                )[0]
                 # turn series to dataframe to keep index count
-                ser = cudf.DataFrame({f"{col.name}": ser, "idx": ser.index + completed_vocab})
+                ser = _make_df({f"{col.name}": ser, "idx": ser.index + completed_vocab})
                 file_path = os.path.join(output, f"{col.name}_vocab_{file_count}.parquet")
                 completed_vocab = completed_vocab + x
                 file_count = file_count + 1
@@ -274,8 +292,8 @@ class DatasetGen:
                     col_name = col.name
                     focus_col = df[col_name]
                     ser, offs = self.merge_cats_encoding(focus_col, vdf[col_name])
-                    if offs:
-                        df[col_name] = self.create_multihot_col(offs, ser)
+                    if offs is not None:
+                        df[col_name] = create_multihot_col(offs, ser)
                     else:
                         df[col_name] = ser
             file_path = os.path.join(output, f"FINAL_{idx}.parquet")
@@ -287,16 +305,23 @@ class DatasetGen:
         sts = []
         ps = []
         for col in df_to_verify.columns:
-            st_df, p_df = self.dist.verify(df_to_verify[col].to_pandas())
+            if HAS_GPU:
+                st_df, p_df = self.dist.verify(df_to_verify[col].to_pandas())
+            else:
+                st_df, p_df = self.dist.verify(df_to_verify[col])
             sts.append(st_df)
             ps.append(p_df)
         return sts, ps
 
     def get_batch(self, row_size):
         # grab max amount of gpu memory
-        gpu_mem = device_mem_size(kind="total") * self.gpu_frac
+        if HAS_GPU:
+            mem = device_mem_size(kind="total") * self.gpu_frac
+        else:
+            mem = psutil.virtual_memory().available / 1024
+
         # find # of rows fit in gpu memory
-        return gpu_mem // row_size
+        return mem // row_size
 
     def get_row_size(self, row, cats_rep):
         """

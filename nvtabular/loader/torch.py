@@ -17,6 +17,8 @@ import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
 
+from nvtabular.dispatch import HAS_GPU
+
 from .backend import DataLoader
 
 
@@ -149,7 +151,10 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
             values = values_offset.flatten()
             offsets = torch.arange(values.size()[0], device=self.device)
         num_rows = len(offsets)
-        offsets = torch.cat([offsets, torch.cuda.LongTensor([len(values)])])
+        if HAS_GPU:
+            offsets = torch.cat([offsets, torch.cuda.LongTensor([len(values)])])
+        else:
+            offsets = torch.cat([offsets, torch.LongTensor([len(values)])])
         diff_offsets = offsets[1:] - offsets[:-1]
         return values, offsets, diff_offsets, num_rows
 

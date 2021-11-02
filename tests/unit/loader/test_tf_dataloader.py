@@ -18,8 +18,14 @@ import importlib
 import os
 import subprocess
 
-import cudf
-import cupy
+try:
+    import cudf
+except ImportError:
+    cudf = None
+try:
+    import cupy
+except ImportError:
+    cupy = None
 import numpy as np
 import pandas as pd
 import pytest
@@ -524,7 +530,8 @@ def test_sparse_tensors(tmpdir, sparse_dense):
 )
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 @pytest.mark.skipif(
-    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+    cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
+    reason="This unittest requires multiple gpu's to run",
 )
 def test_horovod_multigpu(tmpdir):
     json_sample = {
