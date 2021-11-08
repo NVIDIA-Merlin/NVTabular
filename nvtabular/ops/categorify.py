@@ -1345,14 +1345,15 @@ def _hash_bucket(df, num_buckets, col, encode_type="joint"):
 
 def _copy_storage(existing_stats, existing_path, new_path, copy):
     """helper function to copy files to a new storage location"""
-    from shutil import copyfile
-
+    existing_fs = get_fs_token_paths(existing_path)[0]
+    new_fs = get_fs_token_paths(new_path)[0]
     new_locations = {}
     for column, existing_file in existing_stats.items():
         new_file = existing_file.replace(str(existing_path), str(new_path))
         if copy and new_file != existing_file:
-            os.makedirs(os.path.dirname(new_file), exist_ok=True)
-            copyfile(existing_file, new_file)
+            new_fs.makedirs(os.path.dirname(new_file), exist_ok=True)
+            with new_fs.open(new_file, "wb") as output:
+                output.write(existing_fs.open(existing_file, "rb").read())
 
         new_locations[column] = new_file
 

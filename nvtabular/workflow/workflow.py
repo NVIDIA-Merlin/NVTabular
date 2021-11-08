@@ -15,13 +15,13 @@
 #
 import json
 import logging
-import os
 import sys
 import time
 import warnings
 from typing import TYPE_CHECKING, Optional
 
 import cloudpickle
+import fsspec
 
 try:
     import cudf
@@ -285,7 +285,9 @@ class Workflow:
         # avoid a circular import getting the version
         from nvtabular import __version__ as nvt_version
 
-        os.makedirs(path, exist_ok=True)
+        fs = fsspec.get_fs_token_paths(path)[0]
+
+        fs.makedirs(path, exist_ok=True)
 
         # point all stat ops to store intermediate output (parquet etc) at the path
         # this lets us easily bundle
@@ -294,7 +296,7 @@ class Workflow:
 
         # generate a file of all versions used to generate this bundle
         lib = cudf if cudf else pd
-        with open(os.path.join(path, "metadata.json"), "w") as o:
+        with fs.open(fs.sep.join([path, "metadata.json"]), "w") as o:
             json.dump(
                 {
                     "versions": {
@@ -308,7 +310,7 @@ class Workflow:
             )
 
         # dump out the full workflow (graph/stats/operators etc) using cloudpickle
-        with open(os.path.join(path, "workflow.pkl"), "wb") as o:
+        with fs.open(fs.sep.join([path, "workflow.pkl"]), "wb") as o:
             cloudpickle.dump(self, o)
 
     @classmethod
@@ -329,8 +331,10 @@ class Workflow:
         # avoid a circular import getting the version
         from nvtabular import __version__ as nvt_version
 
+        fs = fsspec.get_fs_token_paths(path)[0]
+
         # check version information from the metadata blob, and warn if we have a mismatch
-        meta = json.load(open(os.path.join(path, "metadata.json")))
+        meta = json.load(fs.open(fs.sep.join([path, "metadata.json"])))
 
         def parse_version(version):
             return version.split(".")[:2]
@@ -356,7 +360,7 @@ class Workflow:
             warnings.warn(f"Loading workflow generated on {expected}")
 
         # load up the workflow object di
-        workflow = cloudpickle.load(open(os.path.join(path, "workflow.pkl"), "rb"))
+        workflow = cloudpickle.load(fs.open(fs.sep.join([path, "workflow.pkl"]), "rb"))
         workflow.client = client
 
         # we might have been copied since saving, update all the stat ops
