@@ -537,18 +537,32 @@ def export_tensorflow_model(model, name, output_path, version=1):
         outputs = list(default_signature.structured_outputs.values())
 
     for col in inputs:
-        config.input.append(
-            model_config.ModelInput(
-                name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+        if col.shape[1] > 1:
+            config.input.append(
+                model_config.ModelInput(
+                    name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
+                )
             )
-        )
+        else:
+            config.input.append(
+                model_config.ModelInput(
+                    name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+                    )
+            )
 
     for col in outputs:
-        config.output.append(
-            model_config.ModelOutput(
-                name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+        if col.shape[1] > 1:
+            config.output.append(
+                model_config.ModelOutput(
+                    name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
+                    )
             )
-        )
+        else:
+            config.output.append(
+                model_config.ModelOutput(
+                    name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+                    )
+            )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
