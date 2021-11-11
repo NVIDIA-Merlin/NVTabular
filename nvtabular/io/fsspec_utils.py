@@ -18,13 +18,14 @@ import io
 from distutils.version import LooseVersion
 from threading import Thread
 
+# Check if fsspec.parquet module is available
+import fsspec
 import numpy as np
 from pyarrow import parquet as pq
 
-# Check if fsspec.parquet module is available
-try:
+if LooseVersion(fsspec.__version__).version[:3] > [21, 11, 0]:
     import fsspec.parquet as fsspec_parquet
-except ImportError:
+else:
     fsspec_parquet = None
 
 try:
@@ -171,7 +172,7 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
 
         # Call cudf.read_parquet on the dummy buffer
         df = cudf.read_parquet(
-            io.BytesIO(dummy_buffer),
+            dummy_buffer,
             engine="cudf",
             columns=columns,
             row_groups=row_groups,
