@@ -23,7 +23,7 @@ import fsspec
 import numpy as np
 from pyarrow import parquet as pq
 
-if LooseVersion(fsspec.__version__).version[:3] > [21, 11, 0]:
+if LooseVersion(fsspec.__version__).version[:3] > [2021, 11, 0]:
     import fsspec.parquet as fsspec_parquet
 else:
     fsspec_parquet = None
