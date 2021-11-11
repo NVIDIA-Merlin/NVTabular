@@ -1219,7 +1219,6 @@ def _encode(
             )
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
-
     if value is None:
         value = type(df)()
         for c in selection_r.names:
@@ -1227,14 +1226,17 @@ def _encode(
             value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
-
     if not search_sorted:
         if list_col:
             codes = dispatch._flatten_list_column(df[selection_l.names[0]])
             codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
-            for cl, cr in zip(selection_l.names, selection_r.names):
+        for cl, cr in zip(selection_l.names, selection_r.names):
+            if isinstance(df[cl][0], (np.ndarray, list)):
+                ser = df[cl].copy()
+                codes[cl] = dispatch._flatten_list_column_values(ser).astype(value[cr].dtype)
+            else:
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
@@ -1271,13 +1273,11 @@ def _encode(
                 df[selection_l.names], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r.names])] = na_sentinel
-
     labels = labels + start_index
     if list_col:
         labels = dispatch._encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
-
     return labels
 
 

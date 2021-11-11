@@ -465,8 +465,7 @@ class DataLoader:
                         else:
                             print(off0, off1)
                             raise ValueError
-
-                        value = values[start:stop]
+                        value = values[int(start) : int(stop)]
                         index = off0 - start if not use_nnz else nnz
                         batch_lists[column_name] = (value, index)
                     c = (c, batch_lists)
@@ -567,7 +566,12 @@ class DataLoader:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-                    leaves, offsets[column_name] = _pull_apart_list(column)
+                    leaves, col_offsets = _pull_apart_list(column)
+                    if isinstance(leaves[0], list):
+
+                        leaves, nest_offsets = _pull_apart_list(leaves)
+                        col_offsets = nest_offsets.iloc[col_offsets[:]]
+                    offsets[column_name] = col_offsets.reset_index(drop=True)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
                 x = x, list_tensors
             tensors.append(x)

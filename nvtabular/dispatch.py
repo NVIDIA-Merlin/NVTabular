@@ -289,9 +289,9 @@ def _flatten_list_column(s):
     """Flatten elements of a list-based column, and return as a DataFrame"""
     values = _flatten_list_column_values(s)
     if isinstance(s, pd.Series) or not cudf:
-        return pd.Series(values, name=s.name)
+        return pd.DataFrame({s.name: values})
     else:
-        return cudf.Series(values, name=s.name)
+        return cudf.DataFrame({s.name: values})
 
 
 def _concat_columns(args: list):
@@ -379,9 +379,11 @@ def _encode_list_column(original, encoded, dtype=None):
 
 
 def _pull_apart_list(original):
-    values = _flatten_list_column(original)
+    values = _flatten_list_column_values(original)
     if isinstance(original, pd.Series):
-        offsets = pd.Series([0]).append(original.map(len).cumsum())
+        offsets = pd.Series([0]).append(original.map(len).cumsum()).reset_index(drop=True)
+        if isinstance(offsets[0], list):
+            offsets = pd.Series(offsets.reshape().flatten()).reset_index(drop=True)
     else:
         offsets = original._column.offsets
         elements = original._column.elements
@@ -557,6 +559,8 @@ def create_multihot_col(offsets, elements):
         for vals_count in vals_per_entry:
             vals_count = int(vals_count)
             entry = elements[vals_used : vals_used + vals_count]
+            if len(entry) == 1:
+                entry = entry[0]
             vals_used += vals_count
             entries.append(entry.values)
         col = col.append(pd.Series(entries))
@@ -574,8 +578,8 @@ def _generate_local_seed(global_rank, global_size):
         seeds = random_state.tomaxint(size=global_size)
         local_seed = seeds[global_rank]
         return cp.random.seed(local_seed.get())
-    seeds = random_state.random_integers(0, 2 ** 32, size=global_size)
-    return np.random.seed(seeds[global_rank])
+    seeds = random_state.randint(0, 2 ** 32, size=global_size)
+    return seeds[global_rank]
 
 
 def _get_random_state():

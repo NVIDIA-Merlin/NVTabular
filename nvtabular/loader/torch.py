@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.dlpack import from_dlpack
@@ -120,7 +121,13 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
 
     def _unpack(self, dlpack):
         if self.device == "cpu":
-            return torch.Tensor(dlpack.values).squeeze(1)
+            if (
+                len(dlpack.values.shape) == 2
+                and dlpack.values.shape[1] == 1
+                and isinstance(dlpack.values[0], np.ndarray)
+            ):
+                return torch.squeeze(torch.Tensor(dlpack.values))
+            return torch.Tensor(dlpack.values)
         return from_dlpack(dlpack)
 
     def _to_tensor(self, gdf, dtype=None):
