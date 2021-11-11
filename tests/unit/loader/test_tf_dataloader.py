@@ -362,7 +362,7 @@ def test_mh_support(tmpdir, batch_size):
     workflow = nvt.Workflow(cats + cont_names + label_name)
 
     data_itr = tf_dataloader.KerasSequenceLoader(
-        workflow.transform(nvt.Dataset(df)),
+        workflow.fit_transform(nvt.Dataset(df)),
         cat_names=cat_names,
         cont_names=cont_names,
         label_names=label_name,

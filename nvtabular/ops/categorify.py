@@ -444,7 +444,6 @@ class Categorify(StatOperator):
 
                 if isinstance(use_name, tuple):
                     use_name = list(use_name)
-
                 path = self.categories[storage_name]
                 new_df[name] = _encode(
                     use_name,
@@ -762,7 +761,6 @@ def _top_level_groupby(df, options: FitOptions):
         if _is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
             df_gb = dispatch._flatten_list_column(df_gb[cat_col_selector.names[0]])
-
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
