@@ -106,6 +106,21 @@ def _optimized_read_partition_remote(
     return df
 
 
+def _handle_fsspec_parquet_options(use_fsspec_parquet, use_python_file_object):
+    # Convert `use_fsspec_parquet` to bool and define
+    # separate `use_fsspec_parquet_kwargs`
+    use_fsspec_parquet_kwargs = use_fsspec_parquet if isinstance(use_fsspec_parquet, dict) else {}
+    use_fsspec_parquet = (
+        bool(use_fsspec_parquet) and fsspec_parquet and use_python_file_object is not False
+    )
+
+    return (
+        use_fsspec_parquet,
+        use_fsspec_parquet_kwargs,
+        use_python_file_object,
+    )
+
+
 def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
 
     if row_groups is not None and not isinstance(row_groups, list):
@@ -114,8 +129,17 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
     # Handle various key-word argument options
     user_kwargs = kwargs.copy()
     read_kwargs = user_kwargs.pop("read", {})
-    open_kwargs = user_kwargs.pop("open_parquet_file", {})
-    use_python_file_object = read_kwargs.pop("use_python_file_object", None)
+    (
+        use_fsspec_parquet,
+        use_fsspec_parquet_kwargs,
+        use_python_file_object,
+    ) = _handle_fsspec_parquet_options(
+        read_kwargs.pop(
+            "use_fsspec_parquet",
+            user_kwargs.pop("use_fsspec_parquet", True),
+        ),
+        read_kwargs.pop("use_python_file_object", None),
+    )
     strings_to_cats = read_kwargs.get(
         "strings_to_categorical",
         user_kwargs.pop("strings_to_categorical", False),
@@ -136,9 +160,9 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
             columns=columns,
             row_groups=row_groups,
             engine="pyarrow",
-            **open_kwargs,
+            **use_fsspec_parquet_kwargs,
         ) as f:
-            df = cudf.read_parquet(
+            return cudf.read_parquet(
                 f,
                 engine="cudf",
                 columns=columns,
@@ -151,37 +175,31 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
         # Get byte-ranges that are known to contain the
         # required data for this read
         byte_ranges, footer, file_size = _get_parquet_byte_ranges(
-            path, row_groups, columns, fs, **kwargs
+            path, row_groups, columns, fs, **user_kwargs
         )
 
-        # Transfer the required byte-ranges with fsspec.
-        # Store these blocks in a local dummy buffer
-        dummy_buffer = _fsspec_data_transfer(
-            path,
-            fs,
-            byte_ranges=byte_ranges,
-            footer=footer,
-            file_size=file_size,
-            add_par1_magic=True,
-            **user_kwargs,
-        )
-
-        # Add back use_python_file_object argument
-        if use_python_file_object is not None:
-            read_kwargs["use_python_file_object"] = use_python_file_object
-
-        # Call cudf.read_parquet on the dummy buffer
-        df = cudf.read_parquet(
-            dummy_buffer,
+        return cudf.read_parquet(
+            # Wrap in BytesIO since cudf will sometimes use
+            # pyarrow to parse the metadata (and pyarrow
+            # cannot read from a bytes object)
+            io.BytesIO(
+                # Transfer the required bytes with fsspec
+                _fsspec_data_transfer(
+                    path,
+                    fs,
+                    byte_ranges=byte_ranges,
+                    footer=footer,
+                    file_size=file_size,
+                    add_par1_magic=True,
+                    **user_kwargs,
+                )
+            ),
             engine="cudf",
             columns=columns,
             row_groups=row_groups,
             strings_to_categorical=strings_to_cats,
             **read_kwargs,
         )
-        del dummy_buffer
-
-    return df
 
 
 def _get_parquet_byte_ranges(
