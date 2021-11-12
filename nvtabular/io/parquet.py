@@ -278,7 +278,12 @@ class ParquetDatasetEngine(DatasetEngine):
 
         if row_groups_per_part is None:
             self._real_meta, rg_byte_size_0 = run_on_worker(
-                _sample_row_group, self._path0, self.fs, cpu=self.cpu, memory_usage=True
+                _sample_row_group,
+                self._path0,
+                self.fs,
+                cpu=self.cpu,
+                memory_usage=True,
+                **self.read_parquet_kwargs,
             )
             row_groups_per_part = self.part_size / rg_byte_size_0
             if row_groups_per_part < 1.0:
@@ -439,6 +444,7 @@ class ParquetDatasetEngine(DatasetEngine):
             cpu=self.cpu,
             n=n,
             memory_usage=False,
+            **self.read_parquet_kwargs,
         ).take(list(range(n)))
 
     def validate_dataset(
@@ -1156,7 +1162,7 @@ def _split_part(x, split):
     return out
 
 
-def _sample_row_group(path, fs, cpu=False, n=1, memory_usage=False):
+def _sample_row_group(path, fs, cpu=False, n=1, memory_usage=False, **kwargs):
     """Return the first Parquet Row-Group for a given path
 
     The memory_usage of the row-group will also be returned
@@ -1171,9 +1177,9 @@ def _sample_row_group(path, fs, cpu=False, n=1, memory_usage=False):
         if cudf.utils.ioutils._is_local_filesystem(fs):
             # Allow cudf to open the file if this is a local file
             # system (can be significantly faster in this case)
-            _df = cudf.io.read_parquet(path, row_groups=0)
+            _df = cudf.io.read_parquet(path, row_groups=0, **kwargs)
         else:
-            _df = _optimized_read_remote(path, 0, None, fs)
+            _df = _optimized_read_remote(path, 0, None, fs, **kwargs)
     _indices = list(range(n))
     if memory_usage:
         return _df.take(_indices), _memory_usage(_df)
