@@ -147,7 +147,7 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
 
     if (
         fsspec_parquet
-        and use_python_file_object is not False
+        and use_fsspec_parquet
         and (LooseVersion(cudf.__version__).version[:2] >= [21, 12])
     ):
         # For newer versions of fsspec/cudf, we should use
