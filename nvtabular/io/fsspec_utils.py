@@ -109,30 +109,30 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
         path, row_groups, columns, fs, **kwargs
     )
 
-    # Transfer the required byte-ranges with fsspec.
-    # Store these blocks in a local dummy buffer
-    dummy_buffer = _fsspec_data_transfer(
-        path,
-        fs,
-        byte_ranges=byte_ranges,
-        footer=footer,
-        file_size=file_size,
-        add_par1_magic=True,
-        **kwargs,
-    )
-
     # Call cudf.read_parquet on the dummy buffer
     strings_to_cats = kwargs.get("strings_to_categorical", False)
-    df = cudf.read_parquet(
-        io.BytesIO(dummy_buffer),
+    return cudf.read_parquet(
+        # Wrap in BytesIO since cudf will sometimes use
+        # pyarrow to parse the metadata (and pyarrow
+        # cannot read from a bytes object)
+        io.BytesIO(
+            # Transfer the required bytes with fsspec
+            _fsspec_data_transfer(
+                path,
+                fs,
+                byte_ranges=byte_ranges,
+                footer=footer,
+                file_size=file_size,
+                add_par1_magic=True,
+                **kwargs,
+            )
+        ),
         engine="cudf",
         columns=columns,
         row_groups=row_groups,
         strings_to_categorical=strings_to_cats,
         **kwargs.get("read", {}),
     )
-    del dummy_buffer
-    return df
 
 
 def _get_parquet_byte_ranges(
