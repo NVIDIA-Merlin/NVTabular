@@ -23,7 +23,7 @@ import numba
 import numpy
 import pandas as pd
 import scipy.sparse
-from cupyx.scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix
 
 from nvtabular.columns import ColumnSchema, Schema
 from nvtabular.dispatch import DataFrameType, annotate

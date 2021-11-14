@@ -397,7 +397,7 @@ def test_mh_support(tmpdir, batch_size):
     assert idx == (3 // batch_size + 1)
 
 
-@pytest.mark.parametrize("batch_size", [2, 4])
+@pytest.mark.parametrize("batch_size", [1, 2, 4])
 def test_validater(tmpdir, batch_size):
     n_samples = 9
     rand = np.random.RandomState(0)
@@ -427,7 +427,6 @@ def test_validater(tmpdir, batch_size):
 
     predictions, labels = [], []
     for X, y_true in dataloader:
-        breakpoint()
         y_pred = model(X)
         labels.extend(y_true.numpy()[:, 0])
         predictions.extend(y_pred.numpy()[:, 0])

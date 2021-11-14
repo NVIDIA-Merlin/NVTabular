@@ -363,8 +363,8 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         except AssertionError:
             tf.random.uniform((1,))
             x = self._unpack(dlpack)
-
-        if gdf.shape[0] == 1:
+        # if rank is already two it is  already in list format
+        if gdf.shape[0] == 1 and not tf.rank(x) == 2:
             # batch size 1 so got squashed to a vector
             x = tf.expand_dims(x, 0)
         elif len(gdf.shape) == 1 or len(x.shape) == 1:

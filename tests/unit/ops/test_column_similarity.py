@@ -13,11 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cudf
-import cupy
+import numpy as np
+
+from nvtabular.dispatch import HAS_GPU
+
+try:
+    import cupy
+except ImportError:
+    cupy = np
 import pytest
 import scipy.sparse
-from cupyx.scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix
 
 import nvtabular
 from nvtabular.ops.column_similarity import ColumnSimilarity
@@ -39,10 +45,13 @@ def test_column_similarity(on_device, metric, cpu, cpu_features):
         )
     )
 
-    input_df = cudf.DataFrame({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]})
+    input_df = nvtabular.dispatch._make_df({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]})
 
     if cpu_features:
-        categories = scipy.sparse.coo_matrix(categories.get())
+        if HAS_GPU:
+            categories = scipy.sparse.coo_matrix(categories.get())
+        else:
+            categories = scipy.sparse.coo_matrix(categories)
 
     sim_features = [["left", "right"]] >> ColumnSimilarity(
         categories, metric=metric, on_device=on_device
