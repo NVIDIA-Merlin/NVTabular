@@ -348,6 +348,7 @@ def test_hugectr(
             output_path=outdir,
             out_files_per_proc=nfiles,
             num_threads=num_io_threads,
+            write_hugectr_keyset=True,
         )
 
     # Check for _file_list.txt
