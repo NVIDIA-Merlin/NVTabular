@@ -1,8 +1,11 @@
-import cudf
-import numpy as np
+import pytest
 
-import nvtabular as nvt
-from nvtabular import ColumnSelector
+pytest.importorskip("cudf")
+import cudf  # noqa: E402
+import numpy as np  # noqa: E402
+
+import nvtabular as nvt  # noqa: E402
+from nvtabular import ColumnSelector  # noqa: E402
 
 NUM_ROWS = 10000
 
@@ -16,7 +19,7 @@ def test_tf4rec():
         "prod_first_event_time_ts": np.random.randint(1570373000, 1570373382, NUM_ROWS),
         "price": np.random.uniform(0, 2750, NUM_ROWS),
     }
-    df = cudf.DataFrame(inputs)
+    df = nvt.dispatch._make_df(inputs)
 
     # categorify features
 

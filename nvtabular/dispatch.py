@@ -112,6 +112,14 @@ def _create_nvt_dataset(df):
     return df
 
 
+def _read_parquet_metadata(path):
+    if HAS_GPU:
+        return cudf.io.read_parquet_metadata(path)
+    full_meta = pq.read_metadata(path)
+    pf = pq.ParquetFile(path)
+    return full_meta.num_rows, full_meta.num_row_groups, pf.schema.names
+
+
 def get_lib():
     return cudf if HAS_GPU else pd
 
@@ -266,6 +274,9 @@ def _is_list_dtype(ser):
             return False
         return pd.api.types.is_list_like(ser.values[0])
     elif not HAS_GPU:
+        # either np.ndarray or a dtype
+        if isinstance(ser, np.ndarray):
+            ser = ser[0]
         return pd.api.types.is_list_like(np.dtype(ser))
     return is_list_dtype(ser)
 

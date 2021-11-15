@@ -21,23 +21,25 @@ import os
 import warnings
 from distutils.version import LooseVersion
 
-import cudf
-import dask
-import dask.dataframe as dd
-import dask_cudf
-import numpy as np
-import pandas as pd
 import pytest
-from dask.dataframe import assert_eq
-from dask.dataframe.io.demo import names as name_list
 
-import nvtabular as nvt
-import nvtabular.io
-from nvtabular import dispatch, ops
-from nvtabular.columns import Schema
-from nvtabular.io.parquet import GPUParquetWriter
-from nvtabular.tags import Tags
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+pytest.importorskip("cudf")
+import cudf  # noqa: E402
+import dask  # noqa: E402
+import dask.dataframe as dd  # noqa: E402
+import dask_cudf  # noqa: E402 v
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from dask.dataframe import assert_eq  # noqa: E402
+from dask.dataframe.io.demo import names as name_list  # noqa: E402
+
+import nvtabular as nvt  # noqa: E402
+import nvtabular.io  # noqa: E402
+from nvtabular import dispatch, ops  # noqa: E402
+from nvtabular.columns import Schema  # noqa: E402
+from nvtabular.io.parquet import GPUParquetWriter  # noqa: E402
+from nvtabular.tags import Tags  # noqa: E402
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context  # noqa: E402
 
 
 def test_validate_dataset_bad_schema(tmpdir):

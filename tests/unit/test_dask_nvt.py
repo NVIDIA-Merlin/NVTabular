@@ -18,17 +18,19 @@ import glob
 import math
 import os
 
-import cudf
-import dask_cudf
-import pandas as pd
 import pytest
-from dask.dataframe import assert_eq
-from dask.dataframe import from_pandas as dd_from_pandas
-from dask.dataframe import read_parquet as dd_read_parquet
 
-from nvtabular import ColumnSelector, Dataset, Workflow, ops
-from nvtabular.io.shuffle import Shuffle
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+pytest.importorskip("cudf")
+import cudf  # noqa: E402
+import dask_cudf  # noqa: E402
+import pandas as pd  # noqa: E402
+from dask.dataframe import assert_eq  # noqa: E402
+from dask.dataframe import from_pandas as dd_from_pandas  # noqa: E402
+from dask.dataframe import read_parquet as dd_read_parquet  # noqa: E402
+
+from nvtabular import ColumnSelector, Dataset, Workflow, ops  # noqa: E402
+from nvtabular.io.shuffle import Shuffle  # noqa: E402
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context  # noqa: E402
 
 
 # Dummy operator logic to test stats
