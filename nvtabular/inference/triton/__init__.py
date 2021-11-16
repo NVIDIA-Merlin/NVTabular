@@ -24,7 +24,13 @@ import tritonclient.grpc as grpcclient  # noqa
 from tritonclient.utils import np_to_triton_dtype  # noqa
 
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
-from nvtabular.inference.triton.ensemble import export_tensorflow_ensemble  # noqa
+from nvtabular.inference.triton.ensemble import (  # noqa
+    export_hugectr_ensemble,
+    export_pytorch_ensemble,
+    export_tensorflow_ensemble,
+    generate_hugectr_model,
+    generate_nvtabular_model,
+)
 
 
 def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.InferInput):
