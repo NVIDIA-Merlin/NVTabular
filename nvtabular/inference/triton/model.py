@@ -31,9 +31,9 @@ from typing import List
 
 from triton_python_backend_utils import InferenceRequest, InferenceResponse
 
-from .runners.hugectr import HugeCTRWorkflowRunner
-from .runners.pytorch import PyTorchWorkflowRunner
-from .runners.tensorflow import TensorflowWorkflowRunner
+from nvtabular.inference.triton.runners.hugectr import HugeCTRWorkflowRunner
+from nvtabular.inference.triton.runners.pytorch import PyTorchWorkflowRunner
+from nvtabular.inference.triton.runners.tensorflow import TensorflowWorkflowRunner
 
 LOG = logging.getLogger("nvtabular")
 
