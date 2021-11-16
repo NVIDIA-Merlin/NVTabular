@@ -14,16 +14,18 @@
 # limitations under the License.
 #
 import numpy as np
+import scipy.sparse
 
 from nvtabular.dispatch import HAS_GPU
 
 try:
     import cupy
+    from cupyx.scipy.sparse import coo_matrix
 except ImportError:
     cupy = np
+    from scipy.sparse import coo_matrix
+
 import pytest
-import scipy.sparse
-from scipy.sparse import coo_matrix
 
 import nvtabular
 from nvtabular.ops.column_similarity import ColumnSimilarity

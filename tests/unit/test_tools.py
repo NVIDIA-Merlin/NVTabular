@@ -117,12 +117,14 @@ def test_cat_rep(num_rows, distro):
         assert df_uni[cat].str.len().min() == cats_rep[idx + 1].min_entry_size
         assert df_uni[cat].str.len().max() == cats_rep[idx + 1].max_entry_size
     if HAS_GPU:
-        check_ser = _make_df(df_uni[cats[0]]._column.elements.values_host)[0]
+        check_ser = _make_df(list(df_uni[cats[0]]._column.elements.values_host))[0]
     else:
         check_ser = df_uni[cats[0]]
-    assert _pull_apart_list(check_ser)[0].nunique() == cats_rep[0].cardinality
-    assert _pull_apart_list(check_ser)[0].str.len().min() == cats_rep[0].min_entry_size
-    assert _pull_apart_list(check_ser)[0].str.len().max() == cats_rep[0].max_entry_size
+    if isinstance(check_ser[0], (list, np.ndarray)):
+        check_ser = _pull_apart_list(check_ser)[0]
+    assert check_ser.nunique() == cats_rep[0].cardinality
+    assert check_ser.str.len().min() == cats_rep[0].min_entry_size
+    assert check_ser.str.len().max() == cats_rep[0].max_entry_size
 
 
 def test_json_convert():
@@ -162,11 +164,13 @@ def test_full_df(num_rows, tmpdir, distro):
             if not _is_string_dtype(full_df[cat]):
                 sts, ps = dist.verify(full_df[cat])
                 assert all(s > 0.9 for s in sts)
-        assert _pull_apart_list(full_df[cat])[0].nunique() == cats_rep[0].cardinality
-        assert _pull_apart_list(full_df[cat])[0].str.len().min() == cats_rep[0].min_entry_size
-        assert _pull_apart_list(full_df[cat])[0].str.len().max() == cats_rep[0].max_entry_size
+        # these are not mh series
+        assert full_df[cat].nunique() == cats_rep[0].cardinality
+        assert full_df[cat].str.len().min() == cats_rep[0].min_entry_size
+        assert full_df[cat].str.len().max() == cats_rep[0].max_entry_size
+    # check the mh list here cat 0 only
     if HAS_GPU:
-        check_ser = _make_df(full_df[cats[0]]._column.elements.values_host)[0]
+        check_ser = _make_df(list(full_df[cats[0]]._column.elements.values_host))[0]
     else:
         check_ser = _make_df(full_df[cats[0]])
     assert check_ser.nunique() == cats_rep[0].cardinality

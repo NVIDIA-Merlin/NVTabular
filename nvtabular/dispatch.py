@@ -400,7 +400,7 @@ def _pull_apart_list(original):
         elements = original._column.elements
         if isinstance(elements, cudf.core.column.lists.ListColumn):
             offsets = elements.offsets[offsets]
-    return values, offsets
+    return _make_series(values), _make_series(offsets)
 
 
 def _to_arrow(x):
@@ -429,6 +429,12 @@ def _make_df(_like_df=None, device=None):
     if device == "cpu":
         return pd.DataFrame(_like_df)
     return cudf.DataFrame(_like_df)
+
+
+def _make_series(_like_ser=None, device=None):
+    if not cudf or device == "cpu":
+        return pd.Series(_like_ser)
+    return cudf.Series(_like_ser)
 
 
 def _add_to_series(series, to_add, prepend=True):
@@ -579,8 +585,8 @@ def create_multihot_col(offsets, elements):
         offsets = as_column(offsets, dtype="int32")
         elements = as_column(elements)
         col = _build_cudf_list_column(elements, offsets)
-
-    return _make_df(col)[0]
+        col = cudf.Series(col)
+    return col
 
 
 def _generate_local_seed(global_rank, global_size):

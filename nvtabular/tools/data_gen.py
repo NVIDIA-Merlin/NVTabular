@@ -33,6 +33,7 @@ from nvtabular.dispatch import (
     _concat,
     _is_list_dtype,
     _make_df,
+    _make_series,
     _pull_apart_list,
     create_multihot_col,
 )
@@ -262,16 +263,16 @@ class DatasetGen:
             while size > completed_vocab:
                 x = min(batch, size)
                 # ensure stopping at desired cardinality
-                x = min(x, size - x)
-                ser = _make_df(
+                x = min(x, size - completed_vocab)
+                ser = _make_series(
                     self.create_cat_entries(
                         x, min_size=col.min_entry_size, max_size=col.max_entry_size
                     )
-                )[0]
+                )
                 # turn series to dataframe to keep index count
                 ser = _make_df({f"{col.name}": ser, "idx": ser.index + completed_vocab})
                 file_path = os.path.join(output, f"{col.name}_vocab_{file_count}.parquet")
-                completed_vocab = completed_vocab + x
+                completed_vocab = completed_vocab + ser.shape[0]
                 file_count = file_count + 1
                 # save vocab to file
                 ser.to_parquet(file_path)
