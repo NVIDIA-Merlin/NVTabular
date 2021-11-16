@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 # this is VERY slow on CPU
-pytest.importorskip("cudf")
+# pytest.importorskip("cudf")
 import nvtabular.tools.data_gen as datagen  # noqa: E402
 import nvtabular.tools.dataset_inspector as datains  # noqa: E402
 from nvtabular.dispatch import (  # noqa: E402
@@ -172,7 +172,7 @@ def test_full_df(num_rows, tmpdir, distro):
     if HAS_GPU:
         check_ser = _make_df(list(full_df[cats[0]]._column.elements.values_host))[0]
     else:
-        check_ser = _make_df(full_df[cats[0]])
+        check_ser = _pull_apart_list(full_df[cats[0]])[0]
     assert check_ser.nunique() == cats_rep[0].cardinality
     assert check_ser.str.len().min() == cats_rep[0].min_entry_size
     assert check_ser.str.len().max() == cats_rep[0].max_entry_size
