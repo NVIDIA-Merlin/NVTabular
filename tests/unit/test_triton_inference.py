@@ -77,7 +77,7 @@ def _verify_workflow_on_tritonserver(
     workflow.fit(dataset)
 
     local_df = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
-    ensemble.generate_nvtabular_model(
+    triton.generate_nvtabular_model(
         workflow=workflow,
         name=model_name,
         output_path=tmpdir + f"/{model_name}",
@@ -112,7 +112,7 @@ def test_error_handling(tmpdir):
     workflow.fit(nvt.Dataset(df))
 
     model_name = "test_error_handling"
-    ensemble.generate_nvtabular_model(
+    triton.generate_nvtabular_model(
         workflow, model_name, tmpdir + f"/{model_name}", backend=BACKEND
     )
 
@@ -246,7 +246,7 @@ def test_generate_triton_multihot(tmpdir):
 
     # save workflow to triton / verify we see some expected output
     repo = os.path.join(tmpdir, "models")
-    ensemble.generate_nvtabular_model(workflow, "model", repo)
+    triton.generate_nvtabular_model(workflow, "model", repo)
     workflow = None
 
     assert os.path.exists(os.path.join(repo, "config.pbtxt"))
@@ -280,7 +280,7 @@ def test_generate_triton_model(tmpdir, engine, output_model, df):
         model_info = None
 
     repo = os.path.join(tmpdir, "models")
-    ensemble.generate_nvtabular_model(
+    triton.generate_nvtabular_model(
         workflow=workflow,
         name="model",
         output_path=repo,
