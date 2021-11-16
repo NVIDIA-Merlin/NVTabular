@@ -587,7 +587,7 @@ def test_fit_simple():
     assert_eq(expected, transformed)
 
 
-@pytest.mark.skipif(cudf, reason="needs cudf")
+@pytest.mark.skipif(not cudf, reason="needs cudf")
 def test_transform_geolocation():
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
     data = nvt.dispatch._make_df({"geo_location": raw})
@@ -648,7 +648,7 @@ def test_workflow_input_output_dtypes():
     assert set(workflow.output_dtypes.keys()) == {"genre_user", "genre"}
 
 
-@pytest.mark.skipif(cudf, reason="needs cudf")
+@pytest.mark.skipif(not cudf, reason="needs cudf")
 def test_workflow_transform_ddf_dtypes():
     # Initial Dataset
     df = cudf.datasets.timeseries().reset_index()
