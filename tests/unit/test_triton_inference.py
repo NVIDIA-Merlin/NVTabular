@@ -309,7 +309,7 @@ def test_remove_columns():
     df = pd.DataFrame({"a": ["a", "b"], "b": [1.0, 2.0], "label": [0, 1]})
     workflow.fit(nvt.Dataset(df))
 
-    removed = triton._remove_columns(workflow, label_columns)
+    removed = ensemble._remove_columns(workflow, label_columns)
     assert set(removed.output_dtypes.keys()) == {"a", "b"}
 
 

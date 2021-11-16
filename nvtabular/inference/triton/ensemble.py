@@ -744,6 +744,12 @@ def _generate_column_types_pytorch(output_path, output_info):
 
 def _convert_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
+
+    if not isinstance(dtype, str):
+        dtype_name = dtype.name
+    else:
+        dtype_name = dtype
+
     dtypes = {
         "float64": model_config.TYPE_FP64,
         "float32": model_config.TYPE_FP32,
@@ -761,8 +767,8 @@ def _convert_dtype(dtype):
 
     if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
-    elif dtype in dtypes:
-        return dtypes[dtype]
+    elif dtype_name in dtypes:
+        return dtypes[dtype_name]
     else:
         raise ValueError(f"Can't convert dtype {dtype})")
 
@@ -800,6 +806,11 @@ def _convert_string2pytorch_dtype(dtype):
 
     import torch
 
+    if not isinstance(dtype, str):
+        dtype_name = dtype.name
+    else:
+        dtype_name = dtype
+
     dtypes = {
         "TYPE_FP64": torch.float64,
         "TYPE_FP32": torch.float32,
@@ -817,8 +828,8 @@ def _convert_string2pytorch_dtype(dtype):
 
     if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
-    elif dtype in dtypes:
-        return dtypes[dtype]
+    elif dtype_name in dtypes:
+        return dtypes[dtype_name]
     else:
         raise ValueError(f"Can't convert dtype {dtype})")
 
