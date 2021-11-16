@@ -744,33 +744,27 @@ def _generate_column_types_pytorch(output_path, output_info):
 
 def _convert_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
-    if dtype == "float64":
-        return model_config.TYPE_FP64
-    if dtype == "float32":
-        return model_config.TYPE_FP32
-    if dtype == "float16":
-        return model_config.TYPE_FP16
-    if dtype == "int64":
-        return model_config.TYPE_INT64
-    if dtype == "int32":
-        return model_config.TYPE_INT32
-    if dtype == "int16":
-        return model_config.TYPE_INT16
-    if dtype == "int8":
-        return model_config.TYPE_INT8
-    if dtype == "uint64":
-        return model_config.TYPE_UINT64
-    if dtype == "uint32":
-        return model_config.TYPE_UINT32
-    if dtype == "uint16":
-        return model_config.TYPE_UINT16
-    if dtype == "uint8":
-        return model_config.TYPE_UINT8
-    if dtype == "bool":
-        return model_config.TYPE_BOOL
+    dtypes = {
+        "float64": model_config.TYPE_FP64,
+        "float32": model_config.TYPE_FP32,
+        "float16": model_config.TYPE_FP16,
+        "int64": model_config.TYPE_INT64,
+        "int32": model_config.TYPE_INT32,
+        "int16": model_config.TYPE_INT16,
+        "int8": model_config.TYPE_INT8,
+        "uint64": model_config.TYPE_UINT64,
+        "uint32": model_config.TYPE_UINT32,
+        "uint16": model_config.TYPE_UINT16,
+        "uint8": model_config.TYPE_UINT8,
+        "bool": model_config.TYPE_BOOL,
+    }
+
     if _is_string_dtype(dtype):
         return model_config.TYPE_STRING
-    raise ValueError(f"Can't convert dtype {dtype})")
+    elif dtype in dtypes:
+        return dtypes[dtype]
+    else:
+        raise ValueError(f"Can't convert dtype {dtype})")
 
 
 def _convert_pytorch_dtype(dtype):
@@ -778,31 +772,27 @@ def _convert_pytorch_dtype(dtype):
 
     import torch
 
-    if dtype == torch.float64:
-        return model_config.TYPE_FP64
-    if dtype == torch.float32:
-        return model_config.TYPE_FP32
-    if dtype == torch.float16:
-        return model_config.TYPE_FP16
-    if dtype == torch.int64:
-        return model_config.TYPE_INT64
-    if dtype == torch.int32:
-        return model_config.TYPE_INT32
-    if dtype == torch.int16:
-        return model_config.TYPE_INT16
-    if dtype == torch.int8:
-        return model_config.TYPE_INT8
-    if dtype == torch.uint64:
-        return model_config.TYPE_UINT64
-    if dtype == torch.uint32:
-        return model_config.TYPE_UINT32
-    if dtype == torch.uint16:
-        return model_config.TYPE_UINT16
-    if dtype == torch.uint8:
-        return model_config.TYPE_UINT8
-    if dtype == torch.bool:
-        return model_config.TYPE_BOOL
-    raise ValueError(f"Can't convert dtype {dtype})")
+    dtypes = {
+        torch.float64: model_config.TYPE_FP64,
+        torch.float32: model_config.TYPE_FP32,
+        torch.float16: model_config.TYPE_FP16,
+        torch.int64: model_config.TYPE_INT64,
+        torch.int32: model_config.TYPE_INT32,
+        torch.int16: model_config.TYPE_INT16,
+        torch.int8: model_config.TYPE_INT8,
+        torch.uint64: model_config.TYPE_UINT64,
+        torch.uint32: model_config.TYPE_UINT32,
+        torch.uint16: model_config.TYPE_UINT16,
+        torch.uint8: model_config.TYPE_UINT8,
+        torch.bool: model_config.TYPE_BOOL,
+    }
+
+    if _is_string_dtype(dtype):
+        return model_config.TYPE_STRING
+    elif dtype in dtypes:
+        return dtypes[dtype]
+    else:
+        raise ValueError(f"Can't convert dtype {dtype})")
 
 
 def _convert_string2pytorch_dtype(dtype):
@@ -810,31 +800,27 @@ def _convert_string2pytorch_dtype(dtype):
 
     import torch
 
-    if dtype == "TYPE_FP64":
-        return torch.float64
-    if dtype == "TYPE_FP32":
-        return torch.float32
-    if dtype == "TYPE_FP16":
-        return torch.float16
-    if dtype == "TYPE_INT64":
-        return torch.int64
-    if dtype == "TYPE_INT32":
-        return torch.int32
-    if dtype == "TYPE_INT16":
-        return torch.int16
-    if dtype == "TYPE_INT8":
-        return torch.int8
-    if dtype == "TYPE_UINT64":
-        return torch.uint64
-    if dtype == "TYPE_UINT32":
-        return torch.uint32
-    if dtype == "TYPE_UINT16":
-        return torch.uint16
-    if dtype == "TYPE_UINT8":
-        return torch.uint8
-    if dtype == "TYPE_BOOL":
-        return torch.bool
-    raise ValueError(f"Can't convert dtype {dtype})")
+    dtypes = {
+        "TYPE_FP64": torch.float64,
+        "TYPE_FP32": torch.float32,
+        "TYPE_FP16": torch.float16,
+        "TYPE_INT64": torch.int64,
+        "TYPE_INT32": torch.int32,
+        "TYPE_INT16": torch.int16,
+        "TYPE_INT8": torch.int8,
+        "TYPE_UINT64": torch.uint64,
+        "TYPE_UINT32": torch.uint32,
+        "TYPE_UINT16": torch.uint16,
+        "TYPE_UINT8": torch.uint8,
+        "TYPE_BOOL": torch.bool,
+    }
+
+    if _is_string_dtype(dtype):
+        return model_config.TYPE_STRING
+    elif dtype in dtypes:
+        return dtypes[dtype]
+    else:
+        raise ValueError(f"Can't convert dtype {dtype})")
 
 
 def _triton_datatype_to_dtype(data_type):
