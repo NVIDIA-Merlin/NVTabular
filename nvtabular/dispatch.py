@@ -593,9 +593,9 @@ def _generate_local_seed(global_rank, global_size):
     random_state = _get_random_state()
     if cp:
         seeds = random_state.tomaxint(size=global_size)
-        local_seed = seeds[global_rank]
-        return cp.random.seed(local_seed.get())
-    seeds = random_state.randint(0, 2 ** 32, size=global_size)
+        cp.random.seed(seeds[global_rank].get())
+    else:
+        seeds = random_state.randint(0, 2 ** 32, size=global_size)
     return seeds[global_rank]
 
 

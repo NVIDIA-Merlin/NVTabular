@@ -1241,7 +1241,7 @@ def _encode(
         else:
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
         for cl, cr in zip(selection_l.names, selection_r.names):
-            if isinstance(df[cl][0], (np.ndarray, list)):
+            if isinstance(df[cl].iloc[0], (np.ndarray, list)):
                 ser = df[cl].copy()
                 codes[cl] = dispatch._flatten_list_column_values(ser).astype(value[cr].dtype)
             else:

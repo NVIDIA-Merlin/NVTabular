@@ -27,14 +27,13 @@ except ImportError:
     dask_cudf = None
 
 import numpy as np
-import pandas as pd
 import pytest
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.columns import ColumnSelector, Schema
-from nvtabular.dispatch import HAS_GPU
+from nvtabular.dispatch import HAS_GPU, _make_df
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
@@ -321,7 +320,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
 
     size = 25
     row_group_size = 5
-    df = pd.DataFrame({"a": np.arange(size)})
+    df = _make_df({"a": np.arange(size)})
     df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
 
     columns = ["a"]
@@ -494,7 +493,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     cat_names = ["cat1", "cat2"]
     label_name = ["label"]
 
-    df = pd.DataFrame(
+    df = _make_df(
         {
             "cont1": np.arange(size, dtype=np.float64),
             "cont2": np.arange(size, dtype=np.float64),
