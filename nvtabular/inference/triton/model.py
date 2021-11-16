@@ -65,4 +65,4 @@ class TritonPythonModel:
         self.workflow = runner_class(workflow_path, model_kind, model_config)
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
-        self.workflow.execute(requests)
+        return self.workflow.execute(requests)

@@ -18,6 +18,7 @@ from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
+ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 
 grpcclient = pytest.importorskip("tritonclient.grpc")
 tritonclient = pytest.importorskip("tritonclient")
@@ -76,7 +77,7 @@ def _verify_workflow_on_tritonserver(
     workflow.fit(dataset)
 
     local_df = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
-    triton.generate_nvtabular_model(
+    ensemble.generate_nvtabular_model(
         workflow=workflow,
         name=model_name,
         output_path=tmpdir + f"/{model_name}",
@@ -111,7 +112,7 @@ def test_error_handling(tmpdir):
     workflow.fit(nvt.Dataset(df))
 
     model_name = "test_error_handling"
-    triton.generate_nvtabular_model(
+    ensemble.generate_nvtabular_model(
         workflow, model_name, tmpdir + f"/{model_name}", backend=BACKEND
     )
 
@@ -245,7 +246,7 @@ def test_generate_triton_multihot(tmpdir):
 
     # save workflow to triton / verify we see some expected output
     repo = os.path.join(tmpdir, "models")
-    triton.generate_nvtabular_model(workflow, "model", repo)
+    ensemble.generate_nvtabular_model(workflow, "model", repo)
     workflow = None
 
     assert os.path.exists(os.path.join(repo, "config.pbtxt"))
@@ -279,7 +280,7 @@ def test_generate_triton_model(tmpdir, engine, output_model, df):
         model_info = None
 
     repo = os.path.join(tmpdir, "models")
-    triton.generate_nvtabular_model(
+    ensemble.generate_nvtabular_model(
         workflow=workflow,
         name="model",
         output_path=repo,
