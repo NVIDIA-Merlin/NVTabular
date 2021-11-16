@@ -11,7 +11,7 @@ volumes:
 services:
   triton:
     command: "/bin/bash -c 'tritonserver --model-repository=/model/ --backend-config=hugectr,ps=/model/ps.json --model-control-mode=explicit'"
-    image: nvcr.io/nvidia/merlin/merlin-inference:0.6
+    image: nvcr.io/nvidia/merlin/merlin-inference:21:11
     runtime: nvidia
     shm_size: "1g"
     ulimits:
@@ -26,7 +26,7 @@ services:
 
   lab:
     runtime: nvidia
-    image: nvcr.io/nvidia/merlin/merlin-training:0.6
+    image: nvcr.io/nvidia/merlin/merlin-training:21:11
     command: "/bin/bash -c 'pip install jupyterlab jupytext pydot nvidia-pyindex tritonclient geventhttpclient && apt-get update && apt-get install -y tree && jupyter notebook --no-browser --allow-root --port=8888 --ip=0.0.0.0 --NotebookApp.token='demotoken' --NotebookApp.allow_origin='*' --notebook-dir=/'"
     volumes:
       - model:/model
