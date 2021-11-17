@@ -6,18 +6,10 @@ import fsspec
 import numpy as np
 import pytest
 
-# this is VERY slow on CPU
-# pytest.importorskip("cudf")
-import nvtabular.tools.data_gen as datagen  # noqa: E402
-import nvtabular.tools.dataset_inspector as datains  # noqa: E402
-from nvtabular.dispatch import (  # noqa: E402
-    HAS_GPU,
-    _concat,
-    _is_string_dtype,
-    _make_df,
-    _pull_apart_list,
-)
-from nvtabular.io import Dataset  # noqa: E402
+import nvtabular.tools.data_gen as datagen
+import nvtabular.tools.dataset_inspector as datains
+from nvtabular.dispatch import HAS_GPU, _concat, _is_string_dtype, _make_df, _pull_apart_list
+from nvtabular.io import Dataset
 
 json_sample = {
     "conts": {
