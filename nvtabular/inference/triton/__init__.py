@@ -468,7 +468,7 @@ def _generate_nvtabular_config(
         for column, dtype in workflow.output_dtypes.items():
             if column in sparse_max.keys():
                 # this assumes max_sequence_length is equal for all output columns
-                dim=sparse_max[column]
+                dim = sparse_max[column]
                 _add_model_param(column, dtype, model_config.ModelOutput, config.output, [-1, dim])
             else:
                 _add_model_param(column, dtype, model_config.ModelOutput, config.output)
@@ -557,21 +557,25 @@ def export_tensorflow_model(model, name, output_path, version=1):
             config.input.append(
                 model_config.ModelInput(
                     name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
-                    )
+                )
             )
 
     for col in outputs:
         if col.shape[1] > 1:
             config.output.append(
                 model_config.ModelOutput(
-                    name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
-                    )
+                    name=col.name.split("/")[0],
+                    data_type=_convert_dtype(col.dtype),
+                    dims=[-1, col.shape[1]]
+                )
             )
         else:
             config.output.append(
                 model_config.ModelOutput(
-                    name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
-                    )
+                    name=col.name.split("/")[0],
+                    data_type=_convert_dtype(col.dtype),
+                    dims=[-1, 1]
+                )
             )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
