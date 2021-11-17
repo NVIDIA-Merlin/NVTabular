@@ -28,7 +28,7 @@ import numpy as np
 from triton_python_backend_utils import InferenceResponse, Tensor
 
 from nvtabular.inference.triton import get_column_types
-from nvtabular.inference.triton.runners.base import WorkflowRunner
+from nvtabular.inference.triton.workflow.base import WorkflowRunner
 from nvtabular.ops import get_embedding_sizes
 
 

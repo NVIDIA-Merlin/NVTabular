@@ -34,7 +34,7 @@ from triton_python_backend_utils import (
 )
 
 from nvtabular.dispatch import _is_list_dtype
-from nvtabular.inference.triton.runners.base import WorkflowRunner
+from nvtabular.inference.triton.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):

@@ -24,31 +24,43 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from triton_python_backend_utils import InferenceResponse, Tensor
+import json
+import logging
+import os
+from typing import List
 
-from nvtabular.inference.triton import get_column_types
-from nvtabular.inference.triton.runners.base import WorkflowRunner
+from triton_python_backend_utils import InferenceRequest, InferenceResponse
+
+from nvtabular.inference.triton.workflow.hugectr import HugeCTRWorkflowRunner
+from nvtabular.inference.triton.workflow.pytorch import PyTorchWorkflowRunner
+from nvtabular.inference.triton.workflow.tensorflow import TensorflowWorkflowRunner
+
+LOG = logging.getLogger("nvtabular")
+
+RUNNER_TYPES = {
+    "hugectr": HugeCTRWorkflowRunner,
+    "pytorch": PyTorchWorkflowRunner,
+    "tensorflow": TensorflowWorkflowRunner,
+}
 
 
-class PyTorchWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow_path, model_kind, model_config):
-        super().__init__(workflow_path, model_kind, model_config)
+class TritonPythonModel:
+    def initialize(self, args):
+        workflow_path = os.path.join(
+            args["model_repository"], str(args["model_version"]), "workflow"
+        )
+        model_kind = args["model_instance_kind"]
+        model_config = json.loads(args["model_config"])
+        output_model = model_config["parameters"]["output_model"]["string_value"]
 
-        self.column_types = get_column_types(self.workflow_path)
+        if output_model == "hugectr":
+            runner_class = HugeCTRWorkflowRunner
+        elif output_model == "pytorch":
+            runner_class = PyTorchWorkflowRunner
+        else:
+            runner_class = TensorflowWorkflowRunner
 
-    def _transform_outputs(self, tensors):
-        output_tensors = []
-        for output_name, cols in self.column_types.items():
-            output_tensors.append(
-                Tensor(
-                    output_name,
-                    self._convert(cols["columns"], tensors, cols["dtype"]),
-                )
-            )
+        self.workflow = runner_class(workflow_path, model_kind, model_config)
 
-        return InferenceResponse(output_tensors)
-
-    def _convert(self, columns, tensors, dtype):
-        """converts outputs to a numpy input compatible with pytorch"""
-        rows = max(len(tensors[name]) for name in columns)
-        return self._convert_to_np(columns, tensors, dtype, rows)
+    def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
+        return self.workflow.execute(requests)
