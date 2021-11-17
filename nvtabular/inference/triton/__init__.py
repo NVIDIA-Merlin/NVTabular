@@ -42,6 +42,7 @@ def export_tensorflow_ensemble(
     name,
     model_path,
     label_columns,
+    sparse_max=None,
     version=1,
     nvtabular_backend="python",
 ):
@@ -91,6 +92,7 @@ def export_tensorflow_ensemble(
         workflow,
         name + "_nvt",
         preprocessing_path,
+        sparse_max=sparse_max,
         backend=nvtabular_backend,
     )
 
@@ -317,6 +319,7 @@ def generate_nvtabular_model(
     conts=None,
     max_batch_size=None,
     output_info=None,
+    sparse_max=None,
     backend="python",
 ):
     """converts a workflow to a triton mode"""
@@ -331,6 +334,7 @@ def generate_nvtabular_model(
         cats,
         conts,
         output_info,
+        sparse_max=sparse_max,
         backend=backend,
     )
 
@@ -415,6 +419,7 @@ def _generate_nvtabular_config(
     cats=None,
     conts=None,
     output_info=None,
+    sparse_max=None,
     backend="python",
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
@@ -461,7 +466,12 @@ def _generate_nvtabular_config(
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
         for column, dtype in workflow.output_dtypes.items():
-            _add_model_param(column, dtype, model_config.ModelOutput, config.output)
+            if column in sparse_max.keys():
+                # this assumes max_sequence_length is equal for all output columns
+                dim=sparse_max[column]
+                _add_model_param(column, dtype, model_config.ModelOutput, config.output, [-1, dim])
+            else:
+                _add_model_param(column, dtype, model_config.ModelOutput, config.output)
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
@@ -760,7 +770,7 @@ def _remove_columns(workflow, to_remove):
     return workflow.fit_schema(new_schema)
 
 
-def _add_model_param(column, dtype, paramclass, params, dims=None):
+def _add_model_param(column, dtype, paramclass, params, dims=None, sparse_max=None):
     dims = dims if dims is not None else [-1, 1]
     if _is_list_dtype(dtype):
         params.append(
