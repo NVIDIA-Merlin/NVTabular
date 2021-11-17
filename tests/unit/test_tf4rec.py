@@ -1,5 +1,9 @@
 import numpy as np
-from dask.dataframe import to_datetime
+
+try:
+    from cudf import to_datetime
+except ImportError:
+    from dask.dataframe import to_datetime
 
 import nvtabular as nvt
 from nvtabular import ColumnSelector
