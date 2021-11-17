@@ -57,8 +57,6 @@ class TritonPythonModel:
             runner_class = HugeCTRWorkflowRunner
         elif output_model == "pytorch":
             runner_class = PyTorchWorkflowRunner
-        elif output_model == "tensorflow":
-            runner_class = TensorflowWorkflowRunner
         else:
             runner_class = TensorflowWorkflowRunner
 
