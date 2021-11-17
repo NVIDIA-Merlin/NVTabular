@@ -25,11 +25,12 @@ from nvtabular import ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 dask_cudf = pytest.importorskip("dask_cudf")
+from dask_cudf.io.tests import test_s3  # noqa: E402
 
 # Import fixtures and context managers from dask_cudf
-s3_base = dask_cudf.io.tests.test_s3.s3_base
-s3_context = dask_cudf.io.tests.test_s3.s3_context
-s3so = dask_cudf.io.tests.test_s3.s3so
+s3_base = test_s3.s3_base
+s3_context = test_s3.s3_context
+s3so = test_s3.s3so
 
 
 aiobotocore = pytest.importorskip("aiobotocore")
