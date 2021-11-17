@@ -161,6 +161,7 @@ class DatasetGen:
                 ser = dist.create_col(size, dtype=col.dtype, min_val=0, max_val=col.cardinality)
                 ser = _make_df(np.ceil(ser))[0]
             ser.name = col.name
+            ser = ser.astype(col.dtype)
             df = _concat([df, ser], axis=1)
         return df
 

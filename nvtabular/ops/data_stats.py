@@ -56,8 +56,8 @@ class DataStats(StatOperator):
             self.col_types.append(col_type)
 
             # Get cardinality for cats
-            if col_type == "cats":
-                dask_stats[col]["cardinality"] = ddf[col].nunique()
+            if col_type != "conts":
+                dask_stats[col]["cardinality"] = ddf[col].nunique().compute()
 
             # if string, replace string for their lengths for the rest of the computations
             if dtype == "object":
