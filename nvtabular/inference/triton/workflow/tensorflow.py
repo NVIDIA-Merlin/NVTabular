@@ -24,14 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
-
-from triton_python_backend_utils import (
-    InferenceResponse,
-    Tensor,
-    get_output_config_by_name,
-    triton_string_to_numpy,
-)
+from triton_python_backend_utils import get_output_config_by_name, triton_string_to_numpy
 
 from nvtabular.dispatch import _is_list_dtype
 from nvtabular.inference.triton.workflow.base import WorkflowRunner
@@ -74,13 +67,14 @@ class TensorflowWorkflowRunner(WorkflowRunner):
                 # convert list values to match TF dataloader
                 values = value[0].astype(self.output_dtypes[name + "__values"])
                 values = values.reshape(len(values), 1)
-                output_tensors.append(Tensor(name + "__values", values))
+                output_tensors.append((name + "__values", values))
+
                 offsets = value[1].astype(self.output_dtypes[name + "__nnzs"])
                 nnzs = offsets[1:] - offsets[:-1]
                 nnzs = nnzs.reshape(len(nnzs), 1)
-                output_tensors.append(Tensor(name + "__nnzs", nnzs))
+                output_tensors.append((name + "__nnzs", nnzs))
             else:
                 d = value.astype(self.output_dtypes[name])
                 d = d.reshape(len(d), 1)
-                output_tensors.append(Tensor(name, d))
-        return InferenceResponse(output_tensors)
+                output_tensors.append((name, d))
+        return output_tensors

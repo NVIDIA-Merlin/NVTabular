@@ -25,7 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import numpy as np
-from triton_python_backend_utils import InferenceResponse, Tensor
 
 from nvtabular.inference.triton import get_column_types
 from nvtabular.inference.triton.workflow.base import WorkflowRunner
@@ -44,32 +43,32 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
         output_tensors = []
         if "conts" in self.column_types:
             output_tensors.append(
-                Tensor(
+                (
                     "DES",
                     self._convert(self.column_types["conts"], tensors, np.float32),
                 )
             )
         else:
-            output_tensors.append(Tensor("DES", np.array([[]], np.float32)))
+            output_tensors.append(("DES", np.array([[]], np.float32)))
 
         if "cats" in self.column_types:
             for name in self.column_types["cats"]:
                 tensors[name] += self.offsets[name]
             cats_np = self._convert(self.column_types["cats"], tensors, np.int64)
             output_tensors.append(
-                Tensor(
+                (
                     "CATCOLUMN",
                     cats_np,
                 )
             )
         else:
-            output_tensors.append(Tensor("CATCOLUMN", np.array([[]], np.int64)))
+            output_tensors.append(("CATCOLUMN", np.array([[]], np.int64)))
 
         len_cats_np = cats_np.shape[1]
         row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
-        output_tensors.append(Tensor("ROWINDEX", row_index))
+        output_tensors.append(("ROWINDEX", row_index))
 
-        return InferenceResponse(output_tensors)
+        return output_tensors
 
     def _convert(self, columns, tensors, dtype):
         """converts outputs to a numpy input compatible with hugectr"""

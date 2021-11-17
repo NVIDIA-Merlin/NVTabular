@@ -33,6 +33,7 @@ import numpy as np
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
+    Tensor,
     get_input_tensor_by_name,
 )
 
@@ -111,19 +112,25 @@ class WorkflowRunner(ABC):
                 offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
                 input_tensors[name] = (values, offsets)
 
-            # use our NVTabular workflow to transform the dataset
-            transformed, kind = self._transform_tensors(input_tensors, self.workflow.output_node)
+            raw_tensor_tuples = self.run_workflow(input_tensors)
 
-            # if we don't have tensors in numpy format, convert back so that the we can return
-            # to triton
-            if kind != Supports.CPU_DICT_ARRAY:
-                transformed, kind = convert_format(transformed, kind, Supports.CPU_DICT_ARRAY)
+            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
 
-            # convert to the format expected by the DL models
-            response = self._transform_outputs(transformed)
-            responses.append(response)
+            responses.append(InferenceResponse(result))
 
         return responses
+
+    def run_workflow(self, input_tensors):
+        # use our NVTabular workflow to transform the dataset
+        transformed, kind = self._transform_tensors(input_tensors, self.workflow.output_node)
+
+        # if we don't have tensors in numpy format, convert back so that the we can return
+        # to triton
+        if kind != Supports.CPU_DICT_ARRAY:
+            transformed, kind = convert_format(transformed, kind, Supports.CPU_DICT_ARRAY)
+
+        # convert to the format expected by the DL models
+        return self._transform_outputs(transformed)
 
     @abstractmethod
     def _transform_outputs(self, tensors):

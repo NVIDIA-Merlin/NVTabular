@@ -24,8 +24,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from triton_python_backend_utils import InferenceResponse, Tensor
-
 from nvtabular.inference.triton import get_column_types
 from nvtabular.inference.triton.workflow.base import WorkflowRunner
 
@@ -40,13 +38,13 @@ class PyTorchWorkflowRunner(WorkflowRunner):
         output_tensors = []
         for output_name, cols in self.column_types.items():
             output_tensors.append(
-                Tensor(
+                (
                     output_name,
                     self._convert(cols["columns"], tensors, cols["dtype"]),
                 )
             )
 
-        return InferenceResponse(output_tensors)
+        return output_tensors
 
     def _convert(self, columns, tensors, dtype):
         """converts outputs to a numpy input compatible with pytorch"""
