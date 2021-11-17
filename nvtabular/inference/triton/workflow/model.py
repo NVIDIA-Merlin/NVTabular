@@ -29,8 +29,16 @@ import logging
 import os
 from typing import List
 
-from triton_python_backend_utils import InferenceRequest, InferenceResponse
+from triton_python_backend_utils import (
+    InferenceRequest,
+    InferenceResponse,
+    Tensor,
+    get_input_tensor_by_name,
+)
 
+import nvtabular
+from nvtabular.dispatch import _is_list_dtype
+from nvtabular.inference.triton import _convert_tensor, get_column_types
 from nvtabular.inference.triton.workflow.hugectr import HugeCTRWorkflowRunner
 from nvtabular.inference.triton.workflow.pytorch import PyTorchWorkflowRunner
 from nvtabular.inference.triton.workflow.tensorflow import TensorflowWorkflowRunner
@@ -46,21 +54,68 @@ RUNNER_TYPES = {
 
 class TritonPythonModel:
     def initialize(self, args):
+        # Arg parsing
         workflow_path = os.path.join(
             args["model_repository"], str(args["model_version"]), "workflow"
         )
-        model_kind = args["model_instance_kind"]
+        model_device = args["model_instance_kind"]
+
+        # Workflow instantiation
+        self.workflow = nvtabular.Workflow.load(workflow_path)
+
+        # Config loading and parsing
         model_config = json.loads(args["model_config"])
-        output_model = model_config["parameters"]["output_model"]["string_value"]
+        model_framework = model_config["parameters"]["output_model"]["string_value"]
 
-        if output_model == "hugectr":
-            runner_class = HugeCTRWorkflowRunner
-        elif output_model == "pytorch":
-            runner_class = PyTorchWorkflowRunner
-        else:
-            runner_class = TensorflowWorkflowRunner
+        column_types = get_column_types(workflow_path)
+        self.runner = _construct_workflow_runner(
+            self.workflow, column_types, model_framework, model_config, model_device
+        )
 
-        self.workflow = runner_class(workflow_path, model_kind, model_config)
+        # Dtype parsing
+        input_dtypes = self.workflow.input_dtypes.items()
+        self.input_dtypes, self.input_multihots = _parse_input_dtypes(input_dtypes)
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
-        return self.workflow.execute(requests)
+        """Transforms the input batches by running through a NVTabular workflow.transform
+        function.
+        """
+        responses = []
+        for request in requests:
+            # transform the triton tensors to a dict of name:numpy tensor
+            input_tensors = {
+                name: _convert_tensor(get_input_tensor_by_name(request, name))
+                for name in self.input_dtypes
+            }
+
+            # multihots are represented as a tuple of (values, offsets)
+            for name, dtype in self.input_multihots.items():
+                values = _convert_tensor(get_input_tensor_by_name(request, name + "__values"))
+                offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
+                input_tensors[name] = (values, offsets)
+
+            raw_tensor_tuples = self.runner.run_workflow(input_tensors)
+
+            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
+
+            responses.append(InferenceResponse(result))
+
+        return responses
+
+
+def _construct_workflow_runner(workflow, column_types, model_framework, model_config, model_device):
+    if model_framework == "hugectr":
+        runner_class = HugeCTRWorkflowRunner
+    elif model_framework == "pytorch":
+        runner_class = PyTorchWorkflowRunner
+    else:
+        runner_class = TensorflowWorkflowRunner
+
+    return runner_class(workflow, column_types, model_config, model_device)
+
+
+def _parse_input_dtypes(dtypes):
+    input_dtypes = {col: dtype for col, dtype in dtypes if not _is_list_dtype(dtype)}
+    input_multihots = {col: dtype for col, dtype in dtypes if _is_list_dtype(dtype)}
+
+    return input_dtypes, input_multihots

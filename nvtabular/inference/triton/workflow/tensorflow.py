@@ -31,8 +31,8 @@ from nvtabular.inference.triton.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow_path, model_kind, model_config):
-        super().__init__(workflow_path, model_kind, model_config)
+    def __init__(self, workflow, column_types, model_config, model_device):
+        super().__init__(workflow, column_types, model_config, model_device)
 
         self.column_types = self.offsets = None
         self.output_dtypes = dict()

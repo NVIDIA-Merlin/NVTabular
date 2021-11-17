@@ -24,16 +24,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from nvtabular.inference.triton import get_column_types
+
 from nvtabular.inference.triton.workflow.base import WorkflowRunner
 
 
 class PyTorchWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow_path, model_kind, model_config):
-        super().__init__(workflow_path, model_kind, model_config)
-
-        self.column_types = get_column_types(self.workflow_path)
-
     def _transform_outputs(self, tensors):
         output_tensors = []
         for output_name, cols in self.column_types.items():

@@ -27,19 +27,10 @@
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import List
 
 import numpy as np
-from triton_python_backend_utils import (
-    InferenceRequest,
-    InferenceResponse,
-    Tensor,
-    get_input_tensor_by_name,
-)
 
-import nvtabular
-from nvtabular.dispatch import _concat_columns, _is_list_dtype
-from nvtabular.inference.triton import _convert_tensor
+from nvtabular.dispatch import _concat_columns
 from nvtabular.inference.triton.data_conversions import convert_format
 from nvtabular.ops.operator import Supports
 
@@ -47,24 +38,14 @@ LOG = logging.getLogger("nvtabular")
 
 
 class WorkflowRunner(ABC):
-    def __init__(self, workflow_path, model_kind, model_config):
-        self.workflow_path = workflow_path
-        self.workflow = nvtabular.Workflow.load(self.workflow_path)
-
-        self.kind = model_kind
+    def __init__(self, workflow, column_types, model_config, model_device):
+        self.workflow = workflow
+        self.column_types = column_types
         self.model_config = model_config
+        self.device = model_device
 
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.output_node)
-
-        self.input_dtypes = {
-            col: dtype
-            for col, dtype in self.workflow.input_dtypes.items()
-            if not _is_list_dtype(dtype)
-        }
-        self.input_multihots = {
-            col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
-        }
 
     def _initialize_ops(self, workflow_node, visited=None):
         if visited is None:
@@ -80,7 +61,7 @@ class WorkflowRunner(ABC):
             supported = workflow_node.op.supports
 
             # if we're running on the CPU only, mask off support for GPU data formats
-            if self.kind == "CPU":
+            if self.device == "CPU":
                 supported = functools.reduce(
                     lambda a, b: a | b,
                     (v for v in list(Supports) if v & supported and "CPU" in str(v)),
@@ -93,32 +74,6 @@ class WorkflowRunner(ABC):
             if parent not in visited:
                 visited.add(parent)
                 self._initialize_ops(parent, visited)
-
-    def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
-        """Transforms the input batches by running through a NVTabular workflow.transform
-        function.
-        """
-        responses = []
-        for request in requests:
-            # transform the triton tensors to a dict of name:numpy tensor
-            input_tensors = {
-                name: _convert_tensor(get_input_tensor_by_name(request, name))
-                for name in self.input_dtypes
-            }
-
-            # multihots are represented as a tuple of (values, offsets)
-            for name, dtype in self.input_multihots.items():
-                values = _convert_tensor(get_input_tensor_by_name(request, name + "__values"))
-                offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
-                input_tensors[name] = (values, offsets)
-
-            raw_tensor_tuples = self.run_workflow(input_tensors)
-
-            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
-
-            responses.append(InferenceResponse(result))
-
-        return responses
 
     def run_workflow(self, input_tensors):
         # use our NVTabular workflow to transform the dataset

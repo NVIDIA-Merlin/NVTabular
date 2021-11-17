@@ -26,16 +26,14 @@
 
 import numpy as np
 
-from nvtabular.inference.triton import get_column_types
 from nvtabular.inference.triton.workflow.base import WorkflowRunner
 from nvtabular.ops import get_embedding_sizes
 
 
 class HugeCTRWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow_path, model_kind, model_config):
-        super().__init__(workflow_path, model_kind, model_config)
+    def __init__(self, workflow, column_types, model_config, model_device):
+        super().__init__(workflow, column_types, model_config, model_device)
 
-        self.column_types = get_column_types(self.workflow_path)
         if "cats" in self.column_types:
             self.offsets = self.get_offsets(self.workflow, self.column_types)
 
