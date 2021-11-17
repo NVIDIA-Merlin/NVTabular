@@ -1,11 +1,8 @@
-import pytest
+import numpy as np
+from dask.dataframe import to_datetime
 
-pytest.importorskip("cudf")
-import cudf  # noqa: E402
-import numpy as np  # noqa: E402
-
-import nvtabular as nvt  # noqa: E402
-from nvtabular import ColumnSelector  # noqa: E402
+import nvtabular as nvt
+from nvtabular import ColumnSelector
 
 NUM_ROWS = 10000
 
@@ -34,7 +31,7 @@ def test_tf4rec():
 
     sessionTime = (
         sessionTs
-        >> nvt.ops.LambdaOp(lambda col: cudf.to_datetime(col, unit="s"))
+        >> nvt.ops.LambdaOp(lambda col: to_datetime(col, unit="s"))
         >> nvt.ops.Rename(name="event_time_dt")
     )
 

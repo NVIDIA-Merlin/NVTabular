@@ -18,20 +18,17 @@ import os
 from io import BytesIO
 
 import pytest
+from dask.bytes.tests import test_s3
+from dask.dataframe.io.parquet.core import create_metadata_file
 
-pytest.importorskip("cudf")
-from dask.dataframe.io.parquet.core import create_metadata_file  # noqa: E402
-from dask_cudf.io.tests import test_s3  # noqa: E402
-
-import nvtabular as nvt  # noqa: E402
-from nvtabular import ops  # noqa: E402
-from tests.conftest import assert_eq, mycols_csv, mycols_pq  # noqa: E402
+import nvtabular as nvt
+from nvtabular import ops
+from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # Import fixtures and context managers from dask_cudf
 s3_base = test_s3.s3_base
 s3_context = test_s3.s3_context
 s3so = test_s3.s3so
-
 
 aiobotocore = pytest.importorskip("aiobotocore")
 
