@@ -41,9 +41,9 @@ from triton_python_backend_utils import (
 import nvtabular
 from nvtabular.dispatch import _is_list_dtype
 from nvtabular.inference.triton import _convert_tensor, get_column_types
-from nvtabular.inference.triton.workflow.hugectr import HugeCTRWorkflowRunner
-from nvtabular.inference.triton.workflow.pytorch import PyTorchWorkflowRunner
-from nvtabular.inference.triton.workflow.tensorflow import TensorflowWorkflowRunner
+from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
+from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner
+from nvtabular.inference.workflow.tensorflow import TensorflowWorkflowRunner
 
 LOG = logging.getLogger("nvtabular")
 

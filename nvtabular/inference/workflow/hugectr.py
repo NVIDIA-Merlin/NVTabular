@@ -26,7 +26,7 @@
 
 import numpy as np
 
-from nvtabular.inference.triton.workflow.base import WorkflowRunner
+from nvtabular.inference.workflow.base import WorkflowRunner
 from nvtabular.ops import get_embedding_sizes
 
 

@@ -24,7 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from nvtabular.inference.triton.workflow.base import WorkflowRunner
+from nvtabular.inference.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
