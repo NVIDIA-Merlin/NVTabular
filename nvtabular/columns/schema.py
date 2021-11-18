@@ -132,7 +132,6 @@ def create_protobuf_feature(column_schema):
     )
     # can be instantiated with no values
     # if  so, unnecessary to dump
-    # import pdb; pdb.set_trace()
     if len(column_schema.properties) > 0:
         feature = register_extra_metadata(column_schema, feature)
     return feature
