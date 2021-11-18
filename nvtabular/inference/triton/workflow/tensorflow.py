@@ -24,28 +24,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from triton_python_backend_utils import get_output_config_by_name, triton_string_to_numpy
-
-from nvtabular.dispatch import _is_list_dtype
 from nvtabular.inference.triton.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow, column_types, model_config, model_device):
-        super().__init__(workflow, column_types, model_config, model_device)
+    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
+        super().__init__(workflow, column_types, output_dtypes, model_config, model_device)
 
         self.column_types = self.offsets = None
-        self.output_dtypes = dict()
-        for name, dtype in self.workflow.output_dtypes.items():
-            if not _is_list_dtype(dtype):
-                self._set_output_dtype(name)
-            else:
-                self._set_output_dtype(name + "__nnzs")
-                self._set_output_dtype(name + "__values")
-
-    def _set_output_dtype(self, name):
-        conf = get_output_config_by_name(self.model_config, name)
-        self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
 
     def _transform_outputs(self, tensors):
         # Load extra info needed for the Transformer4Rec (if exists)

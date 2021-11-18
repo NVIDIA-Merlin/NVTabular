@@ -31,8 +31,8 @@ from nvtabular.ops import get_embedding_sizes
 
 
 class HugeCTRWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow, column_types, model_config, model_device):
-        super().__init__(workflow, column_types, model_config, model_device)
+    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
+        super().__init__(workflow, column_types, output_dtypes, model_config, model_device)
 
         if "cats" in self.column_types:
             self.offsets = self.get_offsets(self.workflow, self.column_types)

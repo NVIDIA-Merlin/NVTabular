@@ -38,9 +38,10 @@ LOG = logging.getLogger("nvtabular")
 
 
 class WorkflowRunner(ABC):
-    def __init__(self, workflow, column_types, model_config, model_device):
+    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
         self.workflow = workflow
         self.column_types = column_types
+        self.output_dtypes = output_dtypes
         self.model_config = model_config
         self.device = model_device
 
