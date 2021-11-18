@@ -51,6 +51,21 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
+@pytest.mark.parametrize("cpu", _CPU)
+def test_logop_lists(tmpdir, cpu):
+    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df["vals"] = [[np.exp(0) - 1, np.exp(1) - 1], [np.exp(2) - 1], []]
+
+    features = ["vals"] >> nvt.ops.LogOp()
+    workflow = nvt.Workflow(features)
+    new_df = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+
+    expected = dispatch._make_df(device="cpu" if cpu else "gpu")
+    expected["vals"] = [[0.0, 1.0], [2.0], []]
+
+    assert_eq(expected, new_df)
+
+
 def test_valuecount(tmpdir):
     df = dispatch._make_df(
         {
@@ -283,7 +298,7 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
 def test_groupby_op(keys, cpu):
     # Initial timeseries dataset
     size = 60
-    df1 = pd.DataFrame(
+    df1 = nvt.dispatch._make_df(
         {
             "name": np.random.choice(["Dave", "Zelda"], size=size),
             "id": np.random.choice([0, 1], size=size),
@@ -298,9 +313,10 @@ def test_groupby_op(keys, cpu):
     # Create a ddf, and be sure to shuffle by the groupby keys
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
     dataset = nvt.Dataset(ddf1, cpu=cpu)
-    dataset.schema.column_schemas["x"] = dataset.schema.column_schemas["name"].with_tags(
-        "custom_tag"
+    dataset.schema.column_schemas["x"] = (
+        dataset.schema.column_schemas["name"].with_tags("custom_tag").with_name("x")
     )
+
     # Define Groupby Workflow
     groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,

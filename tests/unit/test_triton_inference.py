@@ -18,6 +18,7 @@ from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
+ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 
 grpcclient = pytest.importorskip("tritonclient.grpc")
 tritonclient = pytest.importorskip("tritonclient")
@@ -294,6 +295,22 @@ def test_generate_triton_model(tmpdir, engine, output_model, df):
     workflow = nvt.Workflow.load(os.path.join(repo, "1", "workflow"))
     transformed = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
     assert_eq(expected, transformed)
+
+
+def test_remove_columns():
+    # _remove_columns was failing to export the criteo example, because
+    # the label column was getting inserted into the subgroups of the output node
+    # https://github.com/NVIDIA-Merlin/NVTabular/issues/1198
+    label_columns = ["label"]
+    cats = ["a"] >> ops.Categorify()
+    conts = ["b"] >> ops.Normalize()
+    workflow = nvt.Workflow(cats + conts + label_columns)
+
+    df = pd.DataFrame({"a": ["a", "b"], "b": [1.0, 2.0], "label": [0, 1]})
+    workflow.fit(nvt.Dataset(df))
+
+    removed = ensemble._remove_columns(workflow, label_columns)
+    assert set(removed.output_dtypes.keys()) == {"a", "b"}
 
 
 # lets test the data format conversion function on the full cartesian product

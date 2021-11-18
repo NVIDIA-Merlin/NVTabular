@@ -21,12 +21,14 @@ import subprocess
 import sys
 from os.path import dirname, realpath
 
-import cudf
 import pytest
 
-import nvtabular.tools.data_gen as datagen
-from tests.conftest import get_cuda_cluster
-from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server
+pytest.importorskip("cudf")
+import cudf  # noqa: E402
+
+import nvtabular.tools.data_gen as datagen  # noqa: E402
+from tests.conftest import get_cuda_cluster  # noqa: E402
+from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server  # noqa: E402
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 

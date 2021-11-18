@@ -56,6 +56,10 @@ class DifferenceLag(Operator):
 
     def __init__(self, partition_cols, shift=1):
         super(DifferenceLag, self).__init__()
+
+        if isinstance(partition_cols, str):
+            partition_cols = [partition_cols]
+
         self.partition_cols = partition_cols
         self.shifts = [shift] if isinstance(shift, int) else shift
 

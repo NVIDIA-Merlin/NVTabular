@@ -22,7 +22,8 @@ import pytest
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
-from nvtabular.dispatch import HAS_GPU
+from nvtabular.dispatch import HAS_GPU, _flatten_list_column, _flatten_list_column_values
+from tests.conftest import assert_eq
 
 if HAS_GPU:
     _CPU = [True, False]
@@ -81,6 +82,29 @@ def test_normalize(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns):
     cupy_outputs = cont_features.op.transform(ColumnSelector(op_columns), cupy_inputs)
     for col in op_columns:
         assert np.allclose(cupy_outputs[col], new_gdf[col].values)
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_normalize_lists(tmpdir, cpu):
+    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df["vals"] = [
+        [0.0, 1.0, 2.0],
+        [
+            3.0,
+            4.0,
+        ],
+        [5.0],
+    ]
+
+    features = ["vals"] >> nvt.ops.Normalize()
+    workflow = nvt.Workflow(features)
+    transformed = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
+
+    expected = _flatten_list_column_values(df["vals"]).astype("float32")
+    expected = (expected - expected.mean()) / expected.std()
+    expected_df = type(transformed)({"vals": expected})
+
+    assert_eq(expected_df, _flatten_list_column(transformed["vals"]))
 
 
 @pytest.mark.parametrize("cpu", _CPU)

@@ -19,8 +19,20 @@ import shutil
 import subprocess
 import time
 
-import cudf
-import cupy
+import pyarrow as pa
+
+from nvtabular.dispatch import HAS_GPU
+
+try:
+    import cudf
+except ImportError:
+    cudf = None
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -62,7 +74,7 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "cat1": [1] * num_rows,
             "cat2": [2] * num_rows,
@@ -86,6 +98,7 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         labels=label_name,
         batch_size=batch_size,
         drop_last=drop_last,
+        device="cpu",
     )
 
     all_len = len(data_itr) if drop_last else len(data_itr) - 1
@@ -96,7 +109,10 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
         if idx < all_len:
             for col in df_cols:
                 if col in chunk[0].keys():
-                    assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
+                    if nvt.dispatch.HAS_GPU:
+                        assert (list(chunk[0][col].cpu().numpy()) == df[col].values_host).all()
+                    else:
+                        assert (list(chunk[0][col].cpu().numpy()) == df[col].values).all()
 
     if drop_last and num_rows % batch_size > 0:
         assert num_rows > all_rows
@@ -107,9 +123,9 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_file_iterator_ds(df, dataset, batch, engine):
-    df_itr = cudf.DataFrame()
+    df_itr = nvt.dispatch._make_df({})
     for data_gd in dataset.to_iter(columns=mycols_csv):
-        df_itr = cudf.concat([df_itr, data_gd], axis=0) if df_itr else data_gd
+        df_itr = nvt.dispatch._concat([df_itr, data_gd], axis=0) if df_itr is not None else data_gd
 
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
@@ -169,16 +185,16 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
     # test out https://github.com/NVIDIA/NVTabular/issues/149 making sure we can iterate over
     # empty cats/conts
     graph = sum(features, nvt.WorkflowNode(label_name))
-    if not graph.selector:
-        # if we don't have conts/cats/labels we're done
-        return
-
-    processor = nvt.Workflow(sum(features, nvt.WorkflowNode(label_name)))
+    processor = nvt.Workflow(graph)
 
     output_train = os.path.join(tmpdir, "train/")
     os.mkdir(output_train)
 
     df_out = processor.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
+
+    if processor.output_node.output_schema.apply_inverse(ColumnSelector("lab_1")):
+        # if we don't have conts/cats/labels we're done
+        return
 
     data_itr = None
 
@@ -340,9 +356,13 @@ def test_gpu_dl(tmpdir, df, dataset, batch_size, part_mem_fraction, engine, devi
     )
 
     columns = mycols_pq
-    df_test = cudf.read_parquet(tar_paths[0])[columns]
+    df_test = nvt.Dataset(tar_paths[0]).to_ddf().compute()[columns]
     df_test.columns = list(range(0, len(columns)))
-    num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
+    if cudf:
+        num_rows, num_row_groups, col_names = cudf.io.read_parquet_metadata(tar_paths[0])
+    else:
+        meta = pa.parquet.read_metadata(tar_paths[0])
+        num_rows = meta.num_rows
     rows = 0
     # works with iterator alone, needs to test inside torch dataloader
     for idx, chunk in enumerate(data_itr):
@@ -435,7 +455,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
 
 def test_mh_support(tmpdir):
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -446,14 +466,19 @@ def test_mh_support(tmpdir):
     cat_names = ["Authors", "Reviewers"]  # , "Engaging User"]
     cont_names = []
     label_name = ["Post"]
-
-    cats = cat_names >> ops.HashBucket(num_buckets=10)
+    if HAS_GPU:
+        cats = cat_names >> ops.HashBucket(num_buckets=10)
+    else:
+        cats = cat_names >> ops.Categorify()
 
     processor = nvt.Workflow(cats + label_name)
     df_out = processor.fit_transform(nvt.Dataset(df)).to_ddf().compute(scheduler="synchronous")
 
     # check to make sure that the same strings are hashed the same
-    authors = df_out["Authors"].to_arrow().to_pylist()
+    if HAS_GPU:
+        authors = df_out["Authors"].to_arrow().to_pylist()
+    else:
+        authors = df_out["Authors"]
     assert authors[0][0] == authors[1][0]  # 'User_A'
     assert authors[2][1] == authors[3][0]  # 'User_C'
 
@@ -476,7 +501,7 @@ def test_mh_support(tmpdir):
 @pytest.mark.parametrize("sparse_dense", [False, True])
 def test_sparse_tensors(sparse_dense):
     # create small dataset, add values to sparse_list
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
             "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
@@ -512,7 +537,7 @@ def test_sparse_tensors(sparse_dense):
 
 
 def test_mh_model_support(tmpdir):
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -557,7 +582,9 @@ def test_mh_model_support(tmpdir):
         emb_dropout=EMBEDDING_DROPOUT_RATE,
         layer_hidden_dims=HIDDEN_DIMS,
         layer_dropout_rates=DROPOUT_RATES,
-    ).cuda()
+    )
+    if HAS_GPU:
+        model = model.cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     def rmspe_func(y_pred, y):
@@ -583,7 +610,8 @@ def test_mh_model_support(tmpdir):
 
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 @pytest.mark.skipif(
-    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+    cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
+    reason="This unittest requires multiple gpu's to run",
 )
 def test_horovod_multigpu(tmpdir):
 
@@ -665,7 +693,8 @@ def test_horovod_multigpu(tmpdir):
 
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 @pytest.mark.skipif(
-    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+    cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
+    reason="This unittest requires multiple gpu's to run",
 )
 def test_distributed_multigpu(tmpdir):
     json_sample = {

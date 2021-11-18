@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Text
 
+import fsspec
 import numpy
 
 # this needs to be before any modules that import protobuf
@@ -131,7 +132,6 @@ def create_protobuf_feature(column_schema):
     )
     # can be instantiated with no values
     # if  so, unnecessary to dump
-    # import pdb; pdb.set_trace()
     if len(column_schema.properties) > 0:
         feature = register_extra_metadata(column_schema, feature)
     return feature
@@ -310,9 +310,7 @@ class Schema:
         return Schema(columns)
 
     def save_protobuf(self, schema_path):
-        schema_path = Path(schema_path)
-        if not schema_path.is_dir():
-            raise ValueError(f"The path provided is not a valid directory: {schema_path}")
+        fs = fsspec.get_fs_token_paths(schema_path)[0]
 
         # traverse list of column schema
         schema = schema_pb2.Schema()
@@ -321,8 +319,16 @@ class Schema:
             features.append(create_protobuf_feature(col_schema))
         schema.feature.extend(features)
 
-        with open(schema_path / "schema.pbtxt", "w") as f:
-            f.write(text_format.MessageToString(schema))
+        try:
+            with fs.open(fs.sep.join([str(schema_path), "schema.pbtxt"]), "w") as f:
+                f.write(text_format.MessageToString(schema))
+        except Exception as e:
+            if not fs.isdir(schema_path):
+                raise ValueError(
+                    f"The path provided is not a valid directory: {schema_path}"
+                ) from e
+            raise
+
         return self
 
     def __iter__(self):

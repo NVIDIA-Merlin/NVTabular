@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cupy
+import numpy as np
 import pytest
 
+from nvtabular.dispatch import _concat, _generate_local_seed, _get_random_state
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
+from tests.conftest import assert_eq
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -36,8 +38,7 @@ def test_dataloader_seeding(datasets, engine, batch_size):
         # Capturing the next random number generated allows us to check
         # that different workers have different random states when this
         # function is called
-        rng_state = cupy.random.get_random_state()
-        next_rand = rng_state.tomaxint(size=1)
+        next_rand = _generate_local_seed(0, 1)
         seed_fragments.append(next_rand)
 
         # But since we don't actually want to run two data loaders in
@@ -72,20 +73,19 @@ def test_dataloader_seeding(datasets, engine, batch_size):
 
     # Starting from the same random state, run a shuffle on each worker
     # and capture the results
-    cupy.random.seed(1234)
+    np.random.seed(1234)
 
     data_loader_0._shuffle_indices()
 
-    dl0_rng_state = cupy.random.get_random_state()
+    dl0_rng_state = _get_random_state()
     dl0_next_rand = dl0_rng_state.tomaxint(size=1)
     dl0_indices = data_loader_0.indices
 
-    cupy.random.seed(1234)
+    np.random.seed(1234)
 
     data_loader_1._shuffle_indices()
 
-    dl1_rng_state = cupy.random.get_random_state()
-    dl1_next_rand = dl1_rng_state.tomaxint(size=1)
+    dl1_next_rand = _generate_local_seed(0, 1)
     dl1_indices = data_loader_1.indices
 
     # Test that the seed function actually gets called in each data loader
@@ -119,4 +119,34 @@ def test_dataloader_empty_error(datasets, engine, batch_size):
         )
     assert "Neither Categorical or Continuous columns were found by the dataloader. " in str(
         exc_info.value
+    )
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+@pytest.mark.parametrize("batch_size", [128])
+@pytest.mark.parametrize("epochs", [1, 5])
+def test_dataloader_epochs(datasets, engine, batch_size, epochs):
+    dataset = Dataset(str(datasets["parquet"]), engine=engine)
+    cont_names = ["x", "y", "id"]
+    cat_names = ["name-string", "name-cat"]
+    label_name = ["label"]
+
+    data_loader = DataLoader(
+        dataset,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        batch_size=batch_size,
+        label_names=label_name,
+        shuffle=False,
+    )
+
+    # Convert to iterators and then to DataFrames
+    df1 = _concat(list(data_loader._buff.itr))
+    df2 = _concat(list(data_loader.epochs(epochs)._buff.itr))
+
+    # Check that the DataFrame sizes and rows make sense
+    assert len(df2) == epochs * len(df1)
+    assert_eq(
+        _concat([df1 for i in range(epochs)]).reset_index(drop=True),
+        df2.reset_index(drop=True),
     )
