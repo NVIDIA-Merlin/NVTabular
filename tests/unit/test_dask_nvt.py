@@ -18,8 +18,6 @@ import glob
 import math
 import os
 
-import cudf
-import dask_cudf
 import pandas as pd
 import pytest
 from dask.dataframe import assert_eq
@@ -30,10 +28,14 @@ from nvtabular import ColumnSelector, Dataset, Workflow, ops
 from nvtabular.io.shuffle import Shuffle
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
+cudf = pytest.importorskip("cudf")
+dask_cudf = pytest.importorskip("dask_cudf")
 
 # Dummy operator logic to test stats
 # TODO: Possibly add public API to add
 #       standalone Stat Ops
+
+
 def _dummy_op_logic(gdf, target_columns, _id="dummy", **kwargs):
     cont_names = target_columns
     if not cont_names:
