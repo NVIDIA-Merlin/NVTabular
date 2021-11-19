@@ -444,6 +444,7 @@ class Categorify(StatOperator):
 
                 if isinstance(use_name, tuple):
                     use_name = list(use_name)
+
                 path = self.categories[storage_name]
                 new_df[name] = _encode(
                     use_name,
@@ -769,6 +770,7 @@ def _top_level_groupby(df, options: FitOptions):
         if _is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
             df_gb = dispatch._flatten_list_column(df_gb[cat_col_selector.names[0]])
+
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
@@ -954,16 +956,54 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
     if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
-        # `on_host=True` implies gpu-backed data.
+        # `on_host=True` implies gpu-backed data,
+        # because CPU-backed data would have never
+        # been converted from pandas to pyarrow.
         df = pa.concat_tables(dfs, promote=True)
-        df = dispatch._from_host(df)
+        if len(df):
+            # Before fully converting this pyarrow Table
+            # to a cudf DatFrame, we can reduce the memory
+            # footprint of `df`. Since the size of `df`
+            # depends on the cardinality of the features,
+            # and NOT on the partition size, the remaining
+            # logic in this function has an OOM-error risk
+            # (even with tiny partitions).
+            size_columns = []
+            for col in col_selector.names:
+                name = col + "_size"
+                if name in df.schema.names:
+                    # Convert this column alone to cudf,
+                    # and drop the field from df. Note that
+                    # we are only converting this column to
+                    # cudf to take advantage of fast `max`
+                    # performance.
+                    size_columns.append(dispatch._from_host(df.select([name])))
+                    df = df.drop([name])
+                    # Use numpy to calculate the "minimum"
+                    # dtype needed to capture the "size" column,
+                    # and cast the type
+                    typ = np.min_scalar_type(size_columns[-1][name].max() * 2)
+                    size_columns[-1][name] = size_columns[-1][name].astype(typ)
+            # Convert the remaining columns in df to cudf,
+            # and append the type-casted "size" columns
+            df = dispatch._concat_columns([dispatch._from_host(df)] + size_columns)
+        else:
+            # Empty DataFrame - No need for type-casting
+            df = dispatch._from_host(df)
     else:
+        # For now, if we are not concatenating in host memory,
+        # we will assume that reducing the memory footprint of
+        # "size" columns is not a priority. However, the same
+        # type-casting optimization can also be done for both
+        # pandas and cudf-backed data here.
         df = _concat(dfs, ignore_index=True)
     rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
-        # Make sure first category is Null
-        df = df.sort_values(col_selector.names, na_position="first")
+        # Make sure first category is Null.
+        # Use ignore_index=True to avoid allocating memory for
+        # an index we don't even need
+        df = df.sort_values(col_selector.names, na_position="first", ignore_index=True)
         new_cols = {}
         nulls_missing = False
         for col in col_selector.names:
@@ -1227,6 +1267,7 @@ def _encode(
             )
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
+
     if value is None:
         value = type(df)()
         for c in selection_r.names:
@@ -1234,17 +1275,14 @@ def _encode(
             value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
+
     if not search_sorted:
         if list_col:
             codes = dispatch._flatten_list_column(df[selection_l.names[0]])
             codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
-        for cl, cr in zip(selection_l.names, selection_r.names):
-            if isinstance(df[cl].iloc[0], (np.ndarray, list)):
-                ser = df[cl].copy()
-                codes[cl] = dispatch._flatten_list_column_values(ser).astype(value[cr].dtype)
-            else:
+            for cl, cr in zip(selection_l.names, selection_r.names):
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
@@ -1281,11 +1319,13 @@ def _encode(
                 df[selection_l.names], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r.names])] = na_sentinel
+
     labels = labels + start_index
     if list_col:
         labels = dispatch._encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
+
     return labels
 
 
