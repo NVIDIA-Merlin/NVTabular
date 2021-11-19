@@ -38,6 +38,7 @@ def export_tensorflow_ensemble(
     name,
     model_path,
     label_columns,
+    sparse_max=None,
     version=1,
     nvtabular_backend="python",
 ):
@@ -87,6 +88,7 @@ def export_tensorflow_ensemble(
         workflow,
         name + "_nvt",
         preprocessing_path,
+        sparse_max=sparse_max,
         backend=nvtabular_backend,
     )
 
@@ -348,9 +350,15 @@ def generate_nvtabular_model(
     conts=None,
     max_batch_size=None,
     output_info=None,
+    sparse_max=None,
     backend="python",
 ):
-    """converts a workflow to a triton mode"""
+    """converts a workflow to a triton mode
+    Parameters
+    ----------
+    sparse_max:
+    Max length of the each row when the sparse data is converted to dense
+    """
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
@@ -362,6 +370,7 @@ def generate_nvtabular_model(
         cats,
         conts,
         output_info,
+        sparse_max=sparse_max,
         backend=backend,
     )
 
@@ -412,6 +421,7 @@ def _generate_nvtabular_config(
     cats=None,
     conts=None,
     output_info=None,
+    sparse_max=None,
     backend="python",
 ):
     """given a workflow generates the trton modelconfig proto object describing the inputs
@@ -458,7 +468,12 @@ def _generate_nvtabular_config(
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
         for column, dtype in workflow.output_dtypes.items():
-            _add_model_param(column, dtype, model_config.ModelOutput, config.output)
+            if column in sparse_max.keys():
+                # this assumes max_sequence_length is equal for all output columns
+                dim = sparse_max[column]
+                _add_model_param(column, dtype, model_config.ModelOutput, config.output, [-1, dim])
+            else:
+                _add_model_param(column, dtype, model_config.ModelOutput, config.output)
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
@@ -499,18 +514,35 @@ def export_tensorflow_model(model, name, output_path, version=1):
         outputs = list(default_signature.structured_outputs.values())
 
     for col in inputs:
-        config.input.append(
-            model_config.ModelInput(
-                name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+        if col.shape[1] > 1:
+            config.input.append(
+                model_config.ModelInput(
+                    name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
+                )
             )
-        )
+        else:
+            config.input.append(
+                model_config.ModelInput(
+                    name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+                )
+            )
 
     for col in outputs:
-        config.output.append(
-            model_config.ModelOutput(
-                name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+        # this assumes the list columns are 1D tensors both for cats and conts
+        if col.shape[1] > 1:
+            config.output.append(
+                model_config.ModelOutput(
+                    name=col.name.split("/")[0],
+                    data_type=_convert_dtype(col.dtype),
+                    dims=[-1, col.shape[1]],
+                )
             )
-        )
+        else:
+            config.output.append(
+                model_config.ModelOutput(
+                    name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
+                )
+            )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
