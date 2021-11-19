@@ -469,7 +469,7 @@ def _generate_nvtabular_config(
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
         for column, dtype in workflow.output_dtypes.items():
-            if column in sparse_max.keys():
+            if sparse_max and column in sparse_max.keys():
                 # this assumes max_sequence_length is equal for all output columns
                 dim = sparse_max[column]
                 _add_model_param(column, dtype, model_config.ModelOutput, config.output, [-1, dim])
