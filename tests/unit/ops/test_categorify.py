@@ -36,7 +36,8 @@ except ImportError:
 
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("include_nulls", [True, False])
-def test_categorify_size(tmpdir, cpu, include_nulls):
+@pytest.mark.parametrize("cardinality_memory_limit", [None, "24B"])
+def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
     num_rows = 50
     num_distinct = 10
 
@@ -49,9 +50,18 @@ def test_categorify_size(tmpdir, cpu, include_nulls):
         device="cpu" if cpu else None,
     )
 
-    cat_features = ["session_id"] >> nvt.ops.Categorify(out_path=str(tmpdir))
+    cat_features = ["session_id"] >> nvt.ops.Categorify(
+        out_path=str(tmpdir),
+        cardinality_memory_limit=cardinality_memory_limit,
+    )
     workflow = nvt.Workflow(cat_features)
-    workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    if cardinality_memory_limit:
+        # We set an artificially-low `cardinality_memory_limit`
+        # argument to ensure that a UserWarning will be thrown
+        with pytest.warns(UserWarning):
+            workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    else:
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     vals = df["session_id"].value_counts()
     vocab = dispatch._read_dispatch(cpu=cpu)(
