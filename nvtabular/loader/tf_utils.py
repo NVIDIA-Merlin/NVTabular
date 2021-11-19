@@ -21,11 +21,14 @@ import tensorflow as tf
 from packaging import version
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
+from nvtabular.dispatch import HAS_GPU
+
 from ..utils import device_mem_size
 
 
 def configure_tensorflow(memory_allocation=None, device=None):
-    total_gpu_mem_mb = device_mem_size(kind="total") / (1024 ** 2)
+    total_gpu_mem_mb = device_mem_size(kind="total", cpu=(not HAS_GPU)) / (1024 ** 2)
+
     if memory_allocation is None:
         memory_allocation = os.environ.get("TF_MEMORY_ALLOCATION", 0.5)
 
@@ -39,25 +42,26 @@ def configure_tensorflow(memory_allocation=None, device=None):
     if device is None:
         device = int(os.environ.get("TF_VISIBLE_DEVICE", 0))
     tf_devices = tf.config.list_physical_devices("GPU")
-    if len(tf_devices) == 0:
+    if HAS_GPU and len(tf_devices) == 0:
         raise ImportError("TensorFlow is not configured for GPU")
-
-    try:
-        tf.config.set_logical_device_configuration(
-            tf_devices[device],
-            [tf.config.LogicalDeviceConfiguration(memory_limit=memory_allocation)],
-        )
-    except RuntimeError:
-        warnings.warn("TensorFlow runtime already initialized, may not be enough memory for cudf")
-
-    try:
-        tf.config.experimental.set_virtual_device_configuration(
-            tf_devices[device],
-            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=memory_allocation)],
-        )
-    except RuntimeError as e:
-        # Virtual devices must be set before GPUs have been initialized
-        warnings.warn(e)
+    if HAS_GPU:
+        try:
+            tf.config.set_logical_device_configuration(
+                tf_devices[device],
+                [tf.config.LogicalDeviceConfiguration(memory_limit=memory_allocation)],
+            )
+        except RuntimeError:
+            warnings.warn(
+                "TensorFlow runtime already initialized, may not be enough memory for cudf"
+            )
+        try:
+            tf.config.experimental.set_virtual_device_configuration(
+                tf_devices[device],
+                [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=memory_allocation)],
+            )
+        except RuntimeError as e:
+            # Virtual devices must be set before GPUs have been initialized
+            warnings.warn(e)
 
     # versions using TF earlier than 2.3.0 need to use extension
     # library for dlpack support to avoid memory leak issue

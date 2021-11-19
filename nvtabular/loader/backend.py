@@ -20,9 +20,22 @@ import threading
 import warnings
 from collections import OrderedDict
 
-import cupy as cp
+import numpy as np
 
-from nvtabular.dispatch import _concat, _is_list_dtype, _make_df, _pull_apart_list, annotate
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
+
+from nvtabular.dispatch import (
+    HAS_GPU,
+    _concat,
+    _generate_local_seed,
+    _is_list_dtype,
+    _make_df,
+    _pull_apart_list,
+    annotate,
+)
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
 from nvtabular.tags import Tags
@@ -196,7 +209,7 @@ class DataLoader:
         self.data = dataset
         self.indices = cp.arange(dataset.to_ddf().npartitions)
         self.drop_last = drop_last
-        self.device = device or 0
+        self.device = (device or 0) if HAS_GPU else "cpu"
         self.sparse_names = sparse_names or []
         self.sparse_max = sparse_max or {}
         self.sparse_as_dense = sparse_as_dense
@@ -295,20 +308,14 @@ class DataLoader:
         start = self.global_rank * per_worker
         return self.indices[start : start + per_worker].tolist()
 
-    def _generate_local_seed(self):
-        random_state = cp.random.get_random_state()
-        seeds = random_state.tomaxint(size=self.global_size)
-        local_seed = seeds[self.global_rank]
-        cp.random.seed(local_seed.get())
-
     @annotate("_shuffle_indices", color="darkgreen", domain="nvt_python")
     def _shuffle_indices(self):
-        self._generate_local_seed()
+        _generate_local_seed(self.global_rank, self.global_size)
         if self.seed_fn:
             new_seed = self.seed_fn()
             cp.random.seed(new_seed)
         cp.random.shuffle(self.indices)
-        self._generate_local_seed()
+        _generate_local_seed(self.global_rank, self.global_size)
 
     def __iter__(self):
         self.stop()
@@ -458,8 +465,7 @@ class DataLoader:
                         else:
                             print(off0, off1)
                             raise ValueError
-
-                        value = values[start:stop]
+                        value = values[int(start) : int(stop)]
                         index = off0 - start if not use_nnz else nnz
                         batch_lists[column_name] = (value, index)
                     c = (c, batch_lists)
@@ -560,7 +566,12 @@ class DataLoader:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-                    leaves, offsets[column_name] = _pull_apart_list(column)
+                    leaves, col_offsets = _pull_apart_list(column)
+                    if isinstance(leaves[0], list):
+
+                        leaves, nest_offsets = _pull_apart_list(leaves)
+                        col_offsets = nest_offsets.iloc[col_offsets[:]]
+                    offsets[column_name] = col_offsets.reset_index(drop=True)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)
                 x = x, list_tensors
             tensors.append(x)

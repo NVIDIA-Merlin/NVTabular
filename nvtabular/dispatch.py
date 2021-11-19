@@ -112,6 +112,14 @@ def _create_nvt_dataset(df):
     return df
 
 
+def _read_parquet_metadata(path):
+    if HAS_GPU:
+        return cudf.io.read_parquet_metadata(path)
+    full_meta = pq.read_metadata(path)
+    pf = pq.ParquetFile(path)
+    return full_meta.num_rows, full_meta.num_row_groups, pf.schema.names
+
+
 def get_lib():
     return cudf if HAS_GPU else pd
 
@@ -226,20 +234,20 @@ def _zeros(size, like_df=None, dtype=None):
         return cp.zeros(size, dtype=dtype)
 
 
-def _hash_series(s):
+def _hash_series(ser):
     """Row-wise Series hash"""
-    if not HAS_GPU or isinstance(s, pd.Series):
+    if not HAS_GPU or isinstance(ser, pd.Series):
         # Using pandas hashing, which does not produce the
         # same result as cudf.Series.hash_values().  Do not
         # expect hash-based data transformations to be the
         # same on CPU and CPU.  TODO: Fix this (maybe use
         # murmurhash3 manually on CPU).
-        return hash_object_dispatch(s).values
+        return hash_object_dispatch(ser).values
     else:
-        if _is_list_dtype(s):
-            return s.list.leaves.hash_values()
+        if _is_list_dtype(ser):
+            return ser.list.leaves.hash_values()
         else:
-            return s.hash_values()
+            return ser.hash_values()
 
 
 def _series_has_nulls(s):
@@ -266,6 +274,9 @@ def _is_list_dtype(ser):
             return False
         return pd.api.types.is_list_like(ser.values[0])
     elif not HAS_GPU:
+        # either np.ndarray or a dtype
+        if isinstance(ser, np.ndarray):
+            ser = ser[0]
         return pd.api.types.is_list_like(np.dtype(ser))
     return is_list_dtype(ser)
 
@@ -379,15 +390,17 @@ def _encode_list_column(original, encoded, dtype=None):
 
 
 def _pull_apart_list(original):
-    values = _flatten_list_column(original)
+    values = _flatten_list_column_values(original)
     if isinstance(original, pd.Series):
-        offsets = pd.Series([0]).append(original.map(len).cumsum())
+        offsets = pd.Series([0]).append(original.map(len).cumsum()).reset_index(drop=True)
+        if isinstance(offsets[0], list):
+            offsets = pd.Series(offsets.reshape().flatten()).reset_index(drop=True)
     else:
         offsets = original._column.offsets
         elements = original._column.elements
         if isinstance(elements, cudf.core.column.lists.ListColumn):
             offsets = elements.offsets[offsets]
-    return values, offsets
+    return _make_series(values), _make_series(offsets)
 
 
 def _to_arrow(x):
@@ -416,6 +429,12 @@ def _make_df(_like_df=None, device=None):
     if device == "cpu":
         return pd.DataFrame(_like_df)
     return cudf.DataFrame(_like_df)
+
+
+def _make_series(_like_ser=None, device=None):
+    if not cudf or device == "cpu":
+        return pd.Series(_like_ser)
+    return cudf.Series(_like_ser)
 
 
 def _add_to_series(series, to_add, prepend=True):
@@ -539,3 +558,48 @@ def _build_cudf_list_column(new_elements, new_offsets):
         size=new_offsets.size - 1,
         children=(as_column(new_offsets), as_column(new_elements)),
     )
+
+
+def create_multihot_col(offsets, elements):
+    """
+    offsets = cudf series with offset values for list data
+    data = cudf series with the list data flattened to 1-d
+    """
+    if isinstance(elements, pd.Series):
+        col = pd.Series()
+        lh, rh = pd.Series(offsets[1:]).reset_index(drop=True), pd.Series(offsets[:-1]).reset_index(
+            drop=True
+        )
+        vals_per_entry = lh - rh
+        vals_used = 0
+        entries = []
+        for vals_count in vals_per_entry:
+            vals_count = int(vals_count)
+            entry = elements[vals_used : vals_used + vals_count]
+            if len(entry) == 1:
+                entry = entry[0]
+            vals_used += vals_count
+            entries.append(entry.values)
+        col = col.append(pd.Series(entries))
+    else:
+        offsets = as_column(offsets, dtype="int32")
+        elements = as_column(elements)
+        col = _build_cudf_list_column(elements, offsets)
+        col = cudf.Series(col)
+    return col
+
+
+def _generate_local_seed(global_rank, global_size):
+    random_state = _get_random_state()
+    if cp:
+        seeds = random_state.tomaxint(size=global_size)
+        cp.random.seed(seeds[global_rank].get())
+    else:
+        seeds = random_state.randint(0, 2 ** 32, size=global_size)
+    return seeds[global_rank]
+
+
+def _get_random_state():
+    if cp:
+        return cp.random.get_random_state()
+    return np.random.mtrand.RandomState()

@@ -1099,7 +1099,8 @@ class CPUParquetWriter(BaseParquetWriter):
         for writer, fn in zip(self.data_writers, _fns):
             writer.close()
             _path = self.fs.sep.join([str(self.out_dir), fn])
-            self.md_collectors[_path][0].set_file_path(fn)
+            if _path in self.md_collectors:
+                self.md_collectors[_path][0].set_file_path(fn)
         return self.md_collectors
 
 
