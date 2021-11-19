@@ -44,10 +44,12 @@ class ListSlice(Operator):
         truncated = column_names >> ops.ListSlice(-10)
     """
 
-    def __init__(self, start, end=None):
+    def __init__(self, start, end=None, pad=False, pad_value=0.0):
         super().__init__()
         self.start = start
         self.end = end
+        self.pad = pad
+        self.pad_value = pad_value
 
         if self.start > 0 and self.end is None:
             self.end = self.start
@@ -60,27 +62,47 @@ class ListSlice(Operator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
+
+        max_elements = self.end - self.start
+
         for col in col_selector.names:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
-                ret[col] = [row[self.start : self.end] for row in df[col]]
+                values = [row[self.start : self.end] for row in df[col]]
+
+                # pad out to so each row has max_elements if askeed
+                if self.pad:
+                    for v in values:
+                        if len(v) < max_elements:
+                            v.extend([self.pad_value] * (max_elements - len(v)))
+
+                ret[col] = values
             else:
                 # figure out the size of each row from the list offsets
                 c = df[col]._column
                 offsets = c.offsets.values
                 elements = c.elements.values
 
-                # figure out the size of each row after slicing start/end
-                new_offsets = cp.zeros(offsets.size, dtype=offsets.dtype)
                 threads = 32
                 blocks = (offsets.size + threads - 1) // threads
 
-                # calculate new row offsets after slicing
-                _calculate_row_sizes[blocks, threads](self.start, self.end, offsets, new_offsets)
-                new_offsets = cp.cumsum(new_offsets).astype(offsets.dtype)
+                if self.pad:
+                    new_offsets = cp.arange(offsets.size, dtype=offsets.dtype) * max_elements
+
+                else:
+                    # figure out the size of each row after slicing start/end
+                    new_offsets = cp.zeros(offsets.size, dtype=offsets.dtype)
+
+                    # calculate new row offsets after slicing
+                    _calculate_row_sizes[blocks, threads](
+                        self.start, self.end, offsets, new_offsets
+                    )
+                    new_offsets = cp.cumsum(new_offsets).astype(offsets.dtype)
 
                 # create a new array for the sliced elements
-                new_elements = cp.zeros(new_offsets[-1].item(), dtype=elements.dtype)
+                new_elements = cp.full(
+                    new_offsets[-1].item(), fill_value=self.pad_value, dtype=elements.dtype
+                )
                 if new_elements.size:
                     _slice_rows[blocks, threads](
                         self.start, offsets, elements, new_offsets, new_elements
@@ -132,6 +154,15 @@ def _slice_rows(start, offsets, elements, new_offsets, new_elements):
             if offset < offsets[rowid]:
                 offset = offsets[rowid]
 
-        for new_offset in range(new_offsets[rowid], new_offsets[rowid + 1]):
+        new_start = new_offsets[rowid]
+        new_end = new_offsets[rowid + 1]
+
+        # if we are padding (more new offsets than old olffsets) - don't keep on iterating past
+        # the end
+        offset_delta = (new_end - new_start) - (offsets[rowid + 1] - offset)
+        if offset_delta > 0:
+            new_end -= offset_delta
+
+        for new_offset in range(new_start, new_end):
             new_elements[new_offset] = elements[offset]
             offset += 1
