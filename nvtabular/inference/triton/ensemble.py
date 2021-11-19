@@ -56,8 +56,9 @@ def export_tensorflow_ensemble(
     model_path:
         The root path to write out files to
     label_columns:
-
         Labels in the dataset (will be removed from the dataset)
+    sparse_max:
+    Max length of the each row when the sparse data is converted to dense
     version:
         Version of the model
     nvtabular_backend: "python" or "nvtabular"
