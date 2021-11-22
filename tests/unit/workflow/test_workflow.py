@@ -614,8 +614,16 @@ def test_transform_geolocation():
     data = nvt.dispatch._make_df({"geo_location": raw})
 
     geo_location = ColumnSelector(["geo_location"])
-    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
-    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
     geo_features = state + country + geo_location >> ops.HashBucket(num_buckets=100)
 
     # for this workflow we don't have any statoperators, so we can get away without fitting
@@ -634,8 +642,16 @@ def test_workflow_move_saved(tmpdir):
     data = nvt.dispatch._make_df({"geo": raw})
 
     geo_location = ColumnSelector(["geo"])
-    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
-    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
     geo_features = state + country + geo_location >> ops.Categorify()
 
     # create the workflow and transform the input
