@@ -306,7 +306,7 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
 def test_groupby_op(keys, cpu):
     # Initial timeseries dataset
     size = 60
-    df1 = pd.DataFrame(
+    df1 = nvt.dispatch._make_df(
         {
             "name": np.random.choice(["Dave", "Zelda"], size=size),
             "id": np.random.choice([0, 1], size=size),

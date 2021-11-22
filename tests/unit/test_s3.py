@@ -17,14 +17,15 @@
 import os
 from io import BytesIO
 
-import cudf
 import pytest
 from dask.dataframe.io.parquet.core import create_metadata_file
-from dask_cudf.io.tests import test_s3
 
 import nvtabular as nvt
 from nvtabular import ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
+
+dask_cudf = pytest.importorskip("dask_cudf")
+from dask_cudf.io.tests import test_s3  # noqa: E402
 
 # Import fixtures and context managers from dask_cudf
 s3_base = test_s3.s3_base
@@ -92,7 +93,7 @@ def test_s3_dataset(s3_base, s3so, paths, datasets, engine, df, patch_aiobotocor
 
         # Check that the iteration API works
         columns = mycols_pq if engine == "parquet" else mycols_csv
-        gdf = cudf.concat(list(dataset.to_iter()))[columns]
+        gdf = nvt.dispatch._concat(list(dataset.to_iter()))[columns]
         assert_eq(gdf.reset_index(drop=True), df.reset_index(drop=True))
 
         cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
