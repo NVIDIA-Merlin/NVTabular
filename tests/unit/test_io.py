@@ -21,10 +21,8 @@ import os
 import warnings
 from distutils.version import LooseVersion
 
-import cudf
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -38,6 +36,9 @@ from nvtabular.columns import Schema
 from nvtabular.io.parquet import GPUParquetWriter
 from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+
+cudf = pytest.importorskip("cudf")
+dask_cudf = pytest.importorskip("dask_cudf")
 
 
 def test_validate_dataset_bad_schema(tmpdir):
@@ -346,6 +347,7 @@ def test_hugectr(
             output_path=outdir,
             out_files_per_proc=nfiles,
             num_threads=num_io_threads,
+            write_hugectr_keyset=True,
         )
 
     # Check for _file_list.txt

@@ -18,8 +18,12 @@ import importlib
 import os
 import subprocess
 
-import cudf
-import cupy
+from nvtabular.dispatch import HAS_GPU
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
 import numpy as np
 import pandas as pd
 import pytest
@@ -59,23 +63,24 @@ def test_nested_list():
     )
 
     batch = next(iter(train_dataset))
-
-    pad_data_col = tf.RaggedTensor.from_row_lengths(
-        batch[0]["data"][0][:, 0], batch[0]["data"][1][:, 0]
+    # [[1,2,3],[3,1],[...],[]]
+    nested_data_col = tf.RaggedTensor.from_row_lengths(
+        batch[0]["data"][0][:, 0], tf.cast(batch[0]["data"][1][:, 0], tf.int32)
     ).to_tensor()
     true_data_col = tf.reshape(
         tf.ragged.constant(df.iloc[:batch_size, 0].tolist()).to_tensor(), [batch_size, -1]
     )
-
-    pad_data2_col = tf.RaggedTensor.from_row_lengths(
-        batch[0]["data2"][0][:, 0], batch[0]["data2"][1][:, 0]
+    # [1,2,3]
+    multihot_data2_col = tf.RaggedTensor.from_row_lengths(
+        batch[0]["data2"][0][:, 0], tf.cast(batch[0]["data2"][1][:, 0], tf.int32)
     ).to_tensor()
     true_data2_col = tf.reshape(
         tf.ragged.constant(df.iloc[:batch_size, 1].tolist()).to_tensor(), [batch_size, -1]
     )
-
-    assert np.allclose(pad_data_col.numpy(), true_data_col.numpy())
-    assert np.allclose(pad_data2_col.numpy(), true_data2_col.numpy())
+    assert nested_data_col.shape == true_data_col.shape
+    assert np.allclose(nested_data_col.numpy(), true_data_col.numpy())
+    assert multihot_data2_col.shape == true_data2_col.shape
+    assert np.allclose(multihot_data2_col.numpy(), true_data2_col.numpy())
 
 
 def test_shuffling():
@@ -101,7 +106,7 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "cat1": [1] * num_rows,
             "cat2": [2] * num_rows,
@@ -147,7 +152,7 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
 
 def test_tf_catname_ordering(tmpdir):
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "cat1": [1] * 100,
             "cat2": [2] * 100,
@@ -183,7 +188,7 @@ def test_tf_catname_ordering(tmpdir):
 
 
 def test_tf_map(tmpdir):
-    df = cudf.DataFrame(
+    df = nvt.dispatch._make_df(
         {
             "cat1": [1] * 100,
             "cat2": [2] * 100,
@@ -298,8 +303,8 @@ def test_tf_gpu_dl(
         rows += num_samples
 
     assert (idx + 1) * batch_size >= rows
-    assert rows == (60 * 24 * 3 + 1)
-
+    row_count = (60 * 24 * 3 + 1) if HAS_GPU else (60 * 24 * 3)
+    assert rows == row_count
     # if num_samples is equal to batch size,
     # we didn't exhaust the iterator and do
     # cleanup. Try that now
@@ -346,16 +351,18 @@ def test_mh_support(tmpdir, batch_size):
         ],
         "Post": [1, 2, 3, 4],
     }
-    df = cudf.DataFrame(data)
+    df = nvt.dispatch._make_df(data)
     cat_names = ["Authors", "Reviewers", "Engaging User"]
     cont_names = ["Embedding"]
     label_name = ["Post"]
-
-    cats = cat_names >> ops.HashBucket(num_buckets=10)
+    if HAS_GPU:
+        cats = cat_names >> ops.HashBucket(num_buckets=10)
+    else:
+        cats = cat_names >> ops.Categorify()
     workflow = nvt.Workflow(cats + cont_names + label_name)
 
     data_itr = tf_dataloader.KerasSequenceLoader(
-        workflow.transform(nvt.Dataset(df)),
+        workflow.fit_transform(nvt.Dataset(df)),
         cat_names=cat_names,
         cont_names=cont_names,
         label_names=label_name,
@@ -395,7 +402,9 @@ def test_validater(tmpdir, batch_size):
     n_samples = 9
     rand = np.random.RandomState(0)
 
-    gdf = cudf.DataFrame({"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)})
+    gdf = nvt.dispatch._make_df(
+        {"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)}
+    )
 
     dataloader = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(gdf),
@@ -524,7 +533,8 @@ def test_sparse_tensors(tmpdir, sparse_dense):
 )
 @pytest.mark.skipif(importlib.util.find_spec("horovod") is None, reason="needs horovod")
 @pytest.mark.skipif(
-    cupy.cuda.runtime.getDeviceCount() <= 1, reason="This unittest requires multiple gpu's to run"
+    cupy and cupy.cuda.runtime.getDeviceCount() <= 1,
+    reason="This unittest requires multiple gpu's to run",
 )
 def test_horovod_multigpu(tmpdir):
     json_sample = {

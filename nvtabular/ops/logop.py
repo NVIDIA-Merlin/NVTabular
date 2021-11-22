@@ -15,7 +15,13 @@
 #
 import numpy as np
 
-from nvtabular.dispatch import DataFrameType, _natural_log, annotate
+from nvtabular.dispatch import (
+    DataFrameType,
+    _encode_list_column,
+    _flatten_list_column_values,
+    _is_list_dtype,
+    annotate,
+)
 
 from ..tags import Tags
 from .operator import ColumnSelector, Operator
@@ -36,7 +42,14 @@ class LogOp(Operator):
 
     @annotate("LogOp_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        return _natural_log(df[col_selector.names].astype(np.float32) + 1)
+        for name in col_selector.names:
+            column = df[name]
+            if _is_list_dtype(column):
+                transformed = np.log(_flatten_list_column_values(column).astype(np.float32) + 1)
+                df[name] = _encode_list_column(column, transformed)
+            else:
+                df[name] = np.log(column.astype(np.float32) + 1)
+        return df
 
     def output_tags(self):
         return [Tags.CONTINUOUS]

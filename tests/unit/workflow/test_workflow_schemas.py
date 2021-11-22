@@ -60,7 +60,7 @@ def test_fit_schema_works_with_addition_nodes():
     assert workflow.output_schema.column_names == ["x_renamed", "y_renamed"]
 
 
-def test_fit_schema_works_with_subtraction_nodes():
+def test_fit_schema_works_when_subtracting_column_names():
     schema = Schema(["x", "y", "id"])
 
     cont_features = (
@@ -73,6 +73,46 @@ def test_fit_schema_works_with_subtraction_nodes():
     )
 
     workflow1 = Workflow(cont_features - "y_renamed")
+    workflow1.fit_schema(schema)
+
+    assert workflow1.output_schema.column_names == ["x_renamed"]
+
+
+def test_fit_schema_works_when_subtracting_nodes():
+    schema = Schema(["x", "y", "id"])
+
+    cont_features = (
+        ColumnSelector(["x", "y"])
+        >> ops.FillMissing()
+        >> ops.Clip(min_value=0)
+        >> ops.LogOp
+        >> ops.Normalize()
+        >> ops.Rename(postfix="_renamed")
+    )
+
+    subtract_features = ["y"] >> ops.Rename(postfix="_renamed")
+
+    workflow1 = Workflow(cont_features - subtract_features)
+    workflow1.fit_schema(schema)
+
+    assert workflow1.output_schema.column_names == ["x_renamed"]
+
+
+def test_fit_schema_works_when_subtracting_missing_nodes():
+    schema = Schema(["x", "y", "id", "baseball"])
+
+    cont_features = (
+        ColumnSelector(["x", "y"])
+        >> ops.FillMissing()
+        >> ops.Clip(min_value=0)
+        >> ops.LogOp
+        >> ops.Normalize()
+        >> ops.Rename(postfix="_renamed")
+    )
+
+    subtract_features = ["y", "baseball"] >> ops.Rename(postfix="_renamed")
+
+    workflow1 = Workflow(cont_features - subtract_features)
     workflow1.fit_schema(schema)
 
     assert workflow1.output_schema.column_names == ["x_renamed"]
@@ -145,14 +185,14 @@ def test_fit_schema_works_with_node_dependencies():
         ops.Clip(0),
         ops.DifferenceLag("col1"),
         ops.FillMissing(),
-        ops.Groupby(["col1"]),
+        ops.Groupby("col1"),
         ops.HashBucket(1),
         ops.HashedCross(1),
-        ops.JoinGroupby(["col1"]),
+        ops.JoinGroupby("col1"),
         ops.ListSlice(0),
         ops.LogOp(),
         ops.Normalize(),
-        ops.TargetEncoding(["col1"]),
+        ops.TargetEncoding("col1"),
     ],
 )
 def test_workflow_select_by_tags(op):

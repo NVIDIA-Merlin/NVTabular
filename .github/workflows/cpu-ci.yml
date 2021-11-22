@@ -31,6 +31,8 @@ jobs:
         python -m pip install -r requirements.txt pybind11
         python -m pip install -r requirements-dev.txt
         python -m pip install tritonclient[all] protobuf
+        python -m pip install torch tensorflow
+        python -m pip install numpy==1.20.3
     - name: Lint with flake8
       run: |
         flake8 .
@@ -40,9 +42,12 @@ jobs:
     - name: Lint with isort
       run: |
         isort -c .
+    - name: Lint with codespell
+      run: |
+        codespell
     - name: Build
       run: |
         python setup.py develop --user
     - name: Run unittests
       run: |
-        python -m pytest -rxs tests/unit/workflow/test_cpu_workflow.py tests/unit/workflow/test_workflow_node.py tests/unit/ops/test_ops.py tests/unit/test_triton_inference.py
+        python -m pytest -rxs tests/unit/
