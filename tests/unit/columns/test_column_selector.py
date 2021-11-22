@@ -17,7 +17,7 @@ import pytest
 
 from nvtabular.columns import ColumnSelector
 from nvtabular.ops import Operator
-from nvtabular.ops.internal.selection import SelectionOp
+from nvtabular.ops.graph.selection import SelectionOp
 from nvtabular.tags import Tags
 from nvtabular.workflow import WorkflowNode
 

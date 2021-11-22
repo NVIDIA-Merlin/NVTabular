@@ -15,7 +15,7 @@
 #
 
 from nvtabular import ops
-from nvtabular.ops import internal
+from nvtabular.ops import graph
 
 
 def test_column_concat_op():
@@ -23,7 +23,7 @@ def test_column_concat_op():
     col_name = "col2"
 
     concat_node = node + col_name
-    assert isinstance(concat_node.op, internal.ConcatColumns)
+    assert isinstance(concat_node.op, graph.ConcatColumns)
 
 
 def test_column_subtraction_op():
@@ -31,11 +31,11 @@ def test_column_subtraction_op():
     col_name = "col1"
 
     subtract_node = node - col_name
-    assert isinstance(subtract_node.op, internal.SubtractionOp)
+    assert isinstance(subtract_node.op, graph.SubtractionOp)
 
 
 def test_column_subset_op():
     node = ["col1", "col2"] >> ops.Operator()
 
     bracket_node = node["col1"]
-    assert isinstance(bracket_node.op, internal.SubsetColumns)
+    assert isinstance(bracket_node.op, graph.SubsetColumns)

@@ -16,8 +16,8 @@
 import collections.abc
 
 from nvtabular.columns import ColumnSelector, Schema
-from nvtabular.ops import Operator, internal
-from nvtabular.ops.internal import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
+from nvtabular.ops import Operator, graph
+from nvtabular.ops.graph import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
 
 
 class Node:
@@ -99,7 +99,7 @@ class Node:
         if not self.selector:
             if (
                 len(self.parents) == 1
-                and isinstance(self.parents[0].op, internal.ConcatColumns)
+                and isinstance(self.parents[0].op, graph.ConcatColumns)
                 and self.parents[0].selector
                 and (self.parents[0].selector.names)
             ):
@@ -189,12 +189,12 @@ class Node:
         -------
         Node
         """
-        if isinstance(self.op, internal.ConcatColumns):
+        if isinstance(self.op, graph.ConcatColumns):
             child = self
         else:
             # Create a child node
             child = type(self)()
-            child.op = internal.ConcatColumns(label="+")
+            child.op = graph.ConcatColumns(label="+")
             child.add_parent(self)
 
         # The right operand becomes a dependency
@@ -205,9 +205,7 @@ class Node:
             # If the other node is a `+` node, we want to collapse it into this `+` node to
             # avoid creating a cascade of repeated `+`s that we'd need to optimize out by
             # re-combining them later in order to clean up the graph
-            if not isinstance(other_node, list) and isinstance(
-                other_node.op, internal.ConcatColumns
-            ):
+            if not isinstance(other_node, list) and isinstance(other_node.op, graph.ConcatColumns):
                 child.dependencies += other_node.grouped_parents_with_dependencies
             else:
                 child.add_dependency(other_node)
@@ -236,7 +234,7 @@ class Node:
 
         child = type(self)()
         child.add_parent(self)
-        child.op = internal.SubtractionOp()
+        child.op = graph.SubtractionOp()
 
         for other_node in other_nodes:
             if isinstance(other_node.op, SelectionOp) and not other_node.parents_with_dependencies:
@@ -256,7 +254,7 @@ class Node:
 
         child = type(self)()
         child.add_parent(left_operand)
-        child.op = internal.SubtractionOp()
+        child.op = graph.SubtractionOp()
 
         if (
             isinstance(right_operand.op, SelectionOp)
@@ -284,7 +282,7 @@ class Node:
         """
         col_selector = ColumnSelector(columns)
         child = type(self)(col_selector)
-        child.op = internal.SubsetColumns(label=str(list(columns)))
+        child.op = graph.SubsetColumns(label=str(list(columns)))
         child.add_parent(self)
         return child
 

@@ -16,7 +16,7 @@
 import pytest
 
 from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
-from nvtabular.ops.internal.selection import SelectionOp
+from nvtabular.ops.graph.selection import SelectionOp
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
