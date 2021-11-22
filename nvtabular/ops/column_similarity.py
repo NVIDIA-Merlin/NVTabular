@@ -31,8 +31,8 @@ except ImportError:
 
 from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.graph import ColumnSchema, Schema
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 

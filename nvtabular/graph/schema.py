@@ -16,8 +16,18 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Text
 
-from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.tags import Tags  # noqa
+import fsspec
+import numpy
+
+# this needs to be before any modules that import protobuf
+
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+from google.protobuf import json_format, text_format  # noqa
+from google.protobuf.any_pb2 import Any  # noqa
+from google.protobuf.struct_pb2 import Struct  # noqa
+from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
+
+from nvtabular.graph.tags import Tags  # noqa
 
 
 @dataclass(frozen=True)
