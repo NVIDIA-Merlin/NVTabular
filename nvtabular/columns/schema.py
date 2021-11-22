@@ -44,21 +44,17 @@ def register_extra_metadata(column_schema, feature):
 
 
 def register_list(column_schema, feature):
-    if str(column_schema._is_list):
-        min_length, max_length = None, None
-        if "value_count" in column_schema.properties:
-            min_length = column_schema.properties["value_count"]["min"]
-            max_length = column_schema.properties["value_count"]["max"]
+    if "value_count" in column_schema.properties or column_schema._is_list:
+        val_counts = column_schema.properties.get("value_count", None)
+        min_length = val_counts.get("min", None) if val_counts else None
+        max_length = val_counts.get("max", None) if val_counts else None
         if min_length and max_length and min_length == max_length:
             shape = schema_pb2.FixedShape()
             dim = shape.dim.add()
             dim.size = min_length
             feature.shape.CopyFrom(shape)
-        elif min_length and max_length and min_length < max_length:
-            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
         else:
-            # if no min max available set dummy value, to signal this is list
-            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=0, max=0))
+            feature.value_count.CopyFrom(schema_pb2.ValueCount(min=min_length, max=max_length))
     return feature
 
 
@@ -96,8 +92,7 @@ def register_dtype(column_schema, feature):
     #  column_schema is a dict, changes are held
     #  TODO: this double check can be refactored
     if column_schema.dtype:
-        if column_schema._is_list:
-            feature = proto_dict["list"](column_schema, feature)
+        feature = proto_dict["list"](column_schema, feature)
         if hasattr(column_schema.dtype, "kind"):
             string_name = numpy.core._dtype._kind_name(column_schema.dtype)
         elif hasattr(column_schema.dtype, "item"):
@@ -197,6 +192,13 @@ class ColumnSchema:
         return ColumnSchema(
             self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
         )
+
+    def __merge__(self, other):
+        col_schema = self.with_tags(other.tags)
+        col_schema = col_schema.with_properties(other.properties)
+        col_schema = col_schema.with_dtype(other.dtype)
+        col_schema = col_schema.with_name(other.name)
+        return col_schema
 
 
 class Schema:
@@ -351,7 +353,23 @@ class Schema:
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
-        return Schema({**self.column_schemas, **other.column_schemas})
+        # must account for same columns in both schemas,
+        # use the one with more information for each field
+        keys_other_not_self = [
+            schema for schema in other.column_schemas if schema not in self.column_schemas
+        ]
+        col_schemas = []
+        for col_name, col_schema in self.column_schemas.items():
+            if col_name in other.column_schemas:
+                # check which one
+                other_schema = other.column_schemas[col_name]
+                col_schemas.append(col_schema.__merge__(other_schema))
+            else:
+                col_schemas.append(col_schema)
+        for key in keys_other_not_self:
+            col_schemas.append(other.column_schemas[key])
+
+        return Schema(col_schemas)
 
     def __radd__(self, other):
         return self.__add__(other)

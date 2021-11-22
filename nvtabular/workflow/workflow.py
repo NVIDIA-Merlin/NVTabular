@@ -147,7 +147,9 @@ class Workflow:
                         [parent.output_schema for parent in node.parents if parent.output_schema],
                         Schema(),
                     )
-                    combined_schema += input_schema
+                    # we want to update the input_schema with new values
+                    # from combined schema
+                    combined_schema = input_schema + combined_schema
                     node.compute_schemas(combined_schema)
 
                 processed_nodes.append(node)
