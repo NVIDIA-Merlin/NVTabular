@@ -17,7 +17,6 @@
 from typing import Any
 
 import dask.dataframe as dd
-import pandas as pd
 
 from nvtabular.dispatch import DataFrameType, _is_list_dtype, _pull_apart_list
 
@@ -45,8 +44,8 @@ class ValueCount(StatOperator):
                 )
                 offs = _pull_apart_list(series.compute())[1]
                 lh, rh = offs[1:], offs[:-1]
-                if isinstance(offs, pd.Series):
-                    rh = rh.reset_index(drop=True)
+                rh = rh.reset_index(drop=True)
+                lh = lh.reset_index(drop=True)
                 deltas = lh - rh
                 # must be regular python class otherwise protobuf fails
                 stats[col]["value_count"]["min"] = int(deltas.min())
