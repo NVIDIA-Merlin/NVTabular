@@ -15,8 +15,8 @@
 #
 from __future__ import annotations
 
-from nvtabular.columns import ColumnSelector
 from nvtabular.dispatch import DataFrameType
+from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import Operator
 
 

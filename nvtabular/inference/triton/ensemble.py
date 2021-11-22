@@ -27,8 +27,8 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.columns import Schema  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype  # noqa
+from nvtabular.graph.schema import Schema  # noqa
 from nvtabular.workflow.node import iter_nodes  # noqa
 
 

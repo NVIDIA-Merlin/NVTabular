@@ -32,8 +32,9 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.dispatch import HAS_GPU, _make_df
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 

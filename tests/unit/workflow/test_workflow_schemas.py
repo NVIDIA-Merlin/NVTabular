@@ -19,8 +19,7 @@ from pathlib import Path
 import pytest
 
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
-from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
+from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
 
 
 def test_fit_schema():

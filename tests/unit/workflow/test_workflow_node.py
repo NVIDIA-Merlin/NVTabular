@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
-from nvtabular.columns import ColumnSelector, Schema
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import Categorify, DifferenceLag, FillMissing, Operator, Rename, TargetEncoding
 from tests.conftest import assert_eq
 
