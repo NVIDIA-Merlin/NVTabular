@@ -120,8 +120,12 @@ class ColumnSelector:
     def __radd__(self, other):
         return self + other
 
-    def __rshift__(self, other):
-        return other.create_node(self) >> other
+    def __rshift__(self, operator):
+        if isinstance(operator, type) and issubclass(operator, nvt.graph.BaseOperator):
+            # handle case where an operator class is passed
+            operator = operator()
+
+        return operator.create_node(self) >> operator
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):

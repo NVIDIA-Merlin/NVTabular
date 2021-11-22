@@ -71,5 +71,5 @@ class Operator(BaseOperator):
         instead of the one configured for use during training"""
         return None
 
-    def create_node(self, other):
-        return nvt.workflow.node.WorkflowNode(other)
+    def create_node(self, selector):
+        return nvt.workflow.node.WorkflowNode(selector)
