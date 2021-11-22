@@ -138,5 +138,5 @@ class BaseOperator:
     def label(self) -> str:
         return self.__class__.__name__
 
-    def create_node(self, other):
-        return nvt.graph.node.Node(other)
+    def create_node(self, selector):
+        return nvt.graph.Node(selector)
