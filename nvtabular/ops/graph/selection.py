@@ -16,12 +16,12 @@
 from __future__ import annotations
 
 from nvtabular.dispatch import DataFrameType
+from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
-from nvtabular.ops import Operator
 
 
-class SelectionOp(Operator):
+class SelectionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
 

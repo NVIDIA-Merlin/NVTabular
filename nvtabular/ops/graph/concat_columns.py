@@ -15,12 +15,11 @@
 #
 
 from nvtabular.dispatch import DataFrameType
+from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.selector import ColumnSelector
 
-from ..operator import Operator
 
-
-class ConcatColumns(Operator):
+class ConcatColumns(BaseOperator):
     def __init__(self, label=None):
         self._label = label or self.__class__.__name__
 

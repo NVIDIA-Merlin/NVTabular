@@ -15,12 +15,11 @@
 #
 
 from nvtabular.dispatch import DataFrameType
+from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.selector import ColumnSelector
 
-from ..operator import Operator
 
-
-class Identity(Operator):
+class Identity(BaseOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         """Simply returns the selected output columns from the input dataframe
 
