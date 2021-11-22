@@ -15,9 +15,10 @@
 #
 import collections.abc
 
+from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
-from nvtabular.ops import Operator, graph
+from nvtabular.ops import graph
 from nvtabular.ops.graph import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
 
 
@@ -147,21 +148,21 @@ class Node:
             self.output_schema = self.input_schema
 
     def __rshift__(self, operator):
-        """Transforms this Node by applying an Operator
+        """Transforms this Node by applying an BaseOperator
 
         Parameters
         -----------
-        operators: Operator or callable
+        operators: BaseOperator or callable
 
         Returns
         -------
         Node
         """
-        if isinstance(operator, type) and issubclass(operator, Operator):
+        if isinstance(operator, type) and issubclass(operator, BaseOperator):
             # handle case where an operator class is passed
             operator = operator()
 
-        if not isinstance(operator, Operator):
+        if not isinstance(operator, BaseOperator):
             raise ValueError(f"Expected operator or callable, got {operator.__class__}")
 
         child = type(self)()
