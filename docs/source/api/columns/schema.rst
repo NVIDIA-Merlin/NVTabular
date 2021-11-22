@@ -1,7 +1,7 @@
 ColumnSchema
 ==============
 
-.. automodule:: nvtabular.columns.schema
+.. automodule:: nvtabular.graph.schema
    :members:
    :private-members:
    :special-members:

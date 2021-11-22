@@ -1,7 +1,7 @@
 ColumnSelector
 ==============
 
-.. automodule:: nvtabular.columns.selector
+.. automodule:: nvtabular.graph.selector
    :members:
    :private-members:
    :special-members:

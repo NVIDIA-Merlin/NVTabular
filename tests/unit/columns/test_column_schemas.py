@@ -18,8 +18,8 @@ from pathlib import Path
 import numpy
 import pytest
 
-from nvtabular.columns.schema import ColumnSchema, Schema
-from nvtabular.columns.selector import ColumnSelector
+from nvtabular.graph.schema import ColumnSchema, Schema
+from nvtabular.graph.selector import ColumnSelector
 from nvtabular.tags import Tags
 
 

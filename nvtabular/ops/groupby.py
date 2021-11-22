@@ -15,8 +15,8 @@
 import numpy
 from dask.dataframe.utils import meta_nonempty
 
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.graph.schema import Schema
 
 from ..tags import Tags
 from .operator import ColumnSelector, Operator

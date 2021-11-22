@@ -15,7 +15,8 @@
 #
 import collections.abc
 
-from nvtabular.columns import ColumnSelector, Schema
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import Operator, graph
 from nvtabular.ops.graph import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
 

@@ -15,9 +15,9 @@
 #
 from __future__ import annotations
 
-from nvtabular.columns import ColumnSelector
-from nvtabular.columns.schema import Schema
 from nvtabular.dispatch import DataFrameType
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import Operator
 
 

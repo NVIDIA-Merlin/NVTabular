@@ -29,8 +29,8 @@ try:
 except ImportError:
     from scipy.sparse import coo_matrix
 
-from nvtabular.columns import ColumnSchema, Schema
 from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.graph import ColumnSchema, Schema
 
 from ..tags import Tags
 from .operator import ColumnSelector, Operator

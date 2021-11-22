@@ -15,7 +15,7 @@
 #
 import pytest
 
-from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
+from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
 from nvtabular.ops.graph.selection import SelectionOp
 
 

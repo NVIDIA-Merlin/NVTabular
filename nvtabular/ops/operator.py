@@ -18,9 +18,9 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import Optional
 
-from nvtabular.columns import ColumnSelector
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph import BaseOperator
+from nvtabular.graph.selector import ColumnSelector
 
 
 class Supports(Flag):

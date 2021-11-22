@@ -32,7 +32,7 @@ from dask.dataframe.io.demo import names as name_list
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import dispatch, ops
-from nvtabular.columns import Schema
+from nvtabular.graph.schema import Schema
 from nvtabular.io.parquet import GPUParquetWriter
 from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context

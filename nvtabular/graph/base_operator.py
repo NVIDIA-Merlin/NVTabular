@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Union
 
-from nvtabular.columns import ColumnSelector
-from nvtabular.columns.schema import Schema
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 
 
 class BaseOperator:
