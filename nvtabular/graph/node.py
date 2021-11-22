@@ -19,7 +19,6 @@ from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import graph
-from nvtabular.ops.graph import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
 
 
 class Node:
@@ -50,7 +49,7 @@ class Node:
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
         if selector:
-            self.op = SelectionOp(selector)
+            self.op = graph.SelectionOp(selector)
 
         self._selector = selector
 
@@ -107,13 +106,13 @@ class Node:
             ):
                 self.selector = self.parents[0].selector
 
-        if isinstance(self.op, ConcatColumns):  # +
+        if isinstance(self.op, graph.ConcatColumns):  # +
             # For addition nodes, some of the operands are parents and
             # others are dependencies so grab schemas from both
             self.selector = _combine_selectors(self.grouped_parents_with_dependencies)
             self.input_schema = _combine_schemas(self.parents_with_dependencies)
 
-        elif isinstance(self.op, SubtractionOp):  # -
+        elif isinstance(self.op, graph.SubtractionOp):  # -
             left_operand = _combine_schemas(self.parents)
 
             if self.dependencies:
@@ -124,13 +123,13 @@ class Node:
 
             self.selector = ColumnSelector(self.input_schema.column_names)
 
-        elif isinstance(self.op, SubsetColumns):  # []
+        elif isinstance(self.op, graph.SubsetColumns):  # []
             left_operand = _combine_schemas(self.parents)
             right_operand = _combine_schemas(self.dependencies)
             self.input_schema = left_operand - right_operand
 
         # If we have a selector, apply it to upstream schemas from nodes/dataset
-        elif isinstance(self.op, SelectionOp):  # ^
+        elif isinstance(self.op, graph.SelectionOp):  # ^
             upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
             self.input_schema = upstream_schema.apply(self.selector)
 
@@ -239,7 +238,10 @@ class Node:
         child.op = graph.SubtractionOp()
 
         for other_node in other_nodes:
-            if isinstance(other_node.op, SelectionOp) and not other_node.parents_with_dependencies:
+            if (
+                isinstance(other_node.op, graph.SelectionOp)
+                and not other_node.parents_with_dependencies
+            ):
                 child.selector += other_node.selector
                 child.op.selector += child.selector
             else:
@@ -259,7 +261,7 @@ class Node:
         child.op = graph.SubtractionOp()
 
         if (
-            isinstance(right_operand.op, SelectionOp)
+            isinstance(right_operand.op, graph.SelectionOp)
             and not right_operand.parents_with_dependencies
         ):
             child.selector += right_operand.selector
