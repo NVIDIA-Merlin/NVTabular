@@ -16,9 +16,9 @@
 import collections.abc
 
 from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph.ops import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
-from nvtabular.ops import graph
 
 
 class Node:
@@ -49,7 +49,7 @@ class Node:
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
         if selector:
-            self.op = graph.SelectionOp(selector)
+            self.op = SelectionOp(selector)
 
         self._selector = selector
 
@@ -100,19 +100,19 @@ class Node:
         if not self.selector:
             if (
                 len(self.parents) == 1
-                and isinstance(self.parents[0].op, graph.ConcatColumns)
+                and isinstance(self.parents[0].op, ConcatColumns)
                 and self.parents[0].selector
                 and (self.parents[0].selector.names)
             ):
                 self.selector = self.parents[0].selector
 
-        if isinstance(self.op, graph.ConcatColumns):  # +
+        if isinstance(self.op, ConcatColumns):  # +
             # For addition nodes, some of the operands are parents and
             # others are dependencies so grab schemas from both
             self.selector = _combine_selectors(self.grouped_parents_with_dependencies)
             self.input_schema = _combine_schemas(self.parents_with_dependencies)
 
-        elif isinstance(self.op, graph.SubtractionOp):  # -
+        elif isinstance(self.op, SubtractionOp):  # -
             left_operand = _combine_schemas(self.parents)
 
             if self.dependencies:
@@ -123,13 +123,13 @@ class Node:
 
             self.selector = ColumnSelector(self.input_schema.column_names)
 
-        elif isinstance(self.op, graph.SubsetColumns):  # []
+        elif isinstance(self.op, SubsetColumns):  # []
             left_operand = _combine_schemas(self.parents)
             right_operand = _combine_schemas(self.dependencies)
             self.input_schema = left_operand - right_operand
 
         # If we have a selector, apply it to upstream schemas from nodes/dataset
-        elif isinstance(self.op, graph.SelectionOp):  # ^
+        elif isinstance(self.op, SelectionOp):  # ^
             upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
             self.input_schema = upstream_schema.apply(self.selector)
 
@@ -190,12 +190,12 @@ class Node:
         -------
         Node
         """
-        if isinstance(self.op, graph.ConcatColumns):
+        if isinstance(self.op, ConcatColumns):
             child = self
         else:
             # Create a child node
             child = type(self)()
-            child.op = graph.ConcatColumns(label="+")
+            child.op = ConcatColumns(label="+")
             child.add_parent(self)
 
         # The right operand becomes a dependency
@@ -206,7 +206,7 @@ class Node:
             # If the other node is a `+` node, we want to collapse it into this `+` node to
             # avoid creating a cascade of repeated `+`s that we'd need to optimize out by
             # re-combining them later in order to clean up the graph
-            if not isinstance(other_node, list) and isinstance(other_node.op, graph.ConcatColumns):
+            if not isinstance(other_node, list) and isinstance(other_node.op, ConcatColumns):
                 child.dependencies += other_node.grouped_parents_with_dependencies
             else:
                 child.add_dependency(other_node)
@@ -235,13 +235,10 @@ class Node:
 
         child = type(self)()
         child.add_parent(self)
-        child.op = graph.SubtractionOp()
+        child.op = SubtractionOp()
 
         for other_node in other_nodes:
-            if (
-                isinstance(other_node.op, graph.SelectionOp)
-                and not other_node.parents_with_dependencies
-            ):
+            if isinstance(other_node.op, SelectionOp) and not other_node.parents_with_dependencies:
                 child.selector += other_node.selector
                 child.op.selector += child.selector
             else:
@@ -258,10 +255,10 @@ class Node:
 
         child = type(self)()
         child.add_parent(left_operand)
-        child.op = graph.SubtractionOp()
+        child.op = SubtractionOp()
 
         if (
-            isinstance(right_operand.op, graph.SelectionOp)
+            isinstance(right_operand.op, SelectionOp)
             and not right_operand.parents_with_dependencies
         ):
             child.selector += right_operand.selector
@@ -286,7 +283,7 @@ class Node:
         """
         col_selector = ColumnSelector(columns)
         child = type(self)(col_selector)
-        child.op = graph.SubsetColumns(label=str(list(columns)))
+        child.op = SubsetColumns(label=str(list(columns)))
         child.add_parent(self)
         return child
 
