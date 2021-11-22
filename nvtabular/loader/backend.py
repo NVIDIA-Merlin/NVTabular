@@ -36,9 +36,9 @@ from nvtabular.dispatch import (
     _pull_apart_list,
     annotate,
 )
+from nvtabular.graph.tags import Tags
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
-from nvtabular.tags import Tags
 
 
 def _num_steps(num_samples, step_size):

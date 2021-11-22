@@ -20,7 +20,7 @@ import pytest
 
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.selector import ColumnSelector
-from nvtabular.tags import Tags
+from nvtabular.graph.tags import Tags
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])

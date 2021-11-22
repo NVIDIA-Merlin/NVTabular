@@ -16,7 +16,7 @@
 from typing import List, Union
 
 import nvtabular as nvt
-from nvtabular.tags import Tags
+from nvtabular.graph.tags import Tags
 
 
 class ColumnSelector:

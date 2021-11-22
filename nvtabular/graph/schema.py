@@ -29,7 +29,7 @@ from google.protobuf.any_pb2 import Any  # noqa
 from google.protobuf.struct_pb2 import Struct  # noqa
 from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
 
-from nvtabular.tags import Tags  # noqa
+from nvtabular.graph.tags import Tags  # noqa
 
 
 def register_extra_metadata(column_schema, feature):
