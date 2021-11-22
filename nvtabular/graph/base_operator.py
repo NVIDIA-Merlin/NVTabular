@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Union
 
+import nvtabular as nvt
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 
@@ -131,10 +132,11 @@ class BaseOperator:
         return None
 
     def __rrshift__(self, other):
-        import nvtabular
-
-        return nvtabular.ColumnSelector(other) >> self
+        return nvt.ColumnSelector(other) >> self
 
     @property
     def label(self) -> str:
         return self.__class__.__name__
+
+    def create_node(self, other):
+        return nvt.graph.node.Node(other)

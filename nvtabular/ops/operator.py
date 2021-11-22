@@ -18,6 +18,7 @@ from __future__ import annotations
 from enum import Flag, auto
 from typing import Optional
 
+import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph import BaseOperator
 from nvtabular.graph.selector import ColumnSelector
@@ -69,3 +70,6 @@ class Operator(BaseOperator):
         """Configures this operator for use in inference. May return a different operator to use
         instead of the one configured for use during training"""
         return None
+
+    def create_node(self, other):
+        return nvt.workflow.node.WorkflowNode(other)

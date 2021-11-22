@@ -15,15 +15,15 @@
 #
 from typing import List, Union
 
-import nvtabular
+import nvtabular as nvt
 from nvtabular.tags import Tags
 
 
 class ColumnSelector:
     """A ColumnSelector describes a group of columns to be transformed by Operators in a
-    Workflow. Operators can be applied to the selected columns by shifting (>>) operators
-    on to the ColumnSelector, which returns a new WorkflowNode with the transformations
-    applied. This lets you define a graph of operations that makes up your Workflow.
+    Graph. Operators can be applied to the selected columns by shifting (>>) operators
+    on to the ColumnSelector, which returns a new Node with the transformations
+    applied. This lets you define a graph of operations that makes up your Graph.
 
     Parameters
     ----------
@@ -46,8 +46,8 @@ class ColumnSelector:
         self._tags = tags if tags is not None else []
         self.subgroups = subgroups if subgroups is not None else []
 
-        if isinstance(self._names, nvtabular.WorkflowNode):
-            raise TypeError("ColumnSelectors can not contain WorkflowNodes")
+        if isinstance(self._names, nvt.graph.Node):
+            raise TypeError("ColumnSelectors can not contain Nodes")
 
         if isinstance(self._names, str):
             self._names = [self._names]
@@ -59,8 +59,8 @@ class ColumnSelector:
         for name in self._names:
             if isinstance(name, str):
                 plain_names.append(name)
-            elif isinstance(name, nvtabular.WorkflowNode):
-                raise ValueError("ColumnSelectors can not contain WorkflowNodes")
+            elif isinstance(name, nvt.graph.Node):
+                raise ValueError("ColumnSelectors can not contain Nodes")
             elif isinstance(name, ColumnSelector):
                 self.subgroups.append(name)
             else:
@@ -101,7 +101,7 @@ class ColumnSelector:
     def __add__(self, other):
         if other is None:
             return self
-        elif isinstance(other, nvtabular.WorkflowNode):
+        elif isinstance(other, nvt.graph.Node):
             return other + self
         elif isinstance(other, ColumnSelector):
 
@@ -121,8 +121,7 @@ class ColumnSelector:
         return self + other
 
     def __rshift__(self, other):
-        # Create a selection node to shift onto, then shift onto it
-        return nvtabular.WorkflowNode(self) >> other
+        return other.create_node(self) >> other
 
     def __eq__(self, other):
         if not isinstance(other, ColumnSelector):
