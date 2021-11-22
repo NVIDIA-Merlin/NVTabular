@@ -44,9 +44,10 @@ def register_extra_metadata(column_schema, feature):
 
 
 def register_list(column_schema, feature):
-    if "value_count" in column_schema.properties:
-        min_length = column_schema.properties["value_count"].get("min", None)
-        max_length = column_schema.properties["value_count"].get("max", None)
+    if "value_count" in column_schema.properties or column_schema._is_list:
+        val_counts = column_schema.properties.get("value_count", None)
+        min_length = val_counts.get("min", None) if val_counts else None
+        max_length = val_counts.get("max", None) if val_counts else None
         if min_length and max_length and min_length == max_length:
             shape = schema_pb2.FixedShape()
             dim = shape.dim.add()
