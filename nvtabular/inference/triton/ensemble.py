@@ -822,9 +822,6 @@ def _convert_pytorch_dtype(dtype):
         torch.int32: model_config.TYPE_INT32,
         torch.int16: model_config.TYPE_INT16,
         torch.int8: model_config.TYPE_INT8,
-        torch.uint64: model_config.TYPE_UINT64,
-        torch.uint32: model_config.TYPE_UINT32,
-        torch.uint16: model_config.TYPE_UINT16,
         torch.uint8: model_config.TYPE_UINT8,
         torch.bool: model_config.TYPE_BOOL,
     }
@@ -855,9 +852,6 @@ def _convert_string2pytorch_dtype(dtype):
         "TYPE_INT32": torch.int32,
         "TYPE_INT16": torch.int16,
         "TYPE_INT8": torch.int8,
-        "TYPE_UINT64": torch.uint64,
-        "TYPE_UINT32": torch.uint32,
-        "TYPE_UINT16": torch.uint16,
         "TYPE_UINT8": torch.uint8,
         "TYPE_BOOL": torch.bool,
     }
