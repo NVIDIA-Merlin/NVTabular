@@ -335,9 +335,9 @@ class Dataset:
                     schema_path = schema_path.parent
 
                 if (schema_path / "schema.pbtxt").exists():
-                    self.schema = Schema.load_protobuf(schema_path)
+                    self.schema = Schema.load(schema_path)
                 elif (schema_path.parent / "schema.pbtxt").exists():
-                    self.schema = Schema.load_protobuf(schema_path.parent)
+                    self.schema = Schema.load(schema_path.parent)
                 else:
                     self.infer_schema()
             else:
@@ -896,7 +896,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        self.schema.save_protobuf(output_path)
+        self.schema.write(output_path)
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
@@ -987,7 +987,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        self.schema.save_protobuf(output_path)
+        self.schema.write(output_path)
 
         # Output dask_cudf DataFrame to dataset,
         _ddf_to_dataset(
