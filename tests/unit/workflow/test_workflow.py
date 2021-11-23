@@ -576,7 +576,7 @@ def test_fit_simple():
     data = nvt.dispatch._make_df({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
     dataset = Dataset(data)
 
-    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
+    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> ops.LambdaOp(lambda x: x * x))
 
     workflow.fit(dataset)
     transformed = workflow.transform(dataset).to_ddf().compute()
