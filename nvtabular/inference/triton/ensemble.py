@@ -40,7 +40,7 @@ def export_tensorflow_ensemble(
     label_columns,
     sparse_max=None,
     version=1,
-    nvtabular_backend="python",
+    nvtabular_backend="nvtabular",
 ):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a tensorflow savedmodel
@@ -362,6 +362,9 @@ def generate_nvtabular_model(
     """
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
+    if sparse_max:
+        with open(os.path.join(output_path, str(version), "workflow", "model_info.json"), "w") as o:
+            json.dump(sparse_max, o)
     config = _generate_nvtabular_config(
         workflow,
         name,
