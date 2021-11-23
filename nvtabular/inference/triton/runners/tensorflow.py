@@ -24,6 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import json
+import os
+from pathlib import Path
+
 from triton_python_backend_utils import (
     InferenceResponse,
     Tensor,
@@ -53,36 +57,32 @@ class TensorflowWorkflowRunner(WorkflowRunner):
         self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
 
     def _transform_outputs(self, tensors):
-        x_cat_names, x_cont_names = ['category_list_trim', 'item_id_list_trim'], ['timestamp/age_days_list_trim', 'timestamp/weekday/sin_list_trim']
-        sparse_features_max = {
-            fname: 20
-            for fname in x_cat_names + x_cont_names
-        }
+        # Load extra info needed for the Transformer4Rec (if exists)
+        model_info_path = os.path.join(self.workflow_path, "model_info.json")
+        model_info_file = Path(model_info_path)
+        sparse_feat = {}
+        if model_info_file.exists():
+            with open(model_info_path) as json_file:
+                sparse_feat = json.load(json_file)
+
         """transforms outputs for both pytorch and tensorflow"""
         output_tensors = []
         for name, value in tensors.items():
-            if isinstance(value, tuple) and name not in sparse_features_max:
-                print(name, flush=True)
-                print("+++++ IT IS A SPARSE VECTOR ++++++", flush=True)
-                d = value
-                #col_n = sparse_features_max[name]
-                row_n = d[0].shape[0] // 20
-                d = d[0].reshape(row_n, 20)
-                output_tensors.append(Tensor(name, d))
+            if isinstance(value, tuple) and name not in sparse_feat.keys():
                 # convert list values to match TF dataloader
-                # values = value[0].astype(self.output_dtypes[name + "__values"])
-                # values = values.reshape(len(values), 1)
-                # output_tensors.append(Tensor(name + "__values", values))
-                # offsets = value[1].astype(self.output_dtypes[name + "__nnzs"])
-                # nnzs = offsets[1:] - offsets[:-1]
-                # nnzs = nnzs.reshape(len(nnzs), 1)
-                # output_tensors.append(Tensor(name + "__nnzs", nnzs))
-            if isinstance(value, tuple) and name in sparse_features_max: 
-                print("+++++ IT IS A DENSE VECTOR++++++", flush=True)
-                d = value
-                #col_n = sparse_features_max[name]
-                row_n = d[0].shape[0] // 20
-                d = d[0].reshape(row_n, 20)
+                values = value[0].astype(self.output_dtypes[name + "__values"])
+                values = values.reshape(len(values), 1)
+                output_tensors.append(Tensor(name + "__values", values))
+                offsets = value[1].astype(self.output_dtypes[name + "__nnzs"])
+                nnzs = offsets[1:] - offsets[:-1]
+                nnzs = nnzs.reshape(len(nnzs), 1)
+                output_tensors.append(Tensor(name + "__nnzs", nnzs))
+            elif isinstance(value, tuple) and name in sparse_feat.keys():
+                # convert sparse tensors to dense representations
+                d = value[0].astype(self.output_dtypes[name])
+                col_dim = sparse_feat[name]
+                row_dim = d.shape[0] // col_dim
+                d = d.reshape(row_dim, col_dim)
                 output_tensors.append(Tensor(name, d))
             else:
                 d = value.astype(self.output_dtypes[name])
