@@ -17,7 +17,6 @@ from dask.dataframe.utils import meta_nonempty
 
 from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.graph.schema import Schema
-from nvtabular.graph.tags import Tags
 
 from .operator import ColumnSelector, Operator
 
@@ -133,9 +132,6 @@ class Groupby(Operator):
         _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
         _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
         return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
-
-    def output_tags(self):
-        return [Tags.CATEGORICAL]
 
     def _dtypes(self):
         return numpy.int64

@@ -94,8 +94,8 @@ def test_string_datatypes(tmpdir, engine, cpu):
     column_schema = dataset.schema.column_schemas["column"]
     assert not isinstance(column_schema.dtype, str)
 
-    dataset.schema.save_protobuf(tmpdir)
-    loaded_schema = Schema.load_protobuf(str(tmpdir))
+    dataset.schema.write(tmpdir)
+    loaded_schema = Schema.load(str(tmpdir))
     column_schema = loaded_schema.column_schemas["column"]
     assert not isinstance(column_schema.dtype, str)
 

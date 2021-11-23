@@ -76,17 +76,25 @@ def test_valuecount(tmpdir):
     ds = nvt.Dataset(df)
     val_count = nvt.ops.ValueCount()
     feats = ["list1", "list2"] >> val_count
-    processor = nvt.Workflow(feats)
+    feats1 = feats["list1"] >> nvt.ops.AddMetadata(tags=["categorical"])
+    feats2 = feats["list2"] >> nvt.ops.AddMetadata(tags=["continuous"])
+    processor = nvt.Workflow(feats1 + feats2)
     processor.fit(ds)
     processor.transform(ds).to_parquet(tmpdir, out_files_per_proc=1)
     assert "list1" in list(val_count.stats.keys())
     assert "list2" in list(val_count.stats.keys())
+    new_df = nvt.Dataset(tmpdir, engine="parquet")
     assert processor.output_schema.column_schemas["list1"].properties == {
         "value_count": {"min": 1, "max": 4}
     }
     assert processor.output_schema.column_schemas["list2"].properties == {
         "value_count": {"min": 2, "max": 3}
     }
+    assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
+    assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
+
+    assert new_df.schema.column_schemas["list1"].tags == [nvt.graph.tags.Tags.CATEGORICAL]
+    assert new_df.schema.column_schemas["list2"].tags == [nvt.graph.tags.Tags.CONTINUOUS]
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -314,9 +322,8 @@ def test_groupby_op(keys, cpu):
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
     dataset = nvt.Dataset(ddf1, cpu=cpu)
     dataset.schema.column_schemas["x"] = (
-        dataset.schema.column_schemas["name"].with_tags("custom_tag").with_name("x")
+        dataset.schema.column_schemas["name"].with_name("x").with_tags("custom_tag")
     )
-
     # Define Groupby Workflow
     groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
