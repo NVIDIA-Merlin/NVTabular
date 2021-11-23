@@ -13,26 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from enum import Enum
+from abc import ABC
 
 
-class Tags(Enum):
-    # Feature types
-    CATEGORICAL = "categorical"
-    CONTINUOUS = "continuous"
-    LIST = "list"
-    TEXT = "text"
-    TEXT_TOKENIZED = "text_tokenized"
-    TIME = "time"
+class SchemaWriter(ABC):
+    @classmethod
+    def _read(cls, schema_path):
+        raise NotImplementedError("Must have logic to read schema from file")
 
-    # Feature context
-    USER = "user"
-    ITEM = "item"
-    ITEM_ID = "item_id"
-    CONTEXT = "context"
+    @classmethod
+    def write(cls, schema, schema_path):
+        raise NotImplementedError("Must have logic to write schema to file")
 
-    # Target related
-    TARGETS = "target"
-    BINARY = "binary"
-    REGRESSION = "regression"
-    MULTI_CLASS = "multi_class"
+    @classmethod
+    def load(cls, schema_path):
+        raise NotImplementedError("logic to create schema object from file")
