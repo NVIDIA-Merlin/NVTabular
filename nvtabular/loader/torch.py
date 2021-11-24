@@ -87,6 +87,8 @@ class TorchAsyncItr(torch.utils.data.IterableDataset, DataLoader):
         sparse_max=None,
         sparse_as_dense=False,
     ):
+
+        # dataset = nvt.dispatch.validate_ds(dataset)
         DataLoader.__init__(
             self,
             dataset,

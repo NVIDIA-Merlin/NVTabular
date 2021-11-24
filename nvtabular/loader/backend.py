@@ -36,6 +36,7 @@ from nvtabular.dispatch import (
     _pull_apart_list,
     annotate,
 )
+from nvtabular.io import DataFrameIter
 from nvtabular.io.shuffle import _shuffle_df
 from nvtabular.ops import _get_embedding_order
 from nvtabular.tags import Tags
@@ -70,8 +71,7 @@ class ChunkQueue:
         self.put_wait = put_wait
         self.q_out = queue.Queue(qsize)
         self._stop_event = threading.Event()
-        indices = dataloader._gather_indices_for_dev(0)
-        self.itr = dataloader.data.to_iter(indices=indices, epochs=epochs)
+        self.itr = dataloader._data_iter(epochs)
         self.dataloader = dataloader
 
     def __len__(self):
@@ -126,7 +126,7 @@ class ChunkQueue:
             if self.stopped:
                 return
 
-            if spill and not spill.empty:
+            if spill is not None and not spill.empty:
                 chunks.insert(0, spill)
 
             chunks = _concat(chunks)
@@ -183,6 +183,10 @@ class ChunkQueue:
         return chunks, spill
 
 
+def _get_dataset_schema(dataset):
+    return dataset.schema if hasattr(dataset, "schema") else None
+
+
 # TODO: implement as metaclass and assign methods to children
 # to avoid having to do Dataset.<method> calls?
 class DataLoader:
@@ -207,7 +211,9 @@ class DataLoader:
         sparse_as_dense=False,
     ):
         self.data = dataset
-        self.indices = cp.arange(dataset.to_ddf().npartitions)
+        self.schema = _get_dataset_schema(dataset)
+        # self.data is ddf format
+        self.indices = cp.arange(self.data.npartitions)
         self.drop_last = drop_last
         self.device = (device or 0) if HAS_GPU else "cpu"
         self.sparse_names = sparse_names or []
@@ -217,9 +223,15 @@ class DataLoader:
         self.global_rank = global_rank or 0
         self._epochs = 1
 
-        self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
-        self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
-        self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGETS).column_names
+        self.cat_names = cat_names or (
+            self.schema.select_by_tag(Tags.CATEGORICAL).column_names if self.schema else []
+        )
+        self.cont_names = cont_names or (
+            self.schema.select_by_tag(Tags.CONTINUOUS).column_names if self.schema else []
+        )
+        self.label_names = label_names or (
+            self.schema.select_by_tag(Tags.TARGETS).column_names if self.schema else []
+        )
 
         if not self.cat_names and not self.cont_names:
             raise ValueError(
@@ -339,6 +351,12 @@ class DataLoader:
 
     def __next__(self):
         return self._get_next_batch()
+
+    def _data_iter(self, epochs):
+        indices = self._gather_indices_for_dev(0)
+        if hasattr(self.data, "to_iter"):
+            return self.data.to_iter(indices=indices, epochs=epochs)
+        return DataFrameIter(self.data, epochs=epochs)
 
     def _fetch_chunk(self):
         chunks = self._buff.get()

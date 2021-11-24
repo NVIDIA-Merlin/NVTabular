@@ -33,6 +33,7 @@ from fsspec.utils import stringify_path
 import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
+from nvtabular.io.dataframe_iter import DataFrameIter
 from nvtabular.io.shuffle import _check_shuffle_arg
 from nvtabular.utils import global_dask_client
 
@@ -1182,33 +1183,3 @@ def _set_dtypes(chunk, dtypes):
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
-
-
-class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None, partition_lens=None, epochs=1):
-        self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
-        self._ddf = ddf
-        self.columns = columns
-        self.partition_lens = partition_lens
-        self.epochs = epochs
-
-    def __len__(self):
-        if self.partition_lens:
-            # Use metadata-based partition-size information
-            # if/when it is available.  Note that this metadata
-            # will not be correct if rows where added or dropped
-            # after IO (within Ops).
-            return sum(self.partition_lens[i] for i in self.indices) * self.epochs
-        if len(self.indices) < self._ddf.npartitions:
-            return len(self._ddf.partitions[self.indices]) * self.epochs
-        return len(self._ddf) * self.epochs
-
-    def __iter__(self):
-        for epoch in range(self.epochs):
-            for i in self.indices:
-                part = self._ddf.get_partition(i)
-                if self.columns:
-                    yield part[self.columns].compute(scheduler="synchronous")
-                else:
-                    yield part.compute(scheduler="synchronous")
-        part = None
