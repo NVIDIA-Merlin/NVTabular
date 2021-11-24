@@ -38,7 +38,6 @@ from nvtabular.dispatch import (
 )
 from nvtabular.io import DataFrameIter
 from nvtabular.io.shuffle import _shuffle_df
-from nvtabular.ops import _get_embedding_order
 from nvtabular.tags import Tags
 
 
@@ -553,7 +552,7 @@ class DataLoader:
                 lists.append(col)
             else:
                 scalars.append(col)
-        return _get_embedding_order(scalars), _get_embedding_order(lists)
+        return scalars, lists
 
     @annotate("_create_tensors", color="darkgreen", domain="nvt_python")
     def _create_tensors(self, gdf):
