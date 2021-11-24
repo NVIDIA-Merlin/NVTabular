@@ -106,13 +106,26 @@ def _optimized_read_partition_remote(
     return df
 
 
-def _handle_fsspec_parquet_options(use_fsspec_parquet, use_python_file_object):
+def _handle_fsspec_parquet_options(fs, use_fsspec_parquet, use_python_file_object):
     # Convert `use_fsspec_parquet` to bool and define
     # separate `use_fsspec_parquet_kwargs`
     use_fsspec_parquet_kwargs = use_fsspec_parquet if isinstance(use_fsspec_parquet, dict) else {}
     use_fsspec_parquet = (
         bool(use_fsspec_parquet) and fsspec_parquet and use_python_file_object is not False
     )
+
+    # Older versions of s3fs may not work properly with
+    # `fsspec.parquet.open_parquet_file`. To be safe,
+    # we should check if fs is based on s3fs, and
+    # set `use_fsspec_parquet=False` if the version is
+    # too old
+    if use_fsspec_parquet and fs and "s3" in fs.protocol:
+        try:
+            import s3fs
+
+            use_fsspec_parquet = LooseVersion(s3fs.__version__).version[:3] > [2021, 11, 0]
+        except ImportError:
+            pass
 
     return (
         use_fsspec_parquet,
@@ -134,6 +147,7 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
         use_fsspec_parquet_kwargs,
         use_python_file_object,
     ) = _handle_fsspec_parquet_options(
+        fs,
         read_kwargs.pop(
             "use_fsspec_parquet",
             user_kwargs.pop("use_fsspec_parquet", True),
@@ -179,20 +193,15 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
         )
 
         return cudf.read_parquet(
-            # Wrap in BytesIO since cudf will sometimes use
-            # pyarrow to parse the metadata (and pyarrow
-            # cannot read from a bytes object)
-            io.BytesIO(
-                # Transfer the required bytes with fsspec
-                _fsspec_data_transfer(
-                    path,
-                    fs,
-                    byte_ranges=byte_ranges,
-                    footer=footer,
-                    file_size=file_size,
-                    add_par1_magic=True,
-                    **user_kwargs,
-                )
+            # Transfer the required bytes with fsspec
+            _fsspec_data_transfer(
+                path,
+                fs,
+                byte_ranges=byte_ranges,
+                footer=footer,
+                file_size=file_size,
+                add_par1_magic=True,
+                **user_kwargs,
             ),
             engine="cudf",
             columns=columns,
@@ -334,7 +343,10 @@ def _fsspec_data_transfer(
             **kwargs,
         )
 
-    return buf.tobytes()
+    # Wrap in BytesIO since cudf will sometimes use
+    # pyarrow to parse the metadata (and pyarrow
+    # cannot read from a bytes object)
+    return io.BytesIO(buf)
 
 
 def _merge_ranges(byte_ranges, max_block=256_000_000, max_gap=64_000):
