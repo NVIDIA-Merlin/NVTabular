@@ -65,7 +65,7 @@ class TensorflowWorkflowRunner(WorkflowRunner):
             with open(model_info_path) as json_file:
                 sparse_feat = json.load(json_file)
 
-        """transforms outputs for both pytorch and tensorflow"""
+        # transforms outputs for both pytorch and tensorflow
         output_tensors = []
         for name, value in tensors.items():
             if isinstance(value, tuple) and name not in sparse_feat.keys():
