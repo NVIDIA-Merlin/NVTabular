@@ -68,7 +68,14 @@ class TensorflowWorkflowRunner(WorkflowRunner):
         # transforms outputs for both pytorch and tensorflow
         output_tensors = []
         for name, value in tensors.items():
-            if isinstance(value, tuple) and name not in sparse_feat.keys():
+            if name in sparse_feat.keys():
+                # convert sparse tensors to dense representations
+                d = value[0].astype(self.output_dtypes[name])
+                col_dim = sparse_feat[name]
+                row_dim = d.shape[0] // col_dim
+                d = d.reshape(row_dim, col_dim)
+                output_tensors.append(Tensor(name, d))
+            elif isinstance(value, tuple):
                 # convert list values to match TF dataloader
                 values = value[0].astype(self.output_dtypes[name + "__values"])
                 values = values.reshape(len(values), 1)
@@ -77,13 +84,6 @@ class TensorflowWorkflowRunner(WorkflowRunner):
                 nnzs = offsets[1:] - offsets[:-1]
                 nnzs = nnzs.reshape(len(nnzs), 1)
                 output_tensors.append(Tensor(name + "__nnzs", nnzs))
-            elif isinstance(value, tuple) and name in sparse_feat.keys():
-                # convert sparse tensors to dense representations
-                d = value[0].astype(self.output_dtypes[name])
-                col_dim = sparse_feat[name]
-                row_dim = d.shape[0] // col_dim
-                d = d.reshape(row_dim, col_dim)
-                output_tensors.append(Tensor(name, d))
             else:
                 d = value.astype(self.output_dtypes[name])
                 d = d.reshape(len(d), 1)

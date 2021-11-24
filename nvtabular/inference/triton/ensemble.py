@@ -318,9 +318,6 @@ def generate_nvtabular_model(
     """
 
     workflow.save(os.path.join(output_path, str(version), "workflow"))
-    if sparse_max:
-        with open(os.path.join(output_path, str(version), "workflow", "model_info.json"), "w") as o:
-            json.dump(sparse_max, o)
     config = _generate_nvtabular_config(
         workflow,
         name,
@@ -390,6 +387,9 @@ def _generate_nvtabular_config(
 
     config.parameters["python_module"].string_value = "nvtabular.inference.triton.model"
     config.parameters["output_model"].string_value = output_model if output_model else ""
+    if sparse_max:
+        # this assumes seq_length is same for each list column
+        config.parameters["sparse_max"].string_value = json.dumps(sparse_max)
 
     if output_model == "hugectr":
         config.instance_group.append(model_config.ModelInstanceGroup(kind=2))
@@ -474,35 +474,21 @@ def export_tensorflow_model(model, name, output_path, version=1):
         outputs = list(default_signature.structured_outputs.values())
 
     for col in inputs:
-        if col.shape[1] > 1:
-            config.input.append(
-                model_config.ModelInput(
-                    name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
-                )
+        config.input.append(
+            model_config.ModelInput(
+                name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
             )
-        else:
-            config.input.append(
-                model_config.ModelInput(
-                    name=col.name, data_type=_convert_dtype(col.dtype), dims=[-1, 1]
-                )
-            )
+        )
 
     for col in outputs:
         # this assumes the list columns are 1D tensors both for cats and conts
-        if col.shape[1] > 1:
-            config.output.append(
-                model_config.ModelOutput(
-                    name=col.name.split("/")[0],
-                    data_type=_convert_dtype(col.dtype),
-                    dims=[-1, col.shape[1]],
-                )
+        config.output.append(
+            model_config.ModelOutput(
+                name=col.name.split("/")[0],
+                data_type=_convert_dtype(col.dtype),
+                dims=[-1, col.shape[1]],
             )
-        else:
-            config.output.append(
-                model_config.ModelOutput(
-                    name=col.name.split("/")[0], data_type=_convert_dtype(col.dtype), dims=[-1, 1]
-                )
-            )
+        )
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
