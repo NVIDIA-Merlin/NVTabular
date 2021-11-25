@@ -68,7 +68,13 @@ def run_triton_server(modelpath):
 
 
 def _verify_workflow_on_tritonserver(
-    tmpdir, workflow, df, model_name, output_model="tensorflow", model_info=None
+    tmpdir,
+    workflow,
+    df,
+    model_name,
+    output_model="tensorflow",
+    model_info=None,
+    sparse_max=None,
 ):
     """tests that the nvtabular workflow produces the same results when run locally in the
     process, and when run in tritonserver"""
@@ -84,6 +90,7 @@ def _verify_workflow_on_tritonserver(
         version=1,
         output_model=output_model,
         output_info=model_info,
+        sparse_max=sparse_max,
         backend=BACKEND,
     )
 
@@ -378,3 +385,50 @@ def test_groupby_model(tmpdir, output_model):
         model_info = None
 
     _verify_workflow_on_tritonserver(tmpdir, workflow, df, "groupby", output_model, model_info)
+
+
+@pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
+@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+def test_seq_etl_model(tmpdir, output_model):
+    size = 100
+    max_length = 10
+    df = _make_df(
+        {
+            "id": np.random.choice([0, 1], size=size),
+            "item_id": np.random.randint(1, 10, size),
+            "ts": np.linspace(0.0, 10.0, num=size),
+            "y": np.linspace(0.0, 10.0, num=size),
+        }
+    )
+
+    groupby_features = ColumnSelector(["id", "item_id", "ts"]) >> ops.Groupby(
+        groupby_cols=["id"],
+        sort_cols=["ts"],
+        aggs={
+            "item_id": ["list"],
+            "y": ["list"],
+        },
+        name_sep="-",
+    )
+    feats_list = groupby_features["item_id-list", "y-list"]
+    feats_trim = feats_list >> ops.ListSlice(0, max_length, pad=True) >> ops.Rename(postfix="_seq")
+    selected_features = groupby_features["id", "ts-first"] + feats_trim
+
+    workflow = nvt.Workflow(selected_features)
+
+    if output_model == "pytorch":
+        model_info = {
+            "item-id-list": {"columns": ["item-id-list"], "dtype": "int64"},
+            "y-list": {"columns": ["y-list"], "dtype": "float64"},
+            "id": {"columns": ["id"], "dtype": "int64"},
+        }
+    elif output_model == "tensorflow":
+        model_info = None
+        sparse_max = {"item-id-list": max_length, "y-list": max_length}
+    else:
+        sparse_max = None
+        model_info = None
+
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "groupby", output_model, model_info, sparse_max
+    )
