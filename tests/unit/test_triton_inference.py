@@ -411,7 +411,7 @@ def test_seq_etl_model(tmpdir, output_model):
         name_sep="-",
     )
     feats_list = groupby_features["item_id-list", "y-list"]
-    feats_trim = feats_list >> ops.ListSlice(0, max_length, pad=True) >> ops.Rename(postfix="_seq")
+    feats_trim = feats_list >> ops.ListSlice(0, max_length) >> ops.Rename(postfix="_seq")
     selected_features = groupby_features["id", "ts-first"] + feats_trim
 
     workflow = nvt.Workflow(selected_features)
