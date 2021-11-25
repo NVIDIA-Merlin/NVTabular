@@ -25,8 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import os
-from pathlib import Path
 
 from triton_python_backend_utils import (
     InferenceResponse,
@@ -58,13 +56,8 @@ class TensorflowWorkflowRunner(WorkflowRunner):
 
     def _transform_outputs(self, tensors):
         # Load extra info needed for the Transformer4Rec (if exists)
-        model_info_path = os.path.join(self.workflow_path, "model_info.json")
-        model_info_file = Path(model_info_path)
         sparse_feat = {}
-        if model_info_file.exists():
-            with open(model_info_path) as json_file:
-                sparse_feat = json.load(json_file)
-
+        sparse_feat = json.loads(self.model_config["parameters"]["sparse_max"]["string_value"])
         # transforms outputs for both pytorch and tensorflow
         output_tensors = []
         for name, value in tensors.items():
