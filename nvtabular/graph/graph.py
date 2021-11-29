@@ -24,8 +24,11 @@ LOG = logging.getLogger("nvtabular")
 class Graph:
     def __init__(self, output_node: Node):
         self.output_node = output_node
+
         self.input_dtypes = None
         self.output_dtypes = None
+
+        self.input_schema = None
         self.output_schema = None
 
     def fit_schema(self, input_schema: Schema) -> "Graph":
@@ -66,6 +69,7 @@ class Graph:
             for dependencies in schemaless_nodes.values():
                 dependencies.difference_update(current_phase)
 
+        self.input_schema = input_schema
         self.output_schema = self.output_node.output_schema
 
         return self
