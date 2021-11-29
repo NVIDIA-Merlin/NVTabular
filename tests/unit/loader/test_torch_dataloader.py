@@ -646,7 +646,7 @@ def test_horovod_multigpu(tmpdir):
 
     # process them
     cat_features = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
-    ratings = ColumnSelector(["rating"]) >> ops.LambdaOp(lambda col: (col > 3).astype("int8"))
+    ratings = ColumnSelector(["rating"]) >> nvt.ops.LambdaOp(lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
 
     proc = nvt.Workflow(output)
@@ -728,7 +728,7 @@ def test_distributed_multigpu(tmpdir):
 
     # process them
     cat_features = ColumnSelector(["userId", "movieId", "genres"]) >> nvt.ops.Categorify()
-    ratings = ColumnSelector(["rating"]) >> (lambda col: (col > 3).astype("int8"))
+    ratings = ColumnSelector(["rating"]) >> nvt.ops.LambdaOp(lambda col: (col > 3).astype("int8"))
     output = cat_features + ratings
 
     proc = nvt.Workflow(output)
