@@ -29,6 +29,7 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
+from py._path.common import PathBase
 
 import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
@@ -198,6 +199,9 @@ class Dataset:
         Optional reference to the original "base" Dataset object used
         to construct the current Dataset instance.  This object is
         used to preserve file-partition mapping information.
+    schema : Schema
+        Optional argument, to support custom user defined Schemas.
+        This overrides the derived schema behavior.
     **kwargs :
         Key-word arguments to pass through to Dask.dataframe IO function.
         For the Parquet engine(s), notable arguments include `filters`,
@@ -321,8 +325,9 @@ class Dataset:
 
         # load in schema or infer if not available
         # path is always a list at this point
-
         if not self.schema:
+            if isinstance(path_or_source, (str, PathBase, Path)):
+                path_or_source = [Path(path_or_source)]
             if isinstance(path_or_source, list) and isinstance(path_or_source[0], (str, Path)):
                 # list of paths to files
                 schema_path = Path(path_or_source[0])
@@ -330,9 +335,9 @@ class Dataset:
                     schema_path = schema_path.parent
 
                 if (schema_path / "schema.pbtxt").exists():
-                    self.schema = Schema.load_protobuf(schema_path)
+                    self.schema = Schema.load(schema_path)
                 elif (schema_path.parent / "schema.pbtxt").exists():
-                    self.schema = Schema.load_protobuf(schema_path.parent)
+                    self.schema = Schema.load(schema_path.parent)
                 else:
                     self.infer_schema()
             else:
@@ -668,6 +673,7 @@ class Dataset:
         suffix=".parquet",
         partition_on=None,
         method="subgraph",
+        write_hugectr_keyset=False,
     ):
         """Writes out to a parquet dataset
 
@@ -742,6 +748,10 @@ class Dataset:
             a single large task). In some cases, it may be more ideal to prioritize
             concurrency. In that case, a worker-based approach can be used by
             specifying `method="worker"`.
+        write_hugectr_keyset : bool, optional
+            Whether to write a HugeCTR keyset output file ("_hugectr.keyset").
+            Writing this file can be very slow, and should only be done if you
+            are planning to ingest the output data with HugeCTR. Default is False.
         """
 
         if partition_on:
@@ -886,7 +896,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        self.schema.save_protobuf(output_path)
+        self.schema.write(output_path)
 
         # Output dask_cudf DataFrame to dataset
         _ddf_to_dataset(
@@ -905,7 +915,7 @@ class Dataset:
             self.cpu,
             suffix=suffix,
             partition_on=partition_on,
-            schema=self.schema,
+            schema=self.schema if write_hugectr_keyset else None,
         )
 
     def to_hugectr(
@@ -977,7 +987,7 @@ class Dataset:
 
         fs = get_fs_token_paths(output_path)[0]
         fs.mkdirs(output_path, exist_ok=True)
-        self.schema.save_protobuf(output_path)
+        self.schema.write(output_path)
 
         # Output dask_cudf DataFrame to dataset,
         _ddf_to_dataset(

@@ -1,4 +1,23 @@
 
+# NVTabular v0.7.1 (2 November 2021)
+
+## Improvements
+* Add LogOp support for list features [#1153](https://github.com/NVIDIA-Merlin/NVTabular/issues/1153)
+* Add Normalize operator support for list features [#1154](https://github.com/NVIDIA-Merlin/NVTabular/issues/1154)
+* Add DataLoader.epochs() method and Dataset.to_iter(epochs=) argument [#1147](https://github.com/NVIDIA-Merlin/NVTabular/pull/1147)
+* Add ValueCount operator for recording of multihot min and max list lengths [#1171](https://github.com/NVIDIA-Merlin/NVTabular/pull/1171)
+
+## Bug Fixes
+
+* Fix Criteo inference [#1198](https://github.com/NVIDIA-Merlin/NVTabular/issues/1198)
+* Fix performance regressions in Criteo benchmark [#1222](https://github.com/NVIDIA-Merlin/NVTabular/issues/1222)
+* Fix error in JoinGroupby op [#1167](https://github.com/NVIDIA-Merlin/NVTabular/issues/1222)
+* Fix Filter/JoinExternal key error [#1143](https://github.com/NVIDIA-Merlin/NVTabular/issues/1143)
+* Fix LambdaOp transforming dependency values [#1185](https://github.com/NVIDIA-Merlin/NVTabular/issues/)
+* Fix reading parquet files with list columns from GCS [#1155](https://github.com/NVIDIA-Merlin/NVTabular/issues/1155)
+* Fix TargetEncoding with dependencies as the target [#1165](https://github.com/NVIDIA-Merlin/NVTabular/issues/1165)
+* Fix Categorify op to calculate unique count stats for Nulls [#1159](https://github.com/NVIDIA-Merlin/NVTabular/issues/1159)
+
 # NVTabular v0.7.0 (23 September 2021)
 
 ## Improvements
@@ -99,7 +118,7 @@
 
 ## Breaking Changes
 
-* The API for NVTabular has been signficantly refactored, and existing code targetting the 0.3 API will need to be updated.
+* The API for NVTabular has been significantly refactored, and existing code targeting the 0.3 API will need to be updated.
 Workflows are now represented as graphs of operations, and applied using a sklearn 'transformers' style api. Read more by
 checking out the [examples](https://nvidia-merlin.github.io/NVTabular/v0.4.0/examples/index.html)
 
@@ -139,7 +158,7 @@ checking out the [examples](https://nvidia-merlin.github.io/NVTabular/v0.4.0/exa
 
 ## Bug Fixes
 
-* Fix PyTorch dataloader for compatability with deep learning examples
+* Fix PyTorch dataloader for compatibility with deep learning examples
 * Fix FillMissing operator with constant fill
 * Fix missing yaml dependency on conda install
 * Fix get_emb_sz off-by-one error

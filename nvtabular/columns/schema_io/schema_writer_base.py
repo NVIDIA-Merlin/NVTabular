@@ -13,11 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from abc import ABC
 
-# alias submodules here to avoid breaking everything with moving to submodules
-# flake8: noqa
-from .concat_columns import ConcatColumns
-from .identity import Identity
-from .selection import SelectionOp
-from .subset_columns import SubsetColumns
-from .subtraction import SubtractionOp
+
+class SchemaWriter(ABC):
+    @classmethod
+    def _read(cls, schema_path):
+        raise NotImplementedError("Must have logic to read schema from file")
+
+    @classmethod
+    def write(cls, schema, schema_path):
+        raise NotImplementedError("Must have logic to write schema to file")
+
+    @classmethod
+    def load(cls, schema_path):
+        raise NotImplementedError("logic to create schema object from file")

@@ -15,7 +15,6 @@
 #
 import json
 import math
-import os
 import queue
 import threading
 from typing import Optional
@@ -283,14 +282,14 @@ class ThreadedWriter(Writer):
 
         # Write keyset file
         if schema:
-            keyset_writer = open(os.path.join(out_dir, "_hugectr.keyset"), "wb")
-            for col in schema:
-                try:
-                    for v in range(col.properties["embedding_sizes"]["cardinality"] + 1):
-                        keyset_writer.write(v.to_bytes(4, "big"))
-                except KeyError:
-                    pass
-            keyset_writer.close()
+            fs = get_fs_token_paths(out_dir)[0]
+            with fs.open(fs.sep.join([out_dir, "_hugectr.keyset"]), "wb") as writer:
+                for col in schema:
+                    try:
+                        for v in range(col.properties["embedding_sizes"]["cardinality"] + 1):
+                            writer.write(v.to_bytes(4, "big"))
+                    except KeyError:
+                        pass
 
     @classmethod
     def write_special_metadata(cls, data, fs, out_dir):

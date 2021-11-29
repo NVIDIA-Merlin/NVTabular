@@ -444,7 +444,6 @@ class Categorify(StatOperator):
 
                 if isinstance(use_name, tuple):
                     use_name = list(use_name)
-
                 path = self.categories[storage_name]
                 new_df[name] = _encode(
                     use_name,
@@ -685,7 +684,6 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
     start_index: int = 0
-    dataset_size: int = 0
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -742,7 +740,16 @@ def _top_level_groupby(df, options: FitOptions):
             df_gb = df[combined_col_selector.names].copy(deep=False)
 
         agg_dict = {}
-        agg_dict[cat_col_selector.names[0]] = ["count"]
+        base_aggs = []
+        if "size" in options.agg_list:
+            # This is either for a Categorify operation,
+            # or "size" is in the list of aggregations
+            base_aggs.append("size")
+        if set(options.agg_list).difference({"size", "min", "max"}):
+            # This is a groupby aggregation that may
+            # require "count" statistics
+            base_aggs.append("count")
+        agg_dict[cat_col_selector.names[0]] = base_aggs
         if isinstance(options.agg_cols, list):
             options.agg_cols = ColumnSelector(options.agg_cols)
         for col in options.agg_cols.names:
@@ -762,7 +769,6 @@ def _top_level_groupby(df, options: FitOptions):
         if _is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
             df_gb = dispatch._flatten_list_column(df_gb[cat_col_selector.names[0]])
-
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
         gb = df_gb.groupby(cat_col_selector.names, dropna=False).agg(agg_dict)
         gb.columns = [
@@ -807,13 +813,15 @@ def _mid_level_groupby(dfs, col_selector: ColumnSelector, freq_limit_val, option
     gb.reset_index(drop=False, inplace=True)
 
     name_count = _make_name(*(col_selector.names + ["count"]), sep=options.name_sep)
+    name_size = _make_name(*(col_selector.names + ["size"]), sep=options.name_sep)
     if options.freq_limit and not options.max_size:
-        gb = gb[gb[name_count] >= freq_limit_val]
+        gb = gb[gb[name_size] >= freq_limit_val]
 
     required = col_selector.names.copy()
     if "count" in options.agg_list:
         required.append(name_count)
-
+    if "size" in options.agg_list:
+        required.append(name_size)
     ddof = 1
     if isinstance(options.agg_cols, list):
         options.agg_cols = ColumnSelector(options.agg_cols)
@@ -959,10 +967,10 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         new_cols = {}
         nulls_missing = False
         for col in col_selector.names:
-            name_count = col + "_count"
+            name_size = col + "_size"
             null_size = 0
-            if name_count in df:
-                null_size = options.dataset_size - df[name_count].sum()
+            if name_size in df:
+                null_size = df[name_size].iloc[0]
             if options.max_size:
                 max_emb_size = options.max_size
                 if isinstance(options.max_size, dict):
@@ -979,33 +987,32 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
                     raise ValueError("`nlargest` cannot be 0 or negative")
 
                 if nlargest < len(df):
-                    df = df.nlargest(n=nlargest, columns=name_count)
+                    df = df.nlargest(n=nlargest, columns=name_size)
             if not dispatch._series_has_nulls(df[col]):
-                if name_count in df:
-                    df = df.sort_values(name_count, ascending=False, ignore_index=True)
+                if name_size in df:
+                    df = df.sort_values(name_size, ascending=False, ignore_index=True)
 
                 nulls_missing = True
                 new_cols[col] = _concat(
                     [_nullable_series([None], df, df[col].dtype), df[col]],
                     ignore_index=True,
                 )
-                if name_count in df:
-                    new_cols[name_count] = _concat(
-                        [_nullable_series([null_size], df, df[name_count].dtype), df[name_count]],
+                if name_size in df:
+                    new_cols[name_size] = _concat(
+                        [_nullable_series([null_size], df, df[name_size].dtype), df[name_size]],
                         ignore_index=True,
                     )
 
             else:
                 # ensure None aka "unknown" stays at index 0
-                if name_count in df:
+                if name_size in df:
                     df_0 = df.iloc[0:1]
-                    df_0[name_count] = null_size
-                    df_1 = df.iloc[1:].sort_values(name_count, ascending=False, ignore_index=True)
+                    df_1 = df.iloc[1:].sort_values(name_size, ascending=False, ignore_index=True)
                     df = _concat([df_0, df_1])
                 new_cols[col] = df[col].copy(deep=False)
 
-                if name_count in df:
-                    new_cols[name_count] = df[name_count].copy(deep=False)
+                if name_size in df:
+                    new_cols[name_size] = df[name_size].copy(deep=False)
         if nulls_missing:
             df = type(df)(new_cols)
         df.to_parquet(path, index=False, compression=None)
@@ -1028,8 +1035,10 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
         return {}
 
     if options.concat_groups:
-        if options.agg_list and options.agg_list != ["count"]:
-            raise ValueError("Cannot use concat_groups=True with aggregations other than count")
+        if options.agg_list and not set(options.agg_list).issubset({"count", "size"}):
+            raise ValueError(
+                "Cannot use concat_groups=True with aggregations other than count and size"
+            )
         if options.agg_cols:
             raise ValueError("Cannot aggregate continuous-column stats with concat_groups=True")
 
@@ -1068,7 +1077,6 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
     level_2_name = "level_2-" + token
     level_3_name = "level_3-" + token
     finalize_labels_name = options.stat_name + "-" + token
-    options.dataset_size = len(ddf)
     for p in range(ddf.npartitions):
         dsk[(level_1_name, p)] = (_top_level_groupby, (ddf._name, p), options)
         k = 0
@@ -1120,7 +1128,7 @@ def _groupby_to_disk(ddf, write_func, options: FitOptions):
 def _category_stats(ddf, options: FitOptions):
     # Check if we only need categories
     if options.agg_cols == [] and options.agg_list == []:
-        options.agg_list = ["count"]
+        options.agg_list = ["size"]
         return _groupby_to_disk(ddf, _write_uniques, options)
 
     # Otherwise, getting category-statistics
@@ -1219,7 +1227,6 @@ def _encode(
             )
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
-
     if value is None:
         value = type(df)()
         for c in selection_r.names:
@@ -1227,14 +1234,17 @@ def _encode(
             value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
-
     if not search_sorted:
         if list_col:
             codes = dispatch._flatten_list_column(df[selection_l.names[0]])
             codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
-            for cl, cr in zip(selection_l.names, selection_r.names):
+        for cl, cr in zip(selection_l.names, selection_r.names):
+            if isinstance(df[cl].iloc[0], (np.ndarray, list)):
+                ser = df[cl].copy()
+                codes[cl] = dispatch._flatten_list_column_values(ser).astype(value[cr].dtype)
+            else:
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
@@ -1271,13 +1281,11 @@ def _encode(
                 df[selection_l.names], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r.names])] = na_sentinel
-
     labels = labels + start_index
     if list_col:
         labels = dispatch._encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
-
     return labels
 
 
@@ -1335,14 +1343,15 @@ def _hash_bucket(df, num_buckets, col, encode_type="joint"):
 
 def _copy_storage(existing_stats, existing_path, new_path, copy):
     """helper function to copy files to a new storage location"""
-    from shutil import copyfile
-
+    existing_fs = get_fs_token_paths(existing_path)[0]
+    new_fs = get_fs_token_paths(new_path)[0]
     new_locations = {}
     for column, existing_file in existing_stats.items():
         new_file = existing_file.replace(str(existing_path), str(new_path))
         if copy and new_file != existing_file:
-            os.makedirs(os.path.dirname(new_file), exist_ok=True)
-            copyfile(existing_file, new_file)
+            new_fs.makedirs(os.path.dirname(new_file), exist_ok=True)
+            with new_fs.open(new_file, "wb") as output:
+                output.write(existing_fs.open(existing_file, "rb").read())
 
         new_locations[column] = new_file
 
