@@ -141,7 +141,10 @@ class Schema:
         if isinstance(names, str):
             names = [names]
 
-        selected_schemas = {key: self.column_schemas[key] for key in names}
+        selected_schemas = {
+            key: self.column_schemas[key] for key in names if self.column_schemas.get(key, None)
+        }
+
         return Schema(selected_schemas)
 
     @classmethod
