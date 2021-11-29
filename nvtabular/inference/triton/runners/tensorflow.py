@@ -56,12 +56,14 @@ class TensorflowWorkflowRunner(WorkflowRunner):
 
     def _transform_outputs(self, tensors):
         # Load extra info needed for the Transformer4Rec (if exists)
-        sparse_feat = {}
-        sparse_feat = json.loads(self.model_config["parameters"]["sparse_max"]["string_value"])
+        sparse_feat = None
+        params = self.model_config["parameters"]
+        if "sparse_max" in params.keys():
+            sparse_feat = json.loads(self.model_config["parameters"]["sparse_max"]["string_value"])
         # transforms outputs for both pytorch and tensorflow
         output_tensors = []
         for name, value in tensors.items():
-            if name in sparse_feat.keys():
+            if sparse_feat and name in sparse_feat.keys():
                 # convert sparse tensors to dense representations
                 d = value[0].astype(self.output_dtypes[name])
                 col_dim = sparse_feat[name]
