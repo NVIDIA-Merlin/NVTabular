@@ -24,6 +24,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import json
+
 from triton_python_backend_utils import (
     InferenceResponse,
     Tensor,
@@ -53,15 +55,26 @@ class TensorflowWorkflowRunner(WorkflowRunner):
         self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
 
     def _transform_outputs(self, tensors):
-        """transforms outputs for both pytorch and tensorflow"""
+        # Load extra info needed for the Transformer4Rec (if exists)
+        sparse_feat = None
+        params = self.model_config["parameters"]
+        if "sparse_max" in params.keys():
+            sparse_feat = json.loads(self.model_config["parameters"]["sparse_max"]["string_value"])
+        # transforms outputs for both pytorch and tensorflow
         output_tensors = []
         for name, value in tensors.items():
-            if isinstance(value, tuple):
+            if sparse_feat and name in sparse_feat.keys():
+                # convert sparse tensors to dense representations
+                d = value[0].astype(self.output_dtypes[name])
+                col_dim = sparse_feat[name]
+                row_dim = d.shape[0] // col_dim
+                d = d.reshape(row_dim, col_dim)
+                output_tensors.append(Tensor(name, d))
+            elif isinstance(value, tuple):
                 # convert list values to match TF dataloader
                 values = value[0].astype(self.output_dtypes[name + "__values"])
                 values = values.reshape(len(values), 1)
                 output_tensors.append(Tensor(name + "__values", values))
-
                 offsets = value[1].astype(self.output_dtypes[name + "__nnzs"])
                 nnzs = offsets[1:] - offsets[:-1]
                 nnzs = nnzs.reshape(len(nnzs), 1)
