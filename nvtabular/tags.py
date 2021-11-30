@@ -32,7 +32,7 @@ class Tags(Enum):
     CONTEXT = "context"
 
     # Target related
-    TARGETS = "target"
+    TARGET = "target"
     BINARY = "binary"
     REGRESSION = "regression"
     MULTI_CLASS = "multi_class"
