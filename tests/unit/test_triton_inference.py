@@ -5,7 +5,6 @@ import subprocess
 import time
 from distutils.spawn import find_executable
 
-import cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -109,7 +108,7 @@ def _verify_workflow_on_tritonserver(
             features = response.as_numpy(col)
             if sparse_max and col in sparse_max:
                 features = features.tolist()
-                triton_df = cudf.DataFrame()
+                triton_df = _make_df()
                 triton_df[col] = features
             else:
                 triton_df = _make_df({col: features.reshape(features.shape[0])})
