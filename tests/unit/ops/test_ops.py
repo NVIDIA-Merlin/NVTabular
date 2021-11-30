@@ -402,6 +402,26 @@ def test_list_slice(cpu):
 
 
 @pytest.mark.parametrize("cpu", _CPU)
+def test_list_slice_pad(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+
+    # 0 pad to 5 elements
+    op = ops.ListSlice(5, pad=True)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3, 0], [1, 223, 4, 0, 0]]})
+    assert_eq(transformed, expected)
+
+    # make sure we can also pad when start != 0, and when pad_value is set
+    op = ops.ListSlice(1, 6, pad=True, pad_value=123)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767, 123], [2, 2, 3, 123, 123], [223, 4, 123, 123, 123]]})
+    assert_eq(transformed, expected)
+
+
+@pytest.mark.parametrize("cpu", _CPU)
 def test_rename(cpu):
     DataFrame = pd.DataFrame if cpu else cudf.DataFrame
     df = DataFrame({"x": [1, 2, 3, 4, 5], "y": [6, 7, 8, 9, 10]})
