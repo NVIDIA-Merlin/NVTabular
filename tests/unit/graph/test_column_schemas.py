@@ -19,6 +19,7 @@ import numpy
 import pytest
 
 from nvtabular.graph.schema import ColumnSchema, Schema
+from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.graph.tags import Tags
 
