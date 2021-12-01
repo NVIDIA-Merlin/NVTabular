@@ -17,8 +17,9 @@ from typing import Dict, Union
 
 import numpy
 
+from nvtabular.graph.tags import Tags
+
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
-from ..tags import Tags
 from .categorify import _emb_sz_rule, _get_embedding_order
 from .operator import ColumnSelector, Operator
 

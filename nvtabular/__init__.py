@@ -15,7 +15,7 @@
 #
 import warnings
 
-from . import columns, io, workflow  # noqa
+from . import graph, io, workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -25,11 +25,11 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 
 
 WorkflowNode = workflow.WorkflowNode
-ColumnSelector = columns.selector.ColumnSelector
+ColumnSelector = graph.selector.ColumnSelector
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
-ColumnSchema = columns.schema.ColumnSchema
-Schema = columns.schema.Schema
+ColumnSchema = graph.schema.ColumnSchema
+Schema = graph.schema.Schema
 
 
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to

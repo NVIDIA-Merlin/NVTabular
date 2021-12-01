@@ -16,8 +16,8 @@
 import numpy
 
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 

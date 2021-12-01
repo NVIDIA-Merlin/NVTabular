@@ -21,8 +21,8 @@ from dask.delayed import Delayed
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator

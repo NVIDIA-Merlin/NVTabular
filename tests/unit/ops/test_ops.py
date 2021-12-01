@@ -93,8 +93,8 @@ def test_valuecount(tmpdir):
     assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
     assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
 
-    assert new_df.schema.column_schemas["list1"].tags == [nvt.tags.Tags.CATEGORICAL]
-    assert new_df.schema.column_schemas["list2"].tags == [nvt.tags.Tags.CONTINUOUS]
+    assert new_df.schema.column_schemas["list1"].tags == [nvt.graph.tags.Tags.CATEGORICAL]
+    assert new_df.schema.column_schemas["list2"].tags == [nvt.graph.tags.Tags.CONTINUOUS]
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

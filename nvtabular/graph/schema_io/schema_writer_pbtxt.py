@@ -25,8 +25,8 @@ from google.protobuf.struct_pb2 import Struct  # noqa
 from tensorflow_metadata.proto.v0 import schema_pb2  # noqa
 
 import nvtabular as nvt  # noqa
-from nvtabular.columns.schema_io.schema_writer_base import SchemaWriter  # noqa
-from nvtabular.tags import Tags  # noqa
+from nvtabular.graph.schema_io.schema_writer_base import SchemaWriter  # noqa
+from nvtabular.graph.tags import Tags  # noqa
 
 
 class PbTxt_SchemaWriter(SchemaWriter):

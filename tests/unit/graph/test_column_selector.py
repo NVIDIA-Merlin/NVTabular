@@ -15,11 +15,11 @@
 #
 import pytest
 
-from nvtabular.columns import ColumnSelector
-from nvtabular.ops import Operator
-from nvtabular.ops.internal.selection import SelectionOp
-from nvtabular.tags import Tags
-from nvtabular.workflow import WorkflowNode
+from nvtabular.graph import BaseOperator
+from nvtabular.graph.node import Node
+from nvtabular.graph.ops.selection import SelectionOp
+from nvtabular.graph.selector import ColumnSelector
+from nvtabular.graph.tags import Tags
 
 
 def test_constructor_works_with_single_strings_and_lists():
@@ -55,17 +55,17 @@ def test_constructor_too_many_level():
 
 
 def test_constructor_rejects_workflow_nodes():
-    group = WorkflowNode(ColumnSelector(["a"]))
+    group = Node(ColumnSelector(["a"]))
 
     with pytest.raises(TypeError) as exception_info:
         ColumnSelector(group)
 
-    assert "WorkflowNode" in str(exception_info.value)
+    assert "Node" in str(exception_info.value)
 
     with pytest.raises(ValueError) as exception_info:
         ColumnSelector(["a", "b", group])
 
-    assert "WorkflowNode" in str(exception_info.value)
+    assert "Node" in str(exception_info.value)
 
 
 def test_constructor_creates_subgroups_from_nesting():
@@ -142,16 +142,16 @@ def test_addition_works_with_none():
 
 def test_rshift_operator_onto_selector_creates_selection_node():
     selector = ColumnSelector(["a", "b", "c"])
-    operator = Operator()
+    operator = BaseOperator()
 
     output_node = selector >> operator
 
-    assert isinstance(output_node, WorkflowNode)
-    assert isinstance(output_node.op, Operator)
+    assert isinstance(output_node, Node)
+    assert isinstance(output_node.op, BaseOperator)
     assert output_node._selector is None
     assert len(output_node.parents) == 1
 
-    assert isinstance(output_node.parents[0], WorkflowNode)
+    assert isinstance(output_node.parents[0], Node)
     assert isinstance(output_node.parents[0].op, SelectionOp)
     assert output_node.parents[0]._selector == selector
     assert len(output_node.parents[0].parents) == 0
