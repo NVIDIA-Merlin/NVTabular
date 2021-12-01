@@ -420,6 +420,25 @@ def test_list_slice_pad(cpu):
     expected = DataFrame({"y": [[1, 2, 2, 767, 123], [2, 2, 3, 123, 123], [223, 4, 123, 123, 123]]})
     assert_eq(transformed, expected)
 
+    # we should be able to do pad out negative offsets as well
+    op = ops.ListSlice(-4, pad=True, pad_value=-1)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-4, -1, pad=True, pad_value=-1)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2], [1, 2, 2], [1, 223, -1]]})
+    assert_eq(transformed, expected)
+
+    op = ops.ListSlice(-4, pad=True, pad_value=-1)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4, -1]]})
+    assert_eq(transformed, expected)
+
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_rename(cpu):
