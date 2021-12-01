@@ -20,6 +20,7 @@ import pytest
 
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
+from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 
 
 def test_fit_schema():
