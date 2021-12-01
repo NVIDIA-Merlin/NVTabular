@@ -44,9 +44,9 @@ def test_workflow_fit_op_rename(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in schema.column_names:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.tags.Tags.USER]
+            [nvt.graph.tags.Tags.USER]
         )
-    selector = nvt.ColumnSelector(tags=[nvt.tags.Tags.USER])
+    selector = nvt.ColumnSelector(tags=[nvt.graph.tags.Tags.USER])
 
     workflow_ops_1 = selector >> nvt.ops.Rename(postfix="_1")
     workflow_1 = nvt.Workflow(workflow_ops_1)
