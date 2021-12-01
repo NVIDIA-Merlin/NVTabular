@@ -314,7 +314,11 @@ class Node:
                 "is fit to a dataset or input schema."
             )
 
-        if self.selector:
+        if (
+            self.selector
+            and not self.selector.tags
+            and all(not selector.tags for selector in self.selector.subgroups)
+        ):
             # To maintain column groupings
             return self.selector
         else:
