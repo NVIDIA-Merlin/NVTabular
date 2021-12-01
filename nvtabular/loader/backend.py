@@ -229,7 +229,7 @@ class DataLoader:
             self.schema.select_by_tag(Tags.CONTINUOUS).column_names if self.schema else []
         )
         self.label_names = label_names or (
-            self.schema.select_by_tag(Tags.TARGETS).column_names if self.schema else []
+            self.schema.select_by_tag(Tags.TARGET).column_names if self.schema else []
         )
 
         if not self.cat_names and not self.cont_names:
