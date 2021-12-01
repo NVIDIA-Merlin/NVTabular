@@ -23,6 +23,7 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import json
 
 from nvtabular.inference.workflow.base import WorkflowRunner
 
@@ -48,7 +49,7 @@ class TensorflowWorkflowRunner(WorkflowRunner):
                 col_dim = sparse_feat[name]
                 row_dim = d.shape[0] // col_dim
                 d = d.reshape(row_dim, col_dim)
-                output_tensors.append(Tensor(name, d))
+                output_tensors.append((name, d))
             elif isinstance(value, tuple):
                 # convert list values to match TF dataloader
                 values = value[0].astype(self.output_dtypes[name + "__values"])
