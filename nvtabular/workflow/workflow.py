@@ -481,7 +481,6 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
 
             for parent in node.parents_with_dependencies:
                 parent_output_cols = _get_unique(parent.output_schema.column_names)
-                breakpoint()
                 parent_df = _transform_partition(root_df, [parent])
                 if input_df is None or not len(input_df):
                     input_df = parent_df[parent_output_cols]
@@ -509,7 +508,9 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
         # Compute the node's output
         if node.op:
             try:
-                output_df = node.op.transform(node.input_columns, input_df)
+                # use input_columns to ensure correct grouping (subgroups)
+                selection = node.input_columns.resolve(node.input_schema)
+                output_df = node.op.transform(selection, input_df)
             except Exception:
                 LOG.exception("Failed to transform operator %s", node.op)
                 raise
