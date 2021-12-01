@@ -14,13 +14,12 @@
 # limitations under the License.
 #
 
-from nvtabular.columns import ColumnSelector
 from nvtabular.dispatch import DataFrameType
+from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph.selector import ColumnSelector
 
-from ..operator import Operator
 
-
-class SubsetColumns(Operator):
+class ConcatColumns(BaseOperator):
     def __init__(self, label=None):
         self._label = label or self.__class__.__name__
 
@@ -28,7 +27,7 @@ class SubsetColumns(Operator):
         """Simply returns the selected output columns from the input dataframe
 
         The main functionality of this operator has to do with computing the schemas
-        for `-` nodes in the Workflow graph, so very little has to happen in the
+        for `+` nodes in the Workflow graph, so very little has to happen in the
         `transform` method.
 
         Parameters
@@ -44,9 +43,6 @@ class SubsetColumns(Operator):
             Returns a transformed dataframe for this operator
         """
         return df[col_selector.names]
-
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        return col_selector
 
     @property
     def label(self) -> str:

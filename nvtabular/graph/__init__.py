@@ -15,5 +15,7 @@
 #
 
 # flake8: noqa
+from .base_operator import BaseOperator
+from .node import Node
 from .schema import ColumnSchema, Schema
 from .selector import ColumnSelector
