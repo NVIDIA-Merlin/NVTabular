@@ -111,7 +111,7 @@ class Schema:
         return list(self.column_schemas.keys())
 
     def apply(self, selector):
-        if selector:
+        if selector is not None:
             schema = Schema()
             if selector.names:
                 schema += self.select_by_name(selector.names)

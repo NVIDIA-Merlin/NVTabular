@@ -26,13 +26,13 @@ class SelectionOp(BaseOperator):
         self.selector = selector
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        selector = self.selector or col_selector
+        selector = col_selector or self.selector
         return df[selector.names]
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        selector = self.selector or col_selector
+        selector = col_selector or self.selector
         return super().compute_output_schema(input_schema, selector)
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        selector = self.selector or col_selector
+        selector = col_selector or self.selector
         return super().output_column_names(selector)

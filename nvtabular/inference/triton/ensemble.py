@@ -28,8 +28,15 @@ from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype  # noqa
+from nvtabular.graph.graph import Graph  # noqa
+from nvtabular.graph.node import iter_nodes  # noqa
 from nvtabular.graph.schema import Schema  # noqa
-from nvtabular.workflow.node import iter_nodes  # noqa
+
+
+class Ensemble:
+    def __init__(self, ops, schema):
+        self.graph = Graph(ops)
+        self.graph.fit_schema(schema)
 
 
 def export_tensorflow_ensemble(

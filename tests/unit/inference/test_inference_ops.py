@@ -12,8 +12,8 @@ import nvtabular as nvt  # noqa
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 import nvtabular.ops as wf_ops  # noqa
 from nvtabular.graph.schema import Schema  # noqa
-from nvtabular.inference.ensemble import Ensemble  # noqa
 from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
+from nvtabular.inference.triton.ensemble import Ensemble  # noqa
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

@@ -131,3 +131,17 @@ class ColumnSelector:
         if not isinstance(other, ColumnSelector):
             return False
         return other._names == self._names and other.subgroups == self.subgroups
+
+    def __bool__(self):
+        return bool(self._names or self.subgroups or self.tags)
+
+    def resolve(self, schema):
+        """Takes a schema and produces a new selector with selected column names
+        how selection occurs (tags, name) does not matter."""
+        # get names from tags or names
+        root_selector = ColumnSelector(names=self._names, tags=self.tags)
+        new_schema = schema.apply(root_selector)
+        new_selector = ColumnSelector(new_schema.column_names)
+        for group in self.subgroups:
+            new_selector.subgroups.append(group.resolve(schema))
+        return new_selector
