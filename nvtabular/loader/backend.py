@@ -219,7 +219,7 @@ class DataLoader:
 
         self.cat_names = cat_names or dataset.schema.select_by_tag(Tags.CATEGORICAL).column_names
         self.cont_names = cont_names or dataset.schema.select_by_tag(Tags.CONTINUOUS).column_names
-        self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGETS).column_names
+        self.label_names = label_names or dataset.schema.select_by_tag(Tags.TARGET).column_names
 
         if not self.cat_names and not self.cont_names:
             raise ValueError(
