@@ -24,8 +24,8 @@ from nvtabular.dispatch import (
     _random_state,
     _read_parquet_dispatch,
 )
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator

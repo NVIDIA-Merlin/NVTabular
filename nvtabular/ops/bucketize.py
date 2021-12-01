@@ -18,8 +18,8 @@ from distutils.version import LooseVersion
 import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
