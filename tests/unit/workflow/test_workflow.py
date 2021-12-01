@@ -39,6 +39,26 @@ from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
+def test_workflow_fit_op_rename(tmpdir, dataset, engine):
+    # NVT
+    schema = dataset.schema
+    for name in schema.column_names:
+        dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
+            [nvt.tags.Tags.USER]
+        )
+    selector = nvt.ColumnSelector(tags=[nvt.tags.Tags.USER])
+
+    workflow_ops_1 = selector >> nvt.ops.Rename(postfix="_1")
+    workflow_1 = nvt.Workflow(workflow_ops_1)
+    workflow_1.fit(dataset)
+    workflow_1.save(str(tmpdir / "one"))
+    new_dataset = workflow_1.transform(dataset).to_ddf().compute()
+
+    assert len(new_dataset.columns) > 0
+    assert all("_1" in col for col in new_dataset.columns)
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
 def test_grab_additional_input_columns(dataset, engine):
     schema = Schema(["x", "y"])
     node1 = ["x"] >> ops.FillMissing()
