@@ -1,5 +1,9 @@
-import cudf
 import numpy as np
+
+try:
+    from cudf import to_datetime
+except ImportError:
+    from dask.dataframe import to_datetime
 
 import nvtabular as nvt
 from nvtabular import ColumnSelector
@@ -16,7 +20,7 @@ def test_tf4rec():
         "prod_first_event_time_ts": np.random.randint(1570373000, 1570373382, NUM_ROWS),
         "price": np.random.uniform(0, 2750, NUM_ROWS),
     }
-    df = cudf.DataFrame(inputs)
+    df = nvt.dispatch._make_df(inputs)
 
     # categorify features
 
@@ -31,7 +35,7 @@ def test_tf4rec():
 
     sessionTime = (
         sessionTs
-        >> nvt.ops.LambdaOp(lambda col: cudf.to_datetime(col, unit="s"))
+        >> nvt.ops.LambdaOp(lambda col: to_datetime(col, unit="s"))
         >> nvt.ops.Rename(name="event_time_dt")
     )
 

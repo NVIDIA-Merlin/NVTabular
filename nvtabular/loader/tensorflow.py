@@ -19,6 +19,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
+from nvtabular.dispatch import HAS_GPU
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
@@ -243,6 +244,7 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         cont_names = _get_embedding_order(cont_names)
 
         device = device or 0
+        device = "cpu" if not HAS_GPU else device
         DataLoader.__init__(
             self,
             dataset,
@@ -327,10 +329,13 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
     def _pack(self, gdf):
         if isinstance(gdf, np.ndarray):
             return gdf
-        if hasattr(gdf, "to_dlpack") and callable(getattr(gdf, "to_dlpack")):
+        elif hasattr(gdf, "to_dlpack") and callable(getattr(gdf, "to_dlpack")):
             return gdf.to_dlpack()
         elif hasattr(gdf, "to_numpy") and callable(getattr(gdf, "to_numpy")):
-            return gdf.to_numpy()
+            gdf = gdf.to_numpy()
+            if isinstance(gdf[0], list):
+                gdf = np.stack(gdf)
+            return gdf
         return gdf.toDlpack()
 
     def _unpack(self, gdf):
@@ -350,16 +355,16 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
             dlpack = self._pack(gdf.values[0])
         else:
             dlpack = self._pack(gdf.values.T)
-
         # catch error caused by tf eager context
         # not being initialized
+
         try:
             x = self._unpack(dlpack)
         except AssertionError:
             tf.random.uniform((1,))
             x = self._unpack(dlpack)
-
-        if gdf.shape[0] == 1:
+        # if rank is already two it is  already in list format
+        if gdf.shape[0] == 1 and not tf.rank(x) == 2:
             # batch size 1 so got squashed to a vector
             x = tf.expand_dims(x, 0)
         elif len(gdf.shape) == 1 or len(x.shape) == 1:

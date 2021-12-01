@@ -21,10 +21,8 @@ import os
 import warnings
 from distutils.version import LooseVersion
 
-import cudf
 import dask
 import dask.dataframe as dd
-import dask_cudf
 import numpy as np
 import pandas as pd
 import pytest
@@ -38,6 +36,9 @@ from nvtabular.columns import Schema
 from nvtabular.io.parquet import GPUParquetWriter
 from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+
+cudf = pytest.importorskip("cudf")
+dask_cudf = pytest.importorskip("dask_cudf")
 
 
 def test_validate_dataset_bad_schema(tmpdir):
@@ -93,8 +94,8 @@ def test_string_datatypes(tmpdir, engine, cpu):
     column_schema = dataset.schema.column_schemas["column"]
     assert not isinstance(column_schema.dtype, str)
 
-    dataset.schema.save_protobuf(tmpdir)
-    loaded_schema = Schema.load_protobuf(str(tmpdir))
+    dataset.schema.write(tmpdir)
+    loaded_schema = Schema.load(str(tmpdir))
     column_schema = loaded_schema.column_schemas["column"]
     assert not isinstance(column_schema.dtype, str)
 

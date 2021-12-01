@@ -76,17 +76,25 @@ def test_valuecount(tmpdir):
     ds = nvt.Dataset(df)
     val_count = nvt.ops.ValueCount()
     feats = ["list1", "list2"] >> val_count
-    processor = nvt.Workflow(feats)
+    feats1 = feats["list1"] >> nvt.ops.AddMetadata(tags=["categorical"])
+    feats2 = feats["list2"] >> nvt.ops.AddMetadata(tags=["continuous"])
+    processor = nvt.Workflow(feats1 + feats2)
     processor.fit(ds)
     processor.transform(ds).to_parquet(tmpdir, out_files_per_proc=1)
     assert "list1" in list(val_count.stats.keys())
     assert "list2" in list(val_count.stats.keys())
+    new_df = nvt.Dataset(tmpdir, engine="parquet")
     assert processor.output_schema.column_schemas["list1"].properties == {
         "value_count": {"min": 1, "max": 4}
     }
     assert processor.output_schema.column_schemas["list2"].properties == {
         "value_count": {"min": 2, "max": 3}
     }
+    assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
+    assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
+
+    assert new_df.schema.column_schemas["list1"].tags == [nvt.tags.Tags.CATEGORICAL]
+    assert new_df.schema.column_schemas["list2"].tags == [nvt.tags.Tags.CONTINUOUS]
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -298,7 +306,7 @@ def test_data_stats(tmpdir, df, datasets, engine, cpu):
 def test_groupby_op(keys, cpu):
     # Initial timeseries dataset
     size = 60
-    df1 = pd.DataFrame(
+    df1 = nvt.dispatch._make_df(
         {
             "name": np.random.choice(["Dave", "Zelda"], size=size),
             "id": np.random.choice([0, 1], size=size),
@@ -314,9 +322,8 @@ def test_groupby_op(keys, cpu):
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
     dataset = nvt.Dataset(ddf1, cpu=cpu)
     dataset.schema.column_schemas["x"] = (
-        dataset.schema.column_schemas["name"].with_tags("custom_tag").with_name("x")
+        dataset.schema.column_schemas["name"].with_name("x").with_tags("custom_tag")
     )
-
     # Define Groupby Workflow
     groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
@@ -391,6 +398,26 @@ def test_list_slice(cpu):
     op = ops.ListSlice(-3, -1)
     transformed = op.transform(selector, df)
     expected = DataFrame({"y": [[2, 2], [2, 2], [1, 223]]})
+    assert_eq(transformed, expected)
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_list_slice_pad(cpu):
+    DataFrame = pd.DataFrame if cpu else cudf.DataFrame
+    df = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3], [1, 223, 4]]})
+
+    # 0 pad to 5 elements
+    op = ops.ListSlice(5, pad=True)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[0, 1, 2, 2, 767], [1, 2, 2, 3, 0], [1, 223, 4, 0, 0]]})
+    assert_eq(transformed, expected)
+
+    # make sure we can also pad when start != 0, and when pad_value is set
+    op = ops.ListSlice(1, 6, pad=True, pad_value=123)
+    selector = ColumnSelector(["y"])
+    transformed = op.transform(selector, df)
+    expected = DataFrame({"y": [[1, 2, 2, 767, 123], [2, 2, 3, 123, 123], [223, 4, 123, 123, 123]]})
     assert_eq(transformed, expected)
 
 

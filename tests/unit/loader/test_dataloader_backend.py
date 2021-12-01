@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cupy
+import numpy as np
 import pytest
 
-from nvtabular.dispatch import _concat
+from nvtabular.dispatch import _concat, _generate_local_seed, _get_random_state
 from nvtabular.io.dataset import Dataset
 from nvtabular.loader.backend import DataLoader
 from tests.conftest import assert_eq
@@ -38,8 +38,7 @@ def test_dataloader_seeding(datasets, engine, batch_size):
         # Capturing the next random number generated allows us to check
         # that different workers have different random states when this
         # function is called
-        rng_state = cupy.random.get_random_state()
-        next_rand = rng_state.tomaxint(size=1)
+        next_rand = _generate_local_seed(0, 1)
         seed_fragments.append(next_rand)
 
         # But since we don't actually want to run two data loaders in
@@ -74,20 +73,19 @@ def test_dataloader_seeding(datasets, engine, batch_size):
 
     # Starting from the same random state, run a shuffle on each worker
     # and capture the results
-    cupy.random.seed(1234)
+    np.random.seed(1234)
 
     data_loader_0._shuffle_indices()
 
-    dl0_rng_state = cupy.random.get_random_state()
+    dl0_rng_state = _get_random_state()
     dl0_next_rand = dl0_rng_state.tomaxint(size=1)
     dl0_indices = data_loader_0.indices
 
-    cupy.random.seed(1234)
+    np.random.seed(1234)
 
     data_loader_1._shuffle_indices()
 
-    dl1_rng_state = cupy.random.get_random_state()
-    dl1_next_rand = dl1_rng_state.tomaxint(size=1)
+    dl1_next_rand = _generate_local_seed(0, 1)
     dl1_indices = data_loader_1.indices
 
     # Test that the seed function actually gets called in each data loader

@@ -21,12 +21,14 @@ import subprocess
 import sys
 from os.path import dirname, realpath
 
-import cudf
 import pytest
 
-import nvtabular.tools.data_gen as datagen
-from tests.conftest import get_cuda_cluster
-from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server
+pytest.importorskip("cudf")
+import cudf  # noqa: E402
+
+import nvtabular.tools.data_gen as datagen  # noqa: E402
+from tests.conftest import get_cuda_cluster  # noqa: E402
+from tests.unit.test_triton_inference import TRITON_SERVER_PATH, run_triton_server  # noqa: E402
 
 TEST_PATH = dirname(dirname(realpath(__file__)))
 
@@ -287,7 +289,7 @@ def test_multigpu_dask_example(tmpdir):
 
 def _run_notebook(tmpdir, notebook_path, transform=None):
     # read in the notebook as JSON, and extract a python script from it
-    notebook = json.load(open(notebook_path))
+    notebook = json.load(open(notebook_path, encoding="utf-8"))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
     lines = [
         transform(line.rstrip()) if transform else line
