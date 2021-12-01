@@ -39,9 +39,7 @@ dd_engine = {
 }
 
 
-def _validate_dataset(
-    paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs, dataclass=None
-):
+def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
     # TODO: put this in parent class and allow
     # torch dataset to leverage as well?
 

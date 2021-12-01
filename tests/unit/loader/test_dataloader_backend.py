@@ -122,12 +122,6 @@ def test_dataloader_empty_error(datasets, engine, batch_size):
     )
 
 
-class DatasetStub:
-    def __init__(self, dataset, schema):
-        self.data = dataset
-        self.schema = schema
-
-
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [128])
 @pytest.mark.parametrize("epochs", [1, 5])
