@@ -36,7 +36,8 @@ except ImportError:
 
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("include_nulls", [True, False])
-def test_categorify_size(tmpdir, cpu, include_nulls):
+@pytest.mark.parametrize("cardinality_memory_limit", [None, "24B"])
+def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
     num_rows = 50
     num_distinct = 10
 
@@ -49,9 +50,18 @@ def test_categorify_size(tmpdir, cpu, include_nulls):
         device="cpu" if cpu else None,
     )
 
-    cat_features = ["session_id"] >> nvt.ops.Categorify(out_path=str(tmpdir))
+    cat_features = ["session_id"] >> nvt.ops.Categorify(
+        out_path=str(tmpdir),
+        cardinality_memory_limit=cardinality_memory_limit,
+    )
     workflow = nvt.Workflow(cat_features)
-    workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    if cardinality_memory_limit:
+        # We set an artificially-low `cardinality_memory_limit`
+        # argument to ensure that a UserWarning will be thrown
+        with pytest.warns(UserWarning):
+            workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
+    else:
+        workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     vals = df["session_id"].value_counts()
     vocab = dispatch._read_dispatch(cpu=cpu)(
@@ -66,12 +76,17 @@ def test_categorify_size(tmpdir, cpu, include_nulls):
             if size
         }
     else:
+        # Ignore first element if it is NaN
+        if vocab["session_id"].iloc[:1].isna().any():
+            session_id = vocab["session_id"].iloc[1:]
+            session_id_size = vocab["session_id_size"].iloc[1:]
+        else:
+            session_id = vocab["session_id"]
+            session_id_size = vocab["session_id_size"]
         expected = dict(zip(vals.index.values_host, vals.values_host))
         computed = {
             session: size
-            for session, size in zip(
-                vocab["session_id"].values_host, vocab["session_id_size"].values_host
-            )
+            for session, size in zip(session_id.values_host, session_id_size.values_host)
             if size
         }
     first_key = list(computed.keys())[0]
