@@ -22,8 +22,8 @@ except ImportError:
     cp = None
 
 from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 

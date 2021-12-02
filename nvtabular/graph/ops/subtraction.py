@@ -15,12 +15,12 @@
 #
 from __future__ import annotations
 
-from nvtabular.columns import ColumnSelector
 from nvtabular.dispatch import DataFrameType
-from nvtabular.ops import Operator
+from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph.selector import ColumnSelector
 
 
-class SubtractionOp(Operator):
+class SubtractionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
 

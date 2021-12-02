@@ -14,28 +14,28 @@
 # limitations under the License.
 #
 
-from nvtabular import ops
-from nvtabular.ops import internal
+from nvtabular import ops as workflow_ops
+from nvtabular.graph import ops as graph_ops
 
 
 def test_column_concat_op():
-    node = "col1" >> ops.Operator()
+    node = "col1" >> workflow_ops.Operator()
     col_name = "col2"
 
     concat_node = node + col_name
-    assert isinstance(concat_node.op, internal.ConcatColumns)
+    assert isinstance(concat_node.op, graph_ops.ConcatColumns)
 
 
 def test_column_subtraction_op():
-    node = ["col1", "col2"] >> ops.Operator()
+    node = ["col1", "col2"] >> workflow_ops.Operator()
     col_name = "col1"
 
     subtract_node = node - col_name
-    assert isinstance(subtract_node.op, internal.SubtractionOp)
+    assert isinstance(subtract_node.op, graph_ops.SubtractionOp)
 
 
 def test_column_subset_op():
-    node = ["col1", "col2"] >> ops.Operator()
+    node = ["col1", "col2"] >> workflow_ops.Operator()
 
     bracket_node = node["col1"]
-    assert isinstance(bracket_node.op, internal.SubsetColumns)
+    assert isinstance(bracket_node.op, graph_ops.SubsetColumns)

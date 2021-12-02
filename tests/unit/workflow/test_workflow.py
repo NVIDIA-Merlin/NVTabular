@@ -32,8 +32,9 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.dispatch import HAS_GPU, _make_df
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
@@ -43,9 +44,9 @@ def test_workflow_fit_op_rename(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in schema.column_names:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.tags.Tags.USER]
+            [nvt.graph.tags.Tags.USER]
         )
-    selector = nvt.ColumnSelector(tags=[nvt.tags.Tags.USER])
+    selector = nvt.ColumnSelector(tags=[nvt.graph.tags.Tags.USER])
 
     workflow_ops_1 = selector >> nvt.ops.Rename(postfix="_1")
     workflow_1 = nvt.Workflow(workflow_ops_1)
@@ -613,8 +614,16 @@ def test_transform_geolocation():
     data = nvt.dispatch._make_df({"geo_location": raw})
 
     geo_location = ColumnSelector(["geo_location"])
-    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
-    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
     geo_features = state + country + geo_location >> ops.HashBucket(num_buckets=100)
 
     # for this workflow we don't have any statoperators, so we can get away without fitting
@@ -633,8 +642,16 @@ def test_workflow_move_saved(tmpdir):
     data = nvt.dispatch._make_df({"geo": raw})
 
     geo_location = ColumnSelector(["geo"])
-    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
-    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
     geo_features = state + country + geo_location >> ops.Categorify()
 
     # create the workflow and transform the input
