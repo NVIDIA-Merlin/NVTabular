@@ -42,6 +42,18 @@ class ListSlice(Operator):
     Take the last 10 items from each row::
 
         truncated = column_names >> ops.ListSlice(-10)
+
+    Parameters
+    -----------
+    start: int
+        The starting value to slice from if end isn't given, otherwise the end value to slice to
+    end: int, optional
+        The end value to slice to
+    pad: bool, default False
+        Whether to pad out rows to have the same number of elements. If not set rows may not all
+        have the same number of entries.
+    pad_value: float
+        When pad=True, this is the value used to pad missing entries
     """
 
     def __init__(self, start, end=None, pad=False, pad_value=0.0):
@@ -58,23 +70,26 @@ class ListSlice(Operator):
         if self.end is None:
             self.end = np.iinfo(np.int64).max
 
+        if self.start < 0:
+            self.max_elements = -(self.start if self.end > 0 else self.start - self.end)
+        else:
+            self.max_elements = self.end - self.start
+
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         on_cpu = _is_cpu_object(df)
         ret = type(df)()
-
-        max_elements = self.end - self.start
 
         for col in col_selector.names:
             # handle CPU via normal python slicing (not very efficient)
             if on_cpu:
                 values = [row[self.start : self.end] for row in df[col]]
 
-                # pad out to so each row has max_elements if askeed
+                # pad out to so each row has self.max_elements if asked
                 if self.pad:
                     for v in values:
-                        if len(v) < max_elements:
-                            v.extend([self.pad_value] * (max_elements - len(v)))
+                        if len(v) < self.max_elements:
+                            v.extend([self.pad_value] * (self.max_elements - len(v)))
 
                 ret[col] = values
             else:
@@ -87,7 +102,7 @@ class ListSlice(Operator):
                 blocks = (offsets.size + threads - 1) // threads
 
                 if self.pad:
-                    new_offsets = cp.arange(offsets.size, dtype=offsets.dtype) * max_elements
+                    new_offsets = cp.arange(offsets.size, dtype=offsets.dtype) * self.max_elements
 
                 else:
                     # figure out the size of each row after slicing start/end
@@ -105,7 +120,7 @@ class ListSlice(Operator):
                 )
                 if new_elements.size:
                     _slice_rows[blocks, threads](
-                        self.start, offsets, elements, new_offsets, new_elements
+                        self.start, self.end, offsets, elements, new_offsets, new_elements
                     )
 
                 # build up a list column with the sliced values
@@ -141,7 +156,7 @@ def _calculate_row_sizes(start, end, offsets, row_sizes):
 
 
 @numba.cuda.jit
-def _slice_rows(start, offsets, elements, new_offsets, new_elements):
+def _slice_rows(start, end, offsets, elements, new_offsets, new_elements):
     """slices rows of a list column. requires the 'new_offsets' to
     be previously calculated (meaning that we don't need the 'end' slice index
     since that's baked into the new_offsets"""
@@ -157,11 +172,13 @@ def _slice_rows(start, offsets, elements, new_offsets, new_elements):
         new_start = new_offsets[rowid]
         new_end = new_offsets[rowid + 1]
 
-        # if we are padding (more new offsets than old olffsets) - don't keep on iterating past
+        # if we are padding (more new offsets than old offsets) - don't keep on iterating past
         # the end
         offset_delta = (new_end - new_start) - (offsets[rowid + 1] - offset)
         if offset_delta > 0:
             new_end -= offset_delta
+        elif offset_delta == 0 and end < 0:
+            new_end += end
 
         for new_offset in range(new_start, new_end):
             new_elements[new_offset] = elements[offset]
