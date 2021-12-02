@@ -240,7 +240,7 @@ def test_numeric_dtypes(tmpdir, output_model):
     df = _make_df(
         {dtype: np.array([limits.max, 0, limits.min], dtype=dtype) for dtype, limits in dtypes}
     )
-    features = nvt.ColumnSelector(df.columns) >> check_dtypes
+    features = nvt.ColumnSelector(df.columns) >> ops.LambdaOp(check_dtypes)
     workflow = nvt.Workflow(features)
     _verify_workflow_on_tritonserver(
         tmpdir, workflow, df, "test_numeric_dtypes", output_model, model_info
