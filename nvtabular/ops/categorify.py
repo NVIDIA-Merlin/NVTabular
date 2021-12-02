@@ -188,7 +188,7 @@ class Categorify(StatOperator):
         for special user-defined values.
     cardinality_memory_limit: int or str, default None
         Upper limit on the "allowed" memory usage of the internal DataFrame and Table objects used
-        to store unique categories. By default, this limit is assumed to be 10% of the total memory.
+        to store unique categories. By default, this limit is assumed to be 12.5% of the total memory.
         Note that this argument is meant as a guide for internal optimizations and UserWarnings
         within NVTabular, and does not guarantee that the memory limit will be satisfied.
     """
@@ -1031,6 +1031,7 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
             f"Category DataFrame (with columns: {df.columns}) is {_df_size} "
             f"bytes in size. This is large compared to the suggested "
             f"upper limit of {options.cardinality_memory_limit} bytes!"
+            f"(12.5% of the total memory by default)"
         )
 
     rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
