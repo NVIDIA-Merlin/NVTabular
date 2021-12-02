@@ -552,17 +552,6 @@ class Categorify(StatOperator):
         return self.categories
 
 
-def _get_embedding_order(cat_names):
-    """Returns a consistent sorder order for categorical variables
-
-    Parameters
-    -----------
-    cat_names : list of str
-        names of the categorical columns
-    """
-    return cat_names
-
-
 def get_embedding_sizes(source, output_dtypes=None):
     """Returns a dictionary of embedding sizes from a workflow or workflow_node
 
@@ -621,7 +610,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
         buckets = {name: buckets for name in cat_names}
     if isinstance(max_size, int):
         max_size = {name: max_size for name in cat_names}
-    for col in _get_embedding_order(cat_names):
+    for col in cat_names:
         path = paths.get(col)
         num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
         if isinstance(buckets, dict):
