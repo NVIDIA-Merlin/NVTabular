@@ -166,5 +166,6 @@ def test_op_runner_loads_multiple_ops_same_execute(tmpdir, dataset, engine):
 
     # input_tensors = TensorDataFrame(inputs)
     outputs = runner.execute(inputs)
-    # assert all(name in outputs for name in workflow_2.output_schema.column_names)
+
     assert len(outputs) == len(workflow_2.output_schema.column_names)
+    assert all(name in outputs for name in workflow_2.output_schema.column_names)
