@@ -187,8 +187,8 @@ class Categorify(StatOperator):
         This parameter is useful to reserve an initial segment of non-negative translated integers
         for special user-defined values.
     cardinality_memory_limit: int or str, default None
-        Upper limit on the "allowed" memory usage of the internal DataFrame and Table objects used
-        to store unique categories. By default, this limit is assumed to be 12.5% of the total memory.
+        Upper limit on the "allowed" memory usage of the internal DataFrame and Table objects
+        used to store unique categories. By default, this limit is 12.5% of the total memory.
         Note that this argument is meant as a guide for internal optimizations and UserWarnings
         within NVTabular, and does not guarantee that the memory limit will be satisfied.
     """
