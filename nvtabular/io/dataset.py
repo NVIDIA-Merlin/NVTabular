@@ -32,8 +32,8 @@ from fsspec.utils import stringify_path
 from py._path.common import PathBase
 
 import nvtabular.dispatch as dispatch
-from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
+from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.io.shuffle import _check_shuffle_arg
 from nvtabular.utils import global_dask_client
 

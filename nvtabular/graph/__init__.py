@@ -13,26 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from enum import Enum
 
-
-class Tags(Enum):
-    # Feature types
-    CATEGORICAL = "categorical"
-    CONTINUOUS = "continuous"
-    LIST = "list"
-    TEXT = "text"
-    TEXT_TOKENIZED = "text_tokenized"
-    TIME = "time"
-
-    # Feature context
-    USER = "user"
-    ITEM = "item"
-    ITEM_ID = "item_id"
-    CONTEXT = "context"
-
-    # Target related
-    TARGETS = "target"
-    BINARY = "binary"
-    REGRESSION = "regression"
-    MULTI_CLASS = "multi_class"
+# flake8: noqa
+from .base_operator import BaseOperator
+from .node import Node
+from .schema import ColumnSchema, Schema
+from .selector import ColumnSelector

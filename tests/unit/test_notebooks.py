@@ -289,7 +289,7 @@ def test_multigpu_dask_example(tmpdir):
 
 def _run_notebook(tmpdir, notebook_path, transform=None):
     # read in the notebook as JSON, and extract a python script from it
-    notebook = json.load(open(notebook_path))
+    notebook = json.load(open(notebook_path, encoding="utf-8"))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
     lines = [
         transform(line.rstrip()) if transform else line

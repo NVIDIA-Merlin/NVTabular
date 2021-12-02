@@ -68,7 +68,13 @@ def run_triton_server(modelpath):
 
 
 def _verify_workflow_on_tritonserver(
-    tmpdir, workflow, df, model_name, output_model="tensorflow", model_info=None
+    tmpdir,
+    workflow,
+    df,
+    model_name,
+    output_model="tensorflow",
+    model_info=None,
+    sparse_max=None,
 ):
     """tests that the nvtabular workflow produces the same results when run locally in the
     process, and when run in tritonserver"""
@@ -77,6 +83,11 @@ def _verify_workflow_on_tritonserver(
     workflow.fit(dataset)
 
     local_df = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
+
+    for col in workflow.output_node.output_columns.names:
+        if sparse_max and col in sparse_max.keys():
+            workflow.output_dtypes[col] = workflow.output_dtypes.get(col).element_type
+
     triton.generate_nvtabular_model(
         workflow=workflow,
         name=model_name,
@@ -84,6 +95,7 @@ def _verify_workflow_on_tritonserver(
         version=1,
         output_model=output_model,
         output_info=model_info,
+        sparse_max=sparse_max,
         backend=BACKEND,
     )
 
@@ -94,7 +106,12 @@ def _verify_workflow_on_tritonserver(
 
         for col in workflow.output_dtypes.keys():
             features = response.as_numpy(col)
-            triton_df = _make_df({col: features.reshape(features.shape[0])})
+            if sparse_max and col in sparse_max:
+                features = features.tolist()
+                triton_df = _make_df()
+                triton_df[col] = features
+            else:
+                triton_df = _make_df({col: features.reshape(features.shape[0])})
             assert_eq(triton_df, local_df[[col]])
 
 
@@ -378,3 +395,40 @@ def test_groupby_model(tmpdir, output_model):
         model_info = None
 
     _verify_workflow_on_tritonserver(tmpdir, workflow, df, "groupby", output_model, model_info)
+
+
+@pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
+@pytest.mark.parametrize("output_model", ["tensorflow"])
+def test_seq_etl_tf_model(tmpdir, output_model):
+    size = 100
+    max_length = 10
+    df = _make_df(
+        {
+            "id": np.random.choice([0, 1], size=size),
+            "item_id": np.random.randint(1, 10, size),
+            "ts": np.linspace(0.0, 10.0, num=size).astype(np.float32),
+            "y": np.linspace(0.0, 10.0, num=size).astype(np.float32),
+        }
+    )
+
+    groupby_features = ColumnSelector(["id", "item_id", "ts", "y"]) >> ops.Groupby(
+        groupby_cols=["id"],
+        sort_cols=["ts"],
+        aggs={
+            "item_id": ["list"],
+            "y": ["list"],
+        },
+        name_sep="-",
+    )
+    feats_list = groupby_features["item_id-list", "y-list"]
+    feats_trim = feats_list >> ops.ListSlice(0, max_length)
+    selected_features = groupby_features["id"] + feats_trim
+
+    workflow = nvt.Workflow(selected_features)
+
+    model_info = None
+    sparse_max = {"item_id-list": max_length, "y-list": max_length}
+
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "groupby", output_model, model_info, sparse_max
+    )

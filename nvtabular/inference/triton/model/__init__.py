@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,16 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtabular.graph import Node
-from nvtabular.ops import LambdaOp, Operator
-
-
-class WorkflowNode(Node):
-    def __rshift__(self, operator):
-        if callable(operator) and not (
-            isinstance(operator, type) and issubclass(operator, Operator)
-        ):
-            # implicit lambdaop conversion.
-            operator = LambdaOp(operator)
-
-        return super().__rshift__(operator)

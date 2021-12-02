@@ -18,10 +18,10 @@ from pathlib import Path
 import numpy
 import pytest
 
-from nvtabular.columns.schema import ColumnSchema, Schema
-from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.columns.selector import ColumnSelector
-from nvtabular.tags import Tags
+from nvtabular.graph.schema import ColumnSchema, Schema
+from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
+from nvtabular.graph.selector import ColumnSelector
+from nvtabular.graph.tags import Tags
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
