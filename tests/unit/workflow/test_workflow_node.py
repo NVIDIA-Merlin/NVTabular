@@ -2,8 +2,17 @@ import numpy as np
 import pytest
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
-from nvtabular.columns import ColumnSelector, Schema
-from nvtabular.ops import Categorify, DifferenceLag, FillMissing, Operator, Rename, TargetEncoding
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
+from nvtabular.ops import (
+    Categorify,
+    DifferenceLag,
+    FillMissing,
+    LambdaOp,
+    Operator,
+    Rename,
+    TargetEncoding,
+)
 from tests.conftest import assert_eq
 
 
@@ -254,7 +263,9 @@ def test_nested_workflow_node():
     dataset = Dataset(df)
 
     geo_selector = ColumnSelector(["geo"])
-    country = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
+    country = (
+        geo_selector >> LambdaOp(lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
+    )
     # country1 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country1")
     # country2 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country2")
     user = "user"

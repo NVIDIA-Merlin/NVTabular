@@ -21,9 +21,9 @@ import numpy as np
 import tensorflow as tf
 
 from nvtabular.dispatch import HAS_GPU
+from nvtabular.graph.tags import Tags
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
-from nvtabular.tags import Tags
 
 from_dlpack = configure_tensorflow()
 

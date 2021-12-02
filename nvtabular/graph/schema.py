@@ -16,8 +16,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Text
 
-from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.tags import Tags  # noqa
+from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
+from nvtabular.graph.tags import Tags
 
 
 @dataclass(frozen=True)
@@ -111,7 +111,7 @@ class Schema:
         return list(self.column_schemas.keys())
 
     def apply(self, selector):
-        if selector:
+        if selector is not None:
             schema = Schema()
             if selector.names:
                 schema += self.select_by_name(selector.names)
