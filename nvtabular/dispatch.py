@@ -412,7 +412,9 @@ def _to_arrow(x):
 
 
 def _concat(objs, **kwargs):
-    if isinstance(objs[0], (pd.DataFrame, pd.Series)):
+    if isinstance(objs[0], dd.DataFrame):
+        return dd.multi.concat(objs)
+    elif isinstance(objs[0], (pd.DataFrame, pd.Series)) or not HAS_GPU:
         return pd.concat(objs, **kwargs)
     else:
         return cudf.core.reshape.concat(objs, **kwargs)
