@@ -17,9 +17,10 @@ from typing import Dict, Union
 
 import numpy
 
+from nvtabular.graph.tags import Tags
+
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
-from ..tags import Tags
-from .categorify import _emb_sz_rule, _get_embedding_order
+from .categorify import _emb_sz_rule
 from .operator import ColumnSelector, Operator
 
 
@@ -94,7 +95,6 @@ class HashBucket(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def get_embedding_sizes(self, columns):
-        columns = _get_embedding_order(columns)
         if isinstance(self.num_buckets, int):
             embedding_size = _emb_sz_rule(self.num_buckets)
             return {col: embedding_size for col in columns}

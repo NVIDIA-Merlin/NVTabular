@@ -15,24 +15,15 @@
 #
 from __future__ import annotations
 
-from nvtabular.columns import ColumnSelector
-from nvtabular.columns.schema import Schema
 from nvtabular.dispatch import DataFrameType
-from nvtabular.ops import Operator
+from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph.selector import ColumnSelector
 
 
-class SelectionOp(Operator):
+class SubtractionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = self.selector or col_selector
         return df[selector.names]
-
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        selector = self.selector or col_selector
-        return super().compute_output_schema(input_schema, selector)
-
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        selector = self.selector or col_selector
-        return super().output_column_names(selector)

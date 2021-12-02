@@ -27,18 +27,10 @@
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import List
 
 import numpy as np
-from triton_python_backend_utils import (
-    InferenceRequest,
-    InferenceResponse,
-    get_input_tensor_by_name,
-)
 
-import nvtabular
-from nvtabular.dispatch import _concat_columns, _is_list_dtype
-from nvtabular.inference.triton import _convert_tensor
+from nvtabular.dispatch import _concat_columns
 from nvtabular.inference.triton.data_conversions import convert_format
 from nvtabular.ops.operator import Supports
 
@@ -46,24 +38,15 @@ LOG = logging.getLogger("nvtabular")
 
 
 class WorkflowRunner(ABC):
-    def __init__(self, workflow_path, model_kind, model_config):
-        self.workflow_path = workflow_path
-        self.workflow = nvtabular.Workflow.load(self.workflow_path)
-
-        self.kind = model_kind
+    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
+        self.workflow = workflow
+        self.column_types = column_types
+        self.output_dtypes = output_dtypes
         self.model_config = model_config
+        self.device = model_device
 
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.output_node)
-
-        self.input_dtypes = {
-            col: dtype
-            for col, dtype in self.workflow.input_dtypes.items()
-            if not _is_list_dtype(dtype)
-        }
-        self.input_multihots = {
-            col: dtype for col, dtype in self.workflow.input_dtypes.items() if _is_list_dtype(dtype)
-        }
 
     def _initialize_ops(self, workflow_node, visited=None):
         if visited is None:
@@ -79,7 +62,7 @@ class WorkflowRunner(ABC):
             supported = workflow_node.op.supports
 
             # if we're running on the CPU only, mask off support for GPU data formats
-            if self.kind == "CPU":
+            if self.device == "CPU":
                 supported = functools.reduce(
                     lambda a, b: a | b,
                     (v for v in list(Supports) if v & supported and "CPU" in str(v)),
@@ -93,37 +76,17 @@ class WorkflowRunner(ABC):
                 visited.add(parent)
                 self._initialize_ops(parent, visited)
 
-    def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
-        """Transforms the input batches by running through a NVTabular workflow.transform
-        function.
-        """
-        responses = []
-        for request in requests:
-            # transform the triton tensors to a dict of name:numpy tensor
-            input_tensors = {
-                name: _convert_tensor(get_input_tensor_by_name(request, name))
-                for name in self.input_dtypes
-            }
+    def run_workflow(self, input_tensors):
+        # use our NVTabular workflow to transform the dataset
+        transformed, kind = self._transform_tensors(input_tensors, self.workflow.output_node)
 
-            # multihots are represented as a tuple of (values, offsets)
-            for name, dtype in self.input_multihots.items():
-                values = _convert_tensor(get_input_tensor_by_name(request, name + "__values"))
-                offsets = _convert_tensor(get_input_tensor_by_name(request, name + "__nnzs"))
-                input_tensors[name] = (values, offsets)
+        # if we don't have tensors in numpy format, convert back so that the we can return
+        # to triton
+        if kind != Supports.CPU_DICT_ARRAY:
+            transformed, kind = convert_format(transformed, kind, Supports.CPU_DICT_ARRAY)
 
-            # use our NVTabular workflow to transform the dataset
-            transformed, kind = self._transform_tensors(input_tensors, self.workflow.output_node)
-
-            # if we don't have tensors in numpy format, convert back so that the we can return
-            # to triton
-            if kind != Supports.CPU_DICT_ARRAY:
-                transformed, kind = convert_format(transformed, kind, Supports.CPU_DICT_ARRAY)
-
-            # convert to the format expected by the DL models
-            response = self._transform_outputs(transformed)
-            responses.append(response)
-
-        return responses
+        # convert to the format expected by the DL models
+        return self._transform_outputs(transformed)
 
     @abstractmethod
     def _transform_outputs(self, tensors):
