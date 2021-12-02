@@ -29,7 +29,6 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
-from py._path.common import PathBase
 
 import nvtabular.dispatch as dispatch
 from nvtabular.columns.schema import ColumnSchema, Schema
@@ -327,7 +326,7 @@ class Dataset:
         # load in schema or infer if not available
         # path is always a list at this point
         if not self.schema:
-            if isinstance(path_or_source, (str, PathBase, Path)):
+            if isinstance(path_or_source, (str, Path)):
                 path_or_source = [Path(path_or_source)]
             if isinstance(path_or_source, list) and isinstance(path_or_source[0], (str, Path)):
                 # list of paths to files
