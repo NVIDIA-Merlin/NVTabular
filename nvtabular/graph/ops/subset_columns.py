@@ -42,7 +42,7 @@ class SubsetColumns(BaseOperator):
         DataFrame
             Returns a transformed dataframe for this operator
         """
-        return df[col_selector.names]
+        return super()._get_columns(df, col_selector)
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         return col_selector

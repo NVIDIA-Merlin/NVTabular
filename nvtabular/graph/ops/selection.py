@@ -15,10 +15,14 @@
 #
 from __future__ import annotations
 
+import logging
+
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
+
+LOG = logging.getLogger("SelectionOp")
 
 
 class SelectionOp(BaseOperator):
@@ -27,7 +31,7 @@ class SelectionOp(BaseOperator):
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = col_selector or self.selector
-        return df[selector.names]
+        return super()._get_columns(df, selector)
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         selector = col_selector or self.selector

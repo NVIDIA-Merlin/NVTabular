@@ -26,4 +26,4 @@ class SubtractionOp(BaseOperator):
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = self.selector or col_selector
-        return df[selector.names]
+        return super()._get_columns(df, selector)

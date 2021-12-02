@@ -42,7 +42,7 @@ class ConcatColumns(BaseOperator):
         DataFrame
             Returns a transformed dataframe for this operator
         """
-        return df[col_selector.names]
+        return super()._get_columns(df, col_selector)
 
     @property
     def label(self) -> str:
