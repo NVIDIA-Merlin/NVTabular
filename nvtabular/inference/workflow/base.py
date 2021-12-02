@@ -31,8 +31,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from nvtabular.dispatch import _concat_columns
+from nvtabular.graph.base_operator import Supports
 from nvtabular.inference.triton.data_conversions import convert_format
-from nvtabular.ops.operator import Supports
 
 LOG = logging.getLogger("nvtabular")
 
