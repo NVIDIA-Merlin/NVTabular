@@ -35,7 +35,7 @@ class OperatorRunner:
 
     def execute(self, tensors):
         for operator in self.operators:
-            tensors = operator.execute(tensors)
+            tensors = operator.transform(tensors)
         return tensors
 
     def fetch_json_param(self, model_config, param_name):

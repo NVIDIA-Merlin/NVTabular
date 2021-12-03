@@ -32,8 +32,10 @@ class WorkflowOp(InferenceOperator):
         workflow = Workflow.load(workflow_path)
         return WorkflowOp(workflow)
 
-    def execute(self, tensors):
-        return self.workflow.transform(tensors)
+    def transform(self, tensors):
+        raise NotImplementedError(
+            f"This method should never be called for {self.__class__.__name__}."
+        )
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         expected_input = input_schema.apply(col_selector)
