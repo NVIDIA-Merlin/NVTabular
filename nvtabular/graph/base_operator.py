@@ -15,11 +15,25 @@
 #
 from __future__ import annotations
 
+from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
 import nvtabular as nvt
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
+
+
+class Supports(Flag):
+    """Indicates what type of data representation this operator supports for transformations"""
+
+    # cudf dataframe
+    CPU_DATAFRAME = auto()
+    # pandas dataframe
+    GPU_DATAFRAME = auto()
+    # dict of column name to numpy array
+    CPU_DICT_ARRAY = auto()
+    # dict of column name to cupy array
+    GPU_DICT_ARRAY = auto()
 
 
 class BaseOperator:
@@ -140,3 +154,14 @@ class BaseOperator:
 
     def create_node(self, selector):
         return nvt.graph.Node(selector)
+
+    @property
+    def supports(self) -> Supports:
+        """Returns what kind of data representation this operator supports"""
+        return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
+
+    def _get_columns(self, df, selector):
+        if isinstance(df, dict):
+            return {col_name: df[col_name] for col_name in selector.names}
+        else:
+            return df[selector.names]

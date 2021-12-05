@@ -36,7 +36,7 @@ import numpy as np
 import pandas as pd
 
 from nvtabular.dispatch import _build_cudf_list_column, _is_list_dtype
-from nvtabular.ops.operator import Supports
+from nvtabular.graph.base_operator import Supports
 
 
 def convert_format(tensors, kind, target_kind):
