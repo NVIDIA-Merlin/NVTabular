@@ -2,18 +2,18 @@
 
 # Call this script with:
 # 1. Name of container as first parameter
-#    [merlin-training, merlin-tensorflow,
-#      merlin-pytorch, merlin-inference]
+#    [merlin-training, merlin-tensorflow-training,
+#      merlin-pytorch-training, merlin-inference]
 #
 # 2. Devices to use:
 #    [0; 0,1; 0,1,..,n-1]
 
 # Get last NVTabular version
-cd /nvtabular/
-git pull origin main
+#cd /nvtabular/
+#git pull origin main
 
 container=$1
-cmd="--devices $2"
+config="--devices $2"
 
 # Run tests for all containers but inference
 if [ "$container" != "merlin-inference" ]; then
@@ -25,10 +25,10 @@ fi
 # Run tests for specific containers
 if [ "$container" == "merlin-training" ]; then
   pytest $config tests/integration/test_nvt_hugectr.py::test_training
-elif [ "$container" == "merlin-tensorflow" ]; then
+elif [ "$container" == "merlin-tensorflow-training" ]; then
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_rossmann_inference
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference
-elif [ "$container" == "merlin-pytorch" ]; then
+elif [ "$container" == "merlin-pytorch-training" ]; then
   echo "Nothing specific for $container yet"
 elif [ "$container" == "merlin-inference" ]; then
   #pytest $config tests/integration/test_notebooks.py::test_inference
