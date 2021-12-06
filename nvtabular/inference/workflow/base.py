@@ -117,7 +117,7 @@ class WorkflowRunner(ABC):
                 for col in selector_columns:
                     if col in upstream_tensors:
                         to_remove.append(col)
-            for col in to_remove:
+            for col in set(to_remove):
                 selector_columns.remove(col)
 
             if selector_columns:
