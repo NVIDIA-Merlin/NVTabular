@@ -135,9 +135,10 @@ class WorkflowRunner(ABC):
                     # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
                     # we need to convert to a common format here first before concatenating.
                     op = workflow_node.op
-                    target_kind = (
-                        workflow_node.inference_supports if op else Supports.CPU_DICT_ARRAY
-                    )
+                    if op and hasattr(op, "inference_supports"):
+                        target_kind = op.inference_supports
+                    else:
+                        target_kind = Supports.CPU_DICT_ARRAY
                     # note : the 2nd convert_format call needs to be stricter in what the kind is
                     # (exact match rather than a bitmask of values)
                     tensors, kind = convert_format(tensors, kind, target_kind)
