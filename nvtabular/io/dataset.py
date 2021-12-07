@@ -864,7 +864,7 @@ class Dataset:
                     if start < stop:
                         new[tuple(fns)] = np.arange(start, stop)
                 # let user know they will not have expected number of output files.
-                if len(new.keys()) < output_files:
+                if len(new.keys()) < len(output_files):
                     warnings.warn(
                         f"Only created {len(new.keys())} files did not have enough\n"
                         f"partitions to create {len(output_files)} files."
