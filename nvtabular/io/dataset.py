@@ -863,6 +863,12 @@ class Dataset:
                     stop = min(start + split * len(fns), ddf.npartitions)
                     if start < stop:
                         new[tuple(fns)] = np.arange(start, stop)
+                # let user know they will not have expected number of output files.
+                if len(new.keys()) < output_files:
+                    warnings.warn(
+                        f"Only created {len(new.keys())} files did not have enough\n"
+                        f"partitions to create {len(output_files)} files."
+                    )
                 output_files = new
                 suffix = ""  # Don't add a suffix later - Names already include i
             if not isinstance(output_files, dict):
