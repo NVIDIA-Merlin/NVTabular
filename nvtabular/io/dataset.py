@@ -870,7 +870,7 @@ class Dataset:
                         f"partitions to create {len(output_files)} files."
                     )
                 output_files = new
-                suffix = ""  # Don't add a suffix later - Names already include i
+                suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
                 raise TypeError(f"{type(output_files)} not a supported type for `output_files`.")
 
