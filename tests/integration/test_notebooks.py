@@ -105,16 +105,16 @@ def test_rossman(asv_db, bench_info, tmpdir, devices):
 
     # Run training for PyTorch container
     try:
-        # notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-FastAI.ipynb")
+        notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-FastAI.ipynb")
         import torch
 
         print(torch.__version__)
-        # out = _run_notebook(
-        #    tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False
-        # )
-        # bench_results = RossBenchFastAI().get_epochs(out.splitlines())
-        # bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
-        # send_results(asv_db, bench_info, bench_results)
+        out = _run_notebook(
+            tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False
+        )
+        bench_results = RossBenchFastAI().get_epochs(out.splitlines())
+        bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
+        send_results(asv_db, bench_info, bench_results)
 
         notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
         out = _run_notebook(tmpdir, notebook, input_path, input_path, gpu_id=devices)
