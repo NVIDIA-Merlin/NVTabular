@@ -8,6 +8,7 @@ cd $nvt_directory
 
 echo "Installing NVTabular"
 python -m pip install --user --upgrade pip setuptools wheel pybind11 numpy==1.20.3
+python -m pip uninstall nvtabular
 python setup.py develop --user
 
 # following checks requirement requirements-dev.txt to be installed
