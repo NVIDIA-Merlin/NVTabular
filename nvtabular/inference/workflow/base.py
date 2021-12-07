@@ -31,8 +31,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from nvtabular.dispatch import _concat_columns
+from nvtabular.graph.base_operator import Supports
 from nvtabular.inference.triton.data_conversions import convert_format
-from nvtabular.ops.operator import Supports
 
 LOG = logging.getLogger("nvtabular")
 
@@ -52,7 +52,7 @@ class WorkflowRunner(ABC):
         if visited is None:
             visited = set()
 
-        if workflow_node.op:
+        if workflow_node.op and hasattr(workflow_node.op, "inference_initialize"):
             inference_op = workflow_node.op.inference_initialize(
                 workflow_node.selector, self.model_config
             )
@@ -117,7 +117,7 @@ class WorkflowRunner(ABC):
                 for col in selector_columns:
                     if col in upstream_tensors:
                         to_remove.append(col)
-            for col in to_remove:
+            for col in set(to_remove):
                 selector_columns.remove(col)
 
             if selector_columns:
@@ -135,9 +135,10 @@ class WorkflowRunner(ABC):
                     # we have multiple different kinds of data here (dataframe/array on cpu/gpu)
                     # we need to convert to a common format here first before concatenating.
                     op = workflow_node.op
-                    target_kind = (
-                        workflow_node.inference_supports if op else Supports.CPU_DICT_ARRAY
-                    )
+                    if op and hasattr(op, "inference_supports"):
+                        target_kind = op.inference_supports
+                    else:
+                        target_kind = Supports.CPU_DICT_ARRAY
                     # note : the 2nd convert_format call needs to be stricter in what the kind is
                     # (exact match rather than a bitmask of values)
                     tensors, kind = convert_format(tensors, kind, target_kind)
@@ -149,7 +150,10 @@ class WorkflowRunner(ABC):
         if tensors and kind and workflow_node.op:
             try:
                 # if the op doesn't support the current kind - we need to convert
-                if not workflow_node.inference_supports & kind:
+                if (
+                    hasattr(workflow_node, "inference_supports")
+                    and not workflow_node.inference_supports & kind
+                ):
                     tensors, kind = convert_format(tensors, kind, workflow_node.inference_supports)
 
                 tensors = workflow_node.op.transform(

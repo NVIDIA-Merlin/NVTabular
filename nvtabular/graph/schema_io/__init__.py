@@ -13,17 +13,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from __future__ import annotations
-
-from nvtabular.dispatch import DataFrameType
-from nvtabular.graph.base_operator import BaseOperator
-from nvtabular.graph.selector import ColumnSelector
-
-
-class SubtractionOp(BaseOperator):
-    def __init__(self, selector=None):
-        self.selector = selector
-
-    def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        selector = self.selector or col_selector
-        return super()._get_columns(df, selector)
