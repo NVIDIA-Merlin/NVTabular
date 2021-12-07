@@ -861,7 +861,14 @@ class Dataset:
                     fns = output_files[i : i + files_per_task]
                     start = i * split
                     stop = min(start + split * len(fns), ddf.npartitions)
-                    new[tuple(fns)] = np.arange(start, stop)
+                    if start < stop:
+                        new[tuple(fns)] = np.arange(start, stop)
+                # let user know they will not have expected number of output files.
+                if len(new.keys()) < len(output_files):
+                    warnings.warn(
+                        f"Only created {len(new.keys())} files did not have enough\n"
+                        f"partitions to create {len(output_files)} files."
+                    )
                 output_files = new
                 suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
