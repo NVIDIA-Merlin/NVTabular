@@ -14,9 +14,8 @@ version = "0.7.0"
 authors = ["nvidia"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.7.1,<4"
 PyYAML = ">=5.3"
-cupy = ">=8"
 dask = ">=2021.7.1"
 distributed = ">=2021.7.1"
 # we require cudf / dask-cuda / dask-cudf
@@ -25,6 +24,14 @@ distributed = ">=2021.7.1"
 # cudf =" >=0.19"
 # dask-cuda =" >=0.19"
 # dask-cudf =" >=0.19"
+# cupy = ">=8"
+protobuf = ">=3.0.0"
+tensorflow-metadata = ">=1.2.0"
+tqdm = ">=4.0"
+pandas = ">=1.2.0"
+numba = ">=0.54.0"
+pyarrow = ">=1.0"
+
 
 [tool.poetry.dev-dependencies]
 dask = ">=19"
