@@ -165,8 +165,7 @@ def test_io_partitions_push(tmpdir):
     files = [os.path.join(tmpdir, f"csv/day_{i}") for i in range(23)]
     for file in files:
         with open(file, "w") as f:
-            for _ in range(1000):
-                f.write("0,1,2,3,a,b,c\n")
+            f.write("0,1,2,3,a,b,c\n"*1000)
 
     # Load csv files
     label_columns = ["label"]
