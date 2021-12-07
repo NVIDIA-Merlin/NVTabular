@@ -54,8 +54,9 @@ class build_pybind_and_proto(build_pybind11):
         for source in ["nvtabular/inference/triton/model_config.proto"]:
             output = source.replace(".proto", "_pb2.py")
             pwd = os.path.dirname(output)
+            cwd = os.getcwd()
             if not os.path.exists(output) or (os.path.getmtime(source) > os.path.getmtime(output)):
-                print("Generating", output, "from", source)
+                print("Generating", os.path.join(cwd, output), "from", os.path.join(cwd, source))
                 cmd = [protoc, f"--python_out={pwd}", f"--proto_path={pwd}", source]
                 subprocess.check_call(cmd, env=env)
             else:
