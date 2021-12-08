@@ -18,7 +18,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           ORGANIZATION: NVIDIA-Merlin
-          PROJECT_NUMBER: 8 
+          PROJECT_NUMBER: 6 
         run: |
           gh api graphql -f query='
             query($org: String!, $number: Int!) {
