@@ -69,7 +69,13 @@ class Graph:
             for dependencies in schemaless_nodes.values():
                 dependencies.difference_update(current_phase)
 
-        self.input_schema = input_schema
+        self.input_schema = Schema(
+            [
+                schema
+                for name, schema in input_schema.column_schemas.items()
+                if name in self._input_columns()
+            ]
+        )
         self.output_schema = self.output_node.output_schema
 
         return self

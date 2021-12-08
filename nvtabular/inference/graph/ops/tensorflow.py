@@ -24,12 +24,13 @@ from nvtabular.inference.triton.ensemble import export_tensorflow_model
 
 
 class TensorflowOp(InferenceOperator):
-    def __init__(self, model):
+    def __init__(self, model, name=None):
         self.model = model
+        self.name = name or self.__class__.__name__
 
     @property
     def export_name(self):
-        return "tensorflow"
+        return self.name
 
     def export(self, path, version=1):
         """Create a directory inside supplied path based on our export name"""
