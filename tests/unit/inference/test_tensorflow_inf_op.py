@@ -34,7 +34,7 @@ def test_tf_op_exports_own_config(tmpdir):
 
     # Triton
     triton_op = TensorflowOp(model)
-    triton_op.export(tmpdir)
+    triton_op.export(tmpdir, None)
 
     # Export creates directory
     export_path = pathlib.Path(tmpdir) / triton_op.export_name
@@ -51,7 +51,7 @@ def test_tf_op_exports_own_config(tmpdir):
         parsed = text_format.Parse(raw_config, config)
 
         # The config file contents are correct
-        assert parsed.name == "tensorflow"
+        assert parsed.name == triton_op.name
         assert parsed.backend == "tensorflow"
 
 

@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Text
 
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.graph.tags import Tags  # noqa
+from nvtabular.graph.tags import Tags
 
 
 @dataclass(frozen=True)

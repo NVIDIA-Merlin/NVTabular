@@ -456,6 +456,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
         # Compute the node's output
         if node.op:
             try:
+                # use input_columns to ensure correct grouping (subgroups)
                 selection = node.input_columns.resolve(node.input_schema)
                 output_df = node.op.transform(selection, input_df)
             except Exception:

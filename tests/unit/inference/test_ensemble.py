@@ -42,13 +42,13 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     selector = nvt.graph.selector.ColumnSelector(["x", "y", "id"])
 
     workflow_ops = selector >> wf_ops.Rename(postfix="_nvt")
-    workflow = nvt.Workflow(workflow_ops)
+    workflow = nvt.Workflow(workflow_ops["x_nvt"])
     workflow.fit(dataset)
 
     # Create Tensorflow Model
     model = tf.keras.models.Sequential(
         [
-            tf.keras.Input(name="input", dtype=tf.int32, shape=(784,)),
+            tf.keras.Input(name="x_nvt", dtype=tf.int32, shape=(784,)),
             tf.keras.layers.Dense(512, activation="relu"),
             tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(10, name="output"),

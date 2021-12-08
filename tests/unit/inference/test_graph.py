@@ -1,8 +1,8 @@
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
 from nvtabular.graph.schema import Schema
+from nvtabular.inference.graph.ensemble import Ensemble
 from nvtabular.inference.graph.ops.workflow import WorkflowOp
-from nvtabular.inference.triton.ensemble import Ensemble
 
 
 def test_inference_schema_propagation():

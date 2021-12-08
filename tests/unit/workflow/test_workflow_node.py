@@ -266,6 +266,8 @@ def test_nested_workflow_node():
     country = (
         geo_selector >> LambdaOp(lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country")
     )
+    # country1 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country1")
+    # country2 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country2")
     user = "user"
 
     # make sure we can do a 'combo' categorify (cross based) of country+user

@@ -14,7 +14,15 @@
 # limitations under the License.
 #
 from nvtabular.graph import Node
+from nvtabular.ops import LambdaOp, Operator
 
 
 class WorkflowNode(Node):
-    pass
+    def __rshift__(self, operator):
+        if callable(operator) and not (
+            isinstance(operator, type) and issubclass(operator, Operator)
+        ):
+            # implicit lambdaop conversion.
+            operator = LambdaOp(operator)
+
+        return super().__rshift__(operator)

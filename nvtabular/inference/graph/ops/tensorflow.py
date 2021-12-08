@@ -32,12 +32,12 @@ class TensorflowOp(InferenceOperator):
     def export_name(self):
         return self.name
 
-    def export(self, path, version=1):
+    def export(self, path, consumer_config, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
 
-        export_tensorflow_model(self.model, self.export_name, new_dir_path, version=version)
+        return export_tensorflow_model(self.model, self.export_name, new_dir_path, version=version)
 
     def transform(self, tensors: InferenceDataFrame) -> InferenceDataFrame:
         raise NotImplementedError(
@@ -70,6 +70,7 @@ class TensorflowOp(InferenceOperator):
         inputs = [col.name.split("/")[0] for col in inputs]
         outputs = [col.name.split("/")[0] for col in outputs]
 
+        # TODO: do better schema checks against model inputs
         if expected_input.column_names in inputs:
             raise ValueError(
                 f"Request schema provided to {self.__class__.__name__} \n"

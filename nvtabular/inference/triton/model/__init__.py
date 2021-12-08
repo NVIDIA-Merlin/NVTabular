@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2021, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-from . import dataframe_iter, dataset, shuffle
-
-Dataset = dataset.Dataset
-Shuffle = shuffle.Shuffle
-_shuffle_df = shuffle._shuffle_df
-DataFrameIter = dataframe_iter.DataFrameIter
