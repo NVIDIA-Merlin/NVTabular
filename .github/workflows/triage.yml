@@ -37,6 +37,9 @@ jobs:
             }' -f org=$ORGANIZATION -F number=$PROJECT_NUMBER > project_data.json
 
           echo 'PROJECT_ID='$(jq '.data.organization.projectNext.id' project_data.json) >> $GITHUB_ENV
+          echo 'DATE_FIELD_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Date Added") | .id' project_data.json) >> $GITHUB_ENV
+          echo 'PRIORITY_FIELD_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Priority") | .id' project_data.json) >> $GITHUB_ENV
+          echo 'NEEDS_TRIAGE_OPTION_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Priority") |.settings | fromjson.options[] | select(.name=="Needs Triage") |.id' project_data.json) >> $GITHUB_ENV
 
       - name: Add Issue to Project
         env:
@@ -53,3 +56,41 @@ jobs:
             }' -f project=$PROJECT_ID -f issue=$ISSUE_ID --jq '.data.addProjectNextItem.projectNextItem.id')"
           
           echo 'ITEM_ID='$item_id >> $GITHUB_ENV
+
+      - name: Get date
+        run: echo "DATE=$(date +"%Y-%m-%d")" >> $GITHUB_ENV
+
+      - name: Set fields
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          gh api graphql -f query='
+            mutation (
+              $project: ID!
+              $item: ID!
+              $priority_field: ID!
+              $priority_value: String!
+              $date_field: ID!
+              $date_value: String!
+            ) {
+              set_priority: updateProjectNextItemField(input: {
+                projectId: $project
+                itemId: $item
+                fieldId: $priority_field
+                value: $priority_value
+              }) {
+                projectNextItem {
+                  id
+                  }
+              }
+              set_date_posted: updateProjectNextItemField(input: {
+                projectId: $project
+                itemId: $item
+                fieldId: $date_field
+                value: $date_value
+              }) {
+                projectNextItem {
+                  id
+                }
+              }
+            }' -f project=$PROJECT_ID -f item=$ITEM_ID -f priority_field=$PRIORITY_FIELD_ID -f priority_value=${{ env.NEEDS_TRIAGE_OPTION_ID }} -f date_field=$DATE_FIELD_ID -f date_value=$DATE --silent
