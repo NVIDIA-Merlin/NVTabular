@@ -15,26 +15,13 @@
 #
 from __future__ import annotations
 
-from enum import Flag, auto
 from typing import Optional
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph import BaseOperator
+from nvtabular.graph.base_operator import Supports
 from nvtabular.graph.selector import ColumnSelector
-
-
-class Supports(Flag):
-    """Indicates what type of data representation this operator supports for transformations"""
-
-    # cudf dataframe
-    CPU_DATAFRAME = auto()
-    # pandas dataframe
-    GPU_DATAFRAME = auto()
-    # dict of column name to numpy array
-    CPU_DICT_ARRAY = auto()
-    # dict of column name to cupy array
-    GPU_DICT_ARRAY = auto()
 
 
 class Operator(BaseOperator):
