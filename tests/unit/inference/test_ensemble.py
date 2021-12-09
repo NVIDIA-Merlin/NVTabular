@@ -94,20 +94,20 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
 
     df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
 
-    response = _run_ensemble_on_tritonserver(tmpdir, triton_ens, df, triton_ens.name)
+    output_columns = triton_ens.graph.output_schema.column_names
+
+    response = _run_ensemble_on_tritonserver(tmpdir, output_columns, df, triton_ens.name)
     assert len(response.as_numpy("output")) == df.shape[0]
 
 
 def _run_ensemble_on_tritonserver(
     tmpdir,
-    ensemble,
+    output_columns,
     df,
     model_name,
 ):
     inputs = triton.convert_df_to_triton_input(df.columns, df)
-    output_columns = ensemble.graph.output_schema.column_names
     outputs = [grpcclient.InferRequestedOutput(col) for col in output_columns]
-
     response = None
     with run_triton_server(tmpdir) as client:
         response = client.infer(model_name, inputs, outputs=outputs)

@@ -70,12 +70,11 @@ class TensorflowOp(InferenceOperator):
         inputs = [col.name.split("/")[0] for col in inputs]
         outputs = [col.name.split("/")[0] for col in outputs]
 
-        # TODO: do better schema checks against model inputs
-        if expected_input.column_names in inputs:
+        if expected_input.column_names != inputs:
             raise ValueError(
                 f"Request schema provided to {self.__class__.__name__} \n"
                 "doesn't match model's input schema.\n"
-                f"Request schema columns: {input_schema.column_names}\n"
+                f"Request schema columns: {expected_input.column_names}\n"
                 f"Model input columns: {inputs}."
             )
 

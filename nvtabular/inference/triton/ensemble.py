@@ -94,34 +94,6 @@ def export_tensorflow_ensemble(
         backend=nvtabular_backend,
     )
 
-    # NODE 1
-
-    # nodes = [
-    #     node_tf, node_wf
-    # ]
-
-    # path_we_know
-    # old_config = None
-    # for node in iter_nodes(graph.output_node):
-    #     if hasattr(node, "export"):
-    #         old_config = node.export(path_we_know, old_config)
-
-    # def export(self, path, next_node_config, framework):
-    #     ...
-    #         # if in config grab triton dtype and replace
-    #         for column in next_node_config.input:
-    #             tf_dtype = _triton_datatype_to_dtype(column.data_type)
-    #             nvt_dtype = workflow.output_dtypes.get(column.name)
-    #             if nvt_dtype and nvt_dtype != tf_dtype:
-    #                 warnings.warn(
-    #                     f"TF model expects {tf_dtype} for column {column.name}, but workflow "
-    #                     f" is producing type {nvt_dtype}. Overriding dtype in NVTabular workflow."
-    #                 )
-    #                 workflow.output_dtypes[column.name] = tf_dtype
-
-    #     ...
-    # # Node 0
-
     # generate the triton ensemble
     ensemble_path = os.path.join(model_path, name)
     os.makedirs(ensemble_path, exist_ok=True)

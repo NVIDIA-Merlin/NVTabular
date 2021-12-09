@@ -76,5 +76,5 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
         parsed = text_format.Parse(raw_config, config)
 
         # The config file contents are correct
-        assert parsed.name == triton_op.name
+        assert parsed.name == "workflow"
         assert parsed.backend == "nvtabular"

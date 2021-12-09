@@ -1,9 +1,10 @@
 import os
 import pathlib
+from copy import deepcopy
 
 import pytest
 
-from nvtabular import ColumnSelector, Schema
+from nvtabular import ColumnSelector, Schema, graph
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -74,5 +75,38 @@ def test_tf_op_compute_schema():
     # Triton
     triton_op = TensorflowOp(model)
 
-    out_schema = triton_op.compute_output_schema(Schema(["input"]), ColumnSelector())
+    out_schema = triton_op.compute_output_schema(Schema(["input"]), ColumnSelector(["input"]))
     assert out_schema.column_names == ["output"]
+
+
+def test_tf_schema_validation():
+    model = tf.keras.models.Sequential(
+        [
+            tf.keras.Input(name="input", dtype=tf.int32, shape=(784,)),
+            tf.keras.layers.Dense(512, activation="relu"),
+            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.Dense(10, name="output"),
+        ]
+    )
+
+    model.compile(
+        optimizer="adam",
+        loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=[tf.metrics.SparseCategoricalAccuracy()],
+    )
+
+    # Triton
+    tf_node = [] >> TensorflowOp(model)
+    tf_graph = graph.graph.Graph(tf_node)
+
+    with pytest.raises(ValueError) as exception_info:
+        deepcopy(tf_graph).fit_schema(Schema(["input", "not_input"]))
+    assert "Request schema provided to TensorflowOp" in str(exception_info.value)
+
+    with pytest.raises(ValueError) as exception_info:
+        deepcopy(tf_graph).fit_schema(Schema(["not_input"]))
+    assert "Request schema provided to TensorflowOp" in str(exception_info.value)
+
+    with pytest.raises(ValueError) as exception_info:
+        deepcopy(tf_graph).fit_schema(Schema([]))
+    assert "Request schema provided to TensorflowOp" in str(exception_info.value)
