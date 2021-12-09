@@ -39,6 +39,7 @@ jobs:
           echo 'PROJECT_ID='$(jq '.data.organization.projectNext.id' project_data.json) >> $GITHUB_ENV
           echo 'DATE_FIELD_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Date Added") | .id' project_data.json) >> $GITHUB_ENV
           echo 'PRIORITY_FIELD_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Priority") | .id' project_data.json) >> $GITHUB_ENV
+          echo 'IMPACT_FIELD_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Impact") | .id' project_data.json) >> $GITHUB_ENV
           echo 'NEEDS_TRIAGE_OPTION_ID='$(jq '.data.organization.projectNext.fields.nodes[] | select(.name== "Priority") |.settings | fromjson.options[] | select(.name=="Needs Triage") |.id' project_data.json) >> $GITHUB_ENV
 
       - name: Add Issue to Project
@@ -59,6 +60,43 @@ jobs:
 
       - name: Get date
         run: echo "DATE=$(date +"%Y-%m-%d")" >> $GITHUB_ENV
+
+      - name: Checking if issue created by a Merlin team member
+        id: check_internal
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          USERNAME: ${{ github.actor }}
+        run: |
+          echo "Checking if $USERNAME is a member of NVIDIA-Merlin"
+          gh api orgs/NVIDIA-Merlin/members/$USERNAME
+          echo "$USERNAME is a member of NVIDIA-Merlin"
+
+      - name: Set Impact for external users
+        if: steps.check_internal.outcome=='failure'
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          USERNAME: ${{ github.actor }}
+        run: |
+          echo "$USERNAME is not member of NVIDIA-Merlin - setting impact to External"
+          gh api graphql -f query='
+            mutation (
+              $project: ID!
+              $item: ID!
+              $impact_field: ID!
+              $impact_value: String!
+            ) {
+              set_priority: updateProjectNextItemField(input: {
+                projectId: $project
+                itemId: $item
+                fieldId: $impact_field
+                value: $impact_value
+              }) {
+                projectNextItem {
+                  id
+                  }
+              }
+            }' -f project=$PROJECT_ID -f item=$ITEM_ID -f impact_field=$IMPACT_FIELD_ID -f impact_value=External --silent
 
       - name: Set fields
         env:
