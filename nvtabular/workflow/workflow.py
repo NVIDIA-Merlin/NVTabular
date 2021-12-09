@@ -34,8 +34,6 @@ from dask.core import flatten
 import nvtabular
 from nvtabular.dispatch import _concat_columns
 from nvtabular.graph.graph import Graph, _get_ops_by_type
-from nvtabular.graph.node import iter_nodes
-from nvtabular.graph.schema import Schema
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
