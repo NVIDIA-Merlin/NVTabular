@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import os
+from distutils.spawn import find_executable
 
 import pytest
 
@@ -27,6 +28,18 @@ import nvtabular.ops as wf_ops  # noqa
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
 from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
 from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
+from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
+
+configure_tensorflow()
+
+from tests.unit.test_triton_inference import run_triton_server  # noqa
+
+triton = pytest.importorskip("nvtabular.inference.triton")
+ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
+grpcclient = pytest.importorskip("tritonclient.grpc")
+tritonclient = pytest.importorskip("tritonclient")
+
+TRITON_SERVER_PATH = find_executable("tritonserver")
 
 tf = pytest.importorskip("tensorflow")  # noqa
 
@@ -48,10 +61,10 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     # Create Tensorflow Model
     model = tf.keras.models.Sequential(
         [
-            tf.keras.Input(name="x_nvt", dtype=tf.int32, shape=(784,)),
-            tf.keras.layers.Dense(512, activation="relu"),
+            tf.keras.Input(name="x_nvt", dtype=tf.int32, shape=(1,)),
+            tf.keras.layers.Dense(16, activation="relu"),
             tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(10, name="output"),
+            tf.keras.layers.Dense(1, name="output"),
         ]
     )
     model.compile(
@@ -78,3 +91,25 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
         assert parsed.name == "ensemble_model"
         assert parsed.platform == "ensemble"
         assert hasattr(parsed, "ensemble_scheduling")
+
+    df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
+
+    response = _run_ensemble_on_tritonserver(tmpdir, triton_ens, df, triton_ens.name)
+    assert len(response.as_numpy("output")) == df.shape[0]
+
+
+def _run_ensemble_on_tritonserver(
+    tmpdir,
+    ensemble,
+    df,
+    model_name,
+):
+    inputs = triton.convert_df_to_triton_input(df.columns, df)
+    output_columns = ensemble.graph.output_schema.column_names
+    outputs = [grpcclient.InferRequestedOutput(col) for col in output_columns]
+
+    response = None
+    with run_triton_server(tmpdir) as client:
+        response = client.infer(model_name, inputs, outputs=outputs)
+
+    return response

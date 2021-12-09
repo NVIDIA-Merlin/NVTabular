@@ -78,14 +78,13 @@ class Ensemble:
                 model_name=config.name, model_version=-1
             )
             for input_col in config.input:
-                in_suffix = f"_{idx}" if idx > 0 else ""
                 prev_step_ouputs = dict(prev_step.output_map) if prev_step else {}
                 prev_step_input_col = (
                     prev_step_ouputs[input_col.name]
                     if prev_step_ouputs and input_col.name in prev_step_ouputs
                     else input_col.name
                 )
-                config_step.input_map[input_col.name] = prev_step_input_col + in_suffix
+                config_step.input_map[input_col.name] = prev_step_input_col
             for output_col in config.output:
                 out_suffix = f"_{idx + 1}" if idx < len(configs) - 1 else ""
                 config_step.output_map[output_col.name] = output_col.name + out_suffix

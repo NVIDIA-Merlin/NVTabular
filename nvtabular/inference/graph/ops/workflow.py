@@ -21,6 +21,7 @@ from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import (
+    _generate_column_types,
     _generate_nvtabular_config,
     _remove_columns,
     _triton_datatype_to_dtype,
@@ -84,6 +85,8 @@ class WorkflowOp(InferenceOperator):
         export_path = new_dir_path / str(version) / self.export_name
         workflow.save(str(export_path))
 
+        _generate_column_types(str(export_path), [], [])
+
         return _generate_nvtabular_config(
             workflow,
             self.export_name,
@@ -95,4 +98,4 @@ class WorkflowOp(InferenceOperator):
 
     @property
     def export_name(self):
-        return self.name
+        return "workflow"
