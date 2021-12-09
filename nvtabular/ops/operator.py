@@ -20,7 +20,6 @@ from typing import Optional
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph import BaseOperator
-from nvtabular.graph.base_operator import Supports
 from nvtabular.graph.selector import ColumnSelector
 
 
@@ -45,11 +44,6 @@ class Operator(BaseOperator):
             Returns a transformed dataframe for this operator
         """
         raise NotImplementedError
-
-    @property
-    def supports(self) -> Supports:
-        """Returns what kind of data representation this operator supports"""
-        return Supports.CPU_DATAFRAME | Supports.GPU_DATAFRAME
 
     def inference_initialize(
         self, col_selector: ColumnSelector, model_config: dict
