@@ -26,6 +26,7 @@ configure_tensorflow()
 tf = pytest.importorskip("tensorflow")
 
 
+@pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("output_model", ["tensorflow"])
 def test_export_run_ensemble_triton(tmpdir, engine, output_model, df):

@@ -45,6 +45,7 @@ TRITON_SERVER_PATH = find_executable("tritonserver")
 tf = pytest.importorskip("tensorflow")  # noqa
 
 
+@pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     # Create a Workflow
