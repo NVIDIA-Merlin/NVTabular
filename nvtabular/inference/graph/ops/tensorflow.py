@@ -19,7 +19,7 @@ from sys import version
 
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.selector import ColumnSelector
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame, InferenceOperator
+from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import export_tensorflow_model
 
 
@@ -38,15 +38,6 @@ class TensorflowOp(InferenceOperator):
         new_dir_path.mkdir()
 
         return export_tensorflow_model(self.model, self.export_name, new_dir_path, version=version)
-
-    def transform(self, tensors: InferenceDataFrame) -> InferenceDataFrame:
-        raise NotImplementedError(
-            f"This method should never be called for {self.__class__.__name__}."
-        )
-
-    @classmethod
-    def from_config(cls, config):
-        raise NotImplementedError(f"This method should never be called for {cls.__name__}.")
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         expected_input = input_schema.apply(col_selector)

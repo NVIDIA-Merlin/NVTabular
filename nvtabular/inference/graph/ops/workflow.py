@@ -16,7 +16,6 @@
 import pathlib
 import warnings
 
-from nvtabular import Workflow
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
@@ -37,17 +36,6 @@ class WorkflowOp(InferenceOperator):
         self.name = name or self.__class__.__name__
         self.max_batch_size = max_batch_size
         self.label_columns = label_columns or []
-
-    @classmethod
-    def from_config(cls, config):
-        workflow_path = config["workflow_path"]
-        workflow = Workflow.load(workflow_path)
-        return WorkflowOp(workflow)
-
-    def transform(self, tensors):
-        raise NotImplementedError(
-            f"This method should never be called for {self.__class__.__name__}."
-        )
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         expected_input = input_schema.apply(col_selector)
@@ -98,4 +86,4 @@ class WorkflowOp(InferenceOperator):
 
     @property
     def export_name(self):
-        return "workflow"
+        return self.name

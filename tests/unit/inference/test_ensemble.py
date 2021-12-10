@@ -76,7 +76,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     )
 
     # Creating Triton Ensemble
-    triton_chain = selector >> WorkflowOp(workflow) >> TensorflowOp(model)
+    triton_chain = selector >> WorkflowOp(workflow, name="workflow") >> TensorflowOp(model)
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
@@ -97,7 +97,6 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
 
     output_columns = triton_ens.graph.output_schema.column_names
-
     response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
     assert len(response.as_numpy("output")) == df.shape[0]
 

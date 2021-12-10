@@ -64,7 +64,6 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    # remove
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the TF saved model
@@ -83,7 +82,6 @@ def export_tensorflow_ensemble(
             )
             workflow.output_dtypes[column.name] = tf_dtype
 
-    # Node 2
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
     nvt_config = generate_nvtabular_model(

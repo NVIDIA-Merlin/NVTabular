@@ -34,12 +34,14 @@ class InferenceOperator(BaseOperator):
     def export_name(self):
         pass
 
-    @abstractclassmethod
-    def from_config(cls, config):
-        pass
-
     @abstractmethod
     def export(self, path):
+        pass
+
+
+class PipelineableInferenceOperator(InferenceOperator):
+    @abstractclassmethod
+    def from_config(cls, config):
         pass
 
     @abstractmethod
