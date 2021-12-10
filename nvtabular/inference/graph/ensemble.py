@@ -15,6 +15,8 @@
 #
 import os
 
+from nvtabular.graph.node import postorder_iter_nodes
+
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
@@ -22,9 +24,6 @@ from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.graph.graph import Graph  # noqa
-from nvtabular.graph.ops.selection import SelectionOp  # noqa
-from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
-from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
 
 
 class Ensemble:
@@ -35,27 +34,16 @@ class Ensemble:
         self.label_columns = label_columns or []
 
     def export(self, export_path, version=1):
-        parents = self.graph.output_node.parents_with_dependencies
-        assert len(parents) == 1
-
-        workflow_node = parents[0]
-        assert len(workflow_node.parents_with_dependencies) == 1
-        assert isinstance(workflow_node.op, WorkflowOp)
-
-        selection_node = workflow_node.parents_with_dependencies[0]
-        assert len(selection_node.parents_with_dependencies) == 0
-        assert isinstance(selection_node.op, SelectionOp)
-
-        model_node = self.graph.output_node
-        assert isinstance(model_node.op, TensorflowOp)
-
-        nodes_list = [model_node, workflow_node]
-        config = None
         configs = []
-        for node in nodes_list:
-            config = node.op.export(export_path, config, version=version)
-            configs.append(config)
-
+        prev_node = None
+        po_reversed = reversed(list(postorder_iter_nodes(self.graph.output_node)))
+        for node in po_reversed:
+            if prev_node not in node.parents_with_dependencies:
+                config = None
+            if hasattr(node.op, "export"):
+                config = node.op.export(export_path, config, version=version)
+                configs.append(config)
+            prev_node = node
         # generate the triton ensemble
         ensemble_path = os.path.join(export_path, self.name)
         os.makedirs(ensemble_path, exist_ok=True)
@@ -65,6 +53,7 @@ class Ensemble:
 
     def _generate_ensemble_config(self, name, output_path, configs, name_ext=""):
         # TODO: max batchsize only relevant for workflow nodes
+        breakpoint()
         ensemble_config = model_config.ModelConfig(
             name=name + name_ext, platform="ensemble", max_batch_size=configs[0].max_batch_size
         )

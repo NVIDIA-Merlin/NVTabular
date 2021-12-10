@@ -383,7 +383,23 @@ def iter_nodes(nodes):
             yield current
             # TODO: deduplicate nodes?
             for node in current.parents_with_dependencies:
+
                 queue.append(node)
+
+
+def postorder_iter_nodes(nodes):
+    queue = []
+    if not isinstance(nodes, list):
+        nodes = [nodes]
+
+    def traverse(current_nodes):
+        for node in current_nodes:
+            traverse(node.parents_with_dependencies)
+            queue.append(node)
+
+    traverse(nodes)
+    for node in queue:
+        yield node
 
 
 def _filter_by_type(elements, type_):

@@ -70,6 +70,6 @@ class TensorflowOp(InferenceOperator):
             )
 
         out_schema = Schema()
-        for col in outputs:
-            out_schema.column_schemas[col] = ColumnSchema(col)
+        for col, output_col in zip(outputs, self.model.outputs):
+            out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
         return out_schema
