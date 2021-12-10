@@ -23,21 +23,22 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular as nvt  # noqa
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 import nvtabular.ops as wf_ops  # noqa
+from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
+
+# everything tensorflow related must be imported after this.
+configure_tensorflow()
+triton = pytest.importorskip("nvtabular.inference.triton")
+ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
 from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
 from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
-from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
-
-configure_tensorflow()
-
 from tests.unit.test_triton_inference import run_triton_server  # noqa
 
-triton = pytest.importorskip("nvtabular.inference.triton")
-ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
-grpcclient = pytest.importorskip("tritonclient.grpc")
 tritonclient = pytest.importorskip("tritonclient")
+import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+
+grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
 

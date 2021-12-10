@@ -6,16 +6,20 @@ import nvtabular as nvt
 import nvtabular.framework_utils.tensorflow.layers as layers
 import nvtabular.ops as ops
 from nvtabular.framework_utils.torch.models import Model
-from nvtabular.inference.triton.ensemble import export_pytorch_ensemble, export_tensorflow_ensemble
 from nvtabular.loader.tf_utils import configure_tensorflow
-from tests.unit.inference.test_ensemble import _run_ensemble_on_tritonserver  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 
-grpcclient = pytest.importorskip("tritonclient.grpc")
+from nvtabular.inference.triton.ensemble import (  # noqa
+    export_pytorch_ensemble,
+    export_tensorflow_ensemble,
+)
+from tests.unit.inference.test_ensemble import _run_ensemble_on_tritonserver  # noqa
+
 tritonclient = pytest.importorskip("tritonclient")
+grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
 configure_tensorflow()
