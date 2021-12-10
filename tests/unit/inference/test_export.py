@@ -55,7 +55,7 @@ def test_export_run_ensemble_triton(tmpdir, engine, output_model, df):
     # assert os.path.exists(os.path.join(repo, "config.pbtxt"))
     tri_df = df.iloc[:10]
     tri_df = tri_df[["x", "y", "id", "name-cat", "name-string"]]
-    response = _run_ensemble_on_tritonserver(tmpdir, ["output"], tri_df, "test_name")
+    response = _run_ensemble_on_tritonserver(str(tmpdir), ["output"], tri_df, "test_name")
     assert response is not None
     assert len(response.as_numpy("output")) == 10
 

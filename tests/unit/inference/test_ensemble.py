@@ -97,7 +97,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
 
     output_columns = triton_ens.graph.output_schema.column_names
 
-    response = _run_ensemble_on_tritonserver(tmpdir, output_columns, df, triton_ens.name)
+    response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
     assert len(response.as_numpy("output")) == df.shape[0]
 
 
