@@ -40,7 +40,7 @@ from triton_python_backend_utils import (
 
 import nvtabular
 from nvtabular.dispatch import _is_list_dtype
-from nvtabular.inference.triton import _convert_tensor, get_column_types
+from nvtabular.inference.triton import _convert_tensor
 from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
 from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner
 from nvtabular.inference.workflow.tensorflow import TensorflowWorkflowRunner
@@ -58,7 +58,6 @@ class TritonPythonModel:
 
         # Workflow instantiation
         self.workflow = nvtabular.Workflow.load(workflow_path)
-        column_types = get_column_types(workflow_path)  # cats and conts (which duplicates tags)
 
         # Config loading and parsing
         self.model_config = json.loads(args["model_config"])
@@ -84,7 +83,7 @@ class TritonPythonModel:
             runner_class = TensorflowWorkflowRunner
 
         self.runner = runner_class(
-            self.workflow, column_types, self.output_dtypes, self.model_config, model_device
+            self.workflow, self.output_dtypes, self.model_config, model_device
         )
 
     def _set_output_dtype(self, name):

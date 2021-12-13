@@ -29,10 +29,10 @@ from nvtabular.inference.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
-        super().__init__(workflow, column_types, output_dtypes, model_config, model_device)
+    def __init__(self, workflow, output_dtypes, model_config, model_device):
+        super().__init__(workflow, output_dtypes, model_config, model_device)
 
-        self.column_types = self.offsets = None
+        self.offsets = None
 
     def _transform_outputs(self, tensors):
         # Load extra info needed for the Transformer4Rec (if exists)

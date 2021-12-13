@@ -331,13 +331,6 @@ def generate_nvtabular_model(
         backend=backend,
     )
 
-    if output_model == "pytorch":
-        _generate_column_types_pytorch(
-            os.path.join(output_path, str(version), "workflow"), output_info=output_info
-        )
-    else:
-        _generate_column_types(os.path.join(output_path, str(version), "workflow"), cats, conts)
-
     # copy the model file over. note that this isn't necessary with the c++ backend, but
     # does provide us to use the python backend with just changing the 'backend' parameter
     copyfile(
@@ -699,22 +692,6 @@ def _add_model_param(column, dtype, paramclass, params, dims=None):
         )
     else:
         params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=dims))
-
-
-def _generate_column_types(output_path, cats=None, conts=None):
-    cats = cats or []
-    conts = conts or []
-
-    with open(os.path.join(output_path, "column_types.json"), "w") as o:
-        cats_conts_json = dict()
-        cats_conts_json["cats"] = [name for i, name in enumerate(cats)]
-        cats_conts_json["conts"] = [name for i, name in enumerate(conts)]
-        json.dump(cats_conts_json, o)
-
-
-def _generate_column_types_pytorch(output_path, output_info):
-    with open(os.path.join(output_path, "column_types.json"), "w") as o:
-        json.dump(output_info, o)
 
 
 def _convert_dtype(dtype):
