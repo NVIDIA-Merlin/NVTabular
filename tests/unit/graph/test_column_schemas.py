@@ -160,10 +160,7 @@ def test_dataset_schema_select_by_name():
 
     assert selected_schema_multi.column_schemas == {"col1": schema1, "col2": schema2}
 
-    with pytest.raises(KeyError) as exception_info:
-        ds_schema.select_by_name("col3")
-
-    assert "col3" in str(exception_info.value)
+    assert ds_schema.select_by_name("col3") == Schema([])
 
 
 def test_dataset_schemas_can_be_added():

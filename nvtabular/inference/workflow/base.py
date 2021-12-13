@@ -105,7 +105,7 @@ class WorkflowRunner(ABC):
         if workflow_node.parents_with_dependencies:
             for parent in workflow_node.parents_with_dependencies:
                 upstream_tensors, upstream_kind = self._transform_tensors(input_tensors, parent)
-                if upstream_tensors and upstream_kind:
+                if upstream_tensors is not None and upstream_kind:
                     upstream_inputs.append((upstream_tensors, upstream_kind))
 
         # Gather additional input columns from the original input tensors
@@ -146,7 +146,7 @@ class WorkflowRunner(ABC):
                 tensors = self._concat_tensors([tensors, upstream_tensors], kind)
 
         # Run the transform
-        if tensors and kind and workflow_node.op:
+        if tensors is not None and kind and workflow_node.op:
             try:
                 # if the op doesn't support the current kind - we need to convert
                 if (

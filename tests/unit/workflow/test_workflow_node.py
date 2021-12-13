@@ -236,8 +236,8 @@ def test_workflow_node_select():
 
     input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
     # pylint: disable=unnecessary-lambda
-    sqrt_features = input_features[["a", "c"]] >> (lambda col: np.sqrt(col))
-    plus_one_features = input_features["b"] >> (lambda col: col + 1)
+    sqrt_features = input_features[["a", "c"]] >> LambdaOp(lambda col: np.sqrt(col))
+    plus_one_features = input_features["b"] >> LambdaOp(lambda col: col + 1)
     features = sqrt_features + plus_one_features
 
     workflow = Workflow(features)
@@ -269,7 +269,6 @@ def test_nested_workflow_node():
     # country1 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country1")
     # country2 = geo_selector >> (lambda col: col.str.slice(0, 2)) >> Rename(postfix="_country2")
     user = "user"
-    # user2 = "user2"
 
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
