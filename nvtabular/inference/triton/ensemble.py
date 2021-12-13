@@ -64,7 +64,7 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = workflow.output_schema.apply(ColumnSelector(tags=Tags.TARGET))
+    labels = workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
 
     workflow = _remove_columns(workflow, labels)
 
@@ -135,7 +135,7 @@ def export_pytorch_ensemble(
         The backend that will be used for inference in Triton.
     """
 
-    labels = workflow.output_schema.apply(ColumnSelector(tags=Tags.TARGET))
+    labels = workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
 
     workflow = _remove_columns(workflow, labels)
 
@@ -206,9 +206,9 @@ def export_hugectr_ensemble(
         The backend that will be used for inference in Triton.
     """
 
-    cats = workflow.output_schema.apply(ColumnSelector(tags=Tags.CATEGORICAL))
-    conts = workflow.output_schema.apply(ColumnSelector(tags=Tags.CONTINUOUS))
-    labels = workflow.output_schema.apply(ColumnSelector(tags=Tags.TARGET))
+    cats = workflow.output_schema.apply(ColumnSelector(tags=[Tags.CATEGORICAL]))
+    conts = workflow.output_schema.apply(ColumnSelector(tags=[Tags.CONTINUOUS]))
+    labels = workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
 
     if not cats and not conts:
         raise ValueError("Either cats or conts has to have a value.")
