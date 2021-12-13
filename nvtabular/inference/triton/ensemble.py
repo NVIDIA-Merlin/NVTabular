@@ -21,6 +21,8 @@ from shutil import copyfile, copytree
 
 import numpy as np
 
+from nvtabular import ColumnSelector
+
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
@@ -30,6 +32,7 @@ import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype  # noqa
 from nvtabular.graph.node import iter_nodes  # noqa
 from nvtabular.graph.schema import Schema  # noqa
+from nvtabular.graph.tags import Tags  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -37,7 +40,6 @@ def export_tensorflow_ensemble(
     workflow,
     name,
     model_path,
-    label_columns,
     sparse_max=None,
     version=1,
     nvtabular_backend="nvtabular",
@@ -55,8 +57,6 @@ def export_tensorflow_ensemble(
         The base name of the various triton models
     model_path:
         The root path to write out files to
-    label_columns:
-        Labels in the dataset (will be removed from the dataset)
     sparse_max:
     Max length of the each row when the sparse data is converted to dense
     version:
@@ -64,7 +64,9 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    workflow = _remove_columns(workflow, label_columns)
+    labels = workflow.output_schema.apply(ColumnSelector(tags=Tags.TARGET))
+
+    workflow = _remove_columns(workflow, labels)
 
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
@@ -105,7 +107,6 @@ def export_pytorch_ensemble(
     sparse_max,
     name,
     model_path,
-    label_columns,
     use_fix_dtypes=True,
     version=1,
     nvtabular_backend="python",
@@ -125,8 +126,6 @@ def export_pytorch_ensemble(
         The base name of the various triton models
     model_path:
         The root path to write out files to
-    label_columns:
-        Labels in the dataset (will be removed from the dataset)
     use_fix_dtypes:
         Transformers4Rec is using fixed dtypes and this option is
         whether to use fixed dtypes in inference or not
@@ -136,7 +135,9 @@ def export_pytorch_ensemble(
         The backend that will be used for inference in Triton.
     """
 
-    workflow = _remove_columns(workflow, label_columns)
+    labels = workflow.output_schema.apply(ColumnSelector(tags=Tags.TARGET))
+
+    workflow = _remove_columns(workflow, labels)
 
     # generate the TF saved model
     pt_path = os.path.join(model_path, name + "_pt")
@@ -178,10 +179,7 @@ def export_hugectr_ensemble(
     hugectr_params,
     name,
     output_path,
-    label_columns,
     version=1,
-    cats=None,
-    conts=None,
     max_batch_size=None,
     nvtabular_backend="python",
 ):
@@ -200,24 +198,22 @@ def export_hugectr_ensemble(
         The base name of the various triton models
     output_path:
         The path where the models will be served
-    label_columns:
-        Labels in the dataset (will be removed from the workflow)
     version:
         The version of the model
-    cats:
-        Names of the categorical columns
-    conts:
-        Names of the continuous columns
     max_batch_size:
         Max batch size that Triton can receive
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
 
+    cats = workflow.output_schema.apply(ColumnSelector(tags=Tags.CATEGORICAL))
+    conts = workflow.output_schema.apply(ColumnSelector(tags=Tags.CONTINUOUS))
+    labels = workflow.output_schema.apply(ColumnSelector(tags=Tags.TARGET))
+
     if not cats and not conts:
         raise ValueError("Either cats or conts has to have a value.")
 
-    workflow = _remove_columns(workflow, label_columns)
+    workflow = _remove_columns(workflow, labels)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(output_path, name + "_nvt")
@@ -227,13 +223,11 @@ def export_hugectr_ensemble(
         output_path=preprocessing_path,
         version=version,
         output_model="hugectr",
-        cats=cats,
-        conts=conts,
         max_batch_size=max_batch_size,
         backend=nvtabular_backend,
     )
 
-    hugectr_params["label_dim"] = len(label_columns)
+    hugectr_params["label_dim"] = len(labels)
     if conts is None:
         hugectr_params["des_feature_num"] = 0
     else:
@@ -302,10 +296,7 @@ def generate_nvtabular_model(
     output_path,
     version=1,
     output_model=None,
-    cats=None,
-    conts=None,
     max_batch_size=None,
-    output_info=None,
     sparse_max=None,
     backend="python",
 ):
@@ -323,19 +314,9 @@ def generate_nvtabular_model(
         output_path,
         output_model,
         max_batch_size,
-        cats,
-        conts,
-        output_info,
         sparse_max=sparse_max,
         backend=backend,
     )
-
-    if output_model == "pytorch":
-        _generate_column_types_pytorch(
-            os.path.join(output_path, str(version), "workflow"), output_info=output_info
-        )
-    else:
-        _generate_column_types(os.path.join(output_path, str(version), "workflow"), cats, conts)
 
     # copy the model file over. note that this isn't necessary with the c++ backend, but
     # does provide us to use the python backend with just changing the 'backend' parameter
@@ -374,9 +355,6 @@ def _generate_nvtabular_config(
     output_path,
     output_model=None,
     max_batch_size=None,
-    cats=None,
-    conts=None,
-    output_info=None,
     sparse_max=None,
     backend="python",
 ):
@@ -414,13 +392,13 @@ def _generate_nvtabular_config(
         for column, dtype in workflow.input_dtypes.items():
             _add_model_param(column, dtype, model_config.ModelInput, config.input)
 
-        for col, val in output_info.items():
+        for column, dtype in workflow.output_dtypes.items():
             _add_model_param(
-                col,
-                val["dtype"],
+                column,
+                dtype,
                 model_config.ModelOutput,
                 config.output,
-                [-1, len(val["columns"])],
+                [-1, 1],
             )
     else:
         for column, dtype in workflow.input_dtypes.items():
@@ -698,22 +676,6 @@ def _add_model_param(column, dtype, paramclass, params, dims=None):
         )
     else:
         params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=dims))
-
-
-def _generate_column_types(output_path, cats=None, conts=None):
-    cats = cats or []
-    conts = conts or []
-
-    with open(os.path.join(output_path, "column_types.json"), "w") as o:
-        cats_conts_json = dict()
-        cats_conts_json["cats"] = [name for i, name in enumerate(cats)]
-        cats_conts_json["conts"] = [name for i, name in enumerate(conts)]
-        json.dump(cats_conts_json, o)
-
-
-def _generate_column_types_pytorch(output_path, output_info):
-    with open(os.path.join(output_path, "column_types.json"), "w") as o:
-        json.dump(output_info, o)
 
 
 def _convert_dtype(dtype):
