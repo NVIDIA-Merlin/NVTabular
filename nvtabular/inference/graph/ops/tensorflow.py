@@ -26,7 +26,7 @@ from nvtabular.inference.triton.ensemble import export_tensorflow_model
 class TensorflowOp(InferenceOperator):
     def __init__(self, model, name=None):
         self.model = model
-        self.name = name or self.__class__.__name__
+        self.name = name or self.__class__.__name__.lower()
 
     @property
     def export_name(self):
