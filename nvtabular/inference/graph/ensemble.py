@@ -53,7 +53,6 @@ class Ensemble:
 
     def _generate_ensemble_config(self, name, output_path, configs, name_ext=""):
         # TODO: max batchsize only relevant for workflow nodes
-        breakpoint()
         ensemble_config = model_config.ModelConfig(
             name=name + name_ext, platform="ensemble", max_batch_size=configs[0].max_batch_size
         )
