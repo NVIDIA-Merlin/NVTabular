@@ -188,7 +188,7 @@ def global_dask_client():
     # First, check _nvt_dask_client
     nvt_client = _nvt_dask_client.get()
     if nvt_client and nvt_client != "auto":
-        if nvt_client.cluster.workers:
+        if nvt_client.cluster and nvt_client.cluster.workers:
             # Active Dask client already known
             return nvt_client
         else:
