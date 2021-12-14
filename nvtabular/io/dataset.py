@@ -220,6 +220,7 @@ class Dataset:
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
+        client="auto",
         cpu=None,
         base_dataset=None,
         schema=None,
@@ -229,7 +230,7 @@ class Dataset:
             raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
 
         # Deprecate `client`
-        if kwargs.pop("client", None):
+        if client != "auto":
             _set_client_deprecated(client, "Dataset")
 
         self.dtypes = dtypes
