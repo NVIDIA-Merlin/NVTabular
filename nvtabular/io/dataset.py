@@ -220,7 +220,6 @@ class Dataset:
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
-        client="auto",
         cpu=None,
         base_dataset=None,
         schema=None,
