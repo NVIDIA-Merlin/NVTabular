@@ -187,16 +187,21 @@ def set_dask_client(client="auto"):
 def global_dask_client():
     # First, check _nvt_dask_client
     nvt_client = _nvt_dask_client.get()
+    if nvt_client and nvt_client != "auto":
+        if nvt_client.cluster.workers:
+            # Active Dask client already known
+            return nvt_client
+        else:
+            # Our cached client is no-longer
+            # active, reset to "auto"
+            nvt_client = "auto"
     if nvt_client == "auto":
-        # Check for a global Dask client
         try:
+            # Check for a global Dask client
             set_dask_client(get_client())
             return _nvt_dask_client.get()
         except ValueError:
             pass
-    elif nvt_client:
-        # Dask client already known
-        return nvt_client
     # Catch-all
     return None
 
