@@ -14,8 +14,9 @@
 # limitations under the License.
 #
 
-from . import dataset, shuffle
+from . import dataframe_iter, dataset, shuffle
 
 Dataset = dataset.Dataset
 Shuffle = shuffle.Shuffle
 _shuffle_df = shuffle._shuffle_df
+DataFrameIter = dataframe_iter.DataFrameIter

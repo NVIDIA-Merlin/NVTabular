@@ -95,7 +95,7 @@ def test_target_encode_group():
     )
 
     cat_groups = ["Author", "Engaging_User"]
-    labels = ColumnSelector(["Post"]) >> (lambda col: (col > 3).astype("int8"))
+    labels = ColumnSelector(["Post"]) >> ops.LambdaOp(lambda col: (col > 3).astype("int8"))
     te_features = cat_groups >> ops.TargetEncoding(
         labels,
         out_path="./",

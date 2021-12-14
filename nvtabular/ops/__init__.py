@@ -18,7 +18,7 @@
 # flake8: noqa
 from .add_metadata import AddMetadata
 from .bucketize import Bucketize
-from .categorify import Categorify, _get_embedding_order, get_embedding_sizes
+from .categorify import Categorify, get_embedding_sizes
 from .clip import Clip
 from .data_stats import DataStats
 from .difference_lag import DifferenceLag

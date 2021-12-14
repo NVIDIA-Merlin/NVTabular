@@ -16,6 +16,9 @@
 import dask.dataframe as dd
 import numpy
 
+from nvtabular.graph.base_operator import Supports
+from nvtabular.graph.tags import Tags
+
 from ..dispatch import (
     DataFrameType,
     _encode_list_column,
@@ -23,9 +26,8 @@ from ..dispatch import (
     _is_list_dtype,
     annotate,
 )
-from ..tags import Tags
 from .moments import _custom_moments
-from .operator import ColumnSelector, Operator, Supports
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
