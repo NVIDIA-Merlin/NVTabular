@@ -26,8 +26,6 @@
 
 import numpy as np
 
-from nvtabular import ColumnSelector
-from nvtabular.graph.tags import Tags
 from nvtabular.inference.workflow.base import WorkflowRunner
 from nvtabular.ops import get_embedding_sizes
 
@@ -35,11 +33,6 @@ from nvtabular.ops import get_embedding_sizes
 class HugeCTRWorkflowRunner(WorkflowRunner):
     def __init__(self, workflow, output_dtypes, model_config, model_device):
         super().__init__(workflow, output_dtypes, model_config, model_device)
-
-        output_schema = self.workflow.output_schema
-
-        self.cats = output_schema.apply(ColumnSelector(tags=[Tags.CATEGORICAL])).column_names
-        self.conts = output_schema.apply(ColumnSelector(tags=[Tags.CONTINUOUS])).column_names
 
         if self.cats:
             self.offsets = self.get_offsets(self.workflow, self.cats)

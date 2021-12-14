@@ -30,8 +30,10 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from nvtabular import ColumnSelector
 from nvtabular.dispatch import _concat_columns
 from nvtabular.graph.base_operator import Supports
+from nvtabular.graph.tags import Tags
 from nvtabular.inference.triton.data_conversions import convert_format
 
 LOG = logging.getLogger("nvtabular")
@@ -43,6 +45,22 @@ class WorkflowRunner(ABC):
         self.output_dtypes = output_dtypes
         self.model_config = model_config
         self.device = model_device
+
+        output_schema = self.workflow.output_schema
+
+        schema_cats = output_schema.apply(ColumnSelector(tags=[Tags.CATEGORICAL])).column_names
+        schema_conts = output_schema.apply(ColumnSelector(tags=[Tags.CONTINUOUS])).column_names
+
+        self.cats = model_config.get("cats", None) or schema_cats
+        self.conts = model_config.get("conts", None) or schema_conts
+
+        missing_cols = [
+            col for col in self.cats + self.conts if col not in workflow.output_schema.column_names
+        ]
+        if missing_cols:
+            raise ValueError(
+                f"The follow columns were not found in the workflow's output: {missing_cols}"
+            )
 
         # recurse over all column groups, initializing operators for inference pipeline
         self._initialize_ops(self.workflow.output_node)

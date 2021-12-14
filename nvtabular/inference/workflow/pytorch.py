@@ -30,11 +30,11 @@ from nvtabular.inference.workflow.base import WorkflowRunner
 class PyTorchWorkflowRunner(WorkflowRunner):
     def _transform_outputs(self, tensors):
         output_tensors = []
-        for col_name, dtype in self.workflow.output_dtypes.items():
+        for col_name in self.cats + self.conts:
             output_tensors.append(
                 (
                     col_name,
-                    self._convert([col_name], tensors, dtype),
+                    self._convert([col_name], tensors, self.workflow.output_dtypes[col_name]),
                 )
             )
 

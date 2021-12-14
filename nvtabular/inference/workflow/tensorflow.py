@@ -42,7 +42,8 @@ class TensorflowWorkflowRunner(WorkflowRunner):
             sparse_feat = json.loads(self.model_config["parameters"]["sparse_max"]["string_value"])
         # transforms outputs for both pytorch and tensorflow
         output_tensors = []
-        for name, value in tensors.items():
+        for name in self.cats + self.conts:
+            value = tensors[name]
             if sparse_feat and name in sparse_feat.keys():
                 # convert sparse tensors to dense representations
                 d = value[0].astype(self.output_dtypes[name])
