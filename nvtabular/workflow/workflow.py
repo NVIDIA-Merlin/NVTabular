@@ -33,8 +33,7 @@ from dask.core import flatten
 
 import nvtabular
 from nvtabular.dispatch import _concat_columns
-from nvtabular.graph.node import iter_nodes
-from nvtabular.graph.schema import Schema
+from nvtabular.graph.graph import Graph, _get_ops_by_type
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.utils import (
@@ -80,15 +79,10 @@ class Workflow:
     """
 
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
-
         # Deprecate `client`
         if client is not None:
             _set_client_deprecated(client, "Workflow")
-
-        self.output_node = output_node
-        self.input_dtypes = None
-        self.output_dtypes = None
-        self.output_schema = None
+        self.graph = Graph(output_node)
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -108,8 +102,8 @@ class Workflow:
         """
         self._clear_worker_cache()
 
-        if not self.output_schema:
-            self.fit_schema(dataset.schema)
+        if not self.graph.output_schema:
+            self.graph.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
@@ -119,47 +113,28 @@ class Workflow:
             schema=self.output_schema,
         )
 
-    def fit_schema(self, input_schema: Schema) -> "Workflow":
-        schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents_with_dependencies)
-            for node in _get_schemaless_nodes([self.output_node])
-        }
-
-        while schemaless_nodes:
-            # get all the Operators with no outstanding dependencies
-            current_phase = [
-                node for node, dependencies in schemaless_nodes.items() if not dependencies
-            ]
-            if not current_phase:
-                # this shouldn't happen, but lets not infinite loop just in case
-                raise RuntimeError("failed to find dependency-free Operator to compute schema for")
-
-            processed_nodes = []
-            for node in current_phase:
-                if not node.parents:
-                    node.compute_schemas(input_schema)
-                else:
-                    combined_schema = sum(
-                        [parent.output_schema for parent in node.parents if parent.output_schema],
-                        Schema(),
-                    )
-                    # we want to update the input_schema with new values
-                    # from combined schema
-                    combined_schema = input_schema + combined_schema
-                    node.compute_schemas(combined_schema)
-
-                processed_nodes.append(node)
-
-            # Remove all the operators we processed in this phase, and remove
-            # from the dependencies of other ops too
-            for schemaless_node in current_phase:
-                schemaless_nodes.pop(schemaless_node)
-            for dependencies in schemaless_nodes.values():
-                dependencies.difference_update(current_phase)
-
-        self.output_schema = self.output_node.output_schema
-
+    def fit_schema(self, input_schema):
+        self.graph.fit_schema(input_schema)
         return self
+
+    @property
+    def input_dtypes(self):
+        return self.graph.input_dtypes
+
+    @property
+    def output_schema(self):
+        return self.graph.output_schema
+
+    @property
+    def output_dtypes(self):
+        return self.graph.output_dtypes
+
+    @property
+    def output_node(self):
+        return self.graph.output_node
+
+    def _input_columns(self):
+        return self.graph._input_columns()
 
     def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
@@ -172,8 +147,8 @@ class Workflow:
         """
         self._clear_worker_cache()
 
-        if not self.output_schema:
-            self.fit_schema(dataset.schema)
+        if not self.graph.output_schema:
+            self.graph.fit_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
@@ -182,7 +157,7 @@ class Workflow:
         # means that will have multiple phases in the fit cycle here)
         stat_ops = {
             op: _get_stat_ops(op.parents_with_dependencies)
-            for op in _get_stat_ops([self.output_node])
+            for op in _get_stat_ops([self.graph.output_node])
         }
 
         while stat_ops:
@@ -247,12 +222,13 @@ class Workflow:
         # information for each operator (like we do for column names), but as
         # an interim solution this gets us what we need.
         input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
-        self.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         output_dtypes = self.transform(dataset).sample_dtypes()
-        self.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
-        self._zero_output_schemas()
-        self.fit_schema(dataset.schema)
+        self.graph.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
+        self.graph.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
+
+        self.graph._zero_output_schemas()
+        self.graph.fit_schema(dataset.schema)
         return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
@@ -375,19 +351,6 @@ class Workflow:
         for stat in _get_stat_ops([self.output_node]):
             stat.op.clear()
 
-    def _input_columns(self):
-        input_cols = []
-        for node in iter_nodes([self.output_node]):
-            upstream_output_cols = []
-
-            for upstream_node in node.parents_with_dependencies:
-                upstream_output_cols += upstream_node.output_columns.names
-
-            upstream_output_cols = _get_unique(upstream_output_cols)
-            input_cols += list(set(node.input_columns.names) - set(upstream_output_cols))
-
-        return _get_unique(input_cols)
-
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
         dask_client = global_dask_client()
@@ -395,15 +358,6 @@ class Workflow:
             dask_client.run(clean_worker_cache)
         else:
             clean_worker_cache()
-
-    def _zero_output_schemas(self):
-        """
-        Zero out all schemas in order to rerun fit schema after operators
-        have run fit and have stats to add to schema.
-        """
-        for node in iter_nodes([self.output_node]):
-            node.output_schema = None
-            node.input_schema = None
 
 
 def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
@@ -444,16 +398,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
 
 
 def _get_stat_ops(nodes):
-    return set(node for node in iter_nodes(nodes) if isinstance(node.op, StatOperator))
-
-
-def _get_schemaless_nodes(nodes):
-    schemaless_nodes = []
-    for node in iter_nodes(nodes):
-        if node.input_schema is None:
-            schemaless_nodes.append(node)
-
-    return set(schemaless_nodes)
+    return _get_ops_by_type(nodes, StatOperator)
 
 
 def _get_unique(cols):
