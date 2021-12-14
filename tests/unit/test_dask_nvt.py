@@ -26,7 +26,8 @@ from dask.dataframe import read_parquet as dd_read_parquet
 
 from nvtabular import ColumnSelector, Dataset, Workflow, ops
 from nvtabular.io.shuffle import Shuffle
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+from nvtabular.utils import set_dask_client
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 cudf = pytest.importorskip("cudf")
 dask_cudf = pytest.importorskip("dask_cudf")
@@ -65,6 +66,7 @@ def test_dask_workflow_api_dlrm(
     shuffle,
     cpu,
 ):
+    set_dask_client(client=client)
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     paths = sorted(paths)
     if engine == "parquet":
@@ -92,7 +94,7 @@ def test_dask_workflow_api_dlrm(
 
     conts = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp()
 
-    workflow = Workflow(cats + conts + label_name, client=client)
+    workflow = Workflow(cats + conts + label_name)
 
     if engine in ("parquet", "csv"):
         dataset = Dataset(paths, cpu=cpu, part_mem_fraction=part_mem_fraction)
@@ -139,6 +141,7 @@ def test_dask_workflow_api_dlrm(
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
 def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
+    set_dask_client(client=client)
 
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
@@ -155,7 +158,7 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     )
 
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
-    workflow = Workflow(features + cat_names + cont_names + label_name, client=client)
+    workflow = Workflow(features + cat_names + cont_names + label_name)
     result = workflow.fit_transform(dataset).to_ddf().compute(scheduler="synchronous")
 
     # Validate result
@@ -180,6 +183,8 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
 @pytest.mark.parametrize("part_mem_fraction", [0.01])
 @pytest.mark.parametrize("use_client", [True, False])
 def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use_client):
+    set_dask_client(client=client if use_client else None)
+
     engine = "parquet"
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
 
@@ -192,14 +197,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
         cont_cols=cont_names, stats=["count", "sum"], out_path=str(tmpdir)
     )
 
-    # We have a global dask client defined in this context, so NVTabular
-    # should warn us if we initialize a `Workflow` with `client=None`
-    workflow = run_in_context(
-        Workflow,
-        cat_features + groupby_features,
-        context=None if use_client else pytest.warns(UserWarning),
-        client=client if use_client else None,
-    )
+    workflow = Workflow(cat_features + groupby_features)
     dataset = Dataset(paths, part_mem_fraction=part_mem_fraction)
     result = workflow.fit_transform(dataset).to_ddf().compute()
 
@@ -210,6 +208,7 @@ def test_cats_and_groupby_stats(client, tmpdir, datasets, part_mem_fraction, use
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
+    set_dask_client(client=client)
 
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     df1 = cudf.read_parquet(paths[0])[mycols_pq]
@@ -222,7 +221,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
 
     normalize = ops.Normalize()
     conts = cont_names >> ops.FillMissing() >> normalize
-    workflow = Workflow(conts + cat_names + label_name, client=client)
+    workflow = Workflow(conts + cat_names + label_name)
 
     dataset = Dataset(paths, engine=engine, cpu=cpu)
     result = workflow.fit_transform(dataset).to_ddf().compute()
@@ -244,6 +243,7 @@ def test_dask_normalize(client, tmpdir, datasets, engine, cpu):
 @pytest.mark.parametrize("shuffle", [Shuffle.PER_WORKER, None])
 @pytest.mark.parametrize("cpu", [None, True])
 def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
+    set_dask_client(client=client)
     paths = glob.glob(str(datasets[engine]) + "/*." + engine.split("-")[0])
     if engine == "parquet":
         df1 = cudf.read_parquet(paths[0])[mycols_pq]
@@ -266,7 +266,7 @@ def test_dask_preproc_cpu(client, tmpdir, datasets, engine, shuffle, cpu):
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
     conts = cont_names >> ops.FillMissing() >> ops.Normalize()
-    workflow = Workflow(conts + cat_names + label_name, client=client)
+    workflow = Workflow(conts + cat_names + label_name)
     transformed = workflow.fit_transform(dataset)
 
     # Write out dataset

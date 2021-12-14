@@ -35,7 +35,7 @@ from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.io.dataframe_iter import DataFrameIter
 from nvtabular.io.shuffle import _check_shuffle_arg
-from nvtabular.utils import global_dask_client
+from nvtabular.utils import _set_client_deprecated, global_dask_client
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
@@ -220,7 +220,7 @@ class Dataset:
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
-        client=None,
+        client="auto",
         cpu=None,
         base_dataset=None,
         schema=None,
@@ -229,8 +229,11 @@ class Dataset:
         if schema is not None and not isinstance(schema, Schema):
             raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
 
+        # Deprecate `client`
+        if kwargs.pop("client", None):
+            _set_client_deprecated(client, "Dataset")
+
         self.dtypes = dtypes
-        self.client = client
         self.schema = schema
 
         # Cache for "real" (sampled) metadata
@@ -513,20 +516,10 @@ class Dataset:
                 # multiple files from each partition directory at once.
                 # Generally speaking, we can optimize this code path
                 # much further.
-                return Dataset(_simple_shuffle(ddf, plan), client=self.client)
-
-        # Warn user if there is an unused global
-        # Dask client available
-        if global_dask_client(self.client):
-            warnings.warn(
-                "A global dask.distributed client has been detected, but the "
-                "single-threaded scheduler is being used for this shuffle operation. "
-                "Please use the `client` argument to initialize a `Dataset` and/or "
-                "`Workflow` object with distributed-execution enabled."
-            )
+                return Dataset(_simple_shuffle(ddf, plan))
 
         # Fall back to dask.dataframe algorithm
-        return Dataset(ddf.shuffle(keys, npartitions=npartitions), client=self.client)
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
     def repartition(self, npartitions=None, partition_size=None):
         """Repartition the underlying ddf, and return a new Dataset
@@ -782,7 +775,7 @@ class Dataset:
                 # Default "subgraph" behavior - Set output_files to the
                 # total umber of workers, multiplied by out_files_per_proc
                 try:
-                    nworkers = len(self.client.cluster.workers)
+                    nworkers = len(global_dask_client().cluster.workers)
                 except AttributeError:
                     nworkers = 1
                 output_files = nworkers * (out_files_per_proc or 1)
@@ -917,7 +910,6 @@ class Dataset:
             conts or [],
             labels or [],
             "parquet",
-            self.client,
             num_threads,
             self.cpu,
             suffix=suffix,
@@ -1008,7 +1000,6 @@ class Dataset:
             conts,
             labels,
             "hugectr",
-            self.client,
             num_threads,
             self.cpu,
             schema=self.schema,
