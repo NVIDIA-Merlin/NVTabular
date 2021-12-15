@@ -106,45 +106,17 @@ class Node:
             ):
                 self.selector = self.parents[0].selector
 
-        if isinstance(self.op, ConcatColumns):  # +
-            # For addition nodes, some of the operands are parents and
-            # others are dependencies so grab schemas from both
-            self.selector = _combine_selectors(self.grouped_parents_with_dependencies)
-            self.input_schema = _combine_schemas(self.parents_with_dependencies)
+        upstream_selector = _combine_selectors(self.grouped_parents_with_dependencies)
+        parents_schema = _combine_schemas(self.parents)
+        deps_schema = _combine_schemas(self.dependencies)
 
-        elif isinstance(self.op, SubtractionOp):  # -
-            left_operand = _combine_schemas(self.parents)
-
-            if self.dependencies:
-                right_operand = _combine_schemas(self.dependencies)
-                self.input_schema = left_operand - right_operand
-            else:
-                self.input_schema = left_operand.apply_inverse(self.op.selector)
-
-            self.selector = ColumnSelector(self.input_schema.column_names)
-
-        elif isinstance(self.op, SubsetColumns):  # []
-            left_operand = _combine_schemas(self.parents)
-            right_operand = _combine_schemas(self.dependencies)
-            self.input_schema = left_operand - right_operand
-
-        # If we have a selector, apply it to upstream schemas from nodes/dataset
-        elif isinstance(self.op, SelectionOp):  # ^
-            upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
-            self.input_schema = upstream_schema.apply(self.selector)
-
-        # If none of the above apply, then we don't have a selector
-        # and we're not an add or sub node, so our input is just the
-        # parents output
-        else:
-            self.input_schema = _combine_schemas(self.parents)
-
-        # Then we delegate to the op (if there is one) to compute this node's
-        # output schema. If there's no op, then outputs are just the inputs
-        if self.op:
-            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
-        else:
-            self.output_schema = self.input_schema
+        self.input_schema = self.op.compute_input_schema(
+            root_schema, parents_schema, deps_schema, self.selector
+        )
+        self.selector = self.op.compute_selector(
+            self.input_schema, self.selector, upstream_selector
+        )
+        self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
 
     def __rshift__(self, operator):
         """Transforms this Node by applying an BaseOperator

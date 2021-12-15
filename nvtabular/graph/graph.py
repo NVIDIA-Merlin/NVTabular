@@ -31,7 +31,7 @@ class Graph:
         self.input_schema = None
         self.output_schema = None
 
-    def fit_schema(self, input_schema: Schema) -> "Graph":
+    def fit_schema(self, root_schema: Schema) -> "Graph":
         schemaless_nodes = {
             node: _get_schemaless_nodes(node.parents_with_dependencies)
             for node in _get_schemaless_nodes([self.output_node])
@@ -49,7 +49,7 @@ class Graph:
             processed_nodes = []
             for node in current_phase:
                 if not node.parents:
-                    node.compute_schemas(input_schema)
+                    node.compute_schemas(root_schema)
                 else:
                     combined_schema = sum(
                         [parent.output_schema for parent in node.parents if parent.output_schema],
@@ -57,7 +57,7 @@ class Graph:
                     )
                     # we want to update the input_schema with new values
                     # from combined schema
-                    combined_schema = input_schema + combined_schema
+                    combined_schema = root_schema + combined_schema
                     node.compute_schemas(combined_schema)
 
                 processed_nodes.append(node)
@@ -72,7 +72,7 @@ class Graph:
         self.input_schema = Schema(
             [
                 schema
-                for name, schema in input_schema.column_schemas.items()
+                for name, schema in root_schema.column_schemas.items()
                 if name in self._input_columns()
             ]
         )

@@ -41,6 +41,38 @@ class BaseOperator:
     Base class for all operator classes.
     """
 
+    def compute_selector(
+        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+    ) -> ColumnSelector:
+        # breakpoint()
+        return selector
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        """Given the schemas coming from upstream sources and a column selector for the
+        input columns, returns a set of schemas for the input columns this operator will use
+        Parameters
+        -----------
+        root_schema: Schema
+            Base schema of the dataset before running any operators.
+        parents_schema: Schema
+            The combined schemas of the upstream parents feeding into this operator
+        deps_schema: Schema
+            The combined schemas of the upstream dependencies feeding into this operator
+        col_selector: ColumnSelector
+            The column selector to apply to the input schema
+        Returns
+        -------
+        Schema
+            The schemas of the columns used by this operator
+        """
+        return parents_schema
+
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
         returns a set of schemas for the transformed columns this operator will produce
