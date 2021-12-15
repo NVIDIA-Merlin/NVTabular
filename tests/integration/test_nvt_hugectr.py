@@ -150,7 +150,9 @@ def test_training():
     sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
     sample_data.to_csv(test_data_path + "data.csv")
 
-    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.output_node])
+    sample_data_trans = nvt.workflow.workflow._transform_partition(
+        sample_data, [workflow.output_node]
+    )
 
     dense_features, embedding_columns, row_ptrs = _convert(sample_data_trans, slot_sizes)
 
