@@ -48,7 +48,7 @@ class Node:
         if selector and not isinstance(selector, ColumnSelector):
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
-        if selector:
+        if selector is not None:
             self.op = SelectionOp(selector)
 
         self._selector = selector
@@ -111,10 +111,10 @@ class Node:
         deps_schema = _combine_schemas(self.dependencies)
 
         self.input_schema = self.op.compute_input_schema(
-            root_schema, parents_schema, deps_schema, self.selector
+            root_schema, parents_schema, deps_schema, self._selector
         )
         self.selector = self.op.compute_selector(
-            self.input_schema, self.selector, upstream_selector
+            self.input_schema, self._selector, upstream_selector
         )
         self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
 
