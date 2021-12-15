@@ -3,9 +3,21 @@ from distutils.spawn import find_executable
 import pytest
 
 import nvtabular as nvt
-import nvtabular.framework_utils.tensorflow.layers as layers
+
+try:
+    tf = pytest.importorskip("tensorflow")
+    import nvtabular.framework_utils.tensorflow.layers as layers
+except ImportError:
+    tf = None
+
+try:
+    import torch
+
+    from nvtabular.framework_utils.torch.models import Model
+except ImportError:
+    torch = None
+
 import nvtabular.ops as ops
-from nvtabular.framework_utils.torch.models import Model
 from nvtabular.loader.tf_utils import configure_tensorflow
 
 triton = pytest.importorskip("nvtabular.inference.triton")
@@ -23,7 +35,6 @@ grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
 configure_tensorflow()
-tf = pytest.importorskip("tensorflow")
 
 
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
