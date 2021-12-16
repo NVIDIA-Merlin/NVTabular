@@ -18,6 +18,8 @@ from distutils.spawn import find_executable
 
 import pytest
 
+tf = pytest.importorskip("tensorflow")  # noqa
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
