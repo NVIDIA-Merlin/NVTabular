@@ -28,13 +28,22 @@ from nvtabular.inference.triton.ensemble import (
 
 class WorkflowOp(InferenceOperator):
     def __init__(
-        self, workflow, name=None, sparse_max=None, max_batch_size=None, label_columns=None
+        self,
+        workflow,
+        name=None,
+        sparse_max=None,
+        max_batch_size=None,
+        label_columns=None,
+        cats=None,
+        conts=None,
     ):
         self.workflow = workflow
         self.sparse_max = sparse_max or {}
         self.name = name or self.__class__.__name__.lower()
         self.max_batch_size = max_batch_size
         self.label_columns = label_columns or []
+        self.cats = cats or []
+        self.conts = conts or []
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         expected_input = input_schema.apply(col_selector)
@@ -79,6 +88,8 @@ class WorkflowOp(InferenceOperator):
             backend="nvtabular",
             sparse_max=self.sparse_max,
             max_batch_size=self.max_batch_size,
+            cats=self.cats,
+            conts=self.conts,
         )
 
     @property

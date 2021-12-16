@@ -40,12 +40,12 @@ def export_tensorflow_ensemble(
     workflow,
     name,
     model_path,
-    cats=None,
-    conts=None,
     label_columns=None,
     sparse_max=None,
     version=1,
     nvtabular_backend="nvtabular",
+    cats=None,
+    conts=None,
 ):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a tensorflow savedmodel
@@ -117,12 +117,12 @@ def export_pytorch_ensemble(
     sparse_max,
     name,
     model_path,
-    cats=None,
-    conts=None,
     label_columns=None,
     use_fix_dtypes=True,
     version=1,
     nvtabular_backend="python",
+    cats=None,
+    conts=None,
 ):
     """Creates an ensemble triton server model, with the first model being a nvtabular
     preprocessing, and the second by a pytorch savedmodel
@@ -200,12 +200,12 @@ def export_hugectr_ensemble(
     hugectr_params,
     name,
     output_path,
+    label_columns=None,
     version=1,
-    max_batch_size=None,
-    nvtabular_backend="python",
     cats=None,
     conts=None,
-    label_columns=None,
+    max_batch_size=None,
+    nvtabular_backend="python",
 ):
     """Creates an ensemble hugectr server model, with the first model being a nvtabular
     preprocessing, and the second by a hugectr savedmodel
@@ -235,7 +235,6 @@ def export_hugectr_ensemble(
     label_columns:
         Labels in the dataset (will be removed from the dataset)
     """
-
     cats = cats or workflow.output_schema.apply(ColumnSelector(tags=[Tags.CATEGORICAL]))
     conts = conts or workflow.output_schema.apply(ColumnSelector(tags=[Tags.CONTINUOUS]))
     labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
@@ -344,7 +343,6 @@ def generate_nvtabular_model(
     conts:
         Names of the continuous columns
     """
-
     workflow.save(os.path.join(output_path, str(version), "workflow"))
     config = _generate_nvtabular_config(
         workflow,
