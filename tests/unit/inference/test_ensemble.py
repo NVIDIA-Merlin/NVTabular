@@ -84,7 +84,9 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     )
 
     # Creating Triton Ensemble
-    triton_chain = selector >> WorkflowOp(workflow, name="workflow") >> TensorflowOp(model)
+    triton_chain = (
+        selector >> WorkflowOp(workflow, name="workflow", cats=["x_nvt"]) >> TensorflowOp(model)
+    )
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config

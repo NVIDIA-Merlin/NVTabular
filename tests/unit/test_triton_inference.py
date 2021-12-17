@@ -74,6 +74,8 @@ def _verify_workflow_on_tritonserver(
     model_name,
     output_model="tensorflow",
     sparse_max=None,
+    cats=None,
+    conts=None,
 ):
     """tests that the nvtabular workflow produces the same results when run locally in the
     process, and when run in tritonserver"""
@@ -97,6 +99,8 @@ def _verify_workflow_on_tritonserver(
         output_model=output_model,
         sparse_max=sparse_max,
         backend=BACKEND,
+        cats=cats,
+        conts=conts,
     )
 
     inputs = triton.convert_df_to_triton_input(df.columns, df)
@@ -198,6 +202,8 @@ def test_concatenate_dataframe(tmpdir, output_model):
         df,
         "test_concatenate_dataframe",
         output_model,
+        cats=["cat"],
+        conts=["cont"],
     )
 
 
@@ -237,6 +243,8 @@ def test_numeric_dtypes(tmpdir, output_model):
         df,
         "test_numeric_dtypes",
         output_model,
+        cats=[dtype for dtype, _ in int_dtypes + uint_dtypes],
+        conts=[dtype for dtype, _ in float_dtypes],
     )
 
 
@@ -365,7 +373,9 @@ def test_groupby_model(tmpdir, output_model):
     )
     workflow = nvt.Workflow(groupby_features)
 
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "groupby", output_model)
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "groupby", output_model, cats=["id", "y-first"], conts=["x-sum"]
+    )
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
@@ -399,4 +409,13 @@ def test_seq_etl_tf_model(tmpdir, output_model):
 
     sparse_max = {"item_id-list": max_length, "y-list": max_length}
 
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "groupby", output_model, sparse_max)
+    _verify_workflow_on_tritonserver(
+        tmpdir,
+        workflow,
+        df,
+        "groupby",
+        output_model,
+        sparse_max,
+        cats=["id", "item_id-list"],
+        conts=["y-list"],
+    )

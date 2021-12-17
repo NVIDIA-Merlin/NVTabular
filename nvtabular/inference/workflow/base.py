@@ -25,6 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import functools
+import json
 import logging
 from abc import ABC, abstractmethod
 
@@ -51,15 +52,24 @@ class WorkflowRunner(ABC):
         schema_cats = output_schema.apply(ColumnSelector(tags=[Tags.CATEGORICAL])).column_names
         schema_conts = output_schema.apply(ColumnSelector(tags=[Tags.CONTINUOUS])).column_names
 
-        self.cats = model_config.get("cats", None) or schema_cats
-        self.conts = model_config.get("conts", None) or schema_conts
+        mc_cats = json.loads(self._get_param(model_config, "cats", "string_value", default="[]"))
+        mc_conts = json.loads(self._get_param(model_config, "conts", "string_value", default="[]"))
 
-        missing_cols = [
-            col for col in self.cats + self.conts if col not in workflow.output_schema.column_names
-        ]
+        self.cats = mc_cats or schema_cats
+        self.conts = mc_conts or schema_conts
+
+        workflow_outputs = set(workflow.output_schema.column_names)
+        requested_cols = set(self.cats + self.conts)
+        missing_cols = requested_cols - workflow_outputs
+        extra_cols = workflow_outputs - requested_cols
+
         if missing_cols:
             raise ValueError(
-                f"The follow columns were not found in the workflow's output: {missing_cols}"
+                f"The following columns were not found in the workflow's output: {missing_cols}"
+            )
+        if extra_cols:
+            raise ValueError(
+                f"The following extra columns were found in the workflow's output: {extra_cols}"
             )
 
         # recurse over all column groups, initializing operators for inference pipeline
@@ -192,3 +202,9 @@ class WorkflowRunner(ABC):
             for tensor in tensors[1:]:
                 output.update(tensor)
             return output
+
+    def _get_param(self, config, *args, default=None):
+        config_element = config["parameters"]
+        for key in args:
+            config_element = config_element.get(key, {})
+        return config_element or default
