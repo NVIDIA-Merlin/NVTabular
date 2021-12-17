@@ -44,7 +44,6 @@ class BaseOperator:
     def compute_selector(
         self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
     ) -> ColumnSelector:
-        # breakpoint()
         return selector
 
     def compute_input_schema(
