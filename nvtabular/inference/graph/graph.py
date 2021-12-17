@@ -15,6 +15,8 @@
 #
 import logging
 
+import numpy as np
+
 from nvtabular.graph.graph import Graph
 from nvtabular.graph.node import postorder_iter_nodes
 from nvtabular.graph.ops.selection import SelectionOp
@@ -46,6 +48,15 @@ class InferenceGraph(Graph):
                 closest_wf_node = node
                 if model_node:
                     closest_wf_node.match_descendant_dtypes(model_node)
+
+                    # TODO: Find a better way to override the dtypes ()
+                    for (
+                        col_name,
+                        col_schema,
+                    ) in closest_wf_node.output_schema.column_schemas.items():
+                        closest_wf_node.op.workflow.output_dtypes[col_name] = np.dtype(
+                            col_schema.dtype.as_numpy_dtype
+                        )
 
             # If we find a selection node with no parents, this is the
             # end of the branch, so we should reset our workflow tracker

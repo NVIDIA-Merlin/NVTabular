@@ -19,11 +19,11 @@ from nvtabular.graph.schema import Schema
 
 class InferenceNode(Node):
     def match_descendant_dtypes(self, source_node):
-        self.output_schema = _match_dtypes(self.output_schema, source_node.input_schema)
+        self.output_schema = _match_dtypes(source_node.input_schema, self.output_schema)
         return self
 
     def match_ancestor_dtypes(self, source_node):
-        self.input_schema = _match_dtypes(source_node.ouput_schema, self.input_schema)
+        self.input_schema = _match_dtypes(source_node.output_schema, self.input_schema)
         return self
 
 

@@ -71,7 +71,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     # Create Tensorflow Model
     model = tf.keras.models.Sequential(
         [
-            tf.keras.Input(name="x_nvt", dtype=tf.float64, shape=(1,)),
+            tf.keras.Input(name="x_nvt", dtype=tf.float32, shape=(1,)),
             tf.keras.layers.Dense(16, activation="relu"),
             tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(1, name="output"),
@@ -90,7 +90,9 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
-    triton_ens.export(str(tmpdir))
+    ensemble_config, node_configs = triton_ens.export(str(tmpdir))
+    # breakpoint()
+
     config_path = tmpdir / "ensemble_model" / "config.pbtxt"
 
     # Checking Triton Ensemble Config
@@ -144,7 +146,7 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
-    breakpoint()
+    # breakpoint()
     triton_ens.export(str(tmpdir))
     config_path = tmpdir / "ensemble_model" / "config.pbtxt"
 
@@ -159,10 +161,13 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
         assert parsed.platform == "ensemble"
         assert hasattr(parsed, "ensemble_scheduling")
 
-    # output_columns = triton_ens.graph.output_schema.column_names
+    df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
+
+    # TODO: This takes forever and might be an infinite loop or something? TBD
+    output_columns = triton_ens.graph.output_schema.column_names
     # breakpoint()
-    # response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
-    # assert len(response.as_numpy("output")) == df.shape[0]
+    response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
+    assert len(response.as_numpy("output")) == df.shape[0]
 
 
 def test_graph_traverse_algo():

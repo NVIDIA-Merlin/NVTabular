@@ -75,7 +75,12 @@ class TensorflowOp(InferenceOperator):
                 f"Request schema columns: {expected_input.column_names}\n"
                 f"Model input columns: {self.model_inputs}."
             )
-        return Schema(self.model_inputs)
+
+        in_schema = Schema()
+        for col, input_col in zip(self.model_inputs, self.model.inputs):
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype)
+
+        return in_schema
 
     def compute_selector(
         self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector

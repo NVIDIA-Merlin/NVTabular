@@ -23,12 +23,12 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.graph.graph import Graph  # noqa
+from nvtabular.inference.graph.graph import InferenceGraph  # noqa
 
 
 class Ensemble:
     def __init__(self, ops, schema, name="ensemble_model", label_columns=None):
-        self.graph = Graph(ops)
+        self.graph = InferenceGraph(ops)
         self.graph.fit_schema(schema)
         self.name = name
         self.label_columns = label_columns or []
@@ -49,7 +49,7 @@ class Ensemble:
         os.makedirs(ensemble_path, exist_ok=True)
         os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
         configs.reverse()
-        return self._generate_ensemble_config(self.name, ensemble_path, configs)
+        return (self._generate_ensemble_config(self.name, ensemble_path, configs), configs)
 
     def _generate_ensemble_config(self, name, output_path, configs, name_ext=""):
         # TODO: max batchsize only relevant for workflow nodes
