@@ -35,7 +35,7 @@ class WorkflowOp(InferenceOperator):
     ):
         self.workflow = workflow
         self.sparse_max = sparse_max or {}
-        self.name = name or self.__class__.__name__
+        self.name = name or self.__class__.__name__.lower()
         self.max_batch_size = max_batch_size
         self.label_columns = label_columns or []
         self.model_framework = model_framework or ""
