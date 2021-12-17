@@ -25,7 +25,11 @@ grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
 configure_tensorflow()
-tf = pytest.importorskip("tensorflow")
+
+try:
+    tf = pytest.importorskip("tensorflow")
+except ImportError:
+    tf = None
 
 
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")

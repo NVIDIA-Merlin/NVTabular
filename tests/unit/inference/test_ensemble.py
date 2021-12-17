@@ -32,6 +32,7 @@ from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
 
 # everything tensorflow related must be imported after this.
 configure_tensorflow()
+tf = pytest.importorskip("tensorflow")
 triton = pytest.importorskip("nvtabular.inference.triton")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
