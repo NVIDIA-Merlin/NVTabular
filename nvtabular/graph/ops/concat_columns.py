@@ -16,12 +16,27 @@
 
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 
 
 class ConcatColumns(BaseOperator):
     def __init__(self, label=None):
         self._label = label or self.__class__.__name__
+
+    def compute_selector(
+        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+    ) -> ColumnSelector:
+        return upstream_selector
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        return parents_schema + deps_schema
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         """Simply returns the selected output columns from the input dataframe

@@ -17,12 +17,33 @@ from __future__ import annotations
 
 from nvtabular.dispatch import DataFrameType
 from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 
 
 class SubtractionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
+
+    def compute_selector(
+        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+    ) -> ColumnSelector:
+        return ColumnSelector(input_schema.column_names)
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        result = None
+        if deps_schema.column_schemas:
+            result = parents_schema - deps_schema
+        else:
+            subtraction_selector = self.selector or selector
+            result = parents_schema.apply_inverse(subtraction_selector)
+        return result
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = self.selector or col_selector

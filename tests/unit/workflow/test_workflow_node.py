@@ -116,9 +116,10 @@ def test_workflow_node_addition():
 def test_workflow_node_subtraction():
     schema = Schema(["a", "b", "c", "d", "e", "f"])
 
-    node1 = ["a", "b", "c", "d"] >> Operator()
-    node2 = ["c", "d"] >> Operator()
-    node3 = ["b"] >> Operator()
+    def build_nodes():
+        return (["a", "b", "c", "d"] >> Operator(), ["c", "d"] >> Operator(), ["b"] >> Operator())
+
+    node1, node2, node3 = build_nodes()
 
     output_node = node1 - ["c", "d"]
     workflow = Workflow(output_node).fit_schema(schema)
@@ -126,17 +127,23 @@ def test_workflow_node_subtraction():
     assert len(output_node.dependencies) == 0
     assert workflow.output_node.output_columns.names == ["a", "b"]
 
+    node1, node2, node3 = build_nodes()
+
     output_node = node1 - node2
     workflow = Workflow(output_node).fit_schema(schema)
     assert len(output_node.parents) == 1
     assert len(output_node.dependencies) == 1
     assert workflow.output_node.output_columns.names == ["a", "b"]
 
+    node1, node2, node3 = build_nodes()
+
     output_node = ["a", "b", "c", "d"] - node2
     workflow = Workflow(output_node).fit_schema(schema)
     assert len(output_node.parents) == 1
     assert len(output_node.dependencies) == 1
     assert workflow.output_node.output_columns.names == ["a", "b"]
+
+    node1, node2, node3 = build_nodes()
 
     output_node = node1 - ["c", "d"] - node3
     workflow = Workflow(output_node).fit_schema(schema)
