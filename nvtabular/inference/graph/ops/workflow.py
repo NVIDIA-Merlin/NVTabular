@@ -14,16 +14,11 @@
 # limitations under the License.
 #
 import pathlib
-import warnings
 
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
-from nvtabular.inference.triton.ensemble import (
-    _generate_nvtabular_config,
-    _remove_columns,
-    _triton_datatype_to_dtype,
-)
+from nvtabular.inference.triton.ensemble import _generate_nvtabular_config, _remove_columns
 
 
 class WorkflowOp(InferenceOperator):
@@ -61,19 +56,6 @@ class WorkflowOp(InferenceOperator):
         new_dir_path.mkdir()
 
         workflow = _remove_columns(self.workflow, self.label_columns)
-
-        # override the output dtype of the nvtabular model if necessary (fixes mismatches
-        # in dtypes between tf inputs and nvt outputs)
-        if consumer_config:
-            for column in consumer_config.input:
-                tf_dtype = _triton_datatype_to_dtype(column.data_type)
-                nvt_dtype = workflow.output_dtypes.get(column.name)
-                if nvt_dtype and nvt_dtype != tf_dtype:
-                    warnings.warn(
-                        f"TF model expects {tf_dtype} for column {column.name}, but workflow "
-                        f" is producing type {nvt_dtype}. Overriding dtype in NVTabular workflow."
-                    )
-                    workflow.output_dtypes[column.name] = tf_dtype
 
         # TODO: Extract this logic to base inference operator?
         export_path = new_dir_path / str(version) / self.export_name

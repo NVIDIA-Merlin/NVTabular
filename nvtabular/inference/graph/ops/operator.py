@@ -1,5 +1,7 @@
 from abc import abstractclassmethod, abstractmethod
 
+import nvtabular as nvt
+from nvtabular import ColumnSelector, Schema
 from nvtabular.graph.base_operator import BaseOperator
 
 
@@ -37,6 +39,13 @@ class InferenceOperator(BaseOperator):
     @abstractmethod
     def export(self, path):
         pass
+
+    def compute_input_schema(self, upstream_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        input_schema = upstream_schema.apply(col_selector)
+        return input_schema
+
+    def create_node(self, selector):
+        return nvt.inference.graph.node.InferenceNode(selector)
 
 
 class PipelineableInferenceOperator(InferenceOperator):

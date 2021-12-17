@@ -71,7 +71,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     # Create Tensorflow Model
     model = tf.keras.models.Sequential(
         [
-            tf.keras.Input(name="x_nvt", dtype=tf.int32, shape=(1,)),
+            tf.keras.Input(name="x_nvt", dtype=tf.float64, shape=(1,)),
             tf.keras.layers.Dense(16, activation="relu"),
             tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(1, name="output"),

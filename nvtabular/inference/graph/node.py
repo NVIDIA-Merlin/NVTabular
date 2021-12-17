@@ -14,7 +14,23 @@
 # limitations under the License.
 #
 from nvtabular.graph import Node
+from nvtabular.graph.schema import Schema
 
 
 class InferenceNode(Node):
-    pass
+    def match_descendant_dtypes(self, source_node):
+        self.output_schema = _match_dtypes(self.output_schema, source_node.input_schema)
+        return self
+
+    def match_ancestor_dtypes(self, source_node):
+        self.input_schema = _match_dtypes(source_node.ouput_schema, self.input_schema)
+        return self
+
+
+def _match_dtypes(source_schema, dest_schema):
+    matched = Schema()
+    for col_name, col_schema in dest_schema.column_schemas.items():
+        source_dtype = source_schema.get(col_name, col_schema).dtype
+        matched[col_name] = col_schema.with_dtype(source_dtype)
+
+    return matched

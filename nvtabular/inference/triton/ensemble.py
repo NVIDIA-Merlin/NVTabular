@@ -153,9 +153,7 @@ def export_pytorch_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-
     labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
-
     workflow = _remove_columns(workflow, labels)
 
     # generate the TF saved model
@@ -235,7 +233,6 @@ def export_hugectr_ensemble(
     label_columns:
         Labels in the dataset (will be removed from the dataset)
     """
-
     cats = cats or workflow.output_schema.apply(ColumnSelector(tags=[Tags.CATEGORICAL]))
     conts = conts or workflow.output_schema.apply(ColumnSelector(tags=[Tags.CONTINUOUS]))
     labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
