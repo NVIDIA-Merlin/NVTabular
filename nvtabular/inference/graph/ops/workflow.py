@@ -54,7 +54,7 @@ class WorkflowOp(InferenceOperator):
 
         return self.workflow.output_schema
 
-    def export(self, path, consumer_config=None, version=1):
+    def export(self, path, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
@@ -62,7 +62,7 @@ class WorkflowOp(InferenceOperator):
         workflow = _remove_columns(self.workflow, self.label_columns)
 
         # TODO: Extract this logic to base inference operator?
-        export_path = new_dir_path / str(version) / self.export_name
+        export_path = new_dir_path / str(version) / "workflow"
         workflow.save(str(export_path))
 
         return _generate_nvtabular_config(

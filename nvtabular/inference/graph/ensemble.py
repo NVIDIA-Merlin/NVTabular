@@ -24,6 +24,7 @@ from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.inference.graph.graph import InferenceGraph  # noqa
+from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 
 
 class Ensemble:
@@ -34,51 +35,84 @@ class Ensemble:
         self.label_columns = label_columns or []
 
     def export(self, export_path, version=1):
-        configs = []
-        prev_node = None
-        po_reversed = reversed(list(postorder_iter_nodes(self.graph.output_node)))
-        for node in po_reversed:
-            if prev_node not in node.parents_with_dependencies:
-                config = None
+        # Create ensemble config
+        ensemble_config = model_config.ModelConfig(
+            name=self.name,
+            platform="ensemble",
+            # max_batch_size=configs[0].max_batch_size
+        )
+
+        for col_name, col_schema in self.graph.input_schema.column_schemas.items():
+            ensemble_config.input.append(
+                model_config.ModelInput(
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, 1]
+                )
+            )
+
+        for col_name, col_schema in self.graph.output_schema.column_schemas.items():
+            ensemble_config.output.append(
+                model_config.ModelOutput(
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, 1]
+                )
+            )
+
+        # Build node id lookup table
+        postorder_nodes = list(postorder_iter_nodes(self.graph.output_node))
+
+        node_idx = 0
+        node_id_lookup = {}
+        for node in postorder_nodes:
             if hasattr(node.op, "export"):
-                config = node.op.export(export_path, config, version=version)
-                configs.append(config)
-            prev_node = node
-        # generate the triton ensemble
+                node_id_lookup[node] = node_idx
+                node_idx += 1
+
+        node_configs = []
+        # Export node configs and add ensemble steps
+        for node in postorder_nodes:
+            if hasattr(node.op, "export"):
+                node_config = node.op.export(export_path, version=version)
+
+                config_step = model_config.ModelEnsembling.Step(
+                    model_name=node.op.export_name, model_version=-1
+                )
+
+                for input_col_name in node.input_columns.names:
+                    source = _find_column_source(node, input_col_name)
+                    source_id = node_id_lookup.get(source, None)
+                    in_suffix = f"_{source_id}" if source_id is not None else ""
+                    config_step.input_map[input_col_name] = input_col_name + in_suffix
+
+                for output_col_name in node.output_columns.names:
+                    node_id = node_id_lookup.get(node, None)
+                    out_suffix = (
+                        f"_{node_id}" if node_id is not None and node_id < node_idx - 1 else ""
+                    )
+                    config_step.output_map[output_col_name] = output_col_name + out_suffix
+
+                ensemble_config.ensemble_scheduling.step.append(config_step)
+                node_configs.append(node_config)
+
+        # Write the ensemble config file
         ensemble_path = os.path.join(export_path, self.name)
         os.makedirs(ensemble_path, exist_ok=True)
         os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
-        configs.reverse()
-        return (self._generate_ensemble_config(self.name, ensemble_path, configs), configs)
 
-    def _generate_ensemble_config(self, name, output_path, configs, name_ext=""):
-        # TODO: max batchsize only relevant for workflow nodes
-        ensemble_config = model_config.ModelConfig(
-            name=name + name_ext, platform="ensemble", max_batch_size=configs[0].max_batch_size
-        )
-        ensemble_config.input.extend(configs[0].input)
-        ensemble_config.output.extend(configs[-1].output)
-
-        # workflow, model
-        prev_step = None
-        for idx, config in enumerate(configs):
-            config_step = model_config.ModelEnsembling.Step(
-                model_name=config.name, model_version=-1
-            )
-            for input_col in config.input:
-                prev_step_ouputs = dict(prev_step.output_map) if prev_step else {}
-                prev_step_input_col = (
-                    prev_step_ouputs[input_col.name]
-                    if prev_step_ouputs and input_col.name in prev_step_ouputs
-                    else input_col.name
-                )
-                config_step.input_map[input_col.name] = prev_step_input_col
-            for output_col in config.output:
-                out_suffix = f"_{idx + 1}" if idx < len(configs) - 1 else ""
-                config_step.output_map[output_col.name] = output_col.name + out_suffix
-            ensemble_config.ensemble_scheduling.step.append(config_step)
-            prev_step = config_step
-
-        with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+        with open(os.path.join(ensemble_path, "config.pbtxt"), "w") as o:
             text_format.PrintMessage(ensemble_config, o)
-        return ensemble_config
+
+        return (ensemble_config, node_configs)
+
+
+def _find_column_source(node, column_name):
+    for upstream_node in node.parents_with_dependencies:
+        if column_name in upstream_node.output_columns.names and hasattr(
+            upstream_node.op, "export"
+        ):
+            return upstream_node
+
+    for upstream_node in node.parents_with_dependencies:
+        source = _find_column_source(upstream_node, column_name)
+        if source:
+            return source
+
+    return None

@@ -53,7 +53,7 @@ class TensorflowOp(InferenceOperator):
     def export_name(self):
         return self.name
 
-    def export(self, path, consumer_config, version=1):
+    def export(self, path, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()

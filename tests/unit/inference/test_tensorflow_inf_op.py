@@ -11,8 +11,8 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
 
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
+model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")
+tf_op = pytest.importorskip("nvtabular.inference.graph.ops.tensorflow")
 
 tf = pytest.importorskip("tensorflow")
 
@@ -34,7 +34,7 @@ def test_tf_op_exports_own_config(tmpdir):
     )
 
     # Triton
-    triton_op = TensorflowOp(model)
+    triton_op = tf_op.TensorflowOp(model)
     triton_op.export(tmpdir, None)
 
     # Export creates directory
@@ -73,7 +73,7 @@ def test_tf_op_compute_schema():
     )
 
     # Triton
-    triton_op = TensorflowOp(model)
+    triton_op = tf_op.TensorflowOp(model)
 
     out_schema = triton_op.compute_output_schema(Schema(["input"]), ColumnSelector(["input"]))
     assert out_schema.column_names == ["output"]
@@ -96,7 +96,7 @@ def test_tf_schema_validation():
     )
 
     # Triton
-    tf_node = [] >> TensorflowOp(model)
+    tf_node = [] >> tf_op.TensorflowOp(model)
     tf_graph = graph.graph.Graph(tf_node)
 
     with pytest.raises(ValueError) as exception_info:

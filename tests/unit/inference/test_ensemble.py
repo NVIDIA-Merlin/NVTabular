@@ -91,7 +91,6 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
 
     # Creating Triton Ensemble Config
     ensemble_config, node_configs = triton_ens.export(str(tmpdir))
-    # breakpoint()
 
     config_path = tmpdir / "ensemble_model" / "config.pbtxt"
 
@@ -146,8 +145,7 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
-    # breakpoint()
-    triton_ens.export(str(tmpdir))
+    ensemble_config, nodes_config = triton_ens.export(str(tmpdir))
     config_path = tmpdir / "ensemble_model" / "config.pbtxt"
 
     # Checking Triton Ensemble Config
@@ -161,12 +159,9 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
         assert parsed.platform == "ensemble"
         assert hasattr(parsed, "ensemble_scheduling")
 
-    df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
+    df = dataset.to_ddf().compute()[["name-string", "name-cat"]].iloc[:3]
 
-    # TODO: This takes forever and might be an infinite loop or something? TBD
-    output_columns = triton_ens.graph.output_schema.column_names
-    # breakpoint()
-    response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
+    response = _run_ensemble_on_tritonserver(str(tmpdir), ["output"], df, triton_ens.name)
     assert len(response.as_numpy("output")) == df.shape[0]
 
 
