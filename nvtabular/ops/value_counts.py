@@ -60,3 +60,6 @@ class ValueCount(StatOperator):
 
     def output_properties(self):
         return self.stats
+
+    def clear(self):
+        self.stats = {}

@@ -38,6 +38,18 @@ from nvtabular.graph.selector import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
+def test_workflow_double_fit():
+    raw_df = _make_df({"user_session": ["1", "2", "4", "4", "5"]})
+
+    cat_feats = ["user_session"] >> nvt.ops.Categorify()
+
+    for _ in [1, 2]:
+        df_event = nvt.Dataset(raw_df)
+        workflow = nvt.Workflow(cat_feats)
+        workflow.fit(df_event)
+        workflow.transform(df_event).to_ddf().compute()
+
+
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_workflow_fit_op_rename(tmpdir, dataset, engine):
     # NVT
