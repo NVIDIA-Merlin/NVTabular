@@ -7,7 +7,7 @@ nvt_directory="$(dirname -- $ci_directory)"
 cd $nvt_directory
 
 echo "Installing NVTabular"
-python -m pip install --user --upgrade pip setuptools wheel pybind11 numpy==1.20.3
+python -m pip install --user --upgrade pip setuptools wheel pybind11 numpy==1.20.3 setuptools==59.4.0
 python -m pip uninstall nvtabular -y
 python setup.py develop --user
 
