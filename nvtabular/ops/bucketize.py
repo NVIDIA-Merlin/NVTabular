@@ -19,6 +19,7 @@ import numpy as np
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from .operator import ColumnSelector, Operator
 
@@ -90,7 +91,7 @@ class Bucketize(Operator):
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return np.int64
+    def output_dtype(self):
+        return NVTDtype(name="int", size=64, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__

@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy
 from dask.dataframe.utils import meta_nonempty
 
 from nvtabular.dispatch import DataFrameType, annotate
@@ -132,9 +131,6 @@ class Groupby(Operator):
         _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
         _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
         return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
-
-    def _dtypes(self):
-        return numpy.int64
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         if not col_selector:

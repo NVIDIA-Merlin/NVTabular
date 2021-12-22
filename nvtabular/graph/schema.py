@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Text
 
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,12 @@ class ColumnSchema:
     _is_list: bool = False
 
     def __post_init__(self):
+        if not isinstance(self.dtype, NVTDtype):
+            try:
+                object.__setattr__(self, "dtype", NVTDtype._from(self.dtype))
+            except ValueError as err:
+                raise ValueError("Column schema dtypes must be NVTDtypes") from err
+
         tags = _normalize_tags(self.tags or [])
         object.__setattr__(self, "tags", tags)
 

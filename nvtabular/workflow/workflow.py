@@ -106,19 +106,7 @@ class Workflow:
         -------
         Dataset
         """
-        self._clear_worker_cache()
-
-        if not self.graph.output_schema:
-            self.graph.fit_schema(dataset.schema)
-
-        ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(
-            _transform_ddf(ddf, self.output_node, self.output_dtypes),
-            client=self.client,
-            cpu=dataset.cpu,
-            base_dataset=dataset.base_dataset,
-            schema=self.output_schema,
-        )
+        return self._transform_impl(dataset)
 
     def fit_schema(self, input_schema):
         self.graph.fit_schema(input_schema)
@@ -227,15 +215,27 @@ class Workflow:
 
         # hack: store input/output dtypes here. We should have complete dtype
         # information for each operator (like we do for column names), but as
-        # an interim solution this gets us what we need.
+        # an interim solution this gets us what we need.s
         input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
-        output_dtypes = self.transform(dataset).sample_dtypes()
+
+        # Somehow this line (or something) needs to snapshot the dtypes
+        # at the output of every operator
+        output_dtypes = self._transform_impl(dataset, override_dtypes=True).sample_dtypes()
 
         self.graph.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         self.graph.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
+        # TODO: Figure out a better way to propagate everything (e.g. dtypes) that just updated
         self.graph._zero_output_schemas()
         self.graph.fit_schema(dataset.schema)
+
+        # self.graph.recompute_output_schemas()
+
+        # self.graph.propagate_tags()
+        # self.graph.propagate_properties()
+        # self.graph.propagate_dtypes()
+
+        # self.graph.propagate_schema(tags=True, properties=False, dtypes=True)
         return self
 
     def fit_transform(self, dataset: Dataset) -> Dataset:
@@ -365,8 +365,25 @@ class Workflow:
         else:
             clean_worker_cache()
 
+    def _transform_impl(self, dataset: Dataset, override_dtypes=False):
+        self._clear_worker_cache()
 
-def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
+        if not self.graph.output_schema:
+            self.graph.fit_schema(dataset.schema)
+
+        ddf = dataset.to_ddf(columns=self._input_columns())
+        return Dataset(
+            _transform_ddf(
+                ddf, self.output_node, self.output_dtypes, override_dtypes=override_dtypes
+            ),
+            client=self.client,
+            cpu=dataset.cpu,
+            base_dataset=dataset.base_dataset,
+            schema=self.output_schema,
+        )
+
+
+def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, override_dtypes=False):
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
@@ -398,6 +415,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None):
         _transform_partition,
         workflow_nodes,
         additional_columns=additional_columns,
+        override_dtypes=override_dtypes,
         meta=meta,
         enforce_metadata=False,
     )
@@ -412,7 +430,7 @@ def _get_unique(cols):
     return list({x: x for x in cols}.keys())
 
 
-def _transform_partition(root_df, workflow_nodes, additional_columns=None):
+def _transform_partition(root_df, workflow_nodes, additional_columns=None, override_dtypes=False):
     """Transforms a single partition by appyling all operators in a WorkflowNode"""
     output = None
 
@@ -460,6 +478,20 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None):
                 # use input_columns to ensure correct grouping (subgroups)
                 selection = node.input_columns.resolve(node.input_schema)
                 output_df = node.op.transform(selection, input_df)
+
+                # Update or validate output_df dtypes
+                for col_name, col_schema in node.output_schema.column_schemas.items():
+                    output_schema = col_schema.with_dtype(output_df[col_name].dtype)
+                    if override_dtypes:
+                        # TODO: Figure out if/how to propagate schema updates to children here
+                        node.output_schema.column_schemas[col_name] = output_schema
+                    else:
+                        if col_schema.dtype != output_schema.dtype:
+                            raise TypeError(
+                                f"Improperly matched output dtypes detected in {col_name},"
+                                f" {col_schema.dtype} and {output_schema.dtype}"
+                            )
+
             except Exception:
                 LOG.exception("Failed to transform operator %s", node.op)
                 raise

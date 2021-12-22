@@ -15,13 +15,13 @@
 #
 
 import dask.dataframe as dd
-import numpy
 import pandas as pd
 from dask.delayed import Delayed
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
@@ -223,7 +223,7 @@ class JoinGroupby(StatOperator):
         return [Tags.CONTINUOUS]
 
     def output_dtype(self):
-        return numpy.float
+        return NVTDtype(name="float", size=64, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

@@ -35,6 +35,7 @@ from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.io.dataframe_iter import DataFrameIter
 from nvtabular.io.shuffle import _check_shuffle_arg
+from nvtabular.nvt_dtypes import NVTDtype
 from nvtabular.utils import global_dask_client
 
 from ..utils import device_mem_size
@@ -1138,6 +1139,7 @@ class Dataset:
         column_schemas = []
         for column, dtype_info in dtypes.items():
             dtype_val = dtype_info["dtype"]
+            dtype_val = NVTDtype._from(dtype_val)
             is_list = dtype_info["is_list"]
             col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
             column_schemas.append(col_schema)

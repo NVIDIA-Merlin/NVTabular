@@ -32,6 +32,7 @@ except ImportError:
 from nvtabular.dispatch import DataFrameType, annotate
 from nvtabular.graph import ColumnSchema, Schema
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from .operator import ColumnSelector, Operator
 
@@ -134,8 +135,8 @@ class ColumnSimilarity(Operator):
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    def output_dtype(self):
+        return NVTDtype(name="float", size=64, signed=True, is_list=False)
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):

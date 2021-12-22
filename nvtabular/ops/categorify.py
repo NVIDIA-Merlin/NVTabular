@@ -38,6 +38,7 @@ from pyarrow import parquet as pq
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 from nvtabular.utils import device_mem_size, run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -519,7 +520,7 @@ class Categorify(StatOperator):
         return [Tags.CATEGORICAL]
 
     def output_dtype(self):
-        return np.int
+        return NVTDtype(name="int", size=64, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

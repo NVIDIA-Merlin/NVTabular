@@ -23,6 +23,7 @@ from nvtabular.dispatch import (
     annotate,
 )
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from .operator import ColumnSelector, Operator
 
@@ -55,6 +56,6 @@ class LogOp(Operator):
         return [Tags.CONTINUOUS]
 
     def output_dtype(self):
-        return np.float
+        return NVTDtype(name="float", size=64, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__

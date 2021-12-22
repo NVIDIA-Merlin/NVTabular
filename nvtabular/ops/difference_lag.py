@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import numpy
 
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from .operator import ColumnSelector, Operator
 
@@ -95,4 +95,4 @@ class DifferenceLag(Operator):
         return [Tags.CONTINUOUS]
 
     def _dtype(self):
-        return numpy.float
+        return NVTDtype(name="float", size=64, signed=True, is_list=False)

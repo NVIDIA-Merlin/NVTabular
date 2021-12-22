@@ -38,13 +38,21 @@ from nvtabular.nvt_dtypes import NVTDtype
         (np.float64, "float", 64, True),
     ],
 )
-def test_dtypes(dtype_combo):
+def test_nvt_dtypes_from_numpy(dtype_combo):
     dtype, d_name, d_size, d_signed = dtype_combo
-    nvt_dtype = NVTDtype._from(dtype)
-    assert nvt_dtype.name == d_name
-    assert nvt_dtype.size == d_size
-    assert nvt_dtype.signed == d_signed
-    assert not nvt_dtype.is_list
-    # then convert back for testing
-    np_dtype = nvt_dtype._to("numpy")
-    assert np_dtype == np.dtype(dtype)
+
+    expected = NVTDtype(d_name, d_size, d_signed)
+    result = NVTDtype._from(dtype)
+
+    assert result.name == d_name
+    assert result.size == d_size
+    assert result.signed == d_signed
+
+    assert result == expected
+
+    dtype = np.dtype(dtype)
+
+    source_type = NVTDtype(d_name, d_size, d_signed)
+    result = source_type._to("numpy")
+
+    assert result == dtype

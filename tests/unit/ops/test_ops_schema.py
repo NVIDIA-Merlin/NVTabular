@@ -54,7 +54,8 @@ def test_schema_out(tags, properties, selection, op):
                 schema1 = new_schema.column_schemas[name]
 
                 # should not be exactly the same name, having gone through operator
-                assert schema1.dtype == op.output_dtype()
+                if op.output_dtype():
+                    assert schema1.dtype == op.output_dtype()
                 if name in selector.names:
                     assert (
                         schema1.properties

@@ -167,18 +167,23 @@ def register_dtype(column_schema, feature):
     #  column_schema is a dict, changes are held
     #  TODO: this double check can be refactored
     if column_schema.dtype:
+        np_dtype = column_schema.dtype._to("numpy")
+
         if column_schema._is_list:
             feature = proto_dict["list"](column_schema, feature)
-        if hasattr(column_schema.dtype, "kind"):
-            string_name = numpy.core._dtype._kind_name(column_schema.dtype)
-        elif hasattr(column_schema.dtype, "item"):
-            string_name = type(column_schema.dtype(1).item()).__name__
-        elif isinstance(column_schema.dtype, str):
-            string_name = column_schema.dtype
-        elif hasattr(column_schema.dtype, "__name__"):
-            string_name = column_schema.dtype.__name__
+        if hasattr(np_dtype, "kind"):
+            string_name = numpy.core._dtype._kind_name(np_dtype)
+        elif hasattr(np_dtype, "item"):
+            if np_dtype == numpy.datetime64:
+                string_name = "datetime"
+            else:
+                string_name = type(np_dtype(1).item()).__name__
+        elif isinstance(np_dtype, str):
+            string_name = np_dtype
+        elif hasattr(np_dtype, "__name__"):
+            string_name = np_dtype.__name__
         else:
-            raise TypeError(f"unsupported dtype for column schema: {column_schema.dtype}")
+            raise TypeError(f"unsupported dtype for column schema: {np_dtype}")
 
         if string_name in proto_dict:
             feature = proto_dict[string_name](column_schema, feature)

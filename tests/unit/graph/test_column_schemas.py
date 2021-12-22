@@ -22,12 +22,14 @@ from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 
-@pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
-def test_dtype_column_schema(d_types):
-    column = ColumnSchema("name", tags=[], properties=[], dtype=d_types)
-    assert column.dtype == d_types
+@pytest.mark.parametrize("dtypes", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
+def test_column_schema_dtype_conversion(dtypes):
+    column = ColumnSchema("name", tags=[], properties=[], dtype=dtypes)
+    assert column.dtype._to("numpy") == dtypes
+    assert column.dtype == NVTDtype._from(dtypes)
 
 
 def test_column_schema_meta():
