@@ -18,8 +18,8 @@ from typing import Dict, Union
 import numpy
 
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 

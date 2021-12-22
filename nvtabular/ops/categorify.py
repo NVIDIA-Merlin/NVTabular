@@ -31,15 +31,16 @@ from dask.dataframe.core import _concat
 from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
+from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
-from nvtabular.utils import run_on_worker
+from nvtabular.graph.tags import Tags
+from nvtabular.utils import device_mem_size, run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
@@ -185,6 +186,11 @@ class Categorify(StatOperator):
         and our new translated dataframe entry will now be [[17], [17, 20], [19, 18], [18]].
         This parameter is useful to reserve an initial segment of non-negative translated integers
         for special user-defined values.
+    cardinality_memory_limit: int or str, default None
+        Upper limit on the "allowed" memory usage of the internal DataFrame and Table objects
+        used to store unique categories. By default, this limit is 12.5% of the total memory.
+        Note that this argument is meant as a guide for internal optimizations and UserWarnings
+        within NVTabular, and does not guarantee that the memory limit will be satisfied.
     """
 
     def __init__(
@@ -204,6 +210,7 @@ class Categorify(StatOperator):
         max_size=0,
         start_index=0,
         single_table=False,
+        cardinality_memory_limit=None,
     ):
 
         # We need to handle three types of encoding here:
@@ -258,6 +265,7 @@ class Categorify(StatOperator):
         self.encode_type = encode_type
         self.search_sorted = search_sorted
         self.start_index = start_index
+        self.cardinality_memory_limit = cardinality_memory_limit
 
         if self.search_sorted and self.freq_threshold:
             raise ValueError(
@@ -321,7 +329,9 @@ class Categorify(StatOperator):
 
         # Check metadata type to reset on_host and cat_cache if the
         # underlying ddf is already a pandas-backed collection
+        _cpu = False
         if isinstance(ddf._meta, pd.DataFrame):
+            _cpu = True
             self.on_host = False
             # Cannot use "device" caching if the data is pandas-backed
             self.cat_cache = "host" if self.cat_cache == "device" else self.cat_cache
@@ -338,6 +348,15 @@ class Categorify(StatOperator):
             for c in col_selector.grouped_names
             if c not in cols_with_vocabs
         ]
+
+        # Define a rough row-count at which we are likely to
+        # start hitting memory-pressure issues that cannot
+        # be accommodated with smaller partition sizes.
+        # By default, we estimate a "problematic" cardinality
+        # to be one that consumes >12.5% of the total memory.
+        self.cardinality_memory_limit = parse_bytes(
+            self.cardinality_memory_limit or int(device_mem_size(kind="total", cpu=_cpu) * 0.125)
+        )
 
         dsk, key = _category_stats(ddf, self._create_fit_options_from_columns(columns))
         return Delayed(key, dsk)
@@ -399,6 +418,7 @@ class Categorify(StatOperator):
             name_sep=self.name_sep,
             max_size=self.max_size,
             num_buckets=self.num_buckets,
+            cardinality_memory_limit=self.cardinality_memory_limit,
         )
 
     def set_storage_path(self, new_path, copy=False):
@@ -532,17 +552,6 @@ class Categorify(StatOperator):
         return self.categories
 
 
-def _get_embedding_order(cat_names):
-    """Returns a consistent sorder order for categorical variables
-
-    Parameters
-    -----------
-    cat_names : list of str
-        names of the categorical columns
-    """
-    return cat_names
-
-
 def get_embedding_sizes(source, output_dtypes=None):
     """Returns a dictionary of embedding sizes from a workflow or workflow_node
 
@@ -601,7 +610,7 @@ def _get_embeddings_dask(paths, cat_names, buckets=0, freq_limit=0, max_size=0, 
         buckets = {name: buckets for name in cat_names}
     if isinstance(max_size, int):
         max_size = {name: max_size for name in cat_names}
-    for col in _get_embedding_order(cat_names):
+    for col in cat_names:
         path = paths.get(col)
         num_rows = pq.ParquetFile(path).metadata.num_rows if path else 0
         if isinstance(buckets, dict):
@@ -669,6 +678,8 @@ class FitOptions:
             to as unknown (by freq_limit or max_size parameters)
         start_index: int
             The index to start mapping our output categorical values to.
+        cardinality_memory_limit: int
+            Suggested upper limit on categorical data containers.
     """
 
     col_groups: list
@@ -684,6 +695,7 @@ class FitOptions:
     max_size: Optional[Union[int, dict]] = None
     num_buckets: Optional[Union[int, dict]] = None
     start_index: int = 0
+    cardinality_memory_limit: Optional[int] = None
 
     def __post_init__(self):
         if not isinstance(self.col_groups, ColumnSelector):
@@ -954,16 +966,70 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
 
     if options.on_host:
         # Construct gpu DataFrame from pyarrow data.
-        # `on_host=True` implies gpu-backed data.
+        # `on_host=True` implies gpu-backed data,
+        # because CPU-backed data would have never
+        # been converted from pandas to pyarrow.
         df = pa.concat_tables(dfs, promote=True)
-        df = dispatch._from_host(df)
+        if (
+            df.nbytes > options.cardinality_memory_limit
+            if options.cardinality_memory_limit
+            else False
+        ):
+            # Before fully converting this pyarrow Table
+            # to a cudf DatFrame, we can reduce the memory
+            # footprint of `df`. Since the size of `df`
+            # depends on the cardinality of the features,
+            # and NOT on the partition size, the remaining
+            # logic in this function has an OOM-error risk
+            # (even with tiny partitions).
+            size_columns = []
+            for col in col_selector.names:
+                name = col + "_size"
+                if name in df.schema.names:
+                    # Convert this column alone to cudf,
+                    # and drop the field from df. Note that
+                    # we are only converting this column to
+                    # cudf to take advantage of fast `max`
+                    # performance.
+                    size_columns.append(dispatch._from_host(df.select([name])))
+                    df = df.drop([name])
+                    # Use numpy to calculate the "minimum"
+                    # dtype needed to capture the "size" column,
+                    # and cast the type
+                    typ = np.min_scalar_type(size_columns[-1][name].max() * 2)
+                    size_columns[-1][name] = size_columns[-1][name].astype(typ)
+            # Convert the remaining columns in df to cudf,
+            # and append the type-casted "size" columns
+            df = dispatch._concat_columns([dispatch._from_host(df)] + size_columns)
+        else:
+            # Empty DataFrame - No need for type-casting
+            df = dispatch._from_host(df)
     else:
+        # For now, if we are not concatenating in host memory,
+        # we will assume that reducing the memory footprint of
+        # "size" columns is not a priority. However, the same
+        # type-casting optimization can also be done for both
+        # pandas and cudf-backed data here.
         df = _concat(dfs, ignore_index=True)
+
+    # Check if we should warn user that this Column is likely
+    # to cause memory-pressure issues
+    _df_size = df.memory_usage(deep=True, index=True).sum()
+    if (_df_size > options.cardinality_memory_limit) if options.cardinality_memory_limit else False:
+        warnings.warn(
+            f"Category DataFrame (with columns: {df.columns}) is {_df_size} "
+            f"bytes in size. This is large compared to the suggested "
+            f"upper limit of {options.cardinality_memory_limit} bytes!"
+            f"(12.5% of the total memory by default)"
+        )
+
     rel_path = "unique.%s.parquet" % (_make_name(*col_selector.names, sep=options.name_sep))
     path = "/".join([base_path, rel_path])
     if len(df):
-        # Make sure first category is Null
-        df = df.sort_values(col_selector.names, na_position="first")
+        # Make sure first category is Null.
+        # Use ignore_index=True to avoid allocating memory for
+        # an index we don't even need
+        df = df.sort_values(col_selector.names, na_position="first", ignore_index=True)
         new_cols = {}
         nulls_missing = False
         for col in col_selector.names:

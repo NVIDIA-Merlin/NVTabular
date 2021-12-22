@@ -32,9 +32,42 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.columns import ColumnSelector, Schema
 from nvtabular.dispatch import HAS_GPU, _make_df
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from tests.conftest import assert_eq, get_cats, mycols_csv
+
+
+def test_workflow_double_fit():
+    raw_df = _make_df({"user_session": ["1", "2", "4", "4", "5"]})
+
+    cat_feats = ["user_session"] >> nvt.ops.Categorify()
+
+    for _ in [1, 2]:
+        df_event = nvt.Dataset(raw_df)
+        workflow = nvt.Workflow(cat_feats)
+        workflow.fit(df_event)
+        workflow.transform(df_event).to_ddf().compute()
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_workflow_fit_op_rename(tmpdir, dataset, engine):
+    # NVT
+    schema = dataset.schema
+    for name in schema.column_names:
+        dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
+            [nvt.graph.tags.Tags.USER]
+        )
+    selector = nvt.ColumnSelector(tags=[nvt.graph.tags.Tags.USER])
+
+    workflow_ops_1 = selector >> nvt.ops.Rename(postfix="_1")
+    workflow_1 = nvt.Workflow(workflow_ops_1)
+    workflow_1.fit(dataset)
+    workflow_1.save(str(tmpdir / "one"))
+    new_dataset = workflow_1.transform(dataset).to_ddf().compute()
+
+    assert len(new_dataset.columns) > 0
+    assert all("_1" in col for col in new_dataset.columns)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -575,7 +608,7 @@ def test_fit_simple():
     data = nvt.dispatch._make_df({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
     dataset = Dataset(data)
 
-    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> (lambda x: x * x))
+    workflow = Workflow(["x", "y"] >> ops.FillMedian() >> ops.LambdaOp(lambda x: x * x))
 
     workflow.fit(dataset)
     transformed = workflow.transform(dataset).to_ddf().compute()
@@ -593,8 +626,16 @@ def test_transform_geolocation():
     data = nvt.dispatch._make_df({"geo_location": raw})
 
     geo_location = ColumnSelector(["geo_location"])
-    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
-    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
     geo_features = state + country + geo_location >> ops.HashBucket(num_buckets=100)
 
     # for this workflow we don't have any statoperators, so we can get away without fitting
@@ -613,8 +654,16 @@ def test_workflow_move_saved(tmpdir):
     data = nvt.dispatch._make_df({"geo": raw})
 
     geo_location = ColumnSelector(["geo"])
-    state = geo_location >> (lambda col: col.str.slice(0, 5)) >> ops.Rename(postfix="_state")
-    country = geo_location >> (lambda col: col.str.slice(0, 2)) >> ops.Rename(postfix="_country")
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
     geo_features = state + country + geo_location >> ops.Categorify()
 
     # create the workflow and transform the input

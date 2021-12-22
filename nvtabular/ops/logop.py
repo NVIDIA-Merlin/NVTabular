@@ -22,8 +22,8 @@ from nvtabular.dispatch import (
     _is_list_dtype,
     annotate,
 )
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 

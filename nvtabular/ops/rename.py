@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtabular.columns import Schema
+from nvtabular.graph.schema import Schema
 
 from ..dispatch import DataFrameType
 from .operator import ColumnSelector, Operator

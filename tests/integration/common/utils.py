@@ -56,7 +56,7 @@ def _run_notebook(
     os.environ["INPUT_DATA_DIR"] = input_path
     os.environ["OUTPUT_DATA_DIR"] = output_path
     # read in the notebook as JSON, and extract a python script from it
-    notebook = json.load(open(notebook_path))
+    notebook = json.load(open(notebook_path, encoding="utf-8"))
     source_cells = [cell["source"] for cell in notebook["cells"] if cell["cell_type"] == "code"]
 
     lines = [
