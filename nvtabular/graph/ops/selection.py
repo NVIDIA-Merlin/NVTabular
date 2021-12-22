@@ -33,6 +33,16 @@ class SelectionOp(BaseOperator):
         selector = col_selector or self.selector
         return super()._get_columns(df, selector)
 
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        upstream_schema = root_schema + parents_schema + deps_schema
+        return upstream_schema.apply(self.selector)
+
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         selector = col_selector or self.selector
         return super().compute_output_schema(input_schema, selector)
