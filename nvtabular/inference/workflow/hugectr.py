@@ -24,10 +24,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
+
 import numpy as np
 
 from nvtabular.inference.workflow.base import WorkflowRunner
 from nvtabular.ops import get_embedding_sizes
+
+LOG = logging.getLogger("nvtabular")
 
 
 class HugeCTRWorkflowRunner(WorkflowRunner):
@@ -38,8 +42,9 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
             self.offsets = self.get_offsets(self.workflow, self.column_types)
 
     def _transform_outputs(self, tensors):
+        LOG.warn(f"BEFORE CALLING CONVERT: {self.column_types}")
         output_tensors = []
-        if "conts" in self.column_types:
+        if "conts" in self.column_types and self.column_types["conts"]:
             output_tensors.append(
                 (
                     "DES",
@@ -49,7 +54,7 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
         else:
             output_tensors.append(("DES", np.array([[]], np.float32)))
 
-        if "cats" in self.column_types:
+        if "cats" in self.column_types and self.column_types["cats"]:
             for name in self.column_types["cats"]:
                 tensors[name] += self.offsets[name]
             cats_np = self._convert(self.column_types["cats"], tensors, np.int64)
@@ -70,9 +75,10 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
 
     def _convert(self, columns, tensors, dtype):
         """converts outputs to a numpy input compatible with hugectr"""
-        rows = max(len(tensors[name]) for name in columns)
-        d = self._convert_to_np(columns, tensors, dtype, rows)
-        return d.reshape(1, len(columns) * rows)
+        if columns:
+            rows = max(len(tensors[name]) for name in columns)
+            d = self._convert_to_np(columns, tensors, dtype, rows)
+            return d.reshape(1, len(columns) * rows)
 
     def get_offsets(self, workflow, column_types):
         embeddings = get_embedding_sizes(workflow)

@@ -116,10 +116,11 @@ def _run_query(
 
     workflow = nvt.Workflow.load(workflow_path)
 
+
     if input_cols_name is None:
-        batch = cudf.read_csv(data_path, nrows=n_rows)[workflow.output_node.input_columns.names]
+        batch = cudf.read_csv(data_path, nrows=n_rows, usecols=[workflow.output_node.input_columns.names])
     else:
-        batch = cudf.read_csv(data_path, nrows=n_rows)[input_cols_name]
+        batch = cudf.read_csv(data_path, nrows=n_rows, usecols=[input_cols_name])
 
     input_dtypes = workflow.input_dtypes
     columns = [(col, batch[col]) for col in batch.columns]
@@ -138,7 +139,7 @@ def _run_query(
 
     output_key = "output" if backend == "hugectr" else "0"
 
-    output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows)
+    output_actual = cudf.read_csv(os.path.expanduser(actual_output_filename), nrows=n_rows, index_col=False)
     output_actual = cp.asnumpy(output_actual[output_key].values)
     output_predict = response.as_numpy(output_name)
 

@@ -220,6 +220,7 @@ def export_hugectr_ensemble(
     workflow = _remove_columns(workflow, label_columns)
 
     # generate the nvtabular triton model
+
     preprocessing_path = os.path.join(output_path, name + "_nvt")
     nvt_config = generate_nvtabular_model(
         workflow=workflow,
@@ -258,10 +259,14 @@ def export_hugectr_ensemble(
     ensemble_path = os.path.join(output_path, name + "_ens")
     os.makedirs(ensemble_path, exist_ok=True)
     os.makedirs(os.path.join(ensemble_path, str(version)), exist_ok=True)
-    _generate_ensemble_config(name, ensemble_path, nvt_config, hugectr_config, "_ens")
+    return _generate_ensemble_config(name, ensemble_path, nvt_config, hugectr_config, "_ens"), [
+        nvt_config,
+        hugectr_config,
+    ]
 
 
 def _generate_ensemble_config(name, output_path, nvt_config, nn_config, name_ext=""):
+    # breakpoint()
     config = model_config.ModelConfig(
         name=name + name_ext, platform="ensemble", max_batch_size=nvt_config.max_batch_size
     )
@@ -356,14 +361,14 @@ def generate_hugectr_model(
     max_batch_size=None,
 ):
     """converts a trained HugeCTR model to a triton mode"""
-
     out_path = os.path.join(output_path, name)
     os.makedirs(os.path.join(output_path, name), exist_ok=True)
     out_path_version = os.path.join(out_path, str(version))
     os.makedirs(out_path_version, exist_ok=True)
 
     config = _generate_hugectr_config(name, out_path, hugectr_params, max_batch_size=max_batch_size)
-    copytree(trained_model_path, out_path_version, dirs_exist_ok=True)
+    # breakpoint()
+    # copytree(trained_model_path, out_path_version, dirs_exist_ok=True)
 
     return config
 

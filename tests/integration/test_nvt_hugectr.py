@@ -20,9 +20,12 @@ import json
 import os
 import shutil
 from os import path
+from pathlib import Path
 
 import cudf
 import pytest
+
+from nvtabular.inference.triton.model_config_pb2 import DataType
 
 try:
     import hugectr
@@ -46,15 +49,15 @@ from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 from nvtabular.utils import download_file
 
-DIR = "/model/"
-DATA_DIR = DIR + "data/"
-TEMP_DIR = DIR + "temp_hugectr/"
-MODEL_DIR = DIR + "models/"
-TRAIN_DIR = MODEL_DIR + "test_model/1/"
-NETWORK_FILE = TRAIN_DIR + "model.json"
-DENSE_FILE = TRAIN_DIR + "_dense_1900.model"
-SPARSE_FILES = TRAIN_DIR + "0_sparse_1900.model"
-MODEL_NAME = "test_model"
+# DIR = "/model/"
+# DATA_DIR = DIR + "data/"
+# TEMP_DIR = DIR + "temp_hugectr/"
+# MODEL_DIR = DIR + "models/"
+# TRAIN_DIR = MODEL_DIR + "test_model/1/"
+# NETWORK_FILE = TRAIN_DIR + "model.json"
+# DENSE_FILE = TRAIN_DIR + "_dense_1900.model"
+# SPARSE_FILES = TRAIN_DIR + "0_sparse_1900.model"
+# MODEL_NAME = "test_model"
 
 CATEGORICAL_COLUMNS = ["userId", "movieId", "new_cat1"]
 LABEL_COLUMNS = ["rating"]
@@ -64,23 +67,41 @@ TRITON_SERVER_PATH = find_executable("tritonserver")
 TRITON_DEVICE_ID = "1"
 
 
-def test_training():
+@pytest.mark.parametrize("n_rows", [64])
+@pytest.mark.parametrize("err_tol", [0.00001])
+def test_training(n_rows, err_tol):
     # Download & Convert data
+    TMPDIR = Path("/model_test/")
+    if path.exists(TMPDIR):
+        shutil.rmtree(TMPDIR)
+    DATA_DIR = TMPDIR / "data/"
+    MODEL_DIR = TMPDIR / "models/"
+    TRAIN_DIR = TMPDIR / MODEL_DIR / "test_model/1/"
+    NETWORK_FILE = TRAIN_DIR / "model.json"
+    DENSE_FILE = TRAIN_DIR / "_dense_1900.model"
+    SPARSE_FILES = TRAIN_DIR / "0_sparse_1900.model"
+    MODEL_NAME = "test_model"
+    extension_name = "ml-latest-small"
     download_file(
-        "http://files.grouplens.org/datasets/movielens/ml-25m.zip",
-        os.path.join(DATA_DIR, "ml-25m.zip"),
+        f"http://files.grouplens.org/datasets/movielens/{extension_name}.zip",
+        DATA_DIR / f"{extension_name}.zip",
     )
 
-    ratings = cudf.read_csv(os.path.join(DATA_DIR, "ml-25m", "ratings.csv"))
+    ratings = cudf.read_csv(os.path.join(DATA_DIR, extension_name, "ratings.csv"))
     ratings["new_cat1"] = ratings["userId"] / ratings["movieId"]
     ratings["new_cat1"] = ratings["new_cat1"].astype("int64")
     ratings.head()
 
     ratings = ratings.drop("timestamp", axis=1)
-    train, valid = train_test_split(ratings, test_size=0.2, random_state=42)
+    ratings = ratings.sample(len(ratings), replace=False)
+    # split the train_df as training and validation data sets.
+    num_valid = int(len(ratings) * 0.2)
 
-    train.to_parquet(DATA_DIR + "train.parquet")
-    valid.to_parquet(DATA_DIR + "valid.parquet")
+    train = ratings[:-num_valid]
+    valid = ratings[-num_valid:]
+
+    train.to_parquet(DATA_DIR / "train.parquet")
+    valid.to_parquet(DATA_DIR / "valid.parquet")
 
     del train
     del valid
@@ -95,8 +116,8 @@ def test_training():
 
     workflow = nvt.Workflow(output)
 
-    train_dataset = nvt.Dataset(DATA_DIR + "train.parquet", part_size="100MB")
-    valid_dataset = nvt.Dataset(DATA_DIR + "valid.parquet", part_size="100MB")
+    train_dataset = nvt.Dataset(DATA_DIR / "train.parquet", part_size="100MB")
+    valid_dataset = nvt.Dataset(DATA_DIR / "valid.parquet", part_size="100MB")
 
     workflow.fit(train_dataset)
 
@@ -108,20 +129,20 @@ def test_training():
     for col in LABEL_COLUMNS:
         dict_dtypes[col] = np.float32
 
-    if path.exists(DATA_DIR + "train"):
+    if path.exists(DATA_DIR / "train"):
         shutil.rmtree(os.path.join(DATA_DIR, "train"))
-    if path.exists(DATA_DIR + "valid"):
+    if path.exists(DATA_DIR / "valid"):
         shutil.rmtree(os.path.join(DATA_DIR, "valid"))
 
     workflow.transform(train_dataset).to_parquet(
-        output_path=DATA_DIR + "train/",
+        output_path=DATA_DIR / "train/",
         shuffle=nvt.io.Shuffle.PER_PARTITION,
         cats=CATEGORICAL_COLUMNS,
         labels=LABEL_COLUMNS,
         dtypes=dict_dtypes,
     )
     workflow.transform(valid_dataset).to_parquet(
-        output_path=DATA_DIR + "valid/",
+        output_path=DATA_DIR / "valid/",
         shuffle=False,
         cats=CATEGORICAL_COLUMNS,
         labels=LABEL_COLUMNS,
@@ -136,7 +157,7 @@ def test_training():
         slot_sizes.append(embeddings[column][0])
         total_cardinality += embeddings[column][0]
 
-    test_data_path = DATA_DIR + "test/"
+    test_data_path = DATA_DIR / "test/"
     if path.exists(test_data_path):
         shutil.rmtree(test_data_path)
 
@@ -147,74 +168,100 @@ def test_training():
 
     os.makedirs(TRAIN_DIR)
 
-    sample_data = cudf.read_parquet(DATA_DIR + "valid.parquet", num_rows=TEST_N_ROWS)
-    sample_data.to_csv(test_data_path + "data.csv")
+    sample_data = cudf.read_parquet(DATA_DIR / "valid.parquet", num_rows=TEST_N_ROWS)
+    sample_data = sample_data.reset_index(drop=True)
+    sample_data.to_csv(test_data_path / "data.csv", index=False)
 
-    sample_data_trans = nvt.workflow._transform_partition(sample_data, [workflow.output_node])
+    sample_data_trans = nvt.workflow.workflow._transform_partition(
+        sample_data, [workflow.output_node]
+    )
 
     dense_features, embedding_columns, row_ptrs = _convert(sample_data_trans, slot_sizes)
 
-    _run_model(slot_sizes, total_cardinality)
+    _run_model(slot_sizes, total_cardinality, data_dir=DATA_DIR, network_file=NETWORK_FILE)
 
-    if path.exists(TEMP_DIR):
-        shutil.rmtree(TEMP_DIR)
+    # if path.exists(TEMP_DIR):
+    #     shutil.rmtree(TEMP_DIR)
 
-    os.mkdir(TEMP_DIR)
+    # os.mkdir(TEMP_DIR)
 
     file_names = glob.iglob(os.path.join(os.getcwd(), "*.model"))
     for files in file_names:
-        shutil.move(files, TEMP_DIR)
+        shutil.move(files, TRAIN_DIR)
 
     hugectr_params = dict()
-    hugectr_params["config"] = NETWORK_FILE
+    hugectr_params["config"] = str(NETWORK_FILE)
     hugectr_params["slots"] = len(slot_sizes)
     hugectr_params["max_nnz"] = len(slot_sizes)
     hugectr_params["embedding_vector_size"] = 16
     hugectr_params["n_outputs"] = 1
 
-    export_hugectr_ensemble(
+    ensemble_conf, nvt_hugectr_conf = export_hugectr_ensemble(
         workflow=workflow,
-        hugectr_model_path=TEMP_DIR,
+        hugectr_model_path=str(TRAIN_DIR),
         hugectr_params=hugectr_params,
         name=MODEL_NAME,
-        output_path=MODEL_DIR,
+        output_path=str(MODEL_DIR),
         label_columns=["rating"],
         cats=CATEGORICAL_COLUMNS,
         max_batch_size=64,
     )
 
-    shutil.rmtree(TEMP_DIR)
-    _predict(dense_features, embedding_columns, row_ptrs, hugectr_params["config"], MODEL_NAME)
+    # shutil.rmtree(str(TEMP_DIR))
+    _predict(
+        dense_features,
+        embedding_columns,
+        row_ptrs,
+        hugectr_params["config"],
+        MODEL_NAME,
+        dense_file=str(DENSE_FILE),
+        sparse_files=str(SPARSE_FILES),
+        data_dir=DATA_DIR,
+    )
+
+    ps_file = TRAIN_DIR / "ps.json"
+
+    _write_ps_hugectr(
+        str(ps_file), MODEL_NAME, str(SPARSE_FILES), str(DENSE_FILE), str(NETWORK_FILE), 64
+    )
 
 
 @pytest.mark.parametrize("n_rows", [64, 58, 11, 1])
 @pytest.mark.parametrize("err_tol", [0.00001])
 def test_inference(n_rows, err_tol):
+    import tritonclient.grpc as httpclient
+
     warnings.simplefilter("ignore")
+    TMPDIR = Path("/model_test/")
+    DATA_DIR = TMPDIR / "data/"
+    MODEL_DIR = TMPDIR / "models/"
+    TRAIN_DIR = TMPDIR / MODEL_DIR / "test_model/1/"
+    MODEL_NAME = "test_model"
 
-    data_path = DATA_DIR + "test/data.csv"
-    output_path = DATA_DIR + "test/output.csv"
-    ps_file = TRAIN_DIR + "ps.json"
+    data_path = DATA_DIR / "test/data.csv"
+    output_path = DATA_DIR / "test/output.csv"
+    ps_file = TRAIN_DIR / "ps.json"
 
-    workflow_path = MODEL_DIR + MODEL_NAME + "_nvt/1/workflow"
+    workflow_path = MODEL_DIR / "test_model_nvt" / "1/workflow"
+    # _write_ps_hugectr(str(ps_file), MODEL_NAME, str(SPARSE_FILES), str(DENSE_FILE), str(NETWORK_FILE), 64)
 
-    _write_ps_hugectr(ps_file, MODEL_NAME, SPARSE_FILES, DENSE_FILE, NETWORK_FILE)
+    # with test_utils.run_triton_server(
+    #     os.path.expanduser(str(MODEL_DIR)),
+    #     MODEL_NAME + "_ens",
+    #     TRITON_SERVER_PATH,
+    #     TRITON_DEVICE_ID,
+    #     "hugectr",
+    #     str(ps_file),
+    # ) as client:
 
-    with test_utils.run_triton_server(
-        os.path.expanduser(MODEL_DIR),
-        MODEL_NAME + "_ens",
-        TRITON_SERVER_PATH,
-        TRITON_DEVICE_ID,
-        "hugectr",
-        ps_file,
-    ) as client:
+    with httpclient.InferenceServerClient("0.0.0.0:8001") as client:
         diff, run_time = _run_query(
             client,
             n_rows,
             MODEL_NAME + "_ens",
-            workflow_path,
-            data_path,
-            output_path,
+            str(workflow_path),
+            str(data_path),
+            str(output_path),
             "OUTPUT0",
             CATEGORICAL_COLUMNS,
             "hugectr",
@@ -224,12 +271,14 @@ def test_inference(n_rows, err_tol):
     result = create_bench_result(
         "test_nvt_hugectr_inference", [("n_rows", n_rows)], run_time, "datetime"
     )
+
     benchmark_results.append(result)
     # send_results(asv_db, bench_info, benchmark_results)
 
 
-def _run_model(slot_sizes, total_cardinality):
-
+def _run_model(slot_sizes, total_cardinality, data_dir=None, network_file=None):
+    DATA_DIR = data_dir
+    NETWORK_FILE = network_file
     solver = hugectr.CreateSolver(
         vvgpu=[[0]],
         batchsize=2048,
@@ -242,8 +291,8 @@ def _run_model(slot_sizes, total_cardinality):
 
     reader = hugectr.DataReaderParams(
         data_reader_type=hugectr.DataReaderType_t.Parquet,
-        source=[DATA_DIR + "train/_file_list.txt"],
-        eval_source=DATA_DIR + "valid/_file_list.txt",
+        source=[str(DATA_DIR / "train/_file_list.txt")],
+        eval_source=str(DATA_DIR / "valid/_file_list.txt"),
         check_type=hugectr.Check_t.Non,
     )
 
@@ -330,10 +379,22 @@ def _run_model(slot_sizes, total_cardinality):
     model.compile()
     model.summary()
     model.fit(max_iter=2000, display=100, eval_interval=200, snapshot=1900)
-    model.graph_to_json(graph_config_file=NETWORK_FILE)
+    model.graph_to_json(graph_config_file=str(NETWORK_FILE))
 
 
-def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_name):
+def _predict(
+    dense_features,
+    embedding_columns,
+    row_ptrs,
+    config_file,
+    model_name,
+    dense_file=None,
+    sparse_files=None,
+    data_dir=None,
+):
+    DENSE_FILE = dense_file
+    SPARSE_FILES = sparse_files
+    DATA_DIR = data_dir
     inference_params = InferenceParams(
         model_name=model_name,
         max_batchsize=64,
@@ -349,18 +410,18 @@ def _predict(dense_features, embedding_columns, row_ptrs, config_file, model_nam
     inference_session = CreateInferenceSession(config_file, inference_params)
     output = inference_session.predict(dense_features, embedding_columns, row_ptrs)  # , True)
 
-    test_data_path = DATA_DIR + "test/"
+    test_data_path = DATA_DIR / "test/"
     embedding_columns_df = pd.DataFrame()
     embedding_columns_df["embedding_columns"] = embedding_columns
-    embedding_columns_df.to_csv(test_data_path + "embedding_columns.csv")
+    embedding_columns_df.to_csv(str(test_data_path / "embedding_columns.csv"))
 
     row_ptrs_df = pd.DataFrame()
     row_ptrs_df["row_ptrs"] = row_ptrs
-    row_ptrs_df.to_csv(test_data_path + "row_ptrs.csv")
+    row_ptrs_df.to_csv(str(test_data_path / "row_ptrs.csv"))
 
     output_df = pd.DataFrame()
     output_df["output"] = output
-    output_df.to_csv(test_data_path + "output.csv")
+    output_df.to_csv(str(test_data_path / "output.csv"))
 
 
 def _convert(data, slot_size_array):
@@ -377,16 +438,27 @@ def _convert(data, slot_size_array):
     return dense, cat, row_ptrs
 
 
-def _write_ps_hugectr(output_file, model_name, sparse_files, dense_file, network_file):
+def _write_ps_hugectr(
+    output_file, model_name, sparse_files, dense_file, network_file, max_batch_size
+):
     config = json.dumps(
         {
-            "supportlonglong": True,
+            "supportlonglong": "true",
             "models": [
                 {
                     "model": model_name,
                     "sparse_files": [sparse_files],
                     "dense_file": dense_file,
                     "network_file": network_file,
+                    "max_batch_size": f"{max_batch_size}",
+                    "num_of_worker_buffer_in_pool": "1",
+                    "num_of_refresher_buffer_in_pool": "1",
+                    "cache_refresh_percentage_per_iteration": "0.2",
+                    "deployed_device_list": ["0"],
+                    "default_value_for_each_table": ["0.0", "0.0"],
+                    "hit_rate_threshold": "0.9",
+                    "gpucacheper": "0.5",
+                    "gpucache": "true",
                 }
             ],
         }

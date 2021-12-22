@@ -88,8 +88,16 @@ class TritonPythonModel:
         )
 
     def _set_output_dtype(self, name):
-        conf = get_output_config_by_name(self.model_config, name)
-        self.output_dtypes[name] = triton_string_to_numpy(conf["data_type"])
+
+        # conf = get_output_config_by_name(self.model_config, name)
+        conf = None
+        input_conf = self.model_config["input"]
+        for in_entry in input_conf:
+            if in_entry["name"] == name:
+                conf = in_entry
+        tri_dtype = triton_string_to_numpy(conf["data_type"])
+        #  {conf} {tri_dtype}")
+        self.output_dtypes[name] = tri_dtype
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
         """Transforms the input batches by running through a NVTabular workflow.transform
