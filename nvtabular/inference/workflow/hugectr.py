@@ -31,28 +31,28 @@ from nvtabular.ops import get_embedding_sizes
 
 
 class HugeCTRWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
-        super().__init__(workflow, column_types, output_dtypes, model_config, model_device)
+    def __init__(self, workflow, output_dtypes, model_config, model_device):
+        super().__init__(workflow, output_dtypes, model_config, model_device)
 
-        if "cats" in self.column_types:
-            self.offsets = self.get_offsets(self.workflow, self.column_types)
+        if self.cats:
+            self.offsets = self.get_offsets(self.workflow, self.cats)
 
     def _transform_outputs(self, tensors):
         output_tensors = []
-        if "conts" in self.column_types:
+        if self.conts:
             output_tensors.append(
                 (
                     "DES",
-                    self._convert(self.column_types["conts"], tensors, np.float32),
+                    self._convert(self.conts, tensors, np.float32),
                 )
             )
         else:
             output_tensors.append(("DES", np.array([[]], np.float32)))
 
-        if "cats" in self.column_types:
-            for name in self.column_types["cats"]:
+        if self.cats:
+            for name in self.cats:
                 tensors[name] += self.offsets[name]
-            cats_np = self._convert(self.column_types["cats"], tensors, np.int64)
+            cats_np = self._convert(self.cats, tensors, np.int64)
             output_tensors.append(
                 (
                     "CATCOLUMN",
@@ -74,14 +74,14 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
         d = self._convert_to_np(columns, tensors, dtype, rows)
         return d.reshape(1, len(columns) * rows)
 
-    def get_offsets(self, workflow, column_types):
+    def get_offsets(self, workflow, categorical_cols):
         embeddings = get_embedding_sizes(workflow)
         if embeddings is None:
             raise Exception("embeddings cannot be None")
         else:
             offsets = dict()
             curr_offset = 0
-            for name in column_types["cats"]:
+            for name in categorical_cols:
                 offsets[name] = curr_offset
                 curr_offset += embeddings[name][0]
             return offsets

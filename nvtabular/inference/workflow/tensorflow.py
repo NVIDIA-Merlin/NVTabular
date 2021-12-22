@@ -29,10 +29,10 @@ from nvtabular.inference.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
-    def __init__(self, workflow, column_types, output_dtypes, model_config, model_device):
-        super().__init__(workflow, column_types, output_dtypes, model_config, model_device)
+    def __init__(self, workflow, output_dtypes, model_config, model_device):
+        super().__init__(workflow, output_dtypes, model_config, model_device)
 
-        self.column_types = self.offsets = None
+        self.offsets = None
 
     def _transform_outputs(self, tensors):
         # Load extra info needed for the Transformer4Rec (if exists)
@@ -42,7 +42,8 @@ class TensorflowWorkflowRunner(WorkflowRunner):
             sparse_feat = json.loads(self.model_config["parameters"]["sparse_max"]["string_value"])
         # transforms outputs for both pytorch and tensorflow
         output_tensors = []
-        for name, value in tensors.items():
+        for name in self.cats + self.conts:
+            value = tensors[name]
             if sparse_feat and name in sparse_feat.keys():
                 # convert sparse tensors to dense representations
                 d = value[0].astype(self.output_dtypes[name])
