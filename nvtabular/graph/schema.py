@@ -160,6 +160,15 @@ class Schema:
     def write(self, schema_path):
         return PbTxt_SchemaWriter.write(self, schema_path)
 
+    def get(self, col_name, default=None):
+        return self.column_schemas.get(col_name, default)
+
+    def __getitem__(self, column_name):
+        return self.column_schemas[column_name]
+
+    def __setitem__(self, column_name, column_schema):
+        self.column_schemas[column_name] = column_schema
+
     def __iter__(self):
         return iter(self.column_schemas.values())
 

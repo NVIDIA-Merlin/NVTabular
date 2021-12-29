@@ -24,11 +24,12 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular as nvt  # noqa
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 import nvtabular.ops as wf_ops  # noqa
 from nvtabular.graph.schema import Schema  # noqa
-from nvtabular.inference.graph.ensemble import Ensemble  # noqa
-from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
+
+ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
+model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")
+workflow_op = pytest.importorskip("nvtabular.inference.graph.ops.workflow")
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -42,10 +43,10 @@ def test_workflow_op_validates_schemas(dataset, engine):
     workflow.fit(dataset)
 
     # Triton
-    triton_ops = ["a", "b", "c"] >> WorkflowOp(workflow)
+    triton_ops = ["a", "b", "c"] >> workflow_op.WorkflowOp(workflow)
 
     with pytest.raises(ValueError):
-        Ensemble(triton_ops, request_schema)
+        ensemble.Ensemble(triton_ops, request_schema)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -58,7 +59,7 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
     workflow.fit(dataset)
 
     # Triton
-    triton_op = WorkflowOp(workflow, name="workflow")
+    triton_op = workflow_op.WorkflowOp(workflow, name="workflow")
     triton_op.export(tmpdir)
 
     # Export creates directory
