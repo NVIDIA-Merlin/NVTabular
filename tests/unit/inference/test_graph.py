@@ -1,8 +1,11 @@
+import pytest
+
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
 from nvtabular.graph.schema import Schema
-from nvtabular.inference.graph.ensemble import Ensemble
-from nvtabular.inference.graph.ops.workflow import WorkflowOp
+
+ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
+workflow_op = pytest.importorskip("nvtabular.inference.graph.ops.workflow")
 
 
 def test_inference_schema_propagation():
@@ -18,7 +21,7 @@ def test_inference_schema_propagation():
     assert workflow.graph.output_schema == expected_schema
 
     # Triton
-    triton_ops = input_columns >> WorkflowOp(workflow)
-    ensemble = Ensemble(triton_ops, request_schema)
+    triton_ops = input_columns >> workflow_op.WorkflowOp(workflow)
+    ensemble_out = ensemble.Ensemble(triton_ops, request_schema)
 
-    assert ensemble.graph.output_schema == expected_schema
+    assert ensemble_out.graph.output_schema == expected_schema
