@@ -53,7 +53,7 @@ class TensorflowOp(InferenceOperator):
     def export_name(self):
         return self.name
 
-    def export(self, path, consumer_config, version=1):
+    def export(self, path, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
@@ -75,7 +75,12 @@ class TensorflowOp(InferenceOperator):
                 f"Request schema columns: {expected_input.column_names}\n"
                 f"Model input columns: {self.model_inputs}."
             )
-        return Schema(self.model_inputs)
+
+        in_schema = Schema()
+        for col, input_col in zip(self.model_inputs, self.model.inputs):
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype)
+
+        return in_schema
 
     def compute_selector(
         self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
@@ -84,6 +89,6 @@ class TensorflowOp(InferenceOperator):
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         out_schema = Schema()
-        for col in self.model_outputs:
-            out_schema.column_schemas[col] = ColumnSchema(col)
+        for col, output_col in zip(self.model_outputs, self.model.outputs):
+            out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
         return out_schema
