@@ -37,6 +37,7 @@ from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, _is_cpu_object, _nullable_series, annotate
+from nvtabular.graph.schema import Schema
 from nvtabular.graph.tags import Tags
 from nvtabular.nvt_dtypes import NVTDtype
 from nvtabular.utils import device_mem_size, run_on_worker
@@ -488,6 +489,15 @@ class Categorify(StatOperator):
                 raise RuntimeError(f"Failed to categorical encode column {name}") from e
 
         return new_df
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
 
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         if self.encode_type == "combo":

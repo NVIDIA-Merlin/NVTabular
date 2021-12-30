@@ -47,7 +47,11 @@ class BaseOperator:
         self._column_mapping = {}
 
     def compute_selector(
-        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
         breakpoint()
         return selector
@@ -78,7 +82,7 @@ class BaseOperator:
         """
         return parents_schema + deps_schema
 
-    # TODO: Rework the overrides of this method to work the same way (no calls to `transformed_schema`)
+    # TODO: Rework the overrides of this method to work the same (no calls to `transformed_schema`)
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
         returns a set of schemas for the transformed columns this operator will produce
@@ -174,7 +178,8 @@ class BaseOperator:
                 return column_schema
         else:
             raise TypeError(
-                f"Operator {self.__class__.__name__}.output_dtype returned an invalid type: {type(dtype)}"
+                f"Operator {self.__class__.__name__}.output_dtype returned an invalid type: "
+                f"{type(dtype)}"
             )
 
     # # TODO: Remove this method
@@ -199,7 +204,8 @@ class BaseOperator:
     #     # returns dict with column_name: properties to add
     #     return {}
 
-    # TODO: Update instructions for how to define custom operators to reflect constructing the column mapping
+    # TODO: Update instructions for how to define custom
+    # operators to reflect constructing the column mapping
     # (They should no longer override this method)
     def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
         """Given a set of columns names returns the names of the transformed columns this

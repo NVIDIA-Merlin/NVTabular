@@ -30,7 +30,7 @@ except ImportError:
     from scipy.sparse import coo_matrix
 
 from nvtabular.dispatch import DataFrameType, annotate
-from nvtabular.graph import ColumnSchema, Schema
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 from nvtabular.nvt_dtypes import NVTDtype
 
@@ -116,6 +116,15 @@ class ColumnSimilarity(Operator):
         return df
 
     transform.__doc__ = Operator.transform.__doc__
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         """Given a set of schemas and a column selector for the input columns,

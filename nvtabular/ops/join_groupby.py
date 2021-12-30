@@ -20,6 +20,7 @@ from dask.delayed import Delayed
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 from nvtabular.nvt_dtypes import NVTDtype
 
@@ -195,39 +196,19 @@ class JoinGroupby(StatOperator):
     def dependencies(self):
         return self.cont_cols
 
-    # def output_column_names(self, columns):
-    #     # TODO: the names here are defined in categorify/mid_level_groupby
-    #     # refactor to have a common implementation
-    #     output = []
-    #     output_dtypes = {}
-    #     for name in columns.grouped_names:
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
 
-    #         if isinstance(name, (tuple, list)):
-    #             name = nvt_cat._make_name(*name, sep=self.name_sep)
-    #         for cont_name in self.cont_names.names:
-    #             for stat in self.stats:
-    #                 dtype = None
-    #                 if stat == "count":
-    #                     output_name = f"{name}_{stat}"
-    #                     dtype = NVTDtype(name='int', size=64, signed=True, is_list=False)
-    #                 elif stat in ["min", "max"]:
-    #                     output_name = f"{name}_{cont_name}_{stat}"
-    #                     # inherit from "name" column
-    #                     dtype = None
-    #                 else:
-    #                     output_name = f"{name}_{cont_name}_{stat}"
-    #                     dtype = NVTDtype(name='float', size=64, signed=True, is_list=False)
-    #                 output.append(output_name)
-    #                 output_dtypes[output_name] = dtype
-
-    #     self._output_dtypes = output_dtypes
-
-    #     return ColumnSelector(output)
-
-    def construct_column_mapping(self, col_selector):
+    def output_column_names(self, columns):
         # TODO: the names here are defined in categorify/mid_level_groupby
         # refactor to have a common implementation
-        for name in col_selector.grouped_names:
+        for name in columns.grouped_names:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name, sep=self.name_sep)
             for cont_name in self.cont_names.names:
