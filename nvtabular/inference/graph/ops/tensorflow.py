@@ -83,7 +83,11 @@ class TensorflowOp(InferenceOperator):
         return in_schema
 
     def compute_selector(
-        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
         return ColumnSelector(self.model_inputs)
 
