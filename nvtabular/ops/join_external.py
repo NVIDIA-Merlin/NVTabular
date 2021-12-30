@@ -33,6 +33,7 @@ from nvtabular.dispatch import (
     _read_dispatch,
     _to_host,
 )
+from nvtabular.graph.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -205,6 +206,15 @@ class JoinExternal(Operator):
         combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
 
         return ColumnSelector(list(combined))
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
 
     def compute_output_schema(self, input_schema, col_selector):
         # must load in the schema from the external dataset
