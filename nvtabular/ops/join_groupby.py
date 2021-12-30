@@ -201,7 +201,7 @@ class JoinGroupby(StatOperator):
     #     output = []
     #     output_dtypes = {}
     #     for name in columns.grouped_names:
-            
+
     #         if isinstance(name, (tuple, list)):
     #             name = nvt_cat._make_name(*name, sep=self.name_sep)
     #         for cont_name in self.cont_names.names:
@@ -212,16 +212,16 @@ class JoinGroupby(StatOperator):
     #                     dtype = NVTDtype(name='int', size=64, signed=True, is_list=False)
     #                 elif stat in ["min", "max"]:
     #                     output_name = f"{name}_{cont_name}_{stat}"
-    #                     # inherit from "name" column 
+    #                     # inherit from "name" column
     #                     dtype = None
     #                 else:
     #                     output_name = f"{name}_{cont_name}_{stat}"
     #                     dtype = NVTDtype(name='float', size=64, signed=True, is_list=False)
     #                 output.append(output_name)
     #                 output_dtypes[output_name] = dtype
-                    
+
     #     self._output_dtypes = output_dtypes
-                        
+
     #     return ColumnSelector(output)
 
     def construct_column_mapping(self, col_selector):
@@ -238,7 +238,6 @@ class JoinGroupby(StatOperator):
                     else:
                         output_name = f"{name}_{cont_name}_{stat}"
                         self._column_mapping[output_name] = [name, cont_name]
-                    
 
     def _compute_dtype(self, col_schema, input_schemas):
         col_agg = None
@@ -248,13 +247,13 @@ class JoinGroupby(StatOperator):
                 break
 
         if col_agg == "count":
-            dtype = NVTDtype(name='int', size=64, signed=True, is_list=False)
+            dtype = NVTDtype(name="int", size=64, signed=True, is_list=False)
         elif col_agg in ["sum", "min", "max"]:
             column_names = input_schemas.column_names
             dtype = input_schemas[column_names[-1]].dtype
         else:
-            dtype = NVTDtype(name='float', size=64, signed=True, is_list=False)
-        
+            dtype = NVTDtype(name="float", size=64, signed=True, is_list=False)
+
         return col_schema.with_dtype(dtype)
 
     def set_storage_path(self, new_path, copy=False):

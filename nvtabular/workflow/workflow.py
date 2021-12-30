@@ -35,11 +35,10 @@ import nvtabular
 from nvtabular.dispatch import _concat_columns
 from nvtabular.graph.graph import Graph, _get_ops_by_type
 from nvtabular.io.dataset import Dataset
-from nvtabular.ops import StatOperator
+from nvtabular.ops import LambdaOp, StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode
-from nvtabular.ops import LambdaOp
 
 LOG = logging.getLogger("nvtabular")
 
@@ -495,7 +494,9 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, overr
                         for child in node.children:
                             if col_name in child.input_schema:
                                 input_schema = child.input_schema.column_schemas[col_name]
-                                child.input_schema.column_schemas[col_name] = input_schema.with_dtype(output_df[col_name].dtype)
+                                child.input_schema.column_schemas[
+                                    col_name
+                                ] = input_schema.with_dtype(output_df[col_name].dtype)
                     else:
                         if col_schema.dtype != output_schema.dtype:
                             raise TypeError(

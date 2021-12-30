@@ -165,7 +165,6 @@ class ColumnSimilarity(Operator):
         return col_schema.with_tags([Tags.CONTINUOUS])
 
 
-
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):
     """Computes the similarity between two columns, by computing the inner product
     along two sparse feature matrices . Both a_features and b_features are

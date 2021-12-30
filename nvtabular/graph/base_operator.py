@@ -19,7 +19,7 @@ from enum import Flag, auto
 from typing import Any, List, Optional, Union
 
 import nvtabular as nvt
-from nvtabular.graph.schema import Schema, ColumnSchema
+from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.nvt_dtypes import NVTDtype
 
@@ -41,6 +41,7 @@ class BaseOperator:
     """
     Base class for all operator classes.
     """
+
     def __init__(self):
         # keys are output cols, vals are lists of corresponding input cols
         self._column_mapping = {}
@@ -121,7 +122,7 @@ class BaseOperator:
 
         for method in [self._compute_dtype, self._compute_tags, self._compute_properties]:
             col_schema = method(col_schema, input_schemas)
-        
+
         return col_schema
 
     # TODO: Override these `_compute` methods in the operators as needed
@@ -170,9 +171,11 @@ class BaseOperator:
             if dtype[column_schema.name] is not None:
                 return column_schema.with_dtype(dtype[column_schema.name])
             else:
-                return column_schema  
+                return column_schema
         else:
-            raise TypeError(f"Operator {self.__class__.__name__}.output_dtype returned an invalid type: {type(dtype)}")
+            raise TypeError(
+                f"Operator {self.__class__.__name__}.output_dtype returned an invalid type: {type(dtype)}"
+            )
 
     # # TODO: Remove this method
     # def output_dtype(self):
