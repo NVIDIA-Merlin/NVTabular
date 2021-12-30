@@ -56,6 +56,6 @@ class LogOp(Operator):
         return [Tags.CONTINUOUS]
 
     def output_dtype(self):
-        return NVTDtype(name="float", size=64, signed=True, is_list=False)
+        return NVTDtype(name="float", size=32, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__

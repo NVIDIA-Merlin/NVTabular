@@ -28,6 +28,7 @@ LOG = logging.getLogger("SelectionOp")
 class SelectionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
+        super().__init__()
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = col_selector or self.selector
@@ -47,6 +48,6 @@ class SelectionOp(BaseOperator):
         selector = col_selector or self.selector
         return super().compute_output_schema(input_schema, selector)
 
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
+    def construct_column_mapping(self, col_selector):
         selector = col_selector or self.selector
-        return super().output_column_names(selector)
+        return super().construct_column_mapping(col_selector)

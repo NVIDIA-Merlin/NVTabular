@@ -18,6 +18,7 @@ from typing import Dict, Union
 import numpy
 
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
 from .categorify import _emb_sz_rule
@@ -114,5 +115,5 @@ class HashBucket(Operator):
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return numpy.int64
+    def output_dtype(self):
+        return NVTDtype(name="int", size=32, signed=True, is_list=False)

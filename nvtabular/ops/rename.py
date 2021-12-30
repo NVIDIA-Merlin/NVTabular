@@ -49,6 +49,7 @@ class Rename(Operator):
         self.f = f
         self.postfix = postfix
         self.name = name
+        super().__init__()
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         df = df[col_selector.names]
@@ -57,24 +58,11 @@ class Rename(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        if col_selector.tags:
-            tags_col_selector = ColumnSelector(tags=col_selector.tags)
-            filtered_schema = input_schema.apply(tags_col_selector)
-            col_selector += ColumnSelector(filtered_schema.column_names)
-
-            # zero tags because already filtered
-            col_selector._tags = []
-        output_schema = Schema()
-        for column_name in input_schema.column_schemas:
+    def construct_column_mapping(self, col_selector):
+        for column_name in col_selector.names:
             new_names = self.output_column_names(ColumnSelector(column_name))
-            column_schema = input_schema.column_schemas[column_name]
             for new_name in new_names.names:
-                new_column_schema = column_schema.with_name(new_name)
-                output_schema += Schema([self.transformed_schema(new_column_schema)])
-        return output_schema
+                self._column_mapping[new_name] = [column_name]
 
     def output_column_names(self, col_selector):
         if self.f:

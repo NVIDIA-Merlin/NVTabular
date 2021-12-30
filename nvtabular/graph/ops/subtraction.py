@@ -24,6 +24,7 @@ from nvtabular.graph.selector import ColumnSelector
 class SubtractionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
+        super().__init__()
 
     def compute_selector(
         self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector

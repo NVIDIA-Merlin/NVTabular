@@ -19,6 +19,7 @@ import numpy
 
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from .operator import ColumnSelector, Operator
 
@@ -77,8 +78,8 @@ class HashedCross(Operator):
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return numpy.int64
+    def output_dtype(self):
+        return NVTDtype(name="int", size=64, signed=True, is_list=False)
 
 
 def _nest_columns(columns):

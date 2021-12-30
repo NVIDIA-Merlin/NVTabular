@@ -39,6 +39,7 @@ from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
 from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode
+from nvtabular.ops import LambdaOp
 
 LOG = logging.getLogger("nvtabular")
 
@@ -225,12 +226,18 @@ class Workflow:
         self.graph.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
         self.graph.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
 
+        # We need to call this because _transform_impl only updates output schemas
+        # self.graph.update_column_attrs(dataset.schema)
+
         # TODO: Figure out a better way to propagate everything (e.g. dtypes) that just updated
-        self.graph._zero_output_schemas()
-        self.graph.fit_schema(dataset.schema)
+        # self.graph._zero_output_schemas()
+        # self.graph.fit_schema(dataset.schema)
+
+        # self.graph.compute_dtypes()
 
         # self.graph.recompute_output_schemas()
 
+        # self.graph.propagate_column_names()
         # self.graph.propagate_tags()
         # self.graph.propagate_properties()
         # self.graph.propagate_dtypes()
@@ -448,7 +455,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, overr
 
             for parent in node.parents_with_dependencies:
                 parent_output_cols = _get_unique(parent.output_schema.column_names)
-                parent_df = _transform_partition(root_df, [parent])
+                parent_df = _transform_partition(root_df, [parent], override_dtypes=override_dtypes)
                 if input_df is None or not len(input_df):
                     input_df = parent_df[parent_output_cols]
                     seen_columns = set(parent_output_cols)
@@ -482,9 +489,13 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, overr
                 # Update or validate output_df dtypes
                 for col_name, col_schema in node.output_schema.column_schemas.items():
                     output_schema = col_schema.with_dtype(output_df[col_name].dtype)
+
                     if override_dtypes:
-                        # TODO: Figure out if/how to propagate schema updates to children here
                         node.output_schema.column_schemas[col_name] = output_schema
+                        for child in node.children:
+                            if col_name in child.input_schema:
+                                input_schema = child.input_schema.column_schemas[col_name]
+                                child.input_schema.column_schemas[col_name] = input_schema.with_dtype(output_df[col_name].dtype)
                     else:
                         if col_schema.dtype != output_schema.dtype:
                             raise TypeError(

@@ -32,7 +32,7 @@ class ColumnSchema:
     _is_list: bool = False
 
     def __post_init__(self):
-        if not isinstance(self.dtype, NVTDtype):
+        if self.dtype is not None and not isinstance(self.dtype, NVTDtype):
             try:
                 object.__setattr__(self, "dtype", NVTDtype._from(self.dtype))
             except ValueError as err:
@@ -164,7 +164,10 @@ class Schema:
         return self.column_schemas.get(col_name, default)
 
     def __getitem__(self, column_name):
-        return self.column_schemas[column_name]
+        if isinstance(column_name, str):
+            return self.column_schemas[column_name]
+        elif isinstance(column_name, list):
+            return Schema([self.column_schemas[col_name] for col_name in column_name])
 
     def __setitem__(self, column_name, column_schema):
         self.column_schemas[column_name] = column_schema

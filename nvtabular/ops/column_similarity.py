@@ -118,25 +118,52 @@ class ColumnSimilarity(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+        """Given a set of schemas and a column selector for the input columns,
+        returns a set of schemas for the transformed columns this operator will produce
+        Parameters
+        -----------
+        input_schema: Schema
+            The schemas of the columns to apply this operator to
+        col_selector: ColumnSelector
+            The column selector to apply to the input schema
+        Returns
+        -------
+        Schema
+            The schemas of the columns produced by this operator
+        """
+        if not col_selector:
+            col_selector = ColumnSelector(input_schema.column_names)
+
+        if col_selector.tags:
+            tags_col_selector = ColumnSelector(tags=col_selector.tags)
+            filtered_schema = input_schema.apply(tags_col_selector)
+            col_selector += ColumnSelector(filtered_schema.column_names)
+
+            # zero tags because already filtered
+            col_selector._tags = []
+
+        self.construct_column_mapping(col_selector)
+
         output_schema = Schema()
-        for grouped_columns in col_selector.grouped_names:
-            output_schema += Schema([self.transformed_schema(grouped_columns)])
+        for output_col_name, input_col_names in self._column_mapping.items():
+            col_schema = self.compute_column_schema(output_col_name, input_schema[input_col_names])
+            output_schema += Schema([col_schema])
 
         return output_schema
 
-    def transformed_schema(self, grouped_schemas):
-        a, b = grouped_schemas
-        column_schema = ColumnSchema(f"{a}_{b}_sim")
-        return super().transformed_schema(column_schema)
+    def construct_column_mapping(self, col_selector):
+        for group in col_selector.grouped_names:
+            col_a, col_b = group
+            col_name = f"{col_a}_{col_b}_sim"
+            self._column_mapping[col_name] = [col_a, col_b]
 
-    def output_column_names(self, columns):
-        return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
+    def _compute_dtype(self, col_schema, input_schemas):
+        dtype = NVTDtype(name="float", size=64, signed=True, is_list=False)
+        return col_schema.with_dtype(dtype)
 
-    def output_tags(self):
-        return [Tags.CONTINUOUS]
+    def _compute_tags(self, col_schema, input_schemas):
+        return col_schema.with_tags([Tags.CONTINUOUS])
 
-    def output_dtype(self):
-        return NVTDtype(name="float", size=64, signed=True, is_list=False)
 
 
 def row_wise_inner_product(a, a_features, b, b_features, on_device=True):

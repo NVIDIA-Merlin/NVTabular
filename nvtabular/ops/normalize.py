@@ -18,6 +18,7 @@ import numpy
 
 from nvtabular.graph.base_operator import Supports
 from nvtabular.graph.tags import Tags
+from nvtabular.nvt_dtypes import NVTDtype
 
 from ..dispatch import (
     DataFrameType,
@@ -100,8 +101,8 @@ class Normalize(StatOperator):
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    def output_dtype(self):
+        return NVTDtype(name="float", size=32, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -172,8 +173,8 @@ class NormalizeMinMax(StatOperator):
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    def output_dtype(self):
+        return NVTDtype(name="float", size=32, signed=True, is_list=False)
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

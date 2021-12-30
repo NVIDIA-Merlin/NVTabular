@@ -51,19 +51,20 @@ class Node:
         if selector is not None:
             self.op = SelectionOp(selector)
 
+        breakpoint()
+
         self._selector = selector
 
     @property
     def selector(self):
-        if not self._selector and any(parent._selector for parent in self.parents):
-            return _combine_selectors(self.parents)
-        else:
-            return self._selector
+        return self._selector
 
     @selector.setter
     def selector(self, sel):
         if isinstance(sel, list):
             sel = ColumnSelector(sel)
+
+        breakpoint()
 
         self._selector = sel
 
@@ -110,13 +111,32 @@ class Node:
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
 
-        self.input_schema = self.op.compute_input_schema(
-            root_schema, parents_schema, deps_schema, self._selector
-        )
+        self.input_schema = self.op.compute_input_schema(root_schema, parents_schema, deps_schema, self._selector)
         self.selector = self.op.compute_selector(
             self.input_schema, self._selector, upstream_selector
         )
         self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+
+    # def update_schemas(self, root_schema):
+    #     # TODO: Where do we grab these updates from?
+    #     upstream_selector = _combine_selectors(self.grouped_parents_with_dependencies)
+    #     parents_schema = _combine_schemas(self.parents)
+    #     deps_schema = _combine_schemas(self.dependencies)
+
+    #     self.input_schema = self.op.compute_input_schema(
+    #         root_schema, parents_schema, deps_schema, self._selector
+    #     )
+    #     self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+
+    #     # column names vs column attributes
+    #     # self.op.compute_output_columns
+
+    #     self.op.compute_output_names
+    #     self.op.compute_output_attrs
+    #         self.op.compute_output_properties
+    #         self.op.compute_output_dtypes
+    #         self.op.compute_output_tags
+
 
     def __rshift__(self, operator):
         """Transforms this Node by applying an BaseOperator

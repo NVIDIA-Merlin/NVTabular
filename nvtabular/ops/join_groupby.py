@@ -195,21 +195,67 @@ class JoinGroupby(StatOperator):
     def dependencies(self):
         return self.cont_cols
 
-    def output_column_names(self, columns):
+    # def output_column_names(self, columns):
+    #     # TODO: the names here are defined in categorify/mid_level_groupby
+    #     # refactor to have a common implementation
+    #     output = []
+    #     output_dtypes = {}
+    #     for name in columns.grouped_names:
+            
+    #         if isinstance(name, (tuple, list)):
+    #             name = nvt_cat._make_name(*name, sep=self.name_sep)
+    #         for cont_name in self.cont_names.names:
+    #             for stat in self.stats:
+    #                 dtype = None
+    #                 if stat == "count":
+    #                     output_name = f"{name}_{stat}"
+    #                     dtype = NVTDtype(name='int', size=64, signed=True, is_list=False)
+    #                 elif stat in ["min", "max"]:
+    #                     output_name = f"{name}_{cont_name}_{stat}"
+    #                     # inherit from "name" column 
+    #                     dtype = None
+    #                 else:
+    #                     output_name = f"{name}_{cont_name}_{stat}"
+    #                     dtype = NVTDtype(name='float', size=64, signed=True, is_list=False)
+    #                 output.append(output_name)
+    #                 output_dtypes[output_name] = dtype
+                    
+    #     self._output_dtypes = output_dtypes
+                        
+    #     return ColumnSelector(output)
+
+    def construct_column_mapping(self, col_selector):
         # TODO: the names here are defined in categorify/mid_level_groupby
         # refactor to have a common implementation
-        output = []
-
-        for name in columns.grouped_names:
+        for name in col_selector.grouped_names:
             if isinstance(name, (tuple, list)):
                 name = nvt_cat._make_name(*name, sep=self.name_sep)
-            for cont in self.cont_names.names:
+            for cont_name in self.cont_names.names:
                 for stat in self.stats:
                     if stat == "count":
-                        output.append(f"{name}_{stat}")
+                        output_name = f"{name}_{stat}"
+                        self._column_mapping[output_name] = [name]
                     else:
-                        output.append(f"{name}_{cont}_{stat}")
-        return ColumnSelector(output)
+                        output_name = f"{name}_{cont_name}_{stat}"
+                        self._column_mapping[output_name] = [name, cont_name]
+                    
+
+    def _compute_dtype(self, col_schema, input_schemas):
+        col_agg = None
+        for agg in self.stats:
+            if col_schema.name.endswith(agg):
+                col_agg = agg
+                break
+
+        if col_agg == "count":
+            dtype = NVTDtype(name='int', size=64, signed=True, is_list=False)
+        elif col_agg in ["sum", "min", "max"]:
+            column_names = input_schemas.column_names
+            dtype = input_schemas[column_names[-1]].dtype
+        else:
+            dtype = NVTDtype(name='float', size=64, signed=True, is_list=False)
+        
+        return col_schema.with_dtype(dtype)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
@@ -223,7 +269,7 @@ class JoinGroupby(StatOperator):
         return [Tags.CONTINUOUS]
 
     def output_dtype(self):
-        return NVTDtype(name="float", size=64, signed=True, is_list=False)
+        return self._output_dtypes
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
