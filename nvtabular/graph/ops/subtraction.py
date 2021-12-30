@@ -26,7 +26,11 @@ class SubtractionOp(BaseOperator):
         self.selector = selector
 
     def compute_selector(
-        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
         return ColumnSelector(input_schema.column_names)
 

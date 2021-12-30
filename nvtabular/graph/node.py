@@ -51,14 +51,11 @@ class Node:
         if selector is not None:
             self.op = SelectionOp(selector)
 
-        self._selector = selector
+        self.selector = selector
 
     @property
     def selector(self):
-        if not self._selector and any(parent._selector for parent in self.parents):
-            return _combine_selectors(self.parents)
-        else:
-            return self._selector
+        return self._selector
 
     @selector.setter
     def selector(self, sel):
@@ -106,15 +103,16 @@ class Node:
             ):
                 self.selector = self.parents[0].selector
 
-        upstream_selector = _combine_selectors(self.grouped_parents_with_dependencies)
+        parents_selector = _combine_selectors(self.parents)
+        dependencies_selector = _combine_selectors(self.dependencies)
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
 
         self.input_schema = self.op.compute_input_schema(
-            root_schema, parents_schema, deps_schema, self._selector
+            root_schema, parents_schema, deps_schema, self.selector
         )
         self.selector = self.op.compute_selector(
-            self.input_schema, self._selector, upstream_selector
+            self.input_schema, self.selector, parents_selector, dependencies_selector
         )
         self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
 
