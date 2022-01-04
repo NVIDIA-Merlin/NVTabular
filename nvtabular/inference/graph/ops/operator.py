@@ -1,5 +1,6 @@
 from abc import abstractclassmethod, abstractmethod
 
+import nvtabular as nvt
 from nvtabular.graph.base_operator import BaseOperator
 
 
@@ -37,6 +38,9 @@ class InferenceOperator(BaseOperator):
     @abstractmethod
     def export(self, path):
         pass
+
+    def create_node(self, selector):
+        return nvt.inference.graph.node.InferenceNode(selector)
 
 
 class PipelineableInferenceOperator(InferenceOperator):

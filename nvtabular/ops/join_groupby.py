@@ -21,6 +21,7 @@ from dask.delayed import Delayed
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 
 from . import categorify as nvt_cat
@@ -194,6 +195,15 @@ class JoinGroupby(StatOperator):
 
     def dependencies(self):
         return self.cont_cols
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
 
     def output_column_names(self, columns):
         # TODO: the names here are defined in categorify/mid_level_groupby
