@@ -24,6 +24,7 @@ from nvtabular.dispatch import (
     _random_state,
     _read_parquet_dispatch,
 )
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 
 from . import categorify as nvt_cat
@@ -214,6 +215,15 @@ class TargetEncoding(StatOperator):
 
     def dependencies(self):
         return self.dependency
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
 
     def output_column_names(self, columns):
         if hasattr(self.target, "output_columns"):
