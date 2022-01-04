@@ -25,9 +25,13 @@ class ConcatColumns(BaseOperator):
         self._label = label or self.__class__.__name__
 
     def compute_selector(
-        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
-        return upstream_selector
+        return parents_selector + dependencies_selector
 
     def compute_input_schema(
         self,

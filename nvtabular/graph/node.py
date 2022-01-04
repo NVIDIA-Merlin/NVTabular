@@ -51,14 +51,11 @@ class Node:
         if selector is not None:
             self.op = SelectionOp(selector)
 
-        self._selector = selector
+        self.selector = selector
 
     @property
     def selector(self):
-        if not self._selector and any(parent._selector for parent in self.parents):
-            return _combine_selectors(self.parents)
-        else:
-            return self._selector
+        return self._selector
 
     @selector.setter
     def selector(self, sel):
@@ -106,15 +103,16 @@ class Node:
             ):
                 self.selector = self.parents[0].selector
 
-        upstream_selector = _combine_selectors(self.grouped_parents_with_dependencies)
+        parents_selector = _combine_selectors(self.parents)
+        dependencies_selector = _combine_selectors(self.dependencies)
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
 
         self.input_schema = self.op.compute_input_schema(
-            root_schema, parents_schema, deps_schema, self._selector
+            root_schema, parents_schema, deps_schema, self.selector
         )
         self.selector = self.op.compute_selector(
-            self.input_schema, self._selector, upstream_selector
+            self.input_schema, self.selector, parents_selector, dependencies_selector
         )
         self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
 
@@ -355,7 +353,38 @@ def iter_nodes(nodes):
             yield current
             # TODO: deduplicate nodes?
             for node in current.parents_with_dependencies:
+
                 queue.append(node)
+
+
+def preorder_iter_nodes(nodes):
+    queue = []
+    if not isinstance(nodes, list):
+        nodes = [nodes]
+
+    def traverse(current_nodes):
+        for node in current_nodes:
+            queue.append(node)
+            traverse(node.parents_with_dependencies)
+
+    traverse(nodes)
+    for node in queue:
+        yield node
+
+
+def postorder_iter_nodes(nodes):
+    queue = []
+    if not isinstance(nodes, list):
+        nodes = [nodes]
+
+    def traverse(current_nodes):
+        for node in current_nodes:
+            traverse(node.parents_with_dependencies)
+            queue.append(node)
+
+    traverse(nodes)
+    for node in queue:
+        yield node
 
 
 def _filter_by_type(elements, type_):

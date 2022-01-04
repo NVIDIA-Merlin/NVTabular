@@ -116,6 +116,15 @@ class ColumnSimilarity(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        return parents_selector
+
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         output_schema = Schema()
         for grouped_columns in col_selector.grouped_names:
