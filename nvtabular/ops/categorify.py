@@ -507,17 +507,10 @@ class Categorify(StatOperator):
             column_mapping = super().column_mapping(col_selector)
         return column_mapping
 
-    def _compute_dtype(self, col_schema, input_schema):
-        is_list = any(col_schema._is_list for _, col_schema in input_schema.column_schemas.items())
-        return col_schema.with_dtype(self.output_dtype, is_list=is_list)
-
-    def _compute_tags(self, col_schema, input_schema):
-        source_col_name = input_schema.column_names[0]
-        return col_schema.with_tags(input_schema[source_col_name].tags + self.output_tags)
-
     def _compute_properties(self, col_schema, input_schema):
-        source_col_name = input_schema.column_names[0]
+        new_schema = super()._compute_properties(col_schema, input_schema)
         col_name = col_schema.name
+
         target_column_path = self.categories.get(col_name, None)
         cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
 
@@ -539,7 +532,7 @@ class Categorify(StatOperator):
                 "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
             }
 
-        return col_schema.with_properties({**input_schema[source_col_name].properties, **to_add})
+        return col_schema.with_properties({**new_schema.properties, **to_add})
 
     @property
     def output_tags(self):

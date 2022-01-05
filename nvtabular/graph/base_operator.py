@@ -138,7 +138,7 @@ class BaseOperator:
 
         if hasattr(self, "output_dtype"):
             dtype = self.output_dtype
-            is_list = col_schema._is_list
+            is_list = any(cs._is_list for _, cs in input_schema.column_schemas.items())
 
         return col_schema.with_dtype(dtype, is_list=is_list)
 
