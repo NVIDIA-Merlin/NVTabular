@@ -1,7 +1,7 @@
 import numpy as np
-import nvtabular
 import pytest
 
+import nvtabular
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector

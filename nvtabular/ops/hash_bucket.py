@@ -104,7 +104,7 @@ class HashBucket(Operator):
     def _compute_dtype(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
         return col_schema.with_dtype(
-           self.output_dtypes(), is_list=input_schemas[source_col_name]._is_list
+            self.output_dtypes(), is_list=input_schemas[source_col_name]._is_list
         )
 
     def _compute_tags(self, col_schema, input_schemas):

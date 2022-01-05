@@ -241,9 +241,10 @@ class TargetEncoding(StatOperator):
         if input_schemas.column_schemas:
             source_col_name = input_schemas.column_names[0]
             return col_schema.with_dtype(
-                input_schemas[source_col_name].dtype, is_list=input_schemas[source_col_name]._is_list
+                input_schemas[source_col_name].dtype,
+                is_list=input_schemas[source_col_name]._is_list,
             )
-        # fold only, setting the np.int 
+        # fold only, setting the np.int
         return col_schema.with_dtype(np.int)
 
     def _compute_tags(self, col_schema, input_schemas):
