@@ -260,16 +260,78 @@ def test_categorify_multi(tmpdir, cat_names, kind, cpu):
 
 
 @pytest.mark.parametrize("cpu", _CPU)
-def test_categorify_multi_combo(tmpdir, cpu):
-    cat_names = [["Author", "Engaging User"], ["Author"], "Engaging User"]
-    kind = "combo"
-    df = pd.DataFrame(
+@pytest.mark.parametrize(
+    "cat_names",
+    [
+        [["Author", "Engaging User"], ["Author"], ["Engaging User"]],
+        [["Author", "Engaging User"], ["Author"], "Engaging User"],
+        [["Author", "Engaging User"], "Author", ["Engaging User"]],
+        [["Author", "Engaging User"], "Author", "Engaging User"],
+    ],
+)
+@pytest.mark.parametrize(
+    "input_with_output",
+    [
+        # dupes in both Author
         {
-            "Author": ["User_A", "User_E", "User_B", "User_C"],
-            "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
-            "Post": [1, 2, 3, 4],
-        }
-    )
+            "df_data": {
+                "Author": ["User_B", "User_E", "User_B", "User_C"],
+                "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [1, 3, 1, 2],
+            "expected_e": [3, 2, 1, 4],
+            "expected_ae": [2, 4, 1, 3],
+        },
+        # dupes in both Engaging user
+        {
+            "df_data": {
+                "Author": ["User_A", "User_E", "User_B", "User_C"],
+                "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [1, 4, 2, 3],
+            "expected_e": [1, 1, 2, 3],
+            "expected_ae": [1, 4, 2, 3],
+        },
+        # dupes in both Author and Engaging User
+        {
+            "df_data": {
+                "Author": ["User_C", "User_E", "User_B", "User_C"],
+                "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [1, 3, 2, 1],
+            "expected_e": [1, 1, 2, 3],
+            "expected_ae": [2, 4, 1, 3],
+        },
+        # dupes in both, lining up
+        {
+            "df_data": {
+                "Author": ["User_A", "User_B", "User_C", "User_C"],
+                "Engaging User": ["User_A", "User_B", "User_C", "User_C"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [2, 3, 1, 1],
+            "expected_e": [2, 3, 1, 1],
+            "expected_ae": [1, 2, 3, 3],
+        },
+        # no dupes
+        {
+            "df_data": {
+                "Author": ["User_C", "User_E", "User_B", "User_A"],
+                "Engaging User": ["User_C", "User_B", "User_A", "User_D"],
+                "Post": [1, 2, 3, 4],
+            },
+            "expected_a": [3, 4, 2, 1],
+            "expected_e": [3, 2, 1, 4],
+            "expected_ae": [3, 4, 2, 1],
+        },
+    ],
+)
+def test_categorify_multi_combo(tmpdir, input_with_output, cat_names, cpu):
+    kind = "combo"
+    df = pd.DataFrame(input_with_output["df_data"])
 
     label_name = ["Post"]
     cats = cat_names >> ops.Categorify(out_path=str(tmpdir), encode_type=kind)
@@ -288,10 +350,9 @@ def test_categorify_multi_combo(tmpdir, cpu):
         if cpu
         else df_out["Author_Engaging User"].to_arrow().to_pylist()
     )
-    assert compare_a == [1, 4, 2, 3]
-    # here User B has more frequency so lower encode value
-    assert compare_e == [1, 1, 2, 3]
-    assert compare_ae == [1, 4, 2, 3]
+    assert compare_a == input_with_output["expected_a"]
+    assert compare_e == input_with_output["expected_e"]
+    assert compare_ae == input_with_output["expected_ae"]
 
 
 @pytest.mark.parametrize("freq_limit", [None, 0, {"Author": 3, "Engaging User": 4}])
