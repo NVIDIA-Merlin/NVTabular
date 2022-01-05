@@ -458,6 +458,9 @@ class Categorify(StatOperator):
                 # Only use the "aliased" `storage_name` if we are dealing with
                 # a multi-column group, or if we are doing joint encoding
 
+                if isinstance(use_name, (list, tuple)) and len(use_name) == 1:
+                    use_name = use_name[0]
+
                 if use_name != name or self.encode_type == "joint":
                     storage_name = self.storage_name.get(name, name)
                 else:
@@ -465,6 +468,7 @@ class Categorify(StatOperator):
 
                 if isinstance(use_name, tuple):
                     use_name = list(use_name)
+
                 path = self.categories[storage_name]
                 new_df[name] = _encode(
                     use_name,
@@ -489,6 +493,58 @@ class Categorify(StatOperator):
 
         return new_df
 
+    def construct_column_mapping(self, col_selector):
+        if self.encode_type == "combo":
+            for group in col_selector.grouped_names:
+                group_col_selector = ColumnSelector(subgroups=ColumnSelector(group))
+                cat_names, _ = _get_multicolumn_names(
+                    group_col_selector, group_col_selector.grouped_names, self.name_sep
+                )
+                for name in cat_names:
+                    self._column_mapping[name] = group_col_selector.names
+        else:
+            super().construct_column_mapping(col_selector)
+
+    def _compute_dtype(self, col_schema, input_schemas):
+        is_list = any(col_schema._is_list for _, col_schema in input_schemas.column_schemas.items())
+        return col_schema.with_dtype(self.output_dtype(), is_list=is_list)
+
+    def _compute_tags(self, col_schema, input_schemas):
+        source_col_name = input_schemas.column_names[0]
+        return col_schema.with_tags(input_schemas[source_col_name].tags + self.output_tags())
+
+    def _compute_properties(self, col_schema, input_schemas):
+        source_col_name = input_schemas.column_names[0]
+        col_name = col_schema.name
+        target_column_path = self.categories.get(col_name, None)
+        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
+
+        to_add = {}
+        if target_column_path:
+            to_add = {
+                "num_buckets": self.num_buckets[col_name]
+                if isinstance(self.num_buckets, dict)
+                else self.num_buckets,
+                "freq_threshold": self.freq_threshold[col_name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+                "max_size": self.max_size[col_name]
+                if isinstance(self.max_size, dict)
+                else self.max_size,
+                "start_index": self.start_index,
+                "cat_path": target_column_path,
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
+            }
+
+        return col_schema.with_properties({**input_schemas[source_col_name].properties, **to_add})
+
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def output_dtype(self):
+        return np.int
+
     def compute_selector(
         self,
         input_schema: Schema,
@@ -497,14 +553,6 @@ class Categorify(StatOperator):
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
         return parents_selector
-
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        if self.encode_type == "combo":
-            cat_names, _ = _get_multicolumn_names(
-                col_selector, col_selector.grouped_names, self.name_sep
-            )
-            return ColumnSelector(cat_names)
-        return ColumnSelector(flatten(col_selector.names, container=tuple))
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
@@ -525,41 +573,9 @@ class Categorify(StatOperator):
 
         return nvtabular_cpp.inference.CategorifyTransform(self)
 
-    def output_tags(self):
-        return [Tags.CATEGORICAL]
-
-    def output_dtype(self):
-        return np.int
-
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
-
-    def _add_properties(self, column_schema):
-        col_name = column_schema.name
-        target_column_path = self.output_properties().get(col_name, None)
-        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
-        if target_column_path:
-            to_add = {
-                "num_buckets": self.num_buckets[col_name]
-                if isinstance(self.num_buckets, dict)
-                else self.num_buckets,
-                "freq_threshold": self.freq_threshold[col_name]
-                if isinstance(self.freq_threshold, dict)
-                else self.freq_threshold,
-                "max_size": self.max_size[col_name]
-                if isinstance(self.max_size, dict)
-                else self.max_size,
-                "start_index": self.start_index,
-                "cat_path": target_column_path,
-                "domain": {"min": 0, "max": cardinality},
-                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
-            }
-            return column_schema.with_properties(to_add)
-        return column_schema
-
-    def output_properties(self):
-        return self.categories
 
 
 def get_embedding_sizes(source, output_dtypes=None):

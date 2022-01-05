@@ -123,18 +123,6 @@ class BaseOperator:
         methods = [self._compute_dtype, self._compute_tags, self._compute_properties]
         return self._compute_column_schema(col_name, input_schemas, methods=methods)
 
-    # def compute_column_dtypes(self, col_name, input_schemas):
-    #     methods=[self._compute_dtype]
-    #     return self._compute_column_schema(col_name, input_schemas, methods=methods)
-
-    # def compute_column_properties(self, col_name, input_schemas):
-    #     methods=[self._compute_properties]
-    #     return self._compute_column_schema(col_name, input_schemas, methods=methods)
-
-    # def compute_column_tags(self, col_name, input_schemas):
-    #     methods=[self._compute_tags]
-    #     return self._compute_column_schema(col_name, input_schemas, methods=methods)
-
     def _compute_column_schema(self, col_name, input_schemas, methods=None):
         col_schema = ColumnSchema(col_name)
 
@@ -143,10 +131,11 @@ class BaseOperator:
 
         return col_schema
 
-    # TODO: Override these `_compute` methods in the operators as needed
     def _compute_dtype(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
-        return col_schema.with_dtype(input_schemas[source_col_name].dtype)
+        return col_schema.with_dtype(
+            input_schemas[source_col_name].dtype, is_list=input_schemas[source_col_name]._is_list
+        )
 
     def _compute_tags(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
@@ -172,12 +161,6 @@ class BaseOperator:
             The names of columns produced by this operator
         """
         return ColumnSelector(list(self._column_mapping.keys()))
-
-        # SelectionOp -> ColumnSelector(names=[], subgroups=[ColumnSelector(names=["Author", "Cost"])])
-        # _column_mapping = {"Author": ["Author"], "Cost": ["Cost"]}
-
-        # output_col_name: [("Author", "Cost")]
-        # self._column_mapping.add_output("output_col_name", inputs=[["Author", ""]])
 
     def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
