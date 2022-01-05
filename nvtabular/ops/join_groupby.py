@@ -165,9 +165,7 @@ class JoinGroupby(StatOperator):
         tmp = "__tmp__"  # Temporary column for sorting
         df[tmp] = _arange(len(df), like_df=df, dtype="int32")
 
-        cat_names, multi_col_group = nvt_cat._get_multicolumn_names(
-            col_selector, df.columns, self.name_sep
-        )
+        cat_names, multi_col_group = _get_multicolumn_names(col_selector, df.columns, self.name_sep)
 
         _read_pq_func = _read_parquet_dispatch(df)
         for name in cat_names:
@@ -234,3 +232,19 @@ class JoinGroupby(StatOperator):
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
+
+
+def _get_multicolumn_names(col_selector, df_columns, name_sep):
+    cat_names = []
+    multi_col_group = {}
+    for col_name in col_selector.grouped_names:
+        if isinstance(col_name, (list, tuple)):
+            name = nvt_cat._make_name(*col_name, sep=name_sep)
+            if name not in cat_names:
+                cat_names.append(name)
+                # TODO: Perhaps we should check that all columns from the group
+                #       are in df here?
+                multi_col_group[name] = col_name
+        elif col_name in df_columns:
+            cat_names.append(col_name)
+    return cat_names, multi_col_group

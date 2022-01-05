@@ -432,27 +432,14 @@ class Categorify(StatOperator):
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in col_selector.names)
 
-        if self.encode_type == "combo":
-            # Case (3) - We want to track multi- and single-column groups separately
-            #            when we are NOT performing a joint encoding. This is because
-            #            there is not a 1-to-1 mapping for columns in multi-col groups.
-            #            We use `multi_col_group` to preserve the list format of
-            #            multi-column groups only, and use `cat_names` to store the
-            #            string representation of both single- and multi-column groups.
-            #
-            cat_names, multi_col_group = _get_multicolumn_names(
-                col_selector, df.columns, self.name_sep
-            )
-        else:
-            # Case (1) & (2) - Simple 1-to-1 mapping
-            multi_col_group = {}
-            cat_names = list(flatten(col_selector.names, container=tuple))
+        column_mapping = self.column_mapping(col_selector)
+        column_names = column_mapping.keys()
 
         # Encode each column-group separately
-        for name in cat_names:
+        for name in column_names:
             try:
                 # Use the column-group `list` directly (not the string name)
-                use_name = multi_col_group.get(name, name)
+                use_name = column_mapping.get(name, name)
 
                 # Storage name may be different than group for case (2)
                 # Only use the "aliased" `storage_name` if we are dealing with
@@ -483,7 +470,7 @@ class Categorify(StatOperator):
                     search_sorted=self.search_sorted,
                     buckets=self.num_buckets,
                     encode_type=self.encode_type,
-                    cat_names=cat_names,
+                    cat_names=column_names,
                     max_size=self.max_size,
                     dtype=self.dtype,
                     start_index=self.start_index,
@@ -497,12 +484,14 @@ class Categorify(StatOperator):
         column_mapping = {}
         if self.encode_type == "combo":
             for group in col_selector.grouped_names:
-                group_col_selector = ColumnSelector(subgroups=ColumnSelector(group))
-                cat_names, _ = _get_multicolumn_names(
-                    group_col_selector, group_col_selector.grouped_names, self.name_sep
-                )
-                for name in cat_names:
-                    column_mapping[name] = group_col_selector.names
+                if isinstance(group, (tuple, list)):
+                    name = _make_name(*group, sep=self.name_sep)
+                    group = [*group]
+                else:
+                    name = group
+                    group = [group]
+
+                column_mapping[name] = group
         else:
             column_mapping = super().column_mapping(col_selector)
         return column_mapping
@@ -1385,22 +1374,6 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
             if cache:
                 return fetch_table_data(cache, path, cache=cat_cache, reader=read_pq_func)
     return read_pq_func(path)
-
-
-def _get_multicolumn_names(col_selector, df_columns, name_sep):
-    cat_names = []
-    multi_col_group = {}
-    for col_name in col_selector.grouped_names:
-        if isinstance(col_name, (list, tuple)):
-            name = _make_name(*col_name, sep=name_sep)
-            if name not in cat_names:
-                cat_names.append(name)
-                # TODO: Perhaps we should check that all columns from the group
-                #       are in df here?
-                multi_col_group[name] = col_name
-        elif col_name in df_columns:
-            cat_names.append(col_name)
-    return cat_names, multi_col_group
 
 
 def _is_list_col(col_selector, df):
