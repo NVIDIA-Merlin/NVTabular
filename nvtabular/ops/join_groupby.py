@@ -205,22 +205,23 @@ class JoinGroupby(StatOperator):
     ) -> ColumnSelector:
         return parents_selector
 
-    def output_column_names(self, columns):
-        # TODO: the names here are defined in categorify/mid_level_groupby
-        # refactor to have a common implementation
-        output = []
+    def construct_column_mapping(self, col_selector):
+        for group in col_selector.grouped_names:
+            if isinstance(group, (tuple, list)):
+                name = nvt_cat._make_name(*group, sep=self.name_sep)
+                group = [*group]
+            else:
+                name = group
+                group = [group]
 
-        for name in columns.grouped_names:
-            if isinstance(name, (tuple, list)):
-                name = nvt_cat._make_name(*name, sep=self.name_sep)
+            # TODO: Figure out if we should maintain column grouping in the list of input cols
             for cont in self.cont_names.names:
                 for stat in self.stats:
                     if stat == "count":
-                        output.append(f"{name}_{stat}")
+                        self._column_mapping[f"{name}_{stat}"] = [*group]
                     else:
-                        output.append(f"{name}_{cont}_{stat}")
-        return ColumnSelector(output)
-
+                        self._column_mapping[f"{name}_{cont}_{stat}"] = [*group, cont]
+            
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
         self.out_path = new_path
@@ -228,12 +229,6 @@ class JoinGroupby(StatOperator):
     def clear(self):
         self.categories = {}
         self.storage_name = {}
-
-    def output_tags(self):
-        return [Tags.CONTINUOUS]
-
-    def output_dtype(self):
-        return numpy.float
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

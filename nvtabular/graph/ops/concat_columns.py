@@ -23,6 +23,7 @@ from nvtabular.graph.selector import ColumnSelector
 class ConcatColumns(BaseOperator):
     def __init__(self, label=None):
         self._label = label or self.__class__.__name__
+        super().__init__()
 
     def compute_selector(
         self,

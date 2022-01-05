@@ -117,6 +117,7 @@ class JoinExternal(Operator):
             raise ValueError("Only left join is currently supported.")
         if not isinstance(self.kind_ext, ExtData):
             raise ValueError("kind_ext option not recognized.")
+        super().__init__()
 
     @property
     def _ext(self):
@@ -199,14 +200,6 @@ class JoinExternal(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
-        ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
-
-        # This maintains the order which set() does not
-        combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
-
-        return ColumnSelector(list(combined))
-
     def compute_selector(
         self,
         input_schema: Schema,
@@ -220,6 +213,31 @@ class JoinExternal(Operator):
         # must load in the schema from the external dataset
         input_schema = input_schema + self.df_ext.schema
         return super().compute_output_schema(input_schema, col_selector)
+
+    def construct_column_mapping(self, col_selector):
+        ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
+
+        # This maintains the order which set() does not
+        combined_col_names = dict.fromkeys(col_selector.names + list(ext_columns)).keys()
+
+        for col_name in combined_col_names:
+            if col_name in col_selector.names:
+                self._column_mapping[col_name] = [col_name]
+            else:
+                self._column_mapping[col_name] = []
+
+    def _compute_dtype(self, col_schema, input_schema):
+        if col_schema.name in input_schema.column_names:
+            return super()._compute_dtype(col_schema, input_schema)
+        else:
+            col_dtype = self.df_ext.schema.column_schemas[col_schema.name].dtype
+            return col_schema.with_dtype(col_dtype)
+
+    def _compute_tags(self, col_schema, input_schemas):
+        return col_schema
+
+    def _compute_properties(self, col_schema, input_schemas):
+        return col_schema
 
 
 def _check_partition_count(df):

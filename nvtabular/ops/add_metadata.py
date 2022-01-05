@@ -25,22 +25,23 @@ class AddMetadata(Operator):
     """
 
     def __init__(self, tags=None, properties=None):
+        super().__init__()
         self.tags = tags or []
         self.properties = properties or {}
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         return df
 
+    def _compute_tags(self, col_schema, input_schemas):
+        source_col_name = input_schemas.column_names[0]
+        return col_schema.with_tags(input_schemas[source_col_name].tags + self.output_tags())
+
+    def _compute_properties(self, col_schema, input_schemas):
+        source_col_name = input_schemas.column_names[0]
+        return col_schema.with_properties({**input_schemas[source_col_name].properties, **self.output_properties()})
+
     def output_tags(self):
         return self.tags
 
     def output_properties(self):
         return self.properties
-
-    def _add_properties(self, column_schema):
-        # get_properties should return the additional properties
-        # for target column
-        target_column_properties = self.output_properties()
-        if target_column_properties:
-            return column_schema.with_properties(target_column_properties)
-        return column_schema

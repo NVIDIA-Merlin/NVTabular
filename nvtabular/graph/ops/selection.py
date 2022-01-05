@@ -28,6 +28,7 @@ LOG = logging.getLogger("SelectionOp")
 class SelectionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
+        super().__init__()
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = col_selector or self.selector

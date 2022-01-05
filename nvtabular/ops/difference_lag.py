@@ -83,16 +83,21 @@ class DifferenceLag(Operator):
     def dependencies(self):
         return self.partition_cols
 
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        return ColumnSelector(
-            [self._column_name(col, shift) for shift in self.shifts for col in col_selector.names]
-        )
+    def construct_column_mapping(self, col_selector):
+        for col in col_selector.names:
+            for shift in self.shifts:
+                output_col_name = self._column_name(col, shift)
+                self._column_mapping[output_col_name] = [col]
 
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
 
-    def output_tags(self):
-        return [Tags.CONTINUOUS]
+    def _compute_dtype(self, col_schema, input_schemas):
+        source_col_name = input_schemas.column_names[0]
+        return col_schema.with_dtype(numpy.float64)
 
-    def _dtype(self):
-        return numpy.float
+    def _compute_tags(self, col_schema, input_schemas):
+        source_col_name = input_schemas.column_names[0]
+        return col_schema.with_tags(input_schemas[source_col_name].tags + [Tags.CONTINUOUS])
+
+

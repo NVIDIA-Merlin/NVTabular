@@ -448,11 +448,13 @@ def test_rename(cpu):
     selector = ColumnSelector(["x", "y"])
 
     op = ops.Rename(f=lambda name: name.upper())
+    op.construct_column_mapping(selector)
     transformed = op.transform(selector, df)
     expected = DataFrame({"X": [1, 2, 3, 4, 5], "Y": [6, 7, 8, 9, 10]})
     assert_eq(transformed, expected)
 
     op = ops.Rename(postfix="_lower")
+    op.construct_column_mapping(selector)
     transformed = op.transform(selector, df)
     expected = DataFrame({"x_lower": [1, 2, 3, 4, 5], "y_lower": [6, 7, 8, 9, 10]})
     assert_eq(transformed, expected)
@@ -460,11 +462,13 @@ def test_rename(cpu):
     selector = ColumnSelector(["x"])
 
     op = ops.Rename(name="z")
+    op.construct_column_mapping(selector)
     transformed = op.transform(selector, df)
     expected = DataFrame({"z": [1, 2, 3, 4, 5]})
     assert_eq(transformed, expected)
 
     op = nvt.ops.Rename(f=lambda name: name.upper())
+    op.construct_column_mapping(selector)
     transformed = op.transform(selector, df)
     expected = DataFrame({"X": [1, 2, 3, 4, 5]})
     assert_eq(transformed, expected)

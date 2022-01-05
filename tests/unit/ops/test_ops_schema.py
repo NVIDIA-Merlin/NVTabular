@@ -40,34 +40,33 @@ def test_schema_out(tags, properties, selection, op):
         column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
 
     # Turn to Schema
-    schema = Schema(column_schemas)
+    input_schema = Schema(column_schemas)
 
     # run schema through op
     selector = ColumnSelector(selection)
-    new_schema = op.compute_output_schema(schema, selector)
+    output_schema = op.compute_output_schema(input_schema, selector)
 
     # should have dtype float
     for col_name in selector.names:
-        names_group = [name for name in new_schema.column_schemas if col_name in name]
+        names_group = [name for name in output_schema.column_schemas if col_name in name]
         if names_group:
             for name in names_group:
-                schema1 = new_schema.column_schemas[name]
+                schema1 = output_schema.column_schemas[name]
 
                 # should not be exactly the same name, having gone through operator
-                assert schema1.dtype == op.output_dtype()
+                assert schema1.dtype == op._compute_dtype(ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])).dtype
+                output_tags = op._compute_tags(ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])).tags
+                output_properties = op._compute_properties(ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])).properties
                 if name in selector.names:
-                    assert (
-                        schema1.properties
-                        == op._add_properties(schema.column_schemas[schema1.name]).properties
-                    )
-                    all_tags = op.output_tags() + tags
-                    assert len(schema1.tags) == len(all_tags)
+                    assert schema1.properties == output_properties
+
+                    assert len(schema1.tags) == len(output_tags)
                 else:
-                    assert set(op.output_tags()).issubset(schema1.tags)
+                    assert set(output_tags).issubset(schema1.tags)
 
     not_used = [col for col in all_cols if col not in selector.names]
     for col_name in not_used:
-        assert col_name not in new_schema.column_schemas
+        assert col_name not in output_schema.column_schemas
 
 
 @pytest.mark.parametrize("properties", [{"p1": "1"}])
