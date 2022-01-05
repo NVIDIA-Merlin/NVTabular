@@ -306,12 +306,8 @@ class Node:
         return ColumnSelector(self.output_schema.column_names)
 
     @property
-    def dependency_schema(self):
-        return _combine_schemas(self.dependencies)
-
-    @property
     def dependency_columns(self):
-        return _combine_selectors(self.dependencies)
+        return ColumnSelector(_combine_schemas(self.dependencies).column_names)
 
     @property
     def label(self):

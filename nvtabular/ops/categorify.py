@@ -494,6 +494,7 @@ class Categorify(StatOperator):
         return new_df
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         if self.encode_type == "combo":
             for group in col_selector.grouped_names:
                 group_col_selector = ColumnSelector(subgroups=ColumnSelector(group))

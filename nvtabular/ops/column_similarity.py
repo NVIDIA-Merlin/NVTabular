@@ -126,6 +126,7 @@ class ColumnSimilarity(Operator):
         return parents_selector
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         for group in col_selector.grouped_names:
             a, b = group
             col_name = f"{a}_{b}_sim"

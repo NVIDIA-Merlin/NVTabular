@@ -206,6 +206,7 @@ class JoinGroupby(StatOperator):
         return parents_selector
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         for group in col_selector.grouped_names:
             if isinstance(group, (tuple, list)):
                 name = nvt_cat._make_name(*group, sep=self.name_sep)

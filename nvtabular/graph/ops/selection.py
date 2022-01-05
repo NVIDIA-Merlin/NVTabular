@@ -47,7 +47,3 @@ class SelectionOp(BaseOperator):
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         selector = col_selector or self.selector
         return super().compute_output_schema(input_schema, selector)
-
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        selector = col_selector or self.selector
-        return super().output_column_names(selector)

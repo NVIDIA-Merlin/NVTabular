@@ -116,6 +116,7 @@ class BaseOperator:
         return output_schema
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         for col_name in col_selector.names:
             self._column_mapping[col_name] = [col_name]
 

@@ -80,6 +80,7 @@ class HashedCross(Operator):
         return col_schema.with_tags(input_schemas[source_col_name].tags)
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         for cross in _nest_columns(col_selector):
             output_col = "_X_".join(cross)
             self._column_mapping[output_col] = [*cross]

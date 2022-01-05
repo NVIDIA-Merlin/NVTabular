@@ -59,6 +59,7 @@ class Rename(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         for col_name in col_selector.names:
             if self.f:
                 new_col_name = self.f(col_name)

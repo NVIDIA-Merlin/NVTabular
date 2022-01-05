@@ -132,6 +132,7 @@ class Groupby(Operator):
         return super().compute_output_schema(input_schema, col_selector)
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         _list_aggs, _conv_aggs = _get_agg_dicts(
             self.groupby_cols, self.list_aggs, self.conv_aggs, col_selector
         )

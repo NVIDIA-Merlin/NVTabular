@@ -215,6 +215,7 @@ class JoinExternal(Operator):
         return super().compute_output_schema(input_schema, col_selector)
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
 
         # This maintains the order which set() does not

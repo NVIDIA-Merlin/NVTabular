@@ -84,6 +84,7 @@ class DifferenceLag(Operator):
         return self.partition_cols
 
     def construct_column_mapping(self, col_selector):
+        self._column_mapping = {}
         for col in col_selector.names:
             for shift in self.shifts:
                 output_col_name = self._column_name(col, shift)
