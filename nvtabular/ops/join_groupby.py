@@ -15,7 +15,6 @@
 #
 
 import dask.dataframe as dd
-import numpy
 import pandas as pd
 from dask.delayed import Delayed
 
@@ -205,8 +204,8 @@ class JoinGroupby(StatOperator):
     ) -> ColumnSelector:
         return parents_selector
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for group in col_selector.grouped_names:
             if isinstance(group, (tuple, list)):
                 name = nvt_cat._make_name(*group, sep=self.name_sep)
@@ -215,13 +214,14 @@ class JoinGroupby(StatOperator):
                 name = group
                 group = [group]
 
-            # TODO: Figure out if we should maintain column grouping in the list of input cols
             for cont in self.cont_names.names:
                 for stat in self.stats:
                     if stat == "count":
-                        self._column_mapping[f"{name}_{stat}"] = [*group]
+                        column_mapping[f"{name}_{stat}"] = [*group]
                     else:
-                        self._column_mapping[f"{name}_{cont}_{stat}"] = [*group, cont]
+                        column_mapping[f"{name}_{cont}_{stat}"] = [*group, cont]
+
+        return column_mapping
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)

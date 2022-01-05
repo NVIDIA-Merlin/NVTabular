@@ -131,8 +131,8 @@ class Groupby(Operator):
             )
         return super().compute_output_schema(input_schema, col_selector)
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         _list_aggs, _conv_aggs = _get_agg_dicts(
             self.groupby_cols, self.list_aggs, self.conv_aggs, col_selector
         )
@@ -142,17 +142,17 @@ class Groupby(Operator):
                 {input_col_name: aggs}, name_sep=self.name_sep
             )
             for output_col_name in output_col_names:
-                self._column_mapping[output_col_name] = [input_col_name]
+                column_mapping[output_col_name] = [input_col_name]
 
         for input_col_name, aggs in _conv_aggs.items():
             output_col_names = _columns_out_from_aggs(
                 {input_col_name: aggs}, name_sep=self.name_sep
             )
             for output_col_name in output_col_names:
-                self._column_mapping[output_col_name] = [input_col_name]
+                column_mapping[output_col_name] = [input_col_name]
+        return column_mapping
 
-    def _compute_dtype(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
+    def _compute_dtype(self, col_schema, input_schema):
         return col_schema.with_dtype(numpy.int64)
 
 

@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtabular.graph.schema import Schema
-
 from ..dispatch import DataFrameType
 from .operator import ColumnSelector, Operator
 
@@ -53,13 +51,13 @@ class Rename(Operator):
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         df = df[col_selector.names]
-        df.columns = list(self._column_mapping.keys())
+        df.columns = list(self.column_mapping(col_selector).keys())
         return df
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for col_name in col_selector.names:
             if self.f:
                 new_col_name = self.f(col_name)
@@ -75,4 +73,6 @@ class Rename(Operator):
                     "The Rename op requires one of f, postfix, or name to be provided"
                 )
 
-            self._column_mapping[new_col_name] = [col_name]
+            column_mapping[new_col_name] = [col_name]
+
+        return column_mapping

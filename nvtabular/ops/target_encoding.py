@@ -223,8 +223,8 @@ class TargetEncoding(StatOperator):
     ) -> ColumnSelector:
         return parents_selector
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         if hasattr(self.target, "output_columns"):
             self.target = self.target.output_columns
 
@@ -232,34 +232,37 @@ class TargetEncoding(StatOperator):
             group = ColumnSelector(group)
             result_names = self._make_te_name(group.names)
             for name in result_names:
-                self._column_mapping[name] = group.names
+                column_mapping[name] = group.names
 
         if self.kfold > 1 and not self.drop_folds:
-            self._column_mapping[self.fold_name] = []
+            column_mapping[self.fold_name] = []
 
-    def _compute_dtype(self, col_schema, input_schemas):
-        if input_schemas.column_schemas:
-            source_col_name = input_schemas.column_names[0]
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
             return col_schema.with_dtype(
-                input_schemas[source_col_name].dtype,
-                is_list=input_schemas[source_col_name]._is_list,
+                input_schema[source_col_name].dtype,
+                is_list=input_schema[source_col_name]._is_list,
             )
         # fold only, setting the np.int
         return col_schema.with_dtype(np.int)
 
-    def _compute_tags(self, col_schema, input_schemas):
-        if input_schemas.column_schemas:
-            source_col_name = input_schemas.column_names[0]
-            return col_schema.with_tags(input_schemas[source_col_name].tags + self.output_tags())
+    def _compute_tags(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_tags(input_schema[source_col_name].tags + self.output_tags)
         return col_schema
 
+    @property
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _compute_properties(self, col_schema, input_schemas):
-        if input_schemas.column_schemas:
-            source_col_name = input_schemas.column_names[0]
-            return col_schema.with_properties(input_schemas[source_col_name].properties)
+    def _compute_properties(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_properties(input_schema[source_col_name].properties)
         return col_schema
 
     def set_storage_path(self, new_path, copy=False):

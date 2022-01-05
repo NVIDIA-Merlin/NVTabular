@@ -30,7 +30,7 @@ except ImportError:
     from scipy.sparse import coo_matrix
 
 from nvtabular.dispatch import DataFrameType, annotate
-from nvtabular.graph import ColumnSchema, Schema
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 
 from .operator import ColumnSelector, Operator
@@ -125,17 +125,20 @@ class ColumnSimilarity(Operator):
     ) -> ColumnSelector:
         return parents_selector
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for group in col_selector.grouped_names:
             a, b = group
             col_name = f"{a}_{b}_sim"
-            self._column_mapping[col_name] = [a, b]
+            column_mapping[col_name] = [a, b]
+        return column_mapping
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
+    @property
+    def output_dtype(self):
         return numpy.float
 
 

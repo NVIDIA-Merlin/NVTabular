@@ -16,7 +16,6 @@
 import dask.dataframe as dd
 
 from nvtabular.dispatch import DataFrameType, annotate
-from nvtabular.graph.schema import Schema
 
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
@@ -66,12 +65,13 @@ class FillMissing(Operator):
 
         return nvtabular_cpp.inference.FillTransform(self)
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for col_name in col_selector.names:
-            self._column_mapping[col_name] = [col_name]
+            column_mapping[col_name] = [col_name]
             if self.add_binary_cols:
-                self._column_mapping[f"{col_name}_filled"] = [col_name]
+                column_mapping[f"{col_name}_filled"] = [col_name]
+        return column_mapping
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -128,9 +128,10 @@ class FillMedian(StatOperator):
     def clear(self):
         self.medians = {}
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for col_name in col_selector.names:
-            self._column_mapping[col_name] = [col_name]
+            column_mapping[col_name] = [col_name]
             if self.add_binary_cols:
-                self._column_mapping[f"{col_name}_filled"] = [col_name]
+                column_mapping[f"{col_name}_filled"] = [col_name]
+        return column_mapping

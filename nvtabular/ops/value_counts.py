@@ -58,19 +58,10 @@ class ValueCount(StatOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         return df
 
-    def _compute_properties(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        properties = self.output_properties().get(col_schema.name, {}) or {}
-        return col_schema.with_properties(
-            {**input_schemas[source_col_name].properties, **properties}
-        )
-
-    def _compute_tags(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        return col_schema.with_tags(input_schemas[source_col_name].tags)
-
-    def output_properties(self):
-        return self.stats
+    def _compute_properties(self, col_schema, input_schema):
+        new_schema = super()._compute_properties(col_schema, input_schema)
+        stat_properties = self.stats.get(col_schema.name, {})
+        return col_schema.with_properties({**new_schema.properties, **stat_properties})
 
     def clear(self):
         self.stats = {}

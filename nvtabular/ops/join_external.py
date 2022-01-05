@@ -214,8 +214,8 @@ class JoinExternal(Operator):
         input_schema = input_schema + self.df_ext.schema
         return super().compute_output_schema(input_schema, col_selector)
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
 
         # This maintains the order which set() does not
@@ -223,9 +223,11 @@ class JoinExternal(Operator):
 
         for col_name in combined_col_names:
             if col_name in col_selector.names:
-                self._column_mapping[col_name] = [col_name]
+                column_mapping[col_name] = [col_name]
             else:
-                self._column_mapping[col_name] = []
+                column_mapping[col_name] = []
+
+        return column_mapping
 
     def _compute_dtype(self, col_schema, input_schema):
         if col_schema.name in input_schema.column_names:
@@ -234,10 +236,10 @@ class JoinExternal(Operator):
             col_dtype = self.df_ext.schema.column_schemas[col_schema.name].dtype
             return col_schema.with_dtype(col_dtype)
 
-    def _compute_tags(self, col_schema, input_schemas):
+    def _compute_tags(self, col_schema, input_schema):
         return col_schema
 
-    def _compute_properties(self, col_schema, input_schemas):
+    def _compute_properties(self, col_schema, input_schema):
         return col_schema
 
 

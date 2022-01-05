@@ -18,7 +18,6 @@ from typing import Dict, Union
 import numpy
 
 from nvtabular.dispatch import DataFrameType, _hash_series, annotate
-from nvtabular.graph.tags import Tags
 
 from .operator import ColumnSelector, Operator
 
@@ -71,19 +70,20 @@ class HashedCross(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def _compute_dtype(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
+    def _compute_dtype(self, col_schema, input_schema):
         return col_schema.with_dtype(numpy.int64)
 
-    def _compute_tags(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        return col_schema.with_tags(input_schemas[source_col_name].tags)
+    def _compute_tags(self, col_schema, input_schema):
+        source_col_name = input_schema.column_names[0]
+        return col_schema.with_tags(input_schema[source_col_name].tags)
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for cross in _nest_columns(col_selector):
             output_col = "_X_".join(cross)
-            self._column_mapping[output_col] = [*cross]
+            column_mapping[output_col] = [*cross]
+
+        return column_mapping
 
 
 def _nest_columns(columns):

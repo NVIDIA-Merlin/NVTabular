@@ -101,18 +101,18 @@ class HashBucket(Operator):
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
 
-    def _compute_dtype(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
+    def _compute_dtype(self, col_schema, input_schema):
+        source_col_name = input_schema.column_names[0]
         return col_schema.with_dtype(
-            self.output_dtypes(), is_list=input_schemas[source_col_name]._is_list
+            self.output_dtype, is_list=input_schema[source_col_name]._is_list
         )
 
-    def _compute_tags(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        return col_schema.with_tags(input_schemas[source_col_name].tags + self.output_tags())
+    def _compute_tags(self, col_schema, input_schema):
+        source_col_name = input_schema.column_names[0]
+        return col_schema.with_tags(input_schema[source_col_name].tags + self.output_tags)
 
-    def _compute_properties(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
+    def _compute_properties(self, col_schema, input_schema):
+        source_col_name = input_schema.column_names[0]
 
         cardinality, dimensions = self.get_embedding_sizes([col_schema.name])[col_schema.name]
 
@@ -123,10 +123,12 @@ class HashBucket(Operator):
                 "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
             }
 
-        return col_schema.with_properties({**input_schemas[source_col_name].properties, **to_add})
+        return col_schema.with_properties({**input_schema[source_col_name].properties, **to_add})
 
+    @property
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def output_dtypes(self):
+    @property
+    def output_dtype(self):
         return numpy.int64

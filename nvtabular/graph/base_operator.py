@@ -41,10 +41,6 @@ class BaseOperator:
     Base class for all operator classes.
     """
 
-    def __init__(self):
-        # keys are output cols, vals are lists of corresponding input cols
-        self._column_mapping = {}
-
     def compute_selector(
         self,
         input_schema: Schema,
@@ -106,45 +102,69 @@ class BaseOperator:
             # zero tags because already filtered
             col_selector._tags = []
 
-        self.construct_column_mapping(col_selector)
-
         output_schema = Schema()
-        for output_col_name, input_col_names in self._column_mapping.items():
+        for output_col_name, input_col_names in self.column_mapping(col_selector).items():
             col_schema = self.compute_column_schema(output_col_name, input_schema[input_col_names])
             output_schema += Schema([col_schema])
 
         return output_schema
 
-    def construct_column_mapping(self, col_selector):
-        self._column_mapping = {}
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         for col_name in col_selector.names:
-            self._column_mapping[col_name] = [col_name]
+            column_mapping[col_name] = [col_name]
+        return column_mapping
 
-    def compute_column_schema(self, col_name, input_schemas):
+    def compute_column_schema(self, col_name, input_schema):
         methods = [self._compute_dtype, self._compute_tags, self._compute_properties]
-        return self._compute_column_schema(col_name, input_schemas, methods=methods)
+        return self._compute_column_schema(col_name, input_schema, methods=methods)
 
-    def _compute_column_schema(self, col_name, input_schemas, methods=None):
+    def _compute_column_schema(self, col_name, input_schema, methods=None):
         col_schema = ColumnSchema(col_name)
 
         for method in methods:
-            col_schema = method(col_schema, input_schemas)
+            col_schema = method(col_schema, input_schema)
 
         return col_schema
 
-    def _compute_dtype(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        return col_schema.with_dtype(
-            input_schemas[source_col_name].dtype, is_list=input_schemas[source_col_name]._is_list
-        )
+    def _compute_dtype(self, col_schema, input_schema):
+        dtype = col_schema.dtype
+        is_list = col_schema._is_list
 
-    def _compute_tags(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        return col_schema.with_tags(input_schemas[source_col_name].tags)
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            dtype = input_schema[source_col_name].dtype
+            is_list = input_schema[source_col_name]._is_list
 
-    def _compute_properties(self, col_schema, input_schemas):
-        source_col_name = input_schemas.column_names[0]
-        return col_schema.with_properties(input_schemas[source_col_name].properties)
+        if hasattr(self, "output_dtype"):
+            dtype = self.output_dtype
+            is_list = col_schema._is_list
+
+        return col_schema.with_dtype(dtype, is_list=is_list)
+
+    def _compute_tags(self, col_schema, input_schema):
+        tags = []
+
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            tags += input_schema[source_col_name].tags
+
+        if hasattr(self, "output_tags"):
+            tags += self.output_tags
+
+        return col_schema.with_tags(tags)
+
+    def _compute_properties(self, col_schema, input_schema):
+        properties = {}
+
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            properties.update(input_schema.column_schemas[source_col_name].properties)
+
+        if hasattr(self, "output_properties"):
+            properties.update(self.output_properties)
+
+        return col_schema.with_properties(properties)
 
     # TODO: Update instructions for how to define custom
     # operators to reflect constructing the column mapping
@@ -161,7 +181,7 @@ class BaseOperator:
         list of str, or list of list of str
             The names of columns produced by this operator
         """
-        return ColumnSelector(list(self._column_mapping.keys()))
+        return ColumnSelector(list(self.column_mapping(col_selector).keys()))
 
     def dependencies(self) -> Optional[List[Union[str, Any]]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
