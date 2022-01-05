@@ -22,9 +22,10 @@ import os
 import threading
 import warnings
 from collections import defaultdict
-from distutils.version import LooseVersion
 from io import BytesIO
 from uuid import uuid4
+
+from packaging.version import Version
 
 try:
     import cudf
@@ -52,7 +53,7 @@ from fsspec.core import get_fs_token_paths
 from pyarrow import parquet as pq
 from pyarrow.parquet import ParquetWriter as pwriter_pyarrow
 
-if LooseVersion(dask.__version__) >= "2021.07.1":
+if Version(dask.__version__) >= Version("2021.07.1"):
     from dask.dataframe.io.parquet.core import aggregate_row_groups
 else:
     aggregate_row_groups = None
@@ -82,7 +83,8 @@ if cudf is not None:
     class GPUParquetEngine(CudfEngine):
         @staticmethod
         def read_metadata(*args, **kwargs):
-            if LooseVersion(cudf.__version__).version[:2] == [21, 10]:
+            cudf_version = Version(cudf.__version__)
+            if cudf_version.major == 21 and cudf_version.minor == 10:
                 # We only need this work-around for cudf-21.10
                 return _override_read_metadata(_cudf_read_metadata, *args, **kwargs)
             return _override_read_metadata(CudfEngine.read_metadata, *args, **kwargs)
@@ -545,7 +547,7 @@ class ParquetDatasetEngine(DatasetEngine):
                 meta_valid = False  # There are schema-mismatch errors
 
                 # Check that the Dask version supports `create_metadata_file`
-                if LooseVersion(dask.__version__) <= "2.30.0":
+                if Version(dask.__version__) <= Version("2.30.0"):
                     msg = (
                         "\nThe installed version of Dask is too old to handle "
                         "schema mismatch. Try installing the latest version."
