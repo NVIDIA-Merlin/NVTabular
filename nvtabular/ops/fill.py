@@ -75,8 +75,6 @@ class FillMissing(Operator):
     transform.__doc__ = Operator.transform.__doc__
 
 
-
-
 class FillMedian(StatOperator):
     """
     This operation replaces missing values with the median value for the column.

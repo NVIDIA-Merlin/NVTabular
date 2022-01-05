@@ -99,5 +99,3 @@ class DifferenceLag(Operator):
     def _compute_tags(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
         return col_schema.with_tags(input_schemas[source_col_name].tags + [Tags.CONTINUOUS])
-
-

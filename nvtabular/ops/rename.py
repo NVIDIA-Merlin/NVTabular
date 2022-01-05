@@ -70,6 +70,8 @@ class Rename(Operator):
                 else:
                     raise RuntimeError("Single column name provided for renaming multiple columns")
             else:
-                raise RuntimeError("The Rename op requires one of f, postfix, or name to be provided")
-            
+                raise RuntimeError(
+                    "The Rename op requires one of f, postfix, or name to be provided"
+                )
+
             self._column_mapping[new_col_name] = [col_name]

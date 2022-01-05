@@ -221,7 +221,7 @@ class JoinGroupby(StatOperator):
                         self._column_mapping[f"{name}_{stat}"] = [*group]
                     else:
                         self._column_mapping[f"{name}_{cont}_{stat}"] = [*group, cont]
-            
+
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)
         self.out_path = new_path

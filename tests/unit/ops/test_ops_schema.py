@@ -54,9 +54,18 @@ def test_schema_out(tags, properties, selection, op):
                 schema1 = output_schema.column_schemas[name]
 
                 # should not be exactly the same name, having gone through operator
-                assert schema1.dtype == op._compute_dtype(ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])).dtype
-                output_tags = op._compute_tags(ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])).tags
-                output_properties = op._compute_properties(ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])).properties
+                assert (
+                    schema1.dtype
+                    == op._compute_dtype(
+                        ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                    ).dtype
+                )
+                output_tags = op._compute_tags(
+                    ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                ).tags
+                output_properties = op._compute_properties(
+                    ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                ).properties
                 if name in selector.names:
                     assert schema1.properties == output_properties
 

@@ -105,7 +105,7 @@ class HashBucket(Operator):
         source_col_name = input_schemas.column_names[0]
 
         cardinality, dimensions = self.get_embedding_sizes([col_schema.name])[col_schema.name]
-        
+
         to_add = {}
         if cardinality and dimensions:
             to_add = {

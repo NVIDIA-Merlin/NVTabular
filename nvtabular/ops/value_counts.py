@@ -61,8 +61,10 @@ class ValueCount(StatOperator):
     def _compute_properties(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
         properties = self.output_properties().get(col_schema.name, {}) or {}
-        return col_schema.with_properties({**input_schemas[source_col_name].properties, **properties})
-    
+        return col_schema.with_properties(
+            {**input_schemas[source_col_name].properties, **properties}
+        )
+
     def _compute_tags(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
         return col_schema.with_tags(input_schemas[source_col_name].tags)

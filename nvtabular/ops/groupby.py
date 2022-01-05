@@ -137,12 +137,16 @@ class Groupby(Operator):
         )
 
         for input_col_name, aggs in _list_aggs.items():
-            output_col_names = _columns_out_from_aggs({input_col_name: aggs}, name_sep=self.name_sep)
+            output_col_names = _columns_out_from_aggs(
+                {input_col_name: aggs}, name_sep=self.name_sep
+            )
             for output_col_name in output_col_names:
                 self._column_mapping[output_col_name] = [input_col_name]
 
         for input_col_name, aggs in _conv_aggs.items():
-            output_col_names = _columns_out_from_aggs({input_col_name: aggs}, name_sep=self.name_sep)
+            output_col_names = _columns_out_from_aggs(
+                {input_col_name: aggs}, name_sep=self.name_sep
+            )
             for output_col_name in output_col_names:
                 self._column_mapping[output_col_name] = [input_col_name]
 

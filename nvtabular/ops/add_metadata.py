@@ -38,7 +38,9 @@ class AddMetadata(Operator):
 
     def _compute_properties(self, col_schema, input_schemas):
         source_col_name = input_schemas.column_names[0]
-        return col_schema.with_properties({**input_schemas[source_col_name].properties, **self.output_properties()})
+        return col_schema.with_properties(
+            {**input_schemas[source_col_name].properties, **self.output_properties()}
+        )
 
     def output_tags(self):
         return self.tags

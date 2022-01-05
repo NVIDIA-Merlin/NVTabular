@@ -91,7 +91,7 @@ class Bucketize(Operator):
         return col_schema.with_dtype(np.int64)
 
     def _compute_tags(self, col_schema, input_schemas):
-        col_schema =  col_schema.with_tags([Tags.CATEGORICAL])
+        col_schema = col_schema.with_tags([Tags.CATEGORICAL])
         return super()._compute_tags(col_schema, input_schemas)
 
     transform.__doc__ = Operator.transform.__doc__

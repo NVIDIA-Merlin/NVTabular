@@ -173,7 +173,6 @@ class BaseOperator:
         """
         return ColumnSelector(list(self._column_mapping.keys()))
 
-
         # SelectionOp -> ColumnSelector(names=[], subgroups=[ColumnSelector(names=["Author", "Cost"])])
         # _column_mapping = {"Author": ["Author"], "Cost": ["Cost"]}
 
