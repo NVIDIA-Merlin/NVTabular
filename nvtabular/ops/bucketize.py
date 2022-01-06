@@ -13,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distutils.version import LooseVersion
-
 import numpy as np
+from packaging.version import Version
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
 from nvtabular.graph.tags import Tags
@@ -49,7 +48,7 @@ class Bucketize(Operator):
         try:
             import cupy
 
-            self.use_digitize = LooseVersion(cupy.__version__) >= "8.0.0"
+            self.use_digitize = Version(cupy.__version__) >= Version("8.0.0")
         except ImportError:
             # Assume cpu-backed data (since cupy is not even installed)
             self.use_digitize = True
