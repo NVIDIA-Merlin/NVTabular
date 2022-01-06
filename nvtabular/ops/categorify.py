@@ -444,6 +444,8 @@ class Categorify(StatOperator):
                 # Storage name may be different than group for case (2)
                 # Only use the "aliased" `storage_name` if we are dealing with
                 # a multi-column group, or if we are doing joint encoding
+                if isinstance(use_name, (list, tuple)) and len(use_name) == 1:
+                    use_name = use_name[0]
 
                 if isinstance(use_name, (list, tuple)) and len(use_name) == 1:
                     use_name = use_name[0]
@@ -457,7 +459,8 @@ class Categorify(StatOperator):
                     use_name = list(use_name)
 
                 path = self.categories[storage_name]
-                new_df[name] = _encode(
+
+                encoded = _encode(
                     use_name,
                     storage_name,
                     path,
@@ -475,6 +478,7 @@ class Categorify(StatOperator):
                     dtype=self.dtype,
                     start_index=self.start_index,
                 )
+                new_df[name] = encoded
             except Exception as e:
                 raise RuntimeError(f"Failed to categorical encode column {name}") from e
 
@@ -1306,6 +1310,7 @@ def _encode(
             )
             value.index.name = "labels"
             value.reset_index(drop=False, inplace=True)
+
     if value is None:
         value = type(df)()
         for c in selection_r.names:
@@ -1313,20 +1318,25 @@ def _encode(
             value[c] = _nullable_series([None], df, typ)
         value.index.name = "labels"
         value.reset_index(drop=False, inplace=True)
+
     if not search_sorted:
         if list_col:
             codes = dispatch._flatten_list_column(df[selection_l.names[0]])
             codes["order"] = dispatch._arange(len(codes), like_df=df)
         else:
+            # We go into this case
             codes = type(df)({"order": dispatch._arange(len(df), like_df=df)}, index=df.index)
+
         for cl, cr in zip(selection_l.names, selection_r.names):
             if isinstance(df[cl].iloc[0], (np.ndarray, list)):
                 ser = df[cl].copy()
                 codes[cl] = dispatch._flatten_list_column_values(ser).astype(value[cr].dtype)
             else:
                 codes[cl] = df[cl].copy().astype(value[cr].dtype)
+
         if buckets and storage_name in buckets:
             na_sentinel = _hash_bucket(df, buckets, selection_l.names, encode_type=encode_type)
+
         # apply frequency hashing
         if freq_threshold and buckets and storage_name in buckets:
             merged_df = codes.merge(
@@ -1360,11 +1370,14 @@ def _encode(
                 df[selection_l.names], side="left", na_position="first"
             )
         labels[labels >= len(value[selection_r.names])] = na_sentinel
+
     labels = labels + start_index
+
     if list_col:
         labels = dispatch._encode_list_column(df[selection_l.names[0]], labels, dtype=dtype)
     elif dtype:
         labels = labels.astype(dtype, copy=False)
+
     return labels
 
 
