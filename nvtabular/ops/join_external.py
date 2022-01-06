@@ -30,7 +30,6 @@ from nvtabular.dispatch import (
     _convert_data,
     _create_nvt_dataset,
     _detect_format,
-    _read_dispatch,
     _to_host,
 )
 from nvtabular.graph.schema import Schema
@@ -126,41 +125,13 @@ class JoinExternal(Operator):
             # Return cached result if present
             return _convert_data(self._ext_cache, cpu=self.cpu)
 
-        if self.kind_ext == ExtData.DATASET:
-            # Use Dataset.to_ddf
-            _dataset = self.df_ext
-            if self.cpu:
-                _dataset.to_cpu()
-            else:
-                _dataset.to_gpu()
-            _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
-        elif self.kind_ext in (
-            ExtData.ARROW,
-            ExtData.CUDF,
-            ExtData.DASK_CUDF,
-            ExtData.PANDAS,
-            ExtData.DASK_PANDAS,
-        ):
-            _ext = _check_partition_count(_convert_data(self.df_ext, cpu=self.cpu))
+        # Use Dataset.to_ddf
+        _dataset = self.df_ext
+        if self.cpu:
+            _dataset.to_cpu()
         else:
-            if self.kind_ext == ExtData.PARQUET:
-                # Read from parquet dataset
-                kwargs = {
-                    "split_row_groups": False,
-                    "index": False,
-                    "gather_statistics": False,
-                    "columns": self.columns_ext,
-                }
-                kwargs.update(self.kwargs)
-                reader = _read_dispatch(cpu=self.cpu, collection=True)
-            elif self.kind_ext == ExtData.CSV:
-                # Read from CSV dataset
-                kwargs = {"usecols": self.columns_ext}
-                kwargs.update(self.kwargs)
-                reader = _read_dispatch(cpu=self.cpu, collection=True, fmt="csv")
-            else:
-                raise ValueError("Disk format not yet supported")
-            _ext = _check_partition_count(reader(self.df_ext, **kwargs))
+            _dataset.to_gpu()
+        _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
 
         # Take subset of columns if a list is specified
         if self.columns_ext:
@@ -207,6 +178,7 @@ class JoinExternal(Operator):
         parents_selector: ColumnSelector,
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
         return parents_selector
 
     def compute_output_schema(self, input_schema, col_selector):
@@ -222,10 +194,7 @@ class JoinExternal(Operator):
         combined_col_names = dict.fromkeys(col_selector.names + list(ext_columns)).keys()
 
         for col_name in combined_col_names:
-            if col_name in col_selector.names:
-                column_mapping[col_name] = [col_name]
-            else:
-                column_mapping[col_name] = []
+            column_mapping[col_name] = [col_name]
 
         return column_mapping
 

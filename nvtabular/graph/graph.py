@@ -34,7 +34,7 @@ class Graph:
     def fit_schema(self, root_schema: Schema) -> "Graph":
         for node in postorder_iter_nodes(self.output_node):
             if not node.parents:
-                node.compute_schemas(root_schema)
+                node_input_schema = root_schema
             else:
                 combined_schema = sum(
                     [parent.output_schema for parent in node.parents if parent.output_schema],
@@ -42,8 +42,9 @@ class Graph:
                 )
                 # we want to update the input_schema with new values
                 # from combined schema
-                combined_schema = root_schema + combined_schema
-                node.compute_schemas(combined_schema)
+                node_input_schema = root_schema + combined_schema
+
+            node.compute_schemas(node_input_schema)
 
         self.input_schema = Schema(
             [

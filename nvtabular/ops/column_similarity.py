@@ -123,6 +123,7 @@ class ColumnSimilarity(Operator):
         parents_selector: ColumnSelector,
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
         return parents_selector
 
     def column_mapping(self, col_selector):
