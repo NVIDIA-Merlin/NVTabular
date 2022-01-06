@@ -28,11 +28,13 @@ from google.protobuf import text_format  # noqa
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
 from nvtabular.graph.node import postorder_iter_nodes  # noqa
-from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
 
 # everything tensorflow related must be imported after this.
+tf = pytest.importorskip("tensorflow")  # noqa
+from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
+
 configure_tensorflow()
-tf = pytest.importorskip("tensorflow")
+
 triton = pytest.importorskip("nvtabular.inference.triton")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
@@ -49,8 +51,6 @@ import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
-
-tf = pytest.importorskip("tensorflow")  # noqa
 
 
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
