@@ -45,8 +45,9 @@ def test_workflow_op_validates_schemas(dataset, engine):
     # Triton
     triton_ops = ["a", "b", "c"] >> workflow_op.WorkflowOp(workflow)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc_info:
         ensemble.Ensemble(triton_ops, request_schema)
+        assert "Missing column" in str(exc_info.value)
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
