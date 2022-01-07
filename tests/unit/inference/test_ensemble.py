@@ -29,11 +29,11 @@ import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
 from nvtabular.graph.node import postorder_iter_nodes  # noqa
 
-# everything tensorflow related must be imported after this.
-tf = pytest.importorskip("tensorflow")  # noqa
-from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
+configure_tensorflow = pytest.importorskip(nvtabular.loader.tf_utils.configure_tensorflow)
 
+# everything tensorflow related must be imported after this.
 configure_tensorflow()
+tf = pytest.importorskip("tensorflow")
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")

@@ -1,4 +1,3 @@
-import importlib
 from distutils.spawn import find_executable
 
 import pytest
@@ -6,15 +5,13 @@ import pytest
 import nvtabular as nvt
 import nvtabular.ops as ops
 
-tf_spec = importlib.util.find_spec("tensorflow")
-if tf_spec is None:
-    pytest.skip("Tensorflow required")
-torch = pytest.importorskip("torch")  # noqa
-from nvtabular.loader.tf_utils import configure_tensorflow  # noqa
+configure_tensorflow = pytest.importorskip(nvtabular.loader.tf_utils.configure_tensorflow)  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
+
+torch = pytest.importorskip("torch")  # noqa
 
 from nvtabular.inference.triton.ensemble import (  # noqa
     export_pytorch_ensemble,
