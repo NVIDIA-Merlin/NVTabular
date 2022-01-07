@@ -90,7 +90,7 @@ if cudf is not None:
 
                 # We only need this work-around for cudf-21.10
                 return _override_read_metadata(_cudf_read_metadata, *args, **kwargs)
-            return _override_read_metadata(_cudf_read_metadata, *args, **kwargs)
+            return _override_read_metadata(CudfEngine.read_metadata, *args, **kwargs)
 
         @classmethod
         def multi_support(cls):
