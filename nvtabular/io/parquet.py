@@ -84,7 +84,10 @@ if cudf is not None:
         @staticmethod
         def read_metadata(*args, **kwargs):
             cudf_version = Version(cudf.__version__)
-            if cudf_version.major == 21 and cudf_version.minor == 10:
+            if (cudf_version.major == 21 and cudf_version.minor == 10) or (
+                cudf_version.major == 0 and cudf_version.minor == 0
+            ):
+
                 # We only need this work-around for cudf-21.10
                 return _override_read_metadata(_cudf_read_metadata, *args, **kwargs)
             return _override_read_metadata(CudfEngine.read_metadata, *args, **kwargs)
