@@ -286,8 +286,10 @@ class ThreadedWriter(Writer):
             with fs.open(fs.sep.join([out_dir, "_hugectr.keyset"]), "wb") as writer:
                 for col in schema:
                     try:
-                        for v in range(col.properties["embedding_sizes"]["cardinality"] + 1):
-                            writer.write(v.to_bytes(8, "big"))
+                        max_number = col.properties["embedding_sizes"]["cardinality"]
+                        bytes_size = 8 if max_number.bit_length() > 32 else 4
+                        for v in range(max_number + 1):
+                            writer.write(v.to_bytes(bytes_size, "big"))
                     except KeyError:
                         pass
 
