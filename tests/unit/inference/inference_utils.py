@@ -2,9 +2,12 @@ from distutils.spawn import find_executable
 
 import pytest
 
-import nvtabular.framework_utils.tensorflow.layers as layers
-from nvtabular.framework_utils.torch.models import Model
-from nvtabular.loader.tf_utils import configure_tensorflow
+torch = pytest.importorskip("torch")  # noqa
+configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
+configure_tensorflow()
+
+import nvtabular.framework_utils.tensorflow.layers as layers  # noqa
+from nvtabular.framework_utils.torch.models import Model  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
@@ -16,7 +19,6 @@ grpcclient = pytest.importorskip("tritonclient.grpc")
 TRITON_SERVER_PATH = find_executable("tritonserver")
 from tests.unit.test_triton_inference import run_triton_server  # noqa
 
-configure_tensorflow()
 tf = pytest.importorskip("tensorflow")
 
 
