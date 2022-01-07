@@ -4,11 +4,14 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular.loader.tf_utils import configure_tensorflow
+
+configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
+
+torch = pytest.importorskip("torch")  # noqa
 
 from nvtabular.inference.triton.ensemble import (  # noqa
     export_pytorch_ensemble,
@@ -25,11 +28,6 @@ grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
 configure_tensorflow()
-
-try:
-    tf = pytest.importorskip("tensorflow")
-except ImportError:
-    tf = None
 
 
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
