@@ -287,7 +287,7 @@ class ThreadedWriter(Writer):
                 for col in schema:
                     try:
                         for v in range(col.properties["embedding_sizes"]["cardinality"] + 1):
-                            writer.write(v.to_bytes(4, "big"))
+                            writer.write(v.to_bytes(8, "big"))
                     except KeyError:
                         pass
 
