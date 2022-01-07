@@ -15,7 +15,7 @@
 #
 import logging
 
-from nvtabular.graph.node import Node, iter_nodes
+from nvtabular.graph.node import Node, iter_nodes, postorder_iter_nodes
 from nvtabular.graph.schema import Schema
 
 LOG = logging.getLogger("nvtabular")
@@ -32,42 +32,19 @@ class Graph:
         self.output_schema = None
 
     def fit_schema(self, root_schema: Schema) -> "Graph":
-        schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents_with_dependencies)
-            for node in _get_schemaless_nodes([self.output_node])
-        }
+        for node in postorder_iter_nodes(self.output_node):
+            if not node.parents:
+                node_input_schema = root_schema
+            else:
+                combined_schema = sum(
+                    [parent.output_schema for parent in node.parents if parent.output_schema],
+                    Schema(),
+                )
+                # we want to update the input_schema with new values
+                # from combined schema
+                node_input_schema = root_schema + combined_schema
 
-        while schemaless_nodes:
-            # get all the Operators with no outstanding dependencies
-            current_phase = [
-                node for node, dependencies in schemaless_nodes.items() if not dependencies
-            ]
-            if not current_phase:
-                # this shouldn't happen, but lets not infinite loop just in case
-                raise RuntimeError("failed to find dependency-free Operator to compute schema for")
-
-            processed_nodes = []
-            for node in current_phase:
-                if not node.parents:
-                    node.compute_schemas(root_schema)
-                else:
-                    combined_schema = sum(
-                        [parent.output_schema for parent in node.parents if parent.output_schema],
-                        Schema(),
-                    )
-                    # we want to update the input_schema with new values
-                    # from combined schema
-                    combined_schema = root_schema + combined_schema
-                    node.compute_schemas(combined_schema)
-
-                processed_nodes.append(node)
-
-            # Remove all the operators we processed in this phase, and remove
-            # from the dependencies of other ops too
-            for schemaless_node in current_phase:
-                schemaless_nodes.pop(schemaless_node)
-            for dependencies in schemaless_nodes.values():
-                dependencies.difference_update(current_phase)
+            node.compute_schemas(node_input_schema)
 
         self.input_schema = Schema(
             [
