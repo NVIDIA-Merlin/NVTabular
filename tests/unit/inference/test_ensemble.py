@@ -29,7 +29,7 @@ import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
 from nvtabular.graph.node import postorder_iter_nodes  # noqa
 
-configure_tensorflow = pytest.importorskip(nvtabular.loader.tf_utils.configure_tensorflow)
+configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")
 
 # everything tensorflow related must be imported after this.
 configure_tensorflow()

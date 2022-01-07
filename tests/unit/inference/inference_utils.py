@@ -7,7 +7,7 @@ torch = pytest.importorskip("torch")  # noqa
 import nvtabular.framework_utils.tensorflow.layers as layers  # noqa
 from nvtabular.framework_utils.torch.models import Model  # noqa
 
-configure_tensorflow = pytest.importorskip(nvtabular.loader.tf_utils.configure_tensorflow)  # noqa
+configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")

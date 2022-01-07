@@ -5,7 +5,7 @@ import pytest
 import nvtabular as nvt
 import nvtabular.ops as ops
 
-configure_tensorflow = pytest.importorskip(nvtabular.loader.tf_utils.configure_tensorflow)  # noqa
+configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
