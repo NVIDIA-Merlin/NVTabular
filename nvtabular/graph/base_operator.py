@@ -48,7 +48,7 @@ class BaseOperator:
         parents_selector: ColumnSelector,
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
-        self._validate_matching_cols(input_schema, selector, "computing input selector")
+        self._validate_matching_cols(input_schema, selector, self.compute_selector.__name__)
 
         return selector
 
@@ -77,7 +77,7 @@ class BaseOperator:
             The schemas of the columns used by this operator
         """
         self._validate_matching_cols(
-            parents_schema + deps_schema, selector, "computing input schema"
+            parents_schema + deps_schema, selector, self.compute_input_schema.__name__
         )
 
         return parents_schema + deps_schema
@@ -107,7 +107,9 @@ class BaseOperator:
             # zero tags because already filtered
             col_selector._tags = []
 
-        self._validate_matching_cols(input_schema, col_selector, "computing output schema")
+        self._validate_matching_cols(
+            input_schema, col_selector, self.compute_output_schema.__name__
+        )
 
         output_schema = Schema()
         for output_col_name, input_col_names in self.column_mapping(col_selector).items():
@@ -173,13 +175,13 @@ class BaseOperator:
 
         return col_schema.with_properties(properties)
 
-    def _validate_matching_cols(self, schema, selector, description):
+    def _validate_matching_cols(self, schema, selector, method_name):
         selector = selector or ColumnSelector()
         missing_cols = [name for name in selector.names if name not in schema.column_names]
         if missing_cols:
             raise ValueError(
                 f"Missing columns {missing_cols} found in operator"
-                f"{self.__class__.__name__} while {description}."
+                f"{self.__class__.__name__} during {method_name}."
             )
 
     # TODO: Update instructions for how to define custom

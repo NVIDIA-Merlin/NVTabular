@@ -70,13 +70,6 @@ class HashedCross(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def _compute_dtype(self, col_schema, input_schema):
-        return col_schema.with_dtype(numpy.int64)
-
-    def _compute_tags(self, col_schema, input_schema):
-        source_col_name = input_schema.column_names[0]
-        return col_schema.with_tags(input_schema[source_col_name].tags)
-
     def column_mapping(self, col_selector):
         column_mapping = {}
         for cross in _nest_columns(col_selector):
@@ -84,6 +77,9 @@ class HashedCross(Operator):
             column_mapping[output_col] = [*cross]
 
         return column_mapping
+
+    def output_dtype(self):
+        return numpy.int64
 
 
 def _nest_columns(columns):

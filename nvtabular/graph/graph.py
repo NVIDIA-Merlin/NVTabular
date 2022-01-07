@@ -57,11 +57,6 @@ class Graph:
 
         return self
 
-    def update_properties(self):
-        for node in postorder_iter_nodes(self.output_node):
-            if node.parents:
-                node.op.update_properties()
-
     def _input_columns(self):
         input_cols = []
         for node in iter_nodes([self.output_node]):

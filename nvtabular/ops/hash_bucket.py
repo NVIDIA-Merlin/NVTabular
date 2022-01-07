@@ -101,16 +101,6 @@ class HashBucket(Operator):
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
 
-    def _compute_dtype(self, col_schema, input_schema):
-        source_col_name = input_schema.column_names[0]
-        return col_schema.with_dtype(
-            self.output_dtype, is_list=input_schema[source_col_name]._is_list
-        )
-
-    def _compute_tags(self, col_schema, input_schema):
-        source_col_name = input_schema.column_names[0]
-        return col_schema.with_tags(input_schema[source_col_name].tags + self.output_tags)
-
     def _compute_properties(self, col_schema, input_schema):
         source_col_name = input_schema.column_names[0]
 

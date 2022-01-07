@@ -433,7 +433,7 @@ class Categorify(StatOperator):
             assert all(x in self.freq_threshold for x in col_selector.names)
 
         column_mapping = self.column_mapping(col_selector)
-        column_names = column_mapping.keys()
+        column_names = list(column_mapping.keys())
 
         # Encode each column-group separately
         for name in column_names:

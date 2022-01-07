@@ -66,9 +66,8 @@ class FillMissing(Operator):
         return nvtabular_cpp.inference.FillTransform(self)
 
     def column_mapping(self, col_selector):
-        column_mapping = {}
+        column_mapping = super().column_mapping(col_selector)
         for col_name in col_selector.names:
-            column_mapping[col_name] = [col_name]
             if self.add_binary_cols:
                 column_mapping[f"{col_name}_filled"] = [col_name]
         return column_mapping
@@ -129,9 +128,8 @@ class FillMedian(StatOperator):
         self.medians = {}
 
     def column_mapping(self, col_selector):
-        column_mapping = {}
+        column_mapping = super().column_mapping(col_selector)
         for col_name in col_selector.names:
-            column_mapping[col_name] = [col_name]
             if self.add_binary_cols:
                 column_mapping[f"{col_name}_filled"] = [col_name]
         return column_mapping
