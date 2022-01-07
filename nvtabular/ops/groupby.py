@@ -133,6 +133,11 @@ class Groupby(Operator):
 
     def column_mapping(self, col_selector):
         column_mapping = {}
+
+        for groupby_col in self.groupby_cols:
+            if groupby_col in col_selector.names:
+                column_mapping[groupby_col] = [groupby_col]
+
         _list_aggs, _conv_aggs = _get_agg_dicts(
             self.groupby_cols, self.list_aggs, self.conv_aggs, col_selector
         )
@@ -150,6 +155,7 @@ class Groupby(Operator):
             )
             for output_col_name in output_col_names:
                 column_mapping[output_col_name] = [input_col_name]
+
         return column_mapping
 
     def _compute_dtype(self, col_schema, input_schema):

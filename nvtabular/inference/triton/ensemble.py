@@ -702,7 +702,8 @@ def _remove_columns(workflow, to_remove):
                     if column in subgroup._names:
                         subgroup._names.remove(column)
 
-    return workflow.fit_schema(new_schema)
+    workflow.fit_schema(new_schema)
+    return workflow
 
 
 def _add_model_param(column, dtype, paramclass, params, dims=None):

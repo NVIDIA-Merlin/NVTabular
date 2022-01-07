@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from enum import Flag, auto
-from typing import Any, List, Optional, Union
+from typing import Any, List, Union
 
 import nvtabular as nvt
 from nvtabular.graph.schema import ColumnSchema, Schema
@@ -82,7 +82,6 @@ class BaseOperator:
 
         return parents_schema + deps_schema
 
-    # TODO: Rework the overrides of this method to work the same (no calls to `transformed_schema`)
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
         returns a set of schemas for the transformed columns this operator will produce
@@ -200,7 +199,7 @@ class BaseOperator:
         """
         return ColumnSelector(list(self.column_mapping(col_selector).keys()))
 
-    def dependencies(self) -> Optional[List[Union[str, Any]]]:
+    def dependencies(self) -> List[Union[str, Any]]:
         """Defines an optional list of column dependencies for this operator. This lets you consume columns
         that aren't part of the main transformation workflow.
         Returns
@@ -208,7 +207,7 @@ class BaseOperator:
         str, list of str or ColumnSelector, optional
             Extra dependencies of this operator. Defaults to None
         """
-        return None
+        return []
 
     def __rrshift__(self, other):
         return nvt.ColumnSelector(other) >> self
