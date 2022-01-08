@@ -101,3 +101,17 @@ class LambdaOp(Operator):
 
         # Failed to figure out the source
         return "LambdaOp"
+
+    def column_mapping(self, col_selector):
+        filtered_selector = self._remove_deps(col_selector, self.dependencies())
+        return super().column_mapping(filtered_selector)
+
+    def _remove_deps(self, col_selector, dependencies):
+        dependencies = dependencies or []
+        to_skip = ColumnSelector(
+            [
+                dep if isinstance(dep, str) else dep.output_schema.column_names
+                for dep in dependencies
+            ]
+        )
+        return col_selector.filter_columns(to_skip)

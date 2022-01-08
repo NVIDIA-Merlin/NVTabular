@@ -32,9 +32,9 @@ def test_selection_transform(df):
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_selection_output_column_names(df):
     selector = ColumnSelector(["x", "y"])
-    op = SelectionOp(selector)
 
-    result_selector = op.output_column_names(ColumnSelector())
+    op = SelectionOp(selector)
+    result_selector = op.output_column_names(selector)
 
     assert result_selector.names == ["x", "y"]
 

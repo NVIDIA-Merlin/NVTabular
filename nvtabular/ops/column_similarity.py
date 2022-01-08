@@ -30,7 +30,7 @@ except ImportError:
     from scipy.sparse import coo_matrix
 
 from nvtabular.dispatch import DataFrameType, annotate
-from nvtabular.graph import ColumnSchema, Schema
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 
 from .operator import ColumnSelector, Operator
@@ -123,27 +123,23 @@ class ColumnSimilarity(Operator):
         parents_selector: ColumnSelector,
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
         return parents_selector
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        output_schema = Schema()
-        for grouped_columns in col_selector.grouped_names:
-            output_schema += Schema([self.transformed_schema(grouped_columns)])
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        for group in col_selector.grouped_names:
+            a, b = group
+            col_name = f"{a}_{b}_sim"
+            column_mapping[col_name] = [a, b]
+        return column_mapping
 
-        return output_schema
-
-    def transformed_schema(self, grouped_schemas):
-        a, b = grouped_schemas
-        column_schema = ColumnSchema(f"{a}_{b}_sim")
-        return super().transformed_schema(column_schema)
-
-    def output_column_names(self, columns):
-        return ColumnSelector([f"{a}_{b}_sim" for a, b in columns.grouped_names])
-
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
+    @property
+    def output_dtype(self):
         return numpy.float
 
 

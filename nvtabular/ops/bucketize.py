@@ -86,10 +86,11 @@ class Bucketize(Operator):
                 new_df[col] = val
         return new_df
 
-    def output_tags(self):
-        return [Tags.CATEGORICAL]
+    def _compute_dtype(self, col_schema, input_schema):
+        return col_schema.with_dtype(np.int64)
 
-    def _get_dtypes(self):
-        return np.int64
+    def _compute_tags(self, col_schema, input_schema):
+        col_schema = col_schema.with_tags([Tags.CATEGORICAL])
+        return super()._compute_tags(col_schema, input_schema)
 
     transform.__doc__ = Operator.transform.__doc__

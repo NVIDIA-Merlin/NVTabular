@@ -432,31 +432,21 @@ class Categorify(StatOperator):
         if isinstance(self.freq_threshold, dict):
             assert all(x in self.freq_threshold for x in col_selector.names)
 
-        if self.encode_type == "combo":
-            # Case (3) - We want to track multi- and single-column groups separately
-            #            when we are NOT performing a joint encoding. This is because
-            #            there is not a 1-to-1 mapping for columns in multi-col groups.
-            #            We use `multi_col_group` to preserve the list format of
-            #            multi-column groups only, and use `cat_names` to store the
-            #            string representation of both single- and multi-column groups.
-            #
-            cat_names, multi_col_group = _get_multicolumn_names(
-                col_selector, df.columns, self.name_sep
-            )
-        else:
-            # Case (1) & (2) - Simple 1-to-1 mapping
-            multi_col_group = {}
-            cat_names = list(flatten(col_selector.names, container=tuple))
+        column_mapping = self.column_mapping(col_selector)
+        column_names = list(column_mapping.keys())
 
         # Encode each column-group separately
-        for name in cat_names:
+        for name in column_names:
             try:
                 # Use the column-group `list` directly (not the string name)
-                use_name = multi_col_group.get(name, name)
+                use_name = column_mapping.get(name, name)
 
                 # Storage name may be different than group for case (2)
                 # Only use the "aliased" `storage_name` if we are dealing with
                 # a multi-column group, or if we are doing joint encoding
+                if isinstance(use_name, (list, tuple)) and len(use_name) == 1:
+                    use_name = use_name[0]
+
                 if isinstance(use_name, (list, tuple)) and len(use_name) == 1:
                     use_name = use_name[0]
 
@@ -483,7 +473,7 @@ class Categorify(StatOperator):
                     search_sorted=self.search_sorted,
                     buckets=self.num_buckets,
                     encode_type=self.encode_type,
-                    cat_names=cat_names,
+                    cat_names=column_names,
                     max_size=self.max_size,
                     dtype=self.dtype,
                     start_index=self.start_index,
@@ -494,6 +484,57 @@ class Categorify(StatOperator):
 
         return new_df
 
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        if self.encode_type == "combo":
+            for group in col_selector.grouped_names:
+                if isinstance(group, (tuple, list)):
+                    name = _make_name(*group, sep=self.name_sep)
+                    group = [*group]
+                else:
+                    name = group
+                    group = [group]
+
+                column_mapping[name] = group
+        else:
+            column_mapping = super().column_mapping(col_selector)
+        return column_mapping
+
+    def _compute_properties(self, col_schema, input_schema):
+        new_schema = super()._compute_properties(col_schema, input_schema)
+        col_name = col_schema.name
+
+        target_column_path = self.categories.get(col_name, None)
+        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
+
+        to_add = {}
+        if target_column_path:
+            to_add = {
+                "num_buckets": self.num_buckets[col_name]
+                if isinstance(self.num_buckets, dict)
+                else self.num_buckets,
+                "freq_threshold": self.freq_threshold[col_name]
+                if isinstance(self.freq_threshold, dict)
+                else self.freq_threshold,
+                "max_size": self.max_size[col_name]
+                if isinstance(self.max_size, dict)
+                else self.max_size,
+                "start_index": self.start_index,
+                "cat_path": target_column_path,
+                "domain": {"min": 0, "max": cardinality},
+                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
+            }
+
+        return col_schema.with_properties({**new_schema.properties, **to_add})
+
+    @property
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    @property
+    def output_dtype(self):
+        return np.int
+
     def compute_selector(
         self,
         input_schema: Schema,
@@ -501,15 +542,8 @@ class Categorify(StatOperator):
         parents_selector: ColumnSelector,
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
         return parents_selector
-
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        if self.encode_type == "combo":
-            cat_names, _ = _get_multicolumn_names(
-                col_selector, col_selector.grouped_names, self.name_sep
-            )
-            return ColumnSelector(cat_names)
-        return ColumnSelector(flatten(col_selector.names, container=tuple))
 
     def get_embedding_sizes(self, columns):
         return _get_embeddings_dask(
@@ -530,41 +564,9 @@ class Categorify(StatOperator):
 
         return nvtabular_cpp.inference.CategorifyTransform(self)
 
-    def output_tags(self):
-        return [Tags.CATEGORICAL]
-
-    def output_dtype(self):
-        return np.int
-
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
     fit_finalize.__doc__ = StatOperator.fit_finalize.__doc__
-
-    def _add_properties(self, column_schema):
-        col_name = column_schema.name
-        target_column_path = self.output_properties().get(col_name, None)
-        cardinality, dimensions = self.get_embedding_sizes([col_name])[col_name]
-        if target_column_path:
-            to_add = {
-                "num_buckets": self.num_buckets[col_name]
-                if isinstance(self.num_buckets, dict)
-                else self.num_buckets,
-                "freq_threshold": self.freq_threshold[col_name]
-                if isinstance(self.freq_threshold, dict)
-                else self.freq_threshold,
-                "max_size": self.max_size[col_name]
-                if isinstance(self.max_size, dict)
-                else self.max_size,
-                "start_index": self.start_index,
-                "cat_path": target_column_path,
-                "domain": {"min": 0, "max": cardinality},
-                "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
-            }
-            return column_schema.with_properties(to_add)
-        return column_schema
-
-    def output_properties(self):
-        return self.categories
 
 
 def get_embedding_sizes(source, output_dtypes=None):
@@ -1386,22 +1388,6 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
             if cache:
                 return fetch_table_data(cache, path, cache=cat_cache, reader=read_pq_func)
     return read_pq_func(path)
-
-
-def _get_multicolumn_names(col_selector, df_columns, name_sep):
-    cat_names = []
-    multi_col_group = {}
-    for col_name in col_selector.grouped_names:
-        if isinstance(col_name, (list, tuple)):
-            name = _make_name(*col_name, sep=name_sep)
-            if name not in cat_names:
-                cat_names.append(name)
-                # TODO: Perhaps we should check that all columns from the group
-                #       are in df here?
-                multi_col_group[name] = col_name
-        elif col_name in df_columns:
-            cat_names.append(col_name)
-    return cat_names, multi_col_group
 
 
 def _is_list_col(col_selector, df):

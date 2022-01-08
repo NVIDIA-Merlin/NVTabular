@@ -197,3 +197,16 @@ def test_addition_enum_tags():
     assert combined._names == ["a", "b", "c"]
     assert combined.subgroups == [ColumnSelector(["d", "e", "f"])]
     assert combined.tags == [Tags.CATEGORICAL]
+
+
+def test_filter():
+    selector1 = ColumnSelector(["a", "b", "c"])
+    sub_selector = ColumnSelector(["c"])
+
+    result_selector = selector1.filter_columns(sub_selector)
+    assert result_selector.names == ["a", "b"]
+
+    selector2 = ColumnSelector(["a", "b", "c"], subgroups=[ColumnSelector(["a", "b", "c"])])
+    result_selector = selector2.filter_columns(sub_selector)
+    assert result_selector.names == ["a", "b"]
+    assert result_selector.subgroups == []

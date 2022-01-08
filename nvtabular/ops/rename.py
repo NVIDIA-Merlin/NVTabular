@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtabular.graph.schema import Schema
-
 from ..dispatch import DataFrameType
 from .operator import ColumnSelector, Operator
 
@@ -49,42 +47,32 @@ class Rename(Operator):
         self.f = f
         self.postfix = postfix
         self.name = name
+        super().__init__()
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         df = df[col_selector.names]
-        df.columns = self.output_column_names(col_selector).names
+        df.columns = list(self.column_mapping(col_selector).keys())
         return df
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            col_selector = ColumnSelector(input_schema.column_names)
-        if col_selector.tags:
-            tags_col_selector = ColumnSelector(tags=col_selector.tags)
-            filtered_schema = input_schema.apply(tags_col_selector)
-            col_selector += ColumnSelector(filtered_schema.column_names)
-
-            # zero tags because already filtered
-            col_selector._tags = []
-        output_schema = Schema()
-        for column_name in input_schema.column_schemas:
-            new_names = self.output_column_names(ColumnSelector(column_name))
-            column_schema = input_schema.column_schemas[column_name]
-            for new_name in new_names.names:
-                new_column_schema = column_schema.with_name(new_name)
-                output_schema += Schema([self.transformed_schema(new_column_schema)])
-        return output_schema
-
-    def output_column_names(self, col_selector):
-        if self.f:
-            return ColumnSelector([self.f(col) for col in col_selector.names])
-        elif self.postfix:
-            return ColumnSelector([col + self.postfix for col in col_selector.names])
-        elif self.name:
-            if len(col_selector.names) == 1:
-                return ColumnSelector([self.name])
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        for col_name in col_selector.names:
+            if self.f:
+                new_col_name = self.f(col_name)
+            elif self.postfix:
+                new_col_name = col_name + self.postfix
+            elif self.name:
+                if len(col_selector.names) == 1:
+                    new_col_name = self.name
+                else:
+                    raise RuntimeError("Single column name provided for renaming multiple columns")
             else:
-                raise RuntimeError("Single column name provided for renaming multiple columns")
-        else:
-            raise RuntimeError("The Rename op requires one of f, postfix, or name to be provided")
+                raise RuntimeError(
+                    "The Rename op requires one of f, postfix, or name to be provided"
+                )
+
+            column_mapping[new_col_name] = [col_name]
+
+        return column_mapping
