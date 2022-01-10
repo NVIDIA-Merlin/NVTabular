@@ -53,7 +53,7 @@ class LambdaOp(Operator):
         Whether to provide a dependency column or not.
     """
 
-    def __init__(self, f, dependency=None, label=None):
+    def __init__(self, f, dependency=None, label=None, dtype=None, tags=None, properties=None):
         super().__init__()
         if f is None:
             raise ValueError("f cannot be None. LambdaOp op applies f to dataframe")
@@ -63,6 +63,10 @@ class LambdaOp(Operator):
             raise ValueError("lambda function must accept either one or two parameters")
         self.dependency = dependency
         self._label = label
+
+        self._dtype = dtype
+        self._tags = tags or []
+        self._properties = properties or {}
 
     @annotate("DFLambda_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
@@ -115,3 +119,15 @@ class LambdaOp(Operator):
             ]
         )
         return col_selector.filter_columns(to_skip)
+
+    @property
+    def output_dtype(self):
+        return self._dtype
+
+    @property
+    def output_tags(self):
+        return self._tags
+
+    @property
+    def output_properties(self):
+        return self._properties
