@@ -68,7 +68,10 @@ def test_input_output_column_names():
 
 
 def test_dependency_column_names():
+    schema = Schema(["a", "b", "c", "d"])
+
     dependency_node = ["a", "b", "c"] >> TargetEncoding("d")
+    Workflow(dependency_node).fit_schema(schema)
     assert dependency_node.dependency_columns.names == ["d"]
 
 

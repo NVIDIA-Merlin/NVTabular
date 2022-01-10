@@ -19,7 +19,6 @@ import json
 import math
 import os
 import warnings
-from distutils.version import LooseVersion
 
 import dask
 import dask.dataframe as dd
@@ -28,6 +27,7 @@ import pandas as pd
 import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe.io.demo import names as name_list
+from packaging.version import Version
 
 import nvtabular as nvt
 import nvtabular.io
@@ -43,7 +43,7 @@ dask_cudf = pytest.importorskip("dask_cudf")
 
 
 def test_validate_dataset_bad_schema(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
+    if Version(dask.__version__) <= Version("2.30.0"):
         # Older versions of Dask will not handle schema mismatch
         pytest.skip("Test requires newer version of Dask.")
 
@@ -961,7 +961,7 @@ def test_parquet_filtered_hive(tmpdir, cpu):
 
 
 @pytest.mark.skipif(
-    LooseVersion(dask.__version__) < "2021.07.1",
+    Version(dask.__version__) < Version("2021.07.1"),
     reason="Dask>=2021.07.1 required for file aggregation",
 )
 @pytest.mark.parametrize("cpu", [True, False])

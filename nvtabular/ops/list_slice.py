@@ -128,6 +128,7 @@ class ListSlice(Operator):
 
         return ret
 
+    @property
     def output_tags(self):
         return [Tags.LIST]
 

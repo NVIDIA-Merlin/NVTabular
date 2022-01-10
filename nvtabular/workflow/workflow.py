@@ -146,6 +146,7 @@ class Workflow:
             data should be the training dataset only.
         """
         self._clear_worker_cache()
+        self.clear_stats()
 
         if not self.graph.output_schema:
             self.graph.fit_schema(dataset.schema)

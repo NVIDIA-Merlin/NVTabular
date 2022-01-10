@@ -23,11 +23,20 @@ from nvtabular.graph.selector import ColumnSelector
 class ConcatColumns(BaseOperator):
     def __init__(self, label=None):
         self._label = label or self.__class__.__name__
+        super().__init__()
 
     def compute_selector(
-        self, input_schema: Schema, selector: ColumnSelector, upstream_selector: ColumnSelector
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
-        return upstream_selector
+        self._validate_matching_cols(
+            input_schema, parents_selector + dependencies_selector, "computing input selector"
+        )
+
+        return parents_selector + dependencies_selector
 
     def compute_input_schema(
         self,

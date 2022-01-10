@@ -5,11 +5,12 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
-from nvtabular.inference.graph.op_runner import OperatorRunner
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame, InferenceOperator
+
+op_runner = pytest.importorskip("nvtabular.inference.graph.op_runner")
+inf_op = pytest.importorskip("nvtabular.inference.graph.ops.operator")
 
 
-class PlusTwoOp(InferenceOperator):
+class PlusTwoOp(inf_op.InferenceOperator):
     @property
     def export_name(self):
         return str(self.__class__.__name__)
@@ -17,9 +18,9 @@ class PlusTwoOp(InferenceOperator):
     def export(self, path):
         pass
 
-    def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
+    def transform(self, df: inf_op.InferenceDataFrame) -> inf_op.InferenceDataFrame:
         focus_df = df
-        new_df = InferenceDataFrame()
+        new_df = inf_op.InferenceDataFrame()
         for name, data in focus_df:
             new_df.tensors[f"{name}+2"] = data + 2
         return new_df
@@ -56,7 +57,7 @@ def test_op_runner_loads_config(tmpdir, dataset, engine):
         }
     }
 
-    runner = OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(repository, version, kind, config)
 
     loaded_op = runner.operators[0]
     assert isinstance(loaded_op, PlusTwoOp)
@@ -96,7 +97,7 @@ def test_op_runner_loads_multiple_ops_same(tmpdir, dataset, engine):
         }
     }
 
-    runner = OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(repository, version, kind, config)
 
     assert len(runner.operators) == 2
 
@@ -138,12 +139,12 @@ def test_op_runner_loads_multiple_ops_same_execute(tmpdir, dataset, engine):
         }
     }
 
-    runner = OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(repository, version, kind, config)
 
     inputs = {}
     for col_name in schema.column_names:
         inputs[col_name] = np.random.randint(10)
 
-    outputs = runner.execute(InferenceDataFrame(inputs))
+    outputs = runner.execute(inf_op.InferenceDataFrame(inputs))
 
     assert outputs["x+2+2"] == inputs["x"] + 4

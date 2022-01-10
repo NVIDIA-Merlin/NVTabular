@@ -24,14 +24,13 @@ from nvtabular.dispatch import (
     _random_state,
     _read_parquet_dispatch,
 )
+from nvtabular.graph import Schema
 from nvtabular.graph.tags import Tags
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
-
-CATEGORICAL = Tags.CATEGORICAL
 
 
 class TargetEncoding(StatOperator):
@@ -215,19 +214,57 @@ class TargetEncoding(StatOperator):
     def dependencies(self):
         return self.dependency
 
-    def output_column_names(self, columns):
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
+        return parents_selector
+
+    def column_mapping(self, col_selector):
+        column_mapping = {}
         if hasattr(self.target, "output_columns"):
             self.target = self.target.output_columns
 
-        ret = []
-        for cat in columns.grouped_names:
-            cat = [cat] if isinstance(cat, str) else cat
-            ret.extend(self._make_te_name(cat.names if isinstance(cat, ColumnSelector) else cat))
+        for group in col_selector.grouped_names:
+            group = ColumnSelector(group)
+            result_names = self._make_te_name(group.names)
+            for name in result_names:
+                column_mapping[name] = group.names
 
         if self.kfold > 1 and not self.drop_folds:
-            ret.append(self.fold_name)
+            column_mapping[self.fold_name] = []
 
-        return ColumnSelector(ret)
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_dtype(
+                input_schema[source_col_name].dtype,
+                is_list=input_schema[source_col_name]._is_list,
+            )
+        # fold only, setting the np.int
+        return col_schema.with_dtype(np.int)
+
+    def _compute_tags(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_tags(input_schema[source_col_name].tags + self.output_tags)
+        return col_schema
+
+    @property
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
+
+    def _compute_properties(self, col_schema, input_schema):
+        if input_schema.column_schemas:
+            source_col_name = input_schema.column_names[0]
+            return col_schema.with_properties(input_schema[source_col_name].properties)
+        return col_schema
 
     def set_storage_path(self, new_path, copy=False):
         self.stats = nvt_cat._copy_storage(self.stats, self.out_path, new_path, copy)
@@ -358,9 +395,6 @@ class TargetEncoding(StatOperator):
         if fit_folds and not self.drop_folds:
             new_df[self.fold_name] = df[self.fold_name]
         return new_df
-
-    def _get_tags(self):
-        return [CATEGORICAL]
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

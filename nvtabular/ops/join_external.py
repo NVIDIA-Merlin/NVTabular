@@ -30,9 +30,9 @@ from nvtabular.dispatch import (
     _convert_data,
     _create_nvt_dataset,
     _detect_format,
-    _read_dispatch,
     _to_host,
 )
+from nvtabular.graph.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -116,6 +116,7 @@ class JoinExternal(Operator):
             raise ValueError("Only left join is currently supported.")
         if not isinstance(self.kind_ext, ExtData):
             raise ValueError("kind_ext option not recognized.")
+        super().__init__()
 
     @property
     def _ext(self):
@@ -124,41 +125,13 @@ class JoinExternal(Operator):
             # Return cached result if present
             return _convert_data(self._ext_cache, cpu=self.cpu)
 
-        if self.kind_ext == ExtData.DATASET:
-            # Use Dataset.to_ddf
-            _dataset = self.df_ext
-            if self.cpu:
-                _dataset.to_cpu()
-            else:
-                _dataset.to_gpu()
-            _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
-        elif self.kind_ext in (
-            ExtData.ARROW,
-            ExtData.CUDF,
-            ExtData.DASK_CUDF,
-            ExtData.PANDAS,
-            ExtData.DASK_PANDAS,
-        ):
-            _ext = _check_partition_count(_convert_data(self.df_ext, cpu=self.cpu))
+        # Use Dataset.to_ddf
+        _dataset = self.df_ext
+        if self.cpu:
+            _dataset.to_cpu()
         else:
-            if self.kind_ext == ExtData.PARQUET:
-                # Read from parquet dataset
-                kwargs = {
-                    "split_row_groups": False,
-                    "index": False,
-                    "gather_statistics": False,
-                    "columns": self.columns_ext,
-                }
-                kwargs.update(self.kwargs)
-                reader = _read_dispatch(cpu=self.cpu, collection=True)
-            elif self.kind_ext == ExtData.CSV:
-                # Read from CSV dataset
-                kwargs = {"usecols": self.columns_ext}
-                kwargs.update(self.kwargs)
-                reader = _read_dispatch(cpu=self.cpu, collection=True, fmt="csv")
-            else:
-                raise ValueError("Disk format not yet supported")
-            _ext = _check_partition_count(reader(self.df_ext, **kwargs))
+            _dataset.to_gpu()
+        _ext = _check_partition_count(_dataset.to_ddf(columns=self.columns_ext))
 
         # Take subset of columns if a list is specified
         if self.columns_ext:
@@ -198,18 +171,45 @@ class JoinExternal(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
-        ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
-
-        # This maintains the order which set() does not
-        combined = dict.fromkeys(columns.names + list(ext_columns)).keys()
-
-        return ColumnSelector(list(combined))
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
+        return parents_selector
 
     def compute_output_schema(self, input_schema, col_selector):
         # must load in the schema from the external dataset
         input_schema = input_schema + self.df_ext.schema
         return super().compute_output_schema(input_schema, col_selector)
+
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        ext_columns = self.columns_ext if self.columns_ext else self._ext.columns
+
+        # This maintains the order which set() does not
+        combined_col_names = dict.fromkeys(col_selector.names + list(ext_columns)).keys()
+
+        for col_name in combined_col_names:
+            column_mapping[col_name] = [col_name]
+
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        if col_schema.name in input_schema.column_names:
+            return super()._compute_dtype(col_schema, input_schema)
+        else:
+            col_dtype = self.df_ext.schema.column_schemas[col_schema.name].dtype
+            return col_schema.with_dtype(col_dtype)
+
+    def _compute_tags(self, col_schema, input_schema):
+        return col_schema
+
+    def _compute_properties(self, col_schema, input_schema):
+        return col_schema
 
 
 def _check_partition_count(df):
