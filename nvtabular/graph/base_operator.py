@@ -145,7 +145,7 @@ class BaseOperator:
             dtype = input_schema[source_col_name].dtype
             is_list = input_schema[source_col_name]._is_list
 
-        if hasattr(self, "output_dtype"):
+        if hasattr(self, "output_dtype") and self.output_dtype is not None:
             dtype = self.output_dtype
             is_list = any(cs._is_list for _, cs in input_schema.column_schemas.items())
 

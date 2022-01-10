@@ -186,3 +186,63 @@ def test_lambdaop_schema_computation(cpu):
     assert output_schema["c"].dtype == dtype
     assert output_schema["c"].tags == tags
     assert output_schema["c"].properties == properties
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_lambdaop_dtype_propagation(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size).astype(np.float32),
+        }
+    )
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+
+    dtype = np.float64
+
+    label = ColumnSelector(["c"])
+    label_feature = (
+        label >> ops.LambdaOp(lambda col: col.astype(dtype)) >> ops.Rename(postfix="_renamed")
+    )
+    workflow = nvt.Workflow(label_feature)
+    workflow.fit(dataset)
+
+    output_schema = workflow.output_node.output_schema
+
+    assert output_schema["c_renamed"].dtype == dtype
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_lambdaop_blah(cpu):
+    size = 12
+    df0 = pd.DataFrame(
+        {
+            "a": np.arange(size),
+            "b": np.random.choice(["apple", "banana", "orange"], size),
+            "c": np.random.choice([0, 1], size).astype(np.float16),
+        }
+    )
+    ddf0 = dd.from_pandas(df0, npartitions=4)
+    dataset = nvt.Dataset(ddf0, cpu=cpu)
+
+    label = ColumnSelector(["a", "c"])
+
+    label_feature = (
+        label >> ops.LambdaOp(lambda col: col.astype(np.float32)) >> ops.Rename(postfix="_1st")
+    )
+    b_labels = (
+        label_feature["c_1st"]
+        >> ops.LambdaOp(lambda col: col.astype(np.float64))
+        >> ops.Rename(postfix="_2nd")
+    )
+
+    # workflow = nvt.Workflow(label_feature + b_labels)
+    workflow = nvt.Workflow(b_labels)
+    workflow.fit(dataset)
+
+    output_schema = workflow.output_node.output_schema
+
+    assert output_schema["c_1st_2nd"].dtype == np.float64

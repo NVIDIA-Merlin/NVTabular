@@ -32,7 +32,13 @@ class Graph:
         self.output_schema = None
 
     def fit_schema(self, root_schema: Schema) -> "Graph":
-        for node in postorder_iter_nodes(self.output_node):
+        nodes = postorder_iter_nodes(self.output_node)
+        self._compute_node_schemas(root_schema, nodes)
+        self._compute_graph_schemas(root_schema)
+        return self
+
+    def _compute_node_schemas(self, root_schema, nodes):
+        for node in nodes:
             if not node.parents:
                 node_input_schema = root_schema
             else:
@@ -46,6 +52,9 @@ class Graph:
 
             node.compute_schemas(node_input_schema)
 
+        return self
+
+    def _compute_graph_schemas(self, root_schema):
         self.input_schema = Schema(
             [
                 schema
@@ -54,8 +63,6 @@ class Graph:
             ]
         )
         self.output_schema = self.output_node.output_schema
-
-        return self
 
     def _input_columns(self):
         input_cols = []
