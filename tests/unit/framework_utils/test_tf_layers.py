@@ -136,7 +136,7 @@ def test_dense_embedding_layer(aggregation, combiner):
         # len of columns is 2 because of mh (vals, nnzs) struct
         assert y_hat.shape[1] == (len(x))
         assert y_hat.shape[2] == 100
-        np.testing.assert_allclose(y_hat[:, 0], multi_hot_embedding_rows, rtol=1e-05)
+        np.testing.assert_allclose(y_hat[:, 0], multi_hot_embedding_rows, rtol=1e-04)
         y_c = y_hat[:, 1]
 
     elif aggregation == "concat":

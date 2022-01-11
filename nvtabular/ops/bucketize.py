@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distutils.version import LooseVersion
-
 import numpy as np
+from packaging.version import Version
 
 from nvtabular.dispatch import DataFrameType, _array, annotate
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -49,7 +48,7 @@ class Bucketize(Operator):
         try:
             import cupy
 
-            self.use_digitize = LooseVersion(cupy.__version__) >= "8.0.0"
+            self.use_digitize = Version(cupy.__version__) >= Version("8.0.0")
         except ImportError:
             # Assume cpu-backed data (since cupy is not even installed)
             self.use_digitize = True
@@ -87,10 +86,11 @@ class Bucketize(Operator):
                 new_df[col] = val
         return new_df
 
-    def output_tags(self):
-        return [Tags.CATEGORICAL]
+    def _compute_dtype(self, col_schema, input_schema):
+        return col_schema.with_dtype(np.int64)
 
-    def _get_dtypes(self):
-        return np.int64
+    def _compute_tags(self, col_schema, input_schema):
+        col_schema = col_schema.with_tags([Tags.CATEGORICAL])
+        return super()._compute_tags(col_schema, input_schema)
 
     transform.__doc__ = Operator.transform.__doc__

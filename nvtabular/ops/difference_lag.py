@@ -16,8 +16,8 @@
 import numpy
 
 from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -83,16 +83,20 @@ class DifferenceLag(Operator):
     def dependencies(self):
         return self.partition_cols
 
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        return ColumnSelector(
-            [self._column_name(col, shift) for shift in self.shifts for col in col_selector.names]
-        )
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        for col in col_selector.names:
+            for shift in self.shifts:
+                output_col_name = self._column_name(col, shift)
+                column_mapping[output_col_name] = [col]
+        return column_mapping
 
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
 
-    def output_tags(self):
-        return [Tags.CONTINUOUS]
+    def _compute_dtype(self, col_schema, input_schema):
+        return col_schema.with_dtype(numpy.float64)
 
-    def _dtype(self):
-        return numpy.float
+    def _compute_tags(self, col_schema, input_schema):
+        source_col_name = input_schema.column_names[0]
+        return col_schema.with_tags(input_schema[source_col_name].tags + [Tags.CONTINUOUS])

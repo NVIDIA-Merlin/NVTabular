@@ -2,7 +2,7 @@
 
 ignore-patterns=_version.py,model_config_pb2.py
 
-extension-pkg-allow-list=hugectr
+extension-pkg-allow-list=hugectr,nvtabular_cpp
 
 [MESSAGES CONTROL]
 disable=fixme,
@@ -58,7 +58,12 @@ disable=fixme,
     inconsistent-return-statements,
     duplicate-string-formatting-argument,
     len-as-condition,
-    cyclic-import
+    cyclic-import,
+
+    # producing false positives
+    unexpected-keyword-arg,
+    not-an-iterable,
+    unsubscriptable-object
 
 [SIMILARITIES]
 min-similarity-lines=20

@@ -22,8 +22,8 @@ from nvtabular.dispatch import (
     _is_list_dtype,
     annotate,
 )
+from nvtabular.graph.tags import Tags
 
-from ..tags import Tags
 from .operator import ColumnSelector, Operator
 
 
@@ -51,9 +51,11 @@ class LogOp(Operator):
                 df[name] = np.log(column.astype(np.float32) + 1)
         return df
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
+    @property
     def output_dtype(self):
         return np.float
 

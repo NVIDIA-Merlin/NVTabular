@@ -15,8 +15,8 @@
 import numpy
 from dask.dataframe.utils import meta_nonempty
 
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.graph.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -124,59 +124,42 @@ class Groupby(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
-        # Get the expected column names after transformation
-        _list_aggs, _conv_aggs = _get_agg_dicts(
-            self.groupby_cols, self.list_aggs, self.conv_aggs, columns
-        )
-        _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
-        _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
-        return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
-
-    def _dtypes(self):
-        return numpy.int64
-
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            if hasattr(self, "target"):
-                col_selector = (
-                    ColumnSelector(self.target) if isinstance(self.target, list) else self.target
-                )
-            else:
-                col_selector = ColumnSelector(input_schema.column_names)
-        if col_selector.tags:
-            tags_col_selector = ColumnSelector(tags=col_selector.tags)
-            filtered_schema = input_schema.apply(tags_col_selector)
-            col_selector += ColumnSelector(filtered_schema.column_names)
+        if not col_selector and hasattr(self, "target"):
+            col_selector = (
+                ColumnSelector(self.target) if isinstance(self.target, list) else self.target
+            )
+        return super().compute_output_schema(input_schema, col_selector)
 
-            # zero tags because already filtered
-            col_selector._tags = []
-        new_col_selector = self.output_column_names(col_selector)
-        new_list = []
-        for name in col_selector.names:
-            for new_name in new_col_selector.names:
-                if name in new_name and new_name not in new_list:
-                    new_list.append(new_name)
+    def column_mapping(self, col_selector):
+        column_mapping = {}
 
-        base_cols_map = {}
-        for new_col in new_list:
-            base_cols_map[new_col] = []
-            for old_col in input_schema.column_schemas:
-                if old_col in new_col:
-                    base_cols_map[new_col].append(old_col)
+        for groupby_col in self.groupby_cols:
+            if groupby_col in col_selector.names:
+                column_mapping[groupby_col] = [groupby_col]
 
-        col_selector = ColumnSelector(new_list)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                # grab the first collision
-                base_col_name = base_cols_map[column_name][0]
-                base_col_schema = input_schema.column_schemas[base_col_name]
-                input_schema += Schema([base_col_schema.with_name(column_name)])
+        _list_aggs, _conv_aggs = _get_agg_dicts(
+            self.groupby_cols, self.list_aggs, self.conv_aggs, col_selector
+        )
 
-        output_schema = Schema()
-        for column_schema in input_schema.apply(col_selector):
-            output_schema += Schema([self.transformed_schema(column_schema)])
-        return output_schema
+        for input_col_name, aggs in _list_aggs.items():
+            output_col_names = _columns_out_from_aggs(
+                {input_col_name: aggs}, name_sep=self.name_sep
+            )
+            for output_col_name in output_col_names:
+                column_mapping[output_col_name] = [input_col_name]
+
+        for input_col_name, aggs in _conv_aggs.items():
+            output_col_names = _columns_out_from_aggs(
+                {input_col_name: aggs}, name_sep=self.name_sep
+            )
+            for output_col_name in output_col_names:
+                column_mapping[output_col_name] = [input_col_name]
+
+        return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        return col_schema.with_dtype(numpy.int64)
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

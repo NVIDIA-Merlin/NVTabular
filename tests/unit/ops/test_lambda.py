@@ -43,7 +43,9 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Substring
     # Replacement
-    substring = ColumnSelector(["name-cat", "name-string"]) >> (lambda col: col.str.slice(1, 3))
+    substring = ColumnSelector(["name-cat", "name-string"]) >> ops.LambdaOp(
+        lambda col: col.str.slice(1, 3)
+    )
     processor = nvtabular.Workflow(substring)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -54,7 +56,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # No Replacement from old API (skipped for other examples)
     substring = (
         ColumnSelector(["name-cat", "name-string"])
-        >> (lambda col: col.str.slice(1, 3))
+        >> ops.LambdaOp(lambda col: col.str.slice(1, 3))
         >> ops.Rename(postfix="_slice")
     )
     processor = nvtabular.Workflow(substring + ["name-cat", "name-string"])
@@ -78,7 +80,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # Replace
     # Replacement
-    oplambda = ColumnSelector(["name-cat", "name-string"]) >> (
+    oplambda = ColumnSelector(["name-cat", "name-string"]) >> ops.LambdaOp(
         lambda col: col.str.replace("e", "XX")
     )
     processor = nvtabular.Workflow(oplambda)
@@ -92,7 +94,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
 
     # astype
     # Replacement
-    oplambda = ColumnSelector(["id"]) >> (lambda col: col.astype(float))
+    oplambda = ColumnSelector(["id"]) >> ops.LambdaOp(lambda col: col.astype(float))
     processor = nvtabular.Workflow(oplambda)
     processor.fit(dataset)
     new_gdf = processor.transform(dataset).to_ddf().compute()
@@ -103,7 +105,7 @@ def test_lambdaop(tmpdir, df, paths, gpu_memory_frac, engine, cpu):
     # Replacement
     oplambda = (
         ColumnSelector(["name-cat"])
-        >> (lambda col: col.astype(str).str.slice(0, 1))
+        >> ops.LambdaOp(lambda col: col.astype(str).str.slice(0, 1))
         >> ops.Categorify()
     )
     processor = nvtabular.Workflow(oplambda)
@@ -139,9 +141,9 @@ def test_lambdaop_misalign(cpu):
     cat_names = ColumnSelector(["b"])
     label = ColumnSelector(["c"])
     if cpu:
-        label_feature = label >> (lambda col: np.where(col == 4, 0, 1))
+        label_feature = label >> ops.LambdaOp(lambda col: np.where(col == 4, 0, 1))
     else:
-        label_feature = label >> (lambda col: cp.where(col == 4, 0, 1))
+        label_feature = label >> ops.LambdaOp(lambda col: cp.where(col == 4, 0, 1))
     workflow = nvt.Workflow(cat_names + cont_names + label_feature)
 
     dataset = nvt.Dataset(ddf0, cpu=cpu)

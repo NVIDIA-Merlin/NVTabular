@@ -25,6 +25,7 @@ from tritonclient.utils import np_to_triton_dtype  # noqa
 
 from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
 from nvtabular.inference.triton.ensemble import (  # noqa
+    _convert_string2pytorch_dtype,
     export_hugectr_ensemble,
     export_pytorch_ensemble,
     export_tensorflow_ensemble,

@@ -19,7 +19,6 @@ import json
 import math
 import os
 import warnings
-from distutils.version import LooseVersion
 
 import dask
 import dask.dataframe as dd
@@ -28,13 +27,14 @@ import pandas as pd
 import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe.io.demo import names as name_list
+from packaging.version import Version
 
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import dispatch, ops
-from nvtabular.columns import Schema
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.tags import Tags
 from nvtabular.io.parquet import GPUParquetWriter
-from nvtabular.tags import Tags
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
 cudf = pytest.importorskip("cudf")
@@ -42,7 +42,7 @@ dask_cudf = pytest.importorskip("dask_cudf")
 
 
 def test_validate_dataset_bad_schema(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
+    if Version(dask.__version__) <= Version("2.30.0"):
         # Older versions of Dask will not handle schema mismatch
         pytest.skip("Test requires newer version of Dask.")
 
@@ -156,6 +156,36 @@ def test_dask_dataset_itr(tmpdir, datasets, engine, gpu_memory_frac):
 
     assert size == df1.shape[0]
     assert len(my_iter) == size
+
+
+def test_io_partitions_push(tmpdir):
+    os.makedirs(os.path.join(tmpdir, "csv"))
+
+    # Generate random csv files
+    files = [os.path.join(tmpdir, f"csv/day_{i}") for i in range(23)]
+    for file in files:
+        with open(file, "w") as f:
+            f.write("0,1,2,3,a,b,c\n" * 1000)
+
+    # Load csv files
+    label_columns = ["label"]
+    cont_columns = ["I1", "I2", "I3"]
+    cat_columns = ["C1", "C2", "C3"]
+    columns = label_columns + cont_columns + cat_columns
+    dataset = nvt.Dataset(files, engine="csv", names=columns)
+    print("npartitions of dataset:", dataset.npartitions)
+
+    for x in range(20):
+        dataset.to_parquet(
+            output_files=x,
+            output_path=os.path.join(tmpdir, f"parquet{x}"),
+            cats=cat_columns,
+            conts=cont_columns,
+            labels=label_columns,
+        )
+
+        df_lib = dispatch.get_lib()
+        df_lib.read_parquet(os.path.join(tmpdir, f"parquet{x}/part_0.parquet"))
 
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
@@ -940,7 +970,7 @@ def test_parquet_filtered_hive(tmpdir, cpu):
 
 
 @pytest.mark.skipif(
-    LooseVersion(dask.__version__) < "2021.07.1",
+    Version(dask.__version__) < Version("2021.07.1"),
     reason="Dask>=2021.07.1 required for file aggregation",
 )
 @pytest.mark.parametrize("cpu", [True, False])
