@@ -82,7 +82,9 @@ class BaseOperator:
 
         return parents_schema + deps_schema
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
         returns a set of schemas for the transformed columns this operator will produce
         Parameters
@@ -115,6 +117,11 @@ class BaseOperator:
         for output_col_name, input_col_names in self.column_mapping(col_selector).items():
             col_schema = self.compute_column_schema(output_col_name, input_schema[input_col_names])
             output_schema += Schema([col_schema])
+
+        if self.dynamic_dtypes and prev_output_schema:
+            for col_name, col_schema in output_schema.column_schemas.items():
+                dtype = prev_output_schema[col_name].dtype
+                output_schema.column_schemas[col_name] = col_schema.with_dtype(dtype)
 
         return output_schema
 
@@ -150,6 +157,10 @@ class BaseOperator:
             is_list = any(cs._is_list for _, cs in input_schema.column_schemas.items())
 
         return col_schema.with_dtype(dtype, is_list=is_list)
+
+    @property
+    def dynamic_dtypes(self):
+        return False
 
     def _compute_tags(self, col_schema, input_schema):
         tags = []

@@ -124,12 +124,14 @@ class Groupby(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         if not col_selector and hasattr(self, "target"):
             col_selector = (
                 ColumnSelector(self.target) if isinstance(self.target, list) else self.target
             )
-        return super().compute_output_schema(input_schema, col_selector)
+        return super().compute_output_schema(input_schema, col_selector, prev_output_schema)
 
     def column_mapping(self, col_selector):
         column_mapping = {}
@@ -159,7 +161,14 @@ class Groupby(Operator):
         return column_mapping
 
     def _compute_dtype(self, col_schema, input_schema):
-        return col_schema.with_dtype(numpy.int64)
+        col_schema = super()._compute_dtype(col_schema, input_schema)
+
+        is_list = col_schema._is_list
+        for col_name in input_schema.column_names:
+            aggs = self.list_aggs.get(col_name, [])
+            is_list = is_list or "list" in aggs
+
+        return col_schema.with_dtype(numpy.int64, is_list=is_list)
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

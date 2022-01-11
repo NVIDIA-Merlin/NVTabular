@@ -121,6 +121,10 @@ class LambdaOp(Operator):
         return col_selector.filter_columns(to_skip)
 
     @property
+    def dynamic_dtypes(self):
+        return True
+
+    @property
     def output_dtype(self):
         return self._dtype
 

@@ -678,15 +678,14 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
-    for label in to_remove:
-        if label in workflow.input_dtypes:
-            del workflow.input_dtypes[label]
-
-        if label in workflow.output_dtypes:
-            del workflow.output_dtypes[label]
-
     # Work backwards to form an input schema from redacted columns
-    new_schema = Schema(list(workflow.input_dtypes.keys()))
+    new_schema = Schema(
+        [
+            col_schema
+            for col_schema in workflow.graph.input_schema
+            if col_schema.name not in to_remove
+        ]
+    )
 
     # Re-fit the workflow to altered input schema
     for node in iter_nodes([workflow.output_node]):
@@ -723,8 +722,8 @@ def _add_model_param(column, dtype, paramclass, params, dims=None):
 def _convert_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
 
-    if not isinstance(dtype, str):
-        dtype_name = dtype.name
+    if dtype and not isinstance(dtype, str):
+        dtype_name = dtype.name if hasattr(dtype, "name") else dtype.__name__
     else:
         dtype_name = dtype
 
@@ -748,7 +747,7 @@ def _convert_dtype(dtype):
     elif dtype_name in dtypes:
         return dtypes[dtype_name]
     else:
-        raise ValueError(f"Can't convert dtype {dtype})")
+        raise ValueError(f"Can't convert {dtype} to a Triton dtype")
 
 
 def _convert_pytorch_dtype(dtype):

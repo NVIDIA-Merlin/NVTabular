@@ -25,19 +25,28 @@ class Graph:
     def __init__(self, output_node: Node):
         self.output_node = output_node
 
-        self.input_dtypes = None
-        self.output_dtypes = None
-
         self.input_schema = None
         self.output_schema = None
 
-    def fit_schema(self, root_schema: Schema) -> "Graph":
-        nodes = postorder_iter_nodes(self.output_node)
-        self._compute_node_schemas(root_schema, nodes)
+    @property
+    def input_dtypes(self):
+        return {
+            name: col_schema.dtype for name, col_schema in self.input_schema.column_schemas.items()
+        }
+
+    @property
+    def output_dtypes(self):
+        return {
+            name: col_schema.dtype for name, col_schema in self.output_schema.column_schemas.items()
+        }
+
+    def fit_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
+        nodes = list(postorder_iter_nodes(self.output_node))
+        self._compute_node_schemas(root_schema, nodes, preserve_dtypes)
         self._compute_graph_schemas(root_schema)
         return self
 
-    def _compute_node_schemas(self, root_schema, nodes):
+    def _compute_node_schemas(self, root_schema, nodes, preserve_dtypes):
         for node in nodes:
             if not node.parents:
                 node_input_schema = root_schema
@@ -50,9 +59,7 @@ class Graph:
                 # from combined schema
                 node_input_schema = root_schema + combined_schema
 
-            node.compute_schemas(node_input_schema)
-
-        return self
+            node.compute_schemas(node_input_schema, preserve_dtypes=preserve_dtypes)
 
     def _compute_graph_schemas(self, root_schema):
         self.input_schema = Schema(

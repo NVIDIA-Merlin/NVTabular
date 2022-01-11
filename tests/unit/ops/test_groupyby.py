@@ -72,7 +72,12 @@ def test_groupby_op(keys, cpu):
 
     if not cpu:
         # Make sure we are capturing the list type in `output_dtypes`
-        assert processor.output_dtypes["x-list"] == cudf.core.dtypes.ListDtype("int64")
+        # assert processor.output_dtypes["x-list"] ==
+        assert (
+            processor.output_schema["x-list"].dtype.__name__
+            == cudf.core.dtypes.ListDtype("int64").element_type
+        )
+        assert processor.output_schema["x-list"]._is_list is True
 
     # Check list-aggregation ordering
     x = new_gdf["x-list"]

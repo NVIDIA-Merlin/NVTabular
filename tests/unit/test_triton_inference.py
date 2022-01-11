@@ -168,6 +168,7 @@ def test_large_strings(tmpdir, output_model):
     df = _make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
+    workflow.fit(nvt.Dataset(df))
 
     _verify_workflow_on_tritonserver(
         tmpdir,

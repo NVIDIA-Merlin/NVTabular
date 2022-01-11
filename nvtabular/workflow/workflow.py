@@ -34,7 +34,6 @@ from dask.core import flatten
 import nvtabular
 from nvtabular.dispatch import _concat_columns
 from nvtabular.graph.graph import Graph, _get_ops_by_type
-from nvtabular.graph.node import postorder_iter_nodes
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
 from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
@@ -226,28 +225,10 @@ class Workflow:
             for dependencies in stat_ops.values():
                 dependencies.difference_update(current_phase)
 
-        # hack: store input/output dtypes here. We should have complete dtype
-        # information for each operator (like we do for column names), but as
-        # an interim solution this gets us what we need.
-        input_dtypes = dataset.to_ddf()[self._input_columns()].dtypes
-        output_dtypes = self._transform_impl(dataset, override_dtypes=True).sample_dtypes()
-
-        self.graph.input_dtypes = dict(zip(input_dtypes.index, input_dtypes))
-        self.graph.output_dtypes = dict(zip(output_dtypes.index, output_dtypes))
-
-        dynamic_dtype_ops = (nvtabular.ops.LambdaOp,)
-        graph_nodes = list(postorder_iter_nodes(self.graph.output_node))
-        dynamic_dtype_nodes = [
-            node for node in graph_nodes if isinstance(node.op, dynamic_dtype_ops)
-        ]
-
-        for node in graph_nodes:
-            if node in dynamic_dtype_nodes:
-                first_column_schema = list(node.output_schema.column_schemas.values())[0]
-                node.op._dtype = first_column_schema.dtype
-            node.compute_schemas(dataset.schema)
-
-        self.graph._compute_graph_schemas(dataset.schema)
+        # This captures the output dtypes of operators like LambdaOp where
+        # the dtype can't be determined without running the transform
+        self._transform_impl(dataset, capture_dtypes=True).sample_dtypes()
+        self.graph.fit_schema(dataset.schema, preserve_dtypes=True)
 
         return self
 
@@ -267,7 +248,7 @@ class Workflow:
         self.fit(dataset)
         return self.transform(dataset)
 
-    def _transform_impl(self, dataset: Dataset, override_dtypes=False):
+    def _transform_impl(self, dataset: Dataset, capture_dtypes=False):
         self._clear_worker_cache()
 
         if not self.graph.output_schema:
@@ -276,7 +257,7 @@ class Workflow:
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(
             _transform_ddf(
-                ddf, self.output_node, self.output_dtypes, override_dtypes=override_dtypes
+                ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
             ),
             client=self.client,
             cpu=dataset.cpu,
@@ -396,7 +377,7 @@ class Workflow:
             clean_worker_cache()
 
 
-def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, override_dtypes=False):
+def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, capture_dtypes=False):
     # Check if we are only selecting columns (no transforms).
     # If so, we should perform column selection at the ddf level.
     # Otherwise, Dask will not push the column selection into the
@@ -428,7 +409,7 @@ def _transform_ddf(ddf, workflow_nodes, meta=None, additional_columns=None, over
         _transform_partition,
         workflow_nodes,
         additional_columns=additional_columns,
-        override_dtypes=override_dtypes,
+        capture_dtypes=capture_dtypes,
         meta=meta,
         enforce_metadata=False,
     )
@@ -443,7 +424,7 @@ def _get_unique(cols):
     return list({x: x for x in cols}.keys())
 
 
-def _transform_partition(root_df, workflow_nodes, additional_columns=None, override_dtypes=False):
+def _transform_partition(root_df, workflow_nodes, additional_columns=None, capture_dtypes=False):
     """Transforms a single partition by appyling all operators in a WorkflowNode"""
     output = None
 
@@ -461,7 +442,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, overr
 
             for parent in node.parents_with_dependencies:
                 parent_output_cols = _get_unique(parent.output_schema.column_names)
-                parent_df = _transform_partition(root_df, [parent], override_dtypes=override_dtypes)
+                parent_df = _transform_partition(root_df, [parent], capture_dtypes=capture_dtypes)
                 if input_df is None or not len(input_df):
                     input_df = parent_df[parent_output_cols]
                     seen_columns = set(parent_output_cols)
@@ -496,7 +477,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, overr
                 for col_name, col_schema in node.output_schema.column_schemas.items():
                     output_schema = col_schema.with_dtype(output_df[col_name].dtype)
 
-                    if override_dtypes:
+                    if capture_dtypes:
                         node.output_schema.column_schemas[col_name] = output_schema
                 #     else:
                 #         if col_schema.dtype != output_schema.dtype:

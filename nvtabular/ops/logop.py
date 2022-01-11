@@ -57,6 +57,6 @@ class LogOp(Operator):
 
     @property
     def output_dtype(self):
-        return np.float
+        return np.float64
 
     transform.__doc__ = Operator.transform.__doc__

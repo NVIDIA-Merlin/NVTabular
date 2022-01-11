@@ -533,7 +533,7 @@ class Categorify(StatOperator):
 
     @property
     def output_dtype(self):
-        return np.int
+        return np.int64
 
     def compute_selector(
         self,
