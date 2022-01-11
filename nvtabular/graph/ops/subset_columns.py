@@ -23,6 +23,7 @@ from nvtabular.graph.selector import ColumnSelector
 class SubsetColumns(BaseOperator):
     def __init__(self, label=None):
         self._label = label or self.__class__.__name__
+        super().__init__()
 
     def compute_input_schema(
         self,
@@ -53,9 +54,6 @@ class SubsetColumns(BaseOperator):
             Returns a transformed dataframe for this operator
         """
         return super()._get_columns(df, col_selector)
-
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
-        return col_selector
 
     @property
     def label(self) -> str:

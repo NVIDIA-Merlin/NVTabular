@@ -89,7 +89,10 @@ class TensorflowOp(InferenceOperator):
         parents_selector: ColumnSelector,
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
-        return ColumnSelector(self.model_inputs)
+        model_selector = ColumnSelector(self.model_inputs)
+        self._validate_matching_cols(input_schema, model_selector, "computing input selector")
+
+        return model_selector
 
     def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
         out_schema = Schema()

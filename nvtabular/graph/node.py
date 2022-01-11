@@ -92,21 +92,22 @@ class Node:
         self.parents.extend(parent_nodes)
 
     def compute_schemas(self, root_schema):
-        # If parent is an addition node, we may need to propagate grouping
-        # unless we're a node that already has a selector
-        if not self.selector:
-            if (
-                len(self.parents) == 1
-                and isinstance(self.parents[0].op, ConcatColumns)
-                and self.parents[0].selector
-                and (self.parents[0].selector.names)
-            ):
-                self.selector = self.parents[0].selector
-
         parents_selector = _combine_selectors(self.parents)
         dependencies_selector = _combine_selectors(self.dependencies)
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
+
+        # If parent is an addition or selection node, we may need to
+        # propagate grouping unless this node already has a selector
+        if (
+            len(self.parents) == 1
+            and isinstance(self.parents[0].op, (ConcatColumns, SelectionOp))
+            and self.parents[0].selector
+            and (self.parents[0].selector.names)
+        ):
+            parents_selector = self.parents[0].selector
+            if not self.selector:
+                self.selector = parents_selector
 
         self.input_schema = self.op.compute_input_schema(
             root_schema, parents_schema, deps_schema, self.selector
@@ -305,12 +306,8 @@ class Node:
         return ColumnSelector(self.output_schema.column_names)
 
     @property
-    def dependency_schema(self):
-        return _combine_schemas(self.dependencies)
-
-    @property
     def dependency_columns(self):
-        return _combine_selectors(self.dependencies)
+        return ColumnSelector(_combine_schemas(self.dependencies).column_names)
 
     @property
     def label(self):

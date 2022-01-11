@@ -51,9 +51,11 @@ class LogOp(Operator):
                 df[name] = np.log(column.astype(np.float32) + 1)
         return df
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
+    @property
     def output_dtype(self):
         return np.float
 
