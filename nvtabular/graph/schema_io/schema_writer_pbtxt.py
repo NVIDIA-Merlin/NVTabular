@@ -16,6 +16,7 @@
 import os
 from pathlib import Path
 
+import fsspec
 import numpy
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -40,9 +41,7 @@ class PbTxt_SchemaWriter(SchemaWriter):
 
     @classmethod
     def write(cls, schema, schema_path):
-        schema_path = Path(schema_path)
-        if not schema_path.is_dir():
-            raise ValueError(f"The path provided is not a valid directory: {schema_path}")
+        fs = fsspec.get_fs_token_paths(schema_path)[0]
 
         # traverse list of column schema
         schema_file = schema_pb2.Schema()
@@ -51,9 +50,15 @@ class PbTxt_SchemaWriter(SchemaWriter):
             features.append(create_protobuf_feature(col_schema))
         schema_file.feature.extend(features)
 
-        with open(schema_path / "schema.pbtxt", "w") as f:
-            f.write(text_format.MessageToString(schema_file))
-        return schema
+        try:
+            with fs.open(fs.sep.join([str(schema_path), "schema.pbtxt"]), "w") as f:
+                f.write(text_format.MessageToString(schema_file))
+        except Exception as e:
+            if not fs.isdir(schema_path):
+                raise ValueError(
+                    f"The path provided is not a valid directory: {schema_path}"
+                ) from e
+            raise
 
     @classmethod
     def load(cls, schema_path):
