@@ -53,6 +53,7 @@ class PbTxt_SchemaWriter(SchemaWriter):
         try:
             with fs.open(fs.sep.join([str(schema_path), "schema.pbtxt"]), "w") as f:
                 f.write(text_format.MessageToString(schema_file))
+            return schema
         except Exception as e:
             if not fs.isdir(schema_path):
                 raise ValueError(
