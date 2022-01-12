@@ -50,9 +50,8 @@ def test_groupby_op(keys, cpu):
     # Create a ddf, and be sure to shuffle by the groupby keys
     ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(keys)
     dataset = nvt.Dataset(ddf1, cpu=cpu)
-    dataset.schema.column_schemas["x"] = (
-        dataset.schema.column_schemas["name"].with_name("x").with_tags("custom_tag")
-    )
+
+    dataset.schema.column_schemas["x"] = dataset.schema.column_schemas["x"].with_tags("custom_tag")
     # Define Groupby Workflow
     groupby_features = ColumnSelector(["name", "id", "ts", "x", "y"]) >> ops.Groupby(
         groupby_cols=keys,
@@ -72,12 +71,12 @@ def test_groupby_op(keys, cpu):
 
     if not cpu:
         # Make sure we are capturing the list type in `output_dtypes`
-        # assert processor.output_dtypes["x-list"] ==
         assert (
-            processor.output_schema["x-list"].dtype.__name__
+            processor.output_schema["x-list"].dtype
             == cudf.core.dtypes.ListDtype("int64").element_type
         )
         assert processor.output_schema["x-list"]._is_list is True
+        assert processor.output_schema["x-list"]._is_ragged is True
 
     # Check list-aggregation ordering
     x = new_gdf["x-list"]

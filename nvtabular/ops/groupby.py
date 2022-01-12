@@ -163,12 +163,20 @@ class Groupby(Operator):
     def _compute_dtype(self, col_schema, input_schema):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
+        dtype = col_schema.dtype
         is_list = col_schema._is_list
-        for col_name in input_schema.column_names:
-            aggs = self.list_aggs.get(col_name, [])
-            is_list = is_list or "list" in aggs
 
-        return col_schema.with_dtype(numpy.int64, is_list=is_list)
+        for col_name in input_schema.column_names:
+            convo_aggs = self.conv_aggs.get(col_name, [])
+            if "count" in convo_aggs:
+                dtype = numpy.int64
+            elif "mean" in convo_aggs:
+                dtype = numpy.float64
+
+            aggs = self.list_aggs.get(col_name, [])
+            is_list = "list" in aggs
+
+        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):

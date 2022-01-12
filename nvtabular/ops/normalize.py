@@ -103,7 +103,7 @@ class Normalize(StatOperator):
 
     @property
     def output_dtype(self):
-        return numpy.float32
+        return numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -177,7 +177,7 @@ class NormalizeMinMax(StatOperator):
 
     @property
     def output_dtype(self):
-        return numpy.float32
+        return numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

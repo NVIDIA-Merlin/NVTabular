@@ -1139,7 +1139,7 @@ class Dataset:
         for column, dtype_info in dtypes.items():
             dtype_val = dtype_info["dtype"]
             is_list = dtype_info["is_list"]
-            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list, _is_ragged=is_list)
             column_schemas.append(col_schema)
 
         self.schema = Schema(column_schemas)

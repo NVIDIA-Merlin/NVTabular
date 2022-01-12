@@ -68,12 +68,12 @@ class TritonPythonModel:
         self.input_dtypes, self.input_multihots = _parse_input_dtypes(input_dtypes)
 
         self.output_dtypes = dict()
-        for name, dtype in self.workflow.output_dtypes.items():
-            if not _is_list_dtype(dtype):
-                self._set_output_dtype(name)
+        for col_name, col_schema in self.workflow.output_schema.column_schemas.items():
+            if col_schema._is_list and col_schema._is_ragged:
+                self._set_output_dtype(col_name + "__nnzs")
+                self._set_output_dtype(col_name + "__values")
             else:
-                self._set_output_dtype(name + "__nnzs")
-                self._set_output_dtype(name + "__values")
+                self._set_output_dtype(col_name)
 
         if model_framework == "hugectr":
             runner_class = HugeCTRWorkflowRunner

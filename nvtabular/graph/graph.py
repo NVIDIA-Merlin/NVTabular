@@ -30,15 +30,23 @@ class Graph:
 
     @property
     def input_dtypes(self):
-        return {
-            name: col_schema.dtype for name, col_schema in self.input_schema.column_schemas.items()
-        }
+        if self.input_schema:
+            return {
+                name: col_schema.dtype
+                for name, col_schema in self.input_schema.column_schemas.items()
+            }
+        else:
+            return {}
 
     @property
     def output_dtypes(self):
-        return {
-            name: col_schema.dtype for name, col_schema in self.output_schema.column_schemas.items()
-        }
+        if self.output_schema:
+            return {
+                name: col_schema.dtype
+                for name, col_schema in self.output_schema.column_schemas.items()
+            }
+        else:
+            return {}
 
     def fit_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
         nodes = list(postorder_iter_nodes(self.output_node))

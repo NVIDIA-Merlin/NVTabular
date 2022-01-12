@@ -129,6 +129,10 @@ class Workflow:
         return self.graph.input_dtypes
 
     @property
+    def input_schema(self):
+        return self.graph.input_schema
+
+    @property
     def output_schema(self):
         return self.graph.output_schema
 

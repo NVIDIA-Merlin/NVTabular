@@ -45,10 +45,12 @@ class LogOp(Operator):
         for name in col_selector.names:
             column = df[name]
             if _is_list_dtype(column):
-                transformed = np.log(_flatten_list_column_values(column).astype(np.float32) + 1)
+                transformed = np.log(
+                    _flatten_list_column_values(column).astype(self.output_dtype) + 1
+                )
                 df[name] = _encode_list_column(column, transformed)
             else:
-                df[name] = np.log(column.astype(np.float32) + 1)
+                df[name] = np.log(column.astype(self.output_dtype) + 1)
         return df
 
     @property
@@ -57,6 +59,6 @@ class LogOp(Operator):
 
     @property
     def output_dtype(self):
-        return np.float64
+        return np.float32
 
     transform.__doc__ = Operator.transform.__doc__
