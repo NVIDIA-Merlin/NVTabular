@@ -216,7 +216,7 @@ def test_lambdaop_dtype_propagation(cpu):
 
 
 @pytest.mark.parametrize("cpu", _CPU)
-def test_lambdaop_blah(cpu):
+def test_lambdaop_dtype_multi_op_propagation(cpu):
     size = 12
     df0 = pd.DataFrame(
         {
@@ -239,7 +239,6 @@ def test_lambdaop_blah(cpu):
         >> ops.Rename(postfix="_2nd")
     )
 
-    # workflow = nvt.Workflow(label_feature + b_labels)
     workflow = nvt.Workflow(b_labels)
     workflow.fit(dataset)
 
