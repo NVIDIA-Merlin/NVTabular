@@ -113,18 +113,66 @@ def test_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, 
     assert new_df[output_names].all() == new_df[op_columns[0]].all()
 
 
-def simple_tf_model(input_shape=(2,)):
-    from tensorflow.keras.layers import Dense
-    from tensorflow.keras.models import Sequential
+def simple_tf_model(cat_names=None, cont_names=None):
+    import tensorflow as tf
 
-    return Sequential([Dense(8, input_shape=input_shape), Dense(1)])
+    # instantiate our columns
+    categorical_columns = [
+        tf.feature_column.embedding_column(
+            tf.feature_column.categorical_column_with_identity(
+                name,
+                1000, # dictionary_size
+            ),
+            10, # embedding_dim
+        )
+        for name in cat_names
+    ]
+    continuous_columns = [tf.feature_column.numeric_column(name, (1,)) for name in cont_names]
 
+    # Categorical
+    categorical_inputs = {}
+    for column_name in cat_names:
+        categorical_inputs[column_name] = tf.keras.Input(name=column_name, shape=(1,), dtype=tf.int64)
+    categorical_embedding_layer = tf.keras.layers.DenseFeatures(categorical_columns)
+    categorical_x = categorical_embedding_layer(categorical_inputs)
+
+    # Continuous
+    continuous_inputs = []
+    for column_name in cont_names:
+        continuous_inputs.append(tf.keras.Input(name=column_name, shape=(1,), dtype=tf.float32))
+    continuous_embedding_layer = tf.keras.layers.Concatenate(axis=1)
+    continuous_x = continuous_embedding_layer(continuous_inputs)
+    continuous_x = tf.keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.1)(continuous_x)
+
+    # Concatenate and build MLP
+    x = tf.keras.layers.Concatenate(axis=1)([categorical_x, continuous_x])
+    for dim in [8, 4]:
+        x = tf.keras.layers.Dense(dim, activation="relu")(x)
+        x = tf.keras.layers.BatchNormalization(epsilon=1e-5, momentum=0.1)(x)
+    x = tf.keras.layers.Dense(1, activation="linear")(x)
+    inputs = list(categorical_inputs.values()) + continuous_inputs
+    return tf.keras.Model(inputs=inputs, outputs=x)
 
 def simple_tf_encode(model, batch):
-    return model(batch).numpy()
+    return model(batch[0]).numpy()
+
+def simple_tf_iterator(
+    data,
+    dataloader=None,
+    cpu=None,
+    batch_size=None,
+    cat_names=None, 
+    cont_names=None,
+):
+    return dataloader(
+        nvt.Dataset(data, cpu=cpu),
+        batch_size=batch_size,
+        cat_names=cat_names,
+        cont_names=cont_names,
+        label_names=[],
+    )
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("batch_size", [2, 32])
@@ -137,17 +185,32 @@ def test_tf_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, batch_siz
     merlin_tf = pytest.importorskip("nvtabular.loader.tensorflow")
     tf_models = pytest.importorskip("tensorflow.keras.models")
 
-    # Define and save a very simple model
-    model_path = tmpdir + "/" + "model.h5"
-    op_columns = ["x", "y"]
-    tf_model = simple_tf_model(input_shape=(len(op_columns),))
+    # Define a "toy" model
+    model_path = str(tmpdir) + "/" + "model.h5"
+    cat_names = ["id"]
+    cont_names = ["x", "y"]
+    op_columns = cat_names + cont_names
+    tf_model = simple_tf_model(cat_names=cat_names, cont_names=cont_names)
     tf_model.save(model_path)
+
+    # Define a "toy" dataloader
+    dataloader = merlin_tf.KerasSequenceLoader
+    dataloader_kwargs = {
+        "cat_names": cat_names,
+        "cont_names": cont_names,
+        "batch_size": batch_size,
+    }
 
     # Define ModelEncode Operator
     features = op_columns >> nvt.ops.ModelEncode(
         model_path,
         "prediction",
-        data_iterator_func=partial(merlin_tf.KerasSequenceLoader, batch_size=batch_size),
+        data_iterator_func=partial(
+            simple_tf_iterator,
+            dataloader=dataloader,
+            cpu=cpu,
+            **dataloader_kwargs,
+        ),
         model_load_func=tf_models.load_model,
         model_encode_func=simple_tf_encode,
     )
@@ -155,5 +218,8 @@ def test_tf_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, batch_siz
     # Fit and transform
     processor = nvt.Workflow(features)
     ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
+    df0 = df
+    if cpu and not isinstance(df0, pd.DataFrame):
+        df0 = df0.to_pandas()
     processor.fit(ds)
-    processor.transform(ds).to_ddf().compute()
+    processor.transform(ds).to_ddf().compute(scheduler="synchronous")
