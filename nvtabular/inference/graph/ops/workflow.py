@@ -42,7 +42,9 @@ class WorkflowOp(InferenceOperator):
         self.cats = cats or []
         self.conts = conts or []
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         expected_input = input_schema.apply(col_selector)
 
         if not expected_input == self.workflow.graph.input_schema:

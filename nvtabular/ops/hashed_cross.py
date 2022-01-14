@@ -78,6 +78,7 @@ class HashedCross(Operator):
 
         return column_mapping
 
+    @property
     def output_dtype(self):
         return numpy.int64
 

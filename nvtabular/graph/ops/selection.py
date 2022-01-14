@@ -44,6 +44,8 @@ class SelectionOp(BaseOperator):
         upstream_schema = root_schema + parents_schema + deps_schema
         return upstream_schema.apply(self.selector)
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         selector = col_selector or self.selector
-        return super().compute_output_schema(input_schema, selector)
+        return super().compute_output_schema(input_schema, selector, prev_output_schema)
