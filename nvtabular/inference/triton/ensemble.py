@@ -29,7 +29,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.dispatch import _is_list_dtype, _is_string_dtype  # noqa
+from nvtabular.dispatch import _is_string_dtype  # noqa
 from nvtabular.graph.node import iter_nodes  # noqa
 from nvtabular.graph.schema import Schema  # noqa
 from nvtabular.graph.tags import Tags  # noqa
@@ -84,13 +84,14 @@ def export_tensorflow_ensemble(
     # in dtypes between tf inputs and nvt outputs)
     for column in tf_config.input:
         tf_dtype = _triton_datatype_to_dtype(column.data_type)
-        nvt_dtype = workflow.output_dtypes.get(column.name)
-        if nvt_dtype and nvt_dtype != tf_dtype:
+        nvt_col_name = column.name.replace("__values", "").replace("__nnzs", "")
+        col_schema = workflow.output_schema[nvt_col_name]
+        if col_schema.dtype and col_schema.dtype != tf_dtype:
             warnings.warn(
-                f"TF model expects {tf_dtype} for column {column.name}, but workflow "
-                f" is producing type {nvt_dtype}. Overriding dtype in NVTabular workflow."
+                f"TF model expects {tf_dtype} for column {col_schema.name}, but workflow "
+                f" is producing type {col_schema.dtype}. Overriding dtype in NVTabular workflow."
             )
-            workflow.output_dtypes[column.name] = tf_dtype
+            workflow.output_schema.column_schemas[col_schema.name] = col_schema.with_dtype(tf_dtype)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(model_path, name + "_nvt")
@@ -431,28 +432,27 @@ def _generate_nvtabular_config(
             model_config.ModelOutput(name="ROWINDEX", data_type=model_config.TYPE_INT32, dims=[-1])
         )
     elif output_model == "pytorch":
-        for column, dtype in workflow.input_dtypes.items():
-            _add_model_param(column, dtype, model_config.ModelInput, config.input)
+        for col_name, col_schema in workflow.input_schema.column_schemas.items():
+            _add_model_param(col_schema, model_config.ModelInput, config.input)
 
-        for column, dtype in workflow.output_dtypes.items():
+        for col_name, col_schema in workflow.output_schema.column_schemas.items():
             _add_model_param(
-                column,
-                dtype,
+                col_schema,
                 model_config.ModelOutput,
                 config.output,
                 [-1, 1],
             )
     else:
-        for column, dtype in workflow.input_dtypes.items():
-            _add_model_param(column, dtype, model_config.ModelInput, config.input)
+        for col_name, col_schema in workflow.input_schema.column_schemas.items():
+            _add_model_param(col_schema, model_config.ModelInput, config.input)
 
-        for column, dtype in workflow.output_dtypes.items():
-            if sparse_max and column in sparse_max.keys():
+        for col_name, col_schema in workflow.output_schema.column_schemas.items():
+            if sparse_max and col_name in sparse_max.keys():
                 # this assumes max_sequence_length is equal for all output columns
-                dim = sparse_max[column]
-                _add_model_param(column, dtype, model_config.ModelOutput, config.output, [-1, dim])
+                dim = sparse_max[col_name]
+                _add_model_param(col_schema, model_config.ModelOutput, config.output, [-1, dim])
             else:
-                _add_model_param(column, dtype, model_config.ModelOutput, config.output)
+                _add_model_param(col_schema, model_config.ModelOutput, config.output)
 
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
@@ -558,8 +558,8 @@ def export_pytorch_model(
 
     config = model_config.ModelConfig(name=name, backend=backend)
 
-    for column, dtype in workflow.output_dtypes.items():
-        _add_model_param(column, dtype, model_config.ModelInput, config.input)
+    for col_name, col_schema in workflow.output_schema.items():
+        _add_model_param(col_schema, model_config.ModelInput, config.input)
 
     *_, last_layer = model.parameters()
     dims = last_layer.shape[0]
@@ -678,15 +678,14 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 def _remove_columns(workflow, to_remove):
     workflow = copy.deepcopy(workflow)
 
-    for label in to_remove:
-        if label in workflow.input_dtypes:
-            del workflow.input_dtypes[label]
-
-        if label in workflow.output_dtypes:
-            del workflow.output_dtypes[label]
-
     # Work backwards to form an input schema from redacted columns
-    new_schema = Schema(list(workflow.input_dtypes.keys()))
+    new_schema = Schema(
+        [
+            col_schema
+            for col_schema in workflow.graph.input_schema
+            if col_schema.name not in to_remove
+        ]
+    )
 
     # Re-fit the workflow to altered input schema
     for node in iter_nodes([workflow.output_node]):
@@ -705,26 +704,32 @@ def _remove_columns(workflow, to_remove):
     return workflow.fit_schema(new_schema)
 
 
-def _add_model_param(column, dtype, paramclass, params, dims=None):
+def _add_model_param(col_schema, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if _is_list_dtype(dtype):
+    if col_schema._is_list and col_schema._is_ragged:
         params.append(
             paramclass(
-                name=column + "__values", data_type=_convert_dtype(dtype.element_type), dims=dims
+                name=col_schema.name + "__values",
+                data_type=_convert_dtype(col_schema.dtype),
+                dims=dims,
             )
         )
         params.append(
-            paramclass(name=column + "__nnzs", data_type=model_config.TYPE_INT64, dims=dims)
+            paramclass(
+                name=col_schema.name + "__nnzs", data_type=model_config.TYPE_INT64, dims=dims
+            )
         )
     else:
-        params.append(paramclass(name=column, data_type=_convert_dtype(dtype), dims=dims))
+        params.append(
+            paramclass(name=col_schema.name, data_type=_convert_dtype(col_schema.dtype), dims=dims)
+        )
 
 
 def _convert_dtype(dtype):
     """converts a dtype to the appropriate triton proto type"""
 
-    if not isinstance(dtype, str):
-        dtype_name = dtype.name
+    if dtype and not isinstance(dtype, str):
+        dtype_name = dtype.name if hasattr(dtype, "name") else dtype.__name__
     else:
         dtype_name = dtype
 
@@ -748,7 +753,7 @@ def _convert_dtype(dtype):
     elif dtype_name in dtypes:
         return dtypes[dtype_name]
     else:
-        raise ValueError(f"Can't convert dtype {dtype})")
+        raise ValueError(f"Can't convert {dtype} to a Triton dtype")
 
 
 def _convert_pytorch_dtype(dtype):

@@ -181,10 +181,10 @@ class JoinExternal(Operator):
         self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
         return parents_selector
 
-    def compute_output_schema(self, input_schema, col_selector):
+    def compute_output_schema(self, input_schema, col_selector, prev_output_schema=None):
         # must load in the schema from the external dataset
         input_schema = input_schema + self.df_ext.schema
-        return super().compute_output_schema(input_schema, col_selector)
+        return super().compute_output_schema(input_schema, col_selector, prev_output_schema)
 
     def column_mapping(self, col_selector):
         column_mapping = {}
