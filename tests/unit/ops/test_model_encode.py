@@ -121,9 +121,6 @@ def simple_tf_model(input_shape=(2,)):
 
 
 def simple_tf_encode(model, batch):
-    import pdb
-
-    pdb.set_trace()
     return model(batch).numpy()
 
 
