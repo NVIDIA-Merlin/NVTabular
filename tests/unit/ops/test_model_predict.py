@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, NVIDIA CORPORATION.
+# Copyright (c) 2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -87,7 +87,6 @@ def test_model_predict(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns,
     )
 
     #   NOTES:
-    #
     # - For "real" data, `data_iterator_func` will likely
     #   correspond to a `Dataloader`` initializer.
     # - The purpose of `model_predict_func` is to deal with
@@ -98,7 +97,6 @@ def test_model_predict(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns,
     # - In this case, `predict_concat_func` did not need to
     #   be specified, because the output format is already
     #   numpy or cupy.
-    #
 
     # Fit and transform
     processor = nvt.Workflow(features)
