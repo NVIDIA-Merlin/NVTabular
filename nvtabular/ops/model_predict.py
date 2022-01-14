@@ -22,8 +22,8 @@ from .operator import ColumnSelector, Operator
 
 class ModelPredict(Operator):
     """
-    Add a new column, corresponding to the result of calling
-    ``model.predict`` on the Dataset for a specified model.
+    Add a new column, corresponding to the result of applying
+    a specified model to the data.
 
     Parameters
     -----------
