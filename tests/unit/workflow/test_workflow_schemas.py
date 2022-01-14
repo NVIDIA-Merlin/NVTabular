@@ -231,4 +231,18 @@ def test_schema_write_read_dataset(tmpdir, dataset, engine):
     proto_schema = PbTxt_SchemaWriter._read(schema_path / "schema.pbtxt")
     new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
     assert """name: "name-cat"\n    min: 0\n    max: 27\n""" in str(proto_schema)
-    assert new_dataset.schema == workflow.output_schema
+
+    for col_name, col_schema in new_dataset.schema.column_schemas.items():
+        wf_col_schema = workflow.output_schema[col_name]
+
+        # The dtypes don't directly match here because there's not yet a way to store
+        # the precision in the schema (as of 2022.01, using tensorflow-metadata)
+        if hasattr(wf_col_schema.dtype, "type"):
+            original_dtype = type(wf_col_schema.dtype.type(0).item())
+        else:
+            original_dtype = type(wf_col_schema.dtype(0).item())
+
+        assert col_schema.dtype == original_dtype
+        assert col_schema._is_list == wf_col_schema._is_list
+        assert col_schema.tags == wf_col_schema.tags
+        assert col_schema.properties == wf_col_schema.properties

@@ -94,7 +94,9 @@ class TensorflowOp(InferenceOperator):
 
         return model_selector
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         out_schema = Schema()
         for col, output_col in zip(self.model_outputs, self.model.outputs):
             out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
