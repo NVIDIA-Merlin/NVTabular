@@ -121,18 +121,19 @@ def simple_tf_model(cat_names=None, cont_names=None):
         tf.feature_column.embedding_column(
             tf.feature_column.categorical_column_with_identity(
                 name,
-                1000, # dictionary_size
+                1000,  # dictionary_size
             ),
-            10, # embedding_dim
+            10,  # embedding_dim
         )
         for name in cat_names
     ]
-    continuous_columns = [tf.feature_column.numeric_column(name, (1,)) for name in cont_names]
 
     # Categorical
     categorical_inputs = {}
     for column_name in cat_names:
-        categorical_inputs[column_name] = tf.keras.Input(name=column_name, shape=(1,), dtype=tf.int64)
+        categorical_inputs[column_name] = tf.keras.Input(
+            name=column_name, shape=(1,), dtype=tf.int64
+        )
     categorical_embedding_layer = tf.keras.layers.DenseFeatures(categorical_columns)
     categorical_x = categorical_embedding_layer(categorical_inputs)
 
@@ -153,15 +154,17 @@ def simple_tf_model(cat_names=None, cont_names=None):
     inputs = list(categorical_inputs.values()) + continuous_inputs
     return tf.keras.Model(inputs=inputs, outputs=x)
 
+
 def simple_tf_encode(model, batch):
     return model(batch[0]).numpy()
+
 
 def simple_tf_iterator(
     data,
     dataloader=None,
     cpu=None,
     batch_size=None,
-    cat_names=None, 
+    cat_names=None,
     cont_names=None,
 ):
     return dataloader(
@@ -186,6 +189,7 @@ def test_tf_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, batch_siz
     tf_models = pytest.importorskip("tensorflow.keras.models")
 
     # Define a "toy" model
+    # TODO: Improve this model?
     model_path = str(tmpdir) + "/" + "model.h5"
     cat_names = ["id"]
     cont_names = ["x", "y"]
