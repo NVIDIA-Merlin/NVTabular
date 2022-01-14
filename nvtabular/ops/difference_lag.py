@@ -75,7 +75,9 @@ class DifferenceLag(Operator):
             mask[mask == False] = None  # noqa pylint: disable=singleton-comparison
 
             for col in col_selector.names:
-                output[self._column_name(col, shift)] = (df[col] - df[col].shift(shift)) * mask
+                name = self._column_name(col, shift)
+                output[name] = (df[col] - df[col].shift(shift)) * mask
+                output[name] = output[name].astype(self.output_dtype)
         return type(df)(output)
 
     transform.__doc__ = Operator.transform.__doc__
@@ -91,12 +93,13 @@ class DifferenceLag(Operator):
                 column_mapping[output_col_name] = [col]
         return column_mapping
 
+    @property
+    def output_tags(self):
+        return [Tags.CONTINUOUS]
+
+    @property
+    def output_dtype(self):
+        return numpy.float32
+
     def _column_name(self, col, shift):
         return f"{col}_difference_lag_{shift}"
-
-    def _compute_dtype(self, col_schema, input_schema):
-        return col_schema.with_dtype(numpy.float64)
-
-    def _compute_tags(self, col_schema, input_schema):
-        source_col_name = input_schema.column_names[0]
-        return col_schema.with_tags(input_schema[source_col_name].tags + [Tags.CONTINUOUS])

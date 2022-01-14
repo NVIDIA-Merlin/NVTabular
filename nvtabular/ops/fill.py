@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import dask.dataframe as dd
+import numpy as np
 
 from nvtabular.dispatch import DataFrameType, annotate
 
@@ -71,6 +72,12 @@ class FillMissing(Operator):
             if self.add_binary_cols:
                 column_mapping[f"{col_name}_filled"] = [col_name]
         return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        col_schema = super()._compute_dtype(col_schema, input_schema)
+        if col_schema.name.endswith("_filled"):
+            col_schema = col_schema.with_dtype(np.bool)
+        return col_schema
 
     transform.__doc__ = Operator.transform.__doc__
 
@@ -133,3 +140,9 @@ class FillMedian(StatOperator):
             if self.add_binary_cols:
                 column_mapping[f"{col_name}_filled"] = [col_name]
         return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        col_schema = super()._compute_dtype(col_schema, input_schema)
+        if col_schema.name.endswith("_filled"):
+            col_schema = col_schema.with_dtype(np.bool)
+        return col_schema

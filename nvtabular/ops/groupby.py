@@ -100,7 +100,6 @@ class Groupby(Operator):
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-
         # Sort if necessary
         if self.sort_cols:
             df = df.sort_values(self.sort_cols, ignore_index=True)
@@ -108,6 +107,7 @@ class Groupby(Operator):
         # List aggregations do not work with empty data.
         # Use synthetic metadata to predict output columns.
         empty_df = not len(df)
+
         _df = meta_nonempty(df) if empty_df else df
 
         # Get "complete" aggregation dicts

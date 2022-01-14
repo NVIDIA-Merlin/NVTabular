@@ -32,7 +32,7 @@ import pandas as pd
 from dask.core import flatten
 
 import nvtabular
-from nvtabular.dispatch import _concat_columns
+from nvtabular.dispatch import _concat_columns, _is_list_dtype, _list_val_dtype
 from nvtabular.graph.graph import Graph, _get_ops_by_type
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
@@ -203,6 +203,7 @@ class Workflow:
                         ddf,
                         workflow_node.parents_with_dependencies,
                         additional_columns=addl_input_cols,
+                        capture_dtypes=True,
                     )
                 )
 
@@ -478,11 +479,26 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
                 output_df = node.op.transform(selection, input_df)
 
                 # Update or validate output_df dtypes
-                for col_name, col_schema in node.output_schema.column_schemas.items():
-                    output_schema = col_schema.with_dtype(output_df[col_name].dtype)
+                for col_name, output_col_schema in node.output_schema.column_schemas.items():
+                    col_series = output_df[col_name]
+                    col_dtype = col_series.dtype
+                    is_list = _is_list_dtype(col_series)
+
+                    if is_list:
+                        col_dtype = _list_val_dtype(col_series)
+
+                    output_df_schema = output_col_schema.with_dtype(
+                        col_dtype, is_list=is_list, is_ragged=is_list
+                    )
 
                     if capture_dtypes:
-                        node.output_schema.column_schemas[col_name] = output_schema
+                        node.output_schema.column_schemas[col_name] = output_df_schema
+                    elif len(output_df):
+                        if output_col_schema.dtype != output_df_schema.dtype:
+                            raise TypeError(
+                                f"Improperly matched output dtypes detected in {col_name},"
+                                f" {output_col_schema.dtype} and {output_df_schema.dtype}"
+                            )
             except Exception:
                 LOG.exception("Failed to transform operator %s", node.op)
                 raise

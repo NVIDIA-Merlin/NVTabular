@@ -15,6 +15,7 @@
 #
 
 import dask.dataframe as dd
+import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 
@@ -227,9 +228,21 @@ class JoinGroupby(StatOperator):
                     if stat == "count":
                         column_mapping[f"{name}_{stat}"] = [*group]
                     else:
-                        column_mapping[f"{name}_{cont}_{stat}"] = [*group, cont]
+                        column_mapping[f"{name}_{cont}_{stat}"] = [cont, *group]
 
         return column_mapping
+
+    def _compute_dtype(self, col_schema, input_schema):
+        int_aggs = ["count"]
+        float_aggs = ["std", "var", "mean"]
+        new_schema = super()._compute_dtype(col_schema, input_schema)
+        for agg in int_aggs:
+            if col_schema.name.endswith(f"_{agg}"):
+                new_schema = new_schema.with_dtype(np.int64, is_list=False)
+        for agg in float_aggs:
+            if col_schema.name.endswith(f"_{agg}"):
+                new_schema = new_schema.with_dtype(np.float64, is_list=False)
+        return new_schema
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)

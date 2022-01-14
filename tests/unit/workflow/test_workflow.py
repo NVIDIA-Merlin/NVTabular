@@ -646,6 +646,7 @@ def test_transform_geolocation():
     expected["geo_location_state"] = data["geo_location"].str.slice(0, 5).hash_values() % 100
     expected["geo_location_country"] = data["geo_location"].str.slice(0, 2).hash_values() % 100
     expected["geo_location"] = data["geo_location"].hash_values() % 100
+    expected = expected.astype(np.uint32)
     assert_eq(expected, transformed)
 
 
