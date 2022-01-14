@@ -53,7 +53,7 @@ def simple_iterator(df):
     # Simple iterator function that returns
     # a list of numpy/cupy arrays. Note that
     # each element is an (array, str) tuple
-    # so that `model_predict_func` is required
+    # so that `model_encode_func` is required
     # for proper behavior
     arr = df.values
     batch_size = 3
@@ -68,33 +68,33 @@ def simple_predict(x, y):
 @pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
 @pytest.mark.parametrize("op_columns", [["x"], ["x", "y"]])
 @pytest.mark.parametrize("cpu", _CPU)
-def test_model_predict(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
+def test_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
 
-    # Define ModelPredict Operator
+    # Define ModelEncode Operator
     model = "SelectionModel_0"  # Mimic model loading below
-    column_name = "prediction"  # Name of column being added
+    output_names = "prediction"  # Name of column being added
     data_iterator_func = simple_iterator
     model_load_func = SelectionModel.load_model
-    model_predict_func = simple_predict
-    predict_concat_func = None  # Result is already numpy/cupy
-    features = op_columns >> nvt.ops.ModelPredict(
+    model_encode_func = simple_predict
+    output_concat_func = None  # Result is already numpy/cupy
+    features = op_columns >> nvt.ops.ModelEncode(
         model,
-        column_name,
+        output_names,
         data_iterator_func=data_iterator_func,
         model_load_func=model_load_func,
-        model_predict_func=model_predict_func,
-        predict_concat_func=predict_concat_func,
+        model_encode_func=model_encode_func,
+        output_concat_func=output_concat_func,
     )
 
     #   NOTES:
     # - For "real" data, `data_iterator_func` will likely
     #   correspond to a `Dataloader`` initializer.
-    # - The purpose of `model_predict_func` is to deal with
+    # - The purpose of `model_encode_func` is to deal with
     #   the fact that `model(batch)` may not be the correct
     #   syntax for performing a prediction. This is because
     #   you may want to select a specific index of `batch`,
     #   and you may want to use a specific attribute of `model`
-    # - In this case, `predict_concat_func` did not need to
+    # - In this case, `output_concat_func` did not need to
     #   be specified, because the output format is already
     #   numpy or cupy.
 
@@ -107,5 +107,5 @@ def test_model_predict(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns,
     processor.fit(ds)
     new_df = processor.transform(ds).to_ddf().compute()
 
-    # Check that ModelPredict worked as expected
-    assert new_df[column_name].all() == new_df[op_columns[0]].all()
+    # Check that ModelEncode worked as expected
+    assert new_df[output_names].all() == new_df[op_columns[0]].all()

@@ -33,7 +33,7 @@ from .join_groupby import JoinGroupby
 from .lambdaop import LambdaOp
 from .list_slice import ListSlice
 from .logop import LogOp
-from .model_predict import ModelPredict
+from .model_encode import ModelEncode
 from .normalize import Normalize, NormalizeMinMax
 from .operator import ColumnSelector, Operator
 from .rename import Rename
