@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
+from functools import partial
 
 import pandas as pd
 import pytest
@@ -60,7 +62,7 @@ def simple_iterator(df):
     return [(arr[i : i + batch_size, :], "filler") for i in range(0, arr.shape[0], batch_size)]
 
 
-def simple_predict(x, y):
+def simple_encode(x, y):
     return x.predict(y[0])
 
 
@@ -75,7 +77,7 @@ def test_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, 
     output_names = "prediction"  # Name of column being added
     data_iterator_func = simple_iterator
     model_load_func = SelectionModel.load_model
-    model_encode_func = simple_predict
+    model_encode_func = simple_encode
     output_concat_func = None  # Result is already numpy/cupy
     features = op_columns >> nvt.ops.ModelEncode(
         model,
@@ -109,3 +111,52 @@ def test_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, 
 
     # Check that ModelEncode worked as expected
     assert new_df[output_names].all() == new_df[op_columns[0]].all()
+
+
+def simple_tf_model(input_shape=(2,)):
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.models import Sequential
+
+    return Sequential([Dense(8, input_shape=input_shape), Dense(1)])
+
+
+def simple_tf_encode(model, batch):
+    import pdb
+
+    pdb.set_trace()
+    return model(batch).numpy()
+
+
+@pytest.mark.skip
+@pytest.mark.parametrize("gpu_memory_frac", [0.01, 0.1] if _HAS_GPU else [None])
+@pytest.mark.parametrize("engine", ["parquet", "csv", "csv-no-header"])
+@pytest.mark.parametrize("batch_size", [2, 32])
+@pytest.mark.parametrize("cpu", _CPU)
+def test_tf_model_encode(tmpdir, df, dataset, gpu_memory_frac, engine, batch_size, cpu):
+
+    # Skip this test if tensorflow deps are missing.
+    # TODO: Import the dataloader from Merlin-Models?
+    os.environ["TF_MEMORY_ALLOCATION"] = "0.1"
+    merlin_tf = pytest.importorskip("nvtabular.loader.tensorflow")
+    tf_models = pytest.importorskip("tensorflow.keras.models")
+
+    # Define and save a very simple model
+    model_path = tmpdir + "/" + "model.h5"
+    op_columns = ["x", "y"]
+    tf_model = simple_tf_model(input_shape=(len(op_columns),))
+    tf_model.save(model_path)
+
+    # Define ModelEncode Operator
+    features = op_columns >> nvt.ops.ModelEncode(
+        model_path,
+        "prediction",
+        data_iterator_func=partial(merlin_tf.KerasSequenceLoader, batch_size=batch_size),
+        model_load_func=tf_models.load_model,
+        model_encode_func=simple_tf_encode,
+    )
+
+    # Fit and transform
+    processor = nvt.Workflow(features)
+    ds = nvt.Dataset(dataset.to_ddf(), cpu=cpu)
+    processor.fit(ds)
+    processor.transform(ds).to_ddf().compute()
