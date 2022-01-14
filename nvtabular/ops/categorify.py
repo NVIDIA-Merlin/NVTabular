@@ -475,7 +475,7 @@ class Categorify(StatOperator):
                     encode_type=self.encode_type,
                     cat_names=column_names,
                     max_size=self.max_size,
-                    dtype=self.dtype,
+                    dtype=self.output_dtype,
                     start_index=self.start_index,
                 )
                 new_df[name] = encoded
@@ -533,7 +533,7 @@ class Categorify(StatOperator):
 
     @property
     def output_dtype(self):
-        return np.int
+        return self.dtype or np.int64
 
     def compute_selector(
         self,
@@ -600,7 +600,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     multihot_columns = set()
     cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
     for col_name, col_schema in cats_schema.column_schemas.items():
-        if col_schema.dtype and col_schema._is_list:
+        if col_schema.dtype and col_schema._is_list and col_schema._is_ragged:
             # multi hot so remove from output and add to multihot
             multihot_columns.add(col_name)
 

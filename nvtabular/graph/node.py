@@ -91,7 +91,7 @@ class Node:
 
         self.parents.extend(parent_nodes)
 
-    def compute_schemas(self, root_schema):
+    def compute_schemas(self, root_schema, preserve_dtypes=False):
         parents_selector = _combine_selectors(self.parents)
         dependencies_selector = _combine_selectors(self.dependencies)
         parents_schema = _combine_schemas(self.parents)
@@ -115,7 +115,11 @@ class Node:
         self.selector = self.op.compute_selector(
             self.input_schema, self.selector, parents_selector, dependencies_selector
         )
-        self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
+
+        prev_output_schema = self.output_schema if preserve_dtypes else None
+        self.output_schema = self.op.compute_output_schema(
+            self.input_schema, self.selector, prev_output_schema
+        )
 
     def __rshift__(self, operator):
         """Transforms this Node by applying an BaseOperator

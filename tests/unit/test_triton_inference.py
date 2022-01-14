@@ -11,7 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular import ColumnSelector, Dataset
+from nvtabular import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.graph.base_operator import Supports
 from tests.conftest import assert_eq
@@ -87,10 +87,6 @@ def _verify_workflow_on_tritonserver(
 
     local_df = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
-    for col in workflow.output_node.output_columns.names:
-        if sparse_max and col in sparse_max.keys():
-            workflow.output_dtypes[col] = workflow.output_dtypes.get(col).element_type
-
     triton.generate_nvtabular_model(
         workflow=workflow,
         name=model_name,
@@ -104,7 +100,16 @@ def _verify_workflow_on_tritonserver(
     )
 
     inputs = triton.convert_df_to_triton_input(df.columns, df)
-    outputs = [grpcclient.InferRequestedOutput(col) for col in workflow.output_dtypes.keys()]
+
+    outputs = []
+    for col_name, col_schema in workflow.output_schema.column_schemas.items():
+        if col_schema._is_list and col_schema._is_ragged:
+            outputs.append(f"{col_name}__values")
+            outputs.append(f"{col_name}__nnzs")
+        else:
+            outputs.append(col_name)
+    outputs = [grpcclient.InferRequestedOutput(col) for col in outputs]
+
     with run_triton_server(tmpdir) as client:
         response = client.infer(model_name, inputs, outputs=outputs)
 
@@ -168,6 +173,7 @@ def test_large_strings(tmpdir, output_model):
     df = _make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
+    workflow.fit(nvt.Dataset(df))
 
     _verify_workflow_on_tritonserver(
         tmpdir,
@@ -193,8 +199,7 @@ def test_concatenate_dataframe(tmpdir, output_model):
     cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
     conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
 
-    dataset = Dataset(df)
-    workflow = nvt.Workflow(cats + conts).fit_schema(dataset.infer_schema())
+    workflow = nvt.Workflow(cats + conts)
 
     _verify_workflow_on_tritonserver(
         tmpdir,
@@ -402,7 +407,7 @@ def test_seq_etl_tf_model(tmpdir, output_model):
         name_sep="-",
     )
     feats_list = groupby_features["item_id-list", "y-list"]
-    feats_trim = feats_list >> ops.ListSlice(0, max_length)
+    feats_trim = feats_list >> ops.ListSlice(0, max_length, pad=True)
     selected_features = groupby_features["id"] + feats_trim
 
     workflow = nvt.Workflow(selected_features)

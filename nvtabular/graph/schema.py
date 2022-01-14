@@ -29,6 +29,7 @@ class ColumnSchema:
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
     dtype: Optional[object] = None
     _is_list: bool = False
+    _is_ragged: bool = False
 
     def __post_init__(self):
         tags = _normalize_tags(self.tags or [])
@@ -44,6 +45,7 @@ class ColumnSchema:
             properties=self.properties,
             dtype=self.dtype,
             _is_list=self._is_list,
+            _is_ragged=self._is_ragged,
         )
 
     def with_tags(self, tags) -> "ColumnSchema":
@@ -57,6 +59,7 @@ class ColumnSchema:
             properties=self.properties,
             dtype=self.dtype,
             _is_list=self._is_list,
+            _is_ragged=self._is_ragged,
         )
 
     def with_properties(self, properties):
@@ -72,18 +75,27 @@ class ColumnSchema:
             properties=properties,
             dtype=self.dtype,
             _is_list=self._is_list,
+            _is_ragged=self._is_ragged,
         )
 
-    def with_dtype(self, dtype, is_list=None):
+    def with_dtype(self, dtype, is_list=None, is_ragged=None):
         is_list = is_list or self._is_list
+        is_ragged = is_ragged if is_ragged is not None else self._is_ragged
         return ColumnSchema(
-            self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
+            self.name,
+            tags=self.tags,
+            properties=self.properties,
+            dtype=dtype,
+            _is_list=is_list,
+            _is_ragged=is_ragged,
         )
 
     def __merge__(self, other):
         col_schema = self.with_tags(other.tags)
         col_schema = col_schema.with_properties(other.properties)
-        col_schema = col_schema.with_dtype(other.dtype)
+        col_schema = col_schema.with_dtype(
+            other.dtype, is_list=other._is_list, is_ragged=other._is_ragged
+        )
         col_schema = col_schema.with_name(other.name)
         return col_schema
 
