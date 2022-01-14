@@ -78,6 +78,7 @@ class Graph:
             ]
         )
         self.output_schema = self.output_node.output_schema
+        return self
 
     def _input_columns(self):
         input_cols = []
