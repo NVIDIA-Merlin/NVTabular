@@ -483,7 +483,6 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
 
                     if capture_dtypes:
                         node.output_schema.column_schemas[col_name] = output_schema
-
             except Exception:
                 LOG.exception("Failed to transform operator %s", node.op)
                 raise
