@@ -22,6 +22,7 @@ import pytest
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
+from nvtabular.graph.tags import TagSet
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -92,8 +93,8 @@ def test_valuecount(tmpdir):
     assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
     assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
 
-    assert new_df.schema.column_schemas["list1"].tags == [nvt.graph.tags.Tags.CATEGORICAL]
-    assert new_df.schema.column_schemas["list2"].tags == [nvt.graph.tags.Tags.CONTINUOUS]
+    assert new_df.schema.column_schemas["list1"].tags == TagSet([nvt.graph.tags.Tags.CATEGORICAL])
+    assert new_df.schema.column_schemas["list2"].tags == TagSet([nvt.graph.tags.Tags.CONTINUOUS])
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

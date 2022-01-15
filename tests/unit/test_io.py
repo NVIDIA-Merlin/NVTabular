@@ -33,7 +33,7 @@ import nvtabular as nvt
 import nvtabular.io
 from nvtabular import dispatch, ops
 from nvtabular.graph.schema import Schema
-from nvtabular.graph.tags import Tags
+from nvtabular.graph.tags import Tags, TagSet
 from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -107,7 +107,7 @@ def test_dataset_partition_parquets_schema_load(tmpdir, dataset, engine):
     )
     dataset.to_parquet(str(tmpdir), partition_on=["name-cat"])
     loaded_dataset = nvt.Dataset(glob.glob(str(tmpdir) + "/*/*." + engine.split("-")[0]))
-    assert loaded_dataset.schema.column_schemas["id"].tags == [Tags.CATEGORICAL]
+    assert loaded_dataset.schema.column_schemas["id"].tags == TagSet([Tags.CATEGORICAL])
 
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])

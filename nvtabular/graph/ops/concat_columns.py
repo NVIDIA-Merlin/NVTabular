@@ -33,7 +33,7 @@ class ConcatColumns(BaseOperator):
         dependencies_selector: ColumnSelector,
     ) -> ColumnSelector:
         self._validate_matching_cols(
-            input_schema, parents_selector + dependencies_selector, "computing input selector"
+            input_schema, parents_selector + dependencies_selector, self.compute_selector.__name__
         )
 
         return parents_selector + dependencies_selector

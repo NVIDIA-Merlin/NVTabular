@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Text
+from typing import Dict, Optional, Text
 
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.graph.tags import Tags
+from nvtabular.graph.tags import TagSet
 
 
 @dataclass(frozen=True)
@@ -25,14 +25,14 @@ class ColumnSchema:
     """A schema containing metadata of a dataframe column."""
 
     name: Text
-    tags: Optional[List[Text]] = field(default_factory=list)
+    tags: Optional[TagSet] = field(default_factory=TagSet)
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
     dtype: Optional[object] = None
     _is_list: bool = False
     _is_ragged: bool = False
 
     def __post_init__(self):
-        tags = _normalize_tags(self.tags or [])
+        tags = TagSet(self.tags)
         object.__setattr__(self, "tags", tags)
 
     def __str__(self) -> str:
@@ -49,13 +49,9 @@ class ColumnSchema:
         )
 
     def with_tags(self, tags) -> "ColumnSchema":
-        if not isinstance(tags, list):
-            tags = [tags]
-
-        combined_tags = list(set(list(self.tags) + tags))
         return ColumnSchema(
             self.name,
-            tags=combined_tags,
+            tags=self.tags.override(tags),
             properties=self.properties,
             dtype=self.dtype,
             _is_list=self._is_list,
@@ -231,7 +227,3 @@ class Schema:
                 result.column_schemas.pop(key, None)
 
         return result
-
-
-def _normalize_tags(tags):
-    return [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]
