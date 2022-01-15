@@ -499,6 +499,7 @@ def _transform_partition(root_df, workflow_nodes, additional_columns=None, captu
                                 f"Improperly matched output dtypes detected in {col_name},"
                                 f" {output_col_schema.dtype} and {output_df_schema.dtype}"
                             )
+
             except Exception:
                 LOG.exception("Failed to transform operator %s", node.op)
                 raise
