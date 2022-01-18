@@ -496,11 +496,15 @@ def _nodify(nodable):
     elif isinstance(nodable, Node):
         return nodable
     elif isinstance(nodable, list):
-        nodes = [_nodify(node) for node in nodable]
-        non_selection_nodes = [node for node in nodes if not node.selector]
-        selection_nodes = [node.selector for node in nodes if node.selector]
-        selection_nodes = [Node(_combine_selectors(selection_nodes))] if selection_nodes else []
-        return non_selection_nodes + selection_nodes
+        if all(isinstance(elem, str) for elem in nodable):
+            return Node(nodable)
+        else:
+            nodes = [_nodify(node) for node in nodable]
+            non_selection_nodes = [node for node in nodes if not node.selector]
+            selection_nodes = [node.selector for node in nodes if node.selector]
+            selection_nodes = [Node(_combine_selectors(selection_nodes))] if selection_nodes else []
+            return non_selection_nodes + selection_nodes
+
     else:
         raise TypeError(
             "Unsupported type: Cannot convert object " f"of type {type(nodable)} to Node."

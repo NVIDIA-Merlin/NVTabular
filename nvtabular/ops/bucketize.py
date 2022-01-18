@@ -82,8 +82,9 @@ class Bucketize(Operator):
                 # once cupy>=8.0.0 is required.
                 val = 0
                 for boundary in b:
-                    val += (df[col] >= boundary).astype("int")
+                    val += df[col] >= boundary
                 new_df[col] = val
+            new_df[col] = new_df[col].astype(self.output_dtype)
         return new_df
 
     @property
@@ -92,6 +93,6 @@ class Bucketize(Operator):
 
     @property
     def output_dtype(self):
-        return np.int64
+        return np.int32
 
     transform.__doc__ = Operator.transform.__doc__
