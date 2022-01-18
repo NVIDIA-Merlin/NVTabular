@@ -28,19 +28,6 @@ class TensorflowOp(InferenceOperator):
         self.model = model
         self.name = name or self.__class__.__name__.lower()
 
-    @property
-    def export_name(self):
-        return self.name
-
-    def export(self, path, consumer_config, version=1):
-        """Create a directory inside supplied path based on our export name"""
-        new_dir_path = pathlib.Path(path) / self.export_name
-        new_dir_path.mkdir()
-
-        return export_tensorflow_model(self.model, self.export_name, new_dir_path, version=version)
-
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        expected_input = input_schema.apply(col_selector)
         inputs, outputs = self.model.inputs, self.model.outputs
 
         if not inputs or not outputs:
@@ -58,18 +45,59 @@ class TensorflowOp(InferenceOperator):
 
             inputs = list(default_signature.structured_input_signature[1].values())
             outputs = list(default_signature.structured_outputs.values())
-        inputs = [col.name.split("/")[0] for col in inputs]
-        outputs = [col.name.split("/")[0] for col in outputs]
 
-        if expected_input.column_names != inputs:
+        self.model_inputs = [col.name.split("/")[0] for col in inputs]
+        self.model_outputs = [col.name.split("/")[0] for col in outputs]
+
+    @property
+    def export_name(self):
+        return self.name
+
+    def export(self, path, version=1):
+        """Create a directory inside supplied path based on our export name"""
+        new_dir_path = pathlib.Path(path) / self.export_name
+        new_dir_path.mkdir()
+
+        return export_tensorflow_model(self.model, self.export_name, new_dir_path, version=version)
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        expected_input = (parents_schema + deps_schema).apply(selector)
+        if expected_input.column_names != self.model_inputs:
             raise ValueError(
                 f"Request schema provided to {self.__class__.__name__} \n"
                 "doesn't match model's input schema.\n"
                 f"Request schema columns: {expected_input.column_names}\n"
-                f"Model input columns: {inputs}."
+                f"Model input columns: {self.model_inputs}."
             )
 
+        in_schema = Schema()
+        for col, input_col in zip(self.model_inputs, self.model.inputs):
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype)
+
+        return in_schema
+
+    def compute_selector(
+        self,
+        input_schema: Schema,
+        selector: ColumnSelector,
+        parents_selector: ColumnSelector,
+        dependencies_selector: ColumnSelector,
+    ) -> ColumnSelector:
+        model_selector = ColumnSelector(self.model_inputs)
+        self._validate_matching_cols(input_schema, model_selector, "computing input selector")
+
+        return model_selector
+
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         out_schema = Schema()
-        for col in outputs:
-            out_schema.column_schemas[col] = ColumnSchema(col)
+        for col, output_col in zip(self.model_outputs, self.model.outputs):
+            out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
         return out_schema

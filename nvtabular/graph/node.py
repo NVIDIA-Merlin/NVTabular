@@ -48,17 +48,14 @@ class Node:
         if selector and not isinstance(selector, ColumnSelector):
             raise TypeError("The selector argument must be a list or a ColumnSelector")
 
-        if selector:
+        if selector is not None:
             self.op = SelectionOp(selector)
 
-        self._selector = selector
+        self.selector = selector
 
     @property
     def selector(self):
-        if not self._selector and any(parent._selector for parent in self.parents):
-            return _combine_selectors(self.parents)
-        else:
-            return self._selector
+        return self._selector
 
     @selector.setter
     def selector(self, sel):
@@ -94,57 +91,35 @@ class Node:
 
         self.parents.extend(parent_nodes)
 
-    def compute_schemas(self, root_schema):
-        # If parent is an addition node, we may need to propagate grouping
-        # unless we're a node that already has a selector
-        if not self.selector:
-            if (
-                len(self.parents) == 1
-                and isinstance(self.parents[0].op, ConcatColumns)
-                and self.parents[0].selector
-                and (self.parents[0].selector.names)
-            ):
-                self.selector = self.parents[0].selector
+    def compute_schemas(self, root_schema, preserve_dtypes=False):
+        parents_selector = _combine_selectors(self.parents)
+        dependencies_selector = _combine_selectors(self.dependencies)
+        parents_schema = _combine_schemas(self.parents)
+        deps_schema = _combine_schemas(self.dependencies)
 
-        if isinstance(self.op, ConcatColumns):  # +
-            # For addition nodes, some of the operands are parents and
-            # others are dependencies so grab schemas from both
-            self.selector = _combine_selectors(self.grouped_parents_with_dependencies)
-            self.input_schema = _combine_schemas(self.parents_with_dependencies)
+        # If parent is an addition or selection node, we may need to
+        # propagate grouping unless this node already has a selector
+        if (
+            len(self.parents) == 1
+            and isinstance(self.parents[0].op, (ConcatColumns, SelectionOp))
+            and self.parents[0].selector
+            and (self.parents[0].selector.names)
+        ):
+            parents_selector = self.parents[0].selector
+            if not self.selector:
+                self.selector = parents_selector
 
-        elif isinstance(self.op, SubtractionOp):  # -
-            left_operand = _combine_schemas(self.parents)
+        self.input_schema = self.op.compute_input_schema(
+            root_schema, parents_schema, deps_schema, self.selector
+        )
+        self.selector = self.op.compute_selector(
+            self.input_schema, self.selector, parents_selector, dependencies_selector
+        )
 
-            if self.dependencies:
-                right_operand = _combine_schemas(self.dependencies)
-                self.input_schema = left_operand - right_operand
-            else:
-                self.input_schema = left_operand.apply_inverse(self.op.selector)
-
-            self.selector = ColumnSelector(self.input_schema.column_names)
-
-        elif isinstance(self.op, SubsetColumns):  # []
-            left_operand = _combine_schemas(self.parents)
-            right_operand = _combine_schemas(self.dependencies)
-            self.input_schema = left_operand - right_operand
-
-        # If we have a selector, apply it to upstream schemas from nodes/dataset
-        elif isinstance(self.op, SelectionOp):  # ^
-            upstream_schema = root_schema + _combine_schemas(self.parents_with_dependencies)
-            self.input_schema = upstream_schema.apply(self.selector)
-
-        # If none of the above apply, then we don't have a selector
-        # and we're not an add or sub node, so our input is just the
-        # parents output
-        else:
-            self.input_schema = _combine_schemas(self.parents)
-
-        # Then we delegate to the op (if there is one) to compute this node's
-        # output schema. If there's no op, then outputs are just the inputs
-        if self.op:
-            self.output_schema = self.op.compute_output_schema(self.input_schema, self.selector)
-        else:
-            self.output_schema = self.input_schema
+        prev_output_schema = self.output_schema if preserve_dtypes else None
+        self.output_schema = self.op.compute_output_schema(
+            self.input_schema, self.selector, prev_output_schema
+        )
 
     def __rshift__(self, operator):
         """Transforms this Node by applying an BaseOperator
@@ -335,12 +310,8 @@ class Node:
         return ColumnSelector(self.output_schema.column_names)
 
     @property
-    def dependency_schema(self):
-        return _combine_schemas(self.dependencies)
-
-    @property
     def dependency_columns(self):
-        return _combine_selectors(self.dependencies)
+        return ColumnSelector(_combine_schemas(self.dependencies).column_names)
 
     @property
     def label(self):
@@ -383,7 +354,38 @@ def iter_nodes(nodes):
             yield current
             # TODO: deduplicate nodes?
             for node in current.parents_with_dependencies:
+
                 queue.append(node)
+
+
+def preorder_iter_nodes(nodes):
+    queue = []
+    if not isinstance(nodes, list):
+        nodes = [nodes]
+
+    def traverse(current_nodes):
+        for node in current_nodes:
+            queue.append(node)
+            traverse(node.parents_with_dependencies)
+
+    traverse(nodes)
+    for node in queue:
+        yield node
+
+
+def postorder_iter_nodes(nodes):
+    queue = []
+    if not isinstance(nodes, list):
+        nodes = [nodes]
+
+    def traverse(current_nodes):
+        for node in current_nodes:
+            traverse(node.parents_with_dependencies)
+            queue.append(node)
+
+    traverse(nodes)
+    for node in queue:
+        yield node
 
 
 def _filter_by_type(elements, type_):
@@ -494,11 +496,15 @@ def _nodify(nodable):
     elif isinstance(nodable, Node):
         return nodable
     elif isinstance(nodable, list):
-        nodes = [_nodify(node) for node in nodable]
-        non_selection_nodes = [node for node in nodes if not node.selector]
-        selection_nodes = [node.selector for node in nodes if node.selector]
-        selection_nodes = [Node(_combine_selectors(selection_nodes))] if selection_nodes else []
-        return non_selection_nodes + selection_nodes
+        if all(isinstance(elem, str) for elem in nodable):
+            return Node(nodable)
+        else:
+            nodes = [_nodify(node) for node in nodable]
+            non_selection_nodes = [node for node in nodes if not node.selector]
+            selection_nodes = [node.selector for node in nodes if node.selector]
+            selection_nodes = [Node(_combine_selectors(selection_nodes))] if selection_nodes else []
+            return non_selection_nodes + selection_nodes
+
     else:
         raise TypeError(
             "Unsupported type: Cannot convert object " f"of type {type(nodable)} to Node."

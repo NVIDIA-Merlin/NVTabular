@@ -263,7 +263,7 @@ def _list_val_dtype(ser):
         if HAS_GPU and isinstance(ser, cudf.Series):
             return ser.dtype._typ.value_type.to_pandas_dtype()
         elif isinstance(ser, pd.Series):
-            return type(ser[0][0])
+            return pd.core.dtypes.cast.infer_dtype_from(ser[0][0])[0]
     return None
 
 

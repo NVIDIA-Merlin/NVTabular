@@ -128,6 +128,11 @@ class ListSlice(Operator):
 
         return ret
 
+    def _compute_dtype(self, col_schema, input_schema):
+        col_schema = super()._compute_dtype(col_schema, input_schema)
+        return col_schema.with_dtype(col_schema.dtype, is_list=True, is_ragged=not self.pad)
+
+    @property
     def output_tags(self):
         return [Tags.LIST]
 

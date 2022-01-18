@@ -1139,7 +1139,7 @@ class Dataset:
         for column, dtype_info in dtypes.items():
             dtype_val = dtype_info["dtype"]
             is_list = dtype_info["is_list"]
-            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list, _is_ragged=is_list)
             column_schemas.append(col_schema)
 
         self.schema = Schema(column_schemas)
@@ -1160,13 +1160,14 @@ class Dataset:
 
         if annotate_lists:
             _real_meta = self._real_meta[n]
-            return {
+            annotated = {
                 col: {
                     "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
                     "is_list": dispatch._is_list_dtype(_real_meta[col]),
                 }
                 for col in _real_meta.columns
             }
+            return annotated
 
         return self._real_meta[n].dtypes
 

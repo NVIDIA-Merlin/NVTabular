@@ -11,7 +11,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as ops
-from nvtabular import ColumnSelector, Dataset
+from nvtabular import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
 from nvtabular.graph.base_operator import Supports
 from tests.conftest import assert_eq
@@ -73,20 +73,19 @@ def _verify_workflow_on_tritonserver(
     df,
     model_name,
     output_model="tensorflow",
-    model_info=None,
     sparse_max=None,
+    cats=None,
+    conts=None,
 ):
     """tests that the nvtabular workflow produces the same results when run locally in the
     process, and when run in tritonserver"""
     # fit the workflow and test on the input
     dataset = nvt.Dataset(df)
-    workflow.fit(dataset)
+
+    if not workflow.output_dtypes:
+        workflow.fit(dataset)
 
     local_df = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
-
-    for col in workflow.output_node.output_columns.names:
-        if sparse_max and col in sparse_max.keys():
-            workflow.output_dtypes[col] = workflow.output_dtypes.get(col).element_type
 
     triton.generate_nvtabular_model(
         workflow=workflow,
@@ -94,13 +93,23 @@ def _verify_workflow_on_tritonserver(
         output_path=tmpdir + f"/{model_name}",
         version=1,
         output_model=output_model,
-        output_info=model_info,
         sparse_max=sparse_max,
         backend=BACKEND,
+        cats=cats,
+        conts=conts,
     )
 
     inputs = triton.convert_df_to_triton_input(df.columns, df)
-    outputs = [grpcclient.InferRequestedOutput(col) for col in workflow.output_dtypes.keys()]
+
+    outputs = []
+    for col_name, col_schema in workflow.output_schema.column_schemas.items():
+        if col_schema._is_list and col_schema._is_ragged:
+            outputs.append(f"{col_name}__values")
+            outputs.append(f"{col_name}__nnzs")
+        else:
+            outputs.append(col_name)
+    outputs = [grpcclient.InferRequestedOutput(col) for col in outputs]
+
     with run_triton_server(tmpdir) as client:
         response = client.infer(model_name, inputs, outputs=outputs)
 
@@ -148,12 +157,12 @@ def test_tritonserver_inference_string(tmpdir, output_model):
     features = ["user"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
 
-    if output_model == "pytorch":
-        model_info = {"user": {"columns": ["user"], "dtype": "int64"}}
-    else:
-        model_info = None
     _verify_workflow_on_tritonserver(
-        tmpdir, workflow, df, "test_inference_string", output_model, model_info
+        tmpdir,
+        workflow,
+        df,
+        "test_inference_string",
+        output_model,
     )
 
 
@@ -164,13 +173,14 @@ def test_large_strings(tmpdir, output_model):
     df = _make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
+    workflow.fit(nvt.Dataset(df))
 
-    if output_model == "pytorch":
-        model_info = {"description": {"columns": ["description"], "dtype": "int64"}}
-    else:
-        model_info = None
     _verify_workflow_on_tritonserver(
-        tmpdir, workflow, df, "test_large_string", output_model, model_info
+        tmpdir,
+        workflow,
+        df,
+        "test_large_string",
+        output_model,
     )
 
 
@@ -189,47 +199,28 @@ def test_concatenate_dataframe(tmpdir, output_model):
     cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
     conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
 
-    dataset = Dataset(df)
-    workflow = nvt.Workflow(cats + conts).fit_schema(dataset.infer_schema())
-
-    if output_model == "pytorch":
-        model_info = {
-            "cat": {"columns": ["cat"], "dtype": "int32"},
-            "cont": {"columns": ["cont"], "dtype": "float32"},
-        }
-    else:
-        model_info = None
+    workflow = nvt.Workflow(cats + conts)
 
     _verify_workflow_on_tritonserver(
-        tmpdir, workflow, df, "test_concatenate_dataframe", output_model, model_info
+        tmpdir,
+        workflow,
+        df,
+        "test_concatenate_dataframe",
+        output_model,
+        cats=["cat"],
+        conts=["cont"],
     )
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_numeric_dtypes(tmpdir, output_model):
-    if output_model == "pytorch":
-        model_info = dict()
-    else:
-        model_info = None
+    def make_dtypes(prefix, widths, info_type):
+        return [(f"{prefix}{width}", info_type(f"{prefix}{width}")) for width in widths]
 
-    dtypes = []
-    for width in [8, 16, 32, 64]:
-        dtype = f"int{width}"
-        dtypes.append((dtype, np.iinfo(dtype)))
-        if output_model == "pytorch":
-            model_info[dtype] = {"columns": [dtype], "dtype": dtype}
-
-        dtype = f"uint{width}"
-        dtypes.append((dtype, np.iinfo(dtype)))
-        if output_model == "pytorch":
-            model_info[dtype] = {"columns": [dtype], "dtype": dtype}
-
-    for width in [32, 64]:
-        dtype = f"float{width}"
-        dtypes.append((dtype, np.finfo(dtype)))
-        if output_model == "pytorch":
-            model_info[dtype] = {"columns": [dtype], "dtype": dtype}
+    int_dtypes = make_dtypes("int", [32, 64], np.iinfo)
+    uint_dtypes = make_dtypes("uint", [32, 64], np.iinfo)
+    float_dtypes = make_dtypes("float", [32, 64], np.finfo)
 
     def check_dtypes(col):
         assert str(col.dtype) == col.name
@@ -237,13 +228,28 @@ def test_numeric_dtypes(tmpdir, output_model):
 
     # simple transform to make sure we can round-trip the min/max values for each dtype,
     # through triton, with the 'transform' here just checking that the dtypes are correct
+    dtypes = int_dtypes + uint_dtypes + float_dtypes
     df = _make_df(
         {dtype: np.array([limits.max, 0, limits.min], dtype=dtype) for dtype, limits in dtypes}
     )
+
     features = nvt.ColumnSelector(df.columns) >> ops.LambdaOp(check_dtypes)
     workflow = nvt.Workflow(features)
+    dataset = nvt.Dataset(df)
+    workflow.fit(dataset)
+
+    if output_model == "pytorch":
+        for dtype, _ in dtypes:
+            workflow.output_dtypes[dtype] = np.dtype(dtype)
+
     _verify_workflow_on_tritonserver(
-        tmpdir, workflow, df, "test_numeric_dtypes", output_model, model_info
+        tmpdir,
+        workflow,
+        df,
+        "test_numeric_dtypes",
+        output_model,
+        cats=[dtype for dtype, _ in int_dtypes + uint_dtypes],
+        conts=[dtype for dtype, _ in float_dtypes],
     )
 
 
@@ -284,18 +290,6 @@ def test_generate_triton_model(tmpdir, engine, output_model, df):
     workflow.fit(nvt.Dataset(df))
     expected = workflow.transform(nvt.Dataset(df)).to_ddf().compute()
 
-    # save workflow to triton / verify we see some expected output
-    if output_model == "pytorch":
-        model_info = {
-            "name-cat": {"columns": ["name-cat"], "dtype": "int64"},
-            "name-string": {"columns": ["name-string"], "dtype": "int64"},
-            "id": {"columns": ["id"], "dtype": "float32"},
-            "x": {"columns": ["x"], "dtype": "float32"},
-            "y": {"columns": ["y"], "dtype": "float32"},
-        }
-    else:
-        model_info = None
-
     repo = os.path.join(tmpdir, "models")
     triton.generate_nvtabular_model(
         workflow=workflow,
@@ -303,7 +297,6 @@ def test_generate_triton_model(tmpdir, engine, output_model, df):
         output_path=repo,
         version=1,
         output_model=output_model,
-        output_info=model_info,
     )
     workflow = None
 
@@ -385,16 +378,9 @@ def test_groupby_model(tmpdir, output_model):
     )
     workflow = nvt.Workflow(groupby_features)
 
-    if output_model == "pytorch":
-        model_info = {
-            "x-sum": {"columns": ["x-sum"], "dtype": "int64"},
-            "y-first": {"columns": ["y-first"], "dtype": "float64"},
-            "id": {"columns": ["id"], "dtype": "int64"},
-        }
-    else:
-        model_info = None
-
-    _verify_workflow_on_tritonserver(tmpdir, workflow, df, "groupby", output_model, model_info)
+    _verify_workflow_on_tritonserver(
+        tmpdir, workflow, df, "groupby", output_model, cats=["id", "y-first"], conts=["x-sum"]
+    )
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
@@ -421,14 +407,20 @@ def test_seq_etl_tf_model(tmpdir, output_model):
         name_sep="-",
     )
     feats_list = groupby_features["item_id-list", "y-list"]
-    feats_trim = feats_list >> ops.ListSlice(0, max_length)
+    feats_trim = feats_list >> ops.ListSlice(0, max_length, pad=True)
     selected_features = groupby_features["id"] + feats_trim
 
     workflow = nvt.Workflow(selected_features)
 
-    model_info = None
     sparse_max = {"item_id-list": max_length, "y-list": max_length}
 
     _verify_workflow_on_tritonserver(
-        tmpdir, workflow, df, "groupby", output_model, model_info, sparse_max
+        tmpdir,
+        workflow,
+        df,
+        "groupby",
+        output_model,
+        sparse_max,
+        cats=["id", "item_id-list"],
+        conts=["y-list"],
     )

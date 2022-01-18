@@ -19,7 +19,6 @@ import json
 import math
 import os
 import warnings
-from distutils.version import LooseVersion
 
 import dask
 import dask.dataframe as dd
@@ -28,12 +27,13 @@ import pandas as pd
 import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe.io.demo import names as name_list
+from packaging.version import Version
 
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import dispatch, ops
 from nvtabular.graph.schema import Schema
-from nvtabular.graph.tags import Tags
+from nvtabular.graph.tags import Tags, TagSet
 from nvtabular.io.parquet import GPUParquetWriter
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
 
@@ -42,7 +42,7 @@ dask_cudf = pytest.importorskip("dask_cudf")
 
 
 def test_validate_dataset_bad_schema(tmpdir):
-    if LooseVersion(dask.__version__) <= "2.30.0":
+    if Version(dask.__version__) <= Version("2.30.0"):
         # Older versions of Dask will not handle schema mismatch
         pytest.skip("Test requires newer version of Dask.")
 
@@ -107,7 +107,7 @@ def test_dataset_partition_parquets_schema_load(tmpdir, dataset, engine):
     )
     dataset.to_parquet(str(tmpdir), partition_on=["name-cat"])
     loaded_dataset = nvt.Dataset(glob.glob(str(tmpdir) + "/*/*." + engine.split("-")[0]))
-    assert loaded_dataset.schema.column_schemas["id"].tags == [Tags.CATEGORICAL]
+    assert loaded_dataset.schema.column_schemas["id"].tags == TagSet([Tags.CATEGORICAL])
 
 
 @pytest.mark.parametrize("engine", ["csv", "parquet", "csv-no-header"])
@@ -970,7 +970,7 @@ def test_parquet_filtered_hive(tmpdir, cpu):
 
 
 @pytest.mark.skipif(
-    LooseVersion(dask.__version__) < "2021.07.1",
+    Version(dask.__version__) < Version("2021.07.1"),
     reason="Dask>=2021.07.1 required for file aggregation",
 )
 @pytest.mark.parametrize("cpu", [True, False])

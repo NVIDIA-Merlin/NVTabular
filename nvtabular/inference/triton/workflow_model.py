@@ -34,13 +34,12 @@ from triton_python_backend_utils import (
     InferenceResponse,
     Tensor,
     get_input_tensor_by_name,
-    get_output_config_by_name,
     triton_string_to_numpy,
 )
 
 import nvtabular
 from nvtabular.dispatch import _is_list_dtype
-from nvtabular.inference.triton import _convert_tensor, get_column_types
+from nvtabular.inference.triton import _convert_tensor
 from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
 from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner
 from nvtabular.inference.workflow.tensorflow import TensorflowWorkflowRunner
@@ -58,7 +57,6 @@ class TritonPythonModel:
 
         # Workflow instantiation
         self.workflow = nvtabular.Workflow.load(workflow_path)
-        column_types = get_column_types(workflow_path)  # cats and conts (which duplicates tags)
 
         # Config loading and parsing
         self.model_config = json.loads(args["model_config"])
@@ -69,12 +67,12 @@ class TritonPythonModel:
         self.input_dtypes, self.input_multihots = _parse_input_dtypes(input_dtypes)
 
         self.output_dtypes = dict()
-        for name, dtype in self.workflow.output_dtypes.items():
-            if not _is_list_dtype(dtype):
-                self._set_output_dtype(name)
+        for col_name, col_schema in self.workflow.output_schema.column_schemas.items():
+            if col_schema._is_list and col_schema._is_ragged:
+                self._set_output_dtype(col_name + "__nnzs")
+                self._set_output_dtype(col_name + "__values")
             else:
-                self._set_output_dtype(name + "__nnzs")
-                self._set_output_dtype(name + "__values")
+                self._set_output_dtype(col_name)
 
         if model_framework == "hugectr":
             runner_class = HugeCTRWorkflowRunner
@@ -84,7 +82,7 @@ class TritonPythonModel:
             runner_class = TensorflowWorkflowRunner
 
         self.runner = runner_class(
-            self.workflow, column_types, self.output_dtypes, self.model_config, model_device
+            self.workflow, self.output_dtypes, self.model_config, model_device
         )
 
     def _set_output_dtype(self, name):

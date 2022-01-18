@@ -15,7 +15,7 @@
 #
 import logging
 
-from nvtabular.graph.node import Node, iter_nodes
+from nvtabular.graph.node import Node, iter_nodes, postorder_iter_nodes
 from nvtabular.graph.schema import Schema
 
 LOG = logging.getLogger("nvtabular")
@@ -25,60 +25,59 @@ class Graph:
     def __init__(self, output_node: Node):
         self.output_node = output_node
 
-        self.input_dtypes = None
-        self.output_dtypes = None
-
         self.input_schema = None
         self.output_schema = None
 
-    def fit_schema(self, input_schema: Schema) -> "Graph":
-        schemaless_nodes = {
-            node: _get_schemaless_nodes(node.parents_with_dependencies)
-            for node in _get_schemaless_nodes([self.output_node])
-        }
+    @property
+    def input_dtypes(self):
+        if self.input_schema:
+            return {
+                name: col_schema.dtype
+                for name, col_schema in self.input_schema.column_schemas.items()
+            }
+        else:
+            return {}
 
-        while schemaless_nodes:
-            # get all the Operators with no outstanding dependencies
-            current_phase = [
-                node for node, dependencies in schemaless_nodes.items() if not dependencies
-            ]
-            if not current_phase:
-                # this shouldn't happen, but lets not infinite loop just in case
-                raise RuntimeError("failed to find dependency-free Operator to compute schema for")
+    @property
+    def output_dtypes(self):
+        if self.output_schema:
+            return {
+                name: col_schema.dtype
+                for name, col_schema in self.output_schema.column_schemas.items()
+            }
+        else:
+            return {}
 
-            processed_nodes = []
-            for node in current_phase:
-                if not node.parents:
-                    node.compute_schemas(input_schema)
-                else:
-                    combined_schema = sum(
-                        [parent.output_schema for parent in node.parents if parent.output_schema],
-                        Schema(),
-                    )
-                    # we want to update the input_schema with new values
-                    # from combined schema
-                    combined_schema = input_schema + combined_schema
-                    node.compute_schemas(combined_schema)
+    def fit_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
+        nodes = list(postorder_iter_nodes(self.output_node))
+        self._compute_node_schemas(root_schema, nodes, preserve_dtypes)
+        self._compute_graph_schemas(root_schema)
+        return self
 
-                processed_nodes.append(node)
+    def _compute_node_schemas(self, root_schema, nodes, preserve_dtypes):
+        for node in nodes:
+            if not node.parents:
+                node_input_schema = root_schema
+            else:
+                combined_schema = sum(
+                    [parent.output_schema for parent in node.parents if parent.output_schema],
+                    Schema(),
+                )
+                # we want to update the input_schema with new values
+                # from combined schema
+                node_input_schema = root_schema + combined_schema
 
-            # Remove all the operators we processed in this phase, and remove
-            # from the dependencies of other ops too
-            for schemaless_node in current_phase:
-                schemaless_nodes.pop(schemaless_node)
-            for dependencies in schemaless_nodes.values():
-                dependencies.difference_update(current_phase)
+            node.compute_schemas(node_input_schema, preserve_dtypes=preserve_dtypes)
 
+    def _compute_graph_schemas(self, root_schema):
         self.input_schema = Schema(
             [
                 schema
-                for name, schema in input_schema.column_schemas.items()
+                for name, schema in root_schema.column_schemas.items()
                 if name in self._input_columns()
             ]
         )
         self.output_schema = self.output_node.output_schema
-
-        return self
 
     def _input_columns(self):
         input_cols = []

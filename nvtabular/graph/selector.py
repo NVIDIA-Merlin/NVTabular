@@ -145,3 +145,16 @@ class ColumnSelector:
         for group in self.subgroups:
             new_selector.subgroups.append(group.resolve(schema))
         return new_selector
+
+    def filter_columns(self, other_selector):
+        remaining_names = []
+        remaining_groups = []
+
+        for col in self._names:
+            if col not in other_selector.names:
+                remaining_names.append(col)
+            for group in self.subgroups:
+                if col not in group.names:
+                    remaining_groups.append(ColumnSelector(group.grouped_names))
+
+        return ColumnSelector(remaining_names, subgroups=remaining_groups)

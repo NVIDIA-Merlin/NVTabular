@@ -28,15 +28,24 @@ LOG = logging.getLogger("SelectionOp")
 class SelectionOp(BaseOperator):
     def __init__(self, selector=None):
         self.selector = selector
+        super().__init__()
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         selector = col_selector or self.selector
         return super()._get_columns(df, selector)
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        selector = col_selector or self.selector
-        return super().compute_output_schema(input_schema, selector)
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        upstream_schema = root_schema + parents_schema + deps_schema
+        return upstream_schema.apply(self.selector)
 
-    def output_column_names(self, col_selector: ColumnSelector) -> ColumnSelector:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         selector = col_selector or self.selector
-        return super().output_column_names(selector)
+        return super().compute_output_schema(input_schema, selector, prev_output_schema)
