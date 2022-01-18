@@ -22,13 +22,17 @@ from dask.delayed import Delayed
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
 from nvtabular.graph import Schema
-from nvtabular.graph.tags import Tags
 
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
-CONTINUOUS = Tags.CONTINUOUS
+AGG_DTYPES = {
+    "count": np.int32,
+    "std": np.float32,
+    "var": np.float32,
+    "mean": np.float32,
+}
 
 
 class JoinGroupby(StatOperator):
@@ -196,6 +200,11 @@ class JoinGroupby(StatOperator):
             tran_df.drop(columns=selection_l + [tmp], inplace=True)
             new_cols = [c for c in tran_df.columns if c not in new_df.columns]
             new_part = tran_df[new_cols].reset_index(drop=True)
+            for col in new_part.columns:
+                for agg in list(AGG_DTYPES.keys()):
+                    if col.endswith(f"{self.name_sep}{agg}"):
+                        new_dtype = AGG_DTYPES.get(agg, new_part[col].dtype)
+                        new_part[col] = new_part[col].astype(new_dtype)
             new_df = _concat_columns([new_df, new_part])
         df.drop(columns=[tmp], inplace=True)
         return new_df
@@ -233,16 +242,18 @@ class JoinGroupby(StatOperator):
         return column_mapping
 
     def _compute_dtype(self, col_schema, input_schema):
-        int_aggs = ["count"]
-        float_aggs = ["std", "var", "mean"]
         new_schema = super()._compute_dtype(col_schema, input_schema)
-        for agg in int_aggs:
-            if col_schema.name.endswith(f"_{agg}"):
-                new_schema = new_schema.with_dtype(np.int64, is_list=False)
-        for agg in float_aggs:
-            if col_schema.name.endswith(f"_{agg}"):
-                new_schema = new_schema.with_dtype(np.float64, is_list=False)
-        return new_schema
+
+        dtype = new_schema.dtype
+        is_list = new_schema._is_list
+
+        for agg in list(AGG_DTYPES.keys()):
+            if col_schema.name.endswith(f"{self.name_sep}{agg}"):
+                dtype = AGG_DTYPES.get(agg, dtype)
+                is_list = False
+                break
+
+        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
 
     def set_storage_path(self, new_path, copy=False):
         self.categories = nvt_cat._copy_storage(self.categories, self.out_path, new_path, copy)

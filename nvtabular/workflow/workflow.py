@@ -106,19 +106,7 @@ class Workflow:
         -------
         Dataset
         """
-        self._clear_worker_cache()
-
-        if not self.graph.output_schema:
-            self.graph.fit_schema(dataset.schema)
-
-        ddf = dataset.to_ddf(columns=self._input_columns())
-        return Dataset(
-            _transform_ddf(ddf, self.output_node, self.output_dtypes),
-            client=self.client,
-            cpu=dataset.cpu,
-            base_dataset=dataset.base_dataset,
-            schema=self.output_schema,
-        )
+        return self._transform_impl(dataset)
 
     def fit_schema(self, input_schema):
         self.graph.fit_schema(input_schema)

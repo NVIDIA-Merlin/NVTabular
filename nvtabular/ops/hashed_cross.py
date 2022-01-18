@@ -80,7 +80,7 @@ class HashedCross(Operator):
 
     @property
     def output_dtype(self):
-        return numpy.uint32
+        return numpy.int32
 
 
 def _nest_columns(columns):
