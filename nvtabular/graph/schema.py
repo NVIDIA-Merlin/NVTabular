@@ -75,8 +75,13 @@ class ColumnSchema:
         )
 
     def with_dtype(self, dtype, is_list=None, is_ragged=None):
-        is_list = is_list or self._is_list
-        is_ragged = is_ragged if is_ragged is not None else self._is_ragged
+        is_list = is_list if is_list is not None else self._is_list
+
+        if is_list:
+            is_ragged = is_ragged if is_ragged is not None else self._is_ragged
+        else:
+            is_ragged = False
+
         return ColumnSchema(
             self.name,
             tags=self.tags,
