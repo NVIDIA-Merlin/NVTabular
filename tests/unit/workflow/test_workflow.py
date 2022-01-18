@@ -614,8 +614,10 @@ def test_workflow_input_output_dtypes():
 @pytest.mark.skipif(not cudf, reason="needs cudf")
 def test_workflow_transform_ddf_dtypes():
     # Initial Dataset
-    df = cudf.datasets.timeseries().reset_index()
+    dtypes = {"name": str, "id": int, "x": float, "y": float}
+    df = cudf.datasets.timeseries(dtypes=dtypes).reset_index()
     ddf = dask_cudf.from_cudf(df, npartitions=2)
+
     dataset = Dataset(ddf)
 
     # Create and Execute Workflow

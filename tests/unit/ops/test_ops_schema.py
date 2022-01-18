@@ -67,7 +67,6 @@ def test_schema_out(tags, properties, selection, op):
                     ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
                 ).properties
 
-                # should not be exactly the same name, having gone through operator
                 assert result_schema.dtype == expected_dtype
                 if name in selector.names:
                     assert result_schema.properties == expected_properties
