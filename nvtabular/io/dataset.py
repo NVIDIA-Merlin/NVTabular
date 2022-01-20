@@ -1160,13 +1160,14 @@ class Dataset:
 
         if annotate_lists:
             _real_meta = self._real_meta[n]
-            return {
+            annotated = {
                 col: {
                     "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
                     "is_list": dispatch._is_list_dtype(_real_meta[col]),
                 }
                 for col in _real_meta.columns
             }
+            return annotated
 
         return self._real_meta[n].dtypes
 

@@ -21,7 +21,7 @@ import pytest
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.selector import ColumnSelector
-from nvtabular.graph.tags import Tags
+from nvtabular.graph.tags import Tags, TagSet
 
 
 @pytest.mark.parametrize("d_types", [numpy.float32, numpy.float64, numpy.uint32, numpy.uint64])
@@ -34,7 +34,7 @@ def test_column_schema_meta():
     column = ColumnSchema("name", tags=["tag-1"], properties={"p1": "prop-1"})
 
     assert column.name == "name"
-    assert column.tags[0] == "tag-1"
+    assert "tag-1" in column.tags
     assert column.with_name("a").name == "a"
     assert set(column.with_tags("tag-2").tags) == set(["tag-1", "tag-2"])
     assert column.with_properties({"p2": "prop-2"}).properties == {"p1": "prop-1", "p2": "prop-2"}
@@ -101,8 +101,8 @@ def test_column_schema_protobuf_domain_check(tmpdir):
 
 
 def test_column_schema_tags_normalize():
-    schema1 = ColumnSchema("col1", tags=["categorical", "continuous", "item_id"])
-    assert schema1.tags == [Tags.CATEGORICAL, Tags.CONTINUOUS, Tags.ITEM_ID]
+    schema1 = ColumnSchema("col1", tags=["categorical", "list", "item_id"])
+    assert schema1.tags == TagSet([Tags.CATEGORICAL, Tags.LIST, Tags.ITEM_ID])
 
 
 def test_dataset_schema_constructor():

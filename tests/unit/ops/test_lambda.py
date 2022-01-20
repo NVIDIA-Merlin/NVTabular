@@ -23,7 +23,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, ops
-from nvtabular.graph.tags import Tags
+from nvtabular.graph.tags import Tags, TagSet
 
 try:
     import cupy as cp
@@ -184,7 +184,7 @@ def test_lambdaop_schema_computation(cpu):
     output_schema = workflow.output_node.output_schema
 
     assert output_schema["c"].dtype == dtype
-    assert output_schema["c"].tags == tags
+    assert output_schema["c"].tags == TagSet(tags)
     assert output_schema["c"].properties == properties
 
 

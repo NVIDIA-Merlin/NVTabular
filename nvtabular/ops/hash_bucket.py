@@ -86,9 +86,11 @@ class HashBucket(Operator):
 
         for col, nb in num_buckets.items():
             if _is_list_dtype(df[col].dtype):
-                df[col] = _encode_list_column(df[col], _hash_series(df[col]) % nb)
+                df[col] = _encode_list_column(
+                    df[col], _hash_series(df[col]) % nb, dtype=self.output_dtype
+                )
             else:
-                df[col] = _hash_series(df[col]) % nb
+                df[col] = (_hash_series(df[col]) % nb).astype(self.output_dtype)
 
         return df
 
@@ -121,4 +123,4 @@ class HashBucket(Operator):
 
     @property
     def output_dtype(self):
-        return numpy.int64
+        return numpy.int32

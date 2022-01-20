@@ -18,9 +18,11 @@ from pathlib import Path
 
 import pytest
 
+import nvtabular
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
+from nvtabular.graph.tags import Tags
 
 
 def test_fit_schema():
@@ -246,3 +248,24 @@ def test_schema_write_read_dataset(tmpdir, dataset, engine):
         assert col_schema._is_list == wf_col_schema._is_list
         assert col_schema.tags == wf_col_schema.tags
         assert col_schema.properties == wf_col_schema.properties
+
+
+def test_collision_tags_workflow():
+    df = nvtabular.dispatch._make_df(
+        {
+            "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
+            "rating": [1.5, 2.5, 3.0, 4.0, 5.0, 2.0, 3.0, 1.0] * 10,
+        }
+    )
+    dataset = nvtabular.Dataset(df)
+
+    cat_features = ["user_id"] >> ops.Categorify()
+
+    te_features = cat_features >> ops.TargetEncoding(["rating"], kfold=5, p_smooth=20)
+    te_features_norm = te_features >> ops.NormalizeMinMax()
+
+    workflow = Workflow(te_features_norm).fit(dataset)
+
+    for col_schema in workflow.output_schema.column_schemas.values():
+        assert Tags.CONTINUOUS in col_schema.tags
+        assert Tags.CATEGORICAL not in col_schema.tags

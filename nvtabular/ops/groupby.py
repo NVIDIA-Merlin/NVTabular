@@ -100,7 +100,6 @@ class Groupby(Operator):
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-
         # Sort if necessary
         if self.sort_cols:
             df = df.sort_values(self.sort_cols, ignore_index=True)
@@ -108,6 +107,7 @@ class Groupby(Operator):
         # List aggregations do not work with empty data.
         # Use synthetic metadata to predict output columns.
         empty_df = not len(df)
+
         _df = meta_nonempty(df) if empty_df else df
 
         # Get "complete" aggregation dicts
@@ -166,15 +166,17 @@ class Groupby(Operator):
         dtype = col_schema.dtype
         is_list = col_schema._is_list
 
-        for col_name in input_schema.column_names:
-            convo_aggs = self.conv_aggs.get(col_name, [])
-            if "count" in convo_aggs:
-                dtype = numpy.int64
-            elif "mean" in convo_aggs:
-                dtype = numpy.float64
+        dtypes = {"count": numpy.int32, "mean": numpy.float32}
 
-            aggs = self.list_aggs.get(col_name, [])
-            is_list = "list" in aggs
+        is_lists = {"list": True}
+
+        for col_name in input_schema.column_names:
+            combined_aggs = self.conv_aggs.get(col_name, []) + self.list_aggs.get(col_name, [])
+            for agg in combined_aggs:
+                if col_schema.name.endswith(f"{self.name_sep}{agg}"):
+                    dtype = dtypes.get(agg, dtype)
+                    is_list = is_lists.get(agg, is_list)
+                    break
 
         return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
 
@@ -194,6 +196,7 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
     # Apply conventional aggs
     _columns = list(set(groupby_cols) | set(_conv_aggs) | set(_list_aggs))
     df = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
+
     df.columns = [
         name_sep.join([n for n in name if n != ""]) for name in df.columns.to_flat_index()
     ]
@@ -205,6 +208,12 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
                 df[f"{col}{name_sep}{_agg}"] = _first_or_last(df[f"{col}{name_sep}list"], _agg)
         if "list" not in aggs:
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
+
+    for col in df.columns:
+        if col.endswith(f"{name_sep}count"):
+            df[col] = df[col].astype(numpy.int32)
+        elif col.endswith(f"{name_sep}mean"):
+            df[col] = df[col].astype(numpy.float32)
 
     return df
 
