@@ -62,18 +62,26 @@ class Ensemble:
         node_idx = 0
         node_id_lookup = {}
         for node in postorder_nodes:
-            if hasattr(node.op, "export"):
+            if node.exportable:
                 node_id_lookup[node] = node_idx
                 node_idx += 1
+
+        # TODO: Identify chains of pipelineable ops
+        # Possibilities:
+        # - Build a look-up table of chains, where the keys are the first node in the chain
+        # - Create a mega-operator that contains pipelineable ops and modify the graph to
+        #  replace with it (that op's export could handle the chain)
+        # - Look ahead at the node's children and build up the chain to export and then skip
+        # exporting subsequent node if their parent(s) are pipelineable
 
         node_configs = []
         # Export node configs and add ensemble steps
         for node in postorder_nodes:
-            if hasattr(node.op, "export"):
-                node_config = node.op.export(export_path, version=version)
+            if node.exportable:
+                node_config = node.export(export_path, version=version)
 
                 config_step = model_config.ModelEnsembling.Step(
-                    model_name=node.op.export_name, model_version=-1
+                    model_name=node.export_name, model_version=-1
                 )
 
                 for input_col_name in node.input_columns.names:
@@ -105,9 +113,7 @@ class Ensemble:
 
 def _find_column_source(node, column_name):
     for upstream_node in node.parents_with_dependencies:
-        if column_name in upstream_node.output_columns.names and hasattr(
-            upstream_node.op, "export"
-        ):
+        if column_name in upstream_node.output_columns.names and upstream_node.exportable:
             return upstream_node
 
     for upstream_node in node.parents_with_dependencies:

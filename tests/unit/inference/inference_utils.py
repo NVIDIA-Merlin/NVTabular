@@ -3,12 +3,13 @@ from distutils.spawn import find_executable
 import pytest
 
 torch = pytest.importorskip("torch")  # noqa
-configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
-configure_tensorflow()
+loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")  # noqa
+loader_tf_utils.configure_tensorflow()
 
 import nvtabular.framework_utils.tensorflow.layers as layers  # noqa
 from nvtabular.framework_utils.torch.models import Model  # noqa
 
+inf_op = pytest.importorskip("nvtabular.inference.graph.ops.operator")
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
@@ -20,6 +21,23 @@ TRITON_SERVER_PATH = find_executable("tritonserver")
 from tests.unit.test_triton_inference import run_triton_server  # noqa
 
 tf = pytest.importorskip("tensorflow")
+
+
+class PlusTwoOp(inf_op.PipelineableInferenceOperator):
+    @property
+    def export_name(self):
+        return str(self.__class__.__name__)
+
+    def transform(self, df: inf_op.InferenceDataFrame) -> inf_op.InferenceDataFrame:
+        focus_df = df
+        new_df = inf_op.InferenceDataFrame()
+        for name, data in focus_df:
+            new_df.tensors[f"{name}+2"] = data + 2
+        return new_df
+
+    @classmethod
+    def from_config(cls, config):
+        return PlusTwoOp()
 
 
 def create_tf_model(cat_columns: list, cat_mh_columns: list, embed_tbl_shapes: dict):

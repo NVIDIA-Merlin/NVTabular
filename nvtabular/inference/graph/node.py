@@ -26,6 +26,17 @@ class InferenceNode(Node):
         self.input_schema = _match_dtypes(source_node.output_schema, self.input_schema)
         return self
 
+    def export(self, output_path, version=1):
+        return self.op.export(output_path, self.input_schema, self.output_schema, version=version)
+
+    @property
+    def export_name(self):
+        return self.op.export_name
+
+    @property
+    def exportable(self):
+        return hasattr(self.op, "export")
+
 
 def _match_dtypes(source_schema, dest_schema):
     matched = Schema()
