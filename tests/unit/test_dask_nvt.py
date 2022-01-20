@@ -174,10 +174,10 @@ def test_dask_groupby_stats(client, tmpdir, datasets, part_mem_fraction):
     gb_e = expect.groupby("name-cat").aggregate({"name-cat": "count", "x": ["sum", "min", "std"]})
     gb_e.columns = ["count", "sum", "min", "std"]
     df_check = got.merge(gb_e, left_on="name-cat", right_index=True, how="left")
-    assert_eq(df_check["name-cat_count"], df_check["count"].astype("int64"), check_names=False)
+    assert_eq(df_check["name-cat_count"], df_check["count"], check_names=False)
     assert_eq(df_check["name-cat_x_sum"], df_check["sum"], check_names=False)
     assert_eq(df_check["name-cat_x_min"], df_check["min"], check_names=False)
-    assert_eq(df_check["name-cat_x_std"], df_check["std"], check_names=False)
+    assert_eq(df_check["name-cat_x_std"], df_check["std"].astype("float32"), check_names=False)
 
 
 @pytest.mark.parametrize("part_mem_fraction", [0.01])

@@ -37,7 +37,9 @@ def test_schema_out(tags, properties, selection, op):
     all_cols = []
     for x in range(5):
         all_cols.append(str(x))
-        column_schemas.append(ColumnSchema(str(x), tags=tags, properties=properties))
+        column_schemas.append(
+            ColumnSchema(str(x), dtype=np.int32, tags=tags, properties=properties)
+        )
 
     # Turn to Schema
     input_schema = Schema(column_schemas)
@@ -51,27 +53,27 @@ def test_schema_out(tags, properties, selection, op):
         names_group = [name for name in output_schema.column_schemas if col_name in name]
         if names_group:
             for name in names_group:
-                schema1 = output_schema.column_schemas[name]
+                result_schema = output_schema.column_schemas[name]
 
-                # should not be exactly the same name, having gone through operator
-                assert (
-                    schema1.dtype
-                    == op._compute_dtype(
-                        ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
-                    ).dtype
-                )
-                output_tags = op._compute_tags(
+                expected_dtype = op._compute_dtype(
+                    ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
+                ).dtype
+
+                expected_tags = op._compute_tags(
                     ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
                 ).tags
-                output_properties = op._compute_properties(
+
+                expected_properties = op._compute_properties(
                     ColumnSchema(col_name), Schema([input_schema.column_schemas[col_name]])
                 ).properties
-                if name in selector.names:
-                    assert schema1.properties == output_properties
 
-                    assert len(schema1.tags) == len(output_tags)
+                assert result_schema.dtype == expected_dtype
+                if name in selector.names:
+                    assert result_schema.properties == expected_properties
+
+                    assert len(result_schema.tags) == len(expected_tags)
                 else:
-                    assert set(output_tags).issubset(schema1.tags)
+                    assert set(expected_tags).issubset(result_schema.tags)
 
     not_used = [col for col in all_cols if col not in selector.names]
     for col_name in not_used:

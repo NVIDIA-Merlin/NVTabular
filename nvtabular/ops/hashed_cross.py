@@ -65,7 +65,7 @@ class HashedCross(Operator):
                 val = val % self.num_buckets[cross]
             else:
                 val = val % self.num_buckets
-            new_df["_X_".join(cross)] = val
+            new_df["_X_".join(cross)] = val.astype(self.output_dtype)
         return new_df
 
     transform.__doc__ = Operator.transform.__doc__
@@ -78,8 +78,9 @@ class HashedCross(Operator):
 
         return column_mapping
 
+    @property
     def output_dtype(self):
-        return numpy.int64
+        return numpy.int32
 
 
 def _nest_columns(columns):

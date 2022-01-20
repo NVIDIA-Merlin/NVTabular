@@ -82,7 +82,9 @@ class BaseOperator:
 
         return parents_schema + deps_schema
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
         """Given a set of schemas and a column selector for the input columns,
         returns a set of schemas for the transformed columns this operator will produce
         Parameters
@@ -116,6 +118,11 @@ class BaseOperator:
             col_schema = self.compute_column_schema(output_col_name, input_schema[input_col_names])
             output_schema += Schema([col_schema])
 
+        if self.dynamic_dtypes and prev_output_schema:
+            for col_name, col_schema in output_schema.column_schemas.items():
+                dtype = prev_output_schema[col_name].dtype
+                output_schema.column_schemas[col_name] = col_schema.with_dtype(dtype)
+
         return output_schema
 
     def column_mapping(self, col_selector):
@@ -139,29 +146,34 @@ class BaseOperator:
     def _compute_dtype(self, col_schema, input_schema):
         dtype = col_schema.dtype
         is_list = col_schema._is_list
+        is_ragged = col_schema._is_ragged
 
         if input_schema.column_schemas:
             source_col_name = input_schema.column_names[0]
             dtype = input_schema[source_col_name].dtype
             is_list = input_schema[source_col_name]._is_list
+            is_ragged = input_schema[source_col_name]._is_ragged
 
-        if hasattr(self, "output_dtype"):
+        if self.output_dtype is not None:
             dtype = self.output_dtype
             is_list = any(cs._is_list for _, cs in input_schema.column_schemas.items())
+            is_ragged = any(cs._is_ragged for _, cs in input_schema.column_schemas.items())
 
-        return col_schema.with_dtype(dtype, is_list=is_list)
+        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_ragged)
+
+    @property
+    def dynamic_dtypes(self):
+        return False
 
     def _compute_tags(self, col_schema, input_schema):
         tags = []
-
         if input_schema.column_schemas:
             source_col_name = input_schema.column_names[0]
-            tags += input_schema[source_col_name].tags
+            tags = input_schema[source_col_name].tags
 
-        if hasattr(self, "output_tags"):
-            tags += self.output_tags
-
-        return col_schema.with_tags(tags)
+        # Override empty tags with tags from the input schema
+        # Override input schema tags with the output tags of this operator
+        return col_schema.with_tags(tags).with_tags(self.output_tags)
 
     def _compute_properties(self, col_schema, input_schema):
         properties = {}
@@ -170,8 +182,7 @@ class BaseOperator:
             source_col_name = input_schema.column_names[0]
             properties.update(input_schema.column_schemas[source_col_name].properties)
 
-        if hasattr(self, "output_properties"):
-            properties.update(self.output_properties)
+        properties.update(self.output_properties)
 
         return col_schema.with_properties(properties)
 
@@ -213,6 +224,18 @@ class BaseOperator:
 
     def __rrshift__(self, other):
         return nvt.ColumnSelector(other) >> self
+
+    @property
+    def output_dtype(self):
+        return None
+
+    @property
+    def output_tags(self):
+        return []
+
+    @property
+    def output_properties(self):
+        return {}
 
     @property
     def label(self) -> str:

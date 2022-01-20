@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Text
+from typing import Dict, Optional, Text
 
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
-from nvtabular.graph.tags import Tags
+from nvtabular.graph.tags import TagSet
 
 
 @dataclass(frozen=True)
@@ -25,13 +25,14 @@ class ColumnSchema:
     """A schema containing metadata of a dataframe column."""
 
     name: Text
-    tags: Optional[List[Text]] = field(default_factory=list)
+    tags: Optional[TagSet] = field(default_factory=TagSet)
     properties: Optional[Dict[str, any]] = field(default_factory=dict)
     dtype: Optional[object] = None
     _is_list: bool = False
+    _is_ragged: bool = False
 
     def __post_init__(self):
-        tags = _normalize_tags(self.tags or [])
+        tags = TagSet(self.tags)
         object.__setattr__(self, "tags", tags)
 
     def __str__(self) -> str:
@@ -44,19 +45,17 @@ class ColumnSchema:
             properties=self.properties,
             dtype=self.dtype,
             _is_list=self._is_list,
+            _is_ragged=self._is_ragged,
         )
 
     def with_tags(self, tags) -> "ColumnSchema":
-        if not isinstance(tags, list):
-            tags = [tags]
-
-        combined_tags = list(set(list(self.tags) + tags))
         return ColumnSchema(
             self.name,
-            tags=combined_tags,
+            tags=self.tags.override(tags),
             properties=self.properties,
             dtype=self.dtype,
             _is_list=self._is_list,
+            _is_ragged=self._is_ragged,
         )
 
     def with_properties(self, properties):
@@ -72,18 +71,32 @@ class ColumnSchema:
             properties=properties,
             dtype=self.dtype,
             _is_list=self._is_list,
+            _is_ragged=self._is_ragged,
         )
 
-    def with_dtype(self, dtype, is_list=None):
-        is_list = is_list or self._is_list
+    def with_dtype(self, dtype, is_list=None, is_ragged=None):
+        is_list = is_list if is_list is not None else self._is_list
+
+        if is_list:
+            is_ragged = is_ragged if is_ragged is not None else self._is_ragged
+        else:
+            is_ragged = False
+
         return ColumnSchema(
-            self.name, tags=self.tags, properties=self.properties, dtype=dtype, _is_list=is_list
+            self.name,
+            tags=self.tags,
+            properties=self.properties,
+            dtype=dtype,
+            _is_list=is_list,
+            _is_ragged=is_ragged,
         )
 
     def __merge__(self, other):
         col_schema = self.with_tags(other.tags)
         col_schema = col_schema.with_properties(other.properties)
-        col_schema = col_schema.with_dtype(other.dtype)
+        col_schema = col_schema.with_dtype(
+            other.dtype, is_list=other._is_list, is_ragged=other._is_ragged
+        )
         col_schema = col_schema.with_name(other.name)
         return col_schema
 
@@ -219,7 +232,3 @@ class Schema:
                 result.column_schemas.pop(key, None)
 
         return result
-
-
-def _normalize_tags(tags):
-    return [Tags[tag.upper()] if tag in Tags._value2member_map_ else tag for tag in tags]

@@ -82,15 +82,17 @@ class Bucketize(Operator):
                 # once cupy>=8.0.0 is required.
                 val = 0
                 for boundary in b:
-                    val += (df[col] >= boundary).astype("int")
+                    val += df[col] >= boundary
                 new_df[col] = val
+            new_df[col] = new_df[col].astype(self.output_dtype)
         return new_df
 
-    def _compute_dtype(self, col_schema, input_schema):
-        return col_schema.with_dtype(np.int64)
+    @property
+    def output_tags(self):
+        return [Tags.CATEGORICAL]
 
-    def _compute_tags(self, col_schema, input_schema):
-        col_schema = col_schema.with_tags([Tags.CATEGORICAL])
-        return super()._compute_tags(col_schema, input_schema)
+    @property
+    def output_dtype(self):
+        return np.int32
 
     transform.__doc__ = Operator.transform.__doc__
