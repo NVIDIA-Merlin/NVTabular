@@ -211,7 +211,7 @@ def main(args):
         search_sorted=not freq_limit,
         on_host=not args.cats_on_device,
     )
-    processor = Workflow(cat_features + cont_features + label_name, client=client)
+    processor = Workflow(cat_features + cont_features + label_name)
 
     dataset = Dataset(data_path, "parquet", part_size=part_size)
 
