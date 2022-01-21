@@ -35,6 +35,7 @@ from nvtabular import Dataset, Workflow, ops
 from nvtabular.dispatch import HAS_GPU, _make_df
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
+from nvtabular.utils import set_dask_client
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
@@ -100,13 +101,12 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
     cont_names = ["x", "y", "id"]
     label_name = ["label"]
 
+    set_dask_client(client=client if use_client else None)
     norms = ops.Normalize()
     cat_features = cat_names >> ops.Categorify(cat_cache="host")
     cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp >> norms
 
-    workflow = Workflow(
-        cat_features + cont_features + label_name, client=client if use_client else None
-    )
+    workflow = Workflow(cat_features + cont_features + label_name)
 
     workflow.fit(dataset)
 
@@ -115,7 +115,7 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
         workflow.save(workflow_dir)
         workflow = None
 
-        workflow = Workflow.load(workflow_dir, client=client if use_client else None)
+        workflow = Workflow.load(workflow_dir)
 
     def get_norms(tar):
         gdf = tar.fillna(0)
@@ -190,7 +190,8 @@ def test_spec_set(tmpdir, client):
     cont_features = ColumnSelector(["cont"]) >> ops.FillMissing >> ops.Normalize
     te_features = cats >> ops.TargetEncoding("clicked", kfold=5, fold_seed=42, p_smooth=20)
 
-    p = Workflow(cat_features + cont_features + te_features, client=client)
+    set_dask_client(client=client)
+    p = Workflow(cat_features + cont_features + te_features)
     p.fit_transform(nvt.Dataset(gdf_test)).to_ddf().compute()
 
 
@@ -280,7 +281,8 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
         )
         cont_features = cont_names + fillmissing_logop >> norms
 
-    workflow = Workflow(cat_features + cont_features + label_name, client=client)
+    set_dask_client(client=client)
+    workflow = Workflow(cat_features + cont_features + label_name)
 
     workflow.fit(dataset)
 
@@ -289,7 +291,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
         workflow.save(workflow_dir)
         workflow = None
 
-        workflow = Workflow.load(workflow_dir, client=client)
+        workflow = Workflow.load(workflow_dir)
 
     def get_norms(tar):
         ser_median = tar.dropna().quantile(0.5, interpolation="linear")
@@ -347,6 +349,7 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 @pytest.mark.parametrize("use_client", [True, False])
 def test_parquet_output(client, use_client, tmpdir, shuffle):
     out_files_per_proc = 2
+    set_dask_client(client=client if use_client else None)
     n_workers = len(client.cluster.workers) if use_client else 1
     out_path = str(tmpdir.mkdir("processed"))
     path = str(tmpdir.join("simple.parquet"))
@@ -359,7 +362,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     columns = ["a"]
     dataset = nvt.Dataset(path, engine="parquet", row_groups_per_part=1)
 
-    workflow = nvt.Workflow(columns >> ops.Normalize(), client=client if use_client else None)
+    workflow = nvt.Workflow(columns >> ops.Normalize())
     workflow.fit_transform(dataset).to_parquet(
         output_path=out_path, shuffle=shuffle, out_files_per_proc=out_files_per_proc
     )
@@ -428,6 +431,7 @@ def test_join_external_workflow(tmpdir, df, dataset, engine):
 @pytest.mark.parametrize("use_client", [True, False])
 @pytest.mark.parametrize("apply_offline", [True, False])
 def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
+    set_dask_client(client=client if use_client else None)
     out_files_per_proc = 2
     out_path = str(tmpdir.mkdir("processed"))
     path = str(tmpdir.join("simple.parquet"))
@@ -455,9 +459,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     cat_features = cat_names >> ops.Categorify()
     cont_features = cont_names >> ops.FillMissing() >> ops.Clip(min_value=0) >> ops.LogOp
 
-    workflow = Workflow(
-        cat_features + cont_features + label_name, client=client if use_client else None
-    )
+    workflow = Workflow(cat_features + cont_features + label_name)
 
     workflow.fit(dataset)
 

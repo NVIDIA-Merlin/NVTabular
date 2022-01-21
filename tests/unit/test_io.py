@@ -35,7 +35,8 @@ from nvtabular import dispatch, ops
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.tags import Tags, TagSet
 from nvtabular.io.parquet import GPUParquetWriter
-from tests.conftest import allcols_csv, mycols_csv, mycols_pq, run_in_context
+from nvtabular.utils import set_dask_client
+from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 cudf = pytest.importorskip("cudf")
 dask_cudf = pytest.importorskip("dask_cudf")
@@ -333,6 +334,7 @@ def test_dask_dataframe_methods(tmpdir):
 def test_hugectr(
     tmpdir, client, df, dataset, output_format, engine, op_columns, num_io_threads, use_client
 ):
+    set_dask_client(client=client if use_client else None)
     cat_names = ["name-cat", "name-string"] if engine == "parquet" else ["name-string"]
     cont_names = ["x", "y"]
     label_names = ["label"]
@@ -346,23 +348,14 @@ def test_hugectr(
 
     conts = nvt.ColumnGroup(cont_names) >> ops.Normalize
     cats = nvt.ColumnGroup(cat_names) >> ops.Categorify
-    # We have a global dask client defined in this context, so NVTabular
-    # should warn us if we initialize a `Workflow` with `client=None`
-    workflow = run_in_context(
-        nvt.Workflow,
-        conts + cats + label_names,
-        context=None if use_client else pytest.warns(UserWarning),
-        client=client if use_client else None,
-    )
+    workflow = nvt.Workflow(conts + cats + label_names)
     transformed = workflow.fit_transform(dataset)
 
     # We have a global dask client defined in this context,
     # so NVTabular should warn us if our `Dataset` was
     # initialized with `client=None`
     if output_format == "hugectr":
-        run_in_context(
-            transformed.to_hugectr,
-            context=None if use_client else pytest.warns(UserWarning),
+        transformed.to_hugectr(
             cats=cat_names,
             conts=cont_names,
             labels=label_names,
@@ -371,9 +364,7 @@ def test_hugectr(
             num_threads=num_io_threads,
         )
     else:
-        run_in_context(
-            transformed.to_parquet,
-            context=None if use_client else pytest.warns(UserWarning),
+        transformed.to_parquet(
             output_path=outdir,
             out_files_per_proc=nfiles,
             num_threads=num_io_threads,

@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import collections
-import warnings
 
 import dask
 import pandas as pd
@@ -257,7 +256,6 @@ def _ddf_to_dataset(
     cont_names,
     label_names,
     output_format,
-    client,
     num_threads,
     cpu,
     suffix="",
@@ -365,20 +363,10 @@ def _ddf_to_dataset(
     out = Delayed(name, graph)
 
     # Trigger write execution
+    client = global_dask_client()
     if client:
         out = client.compute(out).result()
     else:
-
-        # Warn user if there is an unused global
-        # Dask client available
-        if global_dask_client(client):
-            warnings.warn(
-                "A global dask.distributed client has been detected, but the "
-                "single-threaded scheduler will be used for this write operation. "
-                "Please use the `client` argument to initialize a `Dataset` and/or "
-                "`Workflow` object with distributed-execution enabled."
-            )
-
         out = dask.compute(out, scheduler="synchronous")[0]
 
     if cached_writers:
