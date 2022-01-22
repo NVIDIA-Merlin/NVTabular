@@ -92,10 +92,10 @@ class Node:
         self.parents.extend(parent_nodes)
 
     def compute_schemas(self, root_schema, preserve_dtypes=False):
-        parents_selector = _combine_selectors(self.parents)
-        dependencies_selector = _combine_selectors(self.dependencies)
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
+        parents_selector = _combine_selectors(self.parents)
+        dependencies_selector = _combine_selectors(self.dependencies)
 
         # If parent is an addition or selection node, we may need to
         # propagate grouping unless this node already has a selector
@@ -120,6 +120,27 @@ class Node:
         self.output_schema = self.op.compute_output_schema(
             self.input_schema, self.selector, prev_output_schema
         )
+
+    def validate_schemas(self, root_schema, strict_dtypes=False):
+        parents_schema = _combine_schemas(self.parents)
+        deps_schema = _combine_schemas(self.dependencies)
+        ancestors_schema = root_schema + parents_schema + deps_schema
+
+        for col_name, col_schema in self.input_schema.column_schemas.items():
+            source_schema = ancestors_schema.get(col_name)
+            if not source_schema:
+                raise ValueError(
+                    f"Missing column {col_name} at the input to " f"{self.op.__class__.__name__}."
+                )
+
+            if strict_dtypes or not self.op.dynamic_dtypes:
+                if source_schema.dtype != col_schema.dtype:
+                    raise ValueError(
+                        f"Mismatched dtypes for column {col_name} provided to "
+                        f"{self.op.__class__.__name__}: "
+                        f"ancestor nodes provided dtype {source_schema.dtype}, "
+                        f"expected dtype {col_schema.dtype}."
+                    )
 
     def __rshift__(self, operator):
         """Transforms this Node by applying an BaseOperator
@@ -310,6 +331,11 @@ class Node:
         return ColumnSelector(self.output_schema.column_names)
 
     @property
+    def column_mapping(self):
+        selector = self.selector or ColumnSelector(self.input_schema.column_names)
+        return self.op.column_mapping(selector)
+
+    @property
     def dependency_columns(self):
         return ColumnSelector(_combine_schemas(self.dependencies).column_names)
 
@@ -358,6 +384,7 @@ def iter_nodes(nodes):
                 queue.append(node)
 
 
+# output node (bottom) -> selection leaf nodes (top)
 def preorder_iter_nodes(nodes):
     queue = []
     if not isinstance(nodes, list):
@@ -373,6 +400,7 @@ def preorder_iter_nodes(nodes):
         yield node
 
 
+# selection leaf nodes (top) -> output node (bottom)
 def postorder_iter_nodes(nodes):
     queue = []
     if not isinstance(nodes, list):

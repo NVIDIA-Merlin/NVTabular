@@ -61,7 +61,7 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
 
     # Triton
     triton_op = workflow_op.WorkflowOp(workflow, name="workflow")
-    triton_op.export(tmpdir)
+    triton_op.export(tmpdir, None, None)
 
     # Export creates directory
     export_path = pathlib.Path(tmpdir) / triton_op.export_name

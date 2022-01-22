@@ -13,10 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import logging
 
-from nvtabular.graph.node import Node, iter_nodes, postorder_iter_nodes
+import copy
+import logging
+from collections import deque
+
+from nvtabular.graph.node import (
+    Node,
+    _combine_schemas,
+    iter_nodes,
+    postorder_iter_nodes,
+    preorder_iter_nodes,
+)
 from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 
 LOG = logging.getLogger("nvtabular")
 
@@ -24,9 +34,6 @@ LOG = logging.getLogger("nvtabular")
 class Graph:
     def __init__(self, output_node: Node):
         self.output_node = output_node
-
-        self.input_schema = None
-        self.output_schema = None
 
     @property
     def input_dtypes(self):
@@ -48,36 +55,48 @@ class Graph:
         else:
             return {}
 
-    def fit_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
+    @property
+    def column_mapping(self):
+        nodes = preorder_iter_nodes(self.output_node)
+        column_mapping = self.output_node.column_mapping
+        for node in list(nodes)[1:]:
+            node_map = node.column_mapping
+            for output_col, input_cols in column_mapping.items():
+                early_inputs = []
+                for input_col in input_cols:
+                    early_inputs += node_map.get(input_col, [input_col])
+                column_mapping[output_col] = early_inputs
+
+        return column_mapping
+
+    def construct_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
         nodes = list(postorder_iter_nodes(self.output_node))
+
         self._compute_node_schemas(root_schema, nodes, preserve_dtypes)
-        self._compute_graph_schemas(root_schema)
+        self._validate_node_schemas(root_schema, nodes, preserve_dtypes)
+
         return self
 
-    def _compute_node_schemas(self, root_schema, nodes, preserve_dtypes):
+    def _compute_node_schemas(self, root_schema, nodes, preserve_dtypes=False):
         for node in nodes:
-            if not node.parents:
-                node_input_schema = root_schema
-            else:
-                combined_schema = sum(
-                    [parent.output_schema for parent in node.parents if parent.output_schema],
-                    Schema(),
-                )
-                # we want to update the input_schema with new values
-                # from combined schema
-                node_input_schema = root_schema + combined_schema
+            node.compute_schemas(root_schema, preserve_dtypes=preserve_dtypes)
 
-            node.compute_schemas(node_input_schema, preserve_dtypes=preserve_dtypes)
+    def _validate_node_schemas(self, root_schema, nodes, strict_dtypes=False):
+        for node in nodes:
+            node.validate_schemas(root_schema, strict_dtypes=strict_dtypes)
 
-    def _compute_graph_schemas(self, root_schema):
-        self.input_schema = Schema(
-            [
-                schema
-                for name, schema in root_schema.column_schemas.items()
-                if name in self._input_columns()
-            ]
-        )
-        self.output_schema = self.output_node.output_schema
+    @property
+    def input_schema(self):
+        # leaf_node input and output schemas are the same (aka selection)
+        return _combine_schemas(self.leaf_nodes)
+
+    @property
+    def leaf_nodes(self):
+        return [node for node in postorder_iter_nodes(self.output_node) if not node.parents]
+
+    @property
+    def output_schema(self):
+        return self.output_node.output_schema
 
     def _input_columns(self):
         input_cols = []
@@ -91,15 +110,6 @@ class Graph:
             input_cols += list(set(node.input_columns.names) - set(upstream_output_cols))
 
         return _get_unique(input_cols)
-
-    def _zero_output_schemas(self):
-        """
-        Zero out all schemas in order to rerun fit schema after operators
-        have run fit and have stats to add to schema.
-        """
-        for node in iter_nodes([self.output_node]):
-            node.output_schema = None
-            node.input_schema = None
 
 
 def _get_schemaless_nodes(nodes):
@@ -118,3 +128,64 @@ def _get_ops_by_type(nodes, op_type):
 def _get_unique(cols):
     # Need to preserve order in unique-column list
     return list({x: x for x in cols}.keys())
+
+
+def _remove_columns(workflow, to_remove):
+    """
+    Removes columns from a workflow
+
+    This method will recursively remove columns from a workflow,
+    starting at the input to the workflow
+    and then removing all children of that column.
+
+    Parameters
+    -----------
+    workflow : Workflow
+        The workflow to remove columns from
+    to_remove : array_like
+        A list of input column names to remove from the workflow
+
+    Returns
+    -------
+    Workflow
+        A copy of the workflow with the columns removed
+    """
+    new_workflow = copy.deepcopy(workflow)
+
+    # starting at the leafs tickle down looking for columns to remove
+    # when found remove but then must propagate the removal of any other
+    # output columns derived from that column.
+    to_check = deque([(node, to_remove) for node in new_workflow.graph.leaf_nodes])
+
+    seen_nodes = []  # TODO: remove this (for debugging only)
+    while to_check:
+        node, columns_to_remove = to_check.popleft()
+        seen_nodes.append((node, columns_to_remove))
+
+        output_columns_to_remove = []
+
+        # remove cols
+        for output_col_name, input_col_list in node.column_mapping.items():
+            for name_to_remove in set(columns_to_remove):
+                if name_to_remove in input_col_list:
+                    # Remove the column name_to_remove from the inputs
+                    del node.input_schema.column_schemas[name_to_remove]
+
+                    # Remove the column name_to_remove from the selector
+                    if node.selector:
+                        original_selector = node.selector
+                        node.selector = original_selector.filter_columns(
+                            ColumnSelector([name_to_remove])
+                        )
+
+                    # Remove columns derived from name_to_remove from the outputs
+                    if output_col_name in node.output_schema.column_names:
+                        del node.output_schema.column_schemas[output_col_name]
+
+                    output_columns_to_remove.append(output_col_name)
+
+            if output_columns_to_remove:
+                for child in node.children:
+                    to_check.append((child, output_columns_to_remove))
+
+    return new_workflow

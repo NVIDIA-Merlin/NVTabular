@@ -21,6 +21,7 @@ import pytest
 import nvtabular
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
+from nvtabular.graph.graph import _remove_columns
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.tags import Tags
 
@@ -269,3 +270,86 @@ def test_collision_tags_workflow():
     for col_schema in workflow.output_schema.column_schemas.values():
         assert Tags.CONTINUOUS in col_schema.tags
         assert Tags.CATEGORICAL not in col_schema.tags
+
+
+def test_graph_column_mapping():
+    input_columns = ["a", "b"]
+    input_schema = Schema(input_columns)
+
+    rename_op_1 = input_columns >> ops.Rename(postfix="_renamed")
+    rename_op_2 = rename_op_1 >> ops.Rename(postfix="_again")
+    workflow = Workflow(rename_op_2)
+    workflow.fit_schema(input_schema)
+
+    assert workflow.graph.column_mapping == {"a_renamed_again": ["a"], "b_renamed_again": ["b"]}
+
+
+def test_graph_column_mapping_expansion():
+    input_columns = ["a", "b"]
+    input_schema = Schema(input_columns)
+
+    col_sim_op = [input_columns] >> ops.ColumnSimilarity(["a"], ["b"])
+    rename_op = col_sim_op >> ops.Rename(postfix="_renamed")
+    workflow = Workflow(col_sim_op + rename_op)
+    workflow.fit_schema(input_schema)
+
+    assert workflow.graph.column_mapping == {"a_b_sim": ["a", "b"], "a_b_sim_renamed": ["a", "b"]}
+
+
+def test_remove_columns_single_op():
+    input_columns = ["a", "b", "c", "label"]
+    input_schema = Schema(input_columns)
+
+    workflow_ops = input_columns >> ops.Rename(postfix="_nvt")
+    workflow = Workflow(workflow_ops)
+    workflow.fit_schema(input_schema)
+
+    workflow1 = _remove_columns(workflow, ["label"])  # triggers 139 graph.py
+    workflow2 = _remove_columns(workflow, ["label_nvt"])  # triggers 146 graph.py
+
+    expected_schema_in = Schema(["a", "b", "c"])
+    expected_schema_out = Schema(["a_nvt", "b_nvt", "c_nvt"])
+
+    assert workflow1.graph.input_schema == expected_schema_in
+    assert workflow1.graph.output_schema == expected_schema_out
+
+    assert workflow2.graph.input_schema == input_schema
+    assert workflow2.graph.output_schema == expected_schema_out
+
+
+def test_remove_columns():
+    input_columns = ["a", "b", "c", "label"]
+    input_schema = Schema(input_columns)
+
+    workflow_ops = input_columns >> ops.Rename(postfix="_nvt") >> ops.Rename(postfix="_onemore")
+    rename_ops = workflow_ops >> ops.Rename(postfix="_another")
+    workflow = Workflow(rename_ops)
+    workflow.fit_schema(input_schema)
+
+    workflow1 = _remove_columns(workflow, ["label"])
+
+    expected_schema_out = Schema(
+        ["a_nvt_onemore_another", "b_nvt_onemore_another", "c_nvt_onemore_another"]
+    )
+
+    assert workflow1.graph.input_schema == Schema(["a", "b", "c"])
+    assert workflow1.graph.output_schema == expected_schema_out
+
+
+def test_remove_columns_combine():
+    input_columns = ["a", "b", "c", "d"]
+    input_schema = Schema(input_columns)
+
+    workflow_ops = (
+        [["a", "b"], ["c", "d"]] >> ops.ColumnSimilarity(None) >> ops.Rename(postfix="_renamed")
+    )
+    workflow = Workflow(workflow_ops)
+    workflow.fit_schema(input_schema)
+
+    workflow1 = _remove_columns(workflow, ["c", "d"])
+
+    expected_schema_in = Schema(["a", "b"])
+    expected_schema_out = Schema(["a_b_sim_renamed"])
+
+    assert workflow1.graph.input_schema == expected_schema_in
+    assert workflow1.graph.output_schema.column_names == expected_schema_out.column_names

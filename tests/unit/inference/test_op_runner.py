@@ -40,7 +40,7 @@ def test_op_runner_loads_config(tmpdir, dataset, engine):
         }
     }
 
-    runner = op_runner.OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(config, repository, version, kind)
 
     loaded_op = runner.operators[0]
     assert isinstance(loaded_op, PlusTwoOp)
@@ -147,7 +147,7 @@ def test_op_runner_single_node_export(tmpdir, dataset, engine):
     node = inputs >> PlusTwoOp()
 
     graph = Graph(node)
-    graph.fit_schema(dataset.schema)
+    graph.construct_schema(dataset.schema)
 
     config = node.export(tmpdir)
 
@@ -160,4 +160,3 @@ def test_op_runner_single_node_export(tmpdir, dataset, engine):
     assert len(config.output) == len(inputs)
     for idx, conf in enumerate(config.output):
         assert conf.name == inputs[idx] + "+2"
-    breakpoint()

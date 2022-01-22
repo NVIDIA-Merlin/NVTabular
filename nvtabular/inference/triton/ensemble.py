@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 
-import copy
 import json
 import os
 import warnings
@@ -30,8 +29,7 @@ from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import _is_string_dtype  # noqa
-from nvtabular.graph.node import iter_nodes  # noqa
-from nvtabular.graph.schema import Schema  # noqa
+from nvtabular.graph.graph import _remove_columns  # noqa
 from nvtabular.graph.tags import Tags  # noqa
 
 
@@ -673,35 +671,6 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
     with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
         text_format.PrintMessage(config, o)
     return config
-
-
-def _remove_columns(workflow, to_remove):
-    workflow = copy.deepcopy(workflow)
-
-    # Work backwards to form an input schema from redacted columns
-    new_schema = Schema(
-        [
-            col_schema
-            for col_schema in workflow.graph.input_schema
-            if col_schema.name not in to_remove
-        ]
-    )
-
-    # Re-fit the workflow to altered input schema
-    for node in iter_nodes([workflow.output_node]):
-        node.input_schema = None
-        node.output_schema = None
-
-        if node.selector:
-            for column in to_remove:
-                if column in node.selector._names:
-                    node.selector._names.remove(column)
-
-                for subgroup in node.selector.subgroups:
-                    if column in subgroup._names:
-                        subgroup._names.remove(column)
-
-    return workflow.fit_schema(new_schema)
 
 
 def _add_model_param(col_schema, paramclass, params, dims=None):

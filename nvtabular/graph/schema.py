@@ -197,21 +197,24 @@ class Schema:
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
+        col_schemas = []
+
         # must account for same columns in both schemas,
         # use the one with more information for each field
-        keys_other_not_self = [
-            schema for schema in other.column_schemas if schema not in self.column_schemas
+        keys_self_not_other = [
+            col_name for col_name in self.column_names if col_name not in other.column_names
         ]
-        col_schemas = []
-        for col_name, col_schema in self.column_schemas.items():
-            if col_name in other.column_schemas:
+
+        for key in keys_self_not_other:
+            col_schemas.append(self.column_schemas[key])
+
+        for col_name, other_schema in other.column_schemas.items():
+            if col_name in self.column_schemas:
                 # check which one
-                other_schema = other.column_schemas[col_name]
-                col_schemas.append(col_schema.__merge__(other_schema))
+                self_schema = self.column_schemas[col_name]
+                col_schemas.append(self_schema.__merge__(other_schema))
             else:
-                col_schemas.append(col_schema)
-        for key in keys_other_not_self:
-            col_schemas.append(other.column_schemas[key])
+                col_schemas.append(other_schema)
 
         return Schema(col_schemas)
 

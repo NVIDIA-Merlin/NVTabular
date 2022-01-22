@@ -35,6 +35,12 @@ class PlusTwoOp(inf_op.PipelineableInferenceOperator):
             new_df.tensors[f"{name}+2"] = data + 2
         return new_df
 
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+        for col_name in col_selector.names:
+            column_mapping[f"{col_name}+2"] = [col_name]
+        return column_mapping
+
     @classmethod
     def from_config(cls, config):
         return PlusTwoOp()

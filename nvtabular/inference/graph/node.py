@@ -18,14 +18,6 @@ from nvtabular.graph.schema import Schema
 
 
 class InferenceNode(Node):
-    def match_descendant_dtypes(self, source_node):
-        self.output_schema = _match_dtypes(source_node.input_schema, self.output_schema)
-        return self
-
-    def match_ancestor_dtypes(self, source_node):
-        self.input_schema = _match_dtypes(source_node.output_schema, self.input_schema)
-        return self
-
     def export(self, output_path, version=1):
         return self.op.export(output_path, self.input_schema, self.output_schema, version=version)
 
@@ -36,6 +28,15 @@ class InferenceNode(Node):
     @property
     def exportable(self):
         return hasattr(self.op, "export")
+
+    # TODO: Can we delete these matching methods now that we've shored up dtypes?
+    def match_descendant_dtypes(self, source_node):
+        self.output_schema = _match_dtypes(source_node.input_schema, self.output_schema)
+        return self
+
+    def match_ancestor_dtypes(self, source_node):
+        self.input_schema = _match_dtypes(source_node.output_schema, self.input_schema)
+        return self
 
 
 def _match_dtypes(source_schema, dest_schema):

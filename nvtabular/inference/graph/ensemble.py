@@ -30,7 +30,7 @@ from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 class Ensemble:
     def __init__(self, ops, schema, name="ensemble_model", label_columns=None):
         self.graph = InferenceGraph(ops)
-        self.graph.fit_schema(schema)
+        self.graph.construct_schema(schema)
         self.name = name
         self.label_columns = label_columns or []
 
@@ -65,14 +65,6 @@ class Ensemble:
             if node.exportable:
                 node_id_lookup[node] = node_idx
                 node_idx += 1
-
-        # TODO: Identify chains of pipelineable ops
-        # Possibilities:
-        # - Build a look-up table of chains, where the keys are the first node in the chain
-        # - Create a mega-operator that contains pipelineable ops and modify the graph to
-        #  replace with it (that op's export could handle the chain)
-        # - Look ahead at the node's children and build up the chain to export and then skip
-        # exporting subsequent node if their parent(s) are pipelineable
 
         node_configs = []
         # Export node configs and add ensemble steps

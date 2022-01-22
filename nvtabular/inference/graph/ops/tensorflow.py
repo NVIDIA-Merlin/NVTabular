@@ -17,6 +17,8 @@ import pathlib
 import tempfile
 from sys import version
 
+import numpy as np
+
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
@@ -53,7 +55,7 @@ class TensorflowOp(InferenceOperator):
     def export_name(self):
         return self.name
 
-    def export(self, path, version=1):
+    def export(self, path, input_schema, output_schema, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
@@ -67,18 +69,10 @@ class TensorflowOp(InferenceOperator):
         deps_schema: Schema,
         selector: ColumnSelector,
     ) -> Schema:
-        expected_input = (parents_schema + deps_schema).apply(selector)
-        if expected_input.column_names != self.model_inputs:
-            raise ValueError(
-                f"Request schema provided to {self.__class__.__name__} \n"
-                "doesn't match model's input schema.\n"
-                f"Request schema columns: {expected_input.column_names}\n"
-                f"Model input columns: {self.model_inputs}."
-            )
-
         in_schema = Schema()
         for col, input_col in zip(self.model_inputs, self.model.inputs):
-            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype)
+            np_dtype = np.dtype(input_col.dtype.as_numpy_dtype)
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=np_dtype)
 
         return in_schema
 

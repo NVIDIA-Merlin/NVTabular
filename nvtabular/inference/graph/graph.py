@@ -28,15 +28,25 @@ LOG = logging.getLogger("nvtabular")
 
 
 class InferenceGraph(Graph):
-    def fit_schema(self, input_schema: Schema) -> "Graph":
-        super().fit_schema(input_schema)
+    def construct_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
+        nodes = list(postorder_iter_nodes(self.output_node))
 
+        self._compute_node_schemas(root_schema, nodes, preserve_dtypes)
+        self._adjust_workflow_dtypes(nodes)
+        breakpoint()
+        self._validate_node_schemas(root_schema, nodes, preserve_dtypes)
+
+        return self
+
+    # TODO: Why do we even need this?
+    # TODO: What underlying issue is this hack papering over?
+    # TODO: Consider whether we can assume the dtypes will match,
+    #       update the tests, and delete this whole class
+    def _adjust_workflow_dtypes(self, nodes):
         model_node = None
         closest_wf_node = None
 
-        nodes_bottom_up = reversed(list(postorder_iter_nodes(self.output_node)))
-
-        for node in nodes_bottom_up:
+        for node in reversed(nodes):
             # Check if the node is a TF model and if so save it for later
             if isinstance(node.op, TensorflowOp):
                 model_node = node
@@ -49,13 +59,14 @@ class InferenceGraph(Graph):
                 if model_node:
                     closest_wf_node.match_descendant_dtypes(model_node)
 
-                    # TODO: Find a better way to override the dtypes ()
+                    # TODO: Find a better way to override dtypes
                     for (
                         col_name,
                         col_schema,
                     ) in closest_wf_node.output_schema.column_schemas.items():
-                        closest_wf_node.op.workflow.output_dtypes[col_name] = np.dtype(
-                            col_schema.dtype.as_numpy_dtype
+                        wf_schema = closest_wf_node.op.workflow.output_schema
+                        wf_schema[col_name] = wf_schema[col_name].with_dtype(
+                            np.dtype(col_schema.dtype)
                         )
 
             # If we find a selection node with no parents, this is the
@@ -64,5 +75,3 @@ class InferenceGraph(Graph):
             # types from the model
             if not node.parents and isinstance(node.op, SelectionOp):
                 closest_wf_node = None
-
-        return self
