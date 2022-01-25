@@ -58,9 +58,9 @@ def test_criteo(asv_db, bench_info, tmpdir):
 
         print(torch.__version__)
         out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
-        bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
-        bench_results += CriteoBenchFastAI().get_dl_timing(out.splitlines())
-        send_results(asv_db, bench_info, bench_results)
+        # bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
+        bench_results = CriteoBenchFastAI().get_dl_timing(out.splitlines())
+        # send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Pytorch not installed, skipping " + notebook)
 
@@ -71,7 +71,7 @@ def test_criteo(asv_db, bench_info, tmpdir):
 
         print(hugectr.__version__)
         out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
-        bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
+        # bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
         bench_results += CriteoBenchHugeCTR().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
@@ -112,14 +112,15 @@ def test_rossman(asv_db, bench_info, tmpdir, devices):
         out = _run_notebook(
             tmpdir, notebook, input_path, input_path, gpu_id=devices, clean_up=False
         )
-        bench_results = RossBenchFastAI().get_epochs(out.splitlines())
-        bench_results += RossBenchFastAI().get_dl_timing(out.splitlines())
+        # bench_results = RossBenchFastAI().get_epochs(out.splitlines())
+        bench_results = RossBenchFastAI().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
 
         notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
         out = _run_notebook(tmpdir, notebook, input_path, input_path, gpu_id=devices)
-        bench_results = RossBenchPytorch().get_epochs(out.splitlines())
-        bench_results += RossBenchPytorch().get_dl_timing(out.splitlines())
+        # bench_results = RossBenchPytorch().get_epochs(out.splitlines())
+        breakpoint()
+        bench_results = RossBenchPytorch().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("PyTorch not installed, skipping " + notebook)
@@ -133,7 +134,7 @@ def test_rossman(asv_db, bench_info, tmpdir, devices):
         out = _run_notebook(
             tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False
         )
-        bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
+        # bench_results = RossBenchTensorFlow().get_epochs(out.splitlines())
         bench_results += RossBenchTensorFlow().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
