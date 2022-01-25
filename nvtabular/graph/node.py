@@ -287,28 +287,21 @@ class Node:
         output = " output" if not self.children else ""
         return f"<Node {self.label}{output}>"
 
-    def remove_inputs(self, names_to_remove):
-        output_columns_to_remove = []
+    def remove_inputs(self, input_cols):
+        removed_outputs = []
 
-        for name_to_remove in set(names_to_remove):
-            output_cols = self._remove_input_col(name_to_remove)
-            output_columns_to_remove.extend(output_cols)
-        return output_columns_to_remove
-
-    def _remove_input_col(self, name_to_remove):
-        # must grab output columns before changing the input_schema
-        output_cols = self.corresponding_output_cols(name_to_remove)
-        self.input_schema.remove_col(name_to_remove)
+        for input_col in set(input_cols):
+            output_cols = self.derived_output_cols(input_col)
+            self.input_schema = self.input_schema.without(input_col)
+            self.output_schema = self.output_schema.without(output_cols)
+            removed_outputs.extend(output_cols)
 
         if self.selector:
-            self.selector = self.selector.filter_columns(ColumnSelector([name_to_remove]))
-        for col in output_cols + [name_to_remove]:
-            self.output_schema.remove_col(col)
+            self.selector = self.selector.filter_columns(ColumnSelector(input_cols))
 
-        # self.output_schema.remove_col(output_col_name)
-        return output_cols
+        return removed_outputs
 
-    def corresponding_output_cols(self, input_col):
+    def derived_output_cols(self, input_col):
         outputs = []
         for output_col_name, input_col_list in self.column_mapping.items():
             if input_col in input_col_list:
@@ -323,6 +316,9 @@ class Node:
     # - methods too long
     # - function imitating method
     # - avoid if statements (where possible)
+    # - method modifies state and returns a (non-self) value (ask or tell, not both)
+    # - don't use booleans to describe return (throw an appropriately
+    #       typed exception instead if it fails)
 
     @property
     def parents_with_dependencies(self):

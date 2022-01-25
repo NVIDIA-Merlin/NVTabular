@@ -163,6 +163,15 @@ class Schema:
             del self.column_schemas[col_name]
         return self
 
+    def without(self, col_names):
+        return Schema(
+            [
+                col_schema
+                for col_name, col_schema in self.column_schemas.items()
+                if col_name not in col_names
+            ]
+        )
+
     @classmethod
     def load(cls, schema_path) -> "Schema":
         return PbTxt_SchemaWriter.load(schema_path)
