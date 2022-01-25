@@ -60,7 +60,7 @@ def test_criteo(asv_db, bench_info, tmpdir):
         out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
         # bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
         bench_results = CriteoBenchFastAI().get_dl_timing(out.splitlines())
-        # send_results(asv_db, bench_info, bench_results)
+        send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Pytorch not installed, skipping " + notebook)
 
