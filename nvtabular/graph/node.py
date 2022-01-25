@@ -287,6 +287,43 @@ class Node:
         output = " output" if not self.children else ""
         return f"<Node {self.label}{output}>"
 
+    def remove_inputs(self, names_to_remove):
+        output_columns_to_remove = []
+
+        for name_to_remove in set(names_to_remove):
+            output_cols = self._remove_input_col(name_to_remove)
+            output_columns_to_remove.extend(output_cols)
+        return output_columns_to_remove
+
+    def _remove_input_col(self, name_to_remove):
+        # must grab output columns before changing the input_schema
+        output_cols = self.corresponding_output_cols(name_to_remove)
+        self.input_schema.remove_col(name_to_remove)
+
+        if self.selector:
+            self.selector = self.selector.filter_columns(ColumnSelector([name_to_remove]))
+        for col in output_cols + [name_to_remove]:
+            self.output_schema.remove_col(col)
+
+        # self.output_schema.remove_col(output_col_name)
+        return output_cols
+
+    def corresponding_output_cols(self, input_col):
+        outputs = []
+        for output_col_name, input_col_list in self.column_mapping.items():
+            if input_col in input_col_list:
+                outputs.append(output_col_name)
+        return outputs
+
+    # Code Smells We Know:
+    # - Repetition
+    # - .. in a class access (Law of Demeter)
+    # - class should have single responsibility
+    # - class at multiple levels of abstraction
+    # - methods too long
+    # - function imitating method
+    # - avoid if statements (where possible)
+
     @property
     def parents_with_dependencies(self):
         nodes = []

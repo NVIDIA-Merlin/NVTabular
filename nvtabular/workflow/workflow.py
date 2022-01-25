@@ -135,6 +135,10 @@ class Workflow:
     def _input_columns(self):
         return self.graph._input_columns()
 
+    def remove_inputs(self, input_cols):
+        self.graph.remove_inputs(input_cols)
+        return self
+
     def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
 

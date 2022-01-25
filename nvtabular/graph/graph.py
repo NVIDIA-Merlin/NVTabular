@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import copy
 import logging
 from collections import deque
 
@@ -26,7 +25,6 @@ from nvtabular.graph.node import (
     preorder_iter_nodes,
 )
 from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
 
 LOG = logging.getLogger("nvtabular")
 
@@ -111,6 +109,37 @@ class Graph:
 
         return _get_unique(input_cols)
 
+    def remove_inputs(self, to_remove):
+        """
+        Removes columns from a Graph
+
+        Starting at the leaf nodes, trickle down looking for columns to remove,
+        when found remove but then must propagate the removal of any other
+        output columns derived from that column.
+
+        Parameters
+        -----------
+        graph : Graph
+            The graph to remove columns from
+        to_remove : array_like
+            A list of input column names to remove from the graph
+
+        Returns
+        -------
+        Graph
+            The same graph with columns removed
+        """
+        nodes_to_process = deque([(node, to_remove) for node in self.leaf_nodes])
+
+        while nodes_to_process:
+            node, columns_to_remove = nodes_to_process.popleft()
+            output_columns_to_remove = node.remove_inputs(columns_to_remove)
+
+            for child in node.children:
+                nodes_to_process.append((child, to_remove + output_columns_to_remove))
+
+        return self
+
 
 def _get_schemaless_nodes(nodes):
     schemaless_nodes = []
@@ -128,64 +157,3 @@ def _get_ops_by_type(nodes, op_type):
 def _get_unique(cols):
     # Need to preserve order in unique-column list
     return list({x: x for x in cols}.keys())
-
-
-def _remove_columns(workflow, to_remove):
-    """
-    Removes columns from a workflow
-
-    This method will recursively remove columns from a workflow,
-    starting at the input to the workflow
-    and then removing all children of that column.
-
-    Parameters
-    -----------
-    workflow : Workflow
-        The workflow to remove columns from
-    to_remove : array_like
-        A list of input column names to remove from the workflow
-
-    Returns
-    -------
-    Workflow
-        A copy of the workflow with the columns removed
-    """
-    new_workflow = copy.deepcopy(workflow)
-
-    # starting at the leafs tickle down looking for columns to remove
-    # when found remove but then must propagate the removal of any other
-    # output columns derived from that column.
-    to_check = deque([(node, to_remove) for node in new_workflow.graph.leaf_nodes])
-
-    seen_nodes = []  # TODO: remove this (for debugging only)
-    while to_check:
-        node, columns_to_remove = to_check.popleft()
-        seen_nodes.append((node, columns_to_remove))
-
-        output_columns_to_remove = []
-
-        # remove cols
-        for output_col_name, input_col_list in node.column_mapping.items():
-            for name_to_remove in set(columns_to_remove):
-                if name_to_remove in input_col_list:
-                    # Remove the column name_to_remove from the inputs
-                    del node.input_schema.column_schemas[name_to_remove]
-
-                    # Remove the column name_to_remove from the selector
-                    if node.selector:
-                        original_selector = node.selector
-                        node.selector = original_selector.filter_columns(
-                            ColumnSelector([name_to_remove])
-                        )
-
-                    # Remove columns derived from name_to_remove from the outputs
-                    if output_col_name in node.output_schema.column_names:
-                        del node.output_schema.column_schemas[output_col_name]
-
-                    output_columns_to_remove.append(output_col_name)
-
-            if output_columns_to_remove:
-                for child in node.children:
-                    to_check.append((child, output_columns_to_remove))
-
-    return new_workflow

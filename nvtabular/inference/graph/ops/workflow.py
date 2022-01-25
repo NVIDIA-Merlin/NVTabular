@@ -15,7 +15,6 @@
 #
 import pathlib
 
-from nvtabular.graph.graph import _remove_columns
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
@@ -53,14 +52,14 @@ class WorkflowOp(InferenceOperator):
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
 
-        workflow = _remove_columns(self.workflow, self.label_columns)
+        modified_workflow = self.workflow.remove_inputs(self.label_columns)
 
         # TODO: Extract this logic to base inference operator?
         export_path = new_dir_path / str(version) / "workflow"
-        workflow.save(str(export_path))
+        modified_workflow.save(str(export_path))
 
         return _generate_nvtabular_config(
-            workflow,
+            modified_workflow,
             self.export_name,
             new_dir_path,
             backend="nvtabular",

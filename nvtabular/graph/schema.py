@@ -158,6 +158,11 @@ class Schema:
         }
         return Schema(selected_schemas)
 
+    def remove_col(self, col_name):
+        if col_name in self.column_names:
+            del self.column_schemas[col_name]
+        return self
+
     @classmethod
     def load(cls, schema_path) -> "Schema":
         return PbTxt_SchemaWriter.load(schema_path)

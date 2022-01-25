@@ -29,7 +29,6 @@ from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import _is_string_dtype  # noqa
-from nvtabular.graph.graph import _remove_columns  # noqa
 from nvtabular.graph.tags import Tags  # noqa
 
 
@@ -72,7 +71,7 @@ def export_tensorflow_ensemble(
         The backend that will be used for inference in Triton.
     """
     labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
-    workflow = _remove_columns(workflow, labels)
+    workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
     tf_path = os.path.join(model_path, name + "_tf")
@@ -153,7 +152,7 @@ def export_pytorch_ensemble(
         The backend that will be used for inference in Triton.
     """
     labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
-    workflow = _remove_columns(workflow, labels)
+    workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
     pt_path = os.path.join(model_path, name + "_pt")
@@ -239,7 +238,7 @@ def export_hugectr_ensemble(
     if not cats and not conts:
         raise ValueError("Either cats or conts has to have a value.")
 
-    workflow = _remove_columns(workflow, labels)
+    workflow = workflow.remove_inputs(labels)
 
     # generate the nvtabular triton model
     preprocessing_path = os.path.join(output_path, name + "_nvt")

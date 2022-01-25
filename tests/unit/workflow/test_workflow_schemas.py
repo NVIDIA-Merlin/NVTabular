@@ -21,7 +21,6 @@ import pytest
 import nvtabular
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
-from nvtabular.graph.graph import _remove_columns
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.tags import Tags
 
@@ -304,17 +303,13 @@ def test_remove_columns_single_op():
     workflow = Workflow(workflow_ops)
     workflow.fit_schema(input_schema)
 
-    workflow1 = _remove_columns(workflow, ["label"])  # triggers 139 graph.py
-    workflow2 = _remove_columns(workflow, ["label_nvt"])  # triggers 146 graph.py
+    workflow1 = workflow.remove_inputs(["label"])
 
     expected_schema_in = Schema(["a", "b", "c"])
     expected_schema_out = Schema(["a_nvt", "b_nvt", "c_nvt"])
 
     assert workflow1.graph.input_schema == expected_schema_in
     assert workflow1.graph.output_schema == expected_schema_out
-
-    assert workflow2.graph.input_schema == input_schema
-    assert workflow2.graph.output_schema == expected_schema_out
 
 
 def test_remove_columns():
@@ -326,7 +321,7 @@ def test_remove_columns():
     workflow = Workflow(rename_ops)
     workflow.fit_schema(input_schema)
 
-    workflow1 = _remove_columns(workflow, ["label"])
+    workflow1 = workflow.remove_inputs(["label"])
 
     expected_schema_out = Schema(
         ["a_nvt_onemore_another", "b_nvt_onemore_another", "c_nvt_onemore_another"]
@@ -346,7 +341,7 @@ def test_remove_columns_combine():
     workflow = Workflow(workflow_ops)
     workflow.fit_schema(input_schema)
 
-    workflow1 = _remove_columns(workflow, ["c", "d"])
+    workflow1 = workflow.remove_inputs(["c", "d"])
 
     expected_schema_in = Schema(["a", "b"])
     expected_schema_out = Schema(["a_b_sim_renamed"])

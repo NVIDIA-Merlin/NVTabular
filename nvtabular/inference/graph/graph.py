@@ -33,7 +33,6 @@ class InferenceGraph(Graph):
 
         self._compute_node_schemas(root_schema, nodes, preserve_dtypes)
         self._adjust_workflow_dtypes(nodes)
-        breakpoint()
         self._validate_node_schemas(root_schema, nodes, preserve_dtypes)
 
         return self
