@@ -122,7 +122,12 @@ def is_float(str_to_flt):
 
 
 def send_results(db, bench_info, results_list):
-    for results in results_list:
+    gr_list = db.getInfo()
+    for benchmarkinfo_result in gr_list:
+        if benchmarkinfo_result.commitHash == bench_info.commitHash:
+            return
+
+    for results in results_list[-1:]:
         if isinstance(results, list):
             for result in results:
                 db.addResult(bench_info, result)
