@@ -28,6 +28,7 @@ import logging
 
 import numpy as np
 
+from nvtabular.graph.tags import Tags
 from nvtabular.inference.workflow.base import WorkflowRunner
 from nvtabular.ops import get_embedding_sizes
 
@@ -38,12 +39,15 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
     def __init__(self, workflow, output_dtypes, model_config, model_device):
         super().__init__(workflow, output_dtypes, model_config, model_device)
 
+        self.cats = workflow.output_node.output_schema.select_by_tag(Tags.CATEGORICAL).column_names
+        self.conts = workflow.output_node.output_schema.select_by_tag(Tags.CONTINUOUS).column_names
+
         if self.cats:
             self.offsets = self.get_offsets(self.workflow, self.cats)
 
     def _transform_outputs(self, tensors):
         output_tensors = []
-        if "conts" in self.column_types and self.column_types["conts"]:
+        if self.conts:
             output_tensors.append(
                 (
                     "DES",
@@ -53,8 +57,8 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
         else:
             output_tensors.append(("DES", np.array([[]], np.float32)))
 
-        if "cats" in self.column_types and self.column_types["cats"]:
-            for name in self.column_types["cats"]:
+        if self.cats:
+            for name in self.cats:
                 tensors[name] += self.offsets[name]
             cats_np = self._convert(self.cats, tensors, np.int64)
             output_tensors.append(
@@ -63,12 +67,11 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
                     cats_np,
                 )
             )
+            len_cats_np = cats_np.shape[1]
+            row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
+            output_tensors.append(("ROWINDEX", row_index))
         else:
             output_tensors.append(("CATCOLUMN", np.array([[]], np.int64)))
-
-        len_cats_np = cats_np.shape[1]
-        row_index = np.arange(len_cats_np + 1, dtype=np.int32).reshape(1, len_cats_np + 1)
-        output_tensors.append(("ROWINDEX", row_index))
 
         return output_tensors
 
@@ -81,6 +84,7 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
 
     def get_offsets(self, workflow, categorical_cols):
         embeddings = get_embedding_sizes(workflow)
+
         if embeddings is None:
             raise Exception("embeddings cannot be None")
         else:
