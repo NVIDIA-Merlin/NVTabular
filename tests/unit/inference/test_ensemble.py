@@ -200,8 +200,10 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
 
     embedding_shapes = nvt.ops.get_embedding_sizes(workflow_2)
     embedding_shapes_1.update(embedding_shapes)
+    embedding_shapes_1["name-string_plus_2"] = embedding_shapes_1["name-string"]
+
     # Create Tensorflow Model
-    model = create_tf_model(["name-cat", "name-string"], [], embedding_shapes_1)
+    model = create_tf_model(["name-cat", "name-string_plus_2"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
     triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow, name="workflow_1")
@@ -226,6 +228,9 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
         assert hasattr(parsed, "ensemble_scheduling")
 
     df = dataset.to_ddf().compute()[["name-string", "name-cat"]].iloc[:3]
+
+    # TODO: Check on the export for operators that use the Python back-end
+    # to make sure they (a) are exported and (b) have the right names/paths
 
     response = _run_ensemble_on_tritonserver(str(tmpdir), ["output"], df, triton_ens.name)
     assert len(response.as_numpy("output")) == df.shape[0]

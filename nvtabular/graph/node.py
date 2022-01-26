@@ -127,19 +127,21 @@ class Node:
         ancestors_schema = root_schema + parents_schema + deps_schema
 
         for col_name, col_schema in self.input_schema.column_schemas.items():
-            source_schema = ancestors_schema.get(col_name)
-            if not source_schema:
+            source_col_schema = ancestors_schema.get(col_name)
+
+            # TODO: Make this (or something else) raise an error about column mismatches
+            if not source_col_schema:
                 raise ValueError(
-                    f"Missing column {col_name} at the input to " f"{self.op.__class__.__name__}."
+                    f"Missing column '{col_name}' at the input to '{self.op.__class__.__name__}'."
                 )
 
             if strict_dtypes or not self.op.dynamic_dtypes:
-                if source_schema.dtype != col_schema.dtype:
+                if source_col_schema.dtype != col_schema.dtype:
                     raise ValueError(
-                        f"Mismatched dtypes for column {col_name} provided to "
-                        f"{self.op.__class__.__name__}: "
-                        f"ancestor nodes provided dtype {source_schema.dtype}, "
-                        f"expected dtype {col_schema.dtype}."
+                        f"Mismatched dtypes for column '{col_name}' provided to "
+                        f"'{self.op.__class__.__name__}': "
+                        f"ancestor nodes provided dtype '{source_col_schema.dtype}', "
+                        f"expected dtype '{col_schema.dtype}'."
                     )
 
     def __rshift__(self, operator):
@@ -288,25 +290,15 @@ class Node:
         return f"<Node {self.label}{output}>"
 
     def remove_inputs(self, input_cols):
-        removed_outputs = []
+        removed_outputs = _derived_output_cols(input_cols, self.column_mapping)
 
-        for input_col in set(input_cols):
-            output_cols = self.derived_output_cols(input_col)
-            self.input_schema = self.input_schema.without(input_col)
-            self.output_schema = self.output_schema.without(output_cols)
-            removed_outputs.extend(output_cols)
+        self.input_schema = self.input_schema.without(input_cols)
+        self.output_schema = self.output_schema.without(removed_outputs)
 
         if self.selector:
             self.selector = self.selector.filter_columns(ColumnSelector(input_cols))
 
         return removed_outputs
-
-    def derived_output_cols(self, input_col):
-        outputs = []
-        for output_col_name, input_col_list in self.column_mapping.items():
-            if input_col in input_col_list:
-                outputs.append(output_col_name)
-        return outputs
 
     # Code Smells We Know:
     # - Repetition
@@ -570,3 +562,12 @@ def _nodify(nodable):
         raise TypeError(
             "Unsupported type: Cannot convert object " f"of type {type(nodable)} to Node."
         )
+
+
+def _derived_output_cols(input_cols, column_mapping):
+    outputs = []
+    for input_col in set(input_cols):
+        for output_col_name, input_col_list in column_mapping.items():
+            if input_col in input_col_list:
+                outputs.append(output_col_name)
+    return outputs

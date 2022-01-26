@@ -16,6 +16,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Text
 
+import numpy as np
+
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.tags import TagSet
 
@@ -34,6 +36,9 @@ class ColumnSchema:
     def __post_init__(self):
         tags = TagSet(self.tags)
         object.__setattr__(self, "tags", tags)
+
+        dtype = np.dtype(self.dtype)
+        object.__setattr__(self, "dtype", dtype)
 
     def __str__(self) -> str:
         return self.name

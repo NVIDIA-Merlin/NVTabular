@@ -17,8 +17,6 @@ import pathlib
 import tempfile
 from sys import version
 
-import numpy as np
-
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
@@ -71,8 +69,7 @@ class TensorflowOp(InferenceOperator):
     ) -> Schema:
         in_schema = Schema()
         for col, input_col in zip(self.model_inputs, self.model.inputs):
-            np_dtype = np.dtype(input_col.dtype.as_numpy_dtype)
-            in_schema.column_schemas[col] = ColumnSchema(col, dtype=np_dtype)
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype.as_numpy_dtype)
 
         return in_schema
 
@@ -93,5 +90,7 @@ class TensorflowOp(InferenceOperator):
     ) -> Schema:
         out_schema = Schema()
         for col, output_col in zip(self.model_outputs, self.model.outputs):
-            out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
+            out_schema.column_schemas[col] = ColumnSchema(
+                col, dtype=output_col.dtype.as_numpy_dtype
+            )
         return out_schema

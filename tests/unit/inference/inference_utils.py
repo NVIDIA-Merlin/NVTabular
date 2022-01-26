@@ -32,13 +32,13 @@ class PlusTwoOp(inf_op.PipelineableInferenceOperator):
         focus_df = df
         new_df = inf_op.InferenceDataFrame()
         for name, data in focus_df:
-            new_df.tensors[f"{name}+2"] = data + 2
+            new_df.tensors[f"{name}_plus_2"] = data + 2
         return new_df
 
     def column_mapping(self, col_selector):
         column_mapping = {}
         for col_name in col_selector.names:
-            column_mapping[f"{col_name}+2"] = [col_name]
+            column_mapping[f"{col_name}_plus_2"] = [col_name]
         return column_mapping
 
     @classmethod
@@ -50,7 +50,7 @@ def create_tf_model(cat_columns: list, cat_mh_columns: list, embed_tbl_shapes: d
     inputs = {}  # tf.keras.Input placeholders for each feature to be used
     emb_layers = []  # output of all embedding layers, which will be concatenated
     for col in cat_columns:
-        inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(1,))
+        inputs[col] = tf.keras.Input(name=col, dtype=tf.int64, shape=(1,))
     # Note that we need two input tensors for multi-hot categorical features
     for col in cat_mh_columns:
         inputs[col] = (
