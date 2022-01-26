@@ -70,10 +70,12 @@ class Ensemble:
         # Export node configs and add ensemble steps
         for node in postorder_nodes:
             if node.exportable:
-                node_config = node.export(export_path, version=version)
+                node_id = node_id_lookup.get(node, None)
+                node_name = f"{node.export_name}_{node_id}"
+                node_config = node.export(export_path, node_id=node_id, version=version)
 
                 config_step = model_config.ModelEnsembling.Step(
-                    model_name=node.export_name, model_version=-1
+                    model_name=node_name, model_version=-1
                 )
 
                 for input_col_name in node.input_columns.names:
@@ -83,7 +85,6 @@ class Ensemble:
                     config_step.input_map[input_col_name] = input_col_name + in_suffix
 
                 for output_col_name in node.output_columns.names:
-                    node_id = node_id_lookup.get(node, None)
                     out_suffix = (
                         f"_{node_id}" if node_id is not None and node_id < node_idx - 1 else ""
                     )

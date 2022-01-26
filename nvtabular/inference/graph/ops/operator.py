@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
@@ -30,8 +31,8 @@ class InferenceDataFrame:
         return len(self.tensors)
 
     def __iter__(self):
-        for tensor in self.tensors.items():
-            yield tensor
+        for name, tensor in self.tensors.items():
+            yield name, tensor
 
     def __repr__(self):
         dict_rep = {}
@@ -42,12 +43,11 @@ class InferenceDataFrame:
 
 class InferenceOperator(BaseOperator):
     @property
-    @abstractmethod
     def export_name(self):
-        pass
+        return self.__class__.__name__.lower()
 
     @abstractmethod
-    def export(self, export_path, input_schema, output_schema, version=1):
+    def export(self, export_path, input_schema, output_schema, node_id=None, version=1):
         pass
 
     def create_node(self, selector):
@@ -74,14 +74,17 @@ class PipelineableInferenceOperator(InferenceOperator):
             Returns a transformed dataframe for this operator
         """
 
-    def export(self, export_path, input_schema, output_schema, version=1):
-        config = model_config.ModelConfig(
-            name="op_runner", backend="nvtabular", platform="op_runner"
-        )
+    def export(self, path, input_schema, output_schema, node_id=None, version=1):
+        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
 
-        config.parameters["operator_names"].string_value = json.dumps([self.__class__.__name__])
+        node_export_path = pathlib.Path(path) / node_name
+        node_export_path.mkdir(exist_ok=True)
 
-        config.parameters[self.__class__.__name__].string_value = json.dumps(
+        config = model_config.ModelConfig(name=node_name, backend="nvtabular", platform="op_runner")
+
+        config.parameters["operator_names"].string_value = json.dumps([node_name])
+
+        config.parameters[node_name].string_value = json.dumps(
             {
                 "module_name": self.__class__.__module__,
                 "class_name": self.__class__.__name__,
@@ -107,14 +110,14 @@ class PipelineableInferenceOperator(InferenceOperator):
                 )
             )
 
-        with open(os.path.join(export_path, "config.pbtxt"), "w") as o:
+        with open(os.path.join(node_export_path, "config.pbtxt"), "w") as o:
             text_format.PrintMessage(config, o)
 
-        os.makedirs(export_path, exist_ok=True)
-        os.makedirs(os.path.join(export_path, str(version)), exist_ok=True)
+        os.makedirs(node_export_path, exist_ok=True)
+        os.makedirs(os.path.join(node_export_path, str(version)), exist_ok=True)
         copyfile(
             os.path.join(os.path.dirname(__file__), "..", "..", "triton", "oprunner_model.py"),
-            os.path.join(export_path, str(version), "model.py"),
+            os.path.join(node_export_path, str(version), "model.py"),
         )
 
         return config

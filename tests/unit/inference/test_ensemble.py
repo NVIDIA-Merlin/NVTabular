@@ -40,8 +40,8 @@ ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
 from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
 from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
+from tests.unit.inference.inf_test_ops import PlusTwoOp  # noqa
 from tests.unit.inference.inference_utils import (  # noqa
-    PlusTwoOp,
     _run_ensemble_on_tritonserver,
     create_tf_model,
 )
@@ -72,7 +72,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     # Create Tensorflow Model
     model = tf.keras.models.Sequential(
         [
-            tf.keras.Input(name="x_nvt", dtype=tf.float32, shape=(1,)),
+            tf.keras.Input(name="x_nvt", dtype=tf.float64, shape=(1,)),
             tf.keras.layers.Dense(16, activation="relu"),
             tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(1, name="output"),
@@ -85,9 +85,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     )
 
     # Creating Triton Ensemble
-    triton_chain = (
-        selector >> WorkflowOp(workflow, name="workflow", cats=["x_nvt"]) >> TensorflowOp(model)
-    )
+    triton_chain = selector >> WorkflowOp(workflow, cats=["x_nvt"]) >> TensorflowOp(model)
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
@@ -139,8 +137,8 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     model = create_tf_model(["name-cat", "name-string"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
-    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow, name="workflow_1")
-    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2, name="workflow_2")
+    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow)
+    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2)
     triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
 
     triton_ens = Ensemble(triton_chain, schema)
@@ -206,8 +204,8 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
     model = create_tf_model(["name-cat", "name-string_plus_2"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
-    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow, name="workflow_1")
-    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2, name="workflow_2") >> PlusTwoOp()
+    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow)
+    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2) >> PlusTwoOp()
     triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
 
     triton_ens = Ensemble(triton_chain, schema)
@@ -228,9 +226,6 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
         assert hasattr(parsed, "ensemble_scheduling")
 
     df = dataset.to_ddf().compute()[["name-string", "name-cat"]].iloc[:3]
-
-    # TODO: Check on the export for operators that use the Python back-end
-    # to make sure they (a) are exported and (b) have the right names/paths
 
     response = _run_ensemble_on_tritonserver(str(tmpdir), ["output"], df, triton_ens.name)
     assert len(response.as_numpy("output")) == df.shape[0]

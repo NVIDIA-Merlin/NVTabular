@@ -60,7 +60,7 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
     workflow.fit(dataset)
 
     # Triton
-    triton_op = workflow_op.WorkflowOp(workflow, name="workflow")
+    triton_op = workflow_op.WorkflowOp(workflow)
     triton_op.export(tmpdir, None, None)
 
     # Export creates directory
@@ -78,5 +78,5 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
         parsed = text_format.Parse(raw_config, config)
 
         # The config file contents are correct
-        assert parsed.name == "workflow"
+        assert parsed.name == triton_op.export_name
         assert parsed.backend == "nvtabular"

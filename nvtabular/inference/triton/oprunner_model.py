@@ -36,7 +36,7 @@ from triton_python_backend_utils import (
 )
 
 from nvtabular.inference.graph.op_runner import OperatorRunner
-from nvtabular.inference.triton import _convert_tensor
+from nvtabular.inference.graph.ops.operator import InferenceDataFrame
 
 LOG = logging.getLogger("nvtabular")
 
@@ -50,19 +50,23 @@ class TritonPythonModel:
         """Transforms the input batches by running through a NVTabular workflow.transform
         function.
         """
-        params = self.model_config.parameters
-        first_operator_name = params["operator_names"][0]
-        input_column_names = list(params[first_operator_name]["input_dict"].keys())
+        params = self.model_config["parameters"]
+        op_names = json.loads(params["operator_names"]["string_value"])
+        first_operator_name = op_names[0]
+        operator_params = json.loads(params[first_operator_name]["string_value"])
+        input_column_names = list(json.loads(operator_params["input_dict"]).keys())
 
         responses = []
         for request in requests:
             # transform the triton tensors to a dict of name:numpy tensor
             input_tensors = {
-                name: _convert_tensor(get_input_tensor_by_name(request, name))
+                name: get_input_tensor_by_name(request, name).as_numpy()
                 for name in input_column_names
             }
 
-            raw_tensor_tuples = self.runner.execute(input_tensors)
+            inf_df = InferenceDataFrame(input_tensors)
+
+            raw_tensor_tuples = self.runner.execute(inf_df)
 
             result = [Tensor(name, data) for name, data in raw_tensor_tuples]
 

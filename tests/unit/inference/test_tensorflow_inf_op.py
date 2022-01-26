@@ -52,7 +52,7 @@ def test_tf_op_exports_own_config(tmpdir):
         parsed = text_format.Parse(raw_config, config)
 
         # The config file contents are correct
-        assert parsed.name == triton_op.name
+        assert parsed.name == triton_op.export_name
         assert parsed.backend == "tensorflow"
 
 

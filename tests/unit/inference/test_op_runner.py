@@ -7,7 +7,7 @@ import pytest
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
 from nvtabular.graph.graph import Graph
-from tests.unit.inference.inference_utils import PlusTwoOp
+from tests.unit.inference.inf_test_ops import PlusTwoOp
 
 op_runner = pytest.importorskip("nvtabular.inference.graph.op_runner")
 inf_op = pytest.importorskip("nvtabular.inference.graph.ops.operator")
@@ -130,7 +130,7 @@ def test_op_runner_loads_multiple_ops_same_execute(tmpdir, dataset, engine):
 
     outputs = runner.execute(inf_op.InferenceDataFrame(inputs))
 
-    assert outputs["x+2+2"] == inputs["x"] + 4
+    assert outputs["x_plus_2_plus_2"] == inputs["x"] + 4
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -151,7 +151,7 @@ def test_op_runner_single_node_export(tmpdir, dataset, engine):
 
     config = node.export(tmpdir)
 
-    file_path = os.path.join(str(tmpdir), "config.pbtxt")
+    file_path = os.path.join(str(tmpdir), node.export_name, "config.pbtxt")
 
     assert os.path.exists(file_path)
     config_file = open(file_path, "r").read()
@@ -159,4 +159,4 @@ def test_op_runner_single_node_export(tmpdir, dataset, engine):
     assert len(config.input) == len(inputs)
     assert len(config.output) == len(inputs)
     for idx, conf in enumerate(config.output):
-        assert conf.name == inputs[idx] + "+2"
+        assert conf.name == inputs[idx] + "_plus_2"
