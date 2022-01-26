@@ -16,6 +16,9 @@
 import dask.dataframe as dd
 import numpy
 
+from nvtabular.graph.base_operator import Supports
+from nvtabular.graph.tags import Tags
+
 from ..dispatch import (
     DataFrameType,
     _encode_list_column,
@@ -23,9 +26,8 @@ from ..dispatch import (
     _is_list_dtype,
     annotate,
 )
-from ..tags import Tags
 from .moments import _custom_moments
-from .operator import ColumnSelector, Operator, Supports
+from .operator import ColumnSelector, Operator
 from .stat_operator import StatOperator
 
 
@@ -74,7 +76,7 @@ class Normalize(StatOperator):
             else:
                 values = values - self.means[name]
 
-            values = values.astype("float32")
+            values = values.astype(self.output_dtype)
 
             if list_col:
                 values = _encode_list_column(df[name], values)
@@ -95,11 +97,13 @@ class Normalize(StatOperator):
         self.means = {}
         self.stds = {}
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    @property
+    def output_dtype(self):
+        return numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__
@@ -134,7 +138,7 @@ class NormalizeMinMax(StatOperator):
                 new_df[name] = (df[name] - self.mins[name]) / dif
             elif dif == 0:
                 new_df[name] = df[name] / (2 * df[name])
-            new_df[name] = new_df[name].astype("float32")
+            new_df[name] = new_df[name].astype(self.output_dtype)
         return new_df
 
     transform.__doc__ = Operator.transform.__doc__
@@ -167,11 +171,13 @@ class NormalizeMinMax(StatOperator):
             | Supports.GPU_DATAFRAME
         )
 
+    @property
     def output_tags(self):
         return [Tags.CONTINUOUS]
 
-    def _get_dtypes(self):
-        return numpy.float
+    @property
+    def output_dtype(self):
+        return numpy.float64
 
     transform.__doc__ = Operator.transform.__doc__
     fit.__doc__ = StatOperator.fit.__doc__

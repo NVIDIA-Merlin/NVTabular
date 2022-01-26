@@ -263,7 +263,7 @@ def _list_val_dtype(ser):
         if HAS_GPU and isinstance(ser, cudf.Series):
             return ser.dtype._typ.value_type.to_pandas_dtype()
         elif isinstance(ser, pd.Series):
-            return type(ser[0][0])
+            return pd.core.dtypes.cast.infer_dtype_from(ser[0][0])[0]
     return None
 
 
@@ -412,7 +412,9 @@ def _to_arrow(x):
 
 
 def _concat(objs, **kwargs):
-    if isinstance(objs[0], (pd.DataFrame, pd.Series)):
+    if isinstance(objs[0], dd.DataFrame):
+        return dd.multi.concat(objs)
+    elif isinstance(objs[0], (pd.DataFrame, pd.Series)) or not HAS_GPU:
         return pd.concat(objs, **kwargs)
     else:
         return cudf.core.reshape.concat(objs, **kwargs)

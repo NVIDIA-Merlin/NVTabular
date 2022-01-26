@@ -15,11 +15,11 @@
 #
 import enum
 import warnings
-from distutils.version import LooseVersion
 
 import pandas as pd
+from packaging.version import Version
 
-_IGNORE_INDEX_SUPPORTED = pd.__version__ >= LooseVersion("1.3.0")
+_IGNORE_INDEX_SUPPORTED = Version(pd.__version__) >= Version("1.3.0")
 
 
 class Shuffle(enum.Enum):
