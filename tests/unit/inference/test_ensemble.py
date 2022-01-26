@@ -29,10 +29,10 @@ import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
 from nvtabular.graph.node import postorder_iter_nodes  # noqa
 
-configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")
+loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")
 
 # everything tensorflow related must be imported after this.
-configure_tensorflow()
+loader_tf_utils.configure_tensorflow()
 tf = pytest.importorskip("tensorflow")
 
 triton = pytest.importorskip("nvtabular.inference.triton")
@@ -41,6 +41,7 @@ from nvtabular.inference.graph.ensemble import Ensemble  # noqa
 from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
 from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
 from tests.unit.inference.inference_utils import (  # noqa
+    PlusTwoOp,
     _run_ensemble_on_tritonserver,
     create_tf_model,
 )
@@ -175,3 +176,61 @@ def test_graph_traverse_algo():
     assert len(ordered_list) == 5
     assert isinstance(ordered_list[0].op, SelectionOp)
     assert isinstance(ordered_list[-1].op, ConcatColumns)
+
+
+@pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
+    # Create a Workflow
+    schema = dataset.schema
+    for name in ["x", "y", "id"]:
+        dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
+            [nvt.graph.tags.Tags.USER]
+        )
+
+    workflow_ops = ["name-cat"] >> nvt.ops.Categorify(cat_cache="host")
+    workflow = nvt.Workflow(workflow_ops)
+    workflow.fit(dataset)
+
+    embedding_shapes_1 = nvt.ops.get_embedding_sizes(workflow)
+
+    cats = ["name-string"] >> nvt.ops.Categorify(cat_cache="host")
+    workflow_2 = nvt.Workflow(cats)
+    workflow_2.fit(dataset)
+
+    embedding_shapes = nvt.ops.get_embedding_sizes(workflow_2)
+    embedding_shapes_1.update(embedding_shapes)
+    embedding_shapes_1["name-string_plus_2"] = embedding_shapes_1["name-string"]
+
+    # Create Tensorflow Model
+    model = create_tf_model(["name-cat", "name-string_plus_2"], [], embedding_shapes_1)
+
+    # Creating Triton Ensemble
+    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow, name="workflow_1")
+    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2, name="workflow_2") >> PlusTwoOp()
+    triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
+
+    triton_ens = Ensemble(triton_chain, schema)
+
+    # Creating Triton Ensemble Config
+    ensemble_config, nodes_config = triton_ens.export(str(tmpdir))
+    config_path = tmpdir / "ensemble_model" / "config.pbtxt"
+
+    # Checking Triton Ensemble Config
+    with open(config_path, "rb") as f:
+        config = model_config.ModelConfig()
+        raw_config = f.read()
+        parsed = text_format.Parse(raw_config, config)
+
+        # The config file contents are correct
+        assert parsed.name == "ensemble_model"
+        assert parsed.platform == "ensemble"
+        assert hasattr(parsed, "ensemble_scheduling")
+
+    df = dataset.to_ddf().compute()[["name-string", "name-cat"]].iloc[:3]
+
+    # TODO: Check on the export for operators that use the Python back-end
+    # to make sure they (a) are exported and (b) have the right names/paths
+
+    response = _run_ensemble_on_tritonserver(str(tmpdir), ["output"], df, triton_ens.name)
+    assert len(response.as_numpy("output")) == df.shape[0]

@@ -18,7 +18,7 @@ import pathlib
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
-from nvtabular.inference.triton.ensemble import _generate_nvtabular_config, _remove_columns
+from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
 
 
 class WorkflowOp(InferenceOperator):
@@ -45,30 +45,21 @@ class WorkflowOp(InferenceOperator):
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
     ) -> Schema:
-        expected_input = input_schema.apply(col_selector)
-
-        if not expected_input == self.workflow.graph.input_schema:
-            raise ValueError(
-                "Request schema provided to WorkflowOp doesn't match workflow's input schema.\n"
-                f"Request schema columns: {input_schema.column_names}\n"
-                f"Workflow input schema columns: {self.workflow.graph.input_schema.column_names}."
-            )
-
         return self.workflow.output_schema
 
-    def export(self, path, version=1):
+    def export(self, path, input_schema, output_schema, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
 
-        workflow = _remove_columns(self.workflow, self.label_columns)
+        modified_workflow = self.workflow.remove_inputs(self.label_columns)
 
         # TODO: Extract this logic to base inference operator?
         export_path = new_dir_path / str(version) / "workflow"
-        workflow.save(str(export_path))
+        modified_workflow.save(str(export_path))
 
         return _generate_nvtabular_config(
-            workflow,
+            modified_workflow,
             self.export_name,
             new_dir_path,
             backend="nvtabular",

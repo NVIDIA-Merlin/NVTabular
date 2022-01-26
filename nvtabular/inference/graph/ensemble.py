@@ -23,14 +23,14 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.inference.graph.graph import InferenceGraph  # noqa
+from nvtabular.graph.graph import Graph  # noqa
 from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 
 
 class Ensemble:
     def __init__(self, ops, schema, name="ensemble_model", label_columns=None):
-        self.graph = InferenceGraph(ops)
-        self.graph.fit_schema(schema)
+        self.graph = Graph(ops)
+        self.graph.construct_schema(schema)
         self.name = name
         self.label_columns = label_columns or []
 
@@ -62,18 +62,18 @@ class Ensemble:
         node_idx = 0
         node_id_lookup = {}
         for node in postorder_nodes:
-            if hasattr(node.op, "export"):
+            if node.exportable:
                 node_id_lookup[node] = node_idx
                 node_idx += 1
 
         node_configs = []
         # Export node configs and add ensemble steps
         for node in postorder_nodes:
-            if hasattr(node.op, "export"):
-                node_config = node.op.export(export_path, version=version)
+            if node.exportable:
+                node_config = node.export(export_path, version=version)
 
                 config_step = model_config.ModelEnsembling.Step(
-                    model_name=node.op.export_name, model_version=-1
+                    model_name=node.export_name, model_version=-1
                 )
 
                 for input_col_name in node.input_columns.names:
@@ -105,9 +105,7 @@ class Ensemble:
 
 def _find_column_source(node, column_name):
     for upstream_node in node.parents_with_dependencies:
-        if column_name in upstream_node.output_columns.names and hasattr(
-            upstream_node.op, "export"
-        ):
+        if column_name in upstream_node.output_columns.names and upstream_node.exportable:
             return upstream_node
 
     for upstream_node in node.parents_with_dependencies:

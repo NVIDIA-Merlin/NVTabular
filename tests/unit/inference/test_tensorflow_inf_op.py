@@ -35,7 +35,7 @@ def test_tf_op_exports_own_config(tmpdir):
 
     # Triton
     triton_op = tf_op.TensorflowOp(model)
-    triton_op.export(tmpdir, None)
+    triton_op.export(tmpdir, None, None)
 
     # Export creates directory
     export_path = pathlib.Path(tmpdir) / triton_op.export_name
@@ -100,13 +100,13 @@ def test_tf_schema_validation():
     tf_graph = graph.graph.Graph(tf_node)
 
     with pytest.raises(ValueError) as exception_info:
-        deepcopy(tf_graph).fit_schema(Schema(["input", "not_input"]))
-    assert "Request schema provided to TensorflowOp" in str(exception_info.value)
+        deepcopy(tf_graph).construct_schema(Schema([]))
+    assert "Missing column 'input'" in str(exception_info.value)
 
     with pytest.raises(ValueError) as exception_info:
-        deepcopy(tf_graph).fit_schema(Schema(["not_input"]))
-    assert "Request schema provided to TensorflowOp" in str(exception_info.value)
+        deepcopy(tf_graph).construct_schema(Schema(["not_input"]))
+    assert "Missing column 'input'" in str(exception_info.value)
 
     with pytest.raises(ValueError) as exception_info:
-        deepcopy(tf_graph).fit_schema(Schema([]))
-    assert "Request schema provided to TensorflowOp" in str(exception_info.value)
+        deepcopy(tf_graph).construct_schema(Schema(["input", "not_input"]))
+    assert "Mismatched dtypes for column 'input'" in str(exception_info.value)

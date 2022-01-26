@@ -16,6 +16,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Text
 
+import numpy as np
+
 from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
 from nvtabular.graph.tags import TagSet
 
@@ -34,6 +36,9 @@ class ColumnSchema:
     def __post_init__(self):
         tags = TagSet(self.tags)
         object.__setattr__(self, "tags", tags)
+
+        dtype = np.dtype(self.dtype)
+        object.__setattr__(self, "dtype", dtype)
 
     def __str__(self) -> str:
         return self.name
@@ -158,6 +163,20 @@ class Schema:
         }
         return Schema(selected_schemas)
 
+    def remove_col(self, col_name):
+        if col_name in self.column_names:
+            del self.column_schemas[col_name]
+        return self
+
+    def without(self, col_names):
+        return Schema(
+            [
+                col_schema
+                for col_name, col_schema in self.column_schemas.items()
+                if col_name not in col_names
+            ]
+        )
+
     @classmethod
     def load(cls, schema_path) -> "Schema":
         return PbTxt_SchemaWriter.load(schema_path)
@@ -197,21 +216,24 @@ class Schema:
         if not isinstance(other, Schema):
             raise TypeError(f"unsupported operand type(s) for +: 'Schema' and {type(other)}")
 
+        col_schemas = []
+
         # must account for same columns in both schemas,
         # use the one with more information for each field
-        keys_other_not_self = [
-            schema for schema in other.column_schemas if schema not in self.column_schemas
+        keys_self_not_other = [
+            col_name for col_name in self.column_names if col_name not in other.column_names
         ]
-        col_schemas = []
-        for col_name, col_schema in self.column_schemas.items():
-            if col_name in other.column_schemas:
+
+        for key in keys_self_not_other:
+            col_schemas.append(self.column_schemas[key])
+
+        for col_name, other_schema in other.column_schemas.items():
+            if col_name in self.column_schemas:
                 # check which one
-                other_schema = other.column_schemas[col_name]
-                col_schemas.append(col_schema.__merge__(other_schema))
+                self_schema = self.column_schemas[col_name]
+                col_schemas.append(self_schema.__merge__(other_schema))
             else:
-                col_schemas.append(col_schema)
-        for key in keys_other_not_self:
-            col_schemas.append(other.column_schemas[key])
+                col_schemas.append(other_schema)
 
         return Schema(col_schemas)
 

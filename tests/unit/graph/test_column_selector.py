@@ -210,3 +210,12 @@ def test_filter():
     result_selector = selector2.filter_columns(sub_selector)
     assert result_selector.names == ["a", "b"]
     assert result_selector.subgroups == []
+
+
+def test_filter_group():
+    selector = ColumnSelector([("a", "b"), ("c", "d")])
+
+    result_selector = selector.filter_columns(ColumnSelector(["c"]))
+
+    assert result_selector.names == ["a", "b"]
+    assert result_selector.subgroups == [ColumnSelector(["a", "b"])]

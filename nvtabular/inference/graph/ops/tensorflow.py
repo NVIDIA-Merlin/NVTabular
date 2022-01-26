@@ -53,7 +53,7 @@ class TensorflowOp(InferenceOperator):
     def export_name(self):
         return self.name
 
-    def export(self, path, version=1):
+    def export(self, path, input_schema, output_schema, version=1):
         """Create a directory inside supplied path based on our export name"""
         new_dir_path = pathlib.Path(path) / self.export_name
         new_dir_path.mkdir()
@@ -67,18 +67,9 @@ class TensorflowOp(InferenceOperator):
         deps_schema: Schema,
         selector: ColumnSelector,
     ) -> Schema:
-        expected_input = (parents_schema + deps_schema).apply(selector)
-        if expected_input.column_names != self.model_inputs:
-            raise ValueError(
-                f"Request schema provided to {self.__class__.__name__} \n"
-                "doesn't match model's input schema.\n"
-                f"Request schema columns: {expected_input.column_names}\n"
-                f"Model input columns: {self.model_inputs}."
-            )
-
         in_schema = Schema()
         for col, input_col in zip(self.model_inputs, self.model.inputs):
-            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype)
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype.as_numpy_dtype)
 
         return in_schema
 
@@ -99,5 +90,7 @@ class TensorflowOp(InferenceOperator):
     ) -> Schema:
         out_schema = Schema()
         for col, output_col in zip(self.model_outputs, self.model.outputs):
-            out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
+            out_schema.column_schemas[col] = ColumnSchema(
+                col, dtype=output_col.dtype.as_numpy_dtype
+            )
         return out_schema
