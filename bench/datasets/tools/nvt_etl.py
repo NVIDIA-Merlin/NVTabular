@@ -149,7 +149,7 @@ def nvt_etl(
 
         cat_features = cats >> ops.Categorify(out_path=stats_path, max_size=10000000)
 
-        workflow = Workflow(cat_features + cont_features + labels, client=client)
+        workflow = Workflow(cat_features + cont_features + labels)
 
         train_dataset = Dataset(train_paths, engine="parquet", part_size=part_size)
         valid_dataset = Dataset(valid_paths, engine="parquet", part_size=part_size)
