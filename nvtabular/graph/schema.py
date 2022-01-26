@@ -37,7 +37,18 @@ class ColumnSchema:
         tags = TagSet(self.tags)
         object.__setattr__(self, "tags", tags)
 
-        dtype = np.dtype(self.dtype)
+        try:
+            if hasattr(self.dtype, "numpy_dtype"):
+                dtype = np.dtype(self.dtype.numpy_dtype)
+            elif hasattr(self.dtype, "_categories"):
+                dtype = self.dtype._categories.dtype
+            else:
+                dtype = np.dtype(self.dtype)
+        except TypeError as err:
+            raise TypeError(
+                f"Unsupported dtype {self.dtype}, unable to cast {self.dtype} to a numpy dtype."
+            ) from err
+
         object.__setattr__(self, "dtype", dtype)
 
     def __str__(self) -> str:

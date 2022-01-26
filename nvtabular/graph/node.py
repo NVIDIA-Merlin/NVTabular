@@ -67,7 +67,22 @@ class Node:
     # These methods must maintain grouping
     def add_dependency(self, dep):
         dep_nodes = _nodify(dep)
-        self.dependencies.append(dep_nodes)
+
+        if not isinstance(dep_nodes, list):
+            dep_nodes = [dep_nodes]
+
+        self.dependencies.extend(dep_nodes)
+
+    def add_parent(self, parent):
+        parent_nodes = _nodify(parent)
+
+        if not isinstance(parent_nodes, list):
+            parent_nodes = [parent_nodes]
+
+        for parent_node in parent_nodes:
+            parent_node.children.append(self)
+
+        self.parents.extend(parent_nodes)
 
     def add_child(self, child):
         child_nodes = _nodify(child)
@@ -80,16 +95,17 @@ class Node:
 
         self.children.extend(child_nodes)
 
-    def add_parent(self, parent):
-        parent_nodes = _nodify(parent)
+    def remove_child(self, child):
+        child_nodes = _nodify(child)
 
-        if not isinstance(parent_nodes, list):
-            parent_nodes = [parent_nodes]
+        if not isinstance(child_nodes, list):
+            child_nodes = [child_nodes]
 
-        for parent_node in parent_nodes:
-            parent_node.children.append(self)
-
-        self.parents.extend(parent_nodes)
+        for child_node in child_nodes:
+            if self in child_node.parents:
+                child_node.parents.remove(self)
+            if child_node in self.children:
+                self.children.remove(child_node)
 
     def compute_schemas(self, root_schema, preserve_dtypes=False):
         parents_schema = _combine_schemas(self.parents)
