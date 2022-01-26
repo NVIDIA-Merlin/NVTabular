@@ -131,10 +131,12 @@ class DatasetGen:
                 offs = offs.astype("int32")
             if HAS_GPU:
                 ser = dist.create_col(
-                    col_size, dtype=np.long, min_val=0, max_val=col.cardinality
+                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
                 ).ceil()
             else:
-                ser = dist.create_col(col_size, dtype=np.long, min_val=0, max_val=col.cardinality)
+                ser = dist.create_col(
+                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
+                )
                 ser = _make_df(np.ceil(ser))[0]
                 ser = ser.astype("int32")
             if entries:
@@ -395,6 +397,7 @@ class CatCol(Col):
         multi_max=None,
         multi_avg=None,
         distro=None,
+        min_val=0,
     ):
         super().__init__(name, dtype, distro)
         self.cardinality = cardinality
@@ -405,6 +408,7 @@ class CatCol(Col):
         self.multi_min = multi_min
         self.multi_max = multi_max
         self.multi_avg = multi_avg
+        self.min_val = min_val
 
 
 class LabelCol(Col):
@@ -442,6 +446,7 @@ def _get_cols_from_schema(schema, distros=None):
             multi_min:
             multi_max:
             multi_avg:
+            min_val:
 
     labels:
         col_name:
