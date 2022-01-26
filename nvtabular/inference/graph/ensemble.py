@@ -62,18 +62,18 @@ class Ensemble:
         node_idx = 0
         node_id_lookup = {}
         for node in postorder_nodes:
-            if node.exportable:
+            if hasattr(node.op, "export"):
                 node_id_lookup[node] = node_idx
                 node_idx += 1
 
         node_configs = []
         # Export node configs and add ensemble steps
         for node in postorder_nodes:
-            if node.exportable:
+            if hasattr(node.op, "export"):
                 node_config = node.export(export_path, version=version)
 
                 config_step = model_config.ModelEnsembling.Step(
-                    model_name=node.export_name, model_version=-1
+                    model_name=node.op.export_name, model_version=-1
                 )
 
                 for input_col_name in node.input_columns.names:

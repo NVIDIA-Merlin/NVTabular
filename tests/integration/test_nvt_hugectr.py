@@ -25,8 +25,6 @@ from pathlib import Path
 import cudf
 import pytest
 
-from nvtabular.inference.triton.model_config_pb2 import DataType
-
 try:
     import hugectr
     from hugectr.inference import CreateInferenceSession, InferenceParams
@@ -41,10 +39,8 @@ import numpy as np
 import pandas as pd
 from common.parsers.benchmark_parsers import create_bench_result
 from common.utils import _run_query
-from sklearn.model_selection import train_test_split
 
 import nvtabular as nvt
-import tests.conftest as test_utils
 from nvtabular.inference.triton import export_hugectr_ensemble
 from nvtabular.ops import get_embedding_sizes
 from nvtabular.utils import download_file
@@ -196,6 +192,16 @@ def test_training(n_rows, err_tol):
     hugectr_params["embedding_vector_size"] = 16
     hugectr_params["n_outputs"] = 1
 
+    # triton_chain = CATEGORICAL_COLUMNS >>
+    #               WorkflowOp(workflow, label_columns=["rating"]) >>
+    #               HugeCTROp(TRAIN_DIR,
+    #                        params=hugectr_params,
+    #                        name=f"{MODEL_NAME}",
+    #                        max_batch_size=64,
+    #                        label_columns=LABEL_COLUMNS)
+    # ensemble_triton = Ensemble(triton_chain, nvt.Schema(CATEGORICAL_COLUMNS))
+    # ensemble_path = str(MODEL_DIR)
+    # ensemble_triton.export(ensemble_path, version=1)
     ensemble_conf, nvt_hugectr_conf = export_hugectr_ensemble(
         workflow=workflow,
         hugectr_model_path=str(TRAIN_DIR),
@@ -235,15 +241,20 @@ def test_inference(n_rows, err_tol):
     TMPDIR = Path("/model_test/")
     DATA_DIR = TMPDIR / "data/"
     MODEL_DIR = TMPDIR / "models/"
-    TRAIN_DIR = TMPDIR / MODEL_DIR / "test_model/1/"
+    # TRAIN_DIR = TMPDIR / MODEL_DIR / "test_model/1/"
     MODEL_NAME = "test_model"
 
     data_path = DATA_DIR / "test/data.csv"
     output_path = DATA_DIR / "test/output.csv"
-    ps_file = TRAIN_DIR / "ps.json"
+    # ps_file = TRAIN_DIR / "ps.json"
 
     workflow_path = MODEL_DIR / "test_model_nvt" / "1/workflow"
-    # _write_ps_hugectr(str(ps_file), MODEL_NAME, str(SPARSE_FILES), str(DENSE_FILE), str(NETWORK_FILE), 64)
+    # _write_ps_hugectr(str(ps_file),
+    #                   MODEL_NAME,
+    #                   str(SPARSE_FILES),
+    #                   str(DENSE_FILE),
+    #                   str(NETWORK_FILE),
+    #                   64)
 
     # with test_utils.run_triton_server(
     #     os.path.expanduser(str(MODEL_DIR)),
