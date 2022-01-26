@@ -36,7 +36,11 @@ from nvtabular.dispatch import _concat_columns, _is_list_dtype, _list_val_dtype
 from nvtabular.graph.graph import Graph, _get_ops_by_type
 from nvtabular.io.dataset import Dataset
 from nvtabular.ops import StatOperator
-from nvtabular.utils import _ensure_optimize_dataframe_graph, global_dask_client
+from nvtabular.utils import (
+    _ensure_optimize_dataframe_graph,
+    _set_client_deprecated,
+    global_dask_client,
+)
 from nvtabular.worker import clean_worker_cache
 from nvtabular.workflow.node import WorkflowNode
 
@@ -72,23 +76,13 @@ class Workflow:
     ----------
     output_node: WorkflowNode
         The last node in the graph of operators this workflow should apply
-    client: distributed.Client, optional
-        The Dask distributed client to use for multi-gpu processing and multi-node processing
     """
 
     def __init__(self, output_node: WorkflowNode, client: Optional["distributed.Client"] = None):
+        # Deprecate `client`
+        if client is not None:
+            _set_client_deprecated(client, "Workflow")
         self.graph = Graph(output_node)
-        self.client = client
-
-        # Warn user if there is an unused global
-        # Dask client available
-        if global_dask_client(self.client):
-            warnings.warn(
-                "A global dask.distributed client has been detected, but the "
-                "single-threaded scheduler will be used for execution. Please "
-                "use the `client` argument to initialize a `Workflow` object "
-                "with distributed-execution enabled."
-            )
 
     def transform(self, dataset: Dataset) -> Dataset:
         """Transforms the dataset by applying the graph of operators to it. Requires the ``fit``
@@ -203,8 +197,9 @@ class Workflow:
                     LOG.exception("Failed to fit operator %s", workflow_node.op)
                     raise
 
-            if self.client:
-                results = [r.result() for r in self.client.compute(stats)]
+            dask_client = global_dask_client()
+            if dask_client:
+                results = [r.result() for r in dask_client.compute(stats)]
             else:
                 results = dask.compute(stats, scheduler="synchronous")[0]
 
@@ -252,7 +247,6 @@ class Workflow:
             _transform_ddf(
                 ddf, self.output_node, self.output_dtypes, capture_dtypes=capture_dtypes
             ),
-            client=self.client,
             cpu=dataset.cpu,
             base_dataset=dataset.base_dataset,
             schema=self.output_schema,
@@ -364,8 +358,9 @@ class Workflow:
 
     def _clear_worker_cache(self):
         # Clear worker caches to be "safe"
-        if self.client:
-            self.client.run(clean_worker_cache)
+        dask_client = global_dask_client()
+        if dask_client:
+            dask_client.run(clean_worker_cache)
         else:
             clean_worker_cache()
 
