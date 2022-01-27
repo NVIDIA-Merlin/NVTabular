@@ -37,8 +37,9 @@ class ColumnSchema:
         tags = TagSet(self.tags)
         object.__setattr__(self, "tags", tags)
 
-        dtype = np.dtype(self.dtype)
-        object.__setattr__(self, "dtype", dtype)
+        if self.dtype is not None:
+            dtype = np.dtype(self.dtype)
+            object.__setattr__(self, "dtype", dtype)
 
     def __str__(self) -> str:
         return self.name
@@ -80,6 +81,9 @@ class ColumnSchema:
         )
 
     def with_dtype(self, dtype, is_list=None, is_ragged=None):
+        # if dtype is None:
+        #     raise ValueError(f"Column {self.name} has dtype None in `with_dtype`")
+
         is_list = is_list if is_list is not None else self._is_list
 
         if is_list:

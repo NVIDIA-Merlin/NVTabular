@@ -151,7 +151,7 @@ class BaseOperator:
         is_list = col_schema._is_list
         is_ragged = col_schema._is_ragged
 
-        if input_schema.column_schemas:
+        if input_schema and input_schema.column_schemas:
             source_col_name = input_schema.column_names[0]
             dtype = input_schema[source_col_name].dtype
             is_list = input_schema[source_col_name]._is_list
@@ -170,7 +170,7 @@ class BaseOperator:
 
     def _compute_tags(self, col_schema, input_schema):
         tags = []
-        if input_schema.column_schemas:
+        if input_schema and input_schema.column_schemas:
             source_col_name = input_schema.column_names[0]
             tags = input_schema[source_col_name].tags
 
@@ -181,7 +181,7 @@ class BaseOperator:
     def _compute_properties(self, col_schema, input_schema):
         properties = {}
 
-        if input_schema.column_schemas:
+        if input_schema and input_schema.column_schemas:
             source_col_name = input_schema.column_names[0]
             properties.update(input_schema.column_schemas[source_col_name].properties)
 

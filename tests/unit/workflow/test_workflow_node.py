@@ -283,7 +283,6 @@ def test_nested_workflow_node():
     # make sure we can do a 'combo' categorify (cross based) of country+user
     # as well as categorifying the country and user columns on their own
     cats = country + user + [country + user] >> Categorify(encode_type="combo")
-
     workflow = Workflow(cats)
     workflow.fit_schema(dataset.infer_schema())
 
@@ -296,7 +295,6 @@ def test_nested_workflow_node():
     user = df_out["user"]
     assert user[0] == user[1] == user[2]
     assert user[3] != user[2]
-
     geo_country_user = df_out["geo_country_user"]
     assert geo_country_user[0] == geo_country_user[1]  # US / userA
     assert geo_country_user[2] != geo_country_user[0]  # same user but in canada

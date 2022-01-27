@@ -15,6 +15,7 @@
 #
 import collections.abc
 
+import nvtabular as nvt
 from nvtabular.graph.base_operator import BaseOperator
 from nvtabular.graph.ops import ConcatColumns, SelectionOp, SubsetColumns, SubtractionOp
 from nvtabular.graph.schema import Schema
@@ -117,6 +118,8 @@ class Node:
         )
 
         prev_output_schema = self.output_schema if preserve_dtypes else None
+        # if isinstance(self.op, nvt.inference.graph.ops.operator.InferenceOperator):
+        #     breakpoint()
         self.output_schema = self.op.compute_output_schema(
             self.input_schema, self.selector, prev_output_schema
         )
@@ -125,7 +128,6 @@ class Node:
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
         ancestors_schema = root_schema + parents_schema + deps_schema
-
         for col_name, col_schema in self.input_schema.column_schemas.items():
             source_col_schema = ancestors_schema.get(col_name)
 

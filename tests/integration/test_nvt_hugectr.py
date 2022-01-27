@@ -23,6 +23,8 @@ from os import path
 from pathlib import Path
 
 import cudf
+from nvtabular.graph.schema import Schema
+from nvtabular.inference.graph.ops.hugectr import HugeCTRSetOp
 import pytest
 
 try:
@@ -114,7 +116,6 @@ def test_training(n_rows, err_tol):
 
     train_dataset = nvt.Dataset(DATA_DIR / "train.parquet", part_size="100MB")
     valid_dataset = nvt.Dataset(DATA_DIR / "valid.parquet", part_size="100MB")
-
     workflow.fit(train_dataset)
 
     dict_dtypes = {}
@@ -192,14 +193,27 @@ def test_training(n_rows, err_tol):
     hugectr_params["embedding_vector_size"] = 16
     hugectr_params["n_outputs"] = 1
 
-    # triton_chain = CATEGORICAL_COLUMNS >>
-    #               WorkflowOp(workflow, label_columns=["rating"]) >>
+
+    # from nvtabular.inference.graph.ops.workflow import WorkflowOp
+    # from nvtabular.inference.graph.ops.hugectr import HugeCTROp, HugeCTRSetOp
+    # from nvtabular.inference.graph.ensemble import Ensemble
+
+
+    # # TODO: Tag the label columns up front and
+    # # update the ops to use the tags to identify label columns
+    # triton_chain = CATEGORICAL_COLUMNS >> \
+    #               WorkflowOp(workflow, label_columns=["rating"]) >> \
     #               HugeCTROp(TRAIN_DIR,
     #                        params=hugectr_params,
     #                        name=f"{MODEL_NAME}",
     #                        max_batch_size=64,
     #                        label_columns=LABEL_COLUMNS)
-    # ensemble_triton = Ensemble(triton_chain, nvt.Schema(CATEGORICAL_COLUMNS))
+
+    # schema = Schema()
+    # for col_name in CATEGORICAL_COLUMNS:
+    #     schema += Schema([train_dataset.schema.column_schemas[col_name]]) 
+                 
+    # ensemble_triton = Ensemble(triton_chain, schema)
     # ensemble_path = str(MODEL_DIR)
     # ensemble_triton.export(ensemble_path, version=1)
     ensemble_conf, nvt_hugectr_conf = export_hugectr_ensemble(
