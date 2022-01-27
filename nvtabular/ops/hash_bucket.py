@@ -17,9 +17,10 @@ from typing import Dict, Union
 
 import numpy
 
+from nvtabular.graph.tags import Tags
+
 from ..dispatch import DataFrameType, _encode_list_column, _hash_series, _is_list_dtype, annotate
-from ..tags import Tags
-from .categorify import _emb_sz_rule, _get_embedding_order
+from .categorify import _emb_sz_rule
 from .operator import ColumnSelector, Operator
 
 
@@ -85,34 +86,41 @@ class HashBucket(Operator):
 
         for col, nb in num_buckets.items():
             if _is_list_dtype(df[col].dtype):
-                df[col] = _encode_list_column(df[col], _hash_series(df[col]) % nb)
+                df[col] = _encode_list_column(
+                    df[col], _hash_series(df[col]) % nb, dtype=self.output_dtype
+                )
             else:
-                df[col] = _hash_series(df[col]) % nb
+                df[col] = (_hash_series(df[col]) % nb).astype(self.output_dtype)
 
         return df
 
     transform.__doc__ = Operator.transform.__doc__
 
     def get_embedding_sizes(self, columns):
-        columns = _get_embedding_order(columns)
         if isinstance(self.num_buckets, int):
             embedding_size = _emb_sz_rule(self.num_buckets)
             return {col: embedding_size for col in columns}
         else:
             return {col: _emb_sz_rule(self.num_buckets[col]) for col in columns}
 
-    def _add_properties(self, column_schema):
-        cardinality, dimensions = self.get_embedding_sizes([column_schema.name])[column_schema.name]
+    def _compute_properties(self, col_schema, input_schema):
+        source_col_name = input_schema.column_names[0]
+
+        cardinality, dimensions = self.get_embedding_sizes([col_schema.name])[col_schema.name]
+
+        to_add = {}
         if cardinality and dimensions:
             to_add = {
                 "domain": {"min": 0, "max": cardinality},
                 "embedding_sizes": {"cardinality": cardinality, "dimension": dimensions},
             }
-            column_schema = column_schema.with_properties(to_add)
-        return column_schema
 
+        return col_schema.with_properties({**input_schema[source_col_name].properties, **to_add})
+
+    @property
     def output_tags(self):
         return [Tags.CATEGORICAL]
 
-    def _get_dtypes(self):
-        return numpy.int64
+    @property
+    def output_dtype(self):
+        return numpy.int32

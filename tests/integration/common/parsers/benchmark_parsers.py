@@ -84,7 +84,7 @@ class StandardBenchmark(Benchmark):
                 dl_thru = float(dl_thru.split(": ")[1])
                 bres = self.get_dl_thru(run_time, num_rows, epochs, dl_thru)
                 timing_res.append(bres)
-        return timing_res
+        return timing_res[-1:]
 
 
 class BenchFastAI(StandardBenchmark):
@@ -122,7 +122,18 @@ def is_float(str_to_flt):
 
 
 def send_results(db, bench_info, results_list):
-    for results in results_list:
+    # only one entry because entries are split by Bench info
+    new_results_list = results_list
+    info_list = db.getInfo()
+    if len(info_list) > 0:
+        br_list = db.getResults(filterInfoObjList=[bench_info])[0][1]
+        results_to_remove = []
+        for result in results_list:
+            if any(br.funcName == result.funcName for br in br_list):
+                results_to_remove.append(result)
+        new_results_list = [result for result in results_list if result not in results_to_remove]
+        # breakpoint()
+    for results in new_results_list:
         if isinstance(results, list):
             for result in results:
                 db.addResult(bench_info, result)

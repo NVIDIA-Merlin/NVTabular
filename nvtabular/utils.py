@@ -20,11 +20,14 @@ import tarfile
 import urllib.request
 import warnings
 import zipfile
+from contextvars import ContextVar
 
 import dask
 from dask.dataframe.optimize import optimize as dd_optimize
 from dask.distributed import get_client
 from tqdm import tqdm
+
+_nvt_dask_client = ContextVar("_nvt_dask_client", default="auto")
 
 try:
     from numba import cuda
@@ -159,21 +162,54 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
     return ddf
 
 
-def global_dask_client(client):
-    # Check for a global Dask client
-    # (if `client` is not already set)
-    if not client:
+def _set_client_deprecated(client, caller_str):
+    warnings.warn(
+        f"The `client` argument is deprecated from {caller_str} "
+        f"and will be removed in a future version of NVTabular. By "
+        f"default, a global client in the same python context will be "
+        f"detected automatically, and `nvt.utils.set_dask_client` can "
+        f"be used for explicit control.",
+        FutureWarning,
+    )
+    set_dask_client(client)
+
+
+def set_dask_client(client="auto"):
+    """Set the global dask client
+
+    Specify `'auto'` (default) to use the global dask
+    client (if one is detected). To disable distributed
+    execution altogether, specify `None`.
+    """
+    _nvt_dask_client.set(client)
+
+
+def global_dask_client():
+    # First, check _nvt_dask_client
+    nvt_client = _nvt_dask_client.get()
+    if nvt_client and nvt_client != "auto":
+        if nvt_client.cluster and nvt_client.cluster.workers:
+            # Active Dask client already known
+            return nvt_client
+        else:
+            # Our cached client is no-longer
+            # active, reset to "auto"
+            nvt_client = "auto"
+    if nvt_client == "auto":
         try:
-            return get_client()
+            # Check for a global Dask client
+            set_dask_client(get_client())
+            return _nvt_dask_client.get()
         except ValueError:
-            return None
+            pass
+    # Catch-all
     return None
 
 
 def run_on_worker(func, *args, **kwargs):
     # Run a function on a Dask worker using `delayed`
     # execution (if a Dask client is detected)
-    if global_dask_client(kwargs.get("client", None)):
+    if global_dask_client():
         # There is a specified or global Dask client. Use it
         return dask.delayed(func)(*args, **kwargs).compute()
     # No Dask client - Use simple function call
