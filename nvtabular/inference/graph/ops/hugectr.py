@@ -13,23 +13,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pathlib
-import os
-import numpy as np
 import json
-
+import os
+import pathlib
 from shutil import copyfile
+
+import numpy as np
+
 from nvtabular.graph.schema import ColumnSchema, Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.graph.tags import Tags
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame, InferenceOperator, PipelineableInferenceOperator, _schema_to_dict
-from nvtabular.inference.triton.ensemble import generate_hugectr_model, _convert_dtype
+from nvtabular.inference.graph.ops.operator import (
+    InferenceDataFrame,
+    InferenceOperator,
+    PipelineableInferenceOperator,
+    _schema_to_dict,
+)
+from nvtabular.inference.triton.ensemble import _convert_dtype, generate_hugectr_model
+
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+
 
 class HugeCTROp(InferenceOperator):
     def __init__(self, model_path, params=None, name=None, max_batch_size=None, label_columns=None):
@@ -45,20 +53,26 @@ class HugeCTROp(InferenceOperator):
     def export_name(self):
         return self.name
 
-
-    def compute_input_schema(self, root_schema: Schema, parents_schema: Schema, deps_schema: Schema, selector: ColumnSelector) -> Schema:
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
         input_schema = super().compute_input_schema(
             root_schema, parents_schema, deps_schema, selector
         )
         self.params["des_feature_num"] = len(input_schema.select_by_tag(Tags.CONTINUOUS))
         self.params["cat_feature_num"] = len(input_schema.select_by_tag(Tags.CATEGORICAL))
 
-        return Schema([
-            ColumnSchema("DES", dtype=np.float32),
-            ColumnSchema("CATCOLUMN", dtype=np.uint32),
-            ColumnSchema("ROWINDEX", dtype=np.int32),
-        ])
- 
+        return Schema(
+            [
+                ColumnSchema("DES", dtype=np.float32),
+                ColumnSchema("CATCOLUMN", dtype=np.uint32),
+                ColumnSchema("ROWINDEX", dtype=np.int32),
+            ]
+        )
 
     # ensemble_conf, nvt_hugectr_conf = export_hugectr_ensemble(
     #     workflow=workflow,
@@ -109,7 +123,6 @@ class HugeCTROp(InferenceOperator):
         return Schema([ColumnSchema("OUTPUT0", dtype=np.float32)])
 
 
-    
 class HugeCTRSetOp(PipelineableInferenceOperator):
     @property
     def export_name(self):
@@ -118,7 +131,6 @@ class HugeCTRSetOp(PipelineableInferenceOperator):
     @classmethod
     def from_config(cls, config):
         return HugeCTRSetOp
-
 
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
 
@@ -149,7 +161,6 @@ class HugeCTRSetOp(PipelineableInferenceOperator):
                 )
             )
 
-
         config.output.append(
             model_config.ModelOutput(name="DES", data_type=model_config.TYPE_FP32, dims=[-1])
         )
@@ -161,7 +172,6 @@ class HugeCTRSetOp(PipelineableInferenceOperator):
         config.output.append(
             model_config.ModelOutput(name="ROWINDEX", data_type=model_config.TYPE_INT32, dims=[-1])
         )
-
 
         with open(os.path.join(full_export_path, "config.pbtxt"), "w") as o:
             text_format.PrintMessage(config, o)
@@ -175,7 +185,6 @@ class HugeCTRSetOp(PipelineableInferenceOperator):
 
         return config
 
-
     def column_mapping(self, col_selector):
         cats = self.cats or []
         conts = self.conts or []
@@ -186,8 +195,16 @@ class HugeCTRSetOp(PipelineableInferenceOperator):
             "ROWINDEX": [],
         }
 
-    def compute_input_schema(self, root_schema: Schema, parents_schema: Schema, deps_schema: Schema, selector: ColumnSelector) -> Schema:
-        input_schema =  super().compute_input_schema(root_schema, parents_schema, deps_schema, selector)
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        input_schema = super().compute_input_schema(
+            root_schema, parents_schema, deps_schema, selector
+        )
         self.cats = input_schema.select_by_tag(Tags.CONTINUOUS)
         self.conts = input_schema.select_by_tag(Tags.CATEGORICAL)
 

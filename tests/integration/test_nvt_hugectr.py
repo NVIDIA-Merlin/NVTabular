@@ -23,9 +23,10 @@ from os import path
 from pathlib import Path
 
 import cudf
+import pytest
+
 from nvtabular.graph.schema import Schema
 from nvtabular.inference.graph.ops.hugectr import HugeCTRSetOp
-import pytest
 
 try:
     import hugectr
@@ -193,11 +194,9 @@ def test_training(n_rows, err_tol):
     hugectr_params["embedding_vector_size"] = 16
     hugectr_params["n_outputs"] = 1
 
-
     # from nvtabular.inference.graph.ops.workflow import WorkflowOp
     # from nvtabular.inference.graph.ops.hugectr import HugeCTROp, HugeCTRSetOp
     # from nvtabular.inference.graph.ensemble import Ensemble
-
 
     # # TODO: Tag the label columns up front and
     # # update the ops to use the tags to identify label columns
@@ -211,8 +210,8 @@ def test_training(n_rows, err_tol):
 
     # schema = Schema()
     # for col_name in CATEGORICAL_COLUMNS:
-    #     schema += Schema([train_dataset.schema.column_schemas[col_name]]) 
-                 
+    #     schema += Schema([train_dataset.schema.column_schemas[col_name]])
+
     # ensemble_triton = Ensemble(triton_chain, schema)
     # ensemble_path = str(MODEL_DIR)
     # ensemble_triton.export(ensemble_path, version=1)
