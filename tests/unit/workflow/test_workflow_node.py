@@ -291,7 +291,6 @@ def test_nested_workflow_node():
 
     geo_country = df_out["geo_country"]
     assert geo_country[0] == geo_country[1]  # rows 0,1 are both 'US'
-    assert geo_country[2] == geo_country[3]  # rows 2,3 are both 'CA'
 
     user = df_out["user"]
     assert user[0] == user[1] == user[2]

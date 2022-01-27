@@ -99,6 +99,7 @@ class ColumnSelector:
             col_sel0._nested_check(nests=nests + 1)
 
     def __add__(self, other):
+        breakpoint()
         if other is None:
             return self
         elif isinstance(other, nvt.graph.Node):
