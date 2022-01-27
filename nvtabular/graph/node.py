@@ -67,11 +67,7 @@ class Node:
     # These methods must maintain grouping
     def add_dependency(self, dep):
         dep_nodes = _nodify(dep)
-
-        if not isinstance(dep_nodes, list):
-            dep_nodes = [dep_nodes]
-
-        self.dependencies.extend(dep_nodes)
+        self.dependencies.append(dep_nodes)
 
     def add_parent(self, parent):
         parent_nodes = _nodify(parent)
