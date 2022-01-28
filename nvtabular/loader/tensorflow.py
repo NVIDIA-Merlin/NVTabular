@@ -77,7 +77,7 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
         # default engine is parquet
         engine = "parquet"
     if nvt_dataset_class:
-        return nvt_dataset_class(files)
+        return nvt_dataset_class(files, engine=engine)
     else:
         LOG.warning(
             "NVTabular Dataset class not detected, reverting to Dask Dataframe."
