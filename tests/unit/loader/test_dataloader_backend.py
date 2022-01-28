@@ -125,8 +125,13 @@ def test_dataloader_empty_error(datasets, engine, batch_size):
 @pytest.mark.parametrize("engine", ["parquet"])
 @pytest.mark.parametrize("batch_size", [128])
 @pytest.mark.parametrize("epochs", [1, 5])
-def test_dataloader_epochs(datasets, engine, batch_size, epochs):
+@pytest.mark.parametrize("on_ddf", [False, True])
+def test_dataloader_epochs(datasets, engine, batch_size, epochs, on_ddf):
     dataset = Dataset(str(datasets["parquet"]), engine=engine)
+
+    if on_ddf:
+        dataset = dataset.to_ddf()
+
     cont_names = ["x", "y", "id"]
     cat_names = ["name-string", "name-cat"]
     label_name = ["label"]

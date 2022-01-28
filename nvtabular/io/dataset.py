@@ -29,13 +29,13 @@ from dask.highlevelgraph import HighLevelGraph
 from dask.utils import natural_sort_key, parse_bytes
 from fsspec.core import get_fs_token_paths
 from fsspec.utils import stringify_path
-from py._path.common import PathBase
 
 import nvtabular.dispatch as dispatch
-from nvtabular.columns.schema import ColumnSchema, Schema
 from nvtabular.dispatch import _convert_data, _hex_to_int, _is_dataframe_object
+from nvtabular.graph.schema import ColumnSchema, Schema
+from nvtabular.io.dataframe_iter import DataFrameIter
 from nvtabular.io.shuffle import _check_shuffle_arg
-from nvtabular.utils import global_dask_client
+from nvtabular.utils import _set_client_deprecated, global_dask_client
 
 from ..utils import device_mem_size
 from .csv import CSVDatasetEngine
@@ -220,7 +220,7 @@ class Dataset:
         part_mem_fraction=None,
         storage_options=None,
         dtypes=None,
-        client=None,
+        client="auto",
         cpu=None,
         base_dataset=None,
         schema=None,
@@ -229,8 +229,11 @@ class Dataset:
         if schema is not None and not isinstance(schema, Schema):
             raise TypeError(f"unsupported schema type for nvt.Dataset: {type(schema)}")
 
+        # Deprecate `client`
+        if client != "auto":
+            _set_client_deprecated(client, "Dataset")
+
         self.dtypes = dtypes
-        self.client = client
         self.schema = schema
 
         # Cache for "real" (sampled) metadata
@@ -326,7 +329,7 @@ class Dataset:
         # load in schema or infer if not available
         # path is always a list at this point
         if not self.schema:
-            if isinstance(path_or_source, (str, PathBase, Path)):
+            if isinstance(path_or_source, (str, Path)):
                 path_or_source = [Path(path_or_source)]
             if isinstance(path_or_source, list) and isinstance(path_or_source[0], (str, Path)):
                 # list of paths to files
@@ -513,20 +516,10 @@ class Dataset:
                 # multiple files from each partition directory at once.
                 # Generally speaking, we can optimize this code path
                 # much further.
-                return Dataset(_simple_shuffle(ddf, plan), client=self.client)
-
-        # Warn user if there is an unused global
-        # Dask client available
-        if global_dask_client(self.client):
-            warnings.warn(
-                "A global dask.distributed client has been detected, but the "
-                "single-threaded scheduler is being used for this shuffle operation. "
-                "Please use the `client` argument to initialize a `Dataset` and/or "
-                "`Workflow` object with distributed-execution enabled."
-            )
+                return Dataset(_simple_shuffle(ddf, plan))
 
         # Fall back to dask.dataframe algorithm
-        return Dataset(ddf.shuffle(keys, npartitions=npartitions), client=self.client)
+        return Dataset(ddf.shuffle(keys, npartitions=npartitions))
 
     def repartition(self, npartitions=None, partition_size=None):
         """Repartition the underlying ddf, and return a new Dataset
@@ -782,7 +775,7 @@ class Dataset:
                 # Default "subgraph" behavior - Set output_files to the
                 # total umber of workers, multiplied by out_files_per_proc
                 try:
-                    nworkers = len(self.client.cluster.workers)
+                    nworkers = len(global_dask_client().cluster.workers)
                 except AttributeError:
                     nworkers = 1
                 output_files = nworkers * (out_files_per_proc or 1)
@@ -861,7 +854,14 @@ class Dataset:
                     fns = output_files[i : i + files_per_task]
                     start = i * split
                     stop = min(start + split * len(fns), ddf.npartitions)
-                    new[tuple(fns)] = np.arange(start, stop)
+                    if start < stop:
+                        new[tuple(fns)] = np.arange(start, stop)
+                # let user know they will not have expected number of output files.
+                if len(new.keys()) < len(output_files):
+                    warnings.warn(
+                        f"Only created {len(new.keys())} files did not have enough\n"
+                        f"partitions to create {len(output_files)} files."
+                    )
                 output_files = new
                 suffix = ""  # Don't add a suffix later - Names already include it
             if not isinstance(output_files, dict):
@@ -910,7 +910,6 @@ class Dataset:
             conts or [],
             labels or [],
             "parquet",
-            self.client,
             num_threads,
             self.cpu,
             suffix=suffix,
@@ -1001,7 +1000,6 @@ class Dataset:
             conts,
             labels,
             "hugectr",
-            self.client,
             num_threads,
             self.cpu,
             schema=self.schema,
@@ -1132,7 +1130,7 @@ class Dataset:
         for column, dtype_info in dtypes.items():
             dtype_val = dtype_info["dtype"]
             is_list = dtype_info["is_list"]
-            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list)
+            col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list, _is_ragged=is_list)
             column_schemas.append(col_schema)
 
         self.schema = Schema(column_schemas)
@@ -1153,13 +1151,14 @@ class Dataset:
 
         if annotate_lists:
             _real_meta = self._real_meta[n]
-            return {
+            annotated = {
                 col: {
                     "dtype": dispatch._list_val_dtype(_real_meta[col]) or _real_meta[col].dtype,
                     "is_list": dispatch._is_list_dtype(_real_meta[col]),
                 }
                 for col in _real_meta.columns
             }
+            return annotated
 
         return self._real_meta[n].dtypes
 
@@ -1187,33 +1186,3 @@ def _set_dtypes(chunk, dtypes):
         else:
             chunk[col] = chunk[col].astype(dtype)
     return chunk
-
-
-class DataFrameIter:
-    def __init__(self, ddf, columns=None, indices=None, partition_lens=None, epochs=1):
-        self.indices = indices if isinstance(indices, list) else range(ddf.npartitions)
-        self._ddf = ddf
-        self.columns = columns
-        self.partition_lens = partition_lens
-        self.epochs = epochs
-
-    def __len__(self):
-        if self.partition_lens:
-            # Use metadata-based partition-size information
-            # if/when it is available.  Note that this metadata
-            # will not be correct if rows where added or dropped
-            # after IO (within Ops).
-            return sum(self.partition_lens[i] for i in self.indices) * self.epochs
-        if len(self.indices) < self._ddf.npartitions:
-            return len(self._ddf.partitions[self.indices]) * self.epochs
-        return len(self._ddf) * self.epochs
-
-    def __iter__(self):
-        for epoch in range(self.epochs):
-            for i in self.indices:
-                part = self._ddf.get_partition(i)
-                if self.columns:
-                    yield part[self.columns].compute(scheduler="synchronous")
-                else:
-                    yield part.compute(scheduler="synchronous")
-        part = None

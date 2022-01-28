@@ -18,9 +18,11 @@ from pathlib import Path
 
 import pytest
 
+import nvtabular
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.columns import ColumnSchema, ColumnSelector, Schema
-from nvtabular.columns.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
+from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
+from nvtabular.graph.schema_io.schema_writer_pbtxt import PbTxt_SchemaWriter
+from nvtabular.graph.tags import Tags
 
 
 def test_fit_schema():
@@ -231,4 +233,39 @@ def test_schema_write_read_dataset(tmpdir, dataset, engine):
     proto_schema = PbTxt_SchemaWriter._read(schema_path / "schema.pbtxt")
     new_dataset = Dataset(glob.glob(str(tmpdir) + "/*.parquet"))
     assert """name: "name-cat"\n    min: 0\n    max: 27\n""" in str(proto_schema)
-    assert new_dataset.schema == workflow.output_schema
+
+    for col_name, col_schema in new_dataset.schema.column_schemas.items():
+        wf_col_schema = workflow.output_schema[col_name]
+
+        # The dtypes don't directly match here because there's not yet a way to store
+        # the precision in the schema (as of 2022.01, using tensorflow-metadata)
+        if hasattr(wf_col_schema.dtype, "type"):
+            original_dtype = type(wf_col_schema.dtype.type(0).item())
+        else:
+            original_dtype = type(wf_col_schema.dtype(0).item())
+
+        assert col_schema.dtype == original_dtype
+        assert col_schema._is_list == wf_col_schema._is_list
+        assert col_schema.tags == wf_col_schema.tags
+        assert col_schema.properties == wf_col_schema.properties
+
+
+def test_collision_tags_workflow():
+    df = nvtabular.dispatch._make_df(
+        {
+            "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
+            "rating": [1.5, 2.5, 3.0, 4.0, 5.0, 2.0, 3.0, 1.0] * 10,
+        }
+    )
+    dataset = nvtabular.Dataset(df)
+
+    cat_features = ["user_id"] >> ops.Categorify()
+
+    te_features = cat_features >> ops.TargetEncoding(["rating"], kfold=5, p_smooth=20)
+    te_features_norm = te_features >> ops.NormalizeMinMax()
+
+    workflow = Workflow(te_features_norm).fit(dataset)
+
+    for col_schema in workflow.output_schema.column_schemas.values():
+        assert Tags.CONTINUOUS in col_schema.tags
+        assert Tags.CATEGORICAL not in col_schema.tags
