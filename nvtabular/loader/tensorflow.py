@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import contextlib
+import logging
 import os
 
 import dask.dataframe as dd
@@ -25,10 +26,17 @@ from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 
 from_dlpack = configure_tensorflow()
-
+LOG = logging.getLogger("nvtabular")
 # tf import must happen after config to restrict memory use
 import tensorflow as tf  # noqa
 
+# noqa
+try:
+    from nvtabular.io import Dataset
+
+    nvt_dataset_class = Dataset
+except ImportError:
+    nvt_dataset_class = None
 # pylint has issues with TF array ops, so disable checks until fixed:
 # https://github.com/PyCQA/pylint/issues/3613
 # pylint: disable=no-value-for-parameter,unexpected-keyword-arg,redundant-keyword-arg
@@ -68,6 +76,13 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
     if not engine:
         # default engine is parquet
         engine = "parquet"
+    if nvt_dataset_class:
+        return nvt_dataset_class(files)
+    else:
+        LOG.warning(
+            "NVTabular Dataset class not detected, reverting to Dask Dataframe."
+            "Expect slower iteration speeds."
+        )
     return dd_engine[engine](files)
 
 
