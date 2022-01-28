@@ -98,14 +98,23 @@ if cudf is not None:
 
         @classmethod
         def read_partition(cls, fs, pieces, *args, **kwargs):
-            if not cudf.utils.ioutils._is_local_filesystem(fs) and (
-                not isinstance(pieces, list) or len(pieces) == 1
+            cudf_version = Version(cudf.__version__)
+            cudf_optimized_remote = (cudf_version.major, cudf_version.minor) >= (22, 2)
+            if (
+                cudf_optimized_remote
+                or cudf.utils.ioutils._is_local_filesystem(fs)
+                or (isinstance(pieces, list) and len(pieces) > 1)
             ):
-                # This version of cudf does not include optimized
-                # fsspec usage for remote storage - use custom code path
-                return _optimized_read_partition_remote(fs, pieces, *args, **kwargs)
-            # Newer versions of cudf are already optimized for s3/gcs
-            return CudfEngine.read_partition(fs, pieces, *args, **kwargs)
+                # Use dask_cudf version if this is a local file system,
+                # or if the version of cudf is optimized for remote storage.
+                # We also fall back to cudf for multi-file aggregation.
+                return CudfEngine.read_partition(fs, pieces, *args, **kwargs)
+
+            # This version of cudf does not include optimized
+            # fsspec usage for remote storage - Use custom code path.
+            # TODO: Remove `_optimized_read_partition_remote` once the
+            # earliest supported cudf version is 22.02
+            return _optimized_read_partition_remote(fs, pieces, *args, **kwargs)
 
     def _cudf_read_metadata(*args, **kwargs):
         #

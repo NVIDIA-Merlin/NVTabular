@@ -31,6 +31,12 @@ else:
 try:
     import cudf
     from cudf.core.column import as_column, build_categorical_column
+
+    if fsspec_parquet and (LooseVersion(cudf.__version__).version[:2] < [21, 12]):
+        # This version of cudf does not support
+        # reads from python-file objects. Avoid
+        # using the `fsspec.parquet` module
+        fsspec_parquet = None
 except ImportError:
     cudf = None
 
@@ -106,34 +112,6 @@ def _optimized_read_partition_remote(
     return df
 
 
-def _handle_fsspec_parquet_options(fs, use_fsspec_parquet, use_python_file_object):
-    # Convert `use_fsspec_parquet` to bool and define
-    # separate `use_fsspec_parquet_kwargs`
-    use_fsspec_parquet_kwargs = use_fsspec_parquet if isinstance(use_fsspec_parquet, dict) else {}
-    use_fsspec_parquet = (
-        bool(use_fsspec_parquet) and fsspec_parquet and use_python_file_object is not False
-    )
-
-    # Older versions of s3fs may not work properly with
-    # `fsspec.parquet.open_parquet_file`. To be safe,
-    # we should check if fs is based on s3fs, and
-    # set `use_fsspec_parquet=False` if the version is
-    # too old
-    if use_fsspec_parquet and fs and "s3" in fs.protocol:
-        try:
-            import s3fs
-
-            use_fsspec_parquet = LooseVersion(s3fs.__version__).version[:3] > [2021, 11, 0]
-        except ImportError:
-            pass
-
-    return (
-        use_fsspec_parquet,
-        use_fsspec_parquet_kwargs,
-        use_python_file_object,
-    )
-
-
 def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
 
     if row_groups is not None and not isinstance(row_groups, list):
@@ -142,28 +120,12 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
     # Handle various key-word argument options
     user_kwargs = kwargs.copy()
     read_kwargs = user_kwargs.pop("read", {})
-    (
-        use_fsspec_parquet,
-        use_fsspec_parquet_kwargs,
-        use_python_file_object,
-    ) = _handle_fsspec_parquet_options(
-        fs,
-        read_kwargs.pop(
-            "use_fsspec_parquet",
-            user_kwargs.pop("use_fsspec_parquet", True),
-        ),
-        read_kwargs.pop("use_python_file_object", None),
-    )
     strings_to_cats = read_kwargs.get(
         "strings_to_categorical",
         user_kwargs.pop("strings_to_categorical", False),
     )
 
-    if (
-        fsspec_parquet
-        and use_fsspec_parquet
-        and (LooseVersion(cudf.__version__).version[:2] >= [21, 12])
-    ):
+    if fsspec_parquet:
         # For newer versions of fsspec/cudf, we should use
         # the `fsspec.parquet.open_parquet_file` function.
         # This approach will result in fast data transfer,
@@ -174,7 +136,6 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
             columns=columns,
             row_groups=row_groups,
             engine="pyarrow",
-            **use_fsspec_parquet_kwargs,
         ) as f:
             return cudf.read_parquet(
                 f,
