@@ -35,7 +35,7 @@ def test_tf_op_exports_own_config(tmpdir):
 
     # Triton
     triton_op = tf_op.TensorflowOp(model)
-    triton_op.export(tmpdir, None, None)
+    triton_op.export(tmpdir, Schema(), Schema())
 
     # Export creates directory
     export_path = pathlib.Path(tmpdir) / triton_op.export_name
