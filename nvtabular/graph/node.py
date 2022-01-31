@@ -141,7 +141,6 @@ class Node:
         for col_name, col_schema in self.input_schema.column_schemas.items():
             source_col_schema = ancestors_schema.get(col_name)
 
-            # TODO: Make this (or something else) raise an error about column mismatches
             if not source_col_schema:
                 raise ValueError(
                     f"Missing column '{col_name}' at the input to '{self.op.__class__.__name__}'."
@@ -311,18 +310,6 @@ class Node:
             self.selector = self.selector.filter_columns(ColumnSelector(input_cols))
 
         return removed_outputs
-
-    # Code Smells We Know:
-    # - Repetition
-    # - .. in a class access (Law of Demeter)
-    # - class should have single responsibility
-    # - class at multiple levels of abstraction
-    # - methods too long
-    # - function imitating method
-    # - avoid if statements (where possible)
-    # - method modifies state and returns a (non-self) value (ask or tell, not both)
-    # - don't use booleans to describe return (throw an appropriately
-    #       typed exception instead if it fails)
 
     @property
     def parents_with_dependencies(self):
