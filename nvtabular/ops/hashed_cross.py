@@ -17,7 +17,7 @@ from typing import Dict, Union
 
 import numpy
 
-from nvtabular.dispatch import DataFrameType, _hash_series, _is_series_object, annotate
+from nvtabular.dispatch import DataFrameType, _hash_series, annotate
 
 from .operator import ColumnSelector, Operator
 
