@@ -59,11 +59,7 @@ class HashedCross(Operator):
         for cross in _nest_columns(col_selector.names):
             val = 0
             for column in cross:
-                if _is_series_object(val):
-                    val ^= _hash_series(df[column])  # or however we want to do this aggregation
-                else:
-                    val = _hash_series(df[column])
-
+                val = _hash_series(df[column]) ^ val  # or however we want to do this aggregation
             if isinstance(self.num_buckets, dict):
                 val = val % self.num_buckets[cross]
             else:
