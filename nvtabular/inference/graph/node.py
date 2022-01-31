@@ -31,7 +31,6 @@ class InferenceNode(Node):
     def exportable(self):
         return hasattr(self.op, "export")
 
-    # TODO: Can we delete these matching methods now that we've shored up dtypes?
     def match_descendant_dtypes(self, source_node):
         self.output_schema = _match_dtypes(source_node.input_schema, self.output_schema)
         return self
