@@ -144,3 +144,59 @@ To run NVTabular on Databricks, do the following:
 
 9. Select a GPU node for the Worker and Driver.
    Once the Databricks cluster is up, NVTabular will be running inside of it.
+
+## AWS SageMaker ##
+
+[AWS SageMaker](https://aws.amazon.com/sagemaker/) is a service from AWS to "build, train and deploy machine learning" models. It automates and manages the MLOps workflow. It supports jupyter notebook instances enabling users to work directly in jupyter notebook/jupyter lab without any additional configurations. In this section, we will explain how to run NVIDIA Merlin (NVTabular) on AWS SageMaker notebook instances. We adopted the work from [Eugene](https://twitter.com/eugeneyan/) from his [twitter post](https://twitter.com/eugeneyan/status/1470916049604268035). We tested the workflow on February, 1st, 2022, but it is not integrated into our CI workflows. Future release of Merlin or Merlin's dependencies can cause issues.
+
+To run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens) on AWS SageMaker, do the following:
+
+1. Login into your AWS console and select AWS SageMaker.
+
+2. Select `Notebook` -> `Notebook instances` -> `Create notebook instance`. Give the instance a name and select a notebook instance type with GPUs. For example, we selected `ml.p3.2xlarge`. Please review the associated costs with each instance type. As a platform identifier, select `notebook-al2-v1`. The previous platform identifier runs with TensorFlow 2.1.x and we had more issue to update it to TensorFlow 2.6.x. The `volume size` can be increased in the section `Additional configuration`.
+
+3. After the instance is running, connect to jupyter lab.
+
+4. Start a terminal to have access to the command line.
+
+5. The image contains many conda environments, which requires ~60GB of disk space. You can remove some of them to free disk space in the folder `/home/ec2-user/anaconda3/envs/`
+
+6. Clone the NVTabular repository and install the conda environment.
+
+```
+cd cd /home/ec2-user/SageMaker/
+git clone https://github.com/NVIDIA-Merlin/NVTabular.git
+conda env create -f=NVTabular/conda/environments/nvtabular_aws_sagemaker.yml
+```
+
+7. Activate the conda environment
+
+```
+source /home/ec2-user/anaconda3/etc/profile.d/conda.sh
+conda activate nvtabular
+```
+
+8. Install additional packages, such as TensorFlow or PyTorch
+
+```
+pip install tensorflow-gpu 
+pip install torch
+pip install graphviz
+```
+
+9. Install Transformer4Rec, torchmetrics and ipykernel 
+
+```
+conda install -y -c nvidia -c rapidsai -c numba -c conda-forge transformers4rec
+conda install -y torchmetrics ipykernel
+```
+
+10. Add conda environment as ipykernel
+
+```
+python -m ipykernel install --user --name=nvtabular
+```
+
+11. You can switch in jupyter lab and run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/main/examples/getting-started-movielens). 
+
+This workflow enables NVTabular ETL and training with TensorFlow or Pytorch. Deployment with Triton Inference Server will follow soon.
