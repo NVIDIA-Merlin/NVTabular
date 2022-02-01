@@ -24,9 +24,8 @@ from nvtabular.inference.triton.ensemble import export_tensorflow_model
 
 
 class TensorflowOp(InferenceOperator):
-    def __init__(self, model, name=None):
+    def __init__(self, model):
         self.model = model
-        self.name = name or self.__class__.__name__.lower()
 
         inputs, outputs = self.model.inputs, self.model.outputs
 
@@ -49,16 +48,15 @@ class TensorflowOp(InferenceOperator):
         self.model_inputs = [col.name.split("/")[0] for col in inputs]
         self.model_outputs = [col.name.split("/")[0] for col in outputs]
 
-    @property
-    def export_name(self):
-        return self.name
-
-    def export(self, path, version=1):
+    def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
-        new_dir_path = pathlib.Path(path) / self.export_name
-        new_dir_path.mkdir()
+        # TODO: refactor out the nodeid logic check
+        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
 
-        return export_tensorflow_model(self.model, self.export_name, new_dir_path, version=version)
+        node_export_path = pathlib.Path(path) / node_name
+        node_export_path.mkdir(exist_ok=True)
+
+        return export_tensorflow_model(self.model, node_name, node_export_path, version=version)
 
     def compute_input_schema(
         self,
@@ -67,18 +65,9 @@ class TensorflowOp(InferenceOperator):
         deps_schema: Schema,
         selector: ColumnSelector,
     ) -> Schema:
-        expected_input = (parents_schema + deps_schema).apply(selector)
-        if expected_input.column_names != self.model_inputs:
-            raise ValueError(
-                f"Request schema provided to {self.__class__.__name__} \n"
-                "doesn't match model's input schema.\n"
-                f"Request schema columns: {expected_input.column_names}\n"
-                f"Model input columns: {self.model_inputs}."
-            )
-
         in_schema = Schema()
         for col, input_col in zip(self.model_inputs, self.model.inputs):
-            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype)
+            in_schema.column_schemas[col] = ColumnSchema(col, dtype=input_col.dtype.as_numpy_dtype)
 
         return in_schema
 
@@ -99,5 +88,7 @@ class TensorflowOp(InferenceOperator):
     ) -> Schema:
         out_schema = Schema()
         for col, output_col in zip(self.model_outputs, self.model.outputs):
-            out_schema.column_schemas[col] = ColumnSchema(col, dtype=output_col.dtype)
+            out_schema.column_schemas[col] = ColumnSchema(
+                col, dtype=output_col.dtype.as_numpy_dtype
+            )
         return out_schema

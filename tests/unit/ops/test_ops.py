@@ -109,7 +109,7 @@ def test_dropna(tmpdir, df, dataset, engine, cpu):
     processor.fit(dataset)
 
     new_df = processor.transform(dataset).to_ddf().compute()
-    assert new_df.columns.all() == df.columns.all()
+    assert set(new_df.columns) == set(df.columns)
     assert new_df.isnull().all().sum() < 1, "null values exist"
 
 
