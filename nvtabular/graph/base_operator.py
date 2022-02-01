@@ -115,7 +115,10 @@ class BaseOperator:
 
         output_schema = Schema()
         for output_col_name, input_col_names in self.column_mapping(col_selector).items():
-            col_schema = self.compute_column_schema(output_col_name, input_schema[input_col_names])
+            col_schema = ColumnSchema(output_col_name)
+            col_schema = self._compute_dtype(col_schema, input_schema[input_col_names])
+            col_schema = self._compute_tags(col_schema, input_schema[input_col_names])
+            col_schema = self._compute_properties(col_schema, input_schema[input_col_names])
             output_schema += Schema([col_schema])
 
         if self.dynamic_dtypes and prev_output_schema:
