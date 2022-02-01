@@ -33,6 +33,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.dispatch import HAS_GPU, _make_df
+from nvtabular.graph.graph import postorder_iter_nodes
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.utils import set_dask_client
@@ -636,3 +637,41 @@ def test_workflow_transform_ddf_dtypes():
     # Followup dask-cudf sorting used to throw an exception because of dtype issues,
     # check that it works now
     transformed_ddf.sort_values(["id", "timestamp"]).compute()
+
+
+def test_workflow_saved_schema(tmpdir):
+    raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
+    data = nvt.dispatch._make_df({"geo": raw})
+
+    geo_location = ColumnSelector(["geo"])
+    state = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 5))
+        >> ops.Rename(postfix="_state")
+    )
+    country = (
+        geo_location
+        >> ops.LambdaOp(lambda col: col.str.slice(0, 2))
+        >> ops.Rename(postfix="_country")
+    )
+    geo_features = state + country + geo_location >> ops.Categorify()
+
+    # create the workflow and transform the input
+    workflow = Workflow(geo_features)
+    workflow.fit(Dataset(data))
+    real_input_schema = workflow.input_schema
+    real_output_schema = workflow.output_schema
+
+    # save the workflow (including categorical mapping parquet files)
+    # and then verify we can load the saved workflow after moving the directory
+    out_path = os.path.join(tmpdir, "output", "workflow")
+    workflow.save(out_path)
+
+    workflow2 = Workflow.load(out_path)
+
+    assert workflow2.input_schema == real_input_schema
+    assert workflow2.output_schema == real_output_schema
+
+    for node in postorder_iter_nodes(workflow2.output_node):
+        assert node.input_schema is not None
+        assert node.output_schema is not None
