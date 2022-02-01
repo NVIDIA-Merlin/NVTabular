@@ -50,7 +50,6 @@ except ImportError:
             return np.testing.assert_allclose(a, b)
 
 
-import psutil
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
@@ -249,14 +248,11 @@ def bench_info():
     bInfo = BenchmarkInfo(
         machineName=socket.gethostname(),
         cudaVer=cuda_version,
-        osType="%s %s" % (uname.system, uname.release),
+        osType="%s" % (uname.system),
         pythonVer=platform.python_version(),
         commitHash=commitHash,
         commitTime=commitTime,
         gpuType=cuda.get_current_device().name.decode("utf-8"),
-        cpuType=uname.processor,
-        arch=uname.machine,
-        ram="%d" % psutil.virtual_memory().total,
     )
     return bInfo
 
@@ -266,7 +262,7 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
     # figure out the categorify node from the workflow graph
     cats = [
         cg.op
-        for cg in nvtabular.workflow.node.iter_nodes([workflow.output_node])
+        for cg in nvtabular.graph.node.iter_nodes([workflow.output_node])
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:

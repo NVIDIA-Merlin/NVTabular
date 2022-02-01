@@ -15,8 +15,8 @@
 import numpy
 from dask.dataframe.utils import meta_nonempty
 
-from nvtabular.columns import Schema
 from nvtabular.dispatch import DataFrameType, annotate
+from nvtabular.graph.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -100,7 +100,6 @@ class Groupby(Operator):
 
     @annotate("Groupby_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-
         # Sort if necessary
         if self.sort_cols:
             df = df.sort_values(self.sort_cols, ignore_index=True)
@@ -108,6 +107,7 @@ class Groupby(Operator):
         # List aggregations do not work with empty data.
         # Use synthetic metadata to predict output columns.
         empty_df = not len(df)
+
         _df = meta_nonempty(df) if empty_df else df
 
         # Get "complete" aggregation dicts
@@ -124,59 +124,61 @@ class Groupby(Operator):
 
     transform.__doc__ = Operator.transform.__doc__
 
-    def output_column_names(self, columns):
-        # Get the expected column names after transformation
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
+        if not col_selector and hasattr(self, "target"):
+            col_selector = (
+                ColumnSelector(self.target) if isinstance(self.target, list) else self.target
+            )
+        return super().compute_output_schema(input_schema, col_selector, prev_output_schema)
+
+    def column_mapping(self, col_selector):
+        column_mapping = {}
+
+        for groupby_col in self.groupby_cols:
+            if groupby_col in col_selector.names:
+                column_mapping[groupby_col] = [groupby_col]
+
         _list_aggs, _conv_aggs = _get_agg_dicts(
-            self.groupby_cols, self.list_aggs, self.conv_aggs, columns
+            self.groupby_cols, self.list_aggs, self.conv_aggs, col_selector
         )
-        _list_aggs = _columns_out_from_aggs(_list_aggs, name_sep=self.name_sep)
-        _conv_aggs = _columns_out_from_aggs(_conv_aggs, name_sep=self.name_sep)
-        return ColumnSelector(list(set(self.groupby_cols) | set(_list_aggs) | set(_conv_aggs)))
 
-    def _dtypes(self):
-        return numpy.int64
+        for input_col_name, aggs in _list_aggs.items():
+            output_col_names = _columns_out_from_aggs(
+                {input_col_name: aggs}, name_sep=self.name_sep
+            )
+            for output_col_name in output_col_names:
+                column_mapping[output_col_name] = [input_col_name]
 
-    def compute_output_schema(self, input_schema: Schema, col_selector: ColumnSelector) -> Schema:
-        if not col_selector:
-            if hasattr(self, "target"):
-                col_selector = (
-                    ColumnSelector(self.target) if isinstance(self.target, list) else self.target
-                )
-            else:
-                col_selector = ColumnSelector(input_schema.column_names)
-        if col_selector.tags:
-            tags_col_selector = ColumnSelector(tags=col_selector.tags)
-            filtered_schema = input_schema.apply(tags_col_selector)
-            col_selector += ColumnSelector(filtered_schema.column_names)
+        for input_col_name, aggs in _conv_aggs.items():
+            output_col_names = _columns_out_from_aggs(
+                {input_col_name: aggs}, name_sep=self.name_sep
+            )
+            for output_col_name in output_col_names:
+                column_mapping[output_col_name] = [input_col_name]
 
-            # zero tags because already filtered
-            col_selector._tags = []
-        new_col_selector = self.output_column_names(col_selector)
-        new_list = []
-        for name in col_selector.names:
-            for new_name in new_col_selector.names:
-                if name in new_name and new_name not in new_list:
-                    new_list.append(new_name)
+        return column_mapping
 
-        base_cols_map = {}
-        for new_col in new_list:
-            base_cols_map[new_col] = []
-            for old_col in input_schema.column_schemas:
-                if old_col in new_col:
-                    base_cols_map[new_col].append(old_col)
+    def _compute_dtype(self, col_schema, input_schema):
+        col_schema = super()._compute_dtype(col_schema, input_schema)
 
-        col_selector = ColumnSelector(new_list)
-        for column_name in col_selector.names:
-            if column_name not in input_schema.column_schemas:
-                # grab the first collision
-                base_col_name = base_cols_map[column_name][0]
-                base_col_schema = input_schema.column_schemas[base_col_name]
-                input_schema += Schema([base_col_schema.with_name(column_name)])
+        dtype = col_schema.dtype
+        is_list = col_schema._is_list
 
-        output_schema = Schema()
-        for column_schema in input_schema.apply(col_selector):
-            output_schema += Schema([self.transformed_schema(column_schema)])
-        return output_schema
+        dtypes = {"count": numpy.int32, "mean": numpy.float32}
+
+        is_lists = {"list": True}
+
+        for col_name in input_schema.column_names:
+            combined_aggs = self.conv_aggs.get(col_name, []) + self.list_aggs.get(col_name, [])
+            for agg in combined_aggs:
+                if col_schema.name.endswith(f"{self.name_sep}{agg}"):
+                    dtype = dtypes.get(agg, dtype)
+                    is_list = is_lists.get(agg, is_list)
+                    break
+
+        return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
@@ -194,6 +196,7 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
     # Apply conventional aggs
     _columns = list(set(groupby_cols) | set(_conv_aggs) | set(_list_aggs))
     df = _df[_columns].groupby(groupby_cols).agg(_conv_aggs).reset_index()
+
     df.columns = [
         name_sep.join([n for n in name if n != ""]) for name in df.columns.to_flat_index()
     ]
@@ -205,6 +208,12 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
                 df[f"{col}{name_sep}{_agg}"] = _first_or_last(df[f"{col}{name_sep}list"], _agg)
         if "list" not in aggs:
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
+
+    for col in df.columns:
+        if col.endswith(f"{name_sep}count"):
+            df[col] = df[col].astype(numpy.int32)
+        elif col.endswith(f"{name_sep}mean"):
+            df[col] = df[col].astype(numpy.float32)
 
     return df
 
