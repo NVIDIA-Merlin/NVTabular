@@ -74,7 +74,9 @@ class PipelineableInferenceOperator(InferenceOperator):
             Returns a transformed dataframe for this operator
         """
 
-    def export(self, path, input_schema, output_schema, node_id=None, version=1):
+    def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
+        params = params or {}
+
         node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
 
         node_export_path = pathlib.Path(path) / node_name
@@ -90,6 +92,7 @@ class PipelineableInferenceOperator(InferenceOperator):
                 "class_name": self.__class__.__name__,
                 "input_dict": json.dumps(_schema_to_dict(input_schema)),
                 "output_dict": json.dumps(_schema_to_dict(output_schema)),
+                "params": json.dumps(params),
             }
         )
 

@@ -21,7 +21,7 @@ from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
 
 
-class WorkflowOp(InferenceOperator):
+class TransformWorkflow(InferenceOperator):
     def __init__(
         self,
         workflow,

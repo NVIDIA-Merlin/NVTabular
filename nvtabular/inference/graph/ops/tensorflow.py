@@ -23,7 +23,7 @@ from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import export_tensorflow_model
 
 
-class TensorflowOp(InferenceOperator):
+class PredictTensorflow(InferenceOperator):
     def __init__(self, model):
         self.model = model
 

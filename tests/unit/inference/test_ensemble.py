@@ -38,8 +38,8 @@ tf = pytest.importorskip("tensorflow")
 triton = pytest.importorskip("nvtabular.inference.triton")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
-from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
-from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
+from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow  # noqa
+from nvtabular.inference.graph.ops.workflow import TransformWorkflow  # noqa
 from tests.unit.inference.inf_test_ops import PlusTwoOp  # noqa
 from tests.unit.inference.inference_utils import (  # noqa
     _run_ensemble_on_tritonserver,
@@ -85,7 +85,9 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     )
 
     # Creating Triton Ensemble
-    triton_chain = selector >> WorkflowOp(workflow, cats=["x_nvt"]) >> TensorflowOp(model)
+    triton_chain = (
+        selector >> TransformWorkflow(workflow, cats=["x_nvt"]) >> PredictTensorflow(model)
+    )
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
@@ -137,9 +139,9 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     model = create_tf_model(["name-cat", "name-string"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
-    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow)
-    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2)
-    triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
+    triton_chain_1 = ["name-cat"] >> TransformWorkflow(workflow)
+    triton_chain_2 = ["name-string"] >> TransformWorkflow(workflow_2)
+    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow(model)
 
     triton_ens = Ensemble(triton_chain, schema)
 
@@ -165,8 +167,10 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
 
 
 def test_graph_traverse_algo():
-    chain_1 = ["name-cat"] >> WorkflowOp(nvt.Workflow(["name-cat"] >> nvt.ops.Categorify()))
-    chain_2 = ["name-string"] >> WorkflowOp(nvt.Workflow(["name-string"] >> nvt.ops.Categorify()))
+    chain_1 = ["name-cat"] >> TransformWorkflow(nvt.Workflow(["name-cat"] >> nvt.ops.Categorify()))
+    chain_2 = ["name-string"] >> TransformWorkflow(
+        nvt.Workflow(["name-string"] >> nvt.ops.Categorify())
+    )
 
     triton_chain = chain_1 + chain_2
 
@@ -204,9 +208,9 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
     model = create_tf_model(["name-cat", "name-string_plus_2"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
-    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow)
-    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2) >> PlusTwoOp()
-    triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
+    triton_chain_1 = ["name-cat"] >> TransformWorkflow(workflow)
+    triton_chain_2 = ["name-string"] >> TransformWorkflow(workflow_2) >> PlusTwoOp()
+    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow(model)
 
     triton_ens = Ensemble(triton_chain, schema)
 

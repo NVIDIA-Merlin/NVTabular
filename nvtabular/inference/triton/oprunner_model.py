@@ -26,6 +26,8 @@
 
 import json
 import logging
+import sys
+import traceback
 from typing import List
 
 from triton_python_backend_utils import (
@@ -33,6 +35,7 @@ from triton_python_backend_utils import (
     InferenceResponse,
     Tensor,
     get_input_tensor_by_name,
+    pb_utils,
 )
 
 from nvtabular.inference.graph.op_runner import OperatorRunner
@@ -57,19 +60,31 @@ class TritonPythonModel:
         input_column_names = list(json.loads(operator_params["input_dict"]).keys())
 
         responses = []
+
         for request in requests:
-            # transform the triton tensors to a dict of name:numpy tensor
-            input_tensors = {
-                name: get_input_tensor_by_name(request, name).as_numpy()
-                for name in input_column_names
-            }
+            try:
+                # transform the triton tensors to a dict of name:numpy tensor
+                input_tensors = {
+                    name: get_input_tensor_by_name(request, name).as_numpy()
+                    for name in input_column_names
+                }
 
-            inf_df = InferenceDataFrame(input_tensors)
+                inf_df = InferenceDataFrame(input_tensors)
 
-            raw_tensor_tuples = self.runner.execute(inf_df)
+                raw_tensor_tuples = self.runner.execute(inf_df)
 
-            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
+                result = [Tensor(name, data) for name, data in raw_tensor_tuples]
 
-            responses.append(InferenceResponse(result))
+                responses.append(InferenceResponse(result))
+
+            except Exception as e:  # noqa
+                exc = sys.exc_info()
+                formatted_tb = str(traceback.format_tb(exc[-1]))
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        output_tensors=[],
+                        error=pb_utils.TritonError(f"{exc[0]}, {exc[1]}, {formatted_tb}"),
+                    )
+                )
 
         return responses
