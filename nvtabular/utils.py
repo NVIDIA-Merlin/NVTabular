@@ -163,6 +163,102 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
     return ddf
 
 
+class Distributed:
+    def __init__(self, client=None, cluster_type=None, force_new=False, **cluster_options):
+        self._initial_client = global_dask_client()  # Initial state
+        self._client = client or "auto"  # Cannot be `None`
+        self.cluster_type = cluster_type or ("cpu" if cuda is None else "cuda")
+        self.cluster_options = cluster_options
+        # We can only shut down the cluster in `shutdown`/`__exit__`
+        # if we are generating it internally
+        set_dask_client(self._client)
+        self._allow_shutdown = global_dask_client() is None or force_new
+        self._active = False
+        self.force_new = force_new
+        # Activate/deploy the client/cluster
+        self._activate()
+
+    @property
+    def client(self):
+        return self._client
+
+    @property
+    def cluster(self):
+        return self.client.cluster
+
+    @property
+    def dashboard_link(self):
+        return self.client.dashboard_link
+
+    def _activate(self):
+        if not self._active:
+            self._client = set_dask_client(
+                self._client,
+                new_cluster=self.cluster_type,
+                force_new=self.force_new,
+                **self.cluster_options,
+            )
+        self._active = True
+        if self._client in ("auto", None):
+            raise RuntimeError(f"Failed to deploy a new local {self.cluster_type} cluster.")
+
+    def _deactivate(self):
+        self._client = set_dask_client(self._initial_client)
+        self._active = False
+
+    def deactivate(self):
+        if self._allow_shutdown and self._active:
+            self._client.close()
+        self._deactivate()
+
+    def __enter__(self):
+        self._activate()
+        return self
+
+    def __exit__(self, *args):
+        self.deactivate()
+
+
+class Serial:
+    def __init__(self):
+        # Save the initial client setting and
+        # activate serial-execution mode
+        self._initial_client = global_dask_client()
+        self._client = self._initial_client
+        self._active = False
+        self._activate()
+
+    @property
+    def client(self):
+        return self._client
+
+    def _activate(self):
+        # Activate serial-execution mode.
+        # This just means we are setting the
+        # global dask client to `None`
+        if not self._active:
+            set_dask_client(None)
+        self._active = True
+        if global_dask_client() is not None:
+            raise RuntimeError("Failed to activate serial-execution mode.")
+
+    def deactivate(self):
+        # Deactivate serial-execution mode.
+        # This just means we are setting the
+        # global dask client to the original setting.
+        set_dask_client(self._initial_client)
+        self._active = False
+        if self._initial_client is not None and global_dask_client() is None:
+            raise RuntimeError("Failed to deactivate serial-execution mode.")
+
+    def __enter__(self):
+        self._activate()
+        return self
+
+    def __exit__(self, *args):
+        self.deactivate()
+
+
 def _set_client_deprecated(client, caller_str):
     warnings.warn(
         f"The `client` argument is deprecated from {caller_str} "
@@ -175,7 +271,7 @@ def _set_client_deprecated(client, caller_str):
     set_dask_client(client)
 
 
-def set_dask_client(client="auto", new_cluster=None, **cluster_options):
+def set_dask_client(client="auto", new_cluster=None, force_new=False, **cluster_options):
     """Set the Dask-Distributed client
 
     Parameters
@@ -192,6 +288,10 @@ def set_dask_client(client="auto", new_cluster=None, **cluster_options):
         option corresponds to `dask_cuda.LocalCUDACluster`,
         while "cpu" corresponds to `distributed.LocalCluster`.
         Default is `None` (no local cluster is generated).
+    force_new : bool
+        Whether to force the creation of a new local cluster
+        in the case that a global client object is already
+        detected. Default is False.
     **cluster_options :
         Key-word arguments to pass to the local-cluster
         constructor specified by `new_cluster` (e.g.
@@ -200,12 +300,12 @@ def set_dask_client(client="auto", new_cluster=None, **cluster_options):
     _nvt_dask_client.set(client)
 
     # Check if we need to deploy a new cluster
-    if new_cluster:
+    if new_cluster and client is not None:
         base, cluster = {
             "cuda": ("dask_cuda", "LocalCUDACluster"),
             "cpu": ("distributed", "LocalCluster"),
         }.get(new_cluster, (None, None))
-        if _nvt_dask_client.get():
+        if global_dask_client() is not None and not force_new:
             # Don't deploy a new cluster if one already exists
             warnings.warn(
                 f"Existing Dask-client object detected in the "
@@ -226,6 +326,10 @@ def set_dask_client(client="auto", new_cluster=None, **cluster_options):
         else:
             # Something other than "cuda" or "cpu" was specified
             raise ValueError(f"{new_cluster} not a supported option for new_cluster.")
+
+    # Return the active client object
+    active = _nvt_dask_client.get()
+    return None if active == "auto" else active
 
 
 def global_dask_client():
