@@ -164,6 +164,89 @@ def _ensure_optimize_dataframe_graph(ddf=None, dsk=None, keys=None):
 
 
 class Distributed:
+    """Distributed-Execution Context Manager
+
+    The purpose of this execution-manager utility is to
+    provide an intuitive context manager for distributed
+    (multi-GPU/CPU) scheduling and execution with Dask.
+
+    NOTE: For multi-node execution, it is the users
+    responsibility to create a distributed Dask cluster
+    with an appropriate deployment technology.  This
+    class only supports the automatic generation of
+    local (single-machine) clusters. However, the class
+    can be used to connect to any existing dask cluster
+    (local or not), as long as a valid `client` argument
+    can be defined.
+
+    Parameters
+    -----------
+    client : `dask.distributed.Client`; Optional
+        The client to use for distributed-Dask execution.
+    new_cluster : {"cuda", "cpu", None}
+        Type of local cluster to generate in the case that a
+        global client is not detected (or `force_new=True`).
+        "cuda" corresponds to `dask_cuda.LocalCUDACluster`,
+        while "cpu" corresponds to `distributed.LocalCluster`.
+        Default is "cuda" if GPU support is detected.
+    force_new : bool
+        Whether to force the creation of a new local cluster
+        in the case that a global client object is already
+        detected. Default is False.
+    **cluster_options :
+        Key-word arguments to pass to the local-cluster
+        constructor specified by `new_cluster` (e.g.
+        `n_workers=2`).
+
+    Examples
+    --------
+    The easiest way to use `Distributed` is within a
+    conventional `with` statement::
+
+        workflow = nvt.Workflow(["col"] >> ops.Normalize())
+        dataset = nvt.Dataset(...)
+        with nvt.Distributed():
+            workflow.transform(dataset).to_parquet(...)
+
+    In this case, all Dask-based scheduling and execution
+    required within the `with Distributed()` block will be
+    performed using a distributed cluster. If an existing
+    client is not detected, a default `LocalCUDACluster`
+    or `LocalCluster` will be automatically deployed (the
+    specific type depending on GPU support).
+
+    Alternatively, the distributed-execution manager can be
+    used without a `with` statement as follows::
+
+        workflow = nvt.Workflow(["col"] >> ops.Normalize())
+        dataset = nvt.Dataset(...)
+        exec = nvt.Distributed()
+        workflow.transform(dataset).to_parquet(...)
+        exec.deactivate()
+
+    Note that `deactivate()` must be used to resume default
+    execution in the case that `Distributed` is not used in
+    a `with` context.
+
+    Since the default local cluster may be inefficient for
+    many workflows, the user can also specify the specific
+    `cluster_type` and `**cluster_options`. For example::
+
+        with Distributed(
+            cluster_type="cuda",
+            n_workers=4,
+            local_directory="/raid/dask-space",
+            protocol="ucx",
+            device_memory_limit=0.8,
+            rmm_pool_size="20GB",
+            log_spilling=True,
+        )
+
+    In this case, the `cluster_type="cuda"` calls for the
+    creation of a `LocalCUDACluster`, and all other key-word
+    arguments are passed to the `LocalCUDACluster` constructor.
+    """
+
     def __init__(self, client=None, cluster_type=None, force_new=False, **cluster_options):
         self._initial_client = global_dask_client()  # Initial state
         self._client = client or "auto"  # Cannot be `None`
@@ -218,8 +301,42 @@ class Distributed:
     def __exit__(self, *args):
         self.deactivate()
 
+    def __del__(self, *args):
+        self.deactivate()
+
 
 class Serial:
+    """Serial-Execution Context Manager
+
+    Examples
+    --------
+    The easiest way to use `Serial` is within a
+    conventional `with` statement::
+
+        workflow = nvt.Workflow(["col"] >> ops.Normalize())
+        dataset = nvt.Dataset(...)
+        with nvt.Serial():
+            workflow.transform(dataset).to_parquet(...)
+
+    In this case, all Dask-based scheduling and execution
+    required within the `with Serial()` block will be
+    performed using the "synchronous" (single-threaded)
+    scheduler.
+
+    Alternatively, the serial-execution manager can be
+    used without a `with` statement as follows::
+
+        workflow = nvt.Workflow(["col"] >> ops.Normalize())
+        dataset = nvt.Dataset(...)
+        exec = nvt.Serial()
+        workflow.transform(dataset).to_parquet(...)
+        exec.deactivate()
+
+    Note that `deactivate()` must be used to resume
+    default execution in the case that `Serial` is
+    not used in a `with` context.
+    """
+
     def __init__(self):
         # Save the initial client setting and
         # activate serial-execution mode
