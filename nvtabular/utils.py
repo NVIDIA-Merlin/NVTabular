@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import gzip
+import importlib
 import os
 import shutil
 import tarfile
@@ -24,7 +25,7 @@ from contextvars import ContextVar
 
 import dask
 from dask.dataframe.optimize import optimize as dd_optimize
-from dask.distributed import get_client
+from dask.distributed import Client, get_client
 from tqdm import tqdm
 
 _nvt_dask_client = ContextVar("_nvt_dask_client", default="auto")
@@ -174,14 +175,57 @@ def _set_client_deprecated(client, caller_str):
     set_dask_client(client)
 
 
-def set_dask_client(client="auto"):
-    """Set the global dask client
+def set_dask_client(client="auto", new_cluster=None, **cluster_options):
+    """Set the Dask-Distributed client
 
-    Specify `'auto'` (default) to use the global dask
-    client (if one is detected). To disable distributed
-    execution altogether, specify `None`.
+    Parameters
+    -----------
+    client : {"auto", None} or `dask.distributed.Client`
+        The client to use for distributed-Dask execution.
+        If `"auto"` (default) the current python context will
+        be searched for an existing client object. Specify
+        `None` to disable distributed execution altogether.
+    new_cluster : {"cuda", "cpu", None}
+        Type of local cluster to generate in the case that
+        `client="auto"` and a global dask client is not
+        detected in the current python context. The "cuda"
+        option corresponds to `dask_cuda.LocalCUDACluster`,
+        while "cpu" corresponds to `distributed.LocalCluster`.
+        Default is `None` (no local cluster is generated).
+    **cluster_options :
+        Key-word arguments to pass to the local-cluster
+        constructor specified by `new_cluster` (e.g.
+        `n_workers=2`).
     """
     _nvt_dask_client.set(client)
+
+    # Check if we need to deploy a new cluster
+    if new_cluster:
+        if _nvt_dask_client.get():
+            # Don't deploy a new cluster if one already exists
+            warnings.warn(
+                f"Existing Dask-client object detected in the "
+                f"current context. New {new_cluster} cluster "
+                f"will not be deployed."
+            )
+        elif new_cluster in {"cuda", "cpu"}:
+            base, cluster = {
+                "cuda": ("dask_cuda", "LocalCUDACluster"),
+                "cpu": ("distributed", "LocalCluster"),
+            }.get(new_cluster)
+            try:
+                base = importlib.import_module(base)
+            except ImportError as err:
+                # ImportError should only occur for LocalCUDACluster,
+                # but I'm making this general to be "safe"
+                raise ImportError(
+                    f"new_cluster={new_cluster} requires {base}. "
+                    f"Please make sure this library is installed. "
+                ) from err
+            _nvt_dask_client.set(Client(getattr(base, cluster)(**cluster_options)))
+        else:
+            # Something other than "cuda" or "cpu" was specified
+            raise ValueError(f"{new_cluster} not a supported option for new_cluster.")
 
 
 def global_dask_client():
