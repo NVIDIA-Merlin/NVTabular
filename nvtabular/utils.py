@@ -201,6 +201,10 @@ def set_dask_client(client="auto", new_cluster=None, **cluster_options):
 
     # Check if we need to deploy a new cluster
     if new_cluster:
+        base, cluster = {
+            "cuda": ("dask_cuda", "LocalCUDACluster"),
+            "cpu": ("distributed", "LocalCluster"),
+        }.get(new_cluster, (None, None))
         if _nvt_dask_client.get():
             # Don't deploy a new cluster if one already exists
             warnings.warn(
@@ -208,11 +212,7 @@ def set_dask_client(client="auto", new_cluster=None, **cluster_options):
                 f"current context. New {new_cluster} cluster "
                 f"will not be deployed."
             )
-        elif new_cluster in {"cuda", "cpu"}:
-            base, cluster = {
-                "cuda": ("dask_cuda", "LocalCUDACluster"),
-                "cpu": ("distributed", "LocalCluster"),
-            }.get(new_cluster)
+        elif base and cluster:
             try:
                 base = importlib.import_module(base)
             except ImportError as err:
