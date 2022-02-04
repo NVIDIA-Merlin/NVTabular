@@ -21,7 +21,7 @@ import dask.dataframe as dd
 import numpy as np
 
 from nvtabular.dispatch import HAS_GPU
-from nvtabular.graph.tags import Tags
+from nvtabular.graph import Tags
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns
 

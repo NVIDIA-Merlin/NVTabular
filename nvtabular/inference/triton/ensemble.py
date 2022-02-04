@@ -28,8 +28,8 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.dispatch import _is_string_dtype  # noqa
-from nvtabular.graph.tags import Tags  # noqa
+from nvtabular.dispatch import is_string_dtype  # noqa
+from nvtabular.graph import Tags  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -716,7 +716,7 @@ def _convert_dtype(dtype):
         "bool": model_config.TYPE_BOOL,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype_name in dtypes:
         return dtypes[dtype_name]
@@ -741,7 +741,7 @@ def _convert_pytorch_dtype(dtype):
         torch.bool: model_config.TYPE_BOOL,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype in dtypes:
         return dtypes[dtype]
@@ -771,7 +771,7 @@ def _convert_string2pytorch_dtype(dtype):
         "TYPE_BOOL": torch.bool,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype_name in dtypes:
         return dtypes[dtype_name]

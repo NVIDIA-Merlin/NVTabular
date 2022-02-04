@@ -18,7 +18,7 @@ from nvtabular import ops as workflow_ops
 from nvtabular.graph import ops as graph_ops
 
 
-def test_column_concat_op():
+def test_columnconcat_op():
     node = "col1" >> workflow_ops.Operator()
     col_name = "col2"
 

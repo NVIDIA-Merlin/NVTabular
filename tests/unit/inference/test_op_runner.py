@@ -6,7 +6,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
-from nvtabular.graph.graph import Graph
+from nvtabular.graph import Graph
 from tests.unit.inference.inf_test_ops import PlusTwoOp
 
 op_runner = pytest.importorskip("nvtabular.inference.graph.op_runner")
@@ -52,7 +52,7 @@ def test_op_runner_loads_multiple_ops_same(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in schema.column_names:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [nvt.graph.Tags.USER]
         )
 
     repository = "repository_path/"
@@ -94,7 +94,7 @@ def test_op_runner_loads_multiple_ops_same_execute(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in schema.column_names:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [nvt.graph.Tags.USER]
         )
 
     repository = "repository_path/"
@@ -139,7 +139,7 @@ def test_op_runner_single_node_export(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in schema.column_names:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [nvt.graph.Tags.USER]
         )
 
     inputs = ["x", "y"]

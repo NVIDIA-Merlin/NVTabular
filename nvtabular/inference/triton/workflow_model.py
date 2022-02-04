@@ -39,7 +39,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.dispatch import _is_list_dtype
+from nvtabular.dispatch import is_list_dtype
 from nvtabular.inference.triton import _convert_tensor
 from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
 from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner
@@ -118,7 +118,7 @@ class TritonPythonModel:
 
 
 def _parse_input_dtypes(dtypes):
-    input_dtypes = {col: dtype for col, dtype in dtypes if not _is_list_dtype(dtype)}
-    input_multihots = {col: dtype for col, dtype in dtypes if _is_list_dtype(dtype)}
+    input_dtypes = {col: dtype for col, dtype in dtypes if not is_list_dtype(dtype)}
+    input_multihots = {col: dtype for col, dtype in dtypes if is_list_dtype(dtype)}
 
     return input_dtypes, input_multihots

@@ -32,9 +32,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from nvtabular import ColumnSelector
-from nvtabular.dispatch import _concat_columns
-from nvtabular.graph.base_operator import Supports
-from nvtabular.graph.tags import Tags
+from nvtabular.dispatch import concat_columns
+from nvtabular.graph import Supports, Tags
 from nvtabular.inference.triton.data_conversions import convert_format
 
 LOG = logging.getLogger("nvtabular")
@@ -171,7 +170,7 @@ class WorkflowRunner(ABC):
                     tensors, kind = convert_format(tensors, kind, target_kind)
                     upstream_tensors, _ = convert_format(upstream_tensors, upstream_kind, kind)
 
-                tensors = self._concat_tensors([tensors, upstream_tensors], kind)
+                tensors = self.concat_tensors([tensors, upstream_tensors], kind)
 
         # Run the transform
         if tensors is not None and kind and workflow_node.op:
@@ -194,9 +193,9 @@ class WorkflowRunner(ABC):
 
         return tensors, kind
 
-    def _concat_tensors(self, tensors, kind):
+    def concat_tensors(self, tensors, kind):
         if kind & (Supports.GPU_DATAFRAME | Supports.CPU_DATAFRAME):
-            return _concat_columns(tensors)
+            return concat_columns(tensors)
         else:
             output = tensors[0]
             for tensor in tensors[1:]:

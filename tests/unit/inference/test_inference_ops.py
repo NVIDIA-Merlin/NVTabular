@@ -25,7 +25,7 @@ from google.protobuf import text_format  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
-from nvtabular.graph.schema import Schema  # noqa
+from nvtabular.graph import Schema  # noqa
 
 ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
 model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")

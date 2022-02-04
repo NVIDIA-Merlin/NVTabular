@@ -19,8 +19,7 @@ from typing import Optional
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType
-from nvtabular.graph import BaseOperator
-from nvtabular.graph.selector import ColumnSelector
+from nvtabular.graph import BaseOperator, ColumnSelector
 
 
 class Operator(BaseOperator):

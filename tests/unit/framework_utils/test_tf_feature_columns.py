@@ -1,6 +1,6 @@
 import pytest
 
-from nvtabular.graph.schema import Schema
+from nvtabular.graph import Schema
 
 tf = pytest.importorskip("tensorflow")
 nvtf = pytest.importorskip("nvtabular.framework_utils.tensorflow")

@@ -15,8 +15,8 @@
 #
 import numpy
 
-from nvtabular.dispatch import DataFrameType, _is_dataframe_object, annotate
-from nvtabular.graph.tags import Tags
+from nvtabular.dispatch import DataFrameType, annotate, is_dataframe_object
+from nvtabular.graph import Tags
 
 from .operator import ColumnSelector, Operator
 
@@ -70,7 +70,7 @@ class DifferenceLag(Operator):
         output = {}
         for shift in self.shifts:
             mask = df[self.partition_cols] == df[self.partition_cols].shift(shift)
-            if _is_dataframe_object(mask):
+            if is_dataframe_object(mask):
                 mask = mask.fillna(False).all(axis=1)
             mask[mask == False] = None  # noqa pylint: disable=singleton-comparison
 

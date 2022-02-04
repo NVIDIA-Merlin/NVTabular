@@ -5,7 +5,7 @@ from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
 import nvtabular as nvt
-from nvtabular.graph.base_operator import BaseOperator
+from nvtabular.graph import BaseOperator
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"

@@ -23,7 +23,7 @@ from pandas.api.types import is_integer_dtype
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, ops
-from nvtabular.graph.tags import Tags, TagSet
+from nvtabular.graph import Tags, TagSet
 
 try:
     import cupy as cp

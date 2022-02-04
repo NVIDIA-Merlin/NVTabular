@@ -17,14 +17,15 @@ import pathlib
 import tempfile
 from sys import version
 
-from nvtabular.graph.schema import ColumnSchema, Schema
-from nvtabular.graph.selector import ColumnSelector
+from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
 from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import export_tensorflow_model
 
 
 class TensorflowOp(InferenceOperator):
     def __init__(self, model):
+        super().__init__()
+
         self.model = model
 
         inputs, outputs = self.model.inputs, self.model.outputs

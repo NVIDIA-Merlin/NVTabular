@@ -20,7 +20,7 @@ def test_tf4rec():
         "prod_first_event_time_ts": np.random.randint(1570373000, 1570373382, NUM_ROWS),
         "price": np.random.uniform(0, 2750, NUM_ROWS),
     }
-    df = nvt.dispatch._make_df(inputs)
+    df = nvt.dispatch.make_df(inputs)
 
     # categorify features
 

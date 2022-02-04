@@ -21,8 +21,8 @@ try:
 except ImportError:
     cp = None
 
-from nvtabular.dispatch import DataFrameType, _build_cudf_list_column, _is_cpu_object, annotate
-from nvtabular.graph.tags import Tags
+from nvtabular.dispatch import DataFrameType, annotate, build_cudf_list_column, is_cpu_object
+from nvtabular.graph import Tags
 
 from .operator import ColumnSelector, Operator
 
@@ -77,7 +77,7 @@ class ListSlice(Operator):
 
     @annotate("ListSlice_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
-        on_cpu = _is_cpu_object(df)
+        on_cpu = is_cpu_object(df)
         ret = type(df)()
 
         for col in col_selector.names:
@@ -124,7 +124,7 @@ class ListSlice(Operator):
                     )
 
                 # build up a list column with the sliced values
-                ret[col] = _build_cudf_list_column(new_elements, new_offsets)
+                ret[col] = build_cudf_list_column(new_elements, new_offsets)
 
         return ret
 
