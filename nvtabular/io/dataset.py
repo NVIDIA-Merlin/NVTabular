@@ -149,7 +149,7 @@ class Dataset:
     look at this notebook_ for an example of transforming the original Criteo
     CSV dataset into a new Parquet dataset optimized for use with NVTabular.
 
-    .. _notebook: https://github.com/NVIDIA/NVTabular/blob/main/examples/optimize_criteo.ipynb
+    .. _notebook: https://github.com/NVIDIA-Merlin/NVTabular/blob/main/examples/scaling-criteo/01-Download-Convert.ipynb # noqa
 
 
     Parameters
