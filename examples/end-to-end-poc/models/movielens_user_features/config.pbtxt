@@ -1,0 +1,57 @@
+name: "movielens_user_features"
+backend: "python"
+parameters {
+  key: "feast_repo_path"
+  value {
+    string_value: "/feast"
+  }
+}
+input {
+  name: "user_id"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_id_count"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_ids__values"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_ids__nnzs"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "genres__values"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "genres__nnzs"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "search_terms__values"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "search_terms__nnzs"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+

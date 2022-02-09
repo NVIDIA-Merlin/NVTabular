@@ -1,0 +1,52 @@
+name: "movielens_retrieval_tf"
+backend: "tensorflow"
+platform: "tensorflow_savedmodel"
+input {
+  name: "movie_id_count"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "movie_ids_1"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "movie_ids_2"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "genres_1"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "genres_2"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "search_terms_1"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "search_terms_2"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "output_1"
+  data_type: TYPE_FP32
+  dims: -1
+  dims: 128
+}
+

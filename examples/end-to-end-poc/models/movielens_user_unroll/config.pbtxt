@@ -1,0 +1,92 @@
+name: "movielens_user_unroll"
+backend: "python"
+input {
+  name: "candidate_movie_ids"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "movie_id_count"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "movie_ids__values"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "movie_ids__nnzs"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "genres__values"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "genres__nnzs"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "search_terms__values"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+input {
+  name: "search_terms__nnzs"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_id_count_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_ids_values_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "movie_ids_nnzs_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "genres_values_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "genres_nnzs_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "search_terms_values_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
+output {
+  name: "search_terms_nnzs_ur"
+  data_type: TYPE_INT32
+  dims: -1
+  dims: 1
+}
