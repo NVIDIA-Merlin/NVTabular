@@ -97,19 +97,29 @@ class PipelineableInferenceOperator(InferenceOperator):
         )
 
         for col_name, col_dict in _schema_to_dict(input_schema).items():
+            if "output_1" in col_name:
+                dims = [-1, 128]
+            else:
+                dims = [-1, 1]
+
             config.input.append(
                 model_config.ModelInput(
-                    name=col_name, data_type=_convert_dtype(col_dict["dtype"]), dims=[-1, 1]
+                    name=col_name, data_type=_convert_dtype(col_dict["dtype"]), dims=dims
                 )
             )
 
         for col_name, col_dict in _schema_to_dict(output_schema).items():
+            if "output_1" in col_name:
+                dims = [-1, 128]
+            else:
+                dims = [-1, 1]
+
             # this assumes the list columns are 1D tensors both for cats and conts
             config.output.append(
                 model_config.ModelOutput(
                     name=col_name.split("/")[0],
                     data_type=_convert_dtype(col_dict["dtype"]),
-                    dims=[-1, 1],
+                    dims=dims,
                 )
             )
 

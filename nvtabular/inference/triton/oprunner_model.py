@@ -26,6 +26,8 @@
 
 import json
 import logging
+import sys
+import traceback
 from typing import List
 
 import triton_python_backend_utils as pb_utils
@@ -75,11 +77,13 @@ class TritonPythonModel:
 
                 responses.append(InferenceResponse(result))
 
-            except Exception as e:  # noqa
+            except Exception as exc:  # noqa
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                tb_string = repr(traceback.extract_tb(exc_traceback))
+                # tb_string = traceback.format_exc(exc_traceback)
                 responses.append(
                     pb_utils.InferenceResponse(
-                        output_tensors=[],
-                        # error=pb_utils.TritonError(f"{exc[0]}, {exc[1]}, {formatted_tb}"),
+                        tensors=[], error=f"{exc_type}, {exc_value}, {tb_string}"
                     )
                 )
 

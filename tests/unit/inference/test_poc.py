@@ -19,6 +19,7 @@ import tensorflow as tf
 import nvtabular as nvt
 from nvtabular import ColumnSchema, Schema
 from nvtabular.inference.graph.ensemble import Ensemble
+from nvtabular.inference.graph.ops.faiss import QueryFaiss, setup_faiss
 from nvtabular.inference.graph.ops.feast import QueryFeast
 from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver
@@ -64,6 +65,9 @@ def test_poc_ensemble(tmpdir):
     )
     item_embeddings = retrieval_model.input_layer.embedding_tables["movie_ids"].numpy()
 
+    faiss_index_path = tmpdir + "/index.faiss"
+    setup_faiss(item_embeddings, str(faiss_index_path))
+
     retrieval = (
         ["user_id"]
         >> QueryFeast(
@@ -78,6 +82,7 @@ def test_poc_ensemble(tmpdir):
         >> PredictTensorflow(
             retrieval_model_path, custom_objects={"sampled_softmax_loss": sampled_softmax_loss}
         )
+        >> QueryFaiss(faiss_index_path, topk=10)
     )
 
     export_path = str(tmpdir)
@@ -93,3 +98,5 @@ def test_poc_ensemble(tmpdir):
     )
 
     assert response is not None
+
+    breakpoint()
