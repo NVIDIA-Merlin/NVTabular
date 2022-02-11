@@ -583,10 +583,10 @@ class DataLoader:
                 list_tensors = OrderedDict()
                 for column_name in lists:
                     column = gdf_i.pop(column_name)
-                    leaves, col_offsets = _pull_apart_list(column)
+                    leaves, col_offsets = _pull_apart_list(column, device=self.device)
                     if isinstance(leaves[0], list):
 
-                        leaves, nest_offsets = _pull_apart_list(leaves)
+                        leaves, nest_offsets = _pull_apart_list(leaves, device=self.device)
                         col_offsets = nest_offsets.iloc[col_offsets[:]]
                     offsets[column_name] = col_offsets.reset_index(drop=True)
                     list_tensors[column_name] = self._to_tensor(leaves, dtype)

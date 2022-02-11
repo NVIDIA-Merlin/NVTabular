@@ -469,7 +469,7 @@ def export_tensorflow_model(model, name, output_path, version=1):
         The path to write the exported model to
     """
     tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
-    model.save(tf_model_path, include_optimizer=False)
+    # model.save(tf_model_path, include_optimizer=False)
     config = model_config.ModelConfig(
         name=name, backend="tensorflow", platform="tensorflow_savedmodel"
     )
@@ -488,6 +488,9 @@ def export_tensorflow_model(model, name, output_path, version=1):
 
         inputs = list(default_signature.structured_input_signature[1].values())
         outputs = list(default_signature.structured_outputs.values())
+
+    config.parameters["TF_GRAPH_TAG"].string_value = "serve"
+    config.parameters["TF_SIGNATURE_DEF"].string_value = "serving_default"
 
     for col in inputs:
         config.input.append(

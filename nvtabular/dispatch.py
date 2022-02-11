@@ -389,7 +389,7 @@ def _encode_list_column(original, encoded, dtype=None):
         )
 
 
-def _pull_apart_list(original):
+def _pull_apart_list(original, device=None):
     values = _flatten_list_column_values(original)
     if isinstance(original, pd.Series):
         offsets = pd.Series([0]).append(original.map(len).cumsum()).reset_index(drop=True)
@@ -400,7 +400,7 @@ def _pull_apart_list(original):
         elements = original._column.elements
         if isinstance(elements, cudf.core.column.lists.ListColumn):
             offsets = elements.offsets[offsets]
-    return _make_series(values), _make_series(offsets)
+    return _make_series(values, device), _make_series(offsets, device)
 
 
 def _to_arrow(x):

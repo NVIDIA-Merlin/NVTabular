@@ -26,16 +26,14 @@
 
 import json
 import logging
-import sys
-import traceback
 from typing import List
 
+import triton_python_backend_utils as pb_utils
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
     Tensor,
     get_input_tensor_by_name,
-    pb_utils,
 )
 
 from nvtabular.inference.graph.op_runner import OperatorRunner
@@ -78,12 +76,10 @@ class TritonPythonModel:
                 responses.append(InferenceResponse(result))
 
             except Exception as e:  # noqa
-                exc = sys.exc_info()
-                formatted_tb = str(traceback.format_tb(exc[-1]))
                 responses.append(
                     pb_utils.InferenceResponse(
                         output_tensors=[],
-                        error=pb_utils.TritonError(f"{exc[0]}, {exc[1]}, {formatted_tb}"),
+                        # error=pb_utils.TritonError(f"{exc[0]}, {exc[1]}, {formatted_tb}"),
                     )
                 )
 

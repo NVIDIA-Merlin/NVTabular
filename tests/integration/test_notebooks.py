@@ -119,7 +119,6 @@ def test_rossman(asv_db, bench_info, tmpdir, devices):
         notebook = os.path.join(dirname(TEST_PATH), ROSSMAN_DIR, "03-Training-with-PyTorch.ipynb")
         out = _run_notebook(tmpdir, notebook, input_path, input_path, gpu_id=devices)
         # bench_results = RossBenchPytorch().get_epochs(out.splitlines())
-        breakpoint()
         bench_results = RossBenchPytorch().get_dl_timing(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:

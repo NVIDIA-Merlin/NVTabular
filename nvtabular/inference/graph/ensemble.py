@@ -52,7 +52,7 @@ class Ensemble:
         for col_name, col_schema in self.graph.output_schema.column_schemas.items():
             ensemble_config.output.append(
                 model_config.ModelOutput(
-                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, 1]
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, 128]
                 )
             )
 
