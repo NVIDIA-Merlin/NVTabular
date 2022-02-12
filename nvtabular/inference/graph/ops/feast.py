@@ -14,13 +14,22 @@ LOG = logging.getLogger("nvt")
 
 class QueryFeast(PipelineableInferenceOperator):
     def __init__(
-        self, repo_path, entity_id, entity_view, features, mh_features, input_schema, output_schema
+        self,
+        repo_path,
+        entity_id,
+        entity_view,
+        entity_column,
+        features,
+        mh_features,
+        input_schema,
+        output_schema,
     ):
 
         self.repo_path = repo_path
         self.store = FeatureStore(repo_path=repo_path)
         self.entity_id = entity_id
         self.entity_view = entity_view
+        self.entity_column = entity_column
         self.features = features
         self.mh_features = mh_features
         self.input_schema = input_schema
@@ -45,6 +54,7 @@ class QueryFeast(PipelineableInferenceOperator):
         parameters = json.loads(config.get("params", ""))
         entity_id = parameters["entity_id"]
         entity_view = parameters["entity_view"]
+        entity_column = parameters["entity_column"]
         features = parameters["features"]
         mh_features = parameters["mh_features"]
         repo_path = parameters["feast_repo_path"]
@@ -63,7 +73,14 @@ class QueryFeast(PipelineableInferenceOperator):
             )
 
         return QueryFeast(
-            repo_path, entity_id, entity_view, features, mh_features, in_schema, out_schema
+            repo_path,
+            entity_id,
+            entity_view,
+            entity_column,
+            features,
+            mh_features,
+            in_schema,
+            out_schema,
         )
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
@@ -71,6 +88,7 @@ class QueryFeast(PipelineableInferenceOperator):
         self_params = {
             "entity_id": self.entity_id,
             "entity_view": self.entity_view,
+            "entity_column": self.entity_column,
             "features": self.features,
             "mh_features": self.mh_features,
             "feast_repo_path": self.repo_path,
@@ -79,7 +97,7 @@ class QueryFeast(PipelineableInferenceOperator):
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
-        entity_ids = df[self.entity_id]
+        entity_ids = df[self.entity_column]
         entity_rows = [{self.entity_id: int(entity_id)} for entity_id in entity_ids]
 
         feature_names = self.features + self.mh_features
@@ -91,7 +109,6 @@ class QueryFeast(PipelineableInferenceOperator):
             features=feature_refs,
             entity_rows=entity_rows,
         ).to_dict()
-
         output_tensors = {}
 
         # Numerical and single-hot categorical

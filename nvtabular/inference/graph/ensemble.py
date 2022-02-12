@@ -82,6 +82,13 @@ class Ensemble:
             if node.exportable:
                 node_id = node_id_lookup.get(node, None)
                 node_name = f"{node.export_name}_{node_id}"
+
+                found = False
+                for step in ensemble_config.ensemble_scheduling.step:
+                    if step.model_name == node_name:
+                        found = True
+                if found:
+                    continue
                 node_config = node.export(export_path, node_id=node_id, version=version)
 
                 config_step = model_config.ModelEnsembling.Step(

@@ -1,12 +1,26 @@
+import json
+
 import numpy as np
 
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class SoftMaxSampling(PipelineableInferenceOperator):
-    def __init__(self, candidate_col, predict_col):
+    def __init__(self, candidate_col, predict_col, k=None, theta=None):
         self.candidate_col = candidate_col
         self.predict_col = predict_col
+        self.k = k or 10
+        self.theta = theta or 20.0
+
+    @classmethod
+    def from_config(cls, config):
+        parameters = json.loads(config.get("params", ""))
+        candidate_col = parameters["candidate_col"]
+        predict_col = parameters["predict_col"]
+        k = parameters["k"]
+        theta = parameters["theta"]
+
+        SoftMaxSampling(candidate_col, predict_col, k=k, theta=theta)
 
     def execute(self, df: InferenceDataFrame):
         # Extract parameters from the request

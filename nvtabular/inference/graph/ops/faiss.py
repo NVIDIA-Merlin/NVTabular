@@ -18,25 +18,28 @@ class QueryFaiss(PipelineableInferenceOperator):
     def from_config(cls, config):
         parameters = json.loads(config.get("params", ""))
         index_path = parameters["index_path"]
+        topk = parameters["topk"]
 
-        return QueryFaiss(index_path)
+        return QueryFaiss(index_path, topk=topk)
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
-        self_params = {"index_path": self.index_path}
+        self_params = {"index_path": self.index_path, "topk": self.topk}
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
     def transform(self, df: InferenceDataFrame):
         user_vector = df["output_1"]
 
-        distances, indices = self.index.search(user_vector, self.topk)
+        _, indices = self.index.search(user_vector, self.topk)
+        # distances, indices = self.index.search(user_vector, self.topk)
 
         candidate_ids = np.array(indices).T.astype(np.int32)
-        candidate_distances = np.array(distances).T.astype(np.float32)
+        # candidate_distances = np.array(distances).T.astype(np.float32)
 
         return InferenceDataFrame(
-            {"candidate_ids": candidate_ids, "candidate_distances": candidate_distances}
+            # {"candidate_ids": candidate_ids, "candidate_distances": candidate_distances}
+            {"candidate_ids": candidate_ids}
         )
 
     def compute_output_schema(
@@ -45,7 +48,7 @@ class QueryFaiss(PipelineableInferenceOperator):
         return Schema(
             [
                 ColumnSchema("candidate_ids", dtype=np.int32),
-                ColumnSchema("candidate_distances", dtype=np.float32),
+                # ColumnSchema("candidate_distances", dtype=np.float32),
             ]
         )
 

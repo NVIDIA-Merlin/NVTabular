@@ -21,6 +21,7 @@ from nvtabular import ColumnSchema, Schema
 from nvtabular.inference.graph.ensemble import Ensemble
 from nvtabular.inference.graph.ops.faiss import QueryFaiss, setup_faiss
 from nvtabular.inference.graph.ops.feast import QueryFeast
+from nvtabular.inference.graph.ops.session_filter import FilterCandidates
 from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver
 
@@ -68,26 +69,31 @@ def test_poc_ensemble(tmpdir):
     faiss_index_path = tmpdir + "/index.faiss"
     setup_faiss(item_embeddings, str(faiss_index_path))
 
+    user_features = ["user_id"] >> QueryFeast(
+        feast_repo_path,
+        entity_id="user_id",
+        entity_view="user_features",
+        entity_column="user_id",
+        features=["movie_id_count"],
+        mh_features=["movie_ids", "genres", "search_terms"],
+        input_schema=feast_in_schema,
+        output_schema=feast_out_schema,
+    )
     retrieval = (
-        ["user_id"]
-        >> QueryFeast(
-            feast_repo_path,
-            entity_id="user_id",
-            entity_view="user_features",
-            features=["movie_id_count"],
-            mh_features=["movie_ids", "genres", "search_terms"],
-            input_schema=feast_in_schema,
-            output_schema=feast_out_schema,
-        )
+        user_features
         >> PredictTensorflow(
             retrieval_model_path, custom_objects={"sampled_softmax_loss": sampled_softmax_loss}
         )
-        >> QueryFaiss(faiss_index_path, topk=10)
+        >> QueryFaiss(faiss_index_path, topk=1000)
+    )
+
+    filtering = user_features["movie_ids_1"] + retrieval["candidate_ids"] >> FilterCandidates(
+        "candidate_ids", "movie_ids_1"
     )
 
     export_path = str(tmpdir)
 
-    ensemble = Ensemble(retrieval, request_schema)
+    ensemble = Ensemble(filtering, request_schema)
     ens_config, node_configs = ensemble.export(export_path)
 
     request = nvt.dispatch._make_df({"user_id": [1]})
@@ -98,5 +104,3 @@ def test_poc_ensemble(tmpdir):
     )
 
     assert response is not None
-
-    breakpoint()
