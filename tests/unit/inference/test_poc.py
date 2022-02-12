@@ -91,16 +91,38 @@ def test_poc_ensemble(tmpdir):
         "candidate_ids", "movie_ids_1"
     )
 
+    feast_item_out_schema = Schema(
+        [
+            ColumnSchema("tags_nunique", dtype=np.int32, _is_list=False),
+            ColumnSchema("tags_unique_3", dtype=np.int32, _is_list=True, _is_ragged=True),
+            ColumnSchema("tags_unique_4", dtype=np.int64, _is_list=True),
+            ColumnSchema("genres_3", dtype=np.int32, _is_list=True, _is_ragged=True),
+            ColumnSchema("genres_4", dtype=np.int64, _is_list=True),
+        ]
+    )
+
+    item_features = filtering >> QueryFeast(
+        feast_repo_path,
+        entity_id="movie_id",
+        entity_view="movie_features",
+        entity_column="filtered_ids",
+        features=["tags_nunique"],
+        mh_features=["genres", "tags_unique"],
+        input_schema=Schema([ColumnSchema("filtered_ids", dtype=np.int32)]),
+        output_schema=feast_item_out_schema,
+        suffix_int=3,
+    )
+
     export_path = str(tmpdir)
 
-    ensemble = Ensemble(filtering, request_schema)
+    ensemble = Ensemble(item_features, request_schema)
     ens_config, node_configs = ensemble.export(export_path)
 
     request = nvt.dispatch._make_df({"user_id": [1]})
     request["user_id"] = request["user_id"].astype(np.int32)
 
     response = _run_ensemble_on_tritonserver(
-        export_path, retrieval.output_schema.column_names, request, "ensemble_model"
+        export_path, item_features.output_schema.column_names, request, "ensemble_model"
     )
 
     assert response is not None

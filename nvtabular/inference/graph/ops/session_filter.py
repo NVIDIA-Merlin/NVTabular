@@ -3,7 +3,7 @@ import logging
 
 import numpy as np
 
-from nvtabular import ColumnSelector
+from nvtabular import ColumnSchema, ColumnSelector
 from nvtabular.graph.schema import Schema
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
@@ -20,12 +20,13 @@ class FilterCandidates(PipelineableInferenceOperator):
         filter_ids = df[self.filter_col]
 
         filtered_results = np.array([candidate_ids[~np.isin(candidate_ids, filter_ids)]]).T
-        return InferenceDataFrame({self.candidate_col: filtered_results})
+        return InferenceDataFrame({"filtered_ids": filtered_results})
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
     ) -> Schema:
-        return Schema([input_schema[self.candidate_col]])
+        # return Schema([input_schema[self.candidate_col]])
+        return Schema([ColumnSchema("filtered_ids", dtype=np.int32, _is_list=False)])
 
     @classmethod
     def from_config(cls, config):

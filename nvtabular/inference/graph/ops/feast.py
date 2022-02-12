@@ -23,6 +23,7 @@ class QueryFeast(PipelineableInferenceOperator):
         mh_features,
         input_schema,
         output_schema,
+        suffix_int=1,
     ):
 
         self.repo_path = repo_path
@@ -34,6 +35,7 @@ class QueryFeast(PipelineableInferenceOperator):
         self.mh_features = mh_features
         self.input_schema = input_schema
         self.output_schema = output_schema
+        self.suffix_int = suffix_int
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
@@ -60,16 +62,23 @@ class QueryFeast(PipelineableInferenceOperator):
         repo_path = parameters["feast_repo_path"]
         in_dict = json.loads(config.get("input_dict", "{}"))
         out_dict = json.loads(config.get("output_dict", "{}"))
+        suffix_int = parameters["suffix_int"]
 
         in_schema = Schema([])
         for col_name, col_rep in in_dict.items():
             in_schema[col_name] = ColumnSchema(
-                col_name, dtype=col_rep["dtype"], _is_list=col_rep["is_list"]
+                col_name,
+                dtype=col_rep["dtype"],
+                _is_list=col_rep["is_list"],
+                _is_ragged=col_rep["is_ragged"],
             )
         out_schema = Schema([])
         for col_name, col_rep in out_dict.items():
             out_schema[col_name] = ColumnSchema(
-                col_name, dtype=col_rep["dtype"], _is_list=col_rep["is_list"]
+                col_name,
+                dtype=col_rep["dtype"],
+                _is_list=col_rep["is_list"],
+                _is_ragged=col_rep["is_ragged"],
             )
 
         return QueryFeast(
@@ -81,6 +90,7 @@ class QueryFeast(PipelineableInferenceOperator):
             mh_features,
             in_schema,
             out_schema,
+            suffix_int,
         )
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
@@ -92,6 +102,7 @@ class QueryFeast(PipelineableInferenceOperator):
             "features": self.features,
             "mh_features": self.mh_features,
             "feast_repo_path": self.repo_path,
+            "suffix_int": self.suffix_int,
         }
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
@@ -122,15 +133,25 @@ class QueryFeast(PipelineableInferenceOperator):
         # Multi-hot categorical
         for feature_name in self.mh_features:
             feature_value = feast_response[feature_name]
+            feature_out_name = f"{feature_name}_{self.suffix_int}"
+            nnzs = None
+            if (
+                isinstance(feature_value[0], list)
+                and self.output_schema[feature_out_name]._is_ragged
+            ):
+                # cheated and sliced tensors here if they were ragged.
+                feature_value = [vals[:1] for vals in feature_value if len(vals[:1]) > 0]
+                nnzs = [len(vals) for vals in feature_value]
+
             feature_array = np.array(feature_value).T.astype(
-                self.output_schema[f"{feature_name}_1"].dtype
+                self.output_schema[feature_out_name].dtype
             )
+            if not nnzs:
+                nnzs = [len(feature_array)]
+            feature_out_nnz = f"{feature_name}_{self.suffix_int+1}"
+            feature_nnzs = np.array([nnzs], dtype=self.output_schema[feature_out_nnz].dtype)
 
-            feature_nnzs = np.array(
-                [[len(feature_array)]], dtype=self.output_schema[f"{feature_name}_2"].dtype
-            )
-
-            output_tensors[f"{feature_name}_1"] = feature_array
-            output_tensors[f"{feature_name}_2"] = feature_nnzs
+            output_tensors[feature_out_name] = feature_array
+            output_tensors[feature_out_nnz] = feature_nnzs
 
         return InferenceDataFrame(output_tensors)

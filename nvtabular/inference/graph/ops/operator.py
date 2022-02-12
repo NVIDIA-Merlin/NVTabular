@@ -143,6 +143,7 @@ def _schema_to_dict(schema):
         schema_dict[col_name] = {
             "dtype": col_schema.dtype.name,
             "is_list": col_schema._is_list,
+            "is_ragged": col_schema._is_ragged,
         }
 
     return schema_dict
