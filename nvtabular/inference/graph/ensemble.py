@@ -43,26 +43,16 @@ class Ensemble:
         )
 
         for col_name, col_schema in self.graph.input_schema.column_schemas.items():
-            if "output_1" in col_name:
-                dims = [-1, 128]
-            else:
-                dims = [-1, 1]
-
             ensemble_config.input.append(
                 model_config.ModelInput(
-                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=dims
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, -1]
                 )
             )
 
         for col_name, col_schema in self.graph.output_schema.column_schemas.items():
-            if "output_1" in col_name:
-                dims = [-1, 128]
-            else:
-                dims = [-1, 1]
-
             ensemble_config.output.append(
                 model_config.ModelOutput(
-                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=dims
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, -1]
                 )
             )
 

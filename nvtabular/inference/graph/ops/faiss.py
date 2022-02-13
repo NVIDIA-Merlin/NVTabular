@@ -36,12 +36,17 @@ class QueryFaiss(PipelineableInferenceOperator):
         parameters = json.loads(config.get("params", ""))
         index_path = parameters["index_path"]
         topk = parameters["topk"]
+        query_vector_col = parameters["query_vector_col"]
 
-        return QueryFaiss(index_path, topk=topk)
+        return QueryFaiss(index_path, query_vector_col=query_vector_col, topk=topk)
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
-        self_params = {"index_path": self.index_path, "topk": self.topk}
+        self_params = {
+            "index_path": self.index_path,
+            "topk": self.topk,
+            "query_vector_col": self.query_vector_col,
+        }
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 

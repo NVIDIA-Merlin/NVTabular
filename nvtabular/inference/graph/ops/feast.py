@@ -23,6 +23,8 @@ class QueryFeast(PipelineableInferenceOperator):
         mh_features,
         input_schema,
         output_schema,
+        include_id=False,
+        output_prefix="",
         suffix_int=1,
     ):
 
@@ -35,6 +37,8 @@ class QueryFeast(PipelineableInferenceOperator):
         self.mh_features = mh_features
         self.input_schema = input_schema
         self.output_schema = output_schema
+        self.include_id = include_id
+        self.output_prefix = output_prefix
         self.suffix_int = suffix_int
 
     def compute_output_schema(
@@ -62,6 +66,8 @@ class QueryFeast(PipelineableInferenceOperator):
         repo_path = parameters["feast_repo_path"]
         in_dict = json.loads(config.get("input_dict", "{}"))
         out_dict = json.loads(config.get("output_dict", "{}"))
+        include_id = parameters["include_id"]
+        output_prefix = parameters["output_prefix"]
         suffix_int = parameters["suffix_int"]
 
         in_schema = Schema([])
@@ -90,6 +96,8 @@ class QueryFeast(PipelineableInferenceOperator):
             mh_features,
             in_schema,
             out_schema,
+            include_id,
+            output_prefix,
             suffix_int,
         )
 
@@ -102,6 +110,8 @@ class QueryFeast(PipelineableInferenceOperator):
             "features": self.features,
             "mh_features": self.mh_features,
             "feast_repo_path": self.repo_path,
+            "include_id": self.include_id,
+            "output_prefix": self.output_prefix,
             "suffix_int": self.suffix_int,
         }
         self_params.update(params)
@@ -120,38 +130,52 @@ class QueryFeast(PipelineableInferenceOperator):
             features=feature_refs,
             entity_rows=entity_rows,
         ).to_dict()
+
         output_tensors = {}
+        if self.include_id:
+            output_tensors[self.entity_id] = entity_ids
 
         # Numerical and single-hot categorical
         for feature_name in self.features:
             feature_value = feast_response[feature_name]
             feature_array = np.array([feature_value]).T.astype(
-                self.output_schema[feature_name].dtype
+                self.output_schema[self._prefixed_name(feature_name)].dtype
             )
-            output_tensors[feature_name] = feature_array
+            output_tensors[self._prefixed_name(feature_name)] = feature_array
 
         # Multi-hot categorical
         for feature_name in self.mh_features:
             feature_value = feast_response[feature_name]
-            feature_out_name = f"{feature_name}_{self.suffix_int}"
+            feature_out_name = self._prefixed_name(f"{feature_name}_{self.suffix_int}")
             nnzs = None
             if (
                 isinstance(feature_value[0], list)
                 and self.output_schema[feature_out_name]._is_ragged
             ):
-                # cheated and sliced tensors here if they were ragged.
-                feature_value = [vals[:1] for vals in feature_value if len(vals[:1]) > 0]
+                flattened_value = []
+                for val in feature_value:
+                    flattened_value.extend(val)
+
                 nnzs = [len(vals) for vals in feature_value]
+                feature_value = [flattened_value]
 
             feature_array = np.array(feature_value).T.astype(
                 self.output_schema[feature_out_name].dtype
             )
             if not nnzs:
                 nnzs = [len(feature_array)]
-            feature_out_nnz = f"{feature_name}_{self.suffix_int+1}"
-            feature_nnzs = np.array([nnzs], dtype=self.output_schema[feature_out_nnz].dtype)
+            feature_out_nnz = self._prefixed_name(f"{feature_name}_{self.suffix_int+1}")
+            feature_nnzs = np.array([nnzs], dtype=self.output_schema[feature_out_nnz].dtype).T
 
             output_tensors[feature_out_name] = feature_array
             output_tensors[feature_out_nnz] = feature_nnzs
 
         return InferenceDataFrame(output_tensors)
+
+    def _prefixed_name(self, col_name):
+        new_name = f"{self.output_prefix}_{col_name}"
+
+        if self.output_prefix and col_name and not col_name.startswith(self.output_prefix):
+            return new_name
+        else:
+            return col_name

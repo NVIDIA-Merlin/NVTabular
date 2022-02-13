@@ -51,7 +51,8 @@ def test_poc_ensemble(tmpdir):
     # TODO: Generate this from the Feast schema
     feast_user_out_schema = Schema(
         [
-            ColumnSchema("movie_id_count", dtype=np.int32, _is_list=False),
+            # ColumnSchema("user_id", dtype=np.int32),
+            ColumnSchema("movie_id_count", dtype=np.int32),
             ColumnSchema("movie_ids_1", dtype=np.int32, _is_list=True),
             ColumnSchema("movie_ids_2", dtype=np.int64, _is_list=True),
             ColumnSchema("search_terms_1", dtype=np.int32, _is_list=True),
@@ -65,11 +66,11 @@ def test_poc_ensemble(tmpdir):
     feast_item_out_schema = Schema(
         [
             ColumnSchema("movie_id", dtype=np.int32),
-            ColumnSchema("tags_nunique", dtype=np.int32, _is_list=False),
-            ColumnSchema("tags_unique_3", dtype=np.int32, _is_list=True, _is_ragged=True),
-            ColumnSchema("tags_unique_4", dtype=np.int64, _is_list=True),
-            ColumnSchema("genres_3", dtype=np.int32, _is_list=True, _is_ragged=True),
-            ColumnSchema("genres_4", dtype=np.int64, _is_list=True),
+            ColumnSchema("movie_tags_nunique", dtype=np.int32, _is_list=False),
+            ColumnSchema("movie_tags_unique_1", dtype=np.int32, _is_list=True, _is_ragged=True),
+            ColumnSchema("movie_tags_unique_2", dtype=np.int64, _is_list=True),
+            ColumnSchema("movie_genres_1", dtype=np.int32, _is_list=True, _is_ragged=True),
+            ColumnSchema("movie_genres_2", dtype=np.int64, _is_list=True),
         ]
     )
 
@@ -102,13 +103,14 @@ def test_poc_ensemble(tmpdir):
     retrieval = (
         user_features
         >> PredictTensorflow(
-            retrieval_model_path, custom_objects={"sampled_softmax_loss": sampled_softmax_loss}
+            retrieval_model_path,
+            custom_objects={"sampled_softmax_loss": sampled_softmax_loss},
         )
         >> QueryFaiss(faiss_index_path, query_vector_col="output_1", topk=100)
     )
 
     filtering = user_features["movie_ids_1"] + retrieval["candidate_ids"] >> FilterCandidates(
-        "candidate_ids", "movie_ids_1"
+        candidate_col="candidate_ids", filter_col="movie_ids_1"
     )
 
     item_features = filtering >> QueryFeast(
@@ -120,17 +122,17 @@ def test_poc_ensemble(tmpdir):
         mh_features=["genres", "tags_unique"],
         input_schema=Schema([ColumnSchema("filtered_ids", dtype=np.int32)]),
         output_schema=feast_item_out_schema,
-        suffix_int=3,
+        include_id=True,
+        output_prefix="movie",
     )
 
-    ranking = (
-        user_features + item_features
-        >> UnrollFeatures("movie_id", feast_user_out_schema.column_names)
-        # TODO: Figure out how to align column names with what the second model is expecting
-        >> PredictTensorflow(ranking_model_path)
+    combined_features = user_features + item_features >> UnrollFeatures(
+        "movie_id", feast_user_out_schema.column_names, unrolled_prefix="user"
     )
 
-    ordering = ranking >> SoftmaxSampling(
+    ranking = combined_features >> PredictTensorflow(ranking_model_path)
+
+    ordering = (combined_features + ranking)["movie_id", "output_1"] >> SoftmaxSampling(
         "movie_id", relevance_col="output_1", topk=10, temperature=20.0
     )
 
@@ -147,3 +149,4 @@ def test_poc_ensemble(tmpdir):
     )
 
     assert response is not None
+    assert len(response.as_numpy("ordered_ids")) == 10

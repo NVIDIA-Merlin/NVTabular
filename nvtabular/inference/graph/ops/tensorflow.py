@@ -76,8 +76,6 @@ class PredictTensorflow(InferenceOperator):
         node_export_path.mkdir(exist_ok=True)
 
         tf_model_path = pathlib.Path(node_export_path) / str(version)
-        # tf_model_path.mkdir(parents=True, exist_ok=True)
-        # self.model.save(tf_model_path, include_optimizer=False)
 
         copytree(
             self.model_path,
@@ -95,18 +93,6 @@ class PredictTensorflow(InferenceOperator):
         selector: ColumnSelector,
     ) -> Schema:
         return self.input_schema
-
-    def compute_selector(
-        self,
-        input_schema: Schema,
-        selector: ColumnSelector,
-        parents_selector: ColumnSelector,
-        dependencies_selector: ColumnSelector,
-    ) -> ColumnSelector:
-        model_selector = ColumnSelector(self.input_schema.column_names)
-        self._validate_matching_cols(input_schema, model_selector, "computing input selector")
-
-        return model_selector
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None

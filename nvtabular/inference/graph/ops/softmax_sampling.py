@@ -2,31 +2,50 @@ import json
 
 import numpy as np
 
+from nvtabular import ColumnSchema
+from nvtabular.graph.schema import Schema
+from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class SoftmaxSampling(PipelineableInferenceOperator):
-    def __init__(self, candidate_col, relevance_col, topk=10, temperature=20.0):
+    def __init__(self, candidate_col, relevance_col, temperature=20.0, topk=10):
         self.candidate_col = candidate_col
-        self.predict_col = relevance_col
-        self.topk = topk
+        self.relevance_col = relevance_col
         self.temperature = temperature
+        self.topk = topk
 
     @classmethod
     def from_config(cls, config):
         parameters = json.loads(config.get("params", ""))
         candidate_col = parameters["candidate_col"]
-        predict_col = parameters["predict_col"]
-        k = parameters["k"]
-        theta = parameters["theta"]
+        predict_col = parameters["relevance_col"]
+        topk = parameters["topk"]
+        theta = parameters["temperature"]
 
-        SoftmaxSampling(candidate_col, predict_col, topk=k, temperature=theta)
+        return SoftmaxSampling(candidate_col, predict_col, temperature=theta, topk=topk)
 
-    def execute(self, df: InferenceDataFrame):
+    def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
+        params = params or {}
+        self_params = {
+            "candidate_col": self.candidate_col,
+            "relevance_col": self.relevance_col,
+            "temperature": self.temperature,
+            "topk": self.topk,
+        }
+        self_params.update(params)
+        return super().export(path, input_schema, output_schema, self_params, node_id, version)
+
+    def compute_output_schema(
+        self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
+    ) -> Schema:
+        return Schema([ColumnSchema("ordered_ids", dtype=np.int32, _is_list=True, _is_ragged=True)])
+
+    def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
         # Extract parameters from the request
-        candidate_ids = df[self.candidate_col].as_numpy().reshape(-1)
+        candidate_ids = df[self.candidate_col].reshape(-1)
 
-        predicted_scores = df[self.predict_col].as_numpy().reshape(-1)
+        predicted_scores = df[self.relevance_col].reshape(-1)
 
         # Exponential sort trick for sampling from a distribution without replacement from:
 
