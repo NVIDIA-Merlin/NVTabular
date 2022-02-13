@@ -111,19 +111,20 @@ class Node:
 
         # If parent is an addition or selection node, we may need to
         # propagate grouping unless this node already has a selector
-        if (
-            len(self.parents) == 1
-            and isinstance(self.parents[0].op, (ConcatColumns, SelectionOp))
-            and self.parents[0].selector
-            and (self.parents[0].selector.names)
-        ):
+        if len(self.parents) == 1 and isinstance(self.parents[0].op, (ConcatColumns, SelectionOp)):
             parents_selector = self.parents[0].selector
-            if not self.selector:
+            if (
+                not self.selector
+                and self.parents[0].selector
+                and (self.parents[0].selector.names)
+                and (self.parents[0].selector.names != self.parents[0].selector.grouped_names)
+            ):
                 self.selector = parents_selector
 
         self.input_schema = self.op.compute_input_schema(
             root_schema, parents_schema, deps_schema, self.selector
         )
+
         self.selector = self.op.compute_selector(
             self.input_schema, self.selector, parents_selector, dependencies_selector
         )
@@ -311,18 +312,6 @@ class Node:
             self.selector = self.selector.filter_columns(ColumnSelector(input_cols))
 
         return removed_outputs
-
-    # Code Smells We Know:
-    # - Repetition
-    # - .. in a class access (Law of Demeter)
-    # - class should have single responsibility
-    # - class at multiple levels of abstraction
-    # - methods too long
-    # - function imitating method
-    # - avoid if statements (where possible)
-    # - method modifies state and returns a (non-self) value (ask or tell, not both)
-    # - don't use booleans to describe return (throw an appropriately
-    #       typed exception instead if it fails)
 
     @property
     def parents_with_dependencies(self):

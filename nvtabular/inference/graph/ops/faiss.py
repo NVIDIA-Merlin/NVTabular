@@ -1,3 +1,19 @@
+#
+# Copyright (c) 2022, NVIDIA CORPORATION.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import json
 
 import faiss
@@ -9,9 +25,10 @@ from nvtabular.inference.graph.ops.operator import InferenceDataFrame, Pipelinea
 
 
 class QueryFaiss(PipelineableInferenceOperator):
-    def __init__(self, index_path, topk=10):
+    def __init__(self, index_path, query_vector_col="query_vector", topk=10):
         self.index_path = str(index_path)
         self.index = faiss.read_index(str(index_path))
+        self.query_vector_col = query_vector_col
         self.topk = topk
 
     @classmethod
@@ -29,7 +46,7 @@ class QueryFaiss(PipelineableInferenceOperator):
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
     def transform(self, df: InferenceDataFrame):
-        user_vector = df["output_1"]
+        user_vector = df[self.query_vector_col]
 
         _, indices = self.index.search(user_vector, self.topk)
         # distances, indices = self.index.search(user_vector, self.topk)

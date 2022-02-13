@@ -5,12 +5,12 @@ import numpy as np
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
-class SoftMaxSampling(PipelineableInferenceOperator):
-    def __init__(self, candidate_col, predict_col, k=None, theta=None):
+class SoftmaxSampling(PipelineableInferenceOperator):
+    def __init__(self, candidate_col, relevance_col, topk=10, temperature=20.0):
         self.candidate_col = candidate_col
-        self.predict_col = predict_col
-        self.k = k or 10
-        self.theta = theta or 20.0
+        self.predict_col = relevance_col
+        self.topk = topk
+        self.temperature = temperature
 
     @classmethod
     def from_config(cls, config):
@@ -20,7 +20,7 @@ class SoftMaxSampling(PipelineableInferenceOperator):
         k = parameters["k"]
         theta = parameters["theta"]
 
-        SoftMaxSampling(candidate_col, predict_col, k=k, theta=theta)
+        SoftmaxSampling(candidate_col, predict_col, topk=k, temperature=theta)
 
     def execute(self, df: InferenceDataFrame):
         # Extract parameters from the request
@@ -37,12 +37,8 @@ class SoftMaxSampling(PipelineableInferenceOperator):
         # As implemented by Tim Vieira in "Algorithms for sampling without replacement"
         # https://timvieira.github.io/blog/post/2019/09/16/algorithms-for-sampling-without-replacement/
 
-        # TODO: Extract k and theta as config parameters
-        k = 10
-        theta = 20.0
-
         # The weights for the sampling distribution are the softmax of the scores
-        weights = np.exp(theta * predicted_scores) / np.sum(predicted_scores)
+        weights = np.exp(self.temperature * predicted_scores) / np.sum(predicted_scores)
 
         # This is the core of the exponential sampling trick, which creates a
         # set of values that depend on both the predicted scores and random
@@ -55,7 +51,7 @@ class SoftMaxSampling(PipelineableInferenceOperator):
 
         # This is just bookkeeping to produce the final ordered list of recs
         sorted_indices = np.argsort(exponentials)
-        topk_movie_ids = candidate_ids[sorted_indices][:k]
+        topk_movie_ids = candidate_ids[sorted_indices][: self.topk]
         ordered_movie_ids = topk_movie_ids.reshape(1, -1).T
 
         return InferenceDataFrame({"ordered_ids": ordered_movie_ids})
