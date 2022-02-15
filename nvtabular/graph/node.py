@@ -69,17 +69,6 @@ class Node:
         dep_nodes = _nodify(dep)
         self.dependencies.append(dep_nodes)
 
-    def add_child(self, child):
-        child_nodes = _nodify(child)
-
-        if not isinstance(child_nodes, list):
-            child_nodes = [child_nodes]
-
-        for child_node in child_nodes:
-            child_node.parents.append(self)
-
-        self.children.extend(child_nodes)
-
     def add_parent(self, parent):
         parent_nodes = _nodify(parent)
 
@@ -91,11 +80,34 @@ class Node:
 
         self.parents.extend(parent_nodes)
 
+    def add_child(self, child):
+        child_nodes = _nodify(child)
+
+        if not isinstance(child_nodes, list):
+            child_nodes = [child_nodes]
+
+        for child_node in child_nodes:
+            child_node.parents.append(self)
+
+        self.children.extend(child_nodes)
+
+    def remove_child(self, child):
+        child_nodes = _nodify(child)
+
+        if not isinstance(child_nodes, list):
+            child_nodes = [child_nodes]
+
+        for child_node in child_nodes:
+            if self in child_node.parents:
+                child_node.parents.remove(self)
+            if child_node in self.children:
+                self.children.remove(child_node)
+
     def compute_schemas(self, root_schema, preserve_dtypes=False):
-        parents_selector = _combine_selectors(self.parents)
-        dependencies_selector = _combine_selectors(self.dependencies)
         parents_schema = _combine_schemas(self.parents)
         deps_schema = _combine_schemas(self.dependencies)
+        parents_selector = _combine_selectors(self.parents)
+        dependencies_selector = _combine_selectors(self.dependencies)
 
         # If parent is an addition or selection node, we may need to
         # propagate grouping unless this node already has a selector
@@ -120,6 +132,28 @@ class Node:
         self.output_schema = self.op.compute_output_schema(
             self.input_schema, self.selector, prev_output_schema
         )
+
+    def validate_schemas(self, root_schema, strict_dtypes=False):
+        parents_schema = _combine_schemas(self.parents)
+        deps_schema = _combine_schemas(self.dependencies)
+        ancestors_schema = root_schema + parents_schema + deps_schema
+
+        for col_name, col_schema in self.input_schema.column_schemas.items():
+            source_col_schema = ancestors_schema.get(col_name)
+
+            if not source_col_schema:
+                raise ValueError(
+                    f"Missing column '{col_name}' at the input to '{self.op.__class__.__name__}'."
+                )
+
+            if strict_dtypes or not self.op.dynamic_dtypes:
+                if source_col_schema.dtype != col_schema.dtype:
+                    raise ValueError(
+                        f"Mismatched dtypes for column '{col_name}' provided to "
+                        f"'{self.op.__class__.__name__}': "
+                        f"ancestor nodes provided dtype '{source_col_schema.dtype}', "
+                        f"expected dtype '{col_schema.dtype}'."
+                    )
 
     def __rshift__(self, operator):
         """Transforms this Node by applying an BaseOperator
@@ -266,6 +300,17 @@ class Node:
         output = " output" if not self.children else ""
         return f"<Node {self.label}{output}>"
 
+    def remove_inputs(self, input_cols):
+        removed_outputs = _derived_output_cols(input_cols, self.column_mapping)
+
+        self.input_schema = self.input_schema.without(input_cols)
+        self.output_schema = self.output_schema.without(removed_outputs)
+
+        if self.selector:
+            self.selector = self.selector.filter_columns(ColumnSelector(input_cols))
+
+        return removed_outputs
+
     @property
     def parents_with_dependencies(self):
         nodes = []
@@ -308,6 +353,11 @@ class Node:
             )
 
         return ColumnSelector(self.output_schema.column_names)
+
+    @property
+    def column_mapping(self):
+        selector = self.selector or ColumnSelector(self.input_schema.column_names)
+        return self.op.column_mapping(selector)
 
     @property
     def dependency_columns(self):
@@ -358,6 +408,7 @@ def iter_nodes(nodes):
                 queue.append(node)
 
 
+# output node (bottom) -> selection leaf nodes (top)
 def preorder_iter_nodes(nodes):
     queue = []
     if not isinstance(nodes, list):
@@ -373,6 +424,7 @@ def preorder_iter_nodes(nodes):
         yield node
 
 
+# selection leaf nodes (top) -> output node (bottom)
 def postorder_iter_nodes(nodes):
     queue = []
     if not isinstance(nodes, list):
@@ -509,3 +561,12 @@ def _nodify(nodable):
         raise TypeError(
             "Unsupported type: Cannot convert object " f"of type {type(nodable)} to Node."
         )
+
+
+def _derived_output_cols(input_cols, column_mapping):
+    outputs = []
+    for input_col in set(input_cols):
+        for output_col_name, input_col_list in column_mapping.items():
+            if input_col in input_col_list:
+                outputs.append(output_col_name)
+    return outputs

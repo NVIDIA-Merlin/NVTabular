@@ -93,7 +93,7 @@ setup(
     name="nvtabular",
     version=versioneer.get_version(),
     packages=find_packages(),
-    url="https://github.com/NVIDIA/NVTabular",
+    url="https://github.com/NVIDIA-Merlin/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
     long_description=open("README.md", encoding="utf8").read(),

@@ -13,9 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import logging
 
-from nvtabular.graph.node import Node, iter_nodes, postorder_iter_nodes
+import logging
+from collections import deque
+
+from nvtabular.graph.node import (
+    Node,
+    _combine_schemas,
+    iter_nodes,
+    postorder_iter_nodes,
+    preorder_iter_nodes,
+)
 from nvtabular.graph.schema import Schema
 
 LOG = logging.getLogger("nvtabular")
@@ -24,9 +32,6 @@ LOG = logging.getLogger("nvtabular")
 class Graph:
     def __init__(self, output_node: Node):
         self.output_node = output_node
-
-        self.input_schema = None
-        self.output_schema = None
 
     @property
     def input_dtypes(self):
@@ -48,36 +53,48 @@ class Graph:
         else:
             return {}
 
-    def fit_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
+    @property
+    def column_mapping(self):
+        nodes = preorder_iter_nodes(self.output_node)
+        column_mapping = self.output_node.column_mapping
+        for node in list(nodes)[1:]:
+            node_map = node.column_mapping
+            for output_col, input_cols in column_mapping.items():
+                early_inputs = []
+                for input_col in input_cols:
+                    early_inputs += node_map.get(input_col, [input_col])
+                column_mapping[output_col] = early_inputs
+
+        return column_mapping
+
+    def construct_schema(self, root_schema: Schema, preserve_dtypes=False) -> "Graph":
         nodes = list(postorder_iter_nodes(self.output_node))
+
         self._compute_node_schemas(root_schema, nodes, preserve_dtypes)
-        self._compute_graph_schemas(root_schema)
+        self._validate_node_schemas(root_schema, nodes, preserve_dtypes)
+
         return self
 
-    def _compute_node_schemas(self, root_schema, nodes, preserve_dtypes):
+    def _compute_node_schemas(self, root_schema, nodes, preserve_dtypes=False):
         for node in nodes:
-            if not node.parents:
-                node_input_schema = root_schema
-            else:
-                combined_schema = sum(
-                    [parent.output_schema for parent in node.parents if parent.output_schema],
-                    Schema(),
-                )
-                # we want to update the input_schema with new values
-                # from combined schema
-                node_input_schema = root_schema + combined_schema
+            node.compute_schemas(root_schema, preserve_dtypes=preserve_dtypes)
 
-            node.compute_schemas(node_input_schema, preserve_dtypes=preserve_dtypes)
+    def _validate_node_schemas(self, root_schema, nodes, strict_dtypes=False):
+        for node in nodes:
+            node.validate_schemas(root_schema, strict_dtypes=strict_dtypes)
 
-    def _compute_graph_schemas(self, root_schema):
-        self.input_schema = Schema(
-            [
-                schema
-                for name, schema in root_schema.column_schemas.items()
-                if name in self._input_columns()
-            ]
-        )
-        self.output_schema = self.output_node.output_schema
+    @property
+    def input_schema(self):
+        # leaf_node input and output schemas are the same (aka selection)
+        return _combine_schemas(self.leaf_nodes)
+
+    @property
+    def leaf_nodes(self):
+        return [node for node in postorder_iter_nodes(self.output_node) if not node.parents]
+
+    @property
+    def output_schema(self):
+        return self.output_node.output_schema
 
     def _input_columns(self):
         input_cols = []
@@ -92,14 +109,48 @@ class Graph:
 
         return _get_unique(input_cols)
 
-    def _zero_output_schemas(self):
+    def remove_inputs(self, to_remove):
         """
-        Zero out all schemas in order to rerun fit schema after operators
-        have run fit and have stats to add to schema.
+        Removes columns from a Graph
+
+        Starting at the leaf nodes, trickle down looking for columns to remove,
+        when found remove but then must propagate the removal of any other
+        output columns derived from that column.
+
+        Parameters
+        -----------
+        graph : Graph
+            The graph to remove columns from
+        to_remove : array_like
+            A list of input column names to remove from the graph
+
+        Returns
+        -------
+        Graph
+            The same graph with columns removed
         """
-        for node in iter_nodes([self.output_node]):
-            node.output_schema = None
-            node.input_schema = None
+        nodes_to_process = deque([(node, to_remove) for node in self.leaf_nodes])
+
+        while nodes_to_process:
+            node, columns_to_remove = nodes_to_process.popleft()
+
+            if node.input_schema and len(node.input_schema):
+                output_columns_to_remove = node.remove_inputs(columns_to_remove)
+
+                for child in node.children:
+                    nodes_to_process.append((child, to_remove + output_columns_to_remove))
+
+                    if not len(node.input_schema):
+                        node.remove_child(child)
+
+            if not node.input_schema or not len(node.input_schema):
+                for parent in node.parents:
+                    parent.remove_child(node)
+                for dependency in node.dependencies:
+                    dependency.remove_child(node)
+                del node
+
+        return self
 
 
 def _get_schemaless_nodes(nodes):
