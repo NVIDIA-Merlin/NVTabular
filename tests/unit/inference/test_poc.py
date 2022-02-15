@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import time
+
 import numpy as np
 import tensorflow as tf
 
@@ -29,6 +31,9 @@ from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver
 
 
 def test_poc_ensemble(tmpdir):
+    timings = {}
+    start = time.time()
+
     request_schema = Schema(
         [
             ColumnSchema("user_id", dtype=np.int32),
@@ -89,6 +94,8 @@ def test_poc_ensemble(tmpdir):
     faiss_index_path = tmpdir + "/index.faiss"
     setup_faiss(item_embeddings, str(faiss_index_path))
 
+    timings["build_steps_b4_ensemble"] = time.time() - start
+    start = time.time()
     user_features = ["user_id"] >> QueryFeast(
         feast_repo_path,
         entity_view="user_features",
@@ -136,17 +143,28 @@ def test_poc_ensemble(tmpdir):
         "movie_id", relevance_col="output_1", topk=10, temperature=20.0
     )
 
-    export_path = str(tmpdir)
+    export_path = str("/nvtabular/test_poc/")
 
     ensemble = Ensemble(ordering, request_schema)
+
+    timings["ensemble_create"] = time.time() - start
+    start = time.time()
+
     ens_config, node_configs = ensemble.export(export_path)
+
+    timings["export_ensemble"] = time.time() - start
 
     request = nvt.dispatch._make_df({"user_id": [1]})
     request["user_id"] = request["user_id"].astype(np.int32)
+
+    start = time.time()
 
     response = _run_ensemble_on_tritonserver(
         export_path, ensemble.graph.output_schema.column_names, request, "ensemble_model"
     )
 
+    timings["run_triton"] = time.time() - start
+
     assert response is not None
     assert len(response.as_numpy("ordered_ids")) == 10
+    breakpoint()
