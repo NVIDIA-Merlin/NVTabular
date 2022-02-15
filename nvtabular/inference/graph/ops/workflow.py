@@ -18,14 +18,13 @@ import pathlib
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceOperator
-from nvtabular.inference.triton.ensemble import _generate_nvtabular_config, _remove_columns
+from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
 
 
 class WorkflowOp(InferenceOperator):
     def __init__(
         self,
         workflow,
-        name=None,
         sparse_max=None,
         max_batch_size=None,
         label_columns=None,
@@ -35,7 +34,6 @@ class WorkflowOp(InferenceOperator):
     ):
         self.workflow = workflow
         self.sparse_max = sparse_max or {}
-        self.name = name or self.__class__.__name__.lower()
         self.max_batch_size = max_batch_size
         self.label_columns = label_columns or []
         self.model_framework = model_framework or ""
@@ -45,39 +43,27 @@ class WorkflowOp(InferenceOperator):
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
     ) -> Schema:
-        expected_input = input_schema.apply(col_selector)
-
-        if not expected_input == self.workflow.graph.input_schema:
-            raise ValueError(
-                "Request schema provided to WorkflowOp doesn't match workflow's input schema.\n"
-                f"Request schema columns: {input_schema.column_names}\n"
-                f"Workflow input schema columns: {self.workflow.graph.input_schema.column_names}."
-            )
-
         return self.workflow.output_schema
 
-    def export(self, path, version=1):
+    def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
-        new_dir_path = pathlib.Path(path) / self.export_name
-        new_dir_path.mkdir()
+        modified_workflow = self.workflow.remove_inputs(self.label_columns)
 
-        workflow = _remove_columns(self.workflow, self.label_columns)
+        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
 
-        # TODO: Extract this logic to base inference operator?
-        export_path = new_dir_path / str(version) / "workflow"
-        workflow.save(str(export_path))
+        node_export_path = pathlib.Path(path) / node_name
+        node_export_path.mkdir(exist_ok=True)
+
+        workflow_export_path = node_export_path / str(version) / "workflow"
+        modified_workflow.save(str(workflow_export_path))
 
         return _generate_nvtabular_config(
-            workflow,
-            self.export_name,
-            new_dir_path,
+            modified_workflow,
+            node_name,
+            node_export_path,
             backend="nvtabular",
             sparse_max=self.sparse_max,
             max_batch_size=self.max_batch_size,
             cats=self.cats,
             conts=self.conts,
         )
-
-    @property
-    def export_name(self):
-        return self.name

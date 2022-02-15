@@ -1,33 +1,16 @@
 import json
+import os
 
 import numpy as np
 import pytest
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
+from nvtabular.graph.graph import Graph
+from tests.unit.inference.inf_test_ops import PlusTwoOp
 
 op_runner = pytest.importorskip("nvtabular.inference.graph.op_runner")
 inf_op = pytest.importorskip("nvtabular.inference.graph.ops.operator")
-
-
-class PlusTwoOp(inf_op.InferenceOperator):
-    @property
-    def export_name(self):
-        return str(self.__class__.__name__)
-
-    def export(self, path):
-        pass
-
-    def transform(self, df: inf_op.InferenceDataFrame) -> inf_op.InferenceDataFrame:
-        focus_df = df
-        new_df = inf_op.InferenceDataFrame()
-        for name, data in focus_df:
-            new_df.tensors[f"{name}+2"] = data + 2
-        return new_df
-
-    @classmethod
-    def from_config(cls, config):
-        return PlusTwoOp()
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -57,7 +40,7 @@ def test_op_runner_loads_config(tmpdir, dataset, engine):
         }
     }
 
-    runner = op_runner.OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(config, repository, version, kind)
 
     loaded_op = runner.operators[0]
     assert isinstance(loaded_op, PlusTwoOp)
@@ -97,7 +80,7 @@ def test_op_runner_loads_multiple_ops_same(tmpdir, dataset, engine):
         }
     }
 
-    runner = op_runner.OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(config, repository, version, kind)
 
     assert len(runner.operators) == 2
 
@@ -139,7 +122,7 @@ def test_op_runner_loads_multiple_ops_same_execute(tmpdir, dataset, engine):
         }
     }
 
-    runner = op_runner.OperatorRunner(repository, version, kind, config)
+    runner = op_runner.OperatorRunner(config, repository, version, kind)
 
     inputs = {}
     for col_name in schema.column_names:
@@ -147,4 +130,33 @@ def test_op_runner_loads_multiple_ops_same_execute(tmpdir, dataset, engine):
 
     outputs = runner.execute(inf_op.InferenceDataFrame(inputs))
 
-    assert outputs["x+2+2"] == inputs["x"] + 4
+    assert outputs["x_plus_2_plus_2"] == inputs["x"] + 4
+
+
+@pytest.mark.parametrize("engine", ["parquet"])
+def test_op_runner_single_node_export(tmpdir, dataset, engine):
+    # assert against produced config
+    schema = dataset.schema
+    for name in schema.column_names:
+        dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
+            [nvt.graph.tags.Tags.USER]
+        )
+
+    inputs = ["x", "y"]
+
+    node = inputs >> PlusTwoOp()
+
+    graph = Graph(node)
+    graph.construct_schema(dataset.schema)
+
+    config = node.export(tmpdir)
+
+    file_path = os.path.join(str(tmpdir), node.export_name, "config.pbtxt")
+
+    assert os.path.exists(file_path)
+    config_file = open(file_path, "r").read()
+    assert config_file == str(config)
+    assert len(config.input) == len(inputs)
+    assert len(config.output) == len(inputs)
+    for idx, conf in enumerate(config.output):
+        assert conf.name == inputs[idx] + "_plus_2"

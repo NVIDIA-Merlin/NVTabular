@@ -258,7 +258,7 @@ class TargetEncoding(StatOperator):
 
     @property
     def output_dtype(self):
-        return np.float32
+        return self.out_dtype or np.float32
 
     @property
     def output_tags(self):
