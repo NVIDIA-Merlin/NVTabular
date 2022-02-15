@@ -46,7 +46,7 @@ class QueryMilvus(PipelineableInferenceOperator):
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
     def transform(self, df: InferenceDataFrame):
-        user_vector = df["user_vector"].as_numpy()
+        user_vector = df["user_vector"]
 
         # Normalize the user query vector
         user_vector = user_vector / np.sqrt(np.sum(user_vector ** 2))

@@ -30,6 +30,7 @@ import sys
 import traceback
 from typing import List
 
+import cupy as cp
 import triton_python_backend_utils as pb_utils
 from triton_python_backend_utils import (
     InferenceRequest,
@@ -66,6 +67,7 @@ class TritonPythonModel:
                 # transform the triton tensors to a dict of name:numpy tensor
                 input_tensors = {
                     name: get_input_tensor_by_name(request, name).as_numpy()
+                    # name: cp.fromDlpack(get_input_tensor_by_name(request, name).to_dlpack())
                     for name in input_column_names
                 }
 
@@ -73,7 +75,16 @@ class TritonPythonModel:
 
                 raw_tensor_tuples = self.runner.execute(inf_df)
 
-                result = [Tensor(name, data) for name, data in raw_tensor_tuples]
+                # tensors = { 
+                #   name:(data if hasattr(data, "get") else cp.ndarray(data)) 
+                #   for name,data in raw_tensor_tuples 
+                # }
+                tensors = {
+                    name: (data.get() if hasattr(data, "get") else data)
+                    for name, data in raw_tensor_tuples
+                }
+
+                result = [Tensor(name, data) for name, data in tensors.items()]
 
                 responses.append(InferenceResponse(result))
 

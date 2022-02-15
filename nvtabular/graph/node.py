@@ -404,10 +404,9 @@ def iter_nodes(nodes):
             queue.extend(current)
         else:
             yield current
-            # TODO: deduplicate nodes?
             for node in current.parents_with_dependencies:
-
-                queue.append(node)
+                if node not in queue:
+                    queue.append(node)
 
 
 # output node (bottom) -> selection leaf nodes (top)
@@ -418,7 +417,8 @@ def preorder_iter_nodes(nodes):
 
     def traverse(current_nodes):
         for node in current_nodes:
-            queue.append(node)
+            if not node in queue:
+                queue.append(node)
             traverse(node.parents_with_dependencies)
 
     traverse(nodes)
@@ -435,7 +435,8 @@ def postorder_iter_nodes(nodes):
     def traverse(current_nodes):
         for node in current_nodes:
             traverse(node.parents_with_dependencies)
-            queue.append(node)
+            if not node in queue:
+                queue.append(node)
 
     traverse(nodes)
     for node in queue:

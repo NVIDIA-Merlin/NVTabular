@@ -16,6 +16,7 @@
 
 import json
 
+import cupy as cp
 import faiss
 import numpy as np
 
@@ -56,7 +57,7 @@ class QueryFaiss(PipelineableInferenceOperator):
         _, indices = self.index.search(user_vector, self.topk)
         # distances, indices = self.index.search(user_vector, self.topk)
 
-        candidate_ids = np.array(indices).T.astype(np.int32)
+        candidate_ids = cp.array(indices).T.astype(np.int32)
         # candidate_distances = np.array(distances).T.astype(np.float32)
 
         return InferenceDataFrame(
@@ -76,6 +77,6 @@ class QueryFaiss(PipelineableInferenceOperator):
 
 
 def setup_faiss(item_vector, output_path):
-    index = faiss.IndexFlatL2(len(item_vector[0]))
+    index = faiss.IndexFlatL2(item_vector[0].shape[0])
     index.add(item_vector)
     faiss.write_index(index, str(output_path))

@@ -71,7 +71,7 @@ class Ensemble:
         for node in postorder_nodes:
             if node.exportable:
                 node_id = node_id_lookup.get(node, None)
-                node_name = f"{node.export_name}_{node_id}"
+                node_name = f"{node_id}_{node.export_name}"
 
                 found = False
                 for step in ensemble_config.ensemble_scheduling.step:

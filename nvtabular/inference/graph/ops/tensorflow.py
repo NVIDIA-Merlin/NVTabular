@@ -70,7 +70,7 @@ class PredictTensorflow(InferenceOperator):
     def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
         # TODO: refactor out the nodeid logic check
-        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
+        node_name = f"{node_id}_{self.export_name}" if node_id is not None else self.export_name
 
         node_export_path = pathlib.Path(path) / node_name
         node_export_path.mkdir(exist_ok=True)

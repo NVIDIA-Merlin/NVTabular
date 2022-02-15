@@ -1,6 +1,7 @@
 import json
 import logging
 
+import cupy as cp
 import numpy as np
 from feast import FeatureStore
 
@@ -138,7 +139,7 @@ class QueryFeast(PipelineableInferenceOperator):
         # Numerical and single-hot categorical
         for feature_name in self.features:
             feature_value = feast_response[feature_name]
-            feature_array = np.array([feature_value]).T.astype(
+            feature_array = cp.array([feature_value]).T.astype(
                 self.output_schema[self._prefixed_name(feature_name)].dtype
             )
             output_tensors[self._prefixed_name(feature_name)] = feature_array
@@ -159,13 +160,13 @@ class QueryFeast(PipelineableInferenceOperator):
                 nnzs = [len(vals) for vals in feature_value]
                 feature_value = [flattened_value]
 
-            feature_array = np.array(feature_value).T.astype(
+            feature_array = cp.array(feature_value).T.astype(
                 self.output_schema[feature_out_name].dtype
             )
             if not nnzs:
                 nnzs = [len(feature_array)]
             feature_out_nnz = self._prefixed_name(f"{feature_name}_{self.suffix_int+1}")
-            feature_nnzs = np.array([nnzs], dtype=self.output_schema[feature_out_nnz].dtype).T
+            feature_nnzs = cp.array([nnzs], dtype=self.output_schema[feature_out_nnz].dtype).T
 
             output_tensors[feature_out_name] = feature_array
             output_tensors[feature_out_nnz] = feature_nnzs

@@ -77,12 +77,12 @@ class PipelineableInferenceOperator(InferenceOperator):
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
 
-        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
+        node_name = f"{node_id}_{self.export_name}" if node_id is not None else self.export_name
 
         node_export_path = pathlib.Path(path) / node_name
         node_export_path.mkdir(exist_ok=True)
 
-        config = model_config.ModelConfig(name=node_name, backend="nvtabular", platform="op_runner")
+        config = model_config.ModelConfig(name=node_name, backend="python", platform="op_runner")
 
         config.parameters["operator_names"].string_value = json.dumps([node_name])
 

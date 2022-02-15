@@ -17,6 +17,7 @@ class SoftmaxSampling(PipelineableInferenceOperator):
 
     @classmethod
     def from_config(cls, config):
+        """Load operator and properties from Triton config"""
         parameters = json.loads(config.get("params", ""))
         candidate_col = parameters["candidate_col"]
         predict_col = parameters["relevance_col"]
@@ -26,6 +27,7 @@ class SoftmaxSampling(PipelineableInferenceOperator):
         return SoftmaxSampling(candidate_col, predict_col, temperature=theta, topk=topk)
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
+        """Write out a Triton model config directory"""
         params = params or {}
         self_params = {
             "candidate_col": self.candidate_col,
@@ -39,9 +41,11 @@ class SoftmaxSampling(PipelineableInferenceOperator):
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
     ) -> Schema:
+        """Describe the operator's outputs"""
         return Schema([ColumnSchema("ordered_ids", dtype=np.int32, _is_list=True, _is_ragged=True)])
 
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
+        """Transform the dataframe by applying this operator to the set of input columns"""
         # Extract parameters from the request
         candidate_ids = df[self.candidate_col].reshape(-1)
 
