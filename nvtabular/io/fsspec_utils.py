@@ -15,14 +15,28 @@
 #
 
 import io
+from distutils.version import LooseVersion
 from threading import Thread
 
+# Check if fsspec.parquet module is available
+import fsspec
 import numpy as np
 from pyarrow import parquet as pq
+
+if LooseVersion(fsspec.__version__).version[:3] > [2021, 11, 0]:
+    import fsspec.parquet as fsspec_parquet
+else:
+    fsspec_parquet = None
 
 try:
     import cudf
     from cudf.core.column import as_column, build_categorical_column
+
+    if fsspec_parquet and (LooseVersion(cudf.__version__).version[:2] < [21, 12]):
+        # This version of cudf does not support
+        # reads from python-file objects. Avoid
+        # using the `fsspec.parquet` module
+        fsspec_parquet = None
 except ImportError:
     cudf = None
 
@@ -103,19 +117,43 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
     if row_groups is not None and not isinstance(row_groups, list):
         row_groups = [row_groups]
 
-    # Get byte-ranges that are known to contain the
-    # required data for this read
-    byte_ranges, footer, file_size = _get_parquet_byte_ranges(
-        path, row_groups, columns, fs, **kwargs
+    # Handle various key-word argument options
+    user_kwargs = kwargs.copy()
+    read_kwargs = user_kwargs.pop("read", {})
+    strings_to_cats = read_kwargs.get(
+        "strings_to_categorical",
+        user_kwargs.pop("strings_to_categorical", False),
     )
 
-    # Call cudf.read_parquet on the dummy buffer
-    strings_to_cats = kwargs.get("strings_to_categorical", False)
-    return cudf.read_parquet(
-        # Wrap in BytesIO since cudf will sometimes use
-        # pyarrow to parse the metadata (and pyarrow
-        # cannot read from a bytes object)
-        io.BytesIO(
+    if fsspec_parquet:
+        # For newer versions of fsspec/cudf, we should use
+        # the `fsspec.parquet.open_parquet_file` function.
+        # This approach will result in fast data transfer,
+        # and will typically reduce host-memory usage.
+        with fsspec_parquet.open_parquet_file(
+            path,
+            fs=fs,
+            columns=columns,
+            row_groups=row_groups,
+            engine="pyarrow",
+        ) as f:
+            return cudf.read_parquet(
+                f,
+                engine="cudf",
+                columns=columns,
+                row_groups=row_groups,
+                strings_to_categorical=strings_to_cats,
+                use_python_file_object=True,
+                **read_kwargs,
+            )
+    else:
+        # Get byte-ranges that are known to contain the
+        # required data for this read
+        byte_ranges, footer, file_size = _get_parquet_byte_ranges(
+            path, row_groups, columns, fs, **user_kwargs
+        )
+
+        return cudf.read_parquet(
             # Transfer the required bytes with fsspec
             _fsspec_data_transfer(
                 path,
@@ -124,15 +162,14 @@ def _optimized_read_remote(path, row_groups, columns, fs, **kwargs):
                 footer=footer,
                 file_size=file_size,
                 add_par1_magic=True,
-                **kwargs,
-            )
-        ),
-        engine="cudf",
-        columns=columns,
-        row_groups=row_groups,
-        strings_to_categorical=strings_to_cats,
-        **kwargs.get("read", {}),
-    )
+                **user_kwargs,
+            ),
+            engine="cudf",
+            columns=columns,
+            row_groups=row_groups,
+            strings_to_categorical=strings_to_cats,
+            **read_kwargs,
+        )
 
 
 def _get_parquet_byte_ranges(
@@ -267,7 +304,10 @@ def _fsspec_data_transfer(
             **kwargs,
         )
 
-    return buf.tobytes()
+    # Wrap in BytesIO since cudf will sometimes use
+    # pyarrow to parse the metadata (and pyarrow
+    # cannot read from a bytes object)
+    return io.BytesIO(buf)
 
 
 def _merge_ranges(byte_ranges, max_block=256_000_000, max_gap=64_000):

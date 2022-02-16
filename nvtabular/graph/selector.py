@@ -151,10 +151,13 @@ class ColumnSelector:
         remaining_groups = []
 
         for col in self._names:
-            if col not in other_selector.names:
+            if col not in other_selector._names:
                 remaining_names.append(col)
-            for group in self.subgroups:
-                if col not in group.names:
-                    remaining_groups.append(ColumnSelector(group.grouped_names))
+
+        for group in self.subgroups:
+            if group not in other_selector.subgroups and all(
+                col not in other_selector._names for col in group.names
+            ):
+                remaining_groups.append(group)
 
         return ColumnSelector(remaining_names, subgroups=remaining_groups)
