@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Call this script with:
 # 1. Name of container as first parameter
