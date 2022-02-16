@@ -341,8 +341,7 @@ class Dataset:
                     self.schema = Schema.load(schema_path)
                 elif (schema_path.parent / "schema.pbtxt").exists():
                     self.schema = Schema.load(schema_path.parent)
-                else:
-                    self.infer_schema()
+                self.infer_schema()
             else:
                 # df with no schema
                 self.infer_schema()
@@ -1133,7 +1132,9 @@ class Dataset:
             col_schema = ColumnSchema(column, dtype=dtype_val, _is_list=is_list, _is_ragged=is_list)
             column_schemas.append(col_schema)
 
-        self.schema = Schema(column_schemas)
+        schema = Schema(column_schemas)
+        if self.schema:
+            self.schema = self.schema + schema
         return self.schema
 
     def sample_dtypes(self, n=1, annotate_lists=False):
