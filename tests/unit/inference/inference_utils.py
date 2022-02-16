@@ -3,8 +3,8 @@ from distutils.spawn import find_executable
 import pytest
 
 torch = pytest.importorskip("torch")  # noqa
-configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
-configure_tensorflow()
+loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")  # noqa
+loader_tf_utils.configure_tensorflow()
 
 import nvtabular.framework_utils.tensorflow.layers as layers  # noqa
 from nvtabular.framework_utils.torch.models import Model  # noqa
@@ -26,7 +26,7 @@ def create_tf_model(cat_columns: list, cat_mh_columns: list, embed_tbl_shapes: d
     inputs = {}  # tf.keras.Input placeholders for each feature to be used
     emb_layers = []  # output of all embedding layers, which will be concatenated
     for col in cat_columns:
-        inputs[col] = tf.keras.Input(name=col, dtype=tf.int32, shape=(1,))
+        inputs[col] = tf.keras.Input(name=col, dtype=tf.int64, shape=(1,))
     # Note that we need two input tensors for multi-hot categorical features
     for col in cat_mh_columns:
         inputs[col] = (

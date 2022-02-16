@@ -103,7 +103,7 @@ class Workflow:
         return self._transform_impl(dataset)
 
     def fit_schema(self, input_schema):
-        self.graph.fit_schema(input_schema)
+        self.graph.construct_schema(input_schema)
         return self
 
     @property
@@ -129,6 +129,10 @@ class Workflow:
     def _input_columns(self):
         return self.graph._input_columns()
 
+    def remove_inputs(self, input_cols):
+        self.graph.remove_inputs(input_cols)
+        return self
+
     def fit(self, dataset: Dataset) -> "Workflow":
         """Calculates statistics for this workflow on the input dataset
 
@@ -142,7 +146,7 @@ class Workflow:
         self.clear_stats()
 
         if not self.graph.output_schema:
-            self.graph.fit_schema(dataset.schema)
+            self.graph.construct_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
 
@@ -216,7 +220,7 @@ class Workflow:
         # This captures the output dtypes of operators like LambdaOp where
         # the dtype can't be determined without running the transform
         self._transform_impl(dataset, capture_dtypes=True).sample_dtypes()
-        self.graph.fit_schema(dataset.schema, preserve_dtypes=True)
+        self.graph.construct_schema(dataset.schema, preserve_dtypes=True)
 
         return self
 
@@ -240,7 +244,7 @@ class Workflow:
         self._clear_worker_cache()
 
         if not self.graph.output_schema:
-            self.graph.fit_schema(dataset.schema)
+            self.graph.construct_schema(dataset.schema)
 
         ddf = dataset.to_ddf(columns=self._input_columns())
         return Dataset(

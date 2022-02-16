@@ -18,6 +18,19 @@ from nvtabular.graph.schema import Schema
 
 
 class InferenceNode(Node):
+    def export(self, output_path, node_id=None, version=1):
+        return self.op.export(
+            output_path, self.input_schema, self.output_schema, node_id=node_id, version=version
+        )
+
+    @property
+    def export_name(self):
+        return self.op.export_name
+
+    @property
+    def exportable(self):
+        return hasattr(self.op, "export")
+
     def match_descendant_dtypes(self, source_node):
         self.output_schema = _match_dtypes(source_node.input_schema, self.output_schema)
         return self

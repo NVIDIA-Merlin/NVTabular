@@ -18,7 +18,7 @@ import json
 
 
 class OperatorRunner:
-    def __init__(self, repository, version, kind, config):
+    def __init__(self, config, repository="./", version=1, kind=""):
         operator_names = self.fetch_json_param(config, "operator_names")
         op_configs = [self.fetch_json_param(config, op_name) for op_name in operator_names]
 
