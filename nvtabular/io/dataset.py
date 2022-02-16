@@ -1135,6 +1135,8 @@ class Dataset:
         schema = Schema(column_schemas)
         if self.schema:
             self.schema = self.schema + schema
+        else:
+            self.schema = schema
         return self.schema
 
     def sample_dtypes(self, n=1, annotate_lists=False):
