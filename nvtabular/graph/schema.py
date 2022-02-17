@@ -42,14 +42,22 @@ class ColumnSchema:
                 dtype = np.dtype(self.dtype.numpy_dtype)
             elif hasattr(self.dtype, "_categories"):
                 dtype = self.dtype._categories.dtype
-            else:
+            # CAUTION: fun fact np.dtype(None) == np.float64, must be avoided
+            elif self.dtype is not None:
                 dtype = np.dtype(self.dtype)
+
         except TypeError as err:
             raise TypeError(
                 f"Unsupported dtype {self.dtype}, unable to cast {self.dtype} to a numpy dtype."
             ) from err
 
-        object.__setattr__(self, "dtype", dtype)
+        if self.dtype:
+            object.__setattr__(self, "dtype", dtype)
+            properties = {"dtype_itemsize": dtype.itemsize * 8}
+            if self.properties:
+                self.properties.update(properties)
+                properties = self.properties
+            object.__setattr__(self, "properties", properties)
 
     def __str__(self) -> str:
         return self.name

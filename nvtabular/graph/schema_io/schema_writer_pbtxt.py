@@ -95,11 +95,20 @@ class PbTxt_SchemaWriter(SchemaWriter):
                 # if zero no values were passed
                 if domain_values.max > 0:
                     properties["domain"] = {"min": domain_values.min, "max": domain_values.max}
+                item_size = int(properties["dtype_itemsize"])
                 if feat.type:
                     if feat.type == 2:
-                        dtype = numpy.int
+                        if item_size == 32:
+                            dtype = numpy.int32
+                        elif item_size == 64:
+                            dtype = numpy.int64
+
                     elif feat.type == 3:
-                        dtype = numpy.float
+                        if item_size == 32:
+                            dtype = numpy.float32
+                        elif item_size == 64:
+                            dtype = numpy.float64
+
             columns.append(
                 nvt.ColumnSchema(
                     feat.name, tags=tags, properties=properties, dtype=dtype, _is_list=_is_list
@@ -111,6 +120,8 @@ class PbTxt_SchemaWriter(SchemaWriter):
 
 def register_extra_metadata(column_schema, feature):
     filtered_properties = {k: v for k, v in column_schema.properties.items() if k != "domain"}
+    item_size = numpy.dtype(column_schema.dtype).itemsize * 8
+    filtered_properties.update({"dtype_itemsize": item_size})
     msg_struct = Struct()
     # must pack message into "Any" type
     any_pack = Any()
@@ -210,6 +221,6 @@ def create_protobuf_feature(column_schema):
     # can be instantiated with no values
     # if  so, unnecessary to dump
     # import pdb; pdb.set_trace()
-    if len(column_schema.properties) > 0:
+    if len(column_schema.properties) > 0 or column_schema.dtype:
         feature = register_extra_metadata(column_schema, feature)
     return feature

@@ -84,6 +84,10 @@ def test_valuecount(tmpdir):
     assert "list1" in list(val_count.stats.keys())
     assert "list2" in list(val_count.stats.keys())
     new_df = nvt.Dataset(str(tmpdir), engine="parquet")
+    for entry in ["list1", "list2"]:
+        processor.output_schema.column_schemas[entry].properties.pop("dtype_itemsize")
+        new_df.schema.column_schemas[entry].properties.pop("dtype_itemsize")
+
     assert processor.output_schema.column_schemas["list1"].properties == {
         "value_count": {"min": 1, "max": 4}
     }

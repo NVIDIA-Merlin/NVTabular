@@ -182,7 +182,8 @@ def test_lambdaop_schema_computation(cpu):
     workflow.fit(dataset)
 
     output_schema = workflow.output_node.output_schema
-
+    # remove dtype information not really part of properties
+    output_schema["c"].properties.pop("dtype_itemsize")
     assert output_schema["c"].dtype == dtype
     assert output_schema["c"].tags == TagSet(tags)
     assert output_schema["c"].properties == properties
