@@ -32,7 +32,7 @@ tf_utils.configure_tensorflow()
 
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
 @pytest.mark.parametrize("engine", ["parquet"])
-@pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
+@pytest.mark.parametrize("output_model", ["tensorflow"])
 def test_export_run_ensemble_triton(tmpdir, engine, output_model, df):
     conts = ["x", "y", "id"] >> ops.FillMissing() >> ops.Normalize()
     cats = ["name-cat", "name-string"] >> ops.Categorify(cat_cache="host")
