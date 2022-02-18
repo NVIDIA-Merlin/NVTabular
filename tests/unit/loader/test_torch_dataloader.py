@@ -227,7 +227,7 @@ def test_empty_cols(tmpdir, engine, cat_names, mh_names, cont_names, label_name,
             LEARNING_RATE = 0.001
             model = Model(
                 embedding_table_shapes=emb_sizes,
-                num_continuous=len(cont_names),
+                continuous_cols=cont_names,
                 emb_dropout=EMBEDDING_DROPOUT_RATE,
                 layer_hidden_dims=HIDDEN_DIMS,
                 layer_dropout_rates=DROPOUT_RATES,
@@ -578,7 +578,7 @@ def test_mh_model_support(tmpdir):
     LEARNING_RATE = 0.001
     model = Model(
         embedding_table_shapes=emb_sizes,
-        num_continuous=len(cont_names),
+        continuous_cols=cont_names,
         emb_dropout=EMBEDDING_DROPOUT_RATE,
         layer_hidden_dims=HIDDEN_DIMS,
         layer_dropout_rates=DROPOUT_RATES,

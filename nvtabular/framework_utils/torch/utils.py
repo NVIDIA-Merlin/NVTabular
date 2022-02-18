@@ -113,20 +113,21 @@ def process_epoch(
     with torch.set_grad_enabled(train):
         y_list, y_pred_list = [], []
         for idx, batch in enumerate(iter(dataloader)):
-            x_cat, x_cont, y = transform(batch)
-            if device:
-                x_cat = x_cat.to(device)
-                x_cont = x_cont.to(device)
-                y = y.to(device)
+            x, y = batch
+            # x_cat, x_cont, y = transform(batch)
+            # if device:
+            #     x_cat = x_cat.to(device)
+            #     x_cont = x_cont.to(device)
+            #     y = y.to(device)
             y_list.append(y.detach())
             # maybe autocast goes here?
             if amp:
                 with torch.cuda.amp.autocast():
-                    y_pred = model(x_cat, x_cont)
+                    y_pred = model(x)["predictions"]
                     y_pred_list.append(y_pred.detach())
                     loss = loss_func(y_pred, y)
             else:
-                y_pred = model(x_cat, x_cont)
+                y_pred = model(x)["predictions"]
                 y_pred_list.append(y_pred.detach())
                 loss = loss_func(y_pred, y)
             if train:

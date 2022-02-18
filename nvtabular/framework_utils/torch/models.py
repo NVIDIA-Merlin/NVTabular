@@ -42,7 +42,7 @@ class Model(torch.nn.Module):
     def __init__(
         self,
         embedding_table_shapes,
-        num_continuous,
+        continuous_cols,
         emb_dropout,
         layer_hidden_dims,
         layer_dropout_rates,
@@ -52,6 +52,8 @@ class Model(torch.nn.Module):
         super().__init__()
         self.max_output = max_output
         mh_shapes = None
+        self.continuous_cols = continuous_cols
+        num_continuous = len(self.continuous_cols)
         if isinstance(embedding_table_shapes, tuple):
             embedding_table_shapes, mh_shapes = embedding_table_shapes
         if embedding_table_shapes:
@@ -61,6 +63,8 @@ class Model(torch.nn.Module):
         if mh_shapes:
             self.mh_cat_layer = MultiHotEmbeddings(mh_shapes, dropout=emb_dropout, mode=bag_mode)
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
+        self.single_hot_cat_cols = list(embedding_table_shapes.keys())
+        self.mh_cat_cols = list(mh_shapes.keys())
 
         embedding_size = sum(emb_size for _, emb_size in embedding_table_shapes.values())
         if mh_shapes is not None:
@@ -81,11 +85,13 @@ class Model(torch.nn.Module):
 
         self.output_layer = torch.nn.Linear(layer_output_sizes[-1], 1)
 
-    def forward(self, x_cat, x_cont):
-        mh_cat = None
+    def forward(self, inputs):
+        cat_tensors = [inputs[name].flatten() for name in self.single_hot_cat_cols]
+        cont_tensors = [inputs[name].flatten() for name in self.continuous_cols]
+        x_cat = torch.stack(cat_tensors, 1) if cat_tensors else []
+        mh_cat = {name: inputs[name] for name in self.mh_cat_cols}
+        x_cont = torch.stack(cont_tensors, 1) if cont_tensors else []
         concat_list = []
-        if isinstance(x_cat, tuple):
-            x_cat, mh_cat = x_cat
         if mh_cat:
             mh_cat = self.mh_cat_layer(mh_cat)
             concat_list.append(mh_cat)
@@ -107,4 +113,4 @@ class Model(torch.nn.Module):
         if self.max_output:
             x = self.max_output * torch.sigmoid(x)
         x = x.view(-1)
-        return x
+        return {"predictions": x}

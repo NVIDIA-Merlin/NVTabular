@@ -104,7 +104,7 @@ EMBEDDING_TABLE_SHAPES_TUPLE = (
 
 model = Model(
     embedding_table_shapes=EMBEDDING_TABLE_SHAPES_TUPLE,
-    num_continuous=0,
+    continuous_cols=[],
     emb_dropout=0.0,
     layer_hidden_dims=[128, 128, 128],
     layer_dropout_rates=[0.0, 0.0, 0.0],
