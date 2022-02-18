@@ -70,7 +70,10 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
     workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
@@ -151,7 +154,10 @@ def export_pytorch_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
     workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
@@ -555,7 +561,7 @@ def export_pytorch_model(
 
     config = model_config.ModelConfig(name=name, backend=backend)
 
-    for col_name, col_schema in workflow.output_schema.items():
+    for col_name, col_schema in workflow.output_schema.column_schemas.items():
         _add_model_param(col_schema, model_config.ModelInput, config.input)
 
     *_, last_layer = model.parameters()
