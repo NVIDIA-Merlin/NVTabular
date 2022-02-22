@@ -16,6 +16,8 @@
 import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
+from merlin.graph import Node
+from merlin.schema import Schema, Tags
 
 from nvtabular.dispatch import (
     DataFrameType,
@@ -24,7 +26,6 @@ from nvtabular.dispatch import (
     random_state,
     read_parquet_dispatch,
 )
-from nvtabular.graph import Node, Schema, Tags
 
 from . import categorify as nvt_cat
 from .moments import _custom_moments

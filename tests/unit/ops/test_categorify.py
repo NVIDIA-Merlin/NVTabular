@@ -19,6 +19,7 @@ import random
 import numpy as np
 import pandas as pd
 import pytest
+from merlin.core.dispatch import make_df
 
 import nvtabular as nvt
 from nvtabular import ColumnSelector, dispatch, ops
@@ -563,7 +564,7 @@ def test_categorify_embedding_sizes(dataset, engine):
 
 def test_categorify_no_nulls():
     # See https://github.com/NVIDIA-Merlin/NVTabular/issues/1325
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
             "item_id": [2, 4, 4, 7, 5, 2, 5, 2] * 10,

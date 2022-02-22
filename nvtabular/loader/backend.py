@@ -27,6 +27,8 @@ try:
 except ImportError:
     cp = np
 
+from merlin.schema import Tags
+
 from nvtabular.dispatch import (
     HAS_GPU,
     annotate,
@@ -36,7 +38,6 @@ from nvtabular.dispatch import (
     make_df,
     pull_apart_list,
 )
-from nvtabular.graph import Tags
 from nvtabular.io import DataFrameIter, shuffle_df
 
 

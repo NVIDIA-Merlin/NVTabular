@@ -1,6 +1,5 @@
 import pytest
-
-from nvtabular.graph import Schema
+from merlin.schema import Schema
 
 tf = pytest.importorskip("tensorflow")
 nvtf = pytest.importorskip("nvtabular.framework_utils.tensorflow")

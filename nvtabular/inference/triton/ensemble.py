@@ -26,10 +26,10 @@ from nvtabular import ColumnSelector
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
+from merlin.schema import Tags  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import is_string_dtype  # noqa
-from nvtabular.graph import Tags  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -680,7 +680,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 
 def _add_model_param(col_schema, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if col_schema._is_list and col_schema._is_ragged:
+    if col_schema.is_list and col_schema.is_ragged:
         params.append(
             paramclass(
                 name=col_schema.name + "__values",

@@ -33,11 +33,11 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
+from merlin.schema import Schema, Tags
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
-from nvtabular.graph import Schema, Tags
 from nvtabular.utils import device_mem_size, run_on_worker
 from nvtabular.worker import fetch_table_data, get_worker_cache
 
@@ -599,7 +599,7 @@ def get_embedding_sizes(source, output_dtypes=None):
     multihot_columns = set()
     cats_schema = output_node.output_schema.select_by_tag(Tags.CATEGORICAL)
     for col_name, col_schema in cats_schema.column_schemas.items():
-        if col_schema.dtype and col_schema._is_list and col_schema._is_ragged:
+        if col_schema.dtype and col_schema.is_list and col_schema.is_ragged:
             # multi hot so remove from output and add to multihot
             multihot_columns.add(col_name)
 

@@ -4,8 +4,9 @@ import pathlib
 from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
+from merlin.graph import BaseOperator
+
 import nvtabular as nvt
-from nvtabular.graph import BaseOperator
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -129,7 +130,7 @@ def _schema_to_dict(schema):
     for col_name, col_schema in schema.column_schemas.items():
         schema_dict[col_name] = {
             "dtype": col_schema.dtype.name,
-            "is_list": col_schema._is_list,
+            "is_list": col_schema.is_list,
         }
 
     return schema_dict

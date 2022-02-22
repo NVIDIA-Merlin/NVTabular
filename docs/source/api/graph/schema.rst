@@ -1,7 +1,7 @@
 ColumnSchema
 ==============
 
-.. automodule:: nvtabular.graph.schema
+.. automodule:: merlin.graph.schema
    :members:
    :private-members:
    :special-members:

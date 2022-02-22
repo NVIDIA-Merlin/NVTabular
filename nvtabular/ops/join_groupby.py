@@ -18,10 +18,10 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
+from merlin.schema import Schema
 
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
-from nvtabular.graph import Schema
 
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
@@ -245,7 +245,7 @@ class JoinGroupby(StatOperator):
         new_schema = super()._compute_dtype(col_schema, input_schema)
 
         dtype = new_schema.dtype
-        is_list = new_schema._is_list
+        is_list = new_schema.is_list
 
         for agg in list(AGG_DTYPES.keys()):
             if col_schema.name.endswith(f"{self.name_sep}{agg}"):

@@ -14,9 +14,9 @@
 # limitations under the License.
 #
 import numpy
+from merlin.schema import Tags
 
 from nvtabular.dispatch import DataFrameType, annotate, is_dataframe_object
-from nvtabular.graph import Tags
 
 from .operator import ColumnSelector, Operator
 

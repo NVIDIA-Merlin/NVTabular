@@ -16,8 +16,7 @@
 from typing import Dict, Union
 
 import numpy
-
-from nvtabular.graph import Tags
+from merlin.schema import Tags
 
 from ..dispatch import DataFrameType, annotate, encode_list_column, hash_series, is_list_dtype
 from .categorify import _emb_sz_rule

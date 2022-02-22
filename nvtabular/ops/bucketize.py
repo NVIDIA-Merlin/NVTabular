@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import numpy as np
+from merlin.schema import Tags
 from packaging.version import Version
 
 from nvtabular.dispatch import DataFrameType, annotate, array
-from nvtabular.graph import Tags
 
 from .operator import ColumnSelector, Operator
 

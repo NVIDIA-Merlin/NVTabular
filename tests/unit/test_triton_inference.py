@@ -8,12 +8,12 @@ from distutils.spawn import find_executable
 import numpy as np
 import pandas as pd
 import pytest
+from merlin.graph import Supports
 
 import nvtabular as nvt
 import nvtabular.ops as ops
 from nvtabular import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, hash_series, make_df
-from nvtabular.graph import Supports
 from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")
@@ -103,7 +103,7 @@ def _verify_workflow_on_tritonserver(
 
     outputs = []
     for col_name, col_schema in workflow.output_schema.column_schemas.items():
-        if col_schema._is_list and col_schema._is_ragged:
+        if col_schema.is_list and col_schema.is_ragged:
             outputs.append(f"{col_name}__values")
             outputs.append(f"{col_name}__nnzs")
         else:

@@ -16,10 +16,11 @@
 import glob
 
 import pytest
+from merlin.graph import ColumnSelector
+from merlin.schema import ColumnSchema, Schema, Tags
 
 import nvtabular
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.graph import ColumnSchema, ColumnSelector, Schema, Tags
 
 
 def test_fit_schema():
@@ -239,7 +240,7 @@ def test_schema_write_read_dataset(tmpdir, dataset, engine):
             original_dtype = type(wf_col_schema.dtype(0).item())
 
         assert col_schema.dtype == original_dtype
-        assert col_schema._is_list == wf_col_schema._is_list
+        assert col_schema.is_list == wf_col_schema.is_list
         assert col_schema.tags == wf_col_schema.tags
         assert col_schema.properties == wf_col_schema.properties
 

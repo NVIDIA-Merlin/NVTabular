@@ -22,6 +22,7 @@ except ImportError:
 
 import dask.dataframe as dd
 import pandas as pd
+from merlin.schema import Schema
 
 from nvtabular.dispatch import (
     DataFrameType,
@@ -32,7 +33,6 @@ from nvtabular.dispatch import (
     detect_format,
     to_host,
 )
-from nvtabular.graph import Schema
 
 from .operator import ColumnSelector, Operator
 

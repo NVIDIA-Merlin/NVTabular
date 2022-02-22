@@ -69,7 +69,7 @@ class TritonPythonModel:
 
         self.output_dtypes = dict()
         for col_name, col_schema in self.workflow.output_schema.column_schemas.items():
-            if col_schema._is_list and col_schema._is_ragged:
+            if col_schema.is_list and col_schema.is_ragged:
                 self._set_output_dtype(col_name + "__nnzs")
                 self._set_output_dtype(col_name + "__values")
             else:

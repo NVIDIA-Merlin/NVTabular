@@ -17,7 +17,9 @@ import pathlib
 import tempfile
 from sys import version
 
-from nvtabular.graph import ColumnSchema, ColumnSelector, Schema
+from merlin.graph import ColumnSelector
+from merlin.schema import ColumnSchema, Schema
+
 from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import export_tensorflow_model
 

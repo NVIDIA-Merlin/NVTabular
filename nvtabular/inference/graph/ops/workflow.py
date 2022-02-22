@@ -15,7 +15,9 @@
 #
 import pathlib
 
-from nvtabular.graph import ColumnSelector, Schema
+from merlin.graph import ColumnSelector
+from merlin.schema import Schema
+
 from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
 

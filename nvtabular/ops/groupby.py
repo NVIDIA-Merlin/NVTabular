@@ -14,9 +14,9 @@
 # limitations under the License.
 import numpy
 from dask.dataframe.utils import meta_nonempty
+from merlin.schema import Schema
 
 from nvtabular.dispatch import DataFrameType, annotate
-from nvtabular.graph import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -164,7 +164,7 @@ class Groupby(Operator):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
         dtype = col_schema.dtype
-        is_list = col_schema._is_list
+        is_list = col_schema.is_list
 
         dtypes = {"count": numpy.int32, "mean": numpy.float32}
 

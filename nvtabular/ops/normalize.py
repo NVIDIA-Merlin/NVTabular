@@ -15,8 +15,8 @@
 #
 import dask.dataframe as dd
 import numpy
-
-from nvtabular.graph import Supports, Tags
+from merlin.graph import Supports
+from merlin.schema import Tags
 
 from ..dispatch import (
     DataFrameType,

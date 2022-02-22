@@ -5,6 +5,8 @@ try:
 except ImportError:
     from dask.dataframe import to_datetime
 
+from merlin.core.dispatch import make_df
+
 import nvtabular as nvt
 from nvtabular import ColumnSelector
 
@@ -20,7 +22,7 @@ def test_tf4rec():
         "prod_first_event_time_ts": np.random.randint(1570373000, 1570373382, NUM_ROWS),
         "price": np.random.uniform(0, 2750, NUM_ROWS),
     }
-    df = nvt.dispatch.make_df(inputs)
+    df = make_df(inputs)
 
     # categorify features
 
