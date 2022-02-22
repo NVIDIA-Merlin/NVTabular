@@ -60,11 +60,12 @@ class Model(torch.nn.Module):
             self.initial_cat_layer = ConcatenatedEmbeddings(
                 embedding_table_shapes, dropout=emb_dropout
             )
+        self.mh_cat_cols = []
         if mh_shapes:
             self.mh_cat_layer = MultiHotEmbeddings(mh_shapes, dropout=emb_dropout, mode=bag_mode)
+            self.mh_cat_cols = list(mh_shapes.keys())
         self.initial_cont_layer = torch.nn.BatchNorm1d(num_continuous)
         self.single_hot_cat_cols = list(embedding_table_shapes.keys())
-        self.mh_cat_cols = list(mh_shapes.keys())
 
         embedding_size = sum(emb_size for _, emb_size in embedding_table_shapes.values())
         if mh_shapes is not None:
