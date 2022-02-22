@@ -1051,7 +1051,9 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         for col in col_selector.names:
             name_size = col + "_size"
             null_size = 0
-            if name_size in df:
+            # Set null size if first element in `col` is
+            # null, and the `size` aggregation is known
+            if name_size in df and df[col].iloc[:1].isnull().any():
                 null_size = df[name_size].iloc[0]
             if options.max_size:
                 max_emb_size = options.max_size

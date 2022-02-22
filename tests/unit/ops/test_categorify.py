@@ -559,3 +559,19 @@ def test_categorify_embedding_sizes(dataset, engine):
     workflow.fit_transform(dataset)
 
     assert get_embedding_sizes(workflow) == {"name-cat": (27, 16), "name-string_test": (27, 16)}
+
+
+def test_categorify_no_nulls():
+    # See https://github.com/NVIDIA-Merlin/NVTabular/issues/1325
+    df = nvt.dispatch._make_df(
+        {
+            "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
+            "item_id": [2, 4, 4, 7, 5, 2, 5, 2] * 10,
+        },
+    )
+    workflow = nvt.Workflow(["user_id", "item_id"] >> ops.Categorify())
+    workflow.fit(nvt.Dataset(df))
+
+    df = pd.read_parquet("./categories/unique.user_id.parquet")
+    assert df["user_id"].iloc[:1].isnull().any()
+    assert df["user_id_size"][0] == 0

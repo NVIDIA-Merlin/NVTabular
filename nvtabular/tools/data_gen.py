@@ -18,12 +18,18 @@ import random
 import string
 
 import numpy as np
+import pandas as pd
 import psutil
 
 try:
     import cupy
 except ImportError:
     cupy = np
+
+try:
+    import cudf
+except ImportError:
+    cudf = pd
 
 from merlin.io import Dataset
 from scipy import stats
@@ -131,12 +137,16 @@ class DatasetGen:
                 offs = offs.astype("int32")
             if HAS_GPU:
                 ser = dist.create_col(
-                    col_size, dtype=np.long, min_val=0, max_val=col.cardinality
+                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
                 ).ceil()
             else:
-                ser = dist.create_col(col_size, dtype=np.long, min_val=0, max_val=col.cardinality)
+                ser = dist.create_col(
+                    col_size, dtype=np.long, min_val=col.min_val, max_val=col.cardinality
+                )
                 ser = make_df(np.ceil(ser))[0]
                 ser = ser.astype("int32")
+            if col.permutate_index:
+                ser = self.permutate_index(ser)
             if entries:
                 cat_names = self.create_cat_entries(
                     col.cardinality, min_size=col.min_entry_size, max_size=col.max_entry_size
@@ -348,6 +358,18 @@ class DatasetGen:
                 return rep
         return None
 
+    def permutate_index(self, ser):
+        name = ser.name
+        ser.name = "ind"
+        ind = ser.drop_duplicates().values
+        ind_random = cupy.random.permutation(ind)
+        df_map = cudf.DataFrame({"ind": ind, "ind_random": ind_random})
+        if not HAS_GPU:
+            ser = cudf.DataFrame(ser)
+        ser = ser.merge(df_map, how="left", left_on="ind", right_on="ind")["ind_random"]
+        ser.name = name
+        return ser
+
 
 DISTRO_TYPES = {"powerlaw": PowerLawDistro, "uniform": UniformDistro}
 
@@ -395,6 +417,8 @@ class CatCol(Col):
         multi_max=None,
         multi_avg=None,
         distro=None,
+        min_val=0,
+        permutate_index=False,
     ):
         super().__init__(name, dtype, distro)
         self.cardinality = cardinality
@@ -405,6 +429,8 @@ class CatCol(Col):
         self.multi_min = multi_min
         self.multi_max = multi_max
         self.multi_avg = multi_avg
+        self.min_val = min_val
+        self.permutate_index = permutate_index
 
 
 class LabelCol(Col):
@@ -442,6 +468,8 @@ def _get_cols_from_schema(schema, distros=None):
             multi_min:
             multi_max:
             multi_avg:
+            min_val:
+            permutate_index:
 
     labels:
         col_name:
