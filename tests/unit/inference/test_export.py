@@ -5,7 +5,7 @@ import pytest
 import nvtabular as nvt
 import nvtabular.ops as ops
 
-configure_tensorflow = pytest.importorskip("nvtabular.loader.tf_utils.configure_tensorflow")  # noqa
+tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")  # noqa
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
@@ -27,7 +27,7 @@ tritonclient = pytest.importorskip("tritonclient")
 grpcclient = pytest.importorskip("tritonclient.grpc")
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
-configure_tensorflow()
+tf_utils.configure_tensorflow()
 
 
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
