@@ -343,8 +343,14 @@ def run_in_context(func, *args, context=None, **kwargs):
 # Allow to pass devices as parameters
 def pytest_addoption(parser):
     parser.addoption("--devices", action="store", default="0", help="0,1,..,n-1")
+    parser.addoption("--report", action="store", default="0", help="0 | 1")
 
 
 @pytest.fixture
 def devices(request):
     return request.config.getoption("--devices")
+
+
+@pytest.fixture
+def report(request):
+    return request.config.getoption("--report")
