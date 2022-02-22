@@ -124,7 +124,7 @@ def is_float(str_to_flt):
 def send_results(db, bench_info, results_list):
     # only one entry because entries are split by Bench info
     new_results_list = results_list
-    info_list = db.getInfo()
+    info_list = list(db.getInfo())
     if len(info_list) > 0:
         br_list = db.getResults(filterInfoObjList=[bench_info])[0][1]
         results_to_remove = []
