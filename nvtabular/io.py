@@ -16,9 +16,5 @@
 
 # pylint: disable=wildcard-import
 
-import merlin
-
 # Re-export classes/modules from the core library for backwards compatibility
 from merlin.io import *  # noqa
-
-shuffle = merlin.io.shuffle
