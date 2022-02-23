@@ -333,7 +333,7 @@ def test_nvt_distributed(cpu, nested_serial):
 
     # Check that a new local cluster is deployed within
     # a `with Distributed()` block
-    with Distributed(cluster_type=cluster_type, n_workers=1) as dist:
+    with Distributed(cluster_type=cluster_type, n_workers=1, force_new=True) as dist:
         assert dist.client is not None
         assert global_dask_client() == dist.client
         assert len(dist.cluster.workers) == 1
