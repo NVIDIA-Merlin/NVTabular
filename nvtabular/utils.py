@@ -240,7 +240,8 @@ class Distributed:
             device_memory_limit=0.8,
             rmm_pool_size="20GB",
             log_spilling=True,
-        )
+        ):
+            workflow.transform(dataset).to_parquet(...)
 
     In this case, the `cluster_type="cuda"` calls for the
     creation of a `LocalCUDACluster`, and all other key-word
