@@ -20,8 +20,8 @@ movie_features_view = FeatureView(
     entities=["movie_id"],
     ttl=Duration(seconds=86400 * 7),
     features=[
-        Feature(name="genres", dtype=ValueType.INT64_LIST),
-        Feature(name="tags_unique", dtype=ValueType.INT64_LIST),
+        Feature(name="genres", dtype=ValueType.INT32_LIST),
+        Feature(name="tags_unique", dtype=ValueType.INT32_LIST),
         Feature(name="tags_nunique", dtype=ValueType.INT32),
     ],
     online=True,

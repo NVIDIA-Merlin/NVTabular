@@ -17,6 +17,7 @@ import time
 
 import numpy as np
 import tensorflow as tf
+from feast import FeatureStore
 
 import nvtabular as nvt
 from nvtabular import ColumnSchema, Schema
@@ -28,6 +29,13 @@ from nvtabular.inference.graph.ops.softmax_sampling import SoftmaxSampling
 from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow
 from nvtabular.inference.graph.ops.unroll_features import UnrollFeatures
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver
+
+# Clean up work:
+# - Pull features and mh_features from the schema
+# - Clean up input columns that are also params into dependencies
+# - Add validation to operators that only require a single input column
+# (like SoftmaxSampling and FilterCandidates)
+# - Migrate the operators to use cupy if present
 
 
 def test_poc_ensemble(tmpdir):
@@ -51,33 +59,6 @@ def test_poc_ensemble(tmpdir):
         )
 
     feast_repo_path = "/nvtabular/examples/end-to-end-poc/feature_repo"
-    feast_user_in_schema = Schema([ColumnSchema("user_id", dtype=np.int32)])
-
-    # TODO: Generate this from the Feast schema
-    feast_user_out_schema = Schema(
-        [
-            # ColumnSchema("user_id", dtype=np.int32),
-            ColumnSchema("movie_id_count", dtype=np.int32),
-            ColumnSchema("movie_ids_1", dtype=np.int32, _is_list=True),
-            ColumnSchema("movie_ids_2", dtype=np.int64, _is_list=True),
-            ColumnSchema("search_terms_1", dtype=np.int32, _is_list=True),
-            ColumnSchema("search_terms_2", dtype=np.int64, _is_list=True),
-            ColumnSchema("genres_1", dtype=np.int32, _is_list=True),
-            ColumnSchema("genres_2", dtype=np.int64, _is_list=True),
-        ]
-    )
-
-    # TODO: Generate this from the Feast schema
-    feast_item_out_schema = Schema(
-        [
-            ColumnSchema("movie_id", dtype=np.int32),
-            ColumnSchema("movie_tags_nunique", dtype=np.int32, _is_list=False),
-            ColumnSchema("movie_tags_unique_1", dtype=np.int32, _is_list=True, _is_ragged=True),
-            ColumnSchema("movie_tags_unique_2", dtype=np.int64, _is_list=True),
-            ColumnSchema("movie_genres_1", dtype=np.int32, _is_list=True, _is_ragged=True),
-            ColumnSchema("movie_genres_2", dtype=np.int64, _is_list=True),
-        ]
-    )
 
     retrieval_model_path = (
         "/nvtabular/examples/end-to-end-poc/models/movielens_retrieval_tf/1/model.savedmodel/"
@@ -96,15 +77,13 @@ def test_poc_ensemble(tmpdir):
 
     timings["build_steps_b4_ensemble"] = time.time() - start
     start = time.time()
-    user_features = ["user_id"] >> QueryFeast(
-        feast_repo_path,
-        entity_view="user_features",
-        entity_id="user_id",
-        entity_column="user_id",
-        features=["movie_id_count"],
-        mh_features=["movie_ids", "genres", "search_terms"],
-        input_schema=feast_user_in_schema,
-        output_schema=feast_user_out_schema,
+
+    # TODO: Make it possible to pass multiple user ids in the request
+
+    feature_store = FeatureStore(feast_repo_path)
+
+    user_features = ["user_id"] >> QueryFeast.from_feature_view(
+        store=feature_store, path=feast_repo_path, view="user_features", column="user_id"
     )
 
     retrieval = (
@@ -113,32 +92,47 @@ def test_poc_ensemble(tmpdir):
             retrieval_model_path,
             custom_objects={"sampled_softmax_loss": sampled_softmax_loss},
         )
+        # TODO: Should only have a single input column and use that
+        # TODO: Replace index path with FAISS Index object
+        # TODO: Mock out FAISS
         >> QueryFaiss(faiss_index_path, query_vector_col="output_1", topk=100)
     )
 
-    filtering = user_features["movie_ids_1"] + retrieval["candidate_ids"] >> FilterCandidates(
+    # TODO: Should only have a single input column and use that
+    # TODO: Make the filter_col a dependency instead of a string
+    filtering = retrieval["candidate_ids"] + user_features["movie_ids_1"] >> FilterCandidates(
         candidate_col="candidate_ids", filter_col="movie_ids_1"
     )
 
-    item_features = filtering >> QueryFeast(
-        feast_repo_path,
-        entity_view="movie_features",
-        entity_id="movie_id",
-        entity_column="filtered_ids",
-        features=["tags_nunique"],
-        mh_features=["genres", "tags_unique"],
-        input_schema=Schema([ColumnSchema("filtered_ids", dtype=np.int32)]),
-        output_schema=feast_item_out_schema,
-        include_id=True,
+    # TODO: Mock out FeatureStore for the test (so we don't need actual Feast here)
+    item_features = filtering >> QueryFeast.from_feature_view(
+        store=feature_store,
+        path=feast_repo_path,
+        view="movie_features",
+        column="filtered_ids",
         output_prefix="movie",
+        include_id=True,
     )
 
+    # TODO: Make the user_features a dependency instead of a list of strings
+    user_features_to_unroll = [
+        "genres_1",
+        "genres_2",
+        "movie_ids_1",
+        "movie_ids_2",
+        "search_terms_1",
+        "search_terms_2",
+        "movie_id_count",
+    ]
     combined_features = user_features + item_features >> UnrollFeatures(
-        "movie_id", feast_user_out_schema.column_names, unrolled_prefix="user"
+        "movie_id", user_features_to_unroll, unrolled_prefix="user"
     )
 
     ranking = combined_features >> PredictTensorflow(ranking_model_path)
 
+    # TODO: Make the relevance_col a dependency instead of a string
+    # TODO: Should only have a single input column and use that (remove "movie_id" param)
+    #  ordering = combined_features["movie_id"] +  >> SoftmaxSampling(
     ordering = (combined_features + ranking)["movie_id", "output_1"] >> SoftmaxSampling(
         "movie_id", relevance_col="output_1", topk=10, temperature=20.0
     )
@@ -167,4 +161,4 @@ def test_poc_ensemble(tmpdir):
 
     assert response is not None
     assert len(response.as_numpy("ordered_ids")) == 10
-    breakpoint()
+    # breakpoint()

@@ -32,6 +32,12 @@ from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 
 
 class PredictTensorflow(InferenceOperator):
+
+    # def __init__(self, model=None, model_path=None, custom_objects=None):
+
+    #     if not model and not model_path:
+    #         raise(SomeError)
+
     def __init__(self, model_path, custom_objects=None):
         custom_objects = custom_objects or {}
         self.model_path = model_path

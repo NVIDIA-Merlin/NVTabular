@@ -16,7 +16,6 @@
 
 import json
 
-import cupy as cp
 import faiss
 import numpy as np
 
@@ -26,7 +25,7 @@ from nvtabular.inference.graph.ops.operator import InferenceDataFrame, Pipelinea
 
 
 class QueryFaiss(PipelineableInferenceOperator):
-    def __init__(self, index_path, query_vector_col="query_vector", topk=10):
+    def __init__(self, index_path, query_vector_col="query_vector", topk=10, faiss=faiss):
         self.index_path = str(index_path)
         self.index = faiss.read_index(str(index_path))
         self.query_vector_col = query_vector_col
@@ -57,7 +56,7 @@ class QueryFaiss(PipelineableInferenceOperator):
         _, indices = self.index.search(user_vector, self.topk)
         # distances, indices = self.index.search(user_vector, self.topk)
 
-        candidate_ids = cp.array(indices).T.astype(np.int32)
+        candidate_ids = np.array(indices).T.astype(np.int32)
         # candidate_distances = np.array(distances).T.astype(np.float32)
 
         return InferenceDataFrame(

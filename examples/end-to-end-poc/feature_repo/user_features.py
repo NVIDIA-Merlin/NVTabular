@@ -20,10 +20,10 @@ user_features_view = FeatureView(
     entities=["user_id"],
     ttl=Duration(seconds=86400 * 7),
     features=[
-        Feature(name="movie_ids", dtype=ValueType.INT64_LIST),
+        Feature(name="movie_ids", dtype=ValueType.INT32_LIST),
         Feature(name="movie_id_count", dtype=ValueType.INT32),
-        Feature(name="search_terms", dtype=ValueType.INT64_LIST),
-        Feature(name="genres", dtype=ValueType.INT64_LIST),
+        Feature(name="search_terms", dtype=ValueType.INT32_LIST),
+        Feature(name="genres", dtype=ValueType.INT32_LIST),
     ],
     online=True,
     input=user_features,

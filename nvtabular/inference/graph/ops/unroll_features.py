@@ -16,7 +16,6 @@
 import json
 import logging
 
-import cupy as cp
 import numpy as np
 
 from nvtabular.graph.schema import Schema
@@ -75,6 +74,6 @@ class UnrollFeatures(PipelineableInferenceOperator):
         for col in self.unroll_cols:
             target = outputs.pop(col)
             col_name = f"{self.unrolled_prefix}_{col}" if self.unrolled_prefix else col
-            outputs[col_name] = cp.repeat(target, num_items, axis=0)
+            outputs[col_name] = np.repeat(target, num_items, axis=0)
 
         return InferenceDataFrame(outputs)
