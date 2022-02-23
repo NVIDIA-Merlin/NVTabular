@@ -24,8 +24,6 @@ import sys
 
 import cudf
 import cupy as cp
-import tritonclient.grpc as grpcclient
-from tritonclient.utils import np_to_triton_dtype
 
 import nvtabular as nvt
 
@@ -113,6 +111,9 @@ def _run_query(
     input_cols_name=None,
     backend="tensorflow",
 ):
+
+    import tritonclient.grpc as grpcclient
+    from tritonclient.utils import np_to_triton_dtype
 
     workflow = nvt.Workflow.load(workflow_path)
 
