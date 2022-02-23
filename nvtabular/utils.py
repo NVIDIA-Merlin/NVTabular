@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-# pylint: disable=wildcard-import,unused-import
+# pylint: disable=wildcard-import,unused-import,unused-wildcard-import
 
 # Re-export classes/modules from the core library for backwards compatibility
 from merlin.core.utils import *  # noqa
