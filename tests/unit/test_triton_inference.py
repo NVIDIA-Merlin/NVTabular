@@ -205,7 +205,7 @@ def testconcatenate_dataframe(tmpdir, output_model):
         tmpdir,
         workflow,
         df,
-        "testconcatenate_dataframe",
+        "test_concatenate_dataframe",
         output_model,
         cats=["cat"],
         conts=["cont"],
