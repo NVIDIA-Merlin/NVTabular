@@ -35,7 +35,7 @@ fi
 
 # build the docs, treating warnings as errors
 echo "Building docs"
-make -C docs html SPHINXOPTS="-W -q"
+make -C docs html SPHINXOPTS="-W -q --implicit-namespaces"
 
 # test out our codebase
 py.test -x -rsx --cov-config tests/unit/.coveragerc --cov-report term-missing --cov-report xml --cov-fail-under 70 --cov=. tests/unit/
