@@ -234,6 +234,7 @@ class Distributed:
 
         with Distributed(
             cluster_type="cuda",
+            force_new=True,  # Ignore existing cluster(s)
             n_workers=4,
             local_directory="/raid/dask-space",
             protocol="ucx",
@@ -428,7 +429,8 @@ def set_dask_client(client="auto", new_cluster=None, force_new=False, **cluster_
             warnings.warn(
                 f"Existing Dask-client object detected in the "
                 f"current context. New {new_cluster} cluster "
-                f"will not be deployed."
+                f"will not be deployed. Set force_new to True "
+                f"to ignore running clusters."
             )
         elif base and cluster:
             try:
