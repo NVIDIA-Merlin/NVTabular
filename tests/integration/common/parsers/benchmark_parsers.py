@@ -99,7 +99,7 @@ class BenchFastAI(StandardBenchmark):
                 # epoch line, detected based on if 1st character is a number
                 post_evts = self.get_epoch(line)
                 epochs.append(post_evts)
-        return epochs
+        return epochs[-1:]
 
 
 # Utils
@@ -121,12 +121,23 @@ def is_float(str_to_flt):
         return False
 
 
+# def send_results(db, bench_info, results_list):
+#     for results in results_list:
+#         if isinstance(results, list):
+#             for result in results:
+#                 db.addResult(bench_info, result)
+#         else:
+#             db.addResult(bench_info, results)
+
+
 def send_results(db, bench_info, results_list):
     # only one entry because entries are split by Bench info
     new_results_list = results_list
     info_list = list(db.getInfo())
     if len(info_list) > 0:
-        br_list = db.getResults(filterInfoObjList=[bench_info])[0][1]
+        br_list = db.getResults(filterInfoObjList=[bench_info])
+        if br_list:
+            br_list = br_list[0][1]
         results_to_remove = []
         for result in results_list:
             if any(br.funcName == result.funcName for br in br_list):

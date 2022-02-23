@@ -14,7 +14,11 @@
 # limitations under the License.
 #
 
-from .benchmark_parsers import BenchFastAI, Benchmark, create_bench_result
+from tests.integration.common.parsers.benchmark_parsers import (
+    BenchFastAI,
+    Benchmark,
+    create_bench_result,
+)
 
 
 class CriteoBenchFastAI(BenchFastAI):
@@ -40,7 +44,7 @@ class CriteoBenchHugeCTR(Benchmark):
         for line in output:
             if "AUC" in line:
                 epochs.append(self.get_epoch(line))
-        return epochs
+        return epochs[-1:]
 
     def get_epoch(self, line):
         split_line = line.split(",")
