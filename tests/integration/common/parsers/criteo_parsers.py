@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import re
 
 from tests.integration.common.parsers.benchmark_parsers import (
     BenchFastAI,
@@ -23,7 +24,7 @@ from tests.integration.common.parsers.benchmark_parsers import (
 
 class CriteoBenchFastAI(BenchFastAI):
     def __init__(self, val=6, split=None):
-        super().__init__("Criteo", val=val, split=split)
+        super().__init__("CriteoFastAI", val=val, split=split)
 
     def get_epoch(self, line):
         epoch, t_loss, v_loss, roc, aps, o_time = line.split()
@@ -37,7 +38,7 @@ class CriteoBenchFastAI(BenchFastAI):
 
 class CriteoBenchHugeCTR(Benchmark):
     def __init__(self):
-        super().__init__("HugeCTR")
+        super().__init__("CriteoHugeCTR")
 
     def get_epochs(self, output):
         epochs = []
@@ -54,3 +55,35 @@ class CriteoBenchHugeCTR(Benchmark):
             f"{self.name}_auc", [("iteration", iteration)], auc, "percent"
         )
         return [bres_auc]
+
+
+class CriteoTensorflow(Benchmark):
+    def __init__(self):
+        super().__init__("CriteoTensorflow")
+
+    def get_info(self, output):
+        bench_infos = []
+        for line in output:
+            if "runtime" in line:
+                bench_infos.extend(self.get_epoch(line))
+            if "loss" in line:
+                bench_infos.extend(self.get_loss(line))
+        return bench_infos[-1:]
+
+    def get_timing_line(self, line):
+        runtime, epochs, rows, dl_thru = line.split("-")
+        runtime = self.time(epochs, float(runtime), time_format="%H:%M:%S")
+        epochs = int(epochs)
+        dl_thru = float(dl_thru)
+        bres_dl_thru = create_bench_result(
+            f"{self.name}_dl-thru", [("epochs", epochs)], dl_thru, "rows/second"
+        )
+        return [bres_dl_thru, runtime]
+
+    def get_loss(self, line):
+        loss = line.split("-")[-1]
+        loss = loss.split(":")[-1]
+        losses = re.findall("[0-9]+", loss)
+        loss = losses[-1]
+        br_loss = create_bench_result(f"{self.name}_loss", [("epochs", 1)], loss, "decimal")
+        return [br_loss]

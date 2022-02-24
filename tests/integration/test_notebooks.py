@@ -19,7 +19,7 @@ from os.path import dirname, realpath
 
 import pytest
 from common.parsers.benchmark_parsers import send_results
-from common.parsers.criteo_parsers import CriteoBenchFastAI, CriteoBenchHugeCTR
+from common.parsers.criteo_parsers import CriteoBenchFastAI, CriteoBenchHugeCTR, CriteoTensorflow
 from common.parsers.rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 from common.utils import _run_notebook
 
@@ -84,6 +84,8 @@ def test_criteo(asv_db, bench_info, tmpdir):
 
         print(tensorflow.__version__)
         out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
+        bench_results = CriteoTensorflow().get_info(out.splitlines())
+        send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Tensorflow not installed, skipping " + notebook)
 
