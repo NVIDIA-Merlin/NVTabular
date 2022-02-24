@@ -15,8 +15,7 @@
 #
 import dask.dataframe as dd
 import numpy as np
-
-from nvtabular.graph.schema import Schema
+from merlin.schema import Schema
 
 from ..dispatch import DataFrameType, annotate
 from .operator import ColumnSelector

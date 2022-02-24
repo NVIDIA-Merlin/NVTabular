@@ -1,6 +1,7 @@
 #
 # Copyright (c) 2021, NVIDIA CORPORATION.
 #
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,8 +21,7 @@ import subprocess
 import time
 
 import pyarrow as pa
-
-from nvtabular.dispatch import HAS_GPU
+from merlin.core.dispatch import HAS_GPU, make_df
 
 try:
     import cudf
@@ -40,7 +40,7 @@ import pytest
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ColumnSelector, ops
-from nvtabular.io.dataset import Dataset
+from nvtabular.io import Dataset
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the
@@ -74,7 +74,7 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "cat1": [1] * num_rows,
             "cat2": [2] * num_rows,
@@ -123,9 +123,9 @@ def test_torch_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 @pytest.mark.parametrize("batch", [0, 100, 1000])
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_file_iterator_ds(df, dataset, batch, engine):
-    df_itr = nvt.dispatch._make_df({})
+    df_itr = make_df({})
     for data_gd in dataset.to_iter(columns=mycols_csv):
-        df_itr = nvt.dispatch._concat([df_itr, data_gd], axis=0) if df_itr is not None else data_gd
+        df_itr = nvt.dispatch.concat([df_itr, data_gd], axis=0) if df_itr is not None else data_gd
 
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
@@ -455,7 +455,7 @@ def test_kill_dl(tmpdir, df, dataset, part_mem_fraction, engine):
 
 
 def test_mh_support(tmpdir):
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
@@ -501,7 +501,7 @@ def test_mh_support(tmpdir):
 @pytest.mark.parametrize("sparse_dense", [False, True])
 def test_sparse_tensors(sparse_dense):
     # create small dataset, add values to sparse_list
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "spar1": [[1, 2, 3, 4], [4, 2, 4, 4], [1, 3, 4, 3], [1, 1, 3, 3]],
             "spar2": [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14], [15, 16]],
@@ -537,7 +537,7 @@ def test_sparse_tensors(sparse_dense):
 
 
 def test_mh_model_support(tmpdir):
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Reviewers": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],

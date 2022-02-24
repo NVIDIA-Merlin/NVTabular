@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# alias submodules here to avoid breaking everything with moving to submodules
-# flake8: noqa
-from .concat_columns import ConcatColumns
-from .identity import Identity
-from .selection import SelectionOp
-from .subset_columns import SubsetColumns
-from .subtraction import SubtractionOp
+
+# pylint: disable=wildcard-import,unused-import,unused-wildcard-import
+
+# Re-export classes/modules from the core library for backwards compatibility
+from merlin.graph import *  # noqa

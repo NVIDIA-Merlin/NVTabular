@@ -18,10 +18,10 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
+from merlin.schema import Schema
 
 import nvtabular as nvt
-from nvtabular.dispatch import DataFrameType, _arange, _concat_columns, _read_parquet_dispatch
-from nvtabular.graph import Schema
+from nvtabular.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
 
 from . import categorify as nvt_cat
 from .operator import ColumnSelector, Operator
@@ -168,7 +168,7 @@ class JoinGroupby(StatOperator):
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         new_df = type(df)()
         tmp = "__tmp__"  # Temporary column for sorting
-        df[tmp] = _arange(len(df), like_df=df, dtype="int32")
+        df[tmp] = arange(len(df), like_df=df, dtype="int32")
 
         cat_names = []
         multi_col_group = {}
@@ -181,7 +181,7 @@ class JoinGroupby(StatOperator):
             elif col_name in df.columns:
                 cat_names.append(col_name)
 
-        _read_pq_func = _read_parquet_dispatch(df)
+        _read_pq_func = read_parquet_dispatch(df)
         for name in cat_names:
             new_part = type(df)()
             storage_name = self.storage_name.get(name, name)
@@ -205,7 +205,7 @@ class JoinGroupby(StatOperator):
                     if col.endswith(f"{self.name_sep}{agg}"):
                         new_dtype = AGG_DTYPES.get(agg, new_part[col].dtype)
                         new_part[col] = new_part[col].astype(new_dtype)
-            new_df = _concat_columns([new_df, new_part])
+            new_df = concat_columns([new_df, new_part])
         df.drop(columns=[tmp], inplace=True)
         return new_df
 
@@ -245,7 +245,7 @@ class JoinGroupby(StatOperator):
         new_schema = super()._compute_dtype(col_schema, input_schema)
 
         dtype = new_schema.dtype
-        is_list = new_schema._is_list
+        is_list = new_schema.is_list
 
         for agg in list(AGG_DTYPES.keys()):
             if col_schema.name.endswith(f"{self.name_sep}{agg}"):
