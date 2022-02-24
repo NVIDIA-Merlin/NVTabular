@@ -7,4 +7,5 @@ pyarrow>=1.0
 tensorflow-metadata>=1.2.0
 protobuf>=3.0.0
 packaging
-merlin-core@git+https://github.com/NVIDIA-Merlin/core.git
+merlin-core@git+https://github.com/NVIDIA-Merlin/core.git@2c980f7f949e378f6fc8a8bee4c3a7dc9d021020
+
