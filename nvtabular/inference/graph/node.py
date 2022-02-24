@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nvtabular.graph import Node
-from nvtabular.graph.schema import Schema
+from merlin.graph import Node
+from merlin.schema import Schema
 
 
 class InferenceNode(Node):

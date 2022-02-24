@@ -1,8 +1,8 @@
 import pytest
+from merlin.schema import Schema
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
-from nvtabular.graph.schema import Schema
 
 ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
 workflow_op = pytest.importorskip("nvtabular.inference.graph.ops.workflow")
