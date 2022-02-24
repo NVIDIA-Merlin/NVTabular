@@ -14,9 +14,7 @@
 # limitations under the License.
 #
 
-from . import dataframe_iter, dataset, shuffle
+# pylint: disable=wildcard-import,unused-import,unused-wildcard-import
 
-Dataset = dataset.Dataset
-Shuffle = shuffle.Shuffle
-_shuffle_df = shuffle._shuffle_df
-DataFrameIter = dataframe_iter.DataFrameIter
+# Re-export classes/modules from the core library for backwards compatibility
+from merlin.io import *  # noqa

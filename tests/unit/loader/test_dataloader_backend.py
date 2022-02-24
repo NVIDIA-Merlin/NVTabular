@@ -16,8 +16,8 @@
 import numpy as np
 import pytest
 
-from nvtabular.dispatch import _concat, _generate_local_seed, _get_random_state
-from nvtabular.io.dataset import Dataset
+from nvtabular.dispatch import concat, generate_local_seed, get_random_state
+from nvtabular.io import Dataset
 from nvtabular.loader.backend import DataLoader
 from tests.conftest import assert_eq
 
@@ -38,7 +38,7 @@ def test_dataloader_seeding(datasets, engine, batch_size):
         # Capturing the next random number generated allows us to check
         # that different workers have different random states when this
         # function is called
-        next_rand = _generate_local_seed(0, 1)
+        next_rand = generate_local_seed(0, 1)
         seed_fragments.append(next_rand)
 
         # But since we don't actually want to run two data loaders in
@@ -77,7 +77,7 @@ def test_dataloader_seeding(datasets, engine, batch_size):
 
     data_loader_0._shuffle_indices()
 
-    dl0_rng_state = _get_random_state()
+    dl0_rng_state = get_random_state()
     dl0_next_rand = dl0_rng_state.tomaxint(size=1)
     dl0_indices = data_loader_0.indices
 
@@ -85,7 +85,7 @@ def test_dataloader_seeding(datasets, engine, batch_size):
 
     data_loader_1._shuffle_indices()
 
-    dl1_next_rand = _generate_local_seed(0, 1)
+    dl1_next_rand = generate_local_seed(0, 1)
     dl1_indices = data_loader_1.indices
 
     # Test that the seed function actually gets called in each data loader
@@ -146,12 +146,12 @@ def test_dataloader_epochs(datasets, engine, batch_size, epochs, on_ddf):
     )
 
     # Convert to iterators and then to DataFrames
-    df1 = _concat(list(data_loader._buff.itr))
-    df2 = _concat(list(data_loader.epochs(epochs)._buff.itr))
+    df1 = concat(list(data_loader._buff.itr))
+    df2 = concat(list(data_loader.epochs(epochs)._buff.itr))
 
     # Check that the DataFrame sizes and rows make sense
     assert len(df2) == epochs * len(df1)
     assert_eq(
-        _concat([df1 for i in range(epochs)]).reset_index(drop=True),
+        concat([df1 for i in range(epochs)]).reset_index(drop=True),
         df2.reset_index(drop=True),
     )

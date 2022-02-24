@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, NVIDIA CORPORATION.
+# Copyright (c) 2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
 #
 import warnings
 
+from merlin.graph import ColumnSelector
+from merlin.schema import ColumnSchema, Schema
+
 from . import graph, io, workflow  # noqa
 from ._version import get_versions
 
@@ -25,11 +28,8 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 
 
 WorkflowNode = workflow.WorkflowNode
-ColumnSelector = graph.selector.ColumnSelector
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
-ColumnSchema = graph.schema.ColumnSchema
-Schema = graph.schema.Schema
 
 
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to

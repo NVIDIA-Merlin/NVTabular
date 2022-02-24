@@ -47,7 +47,7 @@ def test_column_similarity(on_device, metric, cpu, cpu_features):
         )
     )
 
-    input_df = nvtabular.dispatch._make_df({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]})
+    input_df = nvtabular.dispatch.make_df({"left": [0, 0, 0, 0, 4], "right": [0, 1, 2, 3, 5]})
 
     if cpu_features:
         if HAS_GPU:
