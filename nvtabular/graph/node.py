@@ -34,9 +34,13 @@ class Node:
     """
 
     def __init__(self, selector=None):
-        self.parents = []
-        self.children = []
-        self.dependencies = []
+        # These are a pair
+        self.parents = []  # I depend on for my inputs to process
+        self.children = []  # These depend on me for X
+
+        # This would need to be a pair
+        self.dependencies = []  # I depend on for additional columns used in processing
+        # self.depended_on_by = []   # These depend on me for Y
 
         self.op = None
         self.input_schema = None
@@ -66,8 +70,21 @@ class Node:
 
     # These methods must maintain grouping
     def add_dependency(self, dep):
-        dep_nodes = _nodify(dep)
-        self.dependencies.append(dep_nodes)
+        # breakpoint()
+        dep_node = _nodify(dep)
+
+        # if isinstance(dep_nodes, list):
+        #     dep_nodes = tuple(dep_nodes)
+
+        if not isinstance(dep_node, list):
+            dep_nodes = [dep_node]
+        else:
+            dep_nodes = dep_node
+
+        for node in dep_nodes:
+            node.children.append(self)
+
+        self.dependencies.append(dep_node)
 
     def add_parent(self, parent):
         parent_nodes = _nodify(parent)
@@ -140,20 +157,20 @@ class Node:
         ancestors_schema = root_schema + parents_schema + deps_schema
 
         for col_name, col_schema in self.input_schema.column_schemas.items():
-            source_col_schema = ancestors_schema.get(col_name)
+            sink_col_schema = ancestors_schema.get(col_name)
 
             # TODO: Make this (or something else) raise an error about column mismatches
-            if not source_col_schema:
+            if not sink_col_schema:
                 raise ValueError(
                     f"Missing column '{col_name}' at the input to '{self.op.__class__.__name__}'."
                 )
 
             if strict_dtypes or not self.op.dynamic_dtypes:
-                if source_col_schema.dtype != col_schema.dtype:
+                if sink_col_schema.dtype != col_schema.dtype:
                     raise ValueError(
                         f"Mismatched dtypes for column '{col_name}' provided to "
                         f"'{self.op.__class__.__name__}': "
-                        f"ancestor nodes provided dtype '{source_col_schema.dtype}', "
+                        f"ancestor nodes provided dtype '{sink_col_schema.dtype}', "
                         f"expected dtype '{col_schema.dtype}'."
                     )
 
@@ -417,8 +434,13 @@ def preorder_iter_nodes(nodes):
 
     def traverse(current_nodes):
         for node in current_nodes:
-            if not node in queue:
-                queue.append(node)
+            # Avoid creating duplicate nodes in the queue
+            if node in queue:
+                queue.remove(node)
+
+            queue.append(node)
+
+        for node in current_nodes:
             traverse(node.parents_with_dependencies)
 
     traverse(nodes)
@@ -435,7 +457,7 @@ def postorder_iter_nodes(nodes):
     def traverse(current_nodes):
         for node in current_nodes:
             traverse(node.parents_with_dependencies)
-            if not node in queue:
+            if node not in queue:
                 queue.append(node)
 
     traverse(nodes)

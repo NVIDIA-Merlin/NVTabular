@@ -25,35 +25,39 @@ from nvtabular.inference.graph.ops.operator import InferenceDataFrame, Pipelinea
 
 
 class QueryFaiss(PipelineableInferenceOperator):
-    def __init__(self, index_path, query_vector_col="query_vector", topk=10, faiss=faiss):
+    def __init__(self, index_path, topk=10):
         self.index_path = str(index_path)
-        self.index = faiss.read_index(str(index_path))
-        self.query_vector_col = query_vector_col
         self.topk = topk
+        self._index = None
 
     @classmethod
     def from_config(cls, config):
         parameters = json.loads(config.get("params", ""))
         index_path = parameters["index_path"]
         topk = parameters["topk"]
-        query_vector_col = parameters["query_vector_col"]
 
-        return QueryFaiss(index_path, query_vector_col=query_vector_col, topk=topk)
+        operator = QueryFaiss(index_path, topk=topk)
+        operator._index = faiss.read_index(str(index_path))
+
+        return operator
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
+
+        # TODO: Copy the index into the export directory
+
         self_params = {
+            # TODO: Write the (relative) path from inside the export directory
             "index_path": self.index_path,
             "topk": self.topk,
-            "query_vector_col": self.query_vector_col,
         }
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
     def transform(self, df: InferenceDataFrame):
-        user_vector = df[self.query_vector_col]
+        user_vector = list(df.tensors.values())[0]
 
-        _, indices = self.index.search(user_vector, self.topk)
+        _, indices = self._index.search(user_vector, self.topk)
         # distances, indices = self.index.search(user_vector, self.topk)
 
         candidate_ids = np.array(indices).T.astype(np.int32)
@@ -63,6 +67,23 @@ class QueryFaiss(PipelineableInferenceOperator):
             # {"candidate_ids": candidate_ids, "candidate_distances": candidate_distances}
             {"candidate_ids": candidate_ids}
         )
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        input_schema = super().compute_input_schema(
+            root_schema, parents_schema, deps_schema, selector
+        )
+        if len(input_schema.column_schemas) > 1:
+            raise ValueError(
+                "More than one input has been detected for this node,"
+                / f"inputs received: {input_schema.column_names}"
+            )
+        return input_schema
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None

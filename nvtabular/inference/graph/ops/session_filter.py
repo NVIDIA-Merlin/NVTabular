@@ -20,6 +20,7 @@ import logging
 import numpy as np
 
 from nvtabular import ColumnSchema, ColumnSelector
+from nvtabular.graph.node import _nodify
 from nvtabular.graph.schema import Schema
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
@@ -27,16 +28,48 @@ LOG = logging.getLogger("nvt")
 
 
 class FilterCandidates(PipelineableInferenceOperator):
-    def __init__(self, candidate_col, filter_col):
-        self.candidate_col = candidate_col
-        self.filter_col = filter_col
+    def __init__(self, filter_out):
+        self.filter_out = _nodify(filter_out)
 
     @classmethod
     def from_config(cls, config):
         parameters = json.loads(config.get("params", ""))
-        candidate_col = parameters["candidate_col"]
-        filter_col = parameters["filter_col"]
-        return FilterCandidates(candidate_col, filter_col)
+        filter_out = parameters["filter_out"]
+        return FilterCandidates(filter_out)
+
+    def dependencies(self):
+        return self.filter_out
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        input_schema = super().compute_input_schema(
+            root_schema, parents_schema, deps_schema, selector
+        )
+
+        if len(parents_schema.column_schemas) > 1:
+            raise ValueError(
+                "More than one input has been detected for this node,"
+                / f"inputs received: {input_schema.column_names}"
+            )
+        if len(deps_schema.column_schemas) > 1:
+            raise ValueError(
+                "More than one dependency input has been detected"
+                / f"for this node, inputs received: {input_schema.column_names}"
+            )
+
+        # 1 for deps and 1 for parents
+        if len(input_schema.column_schemas) > 2:
+            raise ValueError(
+                "More than one input has been detected for this node,"
+                / f"inputs received: {input_schema.column_names}"
+            )
+
+        return input_schema
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
@@ -44,8 +77,8 @@ class FilterCandidates(PipelineableInferenceOperator):
         return Schema([ColumnSchema("filtered_ids", dtype=np.int32, _is_list=False)])
 
     def transform(self, df: InferenceDataFrame):
-        candidate_ids = df[self.candidate_col]
-        filter_ids = df[self.filter_col]
+        candidate_ids = list(df.tensors.values())[0]
+        filter_ids = df[self._filter_out_name]
 
         filtered_results = np.array([candidate_ids[~np.isin(candidate_ids, filter_ids)]]).T
         return InferenceDataFrame({"filtered_ids": filtered_results})
@@ -53,8 +86,14 @@ class FilterCandidates(PipelineableInferenceOperator):
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
         self_params = {
-            "candidate_col": self.candidate_col,
-            "filter_col": self.filter_col,
+            "filter_out": self._filter_out_name,
         }
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
+
+    @property
+    def _filter_out_name(self):
+        if self.filter_out.selector:
+            return self.filter_out.selector.names[0]
+        else:
+            return self.filter_out.output_columns.names[0]

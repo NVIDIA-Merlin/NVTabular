@@ -40,6 +40,23 @@ class InferenceNode(Node):
         self.input_schema = _match_dtypes(source_node.output_schema, self.input_schema)
         return self
 
+    def validate_schemas(self, root_schema, strict_dtypes=False):
+        super().validate_schemas(root_schema, strict_dtypes)
+
+        if self.children:
+            childrens_schema = Schema()
+            for elem in self.children:
+                childrens_schema += elem.input_schema
+
+            for col_name, col_schema in self.output_schema.column_schemas.items():
+                sink_col_schema = childrens_schema.get(col_name)
+
+                if not sink_col_schema:
+                    raise ValueError(
+                        f"Output column '{col_name}' not detected in any"
+                        / f"child inputs for '{self.op.__class__.__name__}'."
+                    )
+
 
 def _match_dtypes(source_schema, dest_schema):
     matched = Schema()
