@@ -18,7 +18,7 @@ import warnings
 from merlin.graph import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 
-from . import graph, io, workflow  # noqa
+from . import graph, io, utils, workflow  # noqa
 from ._version import get_versions
 
 # suppress some warnings with cudf warning about column ordering with dlpack
@@ -30,6 +30,8 @@ warnings.filterwarnings("ignore", module="numba.cuda.envvars")
 WorkflowNode = workflow.WorkflowNode
 Workflow = workflow.Workflow
 Dataset = io.dataset.Dataset
+Distributed = utils.Distributed
+Serial = utils.Serial
 
 
 # Provides an alias of ColumnSelector so that old usages of ColumnGroup to
@@ -47,6 +49,8 @@ __all__ = [
     "ColumnSelector",
     "ColumnSchema",
     "Schema",
+    "Distributed",
+    "Serial",
 ]
 
 # cudf warns about column ordering with dlpack methods, ignore it
