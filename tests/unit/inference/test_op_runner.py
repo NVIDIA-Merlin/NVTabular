@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 import pytest
-from merlin.graph import Graph
+from merlin.dag import Graph
 from merlin.schema import Tags
 
 import nvtabular as nvt

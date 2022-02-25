@@ -16,7 +16,7 @@
 import glob
 
 import pytest
-from merlin.graph import ColumnSelector
+from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema, Tags
 
 import nvtabular

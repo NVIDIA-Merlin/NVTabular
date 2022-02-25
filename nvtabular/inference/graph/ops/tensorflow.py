@@ -17,7 +17,7 @@ import pathlib
 import tempfile
 from sys import version
 
-from merlin.graph import ColumnSelector
+from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 
 from nvtabular.inference.graph.ops.operator import InferenceOperator
