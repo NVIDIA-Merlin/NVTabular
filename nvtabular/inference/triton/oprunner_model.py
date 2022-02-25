@@ -30,7 +30,6 @@ import sys
 import traceback
 from typing import List
 
-import cupy as cp
 import triton_python_backend_utils as pb_utils
 from triton_python_backend_utils import (
     InferenceRequest,
@@ -75,9 +74,9 @@ class TritonPythonModel:
 
                 raw_tensor_tuples = self.runner.execute(inf_df)
 
-                # tensors = { 
-                #   name:(data if hasattr(data, "get") else cp.ndarray(data)) 
-                #   for name,data in raw_tensor_tuples 
+                # tensors = {
+                #   name:(data if hasattr(data, "get") else cp.ndarray(data))
+                #   for name,data in raw_tensor_tuples
                 # }
                 tensors = {
                     name: (data.get() if hasattr(data, "get") else data)
@@ -88,7 +87,7 @@ class TritonPythonModel:
 
                 responses.append(InferenceResponse(result))
 
-            except Exception as exc:  # noqa
+            except Exception:  # pylint: disable=broad-except
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 tb_string = repr(traceback.extract_tb(exc_traceback))
                 # tb_string = traceback.format_exc(exc_traceback)
