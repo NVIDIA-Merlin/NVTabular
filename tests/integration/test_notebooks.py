@@ -19,7 +19,12 @@ from os.path import dirname, realpath
 
 import pytest
 from common.parsers.benchmark_parsers import send_results
-from common.parsers.criteo_parsers import CriteoBenchFastAI, CriteoBenchHugeCTR, CriteoTensorflow
+from common.parsers.criteo_parsers import (
+    CriteoBenchFastAI,
+    CriteoBenchHugeCTR,
+    CriteoTensorflow,
+    CriteoTorch,
+)
 from common.parsers.rossmann_parsers import RossBenchFastAI, RossBenchPytorch, RossBenchTensorFlow
 from common.utils import _run_notebook
 
@@ -170,7 +175,9 @@ def test_movielens(asv_db, bench_info, tmpdir, devices):
         import torch
 
         print(torch.__version__)
-        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+        out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+        bench_results = CriteoTorch("MovieLensTorch").get_info(out.splitlines())
+        send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Pytorch not installed, skipping " + notebook)
 
@@ -180,7 +187,9 @@ def test_movielens(asv_db, bench_info, tmpdir, devices):
         import tensorflow
 
         print(tensorflow.__version__)
-        _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+        out = _run_notebook(tmpdir, notebook, data_path, input_path, gpu_id=devices, clean_up=False)
+        bench_results = CriteoTensorflow("MovieLensTensorFlow").get_info(out.splitlines())
+        send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Tensorflow not installed, skipping " + notebook)
 

@@ -64,10 +64,11 @@ class StandardBenchmark(Benchmark):
         return create_bench_result(f"{self.name}_exp_rmspe", [("epoch", epoch)], acc, "percent")
 
     def time(self, epoch, r_time, time_format="%M:%S") -> BenchmarkResult:
-        x = time.strptime(r_time.split(",")[0], time_format)
-        r_time = datetime.timedelta(
-            hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec
-        ).total_seconds()
+        if time_format:
+            x = time.strptime(r_time.split(",")[0], time_format)
+            r_time = datetime.timedelta(
+                hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec
+            ).total_seconds()
         return create_bench_result(f"{self.name}_time", [("epoch", epoch)], r_time, "seconds")
 
     def aps(self, epoch, aps) -> BenchmarkResult:
