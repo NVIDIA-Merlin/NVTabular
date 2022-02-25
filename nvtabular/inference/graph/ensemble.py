@@ -66,6 +66,11 @@ class Ensemble:
                 node_id_lookup[node] = node_idx
                 node_idx += 1
 
+        # {
+        #    "col_1" = [1,2,5],
+        #    "col_2" = []
+        # }
+
         node_configs = []
         # Export node configs and add ensemble steps
         for node in postorder_nodes:
@@ -86,7 +91,7 @@ class Ensemble:
                 )
 
                 for input_col_name in node.input_columns.names:
-                    source = _find_column_source(node, input_col_name)
+                    source = _find_column_source(node.parents_with_dependencies, input_col_name)
                     source_id = node_id_lookup.get(source, None)
                     in_suffix = f"_{source_id}" if source_id is not None else ""
                     config_step.input_map[input_col_name] = input_col_name + in_suffix
@@ -111,14 +116,14 @@ class Ensemble:
         return (ensemble_config, node_configs)
 
 
-def _find_column_source(node, column_name):
-    for upstream_node in node.parents_with_dependencies:
-        if column_name in upstream_node.output_columns.names and upstream_node.exportable:
-            return upstream_node
+def _find_column_source(upstream_nodes, column_name):
+    source_node = None
+    for upstream_node in upstream_nodes:
+        if column_name in upstream_node.output_columns.names:
+            source_node = upstream_node
+            break
 
-    for upstream_node in node.parents_with_dependencies:
-        source = _find_column_source(upstream_node, column_name)
-        if source:
-            return source
-
-    return None
+    if source_node and not source_node.exportable:
+        return _find_column_source(source_node.parents_with_dependencies, column_name)
+    else:
+        return source_node

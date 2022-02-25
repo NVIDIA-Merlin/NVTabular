@@ -27,10 +27,6 @@ class InferenceNode(Node):
     def export_name(self):
         return self.op.export_name
 
-    @property
-    def exportable(self):
-        return hasattr(self.op, "export")
-
     # TODO: Can we delete these matching methods now that we've shored up dtypes?
     def match_descendant_dtypes(self, source_node):
         self.output_schema = _match_dtypes(source_node.input_schema, self.output_schema)
@@ -53,8 +49,8 @@ class InferenceNode(Node):
 
                 if not sink_col_schema:
                     raise ValueError(
-                        f"Output column '{col_name}' not detected in any"
-                        / f"child inputs for '{self.op.__class__.__name__}'."
+                        f"Output column '{col_name}' not detected in any "
+                        f"child inputs for '{self.op.__class__.__name__}'."
                     )
 
 

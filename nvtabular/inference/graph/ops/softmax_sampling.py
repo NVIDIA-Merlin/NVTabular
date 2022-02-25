@@ -3,40 +3,67 @@ import json
 import numpy as np
 
 from nvtabular import ColumnSchema
+from nvtabular.graph.node import _nodify
 from nvtabular.graph.schema import Schema
 from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class SoftmaxSampling(PipelineableInferenceOperator):
-    def __init__(self, candidate_col, relevance_col, temperature=20.0, topk=10):
-        self.candidate_col = candidate_col
-        self.relevance_col = relevance_col
+    def __init__(self, relevance_col, temperature=20.0, topk=10, _input_col=None):
+        self.relevance_col = _nodify(relevance_col)
         self.temperature = temperature
         self.topk = topk
+        self._input_col_name = _input_col
+        self._relevance_col_name = relevance_col
 
     @classmethod
     def from_config(cls, config):
         """Load operator and properties from Triton config"""
         parameters = json.loads(config.get("params", ""))
-        candidate_col = parameters["candidate_col"]
-        predict_col = parameters["relevance_col"]
+        relevance_col = parameters["relevance_col"]
+        input_col = parameters["input_col"]
+        temperature = parameters["temperature"]
         topk = parameters["topk"]
-        theta = parameters["temperature"]
 
-        return SoftmaxSampling(candidate_col, predict_col, temperature=theta, topk=topk)
+        return SoftmaxSampling(
+            relevance_col, temperature=temperature, topk=topk, _input_col=input_col
+        )
+
+    def dependencies(self):
+        return self.relevance_col
 
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         """Write out a Triton model config directory"""
         params = params or {}
         self_params = {
-            "candidate_col": self.candidate_col,
-            "relevance_col": self.relevance_col,
+            "input_col": self._input_col_name,
+            "relevance_col": self._relevance_col_name,
             "temperature": self.temperature,
             "topk": self.topk,
         }
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
+
+    def compute_input_schema(
+        self,
+        root_schema: Schema,
+        parents_schema: Schema,
+        deps_schema: Schema,
+        selector: ColumnSelector,
+    ) -> Schema:
+        input_schema = super().compute_input_schema(
+            root_schema, parents_schema, deps_schema, selector
+        )
+        if len(parents_schema.column_schemas) > 1:
+            raise ValueError(
+                "More than one input has been detected for this node,"
+                f" inputs received: {input_schema.column_names}"
+            )
+
+        self._input_col_name = parents_schema.column_names[0]
+        self._relevance_col_name = deps_schema.column_names[0]
+        return input_schema
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
@@ -47,9 +74,9 @@ class SoftmaxSampling(PipelineableInferenceOperator):
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
         """Transform the dataframe by applying this operator to the set of input columns"""
         # Extract parameters from the request
-        candidate_ids = df[self.candidate_col].reshape(-1)
+        candidate_ids = df[self._input_col_name].reshape(-1)
 
-        predicted_scores = df[self.relevance_col].reshape(-1)
+        predicted_scores = df[self._relevance_col_name].reshape(-1)
 
         # Exponential sort trick for sampling from a distribution without replacement from:
 

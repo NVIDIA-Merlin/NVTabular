@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, NVIDIA CORPORATION.
+# Copyright (c) 2022, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,26 +14,23 @@
 # limitations under the License.
 #
 import numpy as np
+import pytest
 import tensorflow as tf
-from feast import FeatureStore
 
 import nvtabular as nvt
 from nvtabular import ColumnSchema, Schema
 from nvtabular.inference.graph.ensemble import Ensemble
-from nvtabular.inference.graph.ops.faiss import QueryFaiss, setup_faiss
-from nvtabular.inference.graph.ops.feast import QueryFeast
 from nvtabular.inference.graph.ops.session_filter import FilterCandidates
 from nvtabular.inference.graph.ops.softmax_sampling import SoftmaxSampling
 from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow
 from nvtabular.inference.graph.ops.unroll_features import UnrollFeatures
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver
 
-# Clean up work:
-# - Pull features and mh_features from the schema
-# - Clean up input columns that are also params into dependencies
-# - Add validation to operators that only require a single input column
-# (like SoftmaxSampling and FilterCandidates)
-# - Migrate the operators to use cupy if present
+feast = pytest.importorskip("feast")
+faiss = pytest.importorskip("faiss")
+
+from nvtabular.inference.graph.ops.faiss import QueryFaiss, setup_faiss  # noqa
+from nvtabular.inference.graph.ops.feast import QueryFeast  # noqa
 
 
 def test_poc_ensemble(tmpdir):
@@ -53,26 +50,19 @@ def test_poc_ensemble(tmpdir):
             num_classes=item_embeddings.shape[0],
         )
 
-    feast_repo_path = "/nvtabular/examples/end-to-end-poc/feature_repo"
+    base_path = "/nvtabular/examples/end-to-end-poc/"
+    faiss_index_path = tmpdir + "/index.faiss"
+    feast_repo_path = base_path + "feature_repo"
+    retrieval_model_path = base_path + "models/movielens_retrieval_tf/1/model.savedmodel/"
+    ranking_model_path = base_path + "models/movielens_ranking_tf/1/model.savedmodel/"
 
-    retrieval_model_path = (
-        "/nvtabular/examples/end-to-end-poc/models/movielens_retrieval_tf/1/model.savedmodel/"
-    )
     retrieval_model = tf.keras.models.load_model(
         retrieval_model_path, custom_objects={"sampled_softmax_loss": sampled_softmax_loss}
     )
     item_embeddings = retrieval_model.input_layer.embedding_tables["movie_ids"].numpy()
 
-    ranking_model_path = (
-        "/nvtabular/examples/end-to-end-poc/models/movielens_ranking_tf/1/model.savedmodel/"
-    )
-
-    faiss_index_path = tmpdir + "/index.faiss"
+    feature_store = feast.FeatureStore(feast_repo_path)
     setup_faiss(item_embeddings, str(faiss_index_path))
-
-    # TODO: Make it possible to pass multiple user ids in the request
-
-    feature_store = FeatureStore(feast_repo_path)
 
     user_features = ["user_id"] >> QueryFeast.from_feature_view(
         store=feature_store, path=feast_repo_path, view="user_features", column="user_id"
@@ -84,7 +74,6 @@ def test_poc_ensemble(tmpdir):
             retrieval_model_path,
             custom_objects={"sampled_softmax_loss": sampled_softmax_loss},
         )
-        # TODO: Mock out FAISS
         >> QueryFaiss(faiss_index_path, topk=100)
     )
 
@@ -92,7 +81,6 @@ def test_poc_ensemble(tmpdir):
         filter_out=user_features["movie_ids_1"]
     )
 
-    # TODO: Mock out FeatureStore for the test (so we don't need actual Feast here)
     item_features = filtering >> QueryFeast.from_feature_view(
         store=feature_store,
         path=feast_repo_path,
@@ -117,17 +105,13 @@ def test_poc_ensemble(tmpdir):
 
     ranking = combined_features >> PredictTensorflow(ranking_model_path)
 
-    # TODO: Make the relevance_col a dependency instead of a string
-    # TODO: Should only have a single input column and use that (remove "movie_id" param)
-    #  ordering = combined_features["movie_id"] +  >> SoftmaxSampling(
-    ordering = (combined_features + ranking)["movie_id", "output_1"] >> SoftmaxSampling(
-        "movie_id", relevance_col="output_1", topk=10, temperature=20.0
+    ordering = combined_features["movie_id"] >> SoftmaxSampling(
+        relevance_col=ranking["output_1"], topk=10, temperature=20.0
     )
 
     export_path = str("/nvtabular/test_poc/")
 
     ensemble = Ensemble(ordering, request_schema)
-
     ens_config, node_configs = ensemble.export(export_path)
 
     request = nvt.dispatch._make_df({"user_id": [1]})
@@ -139,4 +123,3 @@ def test_poc_ensemble(tmpdir):
 
     assert response is not None
     assert len(response.as_numpy("ordered_ids")) == 10
-    # breakpoint()

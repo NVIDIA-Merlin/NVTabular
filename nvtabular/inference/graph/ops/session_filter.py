@@ -28,14 +28,17 @@ LOG = logging.getLogger("nvt")
 
 
 class FilterCandidates(PipelineableInferenceOperator):
-    def __init__(self, filter_out):
+    def __init__(self, filter_out, input_col=None):
         self.filter_out = _nodify(filter_out)
+        self._input_col = input_col
+        self._filter_out_col = filter_out
 
     @classmethod
     def from_config(cls, config):
         parameters = json.loads(config.get("params", ""))
-        filter_out = parameters["filter_out"]
-        return FilterCandidates(filter_out)
+        filter_out_col = parameters["filter_out_col"]
+        input_col = parameters["input_col"]
+        return FilterCandidates(filter_out_col, input_col)
 
     def dependencies(self):
         return self.filter_out
@@ -69,6 +72,9 @@ class FilterCandidates(PipelineableInferenceOperator):
                 / f"inputs received: {input_schema.column_names}"
             )
 
+        self._input_col = parents_schema.column_names[0]
+        self._filter_out_col = deps_schema.column_names[0]
+
         return input_schema
 
     def compute_output_schema(
@@ -77,8 +83,8 @@ class FilterCandidates(PipelineableInferenceOperator):
         return Schema([ColumnSchema("filtered_ids", dtype=np.int32, _is_list=False)])
 
     def transform(self, df: InferenceDataFrame):
-        candidate_ids = list(df.tensors.values())[0]
-        filter_ids = df[self._filter_out_name]
+        candidate_ids = df[self._input_col]
+        filter_ids = df[self._filter_out_col]
 
         filtered_results = np.array([candidate_ids[~np.isin(candidate_ids, filter_ids)]]).T
         return InferenceDataFrame({"filtered_ids": filtered_results})
@@ -86,14 +92,8 @@ class FilterCandidates(PipelineableInferenceOperator):
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
         self_params = {
-            "filter_out": self._filter_out_name,
+            "input_col": self._input_col,
+            "filter_out_col": self._filter_out_col,
         }
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
-
-    @property
-    def _filter_out_name(self):
-        if self.filter_out.selector:
-            return self.filter_out.selector.names[0]
-        else:
-            return self.filter_out.output_columns.names[0]
