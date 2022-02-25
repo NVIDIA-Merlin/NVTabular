@@ -154,7 +154,7 @@ def run_op_full(properties, tags, op_routine):
     for column_name in schema.column_names:
         df_dict[column_name] = np.random.randint(1, 1000, num_rows)
 
-    df = dispatch._make_df(df_dict)
+    df = dispatch.make_df(df_dict)
     dataset = nvt.Dataset(df)
     test_node = ColumnSelector(schema.column_names) >> op_routine[0]
     for op in op_routine[1:]:
@@ -195,7 +195,7 @@ def test_ops_list_vc(properties, tags, op_routine):
         df_dict[column_name] = np.random.randint(1, 1000, num_rows)
         df_dict[column_name] = [[x] * np.random.randint(1, 10) for x in df_dict[column_name]]
 
-    df = dispatch._make_df(df_dict)
+    df = dispatch.make_df(df_dict)
     dataset = nvt.Dataset(df)
     test_node = ColumnSelector(schema.column_names) >> op_routine[0]
     for op in op_routine[1:]:
@@ -213,7 +213,7 @@ def test_ops_list_vc(properties, tags, op_routine):
         if HAS_GPU:
             assert embeddings_info["max"] == new_gdf[column_name]._column.elements.max() + 1
         else:
-            list_vals = nvt.dispatch._pull_apart_list(new_gdf[column_name])[0]
+            list_vals = nvt.dispatch.pull_apart_list(new_gdf[column_name])[0]
             assert embeddings_info["max"] == list_vals.max() + 1
         assert "value_count" in schema1.properties
         val_c = schema1.properties["value_count"]

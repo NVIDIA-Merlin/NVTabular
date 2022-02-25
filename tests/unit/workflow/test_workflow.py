@@ -28,20 +28,19 @@ except ImportError:
 
 import numpy as np
 import pytest
+from merlin.core.dispatch import HAS_GPU, make_df
+from merlin.graph import ColumnSelector, postorder_iter_nodes
+from merlin.schema import Schema, Tags
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 from nvtabular import Dataset, Workflow, ops
-from nvtabular.dispatch import HAS_GPU, _make_df
-from nvtabular.graph.graph import postorder_iter_nodes
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
 from nvtabular.utils import set_dask_client
 from tests.conftest import assert_eq, get_cats, mycols_csv
 
 
 def test_workflow_double_fit():
-    raw_df = _make_df({"user_session": ["1", "2", "4", "4", "5"]})
+    raw_df = make_df({"user_session": ["1", "2", "4", "4", "5"]})
 
     cat_feats = ["user_session"] >> nvt.ops.Categorify()
 
@@ -58,9 +57,9 @@ def test_workflow_fit_op_rename(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in schema.column_names:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
-    selector = nvt.ColumnSelector(tags=[nvt.graph.tags.Tags.USER])
+    selector = nvt.ColumnSelector(tags=[Tags.USER])
 
     workflow_ops_1 = selector >> nvt.ops.Rename(postfix="_1")
     workflow_1 = nvt.Workflow(workflow_ops_1)
@@ -157,13 +156,13 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = nvt.dispatch._concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = nvt.dispatch.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = nvt.dispatch._read_parquet_metadata(
+    num_rows, num_row_groups, col_names = nvt.dispatch.read_parquet_metadata(
         str(tmpdir) + "/_metadata"
     )
     assert num_rows == len(df_pp)
@@ -171,12 +170,12 @@ def test_gpu_workflow_api(tmpdir, client, df, dataset, gpu_memory_frac, engine, 
 
 @pytest.mark.parametrize("engine", ["csv", "csv-no-header"])
 def test_gpu_dataset_iterator_csv(df, dataset, engine):
-    df_itr = nvt.dispatch._concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
+    df_itr = nvt.dispatch.concat(list(dataset.to_iter(columns=mycols_csv)), axis=0)
     assert_eq(df_itr.reset_index(drop=True), df.reset_index(drop=True))
 
 
 def test_spec_set(tmpdir, client):
-    gdf_test = nvt.dispatch._make_df(
+    gdf_test = make_df(
         {
             "ad_id": [1, 2, 2, 6, 6, 8, 3, 3],
             "source_id": [2, 4, 4, 7, 5, 2, 5, 2],
@@ -249,12 +248,12 @@ def test_gpu_workflow(tmpdir, df, dataset, gpu_memory_frac, engine, dump):
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = nvt.dispatch._concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = nvt.dispatch.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
-    num_rows, num_row_groups, col_names = nvt.dispatch._read_parquet_metadata(
+    num_rows, num_row_groups, col_names = nvt.dispatch.read_parquet_metadata(
         str(tmpdir) + "/_metadata"
     )
     assert num_rows == len(df_pp)
@@ -334,13 +333,13 @@ def test_gpu_workflow_config(tmpdir, client, df, dataset, gpu_memory_frac, engin
 
     dataset_2 = Dataset(glob.glob(str(tmpdir) + "/*.parquet"), part_mem_fraction=gpu_memory_frac)
 
-    df_pp = nvt.dispatch._concat(list(dataset_2.to_iter()), axis=0)
+    df_pp = nvt.dispatch.concat(list(dataset_2.to_iter()), axis=0)
 
     if engine == "parquet":
         assert is_integer_dtype(df_pp["name-cat"].dtype)
     assert is_integer_dtype(df_pp["name-string"].dtype)
 
-    num_rows, num_row_groups, col_names = nvt.dispatch._read_parquet_metadata(
+    num_rows, num_row_groups, col_names = nvt.dispatch.read_parquet_metadata(
         str(tmpdir) + "/_metadata"
     )
     assert num_rows == len(df_pp)
@@ -357,7 +356,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
 
     size = 25
     row_group_size = 5
-    df = _make_df({"a": np.arange(size)})
+    df = make_df({"a": np.arange(size)})
     df.to_parquet(path, row_group_size=row_group_size, engine="pyarrow")
 
     columns = ["a"]
@@ -377,7 +376,7 @@ def test_parquet_output(client, use_client, tmpdir, shuffle):
     assert os.path.exists(meta_path)
 
     # Make sure _metadata makes sense
-    _metadata = nvt.dispatch._read_parquet_metadata(meta_path)
+    _metadata = nvt.dispatch.read_parquet_metadata(meta_path)
     assert _metadata[0] == size
     assert _metadata[2] == columns
 
@@ -444,7 +443,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
     cat_names = ["cat1", "cat2"]
     label_name = ["label"]
 
-    df = _make_df(
+    df = make_df(
         {
             "cont1": np.arange(size, dtype=np.float64),
             "cont2": np.arange(size, dtype=np.float64),
@@ -484,7 +483,7 @@ def test_workflow_apply(client, use_client, tmpdir, shuffle, apply_offline):
 
     # Check dtypes
     for filename in glob.glob(os.path.join(out_path, "*.parquet")):
-        gdf = nvt.dispatch._read_dispatch(filename)(filename)
+        gdf = nvt.dispatch.read_dispatch(filename)(filename)
         assert dict(gdf.dtypes) == dict_dtypes
 
 
@@ -494,7 +493,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
     path = str(tmpdir.join("simple.parquet"))
 
     # Stripped down dataset with geo_locaiton codes like in outbrains
-    df = nvt.dispatch._make_df({"geo_location": ["US>CA", "CA>BC", "US>TN>659"]})
+    df = make_df({"geo_location": ["US>CA", "CA>BC", "US>TN>659"]})
 
     # defining a simple workflow that strips out the country code from the first two digits of the
     # geo_location code and sticks in a new 'geo_location_country' field
@@ -521,7 +520,7 @@ def test_workflow_generate_columns(tmpdir, use_parquet):
 
 
 def test_fit_simple():
-    data = nvt.dispatch._make_df({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
+    data = make_df({"x": [0, 1, 2, None, 0, 1, 2], "y": [None, 3, 4, 5, 3, 4, 5]})
     dataset = Dataset(data)
 
     workflow = Workflow(["x", "y"] >> ops.FillMedian() >> ops.LambdaOp(lambda x: x * x))
@@ -529,7 +528,7 @@ def test_fit_simple():
     workflow.fit(dataset)
     transformed = workflow.transform(dataset).to_ddf().compute()
 
-    expected = nvt.dispatch._make_df({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
+    expected = make_df({"x": [0, 1, 4, 1, 0, 1, 4], "y": [16, 9, 16, 25, 9, 16, 25]})
     if not HAS_GPU:
         transformed["x"] = transformed["x"].astype(expected["x"].dtype)
         transformed["y"] = transformed["y"].astype(expected["y"].dtype)
@@ -539,7 +538,7 @@ def test_fit_simple():
 @pytest.mark.skipif(not cudf, reason="needs cudf")
 def test_transform_geolocation():
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
-    data = nvt.dispatch._make_df({"geo_location": raw})
+    data = make_df({"geo_location": raw})
 
     geo_location = ColumnSelector(["geo_location"])
     state = (
@@ -558,7 +557,7 @@ def test_transform_geolocation():
     workflow = Workflow(geo_features)
     transformed = workflow.transform(Dataset(data)).to_ddf().compute()
 
-    expected = nvt.dispatch._make_df()
+    expected = make_df()
     expected["geo_location_state"] = data["geo_location"].str.slice(0, 5).hash_values() % 100
     expected["geo_location_country"] = data["geo_location"].str.slice(0, 2).hash_values() % 100
     expected["geo_location"] = data["geo_location"].hash_values() % 100
@@ -568,7 +567,7 @@ def test_transform_geolocation():
 
 def test_workflow_move_saved(tmpdir):
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
-    data = nvt.dispatch._make_df({"geo": raw})
+    data = make_df({"geo": raw})
 
     geo_location = ColumnSelector(["geo"])
     state = (
@@ -602,9 +601,7 @@ def test_workflow_move_saved(tmpdir):
 
 
 def test_workflow_input_output_dtypes():
-    df = nvt.dispatch._make_df(
-        {"genre": ["drama", "comedy"], "user": ["a", "b"], "unneeded": [1, 2]}
-    )
+    df = make_df({"genre": ["drama", "comedy"], "user": ["a", "b"], "unneeded": [1, 2]})
     features = [["genre", "user"], "genre"] >> ops.Categorify(encode_type="combo")
     workflow = Workflow(features)
     workflow.fit(Dataset(df))
@@ -641,7 +638,7 @@ def test_workflow_transform_ddf_dtypes():
 
 def test_workflow_saved_schema(tmpdir):
     raw = """US>SC>519 US>CA>807 US>MI>505 US>CA>510 CA>NB US>CA>534""".split()
-    data = nvt.dispatch._make_df({"geo": raw})
+    data = make_df({"geo": raw})
 
     geo_location = ColumnSelector(["geo"])
     state = (

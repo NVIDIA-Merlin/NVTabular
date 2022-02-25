@@ -15,8 +15,9 @@
 #
 import pathlib
 
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
+from merlin.graph import ColumnSelector
+from merlin.schema import Schema
+
 from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
 
@@ -32,6 +33,8 @@ class WorkflowOp(InferenceOperator):
         cats=None,
         conts=None,
     ):
+        super().__init__()
+
         self.workflow = workflow
         self.sparse_max = sparse_max or {}
         self.max_batch_size = max_batch_size

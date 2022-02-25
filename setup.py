@@ -20,7 +20,7 @@ from distutils.spawn import find_executable
 
 from pybind11.setup_helpers import Pybind11Extension
 from pybind11.setup_helpers import build_ext as build_pybind11
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, find_packages, setup
 
 try:
     import versioneer
@@ -92,7 +92,7 @@ install_reqs = parse_requirements("./requirements.txt")
 setup(
     name="nvtabular",
     version=versioneer.get_version(),
-    packages=find_packages(),
+    packages=find_packages() + find_namespace_packages(),
     url="https://github.com/NVIDIA-Merlin/NVTabular",
     author="NVIDIA Corporation",
     license="Apache 2.0",
