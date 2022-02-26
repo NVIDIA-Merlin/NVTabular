@@ -17,7 +17,6 @@
 import os
 from os.path import dirname, realpath
 
-import pytest
 from common.parsers.benchmark_parsers import send_results
 from common.parsers.criteo_parsers import (
     CriteoBenchFastAI,
@@ -64,7 +63,7 @@ def test_criteo(asv_db, bench_info, tmpdir):
         print(torch.__version__)
         out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
         # bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
-        bench_results = CriteoBenchFastAI().get_dl_timing(out.splitlines())
+        bench_results = CriteoBenchFastAI().get_info(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Pytorch not installed, skipping " + notebook)
@@ -192,31 +191,3 @@ def test_movielens(asv_db, bench_info, tmpdir, devices):
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Tensorflow not installed, skipping " + notebook)
-
-
-def test_inference(asv_db, bench_info, tmpdir, devices):
-    # Tritonclient required for this test
-    pytest.importorskip("tritonclient")
-    # data_path = os.path.join(INFERENCE_BASE_DIR, "data/")
-    input_path = os.path.join(INFERENCE_BASE_DIR, "data/")
-    output_path = os.path.join(INFERENCE_BASE_DIR, "data/output")
-
-    os.environ["MODEL_BASE_DIR"] = INFERENCE_MULTI_HOT
-
-    # Run Criteo inference
-    notebook = os.path.join(
-        dirname(TEST_PATH), CRITEO_DIR, "04-Triton-Inference-with-HugeCTR.ipynb"
-    )
-    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)
-
-    notebook = os.path.join(dirname(TEST_PATH), CRITEO_DIR, "04-Triton-Inference-with-TF.ipynb")
-    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)
-
-    # Run Movielens inference
-    notebook = os.path.join(
-        dirname(TEST_PATH), MOVIELENS_DIR, "inference-HugeCTR/Triton-Inference-with-HugeCTR.ipynb"
-    )
-    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)
-
-    notebook = os.path.join(dirname(TEST_PATH), MOVIELENS_DIR, "04-Triton-Inference-with-TF.ipynb")
-    _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id=devices, clean_up=False)

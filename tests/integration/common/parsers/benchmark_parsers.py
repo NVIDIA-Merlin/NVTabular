@@ -41,13 +41,37 @@ class Benchmark:
 
 
 class StandardBenchmark(Benchmark):
-    def get_dl_thru(self, full_time, num_rows, epochs, throughput) -> BenchmarkResult:
+    def get_info(self, output):
+        bench_infos = []
+        losses = []
+        for line in output:
+            if "run_time" in line:
+                bench_infos.append(line)
+            if "loss" in line:
+                losses.append(line)
+        loss_dict = {}
+        if losses:
+            loss_dict = {"loss": self.get_loss(losses[-1])}
+        if bench_infos:
+            bench_infos = self.get_dl_timing(bench_infos[-1:], optionals=loss_dict)
+        return bench_infos
+
+    def get_dl_thru(
+        self, full_time, num_rows, epochs, throughput, optionals=None
+    ) -> BenchmarkResult:
+        metrics = [("thru", throughput), ("rows", num_rows), ("epochs", epochs)]
+        optionals = optionals or {}
+        for metric_name, metric_value in optionals.items():
+            metrics.append((metric_name, metric_value))
         return create_bench_result(
             f"{self.name}_dataloader",
-            [("time", full_time), ("rows", num_rows), ("epochs", epochs)],
-            throughput,
-            "rows/second",
+            metrics,
+            full_time,
+            "seconds",
         )
+
+    def get_loss(self, line):
+        return float(line)
 
     def loss(self, epoch, loss, l_type="train") -> BenchmarkResult:
         return create_bench_result(
@@ -74,7 +98,7 @@ class StandardBenchmark(Benchmark):
     def aps(self, epoch, aps) -> BenchmarkResult:
         return create_bench_result(f"{self.name}_Avg_Prec", [("epoch", epoch)], aps, "percent")
 
-    def get_dl_timing(self, output):
+    def get_dl_timing(self, output, optionals=None):
         timing_res = []
         for line in output:
             if line.startswith("run_time"):
@@ -83,7 +107,9 @@ class StandardBenchmark(Benchmark):
                 num_rows = int(num_rows.split(": ")[1])
                 epochs = int(epochs.split(": ")[1])
                 dl_thru = float(dl_thru.split(": ")[1])
-                bres = self.get_dl_thru(run_time, num_rows, epochs, dl_thru)
+                bres = self.get_dl_thru(
+                    run_time, num_rows * epochs, epochs, dl_thru, optionals=optionals
+                )
                 timing_res.append(bres)
         return timing_res[-1:]
 
@@ -100,6 +126,8 @@ class BenchFastAI(StandardBenchmark):
                 # epoch line, detected based on if 1st character is a number
                 post_evts = self.get_epoch(line)
                 epochs.append(post_evts)
+            if "run_time" in line:
+                epochs.append(self.get_dl_timing(line))
         return epochs[-1:]
 
 

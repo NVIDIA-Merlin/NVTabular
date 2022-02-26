@@ -22,12 +22,32 @@ from tests.integration.common.parsers.benchmark_parsers import (
     create_bench_result,
 )
 
-decimal_regex = "[0-9]+\.?[0-9]*|\.[0-9]+"  # noqa
+decimal_regex = "[0-9]+\.?[0-9]*|\.[0-9]+"  # noqa pylint: disable=W1401
 
 
 class CriteoBenchFastAI(BenchFastAI):
     def __init__(self, val=6, split=None):
-        super().__init__("CriteoFastAI", val=val, split=split)
+        self.name = "CriteoFastAI"
+        self.val = val
+        self.split = split
+
+    def get_info(self, output):
+        bench_infos = []
+        losses = []
+        for line in output:
+            if "run_time" in line:
+                bench_infos.append(line)
+            if "loss" in line and "Train" in line and "Valid" in line:
+                losses.append(line)
+        loss_dict = {}
+        if losses:
+            for loss in losses:
+                t_loss, v_loss = self.get_loss(loss)
+                loss_dict["loss_train"] = t_loss
+                loss_dict["loss_valid"] = v_loss
+        if bench_infos:
+            bench_infos = self.get_dl_timing(bench_infos[-1:], optionals=loss_dict)
+        return bench_infos
 
     def get_epoch(self, line):
         epoch, t_loss, v_loss, roc, aps, o_time = line.split()
@@ -35,14 +55,16 @@ class CriteoBenchFastAI(BenchFastAI):
         v_loss = self.loss(epoch, float(v_loss), l_type="valid")
         roc = self.roc_auc(epoch, float(roc))
         aps = self.aps(epoch, float(aps))
-        o_time = self.time(epoch, o_time, time_format="%H:%M:%S")
         return [t_loss, v_loss, roc, aps, o_time]
+
+    def get_loss(self, line):
+        epoch, t_loss, v_loss, roc, aps, o_time = line.split()
+        t_loss = float(t_loss)
+        v_loss = float(v_loss)
+        return [t_loss, v_loss]
 
 
 class CriteoBenchHugeCTR(Benchmark):
-    def __init__(self):
-        super().__init__("CriteoHugeCTR")
-
     def get_epochs(self, output):
         epochs = []
         for line in output:
@@ -61,59 +83,38 @@ class CriteoBenchHugeCTR(Benchmark):
 
 
 class CriteoTensorflow(StandardBenchmark):
-    def __init__(self, name="CriteoTensorflow"):
-        super().__init__(name)
-
-    def get_info(self, output):
-        bench_infos = []
-        for line in output:
-            if "run_time" in line:
-                bench_infos.extend(self.get_timing_line(line))
-            if "loss" in line:
-                bench_infos.extend(self.get_loss(line))
-        return bench_infos[-1:]
-
-    def get_timing_line(self, line):
-        runtime, epochs, rows, dl_thru = line.split("-")
-        epochs = int(epochs.split(":")[-1])
-        runtime = self.time(epochs, float(runtime.split(":")[-1]), time_format=None)
-
-        dl_thru = float(dl_thru.split(":")[-1])
-        bres_dl_thru = self.get_dl_thru(runtime, rows, epochs, dl_thru)
-        return [bres_dl_thru, runtime]
+    def __init__(self, name="CriteoTensorFlow"):
+        self.name = "CriteoTensorFlow"
 
     def get_loss(self, line):
         loss = line.split("-")[-1]
         loss = loss.split(":")[-1]
         losses = re.findall(decimal_regex, loss)
-        if losses:
-            loss = float(losses[-1])
-            br_loss = self.loss(1, loss)
-            return [br_loss]
-        return []
+        losses = losses or []
+        return float(losses[-1])
 
 
 class CriteoTorch(StandardBenchmark):
     def __init__(self, name="CriteoTorch"):
-        super().__init__(name)
+        self.name = "CriteoTorch"
 
     def get_info(self, output):
         bench_infos = []
+        losses = []
         for line in output:
             if "run_time" in line:
-                bench_infos.extend(self.get_timing_line(line))
+                bench_infos.append(line)
             if "loss" in line and "Train" in line and "Valid" in line:
-                bench_infos.extend(self.get_loss(line))
-        return bench_infos[-1:]
-
-    def get_timing_line(self, line):
-        # run_time: 12.725089311599731 - rows: 2292 - epochs: 0 - dl_thru: 180.1166140272741
-        runtime, rows, epochs, dl_thru = line.split("-")
-        epochs = int(epochs.split(":")[-1])
-        runtime = self.time(epochs, float(runtime.split(":")[-1]), time_format=None)
-        dl_thru = float(dl_thru.split(":")[-1])
-        bres_dl_thru = self.get_dl_thru(runtime, rows, epochs, dl_thru)
-        return [bres_dl_thru, runtime]
+                losses.append(line)
+        loss_dict = {}
+        if losses:
+            for idx, loss in enumerate(losses):
+                t_loss, v_loss = self.get_loss(loss)
+                loss_dict["loss_train"] = t_loss
+                loss_dict["loss_valid"] = v_loss
+        if bench_infos:
+            bench_infos = self.get_dl_timing(bench_infos[-1:], optionals=loss_dict)
+        return bench_infos
 
     def get_loss(self, line):
         # Epoch 00. Train loss: 0.1944. Valid loss: 0.1696.
@@ -129,7 +130,4 @@ class CriteoTorch(StandardBenchmark):
         epoch = int(epoch)
         train_loss = float(train_loss)
         valid_loss = float(valid_loss)
-        t_br_loss = self.loss(epoch, train_loss, l_type="train")
-        v_br_loss = self.loss(epoch, valid_loss, l_type="valid")
-
-        return [t_br_loss, v_br_loss]
+        return [train_loss, valid_loss]
