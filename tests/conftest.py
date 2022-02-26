@@ -53,7 +53,7 @@ except ImportError:
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
-from merlin.graph.node import iter_nodes
+from merlin.dag.node import iter_nodes
 from numba import cuda
 
 import nvtabular

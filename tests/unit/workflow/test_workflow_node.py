@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from merlin.graph import ColumnSelector
+from merlin.dag import ColumnSelector
 from merlin.schema import Schema
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
