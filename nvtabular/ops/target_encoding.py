@@ -16,7 +16,7 @@
 import dask.dataframe as dd
 import numpy as np
 from dask.delayed import Delayed
-from merlin.graph import Node
+from merlin.dag import Node
 from merlin.schema import Schema, Tags
 
 from nvtabular.dispatch import (

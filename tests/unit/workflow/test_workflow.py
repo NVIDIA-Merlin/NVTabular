@@ -29,7 +29,7 @@ except ImportError:
 import numpy as np
 import pytest
 from merlin.core.dispatch import HAS_GPU, make_df
-from merlin.graph import ColumnSelector, postorder_iter_nodes
+from merlin.dag import ColumnSelector, postorder_iter_nodes
 from merlin.schema import Schema, Tags
 from pandas.api.types import is_integer_dtype
 

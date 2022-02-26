@@ -15,7 +15,7 @@
 #
 import pathlib
 
-from merlin.graph import ColumnSelector
+from merlin.dag import ColumnSelector
 from merlin.schema import Schema
 
 from nvtabular.inference.graph.ops.operator import InferenceOperator
