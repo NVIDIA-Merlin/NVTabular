@@ -26,8 +26,8 @@ decimal_regex = "[0-9]+\.?[0-9]*|\.[0-9]+"  # noqa pylint: disable=W1401
 
 
 class CriteoBenchFastAI(BenchFastAI):
-    def __init__(self, val=6, split=None):
-        self.name = "CriteoFastAI"
+    def __init__(self, name="CriteoFastAI", val=6, split=None):
+        self.name = name
         self.val = val
         self.split = split
 
@@ -84,7 +84,7 @@ class CriteoBenchHugeCTR(Benchmark):
 
 class CriteoTensorflow(StandardBenchmark):
     def __init__(self, name="CriteoTensorFlow"):
-        self.name = "CriteoTensorFlow"
+        self.name = name
 
     def get_loss(self, line):
         loss = line.split("-")[-1]
@@ -96,7 +96,7 @@ class CriteoTensorflow(StandardBenchmark):
 
 class CriteoTorch(StandardBenchmark):
     def __init__(self, name="CriteoTorch"):
-        self.name = "CriteoTorch"
+        self.name = name
 
     def get_info(self, output):
         bench_infos = []
