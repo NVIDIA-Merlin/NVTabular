@@ -30,7 +30,7 @@ import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
-from merlin.graph import Supports
+from merlin.dag import Supports
 from merlin.schema import Tags
 
 from nvtabular import ColumnSelector

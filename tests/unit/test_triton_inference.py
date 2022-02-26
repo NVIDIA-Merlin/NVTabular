@@ -8,7 +8,7 @@ from distutils.spawn import find_executable
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.graph import Supports
+from merlin.dag import Supports
 
 import nvtabular as nvt
 import nvtabular.ops as ops

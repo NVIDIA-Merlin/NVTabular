@@ -15,7 +15,7 @@
 #
 import warnings
 
-from merlin.graph import ColumnSelector
+from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 
 from . import graph, io, utils, workflow  # noqa
