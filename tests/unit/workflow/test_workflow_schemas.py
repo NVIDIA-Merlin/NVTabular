@@ -21,7 +21,6 @@ import nvtabular
 from nvtabular import Workflow, ops
 
 
-
 def test_fit_schema():
     schema = Schema(["x", "y", "id"])
 
