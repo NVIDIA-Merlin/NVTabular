@@ -469,7 +469,7 @@ def export_tensorflow_model(model, name, output_path, version=1):
         The path to write the exported model to
     """
     tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
-    # model.save(tf_model_path, include_optimizer=False)
+    model.save(tf_model_path, include_optimizer=False)
     config = model_config.ModelConfig(
         name=name, backend="tensorflow", platform="tensorflow_savedmodel"
     )
