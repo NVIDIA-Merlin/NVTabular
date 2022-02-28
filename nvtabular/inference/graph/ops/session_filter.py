@@ -18,10 +18,10 @@ import json
 import logging
 
 import numpy as np
+from merlin.dag import Node
+from merlin.schema import Schema
 
 from nvtabular import ColumnSchema, ColumnSelector
-from nvtabular.graph.node import _nodify
-from nvtabular.graph.schema import Schema
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 LOG = logging.getLogger("nvt")
@@ -29,9 +29,10 @@ LOG = logging.getLogger("nvt")
 
 class FilterCandidates(PipelineableInferenceOperator):
     def __init__(self, filter_out, input_col=None):
-        self.filter_out = _nodify(filter_out)
+        self.filter_out = Node.construct_from(filter_out)
         self._input_col = input_col
         self._filter_out_col = filter_out
+        super().__init__()
 
     @classmethod
     def from_config(cls, config):
@@ -80,7 +81,7 @@ class FilterCandidates(PipelineableInferenceOperator):
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
     ) -> Schema:
-        return Schema([ColumnSchema("filtered_ids", dtype=np.int32, _is_list=False)])
+        return Schema([ColumnSchema("filtered_ids", dtype=np.int32, is_list=False)])
 
     def transform(self, df: InferenceDataFrame):
         candidate_ids = df[self._input_col]

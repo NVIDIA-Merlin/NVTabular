@@ -36,7 +36,7 @@ def test_softmax_sampling(tmpdir):
         "output_1": np.random.random(100).astype(np.float32),
     }
 
-    request = nvt.dispatch._make_df(combined_features)
+    request = nvt.dispatch.make_df(combined_features)
 
     ordering = ["movie_ids"] >> SoftmaxSampling(relevance_col="output_1", topk=10, temperature=20.0)
 
@@ -67,7 +67,7 @@ def test_filter_candidates(tmpdir):
         "movie_ids_1": movie_ids_1,
     }
 
-    request = nvt.dispatch._make_df(combined_features)
+    request = nvt.dispatch.make_df(combined_features)
 
     filtering = ["candidate_ids"] >> FilterCandidates(filter_out=["movie_ids_1"])
 

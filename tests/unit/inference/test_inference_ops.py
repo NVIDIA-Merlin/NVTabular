@@ -22,10 +22,10 @@ import pytest
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
+from merlin.schema import Schema  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
-from nvtabular.graph.schema import Schema  # noqa
 
 ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
 model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")
@@ -43,7 +43,7 @@ def test_workflow_op_validates_schemas(dataset, engine):
     workflow.fit(dataset)
 
     # Triton
-    triton_ops = ["a", "b", "c"] >> workflow_op.WorkflowOp(workflow)
+    triton_ops = ["a", "b", "c"] >> workflow_op.TransformWorkflow(workflow)
 
     with pytest.raises(ValueError) as exc_info:
         ensemble.Ensemble(triton_ops, request_schema)
@@ -60,7 +60,7 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
     workflow.fit(dataset)
 
     # Triton
-    triton_op = workflow_op.WorkflowOp(workflow)
+    triton_op = workflow_op.TransformWorkflow(workflow)
     triton_op.export(tmpdir, None, None)
 
     # Export creates directory

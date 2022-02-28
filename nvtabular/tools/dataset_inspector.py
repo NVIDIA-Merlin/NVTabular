@@ -18,10 +18,10 @@ import json
 
 import fsspec
 import numpy as np
+from merlin.dag.selector import ColumnSelector
 
-from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import DataStats
-from nvtabular.utils import _set_client_deprecated
+from nvtabular.utils import set_client_deprecated
 from nvtabular.workflow import Workflow
 
 
@@ -48,7 +48,7 @@ class DatasetInspector:
     def __init__(self, client=None):
         # Deprecate `client`
         if client:
-            _set_client_deprecated(client, "DatasetInspector")
+            set_client_deprecated(client, "DatasetInspector")
 
     def inspect(self, dataset, columns_dict, output_file):
         """

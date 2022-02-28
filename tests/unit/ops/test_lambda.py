@@ -18,12 +18,12 @@ import numpy as np
 import pandas as pd
 import pytest
 from dask.dataframe import assert_eq as assert_eq_dd
+from merlin.schema.tags import Tags, TagSet
 from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, ops
-from nvtabular.graph.tags import Tags, TagSet
 
 try:
     import cupy as cp

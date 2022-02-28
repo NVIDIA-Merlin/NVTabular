@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
+from merlin.dag.selector import ColumnSelector
+from merlin.schema import Schema
 
 from nvtabular import Dataset, Workflow, WorkflowNode, dispatch
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
 from nvtabular.ops import (
     Categorify,
     DifferenceLag,
@@ -241,7 +241,7 @@ def test_compute_schemas():
 
 
 def test_workflow_node_select():
-    df = dispatch._make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
+    df = dispatch.make_df({"a": [1, 4, 9, 16, 25], "b": [0, 1, 2, 3, 4], "c": [25, 16, 9, 4, 1]})
     dataset = Dataset(df)
 
     input_features = WorkflowNode(ColumnSelector(["a", "b", "c"]))
@@ -255,7 +255,7 @@ def test_workflow_node_select():
 
     df_out = workflow.transform(dataset).to_ddf().compute(scheduler="synchronous")
 
-    expected = dispatch._make_df()
+    expected = dispatch.make_df()
     expected["a"] = np.sqrt(df["a"])
     expected["c"] = np.sqrt(df["c"])
     expected["b"] = df["b"] + 1
@@ -264,7 +264,7 @@ def test_workflow_node_select():
 
 
 def test_nested_workflow_node():
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "geo": ["US>CA", "US>NY", "CA>BC", "CA>ON"],
             "user": ["User_A", "User_A", "User_A", "User_B"],

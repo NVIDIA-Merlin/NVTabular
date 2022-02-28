@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import numpy as np
+from merlin.schema.tags import Tags
 from packaging.version import Version
 
-from nvtabular.dispatch import DataFrameType, _array, annotate
-from nvtabular.graph.tags import Tags
+from nvtabular.dispatch import DataFrameType, annotate, array
 
 from .operator import ColumnSelector, Operator
 
@@ -74,7 +74,7 @@ class Bucketize(Operator):
             if self.use_digitize:
                 new_df[col] = np.digitize(
                     df[col].values,
-                    _array(b, like_df=df),
+                    array(b, like_df=df),
                     right=False,
                 )
             else:

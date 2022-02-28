@@ -34,7 +34,7 @@ def test_tf_op_exports_own_config(tmpdir):
     )
 
     # Triton
-    triton_op = tf_op.TensorflowOp(model)
+    triton_op = tf_op.PredictTensorflow.with_model(model)
     triton_op.export(tmpdir, None, None)
 
     # Export creates directory
@@ -73,7 +73,7 @@ def test_tf_op_compute_schema():
     )
 
     # Triton
-    triton_op = tf_op.TensorflowOp(model)
+    triton_op = tf_op.PredictTensorflow.with_model(model)
 
     out_schema = triton_op.compute_output_schema(Schema(["input"]), ColumnSelector(["input"]), None)
     assert out_schema.column_names == ["output"]
@@ -96,7 +96,7 @@ def test_tf_schema_validation():
     )
 
     # Triton
-    tf_node = [] >> tf_op.TensorflowOp(model)
+    tf_node = [] >> tf_op.PredictTensorflow.with_model(model)
     tf_graph = graph.graph.Graph(tf_node)
 
     with pytest.raises(ValueError) as exception_info:

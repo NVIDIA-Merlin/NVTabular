@@ -3,10 +3,10 @@ import logging
 
 import numpy as np
 from feast import FeatureStore, ValueType
+from merlin.dag.selector import ColumnSelector
+from merlin.schema import Schema
 
 from nvtabular import ColumnSchema
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 LOG = logging.getLogger("nvt")
@@ -43,17 +43,17 @@ class QueryFeast(PipelineableInferenceOperator):
                 values_name = cls._prefixed_name(output_prefix, f"{feature.name}_1")
                 nnzs_name = cls._prefixed_name(output_prefix, f"{feature.name}_2")
                 output_schema[values_name] = ColumnSchema(
-                    values_name, dtype=feature_dtype, _is_list=is_list, _is_ragged=is_ragged
+                    values_name, dtype=feature_dtype, is_list=is_list, is_ragged=is_ragged
                 )
                 output_schema[nnzs_name] = ColumnSchema(
-                    nnzs_name, dtype=np.int64, _is_list=True, _is_ragged=False
+                    nnzs_name, dtype=np.int64, is_list=True, is_ragged=False
                 )
             else:
                 features.append(feature.name)
 
                 name = cls._prefixed_name(output_prefix, feature.name)
                 output_schema[name] = ColumnSchema(
-                    name, dtype=feature_dtype, _is_list=is_list, _is_ragged=is_ragged
+                    name, dtype=feature_dtype, is_list=is_list, is_ragged=is_ragged
                 )
 
         if include_id:
@@ -101,6 +101,7 @@ class QueryFeast(PipelineableInferenceOperator):
         self.suffix_int = suffix_int
 
         self.store = FeatureStore(repo_path=repo_path)
+        super().__init__()
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
@@ -136,16 +137,16 @@ class QueryFeast(PipelineableInferenceOperator):
             in_schema[col_name] = ColumnSchema(
                 col_name,
                 dtype=col_rep["dtype"],
-                _is_list=col_rep["is_list"],
-                _is_ragged=col_rep["is_ragged"],
+                is_list=col_rep["is_list"],
+                is_ragged=col_rep["is_ragged"],
             )
         out_schema = Schema([])
         for col_name, col_rep in out_dict.items():
             out_schema[col_name] = ColumnSchema(
                 col_name,
                 dtype=col_rep["dtype"],
-                _is_list=col_rep["is_list"],
-                _is_ragged=col_rep["is_ragged"],
+                is_list=col_rep["is_list"],
+                is_ragged=col_rep["is_ragged"],
             )
 
         return QueryFeast(
@@ -216,7 +217,7 @@ class QueryFeast(PipelineableInferenceOperator):
             nnzs = None
             if (
                 isinstance(feature_value[0], list)
-                and self.output_schema[feature_out_name]._is_ragged
+                and self.output_schema[feature_out_name].is_ragged
             ):
                 flattened_value = []
                 for val in feature_value:

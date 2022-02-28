@@ -1,21 +1,22 @@
 import json
 
 import numpy as np
+from merlin.dag.node import Node
+from merlin.dag.selector import ColumnSelector
+from merlin.schema import Schema
 
 from nvtabular import ColumnSchema
-from nvtabular.graph.node import _nodify
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class SoftmaxSampling(PipelineableInferenceOperator):
     def __init__(self, relevance_col, temperature=20.0, topk=10, _input_col=None):
-        self.relevance_col = _nodify(relevance_col)
+        self.relevance_col = Node.construct_from(relevance_col)
         self.temperature = temperature
         self.topk = topk
         self._input_col_name = _input_col
         self._relevance_col_name = relevance_col
+        super().__init__()
 
     @classmethod
     def from_config(cls, config):
@@ -69,7 +70,7 @@ class SoftmaxSampling(PipelineableInferenceOperator):
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
     ) -> Schema:
         """Describe the operator's outputs"""
-        return Schema([ColumnSchema("ordered_ids", dtype=np.int32, _is_list=True, _is_ragged=True)])
+        return Schema([ColumnSchema("ordered_ids", dtype=np.int32, is_list=True, is_ragged=True)])
 
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
         """Transform the dataframe by applying this operator to the set of input columns"""

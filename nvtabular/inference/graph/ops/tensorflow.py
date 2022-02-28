@@ -23,26 +23,26 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import tensorflow as tf  # noqa
 from google.protobuf import text_format  # noqa
+from merlin.dag.selector import ColumnSelector  # noqa
+from merlin.schema import ColumnSchema, Schema  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.graph.schema import ColumnSchema, Schema  # noqa
-from nvtabular.graph.selector import ColumnSelector  # noqa
 from nvtabular.inference.graph.ops.operator import InferenceOperator  # noqa
 from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 
 
 class PredictTensorflow(InferenceOperator):
-
-    # def __init__(self, model=None, model_path=None, custom_objects=None):
-
-    #     if not model and not model_path:
-    #         raise(SomeError)
+    @classmethod
+    def with_model(cls, model, custom_objects=None, model_path=None):
+        model_path = tempfile.TemporaryDirectory(suffix="temp_models")
+        model.save(str(model_path), include_optimizer=False)
+        return PredictTensorflow(model_path, custom_objects)
 
     def __init__(self, model_path, custom_objects=None):
         custom_objects = custom_objects or {}
         self.model_path = model_path
 
-        self.model = tf.keras.models.load_model(self.model_path, custom_objects=custom_objects)
+        self.model = tf.keras.models.load_model(str(self.model_path), custom_objects=custom_objects)
 
         signatures = getattr(self.model, "signatures", {}) or {}
         default_signature = signatures.get("serving_default")
@@ -72,6 +72,7 @@ class PredictTensorflow(InferenceOperator):
             self.output_schema.column_schemas[col] = ColumnSchema(
                 col, dtype=output_col.dtype.as_numpy_dtype
             )
+        super().__init__()
 
     def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
@@ -82,9 +83,8 @@ class PredictTensorflow(InferenceOperator):
         node_export_path.mkdir(exist_ok=True)
 
         tf_model_path = pathlib.Path(node_export_path) / str(version)
-
         copytree(
-            self.model_path,
+            str(self.model_path),
             pathlib.Path(tf_model_path) / "model.savedmodel",
             dirs_exist_ok=True,
         )

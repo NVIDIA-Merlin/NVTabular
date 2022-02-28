@@ -17,10 +17,10 @@ import json
 import logging
 
 import numpy as np
+from merlin.dag import Node
+from merlin.dag.selector import ColumnSelector
+from merlin.schema import Schema
 
-from nvtabular.graph.node import _nodify
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 LOG = logging.getLogger("nvtabular")
@@ -29,8 +29,9 @@ LOG = logging.getLogger("nvtabular")
 class UnrollFeatures(PipelineableInferenceOperator):
     def __init__(self, item_id_col, unroll_cols, unrolled_prefix=""):
         self.item_id_col = item_id_col
-        self.unroll_cols = _nodify(unroll_cols)
+        self.unroll_cols = Node.construct_from(unroll_cols)
         self.unrolled_prefix = unrolled_prefix
+        super().__init__()
 
     @classmethod
     def from_config(cls, config):

@@ -8,12 +8,12 @@ from distutils.spawn import find_executable
 import numpy as np
 import pandas as pd
 import pytest
+from merlin.dag.base_operator import Supports
 
 import nvtabular as nvt
 import nvtabular.ops as ops
 from nvtabular import ColumnSelector
-from nvtabular.dispatch import HAS_GPU, _hash_series, _make_df
-from nvtabular.graph.base_operator import Supports
+from nvtabular.dispatch import HAS_GPU, hash_series, make_df
 from tests.conftest import assert_eq
 
 triton = pytest.importorskip("nvtabular.inference.triton")
@@ -103,7 +103,7 @@ def _verify_workflow_on_tritonserver(
 
     outputs = []
     for col_name, col_schema in workflow.output_schema.column_schemas.items():
-        if col_schema._is_list and col_schema._is_ragged:
+        if col_schema.is_list and col_schema.is_ragged:
             outputs.append(f"{col_name}__values")
             outputs.append(f"{col_name}__nnzs")
         else:
@@ -117,16 +117,16 @@ def _verify_workflow_on_tritonserver(
             features = response.as_numpy(col)
             if sparse_max and col in sparse_max:
                 features = features.tolist()
-                triton_df = _make_df()
+                triton_df = make_df()
                 triton_df[col] = features
             else:
-                triton_df = _make_df({col: features.reshape(features.shape[0])})
+                triton_df = make_df({col: features.reshape(features.shape[0])})
             assert_eq(triton_df, local_df[[col]])
 
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 def test_error_handling(tmpdir):
-    df = _make_df({"x": np.arange(10), "y": np.arange(10)})
+    df = make_df({"x": np.arange(10), "y": np.arange(10)})
 
     def custom_transform(col):
         if len(col) == 2:
@@ -153,7 +153,7 @@ def test_error_handling(tmpdir):
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_tritonserver_inference_string(tmpdir, output_model):
-    df = _make_df({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
+    df = make_df({"user": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"]})
     features = ["user"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
 
@@ -170,7 +170,7 @@ def test_tritonserver_inference_string(tmpdir, output_model):
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_large_strings(tmpdir, output_model):
     strings = ["a" * (2 ** exp) for exp in range(1, 17)]
-    df = _make_df({"description": strings})
+    df = make_df({"description": strings})
     features = ["description"] >> ops.Categorify()
     workflow = nvt.Workflow(features)
     workflow.fit(nvt.Dataset(df))
@@ -186,17 +186,17 @@ def test_large_strings(tmpdir, output_model):
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
-def test_concatenate_dataframe(tmpdir, output_model):
+def testconcateenate_dataframe(tmpdir, output_model):
     # we were seeing an issue in the rossmann workflow where we dropped certain columns,
     # https://github.com/NVIDIA/NVTabular/issues/961
-    df = _make_df(
+    df = make_df(
         {
             "cat": ["aaaa", "bbbb", "cccc", "aaaa", "bbbb", "aaaa"],
             "cont": [0.0, 1.0, 2.0, 3.0, 4.0, 5],
         }
     )
     # this bug only happened with a dataframe representation: force this by using a lambda
-    cats = ["cat"] >> ops.LambdaOp(lambda col: _hash_series(col) % 1000)
+    cats = ["cat"] >> ops.LambdaOp(lambda col: hash_series(col) % 1000)
     conts = ["cont"] >> ops.Normalize() >> ops.FillMissing() >> ops.LogOp()
 
     workflow = nvt.Workflow(cats + conts)
@@ -205,7 +205,7 @@ def test_concatenate_dataframe(tmpdir, output_model):
         tmpdir,
         workflow,
         df,
-        "test_concatenate_dataframe",
+        "testconcateenate_dataframe",
         output_model,
         cats=["cat"],
         conts=["cont"],
@@ -229,7 +229,7 @@ def test_numeric_dtypes(tmpdir, output_model):
     # simple transform to make sure we can round-trip the min/max values for each dtype,
     # through triton, with the 'transform' here just checking that the dtypes are correct
     dtypes = int_dtypes + uint_dtypes + float_dtypes
-    df = _make_df(
+    df = make_df(
         {dtype: np.array([limits.max, 0, limits.min], dtype=dtype) for dtype, limits in dtypes}
     )
 
@@ -254,7 +254,7 @@ def test_numeric_dtypes(tmpdir, output_model):
 
 
 def test_generate_triton_multihot(tmpdir):
-    df = _make_df(
+    df = make_df(
         {
             "userId": ["a", "a", "b"],
             "movieId": ["1", "2", "2"],
@@ -358,7 +358,7 @@ def test_convert_format(_from, _to):
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
 def test_groupby_model(tmpdir, output_model):
     size = 20
-    df = _make_df(
+    df = make_df(
         {
             "id": np.random.choice([0, 1], size=size),
             "ts": np.linspace(0.0, 10.0, num=size),
@@ -388,7 +388,7 @@ def test_groupby_model(tmpdir, output_model):
 def test_seq_etl_tf_model(tmpdir, output_model):
     size = 100
     max_length = 10
-    df = _make_df(
+    df = make_df(
         {
             "id": np.random.choice([0, 1], size=size),
             "item_id": np.random.randint(1, 10, size),

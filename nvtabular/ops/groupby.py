@@ -14,9 +14,9 @@
 # limitations under the License.
 import numpy
 from dask.dataframe.utils import meta_nonempty
+from merlin.schema import Schema
 
 from nvtabular.dispatch import DataFrameType, annotate
-from nvtabular.graph.schema import Schema
 
 from .operator import ColumnSelector, Operator
 
@@ -85,7 +85,7 @@ class Groupby(Operator):
             _aggs = v if isinstance(v, list) else [v]
             _conv_aggs, _list_aggs = set(), set()
             for _agg in _aggs:
-                if _is_list_agg(_agg):
+                if is_list_agg(_agg):
                     _list_aggs.add("list" if _agg == list else _agg)
                     _conv_aggs.add(list)
                 else:
@@ -164,7 +164,7 @@ class Groupby(Operator):
         col_schema = super()._compute_dtype(col_schema, input_schema)
 
         dtype = col_schema.dtype
-        is_list = col_schema._is_list
+        is_list = col_schema.is_list
 
         dtypes = {"count": numpy.int32, "mean": numpy.float32}
 
@@ -204,7 +204,7 @@ def _apply_aggs(_df, groupby_cols, _list_aggs, _conv_aggs, name_sep="_"):
     # Handle custom aggs (e.g. "first" and "last")
     for col, aggs in _list_aggs.items():
         for _agg in aggs:
-            if _is_list_agg(_agg, custom=True):
+            if is_list_agg(_agg, custom=True):
                 df[f"{col}{name_sep}{_agg}"] = _first_or_last(df[f"{col}{name_sep}list"], _agg)
         if "list" not in aggs:
             df.drop(columns=[col + f"{name_sep}list"], inplace=True)
@@ -236,7 +236,7 @@ def _ensure_agg_dict(_aggs, _allowed_cols):
         return {k: v for k, v in _aggs.items() if k in _allowed_cols}
 
 
-def _is_list_agg(agg, custom=False):
+def is_list_agg(agg, custom=False):
     # check if `agg` is a supported list aggregation
     if custom:
         return agg in ("first", "last")

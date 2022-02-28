@@ -17,10 +17,11 @@ from __future__ import annotations
 
 from typing import Optional
 
+from merlin.dag import BaseOperator
+from merlin.dag.selector import ColumnSelector
+
 import nvtabular as nvt
 from nvtabular.dispatch import DataFrameType
-from nvtabular.graph import BaseOperator
-from nvtabular.graph.selector import ColumnSelector
 
 
 class Operator(BaseOperator):

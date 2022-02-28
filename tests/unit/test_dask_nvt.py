@@ -23,9 +23,9 @@ import pytest
 from dask.dataframe import assert_eq
 from dask.dataframe import from_pandas as dd_from_pandas
 from dask.dataframe import read_parquet as dd_read_parquet
+from merlin.io.shuffle import Shuffle
 
 from nvtabular import ColumnSelector, Dataset, Workflow, ops
-from nvtabular.io.shuffle import Shuffle
 from nvtabular.utils import set_dask_client
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
