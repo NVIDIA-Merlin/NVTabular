@@ -26,7 +26,7 @@ from nvtabular import ColumnSelector
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.schema.tags import Tags  # noqa
+from merlin.schema import Tags  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.dispatch import is_string_dtype  # noqa
@@ -70,7 +70,10 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
     workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
@@ -151,7 +154,10 @@ def export_pytorch_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
     workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
@@ -558,7 +564,7 @@ def export_pytorch_model(
 
     config = model_config.ModelConfig(name=name, backend=backend)
 
-    for col_name, col_schema in workflow.output_schema.items():
+    for col_name, col_schema in workflow.output_schema.column_schemas.items():
         _add_model_param(col_schema, model_config.ModelInput, config.input)
 
     *_, last_layer = model.parameters()

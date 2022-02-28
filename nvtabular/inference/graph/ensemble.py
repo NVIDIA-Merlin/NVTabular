@@ -15,13 +15,13 @@
 #
 import os
 
-from merlin.dag.node import postorder_iter_nodes
+from merlin.dag import postorder_iter_nodes
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.dag.graph import Graph  # noqa
+from merlin.dag import Graph  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa

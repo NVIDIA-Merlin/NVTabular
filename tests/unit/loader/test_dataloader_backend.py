@@ -15,9 +15,9 @@
 #
 import numpy as np
 import pytest
+from merlin.core.dispatch import concat, generate_local_seed, get_random_state
 from merlin.io import Dataset
 
-from nvtabular.dispatch import concat, generate_local_seed, get_random_state
 from nvtabular.loader.backend import DataLoader
 from tests.conftest import assert_eq
 

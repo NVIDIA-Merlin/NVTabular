@@ -17,14 +17,15 @@ import os
 from distutils.spawn import find_executable
 
 import pytest
-from merlin.dag.ops.concat_columns import ConcatColumns
-from merlin.dag.ops.selection import SelectionOp
-from merlin.schema import Tags
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
+from merlin.core.dispatch import make_df  # noqa
 from merlin.dag.node import postorder_iter_nodes  # noqa
+from merlin.dag.ops.concat_columns import ConcatColumns  # noqa
+from merlin.dag.ops.selection import SelectionOp  # noqa
+from merlin.schema import Tags  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
@@ -108,7 +109,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
         assert parsed.platform == "ensemble"
         assert hasattr(parsed, "ensemble_scheduling")
 
-    df = nvt.dispatch.make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
+    df = make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
 
     output_columns = triton_ens.graph.output_schema.column_names
     response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)

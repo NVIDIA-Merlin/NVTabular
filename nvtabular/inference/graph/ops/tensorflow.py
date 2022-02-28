@@ -23,7 +23,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import tensorflow as tf  # noqa
 from google.protobuf import text_format  # noqa
-from merlin.dag.selector import ColumnSelector  # noqa
+from merlin.dag import ColumnSelector  # noqa
 from merlin.schema import ColumnSchema, Schema  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
@@ -76,7 +76,6 @@ class PredictTensorflow(InferenceOperator):
 
     def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
-        # TODO: refactor out the nodeid logic check
         node_name = f"{node_id}_{self.export_name}" if node_id is not None else self.export_name
 
         node_export_path = pathlib.Path(path) / node_name

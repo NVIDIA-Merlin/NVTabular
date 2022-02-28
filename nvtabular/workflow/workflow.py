@@ -30,7 +30,7 @@ except ImportError:
 import dask
 import pandas as pd
 from dask.core import flatten
-from merlin.dag.graph import Graph
+from merlin.dag import Graph
 from merlin.io import Dataset
 
 import nvtabular

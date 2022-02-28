@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 import numpy
-from merlin.schema.tags import Tags
+from merlin.schema import Tags
 
 from nvtabular.dispatch import DataFrameType, annotate, is_dataframe_object
 

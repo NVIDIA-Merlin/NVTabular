@@ -3,8 +3,8 @@ import os
 
 import numpy as np
 import pytest
-from merlin.dag.graph import Graph
-from merlin.schema.tags import Tags
+from merlin.dag import Graph
+from merlin.schema import Tags
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops

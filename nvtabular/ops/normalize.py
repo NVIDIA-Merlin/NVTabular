@@ -15,8 +15,8 @@
 #
 import dask.dataframe as dd
 import numpy
-from merlin.dag.base_operator import Supports
-from merlin.schema.tags import Tags
+from merlin.dag import Supports
+from merlin.schema import Tags
 
 from ..dispatch import (
     DataFrameType,

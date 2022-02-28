@@ -27,9 +27,8 @@ try:
 except ImportError:
     cp = np
 
-from merlin.io import DataFrameIter
-from merlin.io.shuffle import shuffle_df
-from merlin.schema.tags import Tags
+from merlin.io import DataFrameIter, shuffle_df
+from merlin.schema import Tags
 
 from nvtabular.dispatch import (
     HAS_GPU,

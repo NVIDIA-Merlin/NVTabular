@@ -15,7 +15,7 @@
 #
 import pathlib
 
-from merlin.dag.selector import ColumnSelector
+from merlin.dag import ColumnSelector
 from merlin.schema import Schema
 
 from nvtabular.inference.graph.ops.operator import InferenceOperator
@@ -33,6 +33,8 @@ class TransformWorkflow(InferenceOperator):
         cats=None,
         conts=None,
     ):
+        super().__init__()
+
         self.workflow = workflow
         self.sparse_max = sparse_max or {}
         self.max_batch_size = max_batch_size

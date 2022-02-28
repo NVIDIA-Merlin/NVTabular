@@ -33,8 +33,7 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
-from merlin.schema import Schema
-from merlin.schema.tags import Tags
+from merlin.schema import Schema, Tags
 from pyarrow import parquet as pq
 
 from nvtabular import dispatch
@@ -1052,7 +1051,9 @@ def _write_uniques(dfs, base_path, col_selector: ColumnSelector, options: FitOpt
         for col in col_selector.names:
             name_size = col + "_size"
             null_size = 0
-            if name_size in df:
+            # Set null size if first element in `col` is
+            # null, and the `size` aggregation is known
+            if name_size in df and df[col].iloc[:1].isnull().any():
                 null_size = df[name_size].iloc[0]
             if options.max_size:
                 max_emb_size = options.max_size

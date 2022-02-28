@@ -34,7 +34,7 @@ except ImportError:
 
 import numpy as np
 import pandas as pd
-from merlin.dag.base_operator import Supports
+from merlin.dag import Supports
 
 from nvtabular.dispatch import build_cudf_list_column, is_list_dtype
 

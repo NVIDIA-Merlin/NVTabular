@@ -18,7 +18,7 @@ import copy
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.schema.tags import Tags, TagSet
+from merlin.schema import Tags, TagSet
 
 import nvtabular as nvt
 import nvtabular.io

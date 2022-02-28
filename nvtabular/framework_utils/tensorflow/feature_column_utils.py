@@ -17,7 +17,7 @@ import warnings
 
 import pandas as pd
 import tensorflow as tf
-from merlin.dag.selector import ColumnSelector
+from merlin.dag import ColumnSelector
 from tensorflow.python.feature_column import feature_column_v2 as fc
 
 import nvtabular as nvt

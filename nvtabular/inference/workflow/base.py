@@ -30,8 +30,8 @@ import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
-from merlin.dag.base_operator import Supports
-from merlin.schema.tags import Tags
+from merlin.dag import Supports
+from merlin.schema import Tags
 
 from nvtabular import ColumnSelector
 from nvtabular.dispatch import concat_columns
@@ -171,7 +171,7 @@ class WorkflowRunner(ABC):
                     tensors, kind = convert_format(tensors, kind, target_kind)
                     upstream_tensors, _ = convert_format(upstream_tensors, upstream_kind, kind)
 
-                tensors = self.concate_tensors([tensors, upstream_tensors], kind)
+                tensors = self.concat_tensors([tensors, upstream_tensors], kind)
 
         # Run the transform
         if tensors is not None and kind and workflow_node.op:
@@ -194,7 +194,7 @@ class WorkflowRunner(ABC):
 
         return tensors, kind
 
-    def concate_tensors(self, tensors, kind):
+    def concat_tensors(self, tensors, kind):
         if kind & (Supports.GPU_DATAFRAME | Supports.CPU_DATAFRAME):
             return concat_columns(tensors)
         else:

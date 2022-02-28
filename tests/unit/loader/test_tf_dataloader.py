@@ -18,7 +18,8 @@ import importlib
 import os
 import subprocess
 
-from nvtabular.dispatch import HAS_GPU
+from merlin.core.dispatch import HAS_GPU, make_df
+from merlin.io import Dataset
 
 try:
     import cupy
@@ -27,7 +28,6 @@ except ImportError:
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.io import Dataset
 from sklearn.metrics import roc_auc_score
 
 import nvtabular as nvt
@@ -106,7 +106,7 @@ def test_shuffling():
 @pytest.mark.parametrize("drop_last", [True, False])
 @pytest.mark.parametrize("num_rows", [100])
 def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
-    df = nvt.dispatch.make_df(
+    df = make_df(
         {
             "cat1": [1] * num_rows,
             "cat2": [2] * num_rows,
@@ -152,7 +152,7 @@ def test_tf_drp_reset(tmpdir, batch_size, drop_last, num_rows):
 
 
 def test_tf_catname_ordering(tmpdir):
-    df = nvt.dispatch.make_df(
+    df = make_df(
         {
             "cat1": [1] * 100,
             "cat2": [2] * 100,
@@ -188,7 +188,7 @@ def test_tf_catname_ordering(tmpdir):
 
 
 def test_tf_map(tmpdir):
-    df = nvt.dispatch.make_df(
+    df = make_df(
         {
             "cat1": [1] * 100,
             "cat2": [2] * 100,
@@ -351,7 +351,7 @@ def test_mh_support(tmpdir, batch_size):
         ],
         "Post": [1, 2, 3, 4],
     }
-    df = nvt.dispatch.make_df(data)
+    df = make_df(data)
     cat_names = ["Authors", "Reviewers", "Engaging User"]
     cont_names = ["Embedding"]
     label_name = ["Post"]
@@ -402,9 +402,7 @@ def test_validater(tmpdir, batch_size):
     n_samples = 9
     rand = np.random.RandomState(0)
 
-    gdf = nvt.dispatch.make_df(
-        {"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)}
-    )
+    gdf = make_df({"a": rand.randn(n_samples), "label": rand.randint(2, size=n_samples)})
 
     dataloader = tf_dataloader.KerasSequenceLoader(
         nvt.Dataset(gdf),

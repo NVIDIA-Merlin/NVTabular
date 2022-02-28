@@ -4,7 +4,7 @@ import pathlib
 from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
-from merlin.dag.base_operator import BaseOperator
+from merlin.dag import BaseOperator
 
 import nvtabular as nvt
 

@@ -8,7 +8,7 @@ from distutils.spawn import find_executable
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.dag.base_operator import Supports
+from merlin.dag import Supports
 
 import nvtabular as nvt
 import nvtabular.ops as ops
@@ -186,7 +186,7 @@ def test_large_strings(tmpdir, output_model):
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
-def testconcateenate_dataframe(tmpdir, output_model):
+def test_concatenate_dataframe(tmpdir, output_model):
     # we were seeing an issue in the rossmann workflow where we dropped certain columns,
     # https://github.com/NVIDIA/NVTabular/issues/961
     df = make_df(

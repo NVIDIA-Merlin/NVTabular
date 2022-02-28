@@ -1,9 +1,11 @@
-dask==2021.09.1
-distributed==2021.09.1
+dask==2021.11.2
+distributed==2021.11.2
 pandas>=1.2.0
-numba>=0.54.0
+numba>=0.55.1
 tqdm>=4.0
 pyarrow>=1.0
 tensorflow-metadata>=1.2.0
 protobuf>=3.0.0
 packaging
+merlin-core@git+https://github.com/NVIDIA-Merlin/core.git
+
