@@ -186,7 +186,7 @@ def test_large_strings(tmpdir, output_model):
 
 @pytest.mark.skipif(TRITON_SERVER_PATH is None, reason="Requires tritonserver on the path")
 @pytest.mark.parametrize("output_model", ["tensorflow", "pytorch"])
-def test_concatenate_dataframe(tmpdir, output_model):
+def testconcatenate_dataframe(tmpdir, output_model):
     # we were seeing an issue in the rossmann workflow where we dropped certain columns,
     # https://github.com/NVIDIA/NVTabular/issues/961
     df = make_df(
