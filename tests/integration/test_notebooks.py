@@ -61,7 +61,7 @@ def test_criteo(asv_db, bench_info, tmpdir, report):
         import torch
 
         print(torch.__version__)
-        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
+        out = _run_notebook(tmpdir, notebook, output_path, output_path, gpu_id="0", clean_up=False)
         if report:
             # bench_results = CriteoBenchFastAI().get_epochs(out.splitlines())
             bench_results = CriteoBenchFastAI().get_dl_timing(out.splitlines())
@@ -75,7 +75,7 @@ def test_criteo(asv_db, bench_info, tmpdir, report):
         import hugectr
 
         print(hugectr.__version__)
-        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
+        out = _run_notebook(tmpdir, notebook, output_path, output_path, gpu_id="0", clean_up=False)
         if report:
             # bench_results = CriteoBenchHugeCTR().get_epochs(out.splitlines())
             bench_results = CriteoBenchHugeCTR().get_dl_timing(out.splitlines())
@@ -89,7 +89,7 @@ def test_criteo(asv_db, bench_info, tmpdir, report):
         import tensorflow
 
         print(tensorflow.__version__)
-        out = _run_notebook(tmpdir, notebook, input_path, output_path, gpu_id="0", clean_up=False)
+        out = _run_notebook(tmpdir, notebook, output_path, output_path, gpu_id="0", clean_up=False)
         bench_results = CriteoTensorflow().get_info(out.splitlines())
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
