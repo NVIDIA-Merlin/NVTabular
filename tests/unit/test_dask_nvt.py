@@ -25,8 +25,8 @@ from dask.dataframe import from_pandas as dd_from_pandas
 from dask.dataframe import read_parquet as dd_read_parquet
 
 from nvtabular import ColumnSelector, Dataset, Workflow, ops
-from nvtabular.io.shuffle import Shuffle
-from nvtabular.utils import set_dask_client
+from nvtabular.io import Shuffle
+from nvtabular.utils import global_dask_client, set_dask_client
 from tests.conftest import allcols_csv, mycols_csv, mycols_pq
 
 cudf = pytest.importorskip("cudf")
@@ -295,3 +295,21 @@ def test_filtered_partition(tmpdir, cpu):
 
     # Write result to disk
     workflow.transform(dataset).to_parquet(str(tmpdir))
+
+
+def test_merlin_core_execution_managers(client):
+    # This functionality lives in merlin-core,
+    # but we are testing that we can import
+    # from NVTabular with proper behavior.
+    from nvtabular import Distributed, Serial
+
+    # Set distributed client
+    with Distributed(client=client):
+        assert global_dask_client() == client
+
+        # Check that the global dask client
+        # becomes None in a `with Serial()` block
+        with Serial():
+            assert global_dask_client() is None
+
+        assert global_dask_client() == client

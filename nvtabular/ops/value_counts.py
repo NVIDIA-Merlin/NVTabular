@@ -18,7 +18,7 @@ from typing import Any
 
 import dask.dataframe as dd
 
-from nvtabular.dispatch import DataFrameType, _is_list_dtype, _pull_apart_list
+from nvtabular.dispatch import DataFrameType, is_list_dtype, pull_apart_list
 
 from .operator import ColumnSelector
 from .stat_operator import StatOperator
@@ -37,12 +37,12 @@ class ValueCount(StatOperator):
         stats = {}
         for col in col_selector.names:
             series = ddf[col]
-            if _is_list_dtype(series.compute()):
+            if is_list_dtype(series.compute()):
                 stats[col] = stats[col] if col in stats else {}
                 stats[col]["value_count"] = (
                     {} if "value_count" not in stats[col] else stats[col]["value_count"]
                 )
-                offs = _pull_apart_list(series.compute())[1]
+                offs = pull_apart_list(series.compute())[1]
                 lh, rh = offs[1:], offs[:-1]
                 rh = rh.reset_index(drop=True)
                 lh = lh.reset_index(drop=True)

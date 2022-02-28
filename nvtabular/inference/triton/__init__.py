@@ -23,7 +23,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import tritonclient.grpc as grpcclient  # noqa
 from tritonclient.utils import np_to_triton_dtype  # noqa
 
-from nvtabular.dispatch import _is_list_dtype, _is_string_dtype, _make_df  # noqa
+from nvtabular.dispatch import is_list_dtype, is_string_dtype, make_df  # noqa
 from nvtabular.inference.triton.ensemble import (  # noqa
     _convert_string2pytorch_dtype,
     export_hugectr_ensemble,
@@ -38,7 +38,7 @@ def convert_df_to_triton_input(column_names, batch, input_class=grpcclient.Infer
     columns = [(col, batch[col]) for col in column_names]
     inputs = []
     for i, (name, col) in enumerate(columns):
-        if _is_list_dtype(col):
+        if is_list_dtype(col):
             if isinstance(col, pd.Series):
                 raise ValueError("this function doesn't support CPU list values yet")
             inputs.append(
@@ -65,7 +65,7 @@ def _convert_column_to_triton_input(col, name, input_class=grpcclient.InferInput
 
 
 def convert_triton_output_to_df(columns, response):
-    return _make_df({col: response.as_numpy(col) for col in columns})
+    return make_df({col: response.as_numpy(col) for col in columns})
 
 
 def get_column_types(path):
@@ -77,6 +77,6 @@ def _convert_tensor(t):
     if len(out.shape) == 2:
         out = out[:, 0]
     # cudf doesn't seem to handle dtypes like |S15 or object that well
-    if _is_string_dtype(out.dtype):
+    if is_string_dtype(out.dtype):
         out = out.astype("str")
     return out

@@ -18,9 +18,9 @@ from typing import Callable, Union
 from nvtabular.dispatch import (
     DataFrameType,
     SeriesType,
-    _is_dataframe_object,
-    _is_series_object,
     annotate,
+    is_dataframe_object,
+    is_series_object,
 )
 
 from .operator import ColumnSelector, Operator
@@ -52,9 +52,9 @@ class Filter(Operator):
     @annotate("Filter_op", color="darkgreen", domain="nvt_python")
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         filtered = self.f(df)
-        if _is_dataframe_object(filtered):
+        if is_dataframe_object(filtered):
             new_df = filtered
-        elif _is_series_object(filtered) and filtered.dtype == bool:
+        elif is_series_object(filtered) and filtered.dtype == bool:
             new_df = df[filtered]
         else:
             raise ValueError(f"Invalid output from filter op: f{filtered.__class__}")
