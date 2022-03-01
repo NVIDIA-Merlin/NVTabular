@@ -175,8 +175,7 @@ def test_graph_traverse_algo():
         nvt.Workflow(["name-string"] >> nvt.ops.Categorify())
     )
 
-    # Create Tensorflow Model
-    model = create_tf_model(["name-cat", "name-string_plus_2"], [], embedding_shapes_1)
+    triton_chain = chain_1 + chain_2
 
     ordered_list = list(postorder_iter_nodes(triton_chain))
     assert len(ordered_list) == 5
