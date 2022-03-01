@@ -26,10 +26,10 @@ from nvtabular import ColumnSelector
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
+from merlin.schema import Tags  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.dispatch import _is_string_dtype  # noqa
-from nvtabular.graph.tags import Tags  # noqa
+from nvtabular.dispatch import is_string_dtype  # noqa
 
 
 def export_tensorflow_ensemble(
@@ -70,7 +70,10 @@ def export_tensorflow_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
     workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
@@ -151,7 +154,10 @@ def export_pytorch_ensemble(
     nvtabular_backend: "python" or "nvtabular"
         The backend that will be used for inference in Triton.
     """
-    labels = label_columns or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET]))
+    labels = (
+        label_columns
+        or workflow.output_schema.apply(ColumnSelector(tags=[Tags.TARGET])).column_names
+    )
     workflow = workflow.remove_inputs(labels)
 
     # generate the TF saved model
@@ -555,7 +561,7 @@ def export_pytorch_model(
 
     config = model_config.ModelConfig(name=name, backend=backend)
 
-    for col_name, col_schema in workflow.output_schema.items():
+    for col_name, col_schema in workflow.output_schema.column_schemas.items():
         _add_model_param(col_schema, model_config.ModelInput, config.input)
 
     *_, last_layer = model.parameters()
@@ -674,7 +680,7 @@ def _generate_hugectr_config(name, output_path, hugectr_params, max_batch_size=N
 
 def _add_model_param(col_schema, paramclass, params, dims=None):
     dims = dims if dims is not None else [-1, 1]
-    if col_schema._is_list and col_schema._is_ragged:
+    if col_schema.is_list and col_schema.is_ragged:
         params.append(
             paramclass(
                 name=col_schema.name + "__values",
@@ -716,7 +722,7 @@ def _convert_dtype(dtype):
         "bool": model_config.TYPE_BOOL,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype_name in dtypes:
         return dtypes[dtype_name]
@@ -741,7 +747,7 @@ def _convert_pytorch_dtype(dtype):
         torch.bool: model_config.TYPE_BOOL,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype in dtypes:
         return dtypes[dtype]
@@ -771,7 +777,7 @@ def _convert_string2pytorch_dtype(dtype):
         "TYPE_BOOL": torch.bool,
     }
 
-    if _is_string_dtype(dtype):
+    if is_string_dtype(dtype):
         return model_config.TYPE_STRING
     elif dtype_name in dtypes:
         return dtypes[dtype_name]
