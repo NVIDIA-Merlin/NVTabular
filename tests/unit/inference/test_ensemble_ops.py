@@ -14,13 +14,16 @@
 # limitations under the License.
 #
 import numpy as np
+import pytest
 
 import nvtabular as nvt
 from nvtabular import ColumnSchema, Schema
 from nvtabular.inference.graph.ensemble import Ensemble
 from nvtabular.inference.graph.ops.session_filter import FilterCandidates
 from nvtabular.inference.graph.ops.softmax_sampling import SoftmaxSampling
-from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver
+
+triton = pytest.importorskip("nvtabular.inference.triton")
+from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver  # noqa
 
 
 def test_softmax_sampling(tmpdir):
@@ -43,7 +46,7 @@ def test_softmax_sampling(tmpdir):
     ensemble = Ensemble(ordering, request_schema)
     ens_config, node_configs = ensemble.export(tmpdir)
 
-    response = _run_ensemble_on_tritonserver(
+    response = triton._run_ensemble_on_tritonserver(
         tmpdir, ensemble.graph.output_schema.column_names, request, "ensemble_model"
     )
     assert response is not None
