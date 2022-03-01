@@ -17,10 +17,10 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.core.dispatch import make_df
 
 import nvtabular as nvt
 import nvtabular.io
+from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, Schema, Workflow, ops
 
 try:

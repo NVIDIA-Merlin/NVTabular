@@ -26,9 +26,9 @@ from nvtabular import ColumnSelector
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.schema import Tags  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from merlin.schema import Tags  # noqa
 from nvtabular.dispatch import is_string_dtype  # noqa
 
 

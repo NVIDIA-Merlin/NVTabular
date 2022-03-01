@@ -21,11 +21,11 @@ import pytest
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.core.dispatch import make_df  # noqa
-from merlin.schema import Tags  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
+from merlin.core.dispatch import make_df  # noqa
+from merlin.schema import Tags  # noqa
 
 loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")
 

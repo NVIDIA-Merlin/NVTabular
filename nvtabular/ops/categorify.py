@@ -33,9 +33,9 @@ from dask.delayed import Delayed
 from dask.highlevelgraph import HighLevelGraph
 from dask.utils import parse_bytes
 from fsspec.core import get_fs_token_paths
-from merlin.schema import Schema, Tags
 from pyarrow import parquet as pq
 
+from merlin.schema import Schema, Tags
 from nvtabular import dispatch
 from nvtabular.dispatch import DataFrameType, annotate, is_cpu_object, nullable_series
 from nvtabular.utils import device_mem_size, run_on_worker

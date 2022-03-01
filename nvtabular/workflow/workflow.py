@@ -30,9 +30,9 @@ except ImportError:
 import dask
 import pandas as pd
 from dask.core import flatten
-from merlin.dag import Graph
 
 import nvtabular
+from merlin.dag import Graph
 from nvtabular.dispatch import concat_columns, is_list_dtype, list_val_dtype
 from nvtabular.io import Dataset
 from nvtabular.ops import StatOperator
