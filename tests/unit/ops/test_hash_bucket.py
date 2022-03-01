@@ -57,7 +57,7 @@ def test_hash_bucket(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, c
 
 @pytest.mark.skipif(not _HAS_GPU, reason="HashBucket doesn't work on lists without a GPU yet")
 def test_hash_bucket_lists(tmpdir):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],

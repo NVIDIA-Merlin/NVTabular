@@ -53,6 +53,7 @@ except ImportError:
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
+from merlin.dag.node import iter_nodes
 from numba import cuda
 
 import nvtabular
@@ -262,7 +263,7 @@ def get_cats(workflow, col, stat_name="categories", cpu=False):
     # figure out the categorify node from the workflow graph
     cats = [
         cg.op
-        for cg in nvtabular.graph.node.iter_nodes([workflow.output_node])
+        for cg in iter_nodes([workflow.output_node])
         if isinstance(cg.op, nvtabular.ops.Categorify)
     ]
     if len(cats) != 1:

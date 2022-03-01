@@ -18,16 +18,14 @@ from distutils.spawn import find_executable
 
 import pytest
 
-from nvtabular.graph.ops.concat_columns import ConcatColumns
-from nvtabular.graph.ops.selection import SelectionOp
-
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
+from merlin.core.dispatch import make_df  # noqa
+from merlin.schema import Tags  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
-from nvtabular.graph.node import postorder_iter_nodes  # noqa
 
 loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")
 
@@ -61,7 +59,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in ["x", "y", "id"]:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
     selector = nvt.graph.selector.ColumnSelector(["x", "y", "id"])
 
@@ -104,7 +102,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
         assert parsed.platform == "ensemble"
         assert hasattr(parsed, "ensemble_scheduling")
 
-    df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
+    df = make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
 
     output_columns = triton_ens.graph.output_schema.column_names
     response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
@@ -118,7 +116,7 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in ["x", "y", "id"]:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
 
     workflow_ops = ["name-cat"] >> nvt.ops.Categorify(cat_cache="host")
@@ -164,18 +162,6 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     assert len(response.as_numpy("output")) == df.shape[0]
 
 
-def test_graph_traverse_algo():
-    chain_1 = ["name-cat"] >> WorkflowOp(nvt.Workflow(["name-cat"] >> nvt.ops.Categorify()))
-    chain_2 = ["name-string"] >> WorkflowOp(nvt.Workflow(["name-string"] >> nvt.ops.Categorify()))
-
-    triton_chain = chain_1 + chain_2
-
-    ordered_list = list(postorder_iter_nodes(triton_chain))
-    assert len(ordered_list) == 5
-    assert isinstance(ordered_list[0].op, SelectionOp)
-    assert isinstance(ordered_list[-1].op, ConcatColumns)
-
-
 @pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
 @pytest.mark.parametrize("engine", ["parquet"])
 def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
@@ -183,7 +169,7 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in ["x", "y", "id"]:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
 
     workflow_ops = ["name-cat"] >> nvt.ops.Categorify(cat_cache="host")

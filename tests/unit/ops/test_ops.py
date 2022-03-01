@@ -18,11 +18,11 @@ import copy
 import numpy as np
 import pandas as pd
 import pytest
+from merlin.schema import Tags, TagSet
 
 import nvtabular as nvt
 import nvtabular.io
 from nvtabular import ColumnSelector, dispatch, ops
-from nvtabular.graph.tags import TagSet
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 try:
@@ -46,28 +46,28 @@ def test_log(tmpdir, df, dataset, gpu_memory_frac, engine, op_columns, cpu):
     processor.fit(dataset)
     new_df = processor.transform(dataset).to_ddf().compute()
     for col in op_columns:
-        values = dispatch._array(new_df[col])
-        original = dispatch._array(df[col])
+        values = dispatch.array(new_df[col])
+        original = dispatch.array(df[col])
         assert_eq(values, np.log(original.astype(np.float32) + 1))
 
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_logop_lists(tmpdir, cpu):
-    df = dispatch._make_df(device="cpu" if cpu else "gpu")
+    df = dispatch.make_df(device="cpu" if cpu else "gpu")
     df["vals"] = [[np.exp(0) - 1, np.exp(1) - 1], [np.exp(2) - 1], []]
 
     features = ["vals"] >> nvt.ops.LogOp()
     workflow = nvt.Workflow(features)
     new_df = workflow.fit_transform(nvt.Dataset(df)).to_ddf().compute()
 
-    expected = dispatch._make_df(device="cpu" if cpu else "gpu")
+    expected = dispatch.make_df(device="cpu" if cpu else "gpu")
     expected["vals"] = [[0.0, 1.0], [2.0], []]
 
     assert_eq(expected, new_df)
 
 
 def test_valuecount(tmpdir):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "list1": [[1, 2, 3, 4], [3, 2, 1], [1, 4], [0]],
             "list2": [[1, 4], [3, 2, 1], [0, 4], [1, 4, 5]],
@@ -93,8 +93,8 @@ def test_valuecount(tmpdir):
     assert new_df.schema.column_schemas["list1"].properties == {"value_count": {"min": 1, "max": 4}}
     assert new_df.schema.column_schemas["list2"].properties == {"value_count": {"min": 2, "max": 3}}
 
-    assert new_df.schema.column_schemas["list1"].tags == TagSet([nvt.graph.tags.Tags.CATEGORICAL])
-    assert new_df.schema.column_schemas["list2"].tags == TagSet([nvt.graph.tags.Tags.CONTINUOUS])
+    assert new_df.schema.column_schemas["list1"].tags == TagSet([Tags.CATEGORICAL])
+    assert new_df.schema.column_schemas["list2"].tags == TagSet([Tags.CONTINUOUS])
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

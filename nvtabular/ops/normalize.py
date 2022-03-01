@@ -15,16 +15,15 @@
 #
 import dask.dataframe as dd
 import numpy
-
-from nvtabular.graph.base_operator import Supports
-from nvtabular.graph.tags import Tags
+from merlin.dag import Supports
+from merlin.schema import Tags
 
 from ..dispatch import (
     DataFrameType,
-    _encode_list_column,
-    _flatten_list_column_values,
-    _is_list_dtype,
     annotate,
+    encode_list_column,
+    flatten_list_column_values,
+    is_list_dtype,
 )
 from .moments import _custom_moments
 from .operator import ColumnSelector, Operator
@@ -67,9 +66,9 @@ class Normalize(StatOperator):
         new_df = type(df)()
         for name in col_selector.names:
             values = df[name]
-            list_col = _is_list_dtype(values)
+            list_col = is_list_dtype(values)
             if list_col:
-                values = _flatten_list_column_values(values)
+                values = flatten_list_column_values(values)
 
             if self.stds[name] > 0:
                 values = (values - self.means[name]) / (self.stds[name])
@@ -79,7 +78,7 @@ class Normalize(StatOperator):
             values = values.astype(self.output_dtype)
 
             if list_col:
-                values = _encode_list_column(df[name], values)
+                values = encode_list_column(df[name], values)
 
             new_df[name] = values
         return new_df
