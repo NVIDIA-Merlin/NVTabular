@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.spawn import find_executable
+
 import numpy as np
 import pytest
 
@@ -21,11 +23,12 @@ from nvtabular import ColumnSchema, Schema
 from nvtabular.inference.graph.ensemble import Ensemble
 from nvtabular.inference.graph.ops.session_filter import FilterCandidates
 from nvtabular.inference.graph.ops.softmax_sampling import SoftmaxSampling
-
-triton = pytest.importorskip("nvtabular.inference.triton")
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver  # noqa
 
+TRITON_SERVER_PATH = find_executable("tritonserver")
 
+
+@pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
 def test_softmax_sampling(tmpdir):
     request_schema = Schema(
         [
@@ -46,13 +49,14 @@ def test_softmax_sampling(tmpdir):
     ensemble = Ensemble(ordering, request_schema)
     ens_config, node_configs = ensemble.export(tmpdir)
 
-    response = triton._run_ensemble_on_tritonserver(
+    response = _run_ensemble_on_tritonserver(
         tmpdir, ensemble.graph.output_schema.column_names, request, "ensemble_model"
     )
     assert response is not None
     assert len(response.as_numpy("ordered_ids")) == 10
 
 
+@pytest.mark.skipif(not TRITON_SERVER_PATH, reason="triton server not found")
 def test_filter_candidates(tmpdir):
     request_schema = Schema(
         [
