@@ -18,16 +18,14 @@ from nvtabular.dispatch import DataFrameType
 from .operator import ColumnSelector, Operator
 
 
-class AddMetadata(Operator):
+class AddTags(Operator):
     """
-    This operator will add user defined tags and properties
-    to a Schema.
+    This operator will add user defined tags to a Schema.
     """
 
-    def __init__(self, tags=None, properties=None):
+    def __init__(self, tags=None):
         super().__init__()
         self.tags = tags or []
-        self.properties = properties or {}
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         return df
@@ -36,6 +34,42 @@ class AddMetadata(Operator):
     def output_tags(self):
         return self.tags
 
+
+class AddMetadata(AddTags):
+    """
+    This operator will add user defined tags and properties
+    to a Schema.
+    """
+
+    def __init__(self, tags=None, properties=None):
+        super().__init__(tags)
+        self.properties = properties or {}
+
     @property
     def output_properties(self):
         return self.properties
+
+
+# Wrappers for common features
+class TagAsUserID(Operator):
+    @property
+    def output_tags(self):
+        return ["UserID"]
+
+
+class TagAsItemID(AddTags):
+    @property
+    def output_tags(self):
+        return ["ItemID"]
+
+
+class TagAsUserFeatures(AddTags):
+    @property
+    def output_tags(self):
+        return ["UserFeatures"]
+
+
+class TagAsItemFeatures(AddTags):
+    @property
+    def output_tags(self):
+        return ["ItemFeatures"]
