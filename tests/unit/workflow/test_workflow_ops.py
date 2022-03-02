@@ -18,7 +18,7 @@ from merlin.dag import ops as graph_ops
 from nvtabular import ops as workflow_ops
 
 
-def test_columnconcate_op():
+def test_column_concat_op():
     node = "col1" >> workflow_ops.Operator()
     col_name = "col2"
 
