@@ -62,7 +62,6 @@ class QueryFaiss(PipelineableInferenceOperator):
         # distances, indices = self.index.search(user_vector, self.topk)
 
         candidate_ids = np.array(indices).T.astype(np.int32)
-        # candidate_distances = np.array(distances).T.astype(np.float32)
 
         return InferenceDataFrame(
             {"candidate_ids": candidate_ids}
