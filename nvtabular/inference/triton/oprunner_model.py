@@ -73,10 +73,6 @@ class TritonPythonModel:
 
                 raw_tensor_tuples = self.runner.execute(inf_df)
 
-                # tensors = {
-                #   name:(data if hasattr(data, "get") else cp.ndarray(data))
-                #   for name,data in raw_tensor_tuples
-                # }
                 tensors = {
                     name: (data.get() if hasattr(data, "get") else data)
                     for name, data in raw_tensor_tuples
