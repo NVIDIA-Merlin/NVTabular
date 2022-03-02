@@ -65,7 +65,6 @@ class QueryFaiss(PipelineableInferenceOperator):
         # candidate_distances = np.array(distances).T.astype(np.float32)
 
         return InferenceDataFrame(
-            # {"candidate_ids": candidate_ids, "candidate_distances": candidate_distances}
             {"candidate_ids": candidate_ids}
         )
 
