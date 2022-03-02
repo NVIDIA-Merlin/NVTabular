@@ -61,7 +61,7 @@ def test_filter_candidates(tmpdir):
     request_schema = Schema(
         [
             ColumnSchema("candidate_ids", dtype=np.int32),
-            ColumnSchema("movie_ids_1", dtype=np.int32),
+            ColumnSchema("movie_ids", dtype=np.int32),
         ]
     )
 
@@ -71,12 +71,12 @@ def test_filter_candidates(tmpdir):
 
     combined_features = {
         "candidate_ids": candidate_ids,
-        "movie_ids_1": movie_ids_1,
+        "movie_ids": movie_ids_1,
     }
 
     request = nvt.dispatch.make_df(combined_features)
 
-    filtering = ["candidate_ids"] >> FilterCandidates(filter_out=["movie_ids_1"])
+    filtering = ["candidate_ids"] >> FilterCandidates(filter_out=["movie_ids"])
 
     ensemble = Ensemble(filtering, request_schema)
     ens_config, node_configs = ensemble.export(tmpdir)

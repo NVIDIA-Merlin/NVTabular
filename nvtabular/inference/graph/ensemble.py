@@ -66,11 +66,6 @@ class Ensemble:
                 node_id_lookup[node] = node_idx
                 node_idx += 1
 
-        # {
-        #    "col_1" = [1,2,5],
-        #    "col_2" = []
-        # }
-
         node_configs = []
         # Export node configs and add ensemble steps
         for node in postorder_nodes:
@@ -91,13 +86,13 @@ class Ensemble:
                     model_name=node_name, model_version=-1
                 )
 
-                for input_col_name in node.input_columns.names:
+                for input_col_name in node.input_schema.column_names:
                     source = _find_column_source(node.parents_with_dependencies, input_col_name)
                     source_id = node_id_lookup.get(source, None)
                     in_suffix = f"_{source_id}" if source_id is not None else ""
                     config_step.input_map[input_col_name] = input_col_name + in_suffix
 
-                for output_col_name in node.output_columns.names:
+                for output_col_name in node.output_schema.column_names:
                     out_suffix = (
                         f"_{node_id}" if node_id is not None and node_id < node_idx - 1 else ""
                     )
