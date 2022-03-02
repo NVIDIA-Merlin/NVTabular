@@ -21,6 +21,7 @@ import subprocess
 import time
 
 import pyarrow as pa
+
 from merlin.core.dispatch import HAS_GPU, make_df
 
 try:

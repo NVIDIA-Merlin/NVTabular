@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 import pytest
-from merlin.dag import ColumnSelector
-from merlin.schema import ColumnSchema, Schema, Tags
 
 import nvtabular
-from nvtabular import Workflow, ops
+from merlin.dag import ColumnSelector
+from merlin.schema import ColumnSchema, Schema, Tags
+from nvtabular import Dataset, Workflow, ops
 
 
 def test_fit_schema():

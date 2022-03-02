@@ -29,7 +29,6 @@ except ImportError:
 
 from merlin.io import DataFrameIter, shuffle_df
 from merlin.schema import Tags
-
 from nvtabular.dispatch import (
     HAS_GPU,
     annotate,

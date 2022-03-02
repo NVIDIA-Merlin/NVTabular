@@ -1,4 +1,5 @@
 import pytest
+
 from merlin.schema import Schema
 
 tf = pytest.importorskip("tensorflow")

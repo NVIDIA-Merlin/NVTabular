@@ -19,8 +19,8 @@ import os
 
 import dask.dataframe as dd
 import numpy as np
-from merlin.schema import Tags
 
+from merlin.schema import Tags
 from nvtabular.dispatch import HAS_GPU
 from nvtabular.loader.backend import DataLoader
 from nvtabular.loader.tf_utils import configure_tensorflow, get_dataset_schema_from_feature_columns

@@ -30,7 +30,6 @@ except ImportError:
     from scipy.sparse import coo_matrix
 
 from merlin.schema import Schema, Tags
-
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator

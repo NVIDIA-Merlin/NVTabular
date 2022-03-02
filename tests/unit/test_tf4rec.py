@@ -5,10 +5,9 @@ try:
 except ImportError:
     from dask.dataframe import to_datetime
 
+import nvtabular as nvt
 from merlin.core.dispatch import make_df
 from merlin.schema import Schema
-
-import nvtabular as nvt
 from nvtabular import ColumnSelector
 
 NUM_ROWS = 10000
