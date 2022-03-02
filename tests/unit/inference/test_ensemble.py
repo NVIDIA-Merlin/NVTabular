@@ -87,9 +87,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
 
     # Creating Triton Ensemble
     triton_chain = (
-        selector
-        >> TransformWorkflow(workflow, cats=["x_nvt"])
-        >> PredictTensorflow.with_model(model)
+        selector >> TransformWorkflow(workflow, cats=["x_nvt"]) >> PredictTensorflow(model)
     )
     triton_ens = Ensemble(triton_chain, schema)
 
@@ -144,7 +142,7 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     # Creating Triton Ensemble
     triton_chain_1 = ["name-cat"] >> TransformWorkflow(workflow)
     triton_chain_2 = ["name-string"] >> TransformWorkflow(workflow_2)
-    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow.with_model(model)
+    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow(model)
 
     triton_ens = Ensemble(triton_chain, schema)
 
@@ -213,7 +211,7 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
     # Creating Triton Ensemble
     triton_chain_1 = ["name-cat"] >> TransformWorkflow(workflow)
     triton_chain_2 = ["name-string"] >> TransformWorkflow(workflow_2) >> PlusTwoOp()
-    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow.with_model(model)
+    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow(model)
 
     triton_ens = Ensemble(triton_chain, schema)
 

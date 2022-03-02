@@ -32,20 +32,19 @@ from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 
 
 class PredictTensorflow(InferenceOperator):
-    @classmethod
-    def with_model(cls, model, custom_objects=None, model_path=None):
-        model_path = tempfile.TemporaryDirectory(suffix="temp_models")
-        model.save(str(model_path), include_optimizer=False)
-        return PredictTensorflow(model_path, custom_objects)
-
-    def __init__(self, model_path, custom_objects=None):
+    def __init__(self, model_or_path, custom_objects=None):
         custom_objects = custom_objects or {}
-        self.model_path = model_path
 
-        self.model = tf.keras.models.load_model(str(self.model_path), custom_objects=custom_objects)
+        if isinstance(model_or_path, (str, os.PathLike)):
+            self.path = model_or_path
+            self.model = tf.keras.models.load_model(self.path, custom_objects=custom_objects)
+        else:
+            self.path = None
+            self.model = model_or_path
 
         signatures = getattr(self.model, "signatures", {}) or {}
         default_signature = signatures.get("serving_default")
+
         if not default_signature:
             # roundtrip saved self.model to disk to generate signature if it doesn't exist
 
@@ -81,14 +80,18 @@ class PredictTensorflow(InferenceOperator):
         node_export_path = pathlib.Path(path) / node_name
         node_export_path.mkdir(exist_ok=True)
 
-        tf_model_path = pathlib.Path(node_export_path) / str(version)
-        copytree(
-            str(self.model_path),
-            pathlib.Path(tf_model_path) / "model.savedmodel",
-            dirs_exist_ok=True,
-        )
+        tf_model_path = pathlib.Path(node_export_path) / str(version) / "model.savedmodel"
 
-        return export_tensorflow_model(self.model, node_name, node_export_path, version=version)
+        if self.path:
+            copytree(
+                str(self.path),
+                tf_model_path,
+                dirs_exist_ok=True,
+            )
+        else:
+            self.model.save(tf_model_path, include_optimizer=False)
+
+        return self._export_model(self.model, node_name, node_export_path, version=version)
 
     def compute_input_schema(
         self,
@@ -104,59 +107,57 @@ class PredictTensorflow(InferenceOperator):
     ) -> Schema:
         return self.output_schema
 
+    def _export_model(self, model, name, output_path, version=1):
+        """Exports a TensorFlow model for serving with Triton
 
-def export_tensorflow_model(model, name, output_path, version=1):
-    """Exports a TensorFlow model for serving with Triton
-
-    Parameters
-    ----------
-    model:
-        The tensorflow model that should be served
-    name:
-        The name of the triton model to export
-    output_path:
-        The path to write the exported model to
-    """
-    tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
-    # model.save(tf_model_path, include_optimizer=False)
-    config = model_config.ModelConfig(
-        name=name, backend="tensorflow", platform="tensorflow_savedmodel"
-    )
-
-    inputs, outputs = model.inputs, model.outputs
-
-    if not inputs or not outputs:
-        signatures = getattr(model, "signatures", {}) or {}
-        default_signature = signatures.get("serving_default")
-        if not default_signature:
-            # roundtrip saved model to disk to generate signature if it doesn't exist
-
-            reloaded = tf.keras.models.load_model(tf_model_path)
-            default_signature = reloaded.signatures["serving_default"]
-
-        inputs = list(default_signature.structured_input_signature[1].values())
-        outputs = list(default_signature.structured_outputs.values())
-
-    config.parameters["TF_GRAPH_TAG"].string_value = "serve"
-    config.parameters["TF_SIGNATURE_DEF"].string_value = "serving_default"
-
-    for col in inputs:
-        config.input.append(
-            model_config.ModelInput(
-                name=f"{col.name}", data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
-            )
+        Parameters
+        ----------
+        model:
+            The tensorflow model that should be served
+        name:
+            The name of the triton model to export
+        output_path:
+            The path to write the exported model to
+        """
+        tf_model_path = os.path.join(output_path, str(version), "model.savedmodel")
+        config = model_config.ModelConfig(
+            name=name, backend="tensorflow", platform="tensorflow_savedmodel"
         )
 
-    for col in outputs:
-        # this assumes the list columns are 1D tensors both for cats and conts
-        config.output.append(
-            model_config.ModelOutput(
-                name=col.name.split("/")[0],
-                data_type=_convert_dtype(col.dtype),
-                dims=[-1, col.shape[1]],
-            )
-        )
+        inputs, outputs = model.inputs, model.outputs
 
-    with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
-        text_format.PrintMessage(config, o)
-    return config
+        if not inputs or not outputs:
+            signatures = getattr(model, "signatures", {}) or {}
+            default_signature = signatures.get("serving_default")
+            if not default_signature:
+                # roundtrip saved model to disk to generate signature if it doesn't exist
+
+                reloaded = tf.keras.models.load_model(tf_model_path)
+                default_signature = reloaded.signatures["serving_default"]
+
+            inputs = list(default_signature.structured_input_signature[1].values())
+            outputs = list(default_signature.structured_outputs.values())
+
+        config.parameters["TF_GRAPH_TAG"].string_value = "serve"
+        config.parameters["TF_SIGNATURE_DEF"].string_value = "serving_default"
+
+        for col in inputs:
+            config.input.append(
+                model_config.ModelInput(
+                    name=f"{col.name}", data_type=_convert_dtype(col.dtype), dims=[-1, col.shape[1]]
+                )
+            )
+
+        for col in outputs:
+            # this assumes the list columns are 1D tensors both for cats and conts
+            config.output.append(
+                model_config.ModelOutput(
+                    name=col.name.split("/")[0],
+                    data_type=_convert_dtype(col.dtype),
+                    dims=[-1, col.shape[1]],
+                )
+            )
+
+        with open(os.path.join(output_path, "config.pbtxt"), "w") as o:
+            text_format.PrintMessage(config, o)
+        return config
