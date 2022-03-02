@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import json
-import logging
 
 import numpy as np
 
@@ -22,8 +21,6 @@ from merlin.dag import Node
 from merlin.dag.selector import ColumnSelector
 from merlin.schema import Schema
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
-
-LOG = logging.getLogger("nvtabular")
 
 
 class UnrollFeatures(PipelineableInferenceOperator):
