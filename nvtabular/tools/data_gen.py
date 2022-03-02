@@ -31,10 +31,10 @@ try:
 except ImportError:
     cudf = pd
 
-from merlin.io import Dataset
 from scipy import stats
 from scipy.stats import powerlaw, uniform
 
+from merlin.io import Dataset
 from nvtabular.dispatch import (
     HAS_GPU,
     concat,

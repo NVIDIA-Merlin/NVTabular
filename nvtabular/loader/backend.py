@@ -28,7 +28,6 @@ except ImportError:
     cp = np
 
 from merlin.schema import Tags
-
 from nvtabular.dispatch import (
     HAS_GPU,
     annotate,

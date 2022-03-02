@@ -18,9 +18,9 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
-from merlin.schema import Schema
 
 import nvtabular as nvt
+from merlin.schema import Schema
 from nvtabular.dispatch import DataFrameType, arange, concat_columns, read_parquet_dispatch
 
 from . import categorify as nvt_cat

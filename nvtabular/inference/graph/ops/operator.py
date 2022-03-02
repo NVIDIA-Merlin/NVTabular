@@ -4,9 +4,8 @@ import pathlib
 from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
-from merlin.dag import BaseOperator
-
 import nvtabular as nvt
+from merlin.dag import BaseOperator
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"

@@ -16,10 +16,10 @@
 import glob
 
 import pytest
-from merlin.dag import ColumnSelector
-from merlin.schema import ColumnSchema, Schema, Tags
 
 import nvtabular
+from merlin.dag import ColumnSelector
+from merlin.schema import ColumnSchema, Schema, Tags
 from nvtabular import Dataset, Workflow, ops
 
 

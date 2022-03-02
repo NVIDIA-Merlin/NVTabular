@@ -16,9 +16,9 @@
 
 
 import numpy as np
-from merlin.core.dispatch import make_df
 
 import nvtabular as nvt
+from merlin.core.dispatch import make_df
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.dispatch import HAS_GPU
 

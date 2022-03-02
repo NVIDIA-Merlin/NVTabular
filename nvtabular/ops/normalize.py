@@ -15,6 +15,7 @@
 #
 import dask.dataframe as dd
 import numpy
+
 from merlin.dag import Supports
 from merlin.schema import Tags
 

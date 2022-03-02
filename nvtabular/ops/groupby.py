@@ -14,8 +14,8 @@
 # limitations under the License.
 import numpy
 from dask.dataframe.utils import meta_nonempty
-from merlin.schema import Schema
 
+from merlin.schema import Schema
 from nvtabular.dispatch import DataFrameType, annotate
 
 from .operator import ColumnSelector, Operator
