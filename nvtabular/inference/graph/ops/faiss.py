@@ -63,9 +63,7 @@ class QueryFaiss(PipelineableInferenceOperator):
 
         candidate_ids = np.array(indices).T.astype(np.int32)
 
-        return InferenceDataFrame(
-            {"candidate_ids": candidate_ids}
-        )
+        return InferenceDataFrame({"candidate_ids": candidate_ids})
 
     def compute_input_schema(
         self,
