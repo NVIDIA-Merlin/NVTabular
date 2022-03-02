@@ -90,7 +90,6 @@ class QueryFaiss(PipelineableInferenceOperator):
         return Schema(
             [
                 ColumnSchema("candidate_ids", dtype=np.int32),
-                # ColumnSchema("candidate_distances", dtype=np.float32),
             ]
         )
 
