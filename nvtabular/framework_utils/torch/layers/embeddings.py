@@ -30,7 +30,7 @@ class ConcatenatedEmbeddings(torch.nn.Module):
         x: An int64 Tensor with shape [batch_size, num_variables].
 
     Outputs:
-        A Float Tensor with shape [batch_size, embedding_size_afterconcate].
+        A Float Tensor with shape [batch_size, embedding_size_after_concat].
     """
 
     def __init__(self, embedding_table_shapes, dropout=0.0, sparse_columns=()):
