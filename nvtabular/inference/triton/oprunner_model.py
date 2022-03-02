@@ -66,7 +66,6 @@ class TritonPythonModel:
                 # transform the triton tensors to a dict of name:numpy tensor
                 input_tensors = {
                     name: get_input_tensor_by_name(request, name).as_numpy()
-                    # name: cp.fromDlpack(get_input_tensor_by_name(request, name).to_dlpack())
                     for name in input_column_names
                 }
 
