@@ -794,7 +794,7 @@ def _top_level_groupby(df, options: FitOptions):
 
         # Perform groupby and flatten column index
         # (flattening provides better cudf/pd support)
-        if _is_list_col(cat_col_selector, df_gb):
+        if is_list_col(cat_col_selector, df_gb):
             # handle list columns by encoding the list values
             df_gb = dispatch.flatten_list_column(df_gb[cat_col_selector.names[0]])
         # NOTE: groupby(..., dropna=False) requires pandas>=1.1.0
@@ -1288,7 +1288,7 @@ def _encode(
     value = None
     selection_l = ColumnSelector(name if isinstance(name, list) else [name])
     selection_r = ColumnSelector(name if isinstance(name, list) else [storage_name])
-    list_col = _is_list_col(selection_l, df)
+    list_col = is_list_col(selection_l, df)
     if path:
         read_pq_func = dispatch.read_parquet_dispatch(df)
         if cat_cache is not None:
@@ -1329,7 +1329,7 @@ def _encode(
             codes = type(df)({"order": dispatch.arange(len(df), like_df=df)}, index=df.index)
 
         for cl, cr in zip(selection_l.names, selection_r.names):
-            if isinstance(df[cl].iloc[0], (np.ndarray, list)):
+            if isinstance(df[cl].dropna().iloc[0], (np.ndarray, list)):
                 ser = df[cl].copy()
                 codes[cl] = dispatch.flatten_list_column_values(ser).astype(value[cr].dtype)
             else:
@@ -1391,7 +1391,7 @@ def _read_groupby_stat_df(path, name, cat_cache, read_pq_func):
     return read_pq_func(path)
 
 
-def _is_list_col(col_selector, df):
+def is_list_col(col_selector, df):
     if isinstance(col_selector, list):
         col_selector = ColumnSelector(col_selector)
     has_lists = any(dispatch.is_list_dtype(df[col]) for col in col_selector.names)
