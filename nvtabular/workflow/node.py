@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 from merlin.dag import Node
-
 from nvtabular.ops import LambdaOp, Operator
 
 

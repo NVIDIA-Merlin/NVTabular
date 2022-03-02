@@ -23,12 +23,12 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import tensorflow as tf  # noqa
 from google.protobuf import text_format  # noqa
-from merlin.dag import ColumnSelector  # noqa
-from merlin.schema import ColumnSchema, Schema  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from merlin.dag import ColumnSelector  # noqa
+from merlin.schema import ColumnSchema, Schema  # noqa
 from nvtabular.inference.graph.ops.operator import InferenceOperator  # noqa
-from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
+from nvtabular.inference.triton.ensemble import _convert_dtype, export_tensorflow_model  # noqa
 
 
 class PredictTensorflow(InferenceOperator):

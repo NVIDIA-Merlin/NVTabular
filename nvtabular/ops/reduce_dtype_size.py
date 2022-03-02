@@ -15,6 +15,7 @@
 #
 import dask.dataframe as dd
 import numpy as np
+
 from merlin.schema import Schema
 
 from ..dispatch import DataFrameType, annotate

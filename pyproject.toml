@@ -63,6 +63,7 @@ line_length = 100
 balanced_wrapping = true
 indent = "    "
 known_third_party = ["cudf", "cupy", "dask", "dask_cuda", "dask_cudf", "numba", "numpy", "pytest", "torch", "rmm", "tensorflow"]
+known_first_party = ["merlin"]
 skip = ["build",".eggs", "examples/criteo_benchmark.py", "examples/dataloader_bench.py", "model_config_pb2.py"]
 
 [tool.pytest.ini_options]

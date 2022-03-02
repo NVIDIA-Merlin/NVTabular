@@ -21,14 +21,14 @@ import pytest
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
+
+import nvtabular as nvt  # noqa
+import nvtabular.ops as wf_ops  # noqa
 from merlin.core.dispatch import make_df  # noqa
 from merlin.dag.node import postorder_iter_nodes  # noqa
 from merlin.dag.ops.concat_columns import ConcatColumns  # noqa
 from merlin.dag.ops.selection import SelectionOp  # noqa
 from merlin.schema import Tags  # noqa
-
-import nvtabular as nvt  # noqa
-import nvtabular.ops as wf_ops  # noqa
 
 loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")
 
