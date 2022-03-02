@@ -28,7 +28,7 @@ import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
 from merlin.dag import ColumnSelector  # noqa
 from merlin.schema import ColumnSchema, Schema  # noqa
 from nvtabular.inference.graph.ops.operator import InferenceOperator  # noqa
-from nvtabular.inference.triton.ensemble import _convert_dtype, export_tensorflow_model  # noqa
+from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
 
 
 class PredictTensorflow(InferenceOperator):

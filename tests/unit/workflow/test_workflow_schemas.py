@@ -18,7 +18,7 @@ import pytest
 import nvtabular
 from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema, Tags
-from nvtabular import Dataset, Workflow, ops
+from nvtabular import Workflow, ops
 
 
 def test_fit_schema():
