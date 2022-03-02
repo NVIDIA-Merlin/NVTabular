@@ -53,10 +53,10 @@ except ImportError:
 import pytest
 from asvdb import ASVDb, BenchmarkInfo, utils
 from dask.distributed import Client, LocalCluster
-from merlin.dag.node import iter_nodes
 from numba import cuda
 
 import nvtabular
+from merlin.dag.node import iter_nodes
 
 allcols_csv = ["timestamp", "id", "label", "name-string", "x", "y", "z"]
 mycols_csv = ["name-string", "id", "label", "x", "y"]

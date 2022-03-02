@@ -18,10 +18,10 @@ import copy
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.schema import Tags, TagSet
 
 import nvtabular as nvt
 import nvtabular.io
+from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, dispatch, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 

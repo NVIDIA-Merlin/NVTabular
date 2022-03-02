@@ -22,10 +22,10 @@ import pytest
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.schema import Schema  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
+from merlin.schema import Schema  # noqa
 
 ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
 model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")
