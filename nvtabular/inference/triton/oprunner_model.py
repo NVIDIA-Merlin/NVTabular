@@ -89,7 +89,6 @@ class TritonPythonModel:
             except Exception:  # pylint: disable=broad-except
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 tb_string = repr(traceback.extract_tb(exc_traceback))
-                # tb_string = traceback.format_exc(exc_traceback)
                 responses.append(
                     pb_utils.InferenceResponse(
                         tensors=[], error=f"{exc_type}, {exc_value}, {tb_string}"
