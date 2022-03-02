@@ -1,10 +1,10 @@
 import json
 
 import numpy as np
+
 from merlin.dag.node import Node
 from merlin.dag.selector import ColumnSelector
 from merlin.schema import Schema
-
 from nvtabular import ColumnSchema
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 

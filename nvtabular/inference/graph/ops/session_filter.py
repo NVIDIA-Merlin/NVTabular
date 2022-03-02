@@ -18,9 +18,9 @@ import json
 import logging
 
 import numpy as np
+
 from merlin.dag import Node
 from merlin.schema import Schema
-
 from nvtabular import ColumnSchema, ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 

@@ -18,8 +18,8 @@ import json
 
 import faiss
 import numpy as np
-from merlin.schema import Schema
 
+from merlin.schema import Schema
 from nvtabular import ColumnSchema, ColumnSelector
 from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 

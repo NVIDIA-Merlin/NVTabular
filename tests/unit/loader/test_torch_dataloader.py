@@ -37,10 +37,10 @@ except ImportError:
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.io import Dataset
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
+from merlin.io import Dataset
 from nvtabular import ColumnSelector, ops
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
