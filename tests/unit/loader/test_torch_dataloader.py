@@ -40,8 +40,8 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
+from merlin.io import Dataset
 from nvtabular import ColumnSelector, ops
-from nvtabular.io import Dataset
 from tests.conftest import assert_eq, mycols_csv, mycols_pq
 
 # If pytorch isn't installed skip these tests. Note that the

@@ -495,6 +495,9 @@ def export_tensorflow_model(model, name, output_path, version=1):
         inputs = list(default_signature.structured_input_signature[1].values())
         outputs = list(default_signature.structured_outputs.values())
 
+    config.parameters["TF_GRAPH_TAG"].string_value = "serve"
+    config.parameters["TF_SIGNATURE_DEF"].string_value = "serving_default"
+
     for col in inputs:
         config.input.append(
             model_config.ModelInput(

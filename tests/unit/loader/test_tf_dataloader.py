@@ -19,6 +19,7 @@ import os
 import subprocess
 
 from merlin.core.dispatch import HAS_GPU, make_df
+from merlin.io import Dataset
 
 try:
     import cupy
@@ -32,7 +33,6 @@ from sklearn.metrics import roc_auc_score
 import nvtabular as nvt
 import nvtabular.tools.data_gen as datagen
 from nvtabular import ops
-from nvtabular.io import Dataset
 
 tf = pytest.importorskip("tensorflow")
 # If tensorflow isn't installed skip these tests. Note that the
