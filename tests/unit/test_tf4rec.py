@@ -89,11 +89,18 @@ def test_tf4rec():
             self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
             return parents_selector
 
-        def output_column_names(self, columns):
-            return ColumnSelector([column + "_age_days" for column in columns.names])
+        def column_mapping(self, col_selector):
+            column_mapping = {}
+            for col_name in col_selector.names:
+                column_mapping[col_name + "_age_days"] = [col_name]
+            return column_mapping
 
         def dependencies(self):
             return ["prod_first_event_time_ts"]
+
+        @property
+        def output_dtype(self):
+            return np.float64
 
     recency_features = ["event_time_ts"] >> ItemRecency()
     recency_features_norm = (
