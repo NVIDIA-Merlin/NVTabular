@@ -17,4 +17,4 @@
 # pylint: disable=wildcard-import,unused-import,unused-wildcard-import
 
 # Re-export classes/modules from the core library for backwards compatibility
-from merlin.graph import *  # noqa
+from merlin.dag import *  # noqa

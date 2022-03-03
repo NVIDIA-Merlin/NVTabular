@@ -14,8 +14,7 @@
 # limitations under the License.
 #
 
-from merlin.graph import ops as graph_ops
-
+from merlin.dag import ops as graph_ops
 from nvtabular import ops as workflow_ops
 
 

@@ -8,10 +8,10 @@ from distutils.spawn import find_executable
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.graph import Supports
 
 import nvtabular as nvt
 import nvtabular.ops as ops
+from merlin.dag import Supports
 from nvtabular import ColumnSelector
 from nvtabular.dispatch import HAS_GPU, hash_series, make_df
 from tests.conftest import assert_eq

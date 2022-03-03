@@ -3,11 +3,11 @@ import os
 
 import numpy as np
 import pytest
-from merlin.graph import Graph
-from merlin.schema import Tags
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
+from merlin.dag import Graph
+from merlin.schema import Tags
 from tests.unit.inference.inf_test_ops import PlusTwoOp
 
 op_runner = pytest.importorskip("nvtabular.inference.graph.op_runner")

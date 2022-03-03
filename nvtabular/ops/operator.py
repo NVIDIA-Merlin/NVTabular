@@ -17,9 +17,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from merlin.graph import BaseOperator, ColumnSelector
-
 import nvtabular as nvt
+from merlin.dag import BaseOperator, ColumnSelector
 from nvtabular.dispatch import DataFrameType
 
 

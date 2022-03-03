@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from merlin.graph import Node
-
+from merlin.dag import Node
 from nvtabular.ops import LambdaOp, Operator
 
 

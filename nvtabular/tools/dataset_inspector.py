@@ -18,8 +18,8 @@ import json
 
 import fsspec
 import numpy as np
-from merlin.graph import ColumnSelector
 
+from merlin.dag import ColumnSelector
 from nvtabular.ops import DataStats
 from nvtabular.utils import set_client_deprecated
 from nvtabular.workflow import Workflow

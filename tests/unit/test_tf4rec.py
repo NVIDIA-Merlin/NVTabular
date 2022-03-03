@@ -5,9 +5,9 @@ try:
 except ImportError:
     from dask.dataframe import to_datetime
 
-from merlin.core.dispatch import make_df
-
 import nvtabular as nvt
+from merlin.core.dispatch import make_df
+from merlin.schema import Schema
 from nvtabular import ColumnSelector
 
 NUM_ROWS = 10000
@@ -78,6 +78,16 @@ def test_tf4rec():
                 delta_days = (col - item_first_timestamp) / (60 * 60 * 24)
                 gdf[column + "_age_days"] = delta_days * (delta_days >= 0)
             return gdf
+
+        def compute_selector(
+            self,
+            input_schema: Schema,
+            selector: ColumnSelector,
+            parents_selector: ColumnSelector,
+            dependencies_selector: ColumnSelector,
+        ) -> ColumnSelector:
+            self._validate_matching_cols(input_schema, parents_selector, "computing input selector")
+            return parents_selector
 
         def output_column_names(self, columns):
             return ColumnSelector([column + "_age_days" for column in columns.names])
