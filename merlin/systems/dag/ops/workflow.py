@@ -17,8 +17,8 @@ import pathlib
 
 from merlin.dag import ColumnSelector
 from merlin.schema import Schema
-from nvtabular.inference.dag.ops.operator import InferenceOperator
-from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
+from merlin.systems.dag.ops.operator import InferenceOperator
+from merlin.systems.triton.export import _generate_nvtabular_config
 
 
 class TransformWorkflow(InferenceOperator):

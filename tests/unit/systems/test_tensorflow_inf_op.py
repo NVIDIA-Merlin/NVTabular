@@ -4,7 +4,8 @@ from copy import deepcopy
 
 import pytest
 
-from nvtabular import ColumnSelector, Schema, graph
+from merlin.dag import ColumnSelector, Graph
+from merlin.schema import Schema
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -12,7 +13,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from google.protobuf import text_format  # noqa
 
 model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")
-tf_op = pytest.importorskip("nvtabular.inference.graph.ops.tensorflow")
+tf_op = pytest.importorskip("merlin.systems.dag.ops.tensorflow")
 
 tf = pytest.importorskip("tensorflow")
 
@@ -97,7 +98,7 @@ def test_tf_schema_validation():
 
     # Triton
     tf_node = [] >> tf_op.PredictTensorflow(model)
-    tf_graph = graph.graph.Graph(tf_node)
+    tf_graph = Graph(tf_node)
 
     with pytest.raises(ValueError) as exception_info:
         deepcopy(tf_graph).construct_schema(Schema([]))

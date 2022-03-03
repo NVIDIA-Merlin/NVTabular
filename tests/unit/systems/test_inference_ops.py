@@ -23,13 +23,13 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
 
-import nvtabular as nvt  # noqa
-import nvtabular.ops as wf_ops  # noqa
 from merlin.schema import Schema  # noqa
+from nvtabular import Workflow
+from nvtabular import ops as wf_ops  # noqa
 
-ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
+ensemble = pytest.importorskip("merlin.systems.dag.ensemble")
 model_config = pytest.importorskip("nvtabular.inference.triton.model_config_pb2")
-workflow_op = pytest.importorskip("nvtabular.inference.graph.ops.workflow")
+workflow_op = pytest.importorskip("merlin.systems.dag.ops.workflow")
 
 
 @pytest.mark.parametrize("engine", ["parquet"])
@@ -39,7 +39,7 @@ def test_workflow_op_validates_schemas(dataset, engine):
 
     # NVT
     workflow_ops = input_columns >> wf_ops.Rename(postfix="_nvt")
-    workflow = nvt.Workflow(workflow_ops)
+    workflow = Workflow(workflow_ops)
     workflow.fit(dataset)
 
     # Triton
@@ -56,7 +56,7 @@ def test_workflow_op_exports_own_config(tmpdir, dataset, engine):
 
     # NVT
     workflow_ops = input_columns >> wf_ops.Rename(postfix="_nvt")
-    workflow = nvt.Workflow(workflow_ops)
+    workflow = Workflow(workflow_ops)
     workflow.fit(dataset)
 
     # Triton

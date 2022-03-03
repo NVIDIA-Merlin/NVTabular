@@ -4,16 +4,15 @@ import pathlib
 from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
-import nvtabular as nvt
-from merlin.dag import BaseOperator
-
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
 
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
+import merlin.systems.triton.model_config_pb2 as model_config  # noqa
+from merlin.dag import BaseOperator  # noqa
+from merlin.systems.dag.node import InferenceNode  # noqa
+from merlin.systems.triton.export import _convert_dtype  # noqa
 
 
 class InferenceDataFrame:
@@ -51,7 +50,7 @@ class InferenceOperator(BaseOperator):
         pass
 
     def create_node(self, selector):
-        return nvt.inference.graph.node.InferenceNode(selector)
+        return InferenceNode(selector)
 
 
 class PipelineableInferenceOperator(InferenceOperator):

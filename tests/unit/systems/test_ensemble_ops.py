@@ -18,11 +18,11 @@ from distutils.spawn import find_executable
 import numpy as np
 import pytest
 
-import nvtabular as nvt
-from nvtabular import ColumnSchema, Schema
-from nvtabular.inference.dag.ensemble import Ensemble
-from nvtabular.inference.dag.ops.session_filter import FilterCandidates
-from nvtabular.inference.dag.ops.softmax_sampling import SoftmaxSampling
+from merlin.core.dispatch import make_df
+from merlin.schema import ColumnSchema, Schema
+from merlin.systems.dag.ensemble import Ensemble
+from merlin.systems.dag.ops.session_filter import FilterCandidates
+from merlin.systems.dag.ops.softmax_sampling import SoftmaxSampling
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver  # noqa
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
@@ -42,7 +42,7 @@ def test_softmax_sampling(tmpdir):
         "output_1": np.random.random(100).astype(np.float32),
     }
 
-    request = nvt.dispatch.make_df(combined_features)
+    request = make_df(combined_features)
 
     ordering = ["movie_ids"] >> SoftmaxSampling(relevance_col="output_1", topk=10, temperature=20.0)
 
@@ -65,16 +65,16 @@ def test_filter_candidates(tmpdir):
         ]
     )
 
-    candidate_ids = np.random.randint(1, 10000, 100).astype(np.int32)
+    candidate_ids = np.random.randint(1, 100000, 100).astype(np.int32)
     movie_ids_1 = np.zeros(100, dtype=np.int32)
-    movie_ids_1[:20] = candidate_ids[:20]
+    movie_ids_1[:20] = np.unique(candidate_ids)[:20]
 
     combined_features = {
         "candidate_ids": candidate_ids,
         "movie_ids": movie_ids_1,
     }
 
-    request = nvt.dispatch.make_df(combined_features)
+    request = make_df(combined_features)
 
     filtering = ["candidate_ids"] >> FilterCandidates(filter_out=["movie_ids"])
 

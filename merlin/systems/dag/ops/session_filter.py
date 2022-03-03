@@ -18,10 +18,9 @@ import json
 
 import numpy as np
 
-from merlin.dag import Node
-from merlin.schema import Schema
-from nvtabular import ColumnSchema, ColumnSelector
-from nvtabular.inference.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from merlin.dag import ColumnSelector, Node
+from merlin.schema import ColumnSchema, Schema
+from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class FilterCandidates(PipelineableInferenceOperator):

@@ -40,10 +40,10 @@ from triton_python_backend_utils import (
 
 import nvtabular
 from merlin.core.dispatch import is_list_dtype
-from nvtabular.inference.triton import _convert_tensor
-from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
-from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner
-from nvtabular.inference.workflow.tensorflow import TensorflowWorkflowRunner
+from merlin.systems.triton import _convert_tensor
+from merlin.systems.workflow.hugectr import HugeCTRWorkflowRunner
+from merlin.systems.workflow.pytorch import PyTorchWorkflowRunner
+from merlin.systems.workflow.tensorflow import TensorflowWorkflowRunner
 
 LOG = logging.getLogger("nvtabular")
 

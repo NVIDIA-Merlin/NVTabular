@@ -38,8 +38,8 @@ from triton_python_backend_utils import (
     get_input_tensor_by_name,
 )
 
-from nvtabular.inference.dag.op_runner import OperatorRunner
-from nvtabular.inference.dag.ops.operator import InferenceDataFrame
+from merlin.systems.dag.op_runner import OperatorRunner
+from merlin.systems.dag.ops.operator import InferenceDataFrame
 
 LOG = logging.getLogger("nvtabular")
 

@@ -2,21 +2,19 @@ from distutils.spawn import find_executable
 
 import pytest
 
-import nvtabular as nvt
-import nvtabular.ops as ops
+from merlin.io import Dataset
+from merlin.systems.workflow import get_embedding_sizes
+from nvtabular import Workflow, ops
 
 tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")  # noqa
 
-triton = pytest.importorskip("nvtabular.inference.triton")
-data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
-ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
+triton = pytest.importorskip("merlin.systems.triton")
+data_conversions = pytest.importorskip("merlin.systems.triton.conversions")
+ensemble = pytest.importorskip("merlin.systems.triton.export")
 
 torch = pytest.importorskip("torch")  # noqa
 
-from nvtabular.inference.triton.ensemble import (  # noqa
-    export_pytorch_ensemble,
-    export_tensorflow_ensemble,
-)
+from merlin.systems.triton.export import export_pytorch_ensemble, export_tensorflow_ensemble  # noqa
 from tests.unit.inference.inference_utils import (  # noqa
     _run_ensemble_on_tritonserver,
     create_pytorch_model,
@@ -36,11 +34,11 @@ tf_utils.configure_tensorflow()
 def test_export_run_ensemble_triton(tmpdir, engine, output_model, df):
     conts = ["x", "y", "id"] >> ops.FillMissing() >> ops.Normalize()
     cats = ["name-cat", "name-string"] >> ops.Categorify(cat_cache="host")
-    workflow = nvt.Workflow(conts + cats)
-    nvt_dataset = nvt.Dataset(df)
-    workflow.fit(nvt_dataset)
+    workflow = Workflow(conts + cats)
+    dataset = Dataset(df)
+    workflow.fit(dataset)
 
-    embed_shapes = nvt.ops.get_embedding_sizes(workflow)
+    embed_shapes = get_embedding_sizes(workflow)
     cat_cols = list(embed_shapes.keys())
 
     if output_model == "tensorflow":
