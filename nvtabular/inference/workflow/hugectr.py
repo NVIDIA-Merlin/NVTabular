@@ -26,8 +26,8 @@
 
 import numpy as np
 
-from merlin.systems.workflow import get_embedding_sizes
-from merlin.systems.workflow.base import WorkflowRunner
+from nvtabular.inference.workflow.base import WorkflowRunner
+from nvtabular.ops import get_embedding_sizes
 
 
 class HugeCTRWorkflowRunner(WorkflowRunner):

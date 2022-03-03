@@ -25,7 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import json
 
-from merlin.systems.workflow.base import WorkflowRunner
+from nvtabular.inference.workflow.base import WorkflowRunner
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
