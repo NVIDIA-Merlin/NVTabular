@@ -20,9 +20,9 @@ import pytest
 
 import nvtabular as nvt
 from nvtabular import ColumnSchema, Schema
-from nvtabular.inference.graph.ensemble import Ensemble
-from nvtabular.inference.graph.ops.session_filter import FilterCandidates
-from nvtabular.inference.graph.ops.softmax_sampling import SoftmaxSampling
+from nvtabular.inference.dag.ensemble import Ensemble
+from nvtabular.inference.dag.ops.session_filter import FilterCandidates
+from nvtabular.inference.dag.ops.softmax_sampling import SoftmaxSampling
 from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver  # noqa
 
 TRITON_SERVER_PATH = find_executable("tritonserver")

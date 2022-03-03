@@ -38,9 +38,9 @@ tf = pytest.importorskip("tensorflow")
 
 triton = pytest.importorskip("nvtabular.inference.triton")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
-from nvtabular.inference.graph.ensemble import Ensemble  # noqa
-from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow  # noqa
-from nvtabular.inference.graph.ops.workflow import TransformWorkflow  # noqa
+from nvtabular.inference.dag.ensemble import Ensemble  # noqa
+from nvtabular.inference.dag.ops.tensorflow import PredictTensorflow  # noqa
+from nvtabular.inference.dag.ops.workflow import TransformWorkflow  # noqa
 from tests.unit.inference.inf_test_ops import PlusTwoOp  # noqa
 from tests.unit.inference.inference_utils import (  # noqa
     _run_ensemble_on_tritonserver,

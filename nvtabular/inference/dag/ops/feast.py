@@ -6,7 +6,7 @@ from feast import FeatureStore, ValueType
 from merlin.dag.selector import ColumnSelector
 from merlin.schema import Schema
 from nvtabular import ColumnSchema
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from nvtabular.inference.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 # Feast_key: (numpy dtype, is_list, is_ragged)
 feast_2_numpy = {
