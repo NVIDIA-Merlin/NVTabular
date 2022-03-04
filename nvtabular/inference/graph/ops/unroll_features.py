@@ -48,6 +48,7 @@ class UnrollFeatures(PipelineableInferenceOperator):
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
+    @property
     def dependencies(self):
         return self.unroll_cols
 
