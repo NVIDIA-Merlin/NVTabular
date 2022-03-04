@@ -171,7 +171,8 @@ class Groupby(Operator):
         is_lists = {"list": True}
 
         for col_name in input_schema.column_names:
-            combined_aggs = self.conv_aggs.get(col_name, []) + self.list_aggs.get(col_name, [])
+            combined_aggs = _aggs_for_column(col_name, self.conv_aggs)
+            combined_aggs += _aggs_for_column(col_name, self.list_aggs)
             for agg in combined_aggs:
                 if col_schema.name.endswith(f"{self.name_sep}{agg}"):
                     dtype = dtypes.get(agg, dtype)
@@ -179,6 +180,10 @@ class Groupby(Operator):
                     break
 
         return col_schema.with_dtype(dtype, is_list=is_list, is_ragged=is_list)
+
+
+def _aggs_for_column(col_name, agg_dict):
+    return agg_dict.get(col_name, []) + agg_dict.get("__all__", [])
 
 
 def _columns_out_from_aggs(aggs, name_sep="_"):
