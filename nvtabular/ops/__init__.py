@@ -18,6 +18,7 @@
 # flake8: noqa
 from .add_metadata import (
     AddMetadata,
+    AddProperties,
     AddTags,
     TagAsItemFeatures,
     TagAsItemID,

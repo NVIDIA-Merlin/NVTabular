@@ -13,19 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from merlin.schema.tags import Tags
 from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnSelector, Operator
 
 
-class AddTags(Operator):
+class AddMetadata(Operator):
     """
-    This operator will add user defined tags to a Schema.
+    This operator will add user defined tags and properties
+    to a Schema.
     """
 
-    def __init__(self, tags=None):
+    def __init__(self, tags=None, properties=None):
         super().__init__()
         self.tags = tags or []
+        self.properties = properties or {}
 
     def transform(self, col_selector: ColumnSelector, df: DataFrameType) -> DataFrameType:
         return df
@@ -34,42 +37,41 @@ class AddTags(Operator):
     def output_tags(self):
         return self.tags
 
-
-class AddMetadata(AddTags):
-    """
-    This operator will add user defined tags and properties
-    to a Schema.
-    """
-
-    def __init__(self, tags=None, properties=None):
-        super().__init__(tags)
-        self.properties = properties or {}
-
     @property
     def output_properties(self):
         return self.properties
+
+
+class AddTags(AddMetadata):
+    def __init__(self, tags=None):
+        super().__init__(tags=tags)
+
+
+class AddProperties(AddMetadata):
+    def __init__(self, properties=None):
+        super().__init__(properties=properties)
 
 
 # Wrappers for common features
 class TagAsUserID(Operator):
     @property
     def output_tags(self):
-        return ["UserID"]
+        return [Tags.USER_ID]
 
 
 class TagAsItemID(AddTags):
     @property
     def output_tags(self):
-        return ["ItemID"]
+        return [Tags.ITEM_ID]
 
 
 class TagAsUserFeatures(AddTags):
     @property
     def output_tags(self):
-        return ["UserFeatures"]
+        return [Tags.USER]
 
 
 class TagAsItemFeatures(AddTags):
     @property
     def output_tags(self):
-        return ["ItemFeatures"]
+        return [Tags.ITEM]
