@@ -9,9 +9,8 @@ loader_tf_utils.configure_tensorflow()
 import nvtabular.framework_utils.tensorflow.layers as layers  # noqa
 from nvtabular.framework_utils.torch.models import Model  # noqa
 
-triton = pytest.importorskip("nvtabular.inference.triton")
-data_conversions = pytest.importorskip("nvtabular.inference.triton.data_conversions")
-ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
+triton = pytest.importorskip("merlin.systems.triton")
+data_conversions = pytest.importorskip("merlin.systems.triton.conversions")
 
 tritonclient = pytest.importorskip("tritonclient")
 grpcclient = pytest.importorskip("tritonclient.grpc")

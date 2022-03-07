@@ -25,7 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import logging
 import sys
 import traceback
 from typing import List
@@ -38,10 +37,8 @@ from triton_python_backend_utils import (
     get_input_tensor_by_name,
 )
 
-from nvtabular.inference.graph.op_runner import OperatorRunner
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame
-
-LOG = logging.getLogger("nvtabular")
+from merlin.systems.dag.op_runner import OperatorRunner
+from merlin.systems.dag.ops.operator import InferenceDataFrame
 
 
 class TritonPythonModel:
@@ -50,9 +47,6 @@ class TritonPythonModel:
         self.runner = OperatorRunner(self.model_config)
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
-        """Transforms the input batches by running through a NVTabular workflow.transform
-        function.
-        """
         params = self.model_config["parameters"]
         op_names = json.loads(params["operator_names"]["string_value"])
         first_operator_name = op_names[0]

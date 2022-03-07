@@ -19,9 +19,9 @@ import json
 import faiss
 import numpy as np
 
-from merlin.schema import Schema
-from nvtabular import ColumnSchema, ColumnSelector
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from merlin.dag import ColumnSelector
+from merlin.schema import ColumnSchema, Schema
+from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class QueryFaiss(PipelineableInferenceOperator):
