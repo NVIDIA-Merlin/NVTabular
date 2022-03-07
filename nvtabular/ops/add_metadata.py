@@ -59,19 +59,19 @@ class TagAsUserID(Operator):
         return [Tags.USER_ID]
 
 
-class TagAsItemID(AddTags):
+class TagAsItemID(Operator):
     @property
     def output_tags(self):
         return [Tags.ITEM_ID]
 
 
-class TagAsUserFeatures(AddTags):
+class TagAsUserFeatures(Operator):
     @property
     def output_tags(self):
         return [Tags.USER]
 
 
-class TagAsItemFeatures(AddTags):
+class TagAsItemFeatures(Operator):
     @property
     def output_tags(self):
         return [Tags.ITEM]
