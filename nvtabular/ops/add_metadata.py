@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from merlin.schema.tags import Tags
 from nvtabular.dispatch import DataFrameType
 
 from .operator import ColumnSelector, Operator
@@ -39,3 +40,38 @@ class AddMetadata(Operator):
     @property
     def output_properties(self):
         return self.properties
+
+
+class AddTags(AddMetadata):
+    def __init__(self, tags=None):
+        super().__init__(tags=tags)
+
+
+class AddProperties(AddMetadata):
+    def __init__(self, properties=None):
+        super().__init__(properties=properties)
+
+
+# Wrappers for common features
+class TagAsUserID(Operator):
+    @property
+    def output_tags(self):
+        return [Tags.USER_ID]
+
+
+class TagAsItemID(Operator):
+    @property
+    def output_tags(self):
+        return [Tags.ITEM_ID]
+
+
+class TagAsUserFeatures(Operator):
+    @property
+    def output_tags(self):
+        return [Tags.USER]
+
+
+class TagAsItemFeatures(Operator):
+    @property
+    def output_tags(self):
+        return [Tags.ITEM]
