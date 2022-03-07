@@ -164,7 +164,7 @@ To run the [movielens example](https://github.com/NVIDIA-Merlin/NVTabular/tree/m
 6. Clone the NVTabular repository and install the conda environment.
 
 ```
-cd cd /home/ec2-user/SageMaker/
+cd /home/ec2-user/SageMaker/
 git clone https://github.com/NVIDIA-Merlin/NVTabular.git
 conda env create -f=NVTabular/conda/environments/nvtabular_aws_sagemaker.yml
 ```
