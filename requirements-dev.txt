@@ -10,10 +10,11 @@ bandit==1.7.0
 flake8-nb==0.3.0
 pytest>=5
 pytest-cov>=2
-Sphinx>=3
+Sphinx==3.5.4
 sphinx_markdown_tables
 sphinx-multiversion
 sphinx_rtd_theme
+pandoc==2.1
 recommonmark>=0.6
 scikit-learn>=0.20
 moto>=2
