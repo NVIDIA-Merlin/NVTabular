@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e
+cd /var/jenkins_home/workspace/$JOB_NAME/nvtabular/
+git checkout main
+
+pip uninstall nvtabular -y
+pip install . 
+
+# pip install nbsphinx>=0.6 recommonmark>=0.6 Sphinx>=3 sphinx_markdown_tables sphinx-multiversion sphinx_rtd_theme graphviz
+
+
+sphinx-multiversion docs/source docs/build/html/
+cp -R docs/build/html/ ..
+ls -1 | xargs rm -rf 
+rm -rf .github .gitlab-ci.yml .gitignore .pre-commit-config.yaml
+cp -R ../html/* .
+cp main/.nojekyll .
+git add --all
+git commit -m "docs push $GIT_COMMIT"
