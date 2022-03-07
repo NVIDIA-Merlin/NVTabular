@@ -32,7 +32,7 @@ import tensorflow as tf  # noqa
 
 # noqa
 try:
-    from nvtabular.io import Dataset
+    from merlin.io import Dataset
 
     nvt_dataset_class = Dataset
 except ImportError:
@@ -49,7 +49,7 @@ dd_engine = {
 }
 
 
-def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs):
+def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, device, reader_kwargs):
     # TODO: put this in parent class and allow
     # torch dataset to leverage as well?
 
@@ -76,8 +76,11 @@ def _validate_dataset(paths_or_dataset, batch_size, buffer_size, engine, reader_
     if not engine:
         # default engine is parquet
         engine = "parquet"
+
+    cpu = device and "cpu" in device
+
     if nvt_dataset_class:
-        return nvt_dataset_class(files, engine=engine)
+        return nvt_dataset_class(files, engine=engine, cpu=cpu)
     else:
         LOG.warning(
             "NVTabular Dataset class not detected, reverting to Dask Dataframe."
@@ -252,16 +255,16 @@ class KerasSequenceLoader(tf.keras.utils.Sequence, DataLoader):
         sparse_as_dense=False,
         schema=None,
     ):
+        device = device or 0
+        device = "cpu" if not HAS_GPU else device
         dataset = _validate_dataset(
-            paths_or_dataset, batch_size, buffer_size, engine, reader_kwargs
+            paths_or_dataset, batch_size, buffer_size, engine, device, reader_kwargs
         )
         schema = _get_schema(dataset) if not schema else schema
         cat_names, cont_names = _validate_schema(
             feature_columns, cat_names, cont_names, schema=schema
         )
 
-        device = device or 0
-        device = "cpu" if not HAS_GPU else device
         DataLoader.__init__(
             self,
             dataset,
