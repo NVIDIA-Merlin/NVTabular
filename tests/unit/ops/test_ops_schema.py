@@ -27,6 +27,12 @@ from nvtabular.dispatch import HAS_GPU
         ops.Normalize(),
         ops.TargetEncoding(["1"]),
         ops.AddMetadata(tags=["excellent"], properties={"domain": {"min": 0, "max": 20}}),
+        ops.AddTags(tags=["excellent"]),
+        ops.AddProperties(properties={"domain": {"min": 0, "max": 20}}),
+        ops.TagAsUserID(),
+        ops.TagAsItemID(),
+        ops.TagAsUserFeatures(),
+        ops.TagAsItemFeatures(),
         ops.ValueCount(),
     ],
 )
