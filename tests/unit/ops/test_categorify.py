@@ -19,9 +19,9 @@ import random
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.core.dispatch import make_df
 
 import nvtabular as nvt
+from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, dispatch, ops
 from nvtabular.ops.categorify import get_embedding_sizes
 

@@ -17,10 +17,10 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from merlin.core.dispatch import make_df
 
 import nvtabular as nvt
 import nvtabular.io
+from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, Schema, Workflow, ops
 
 try:
@@ -95,6 +95,29 @@ def test_groupby_op(keys, cpu):
 
     # Check basic behavior or "y" column
     assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_string_agg(cpu):
+    # Initial sales dataset
+    size = 60
+    df1 = make_df(
+        {
+            "product_id": np.random.randint(10, size=size),
+            "day": np.random.randint(7, size=size),
+            "price": np.random.rand(size),
+        }
+    )
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(["day"])
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    groupby_features = ColumnSelector(["product_id", "day", "price"]) >> ops.Groupby(
+        groupby_cols=["day"], aggs="count"
+    )
+
+    processor = nvtabular.Workflow(groupby_features)
+    processor.fit(dataset)
+    processor.transform(dataset).to_ddf().compute()
 
 
 def test_groupby_selector_cols():
