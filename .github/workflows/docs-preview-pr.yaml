@@ -66,7 +66,8 @@ jobs:
           echo "PR_NO=${PR}" >> $GITHUB_ENV
           echo "MERGE_STATUS=${MERGED}" >> $GITHUB_ENV
           echo "PR_ACTION=${ACTION}" >> $GITHUB_ENV
-          echo "REVIEW_DIR=review/pr-${PR}" >> $GITHUB_ENV
+          echo "REVIEW_DIR=review/" >> $GITHUB_ENV
+          echo "PR_REVIEW_DIR=review/pr-${PR}" >> $GITHUB_ENV
 
           # Remove the pr artifact directory so that it does not
           # appear in listings or confuse git with untracked files.
@@ -88,9 +89,12 @@ jobs:
       - name: Handle HTML review directory for open PRs and updates to PRs
         if: env.MERGE_STATUS == 'false' && env.PR_ACTION != 'closed'
         run: |
-          rm -rf "${{ env.REVIEW_DIR }}" 2>/dev/null || true
-          mv ./html-build-artifact/ "${{ env.REVIEW_DIR }}"
-          git add "${{ env.REVIEW_DIR }}"
+          rm -rf "${{ env.PR_REVIEW_DIR }}" 2>/dev/null || true
+          if [ ! -d "${{ env.REVIEW_DIR }}" ]; then
+            mkdir "${{ env.REVIEW_DIR }}"
+          fi
+          mv ./html-build-artifact/ "${{ env.PR_REVIEW_DIR }}"
+          git add "${{ env.PR_REVIEW_DIR }}"
       # If the PR was closed, merged or not, delete review directory.
       - name: Delete HTML review directory for closed PRs
         if: env.PR_ACTION == 'closed'
@@ -98,8 +102,8 @@ jobs:
           if [ -d ./html-build-artifact/ ]; then
             rm -rf ./html-build-artifact/ 2>/dev/null
           fi
-          if [ -d "${{ env.REVIEW_DIR }}" ]; then
-            git rm -rf "${{ env.REVIEW_DIR }}"
+          if [ -d "${{ env.PR_REVIEW_DIR }}" ]; then
+            git rm -rf "${{ env.PR_REVIEW_DIR }}"
           fi
       - name: Commit changes to the GitHub Pages branch
         run: |
@@ -116,9 +120,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          echo -e "## Documentation preview"               > body
-          echo -e ""                                      >> body
-          echo -e "<${{ env.URL }}${{ env.REVIEW_DIR }}>" >> body
+          echo -e "## Documentation preview"                  > body
+          echo -e ""                                         >> body
+          echo -e "<${{ env.URL }}${{ env.PR_REVIEW_DIR }}>" >> body
           cat body
           gh pr comment ${{ env.PR_NO }} --body-file body
 
