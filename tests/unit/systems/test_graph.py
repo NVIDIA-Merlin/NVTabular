@@ -1,11 +1,11 @@
 import pytest
 
-import nvtabular as nvt
-import nvtabular.ops as wf_ops
 from merlin.schema import Schema
+from nvtabular import Workflow
+from nvtabular import ops as wf_ops
 
-ensemble = pytest.importorskip("nvtabular.inference.graph.ensemble")
-workflow_op = pytest.importorskip("nvtabular.inference.graph.ops.workflow")
+ensemble = pytest.importorskip("merlin.systems.dag.ensemble")
+workflow_op = pytest.importorskip("merlin.systems.dag.ops.workflow")
 
 
 def test_inference_schema_propagation():
@@ -15,7 +15,7 @@ def test_inference_schema_propagation():
 
     # NVT
     workflow_ops = input_columns >> wf_ops.Rename(postfix="_nvt")
-    workflow = nvt.Workflow(workflow_ops)
+    workflow = Workflow(workflow_ops)
     workflow.fit_schema(request_schema)
 
     assert workflow.graph.output_schema == expected_schema

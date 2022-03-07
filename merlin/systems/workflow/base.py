@@ -34,9 +34,9 @@ import numpy as np
 from merlin.core.dispatch import concat_columns
 from merlin.dag import ColumnSelector, Supports
 from merlin.schema import Tags
-from nvtabular.inference.triton.data_conversions import convert_format
+from merlin.systems.triton.conversions import convert_format
 
-LOG = logging.getLogger("nvtabular")
+LOG = logging.getLogger("merlin-systems")
 
 
 class WorkflowRunner(ABC):
