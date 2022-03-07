@@ -23,7 +23,7 @@ from merlin.schema import ColumnSchema, Schema
 from merlin.systems.dag.ensemble import Ensemble
 from merlin.systems.dag.ops.session_filter import FilterCandidates
 from merlin.systems.dag.ops.softmax_sampling import SoftmaxSampling
-from tests.unit.inference.inference_utils import _run_ensemble_on_tritonserver  # noqa
+from tests.unit.systems.inference_utils import _run_ensemble_on_tritonserver  # noqa
 
 TRITON_SERVER_PATH = find_executable("tritonserver")
 
