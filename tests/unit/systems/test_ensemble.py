@@ -28,7 +28,7 @@ from merlin.dag.node import postorder_iter_nodes  # noqa
 from merlin.dag.ops.concat_columns import ConcatColumns  # noqa
 from merlin.dag.ops.selection import SelectionOp  # noqa
 from merlin.schema import Tags  # noqa
-from nvtabular import Workflow
+from nvtabular import Workflow  # noqa
 from nvtabular import ops as wf_ops  # noqa
 
 loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")
