@@ -20,7 +20,7 @@ import numpy as np
 from merlin.dag import Node
 from merlin.dag.selector import ColumnSelector
 from merlin.schema import Schema
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
 
 
 class UnrollFeatures(PipelineableInferenceOperator):
