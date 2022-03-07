@@ -24,7 +24,7 @@ jobs:
     - name: Install Ubuntu packages
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y protobuf-compiler
+        sudo apt-get install -y protobuf-compiler pandoc
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools==59.4.0 wheel 

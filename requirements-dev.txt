@@ -14,7 +14,6 @@ Sphinx==3.5.4
 sphinx_markdown_tables
 sphinx-multiversion
 sphinx_rtd_theme
-pandoc==2.1
 recommonmark>=0.6
 scikit-learn>=0.20
 moto>=2
