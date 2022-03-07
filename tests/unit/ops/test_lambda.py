@@ -22,8 +22,8 @@ from pandas.api.types import is_integer_dtype
 
 import nvtabular as nvt
 import nvtabular.io
+from merlin.schema import Tags, TagSet
 from nvtabular import ColumnSelector, ops
-from nvtabular.graph.tags import Tags, TagSet
 
 try:
     import cupy as cp

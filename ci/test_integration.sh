@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Call this script with:
 # 1. Name of container as first parameter
@@ -38,6 +39,5 @@ elif [ "$container" == "merlin-inference" ]; then
   pytest $config tests/integration/test_nvt_tf_inference.py::test_nvt_tf_movielens_inference_triton_mt
   pytest $config tests/integration/test_nvt_hugectr.py::test_inference
 else
-  echo "INVALID Container name"
-  exit 1
+  echo "No tests to run for this container"
 fi

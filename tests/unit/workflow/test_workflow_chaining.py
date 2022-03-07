@@ -18,12 +18,13 @@
 import numpy as np
 
 import nvtabular as nvt
+from merlin.core.dispatch import make_df
 from nvtabular import Dataset, Workflow, ops
 from nvtabular.dispatch import HAS_GPU
 
 
 def test_chaining_1():
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "cont01": np.random.randint(1, 100, 100),
             "cont02": np.random.random(100) * 100,
@@ -44,7 +45,7 @@ def test_chaining_1():
 
 
 def test_chaining_2():
-    gdf = nvt.dispatch._make_df(
+    gdf = make_df(
         {
             "A": [1, 2, 2, 9, 6, np.nan, 3],
             "B": [2, np.nan, 4, 7, 7, 2, 5],
@@ -79,7 +80,7 @@ def test_chaining_2():
 
 
 def test_chaining_3():
-    gdf_test = nvt.dispatch._make_df(
+    gdf_test = make_df(
         {
             "ad_id": [1, 2, 2, 6, 6, 8, 3, 3],
             "source_id": [2, 4, 4, 7, 5, 2, 5, 2],

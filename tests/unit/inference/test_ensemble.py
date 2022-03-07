@@ -18,16 +18,17 @@ from distutils.spawn import find_executable
 
 import pytest
 
-from nvtabular.graph.ops.concat_columns import ConcatColumns
-from nvtabular.graph.ops.selection import SelectionOp
-
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
 
 import nvtabular as nvt  # noqa
 import nvtabular.ops as wf_ops  # noqa
-from nvtabular.graph.node import postorder_iter_nodes  # noqa
+from merlin.core.dispatch import make_df  # noqa
+from merlin.dag.node import postorder_iter_nodes  # noqa
+from merlin.dag.ops.concat_columns import ConcatColumns  # noqa
+from merlin.dag.ops.selection import SelectionOp  # noqa
+from merlin.schema import Tags  # noqa
 
 loader_tf_utils = pytest.importorskip("nvtabular.loader.tf_utils")
 
@@ -38,8 +39,8 @@ tf = pytest.importorskip("tensorflow")
 triton = pytest.importorskip("nvtabular.inference.triton")
 ensemble = pytest.importorskip("nvtabular.inference.triton.ensemble")
 from nvtabular.inference.graph.ensemble import Ensemble  # noqa
-from nvtabular.inference.graph.ops.tensorflow import TensorflowOp  # noqa
-from nvtabular.inference.graph.ops.workflow import WorkflowOp  # noqa
+from nvtabular.inference.graph.ops.tensorflow import PredictTensorflow  # noqa
+from nvtabular.inference.graph.ops.workflow import TransformWorkflow  # noqa
 from tests.unit.inference.inf_test_ops import PlusTwoOp  # noqa
 from tests.unit.inference.inference_utils import (  # noqa
     _run_ensemble_on_tritonserver,
@@ -61,7 +62,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in ["x", "y", "id"]:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
     selector = nvt.graph.selector.ColumnSelector(["x", "y", "id"])
 
@@ -85,7 +86,9 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
     )
 
     # Creating Triton Ensemble
-    triton_chain = selector >> WorkflowOp(workflow, cats=["x_nvt"]) >> TensorflowOp(model)
+    triton_chain = (
+        selector >> TransformWorkflow(workflow, cats=["x_nvt"]) >> PredictTensorflow(model)
+    )
     triton_ens = Ensemble(triton_chain, schema)
 
     # Creating Triton Ensemble Config
@@ -104,7 +107,7 @@ def test_workflow_tf_e2e_config_verification(tmpdir, dataset, engine):
         assert parsed.platform == "ensemble"
         assert hasattr(parsed, "ensemble_scheduling")
 
-    df = nvt.dispatch._make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
+    df = make_df({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "id": [7, 8, 9]})
 
     output_columns = triton_ens.graph.output_schema.column_names
     response = _run_ensemble_on_tritonserver(str(tmpdir), output_columns, df, triton_ens.name)
@@ -118,7 +121,7 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in ["x", "y", "id"]:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
 
     workflow_ops = ["name-cat"] >> nvt.ops.Categorify(cat_cache="host")
@@ -137,9 +140,9 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
     model = create_tf_model(["name-cat", "name-string"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
-    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow)
-    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2)
-    triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
+    triton_chain_1 = ["name-cat"] >> TransformWorkflow(workflow)
+    triton_chain_2 = ["name-string"] >> TransformWorkflow(workflow_2)
+    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow(model)
 
     triton_ens = Ensemble(triton_chain, schema)
 
@@ -165,8 +168,10 @@ def test_workflow_tf_e2e_multi_op_run(tmpdir, dataset, engine):
 
 
 def test_graph_traverse_algo():
-    chain_1 = ["name-cat"] >> WorkflowOp(nvt.Workflow(["name-cat"] >> nvt.ops.Categorify()))
-    chain_2 = ["name-string"] >> WorkflowOp(nvt.Workflow(["name-string"] >> nvt.ops.Categorify()))
+    chain_1 = ["name-cat"] >> TransformWorkflow(nvt.Workflow(["name-cat"] >> nvt.ops.Categorify()))
+    chain_2 = ["name-string"] >> TransformWorkflow(
+        nvt.Workflow(["name-string"] >> nvt.ops.Categorify())
+    )
 
     triton_chain = chain_1 + chain_2
 
@@ -183,7 +188,7 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
     schema = dataset.schema
     for name in ["x", "y", "id"]:
         dataset.schema.column_schemas[name] = dataset.schema.column_schemas[name].with_tags(
-            [nvt.graph.tags.Tags.USER]
+            [Tags.USER]
         )
 
     workflow_ops = ["name-cat"] >> nvt.ops.Categorify(cat_cache="host")
@@ -204,9 +209,9 @@ def test_workflow_tf_e2e_multi_op_plus_2_run(tmpdir, dataset, engine):
     model = create_tf_model(["name-cat", "name-string_plus_2"], [], embedding_shapes_1)
 
     # Creating Triton Ensemble
-    triton_chain_1 = ["name-cat"] >> WorkflowOp(workflow)
-    triton_chain_2 = ["name-string"] >> WorkflowOp(workflow_2) >> PlusTwoOp()
-    triton_chain = (triton_chain_1 + triton_chain_2) >> TensorflowOp(model)
+    triton_chain_1 = ["name-cat"] >> TransformWorkflow(workflow)
+    triton_chain_2 = ["name-string"] >> TransformWorkflow(workflow_2) >> PlusTwoOp()
+    triton_chain = (triton_chain_1 + triton_chain_2) >> PredictTensorflow(model)
 
     triton_ens = Ensemble(triton_chain, schema)
 

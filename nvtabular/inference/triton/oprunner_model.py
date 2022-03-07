@@ -26,8 +26,11 @@
 
 import json
 import logging
+import sys
+import traceback
 from typing import List
 
+import triton_python_backend_utils as pb_utils
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
@@ -57,19 +60,35 @@ class TritonPythonModel:
         input_column_names = list(json.loads(operator_params["input_dict"]).keys())
 
         responses = []
+
         for request in requests:
-            # transform the triton tensors to a dict of name:numpy tensor
-            input_tensors = {
-                name: get_input_tensor_by_name(request, name).as_numpy()
-                for name in input_column_names
-            }
+            try:
+                # transform the triton tensors to a dict of name:numpy tensor
+                input_tensors = {
+                    name: get_input_tensor_by_name(request, name).as_numpy()
+                    for name in input_column_names
+                }
 
-            inf_df = InferenceDataFrame(input_tensors)
+                inf_df = InferenceDataFrame(input_tensors)
 
-            raw_tensor_tuples = self.runner.execute(inf_df)
+                raw_tensor_tuples = self.runner.execute(inf_df)
 
-            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
+                tensors = {
+                    name: (data.get() if hasattr(data, "get") else data)
+                    for name, data in raw_tensor_tuples
+                }
 
-            responses.append(InferenceResponse(result))
+                result = [Tensor(name, data) for name, data in tensors.items()]
+
+                responses.append(InferenceResponse(result))
+
+            except Exception:  # pylint: disable=broad-except
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                tb_string = repr(traceback.extract_tb(exc_traceback))
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        tensors=[], error=f"{exc_type}, {exc_value}, {tb_string}"
+                    )
+                )
 
         return responses

@@ -20,6 +20,7 @@ import pytest
 
 import nvtabular as nvt
 import nvtabular.io
+from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, Schema, Workflow, ops
 
 try:
@@ -35,7 +36,7 @@ except ImportError:
 def test_groupby_op(keys, cpu):
     # Initial timeseries dataset
     size = 60
-    df1 = nvt.dispatch._make_df(
+    df1 = make_df(
         {
             "name": np.random.choice(["Dave", "Zelda"], size=size),
             "id": np.random.choice([0, 1], size=size),
@@ -75,8 +76,8 @@ def test_groupby_op(keys, cpu):
             processor.output_schema["x-list"].dtype
             == cudf.core.dtypes.ListDtype("int64").element_type
         )
-        assert processor.output_schema["x-list"]._is_list is True
-        assert processor.output_schema["x-list"]._is_ragged is True
+        assert processor.output_schema["x-list"].is_list is True
+        assert processor.output_schema["x-list"].is_ragged is True
 
     # Check list-aggregation ordering
     x = new_gdf["x-list"]
@@ -94,6 +95,29 @@ def test_groupby_op(keys, cpu):
 
     # Check basic behavior or "y" column
     assert (new_gdf["y-first"] < new_gdf["y-last"]).all()
+
+
+@pytest.mark.parametrize("cpu", _CPU)
+def test_groupby_string_agg(cpu):
+    # Initial sales dataset
+    size = 60
+    df1 = make_df(
+        {
+            "product_id": np.random.randint(10, size=size),
+            "day": np.random.randint(7, size=size),
+            "price": np.random.rand(size),
+        }
+    )
+    ddf1 = dd.from_pandas(df1, npartitions=3).shuffle(["day"])
+    dataset = nvt.Dataset(ddf1, cpu=cpu)
+
+    groupby_features = ColumnSelector(["product_id", "day", "price"]) >> ops.Groupby(
+        groupby_cols=["day"], aggs="count"
+    )
+
+    processor = nvtabular.Workflow(groupby_features)
+    processor.fit(dataset)
+    processor.transform(dataset).to_ddf().compute()
 
 
 def test_groupby_selector_cols():

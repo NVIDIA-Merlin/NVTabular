@@ -15,13 +15,13 @@
 #
 import pathlib
 
-from nvtabular.graph.schema import Schema
-from nvtabular.graph.selector import ColumnSelector
+from merlin.dag import ColumnSelector
+from merlin.schema import Schema
 from nvtabular.inference.graph.ops.operator import InferenceOperator
 from nvtabular.inference.triton.ensemble import _generate_nvtabular_config
 
 
-class WorkflowOp(InferenceOperator):
+class TransformWorkflow(InferenceOperator):
     def __init__(
         self,
         workflow,
@@ -32,6 +32,8 @@ class WorkflowOp(InferenceOperator):
         cats=None,
         conts=None,
     ):
+        super().__init__()
+
         self.workflow = workflow
         self.sparse_max = sparse_max or {}
         self.max_batch_size = max_batch_size
@@ -39,6 +41,7 @@ class WorkflowOp(InferenceOperator):
         self.model_framework = model_framework or ""
         self.cats = cats or []
         self.conts = conts or []
+        super().__init__()
 
     def compute_output_schema(
         self, input_schema: Schema, col_selector: ColumnSelector, prev_output_schema: Schema = None
@@ -49,7 +52,7 @@ class WorkflowOp(InferenceOperator):
         """Create a directory inside supplied path based on our export name"""
         modified_workflow = self.workflow.remove_inputs(self.label_columns)
 
-        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
+        node_name = f"{node_id}_{self.export_name}" if node_id is not None else self.export_name
 
         node_export_path = pathlib.Path(path) / node_name
         node_export_path.mkdir(exist_ok=True)

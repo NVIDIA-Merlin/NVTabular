@@ -21,6 +21,7 @@ import pandas as pd
 import pytest
 
 import nvtabular as nvt
+from merlin.core.dispatch import make_df
 from nvtabular import ColumnSelector, dispatch, ops
 from nvtabular.ops.categorify import get_embedding_sizes
 
@@ -45,7 +46,7 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
     if include_nulls:
         possible_session_ids.append(None)
 
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {"session_id": [random.choice(possible_session_ids) for _ in range(num_rows)]},
         device="cpu" if cpu else None,
     )
@@ -64,7 +65,7 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
         workflow.fit_transform(nvt.Dataset(df, cpu=cpu)).to_ddf().compute()
 
     vals = df["session_id"].value_counts()
-    vocab = dispatch._read_dispatch(cpu=cpu)(
+    vocab = dispatch.read_dispatch(cpu=cpu)(
         os.path.join(tmpdir, "categories", "unique.session_id.parquet")
     )
 
@@ -96,7 +97,7 @@ def test_categorify_size(tmpdir, cpu, include_nulls, cardinality_memory_limit):
 
 
 def test_na_value_count(tmpdir):
-    gdf = dispatch._make_df(
+    gdf = dispatch.make_df(
         {
             "productID": ["B00406YHLI"] * 5
             + ["B002YXS8E6"] * 5
@@ -112,10 +113,10 @@ def test_na_value_count(tmpdir):
     workflow.fit(train_dataset)
     workflow.transform(train_dataset).to_ddf().compute()
 
-    single_cat = dispatch._read_dispatch("./categories/unique.brand.parquet")(
+    single_cat = dispatch.read_dispatch("./categories/unique.brand.parquet")(
         "./categories/unique.brand.parquet"
     )
-    second_cat = dispatch._read_dispatch("./categories/unique.productID.parquet")(
+    second_cat = dispatch.read_dispatch("./categories/unique.productID.parquet")(
         "./categories/unique.productID.parquet"
     )
     assert single_cat["brand_size"][0] == 5
@@ -127,7 +128,7 @@ def test_na_value_count(tmpdir):
 @pytest.mark.parametrize("dtype", [None, np.int32, np.int64])
 @pytest.mark.parametrize("vocabs", [None, {"Authors": pd.Series([f"User_{x}" for x in "ACBE"])}])
 def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -161,7 +162,7 @@ def test_categorify_lists(tmpdir, freq_threshold, cpu, dtype, vocabs):
 @pytest.mark.parametrize("cpu", _CPU)
 @pytest.mark.parametrize("start_index", [1, 2, 16])
 def test_categorify_lists_with_start_index(tmpdir, cpu, start_index):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [["User_A"], ["User_A", "User_E"], ["User_B", "User_C"], ["User_C"]],
             "Engaging User": ["User_B", "User_B", "User_A", "User_D"],
@@ -364,7 +365,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
         # invalid combination - don't test
         return
 
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Author": [
                 "User_A",
@@ -445,7 +446,7 @@ def test_categorify_freq_limit(tmpdir, freq_limit, buckets, search_sort, cpu):
 
 @pytest.mark.parametrize("cpu", _CPU)
 def test_categorify_hash_bucket(cpu):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": ["User_A", "User_A", "User_E", "User_B", "User_C"],
             "Engaging_User": ["User_B", "User_B", "User_A", "User_D", "User_D"],
@@ -470,7 +471,7 @@ def test_categorify_hash_bucket(cpu):
 
 @pytest.mark.parametrize("max_emb_size", [6, {"Author": 8, "Engaging_User": 7}])
 def test_categorify_max_size(max_emb_size):
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Author": [
                 "User_A",
@@ -528,7 +529,7 @@ def test_categorify_max_size(max_emb_size):
 
 
 def test_categorify_single_table():
-    df = dispatch._make_df(
+    df = dispatch.make_df(
         {
             "Authors": [None, "User_A", "User_A", "User_E", "User_B", "User_C"],
             "Engaging_User": [None, "User_B", "User_B", "User_A", "User_D", "User_D"],
@@ -563,7 +564,7 @@ def test_categorify_embedding_sizes(dataset, engine):
 
 def test_categorify_no_nulls():
     # See https://github.com/NVIDIA-Merlin/NVTabular/issues/1325
-    df = nvt.dispatch._make_df(
+    df = make_df(
         {
             "user_id": [1, 2, 3, 4, 6, 8, 5, 3] * 10,
             "item_id": [2, 4, 4, 7, 5, 2, 5, 2] * 10,
