@@ -25,7 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import logging
 import os
 from typing import List
 
@@ -44,8 +43,6 @@ from merlin.systems.triton import _convert_tensor
 from merlin.systems.workflow.hugectr import HugeCTRWorkflowRunner
 from merlin.systems.workflow.pytorch import PyTorchWorkflowRunner
 from merlin.systems.workflow.tensorflow import TensorflowWorkflowRunner
-
-LOG = logging.getLogger("nvtabular")
 
 
 class TritonPythonModel:

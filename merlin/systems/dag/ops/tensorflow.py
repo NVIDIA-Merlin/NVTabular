@@ -24,7 +24,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import tensorflow as tf  # noqa
 from google.protobuf import text_format  # noqa
 
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+import merlin.systems.triton.model_config_pb2 as model_config  # noqa
 from merlin.dag import ColumnSelector  # noqa
 from merlin.schema import ColumnSchema, Schema  # noqa
 from merlin.systems.dag.ops.operator import InferenceOperator  # noqa
