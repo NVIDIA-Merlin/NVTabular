@@ -39,7 +39,7 @@ from triton_python_backend_utils import (
 )
 
 import nvtabular
-from nvtabular.dispatch import is_list_dtype
+from merlin.core.dispatch import is_list_dtype
 from nvtabular.inference.triton import _convert_tensor
 from nvtabular.inference.workflow.hugectr import HugeCTRWorkflowRunner
 from nvtabular.inference.workflow.pytorch import PyTorchWorkflowRunner

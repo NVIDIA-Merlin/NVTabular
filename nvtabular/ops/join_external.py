@@ -22,8 +22,8 @@ except ImportError:
 
 import dask.dataframe as dd
 import pandas as pd
-from merlin.schema import Schema
 
+from merlin.schema import Schema
 from nvtabular.dispatch import (
     DataFrameType,
     ExtData,

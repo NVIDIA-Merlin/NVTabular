@@ -30,11 +30,10 @@ import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
-from merlin.dag import Supports
-from merlin.schema import Tags
 
-from nvtabular import ColumnSelector
-from nvtabular.dispatch import concat_columns
+from merlin.core.dispatch import concat_columns
+from merlin.dag import ColumnSelector, Supports
+from merlin.schema import Tags
 from nvtabular.inference.triton.data_conversions import convert_format
 
 LOG = logging.getLogger("nvtabular")
