@@ -20,7 +20,7 @@ import socket
 import subprocess
 from os.path import dirname, realpath
 
-from common.parsers.benchmark_parsers import StandardBenchmark, send_results
+from common.parsers.benchmark_parsers import create_bench_result, send_results
 from common.parsers.criteo_parsers import (
     CriteoBenchFastAI,
     CriteoBenchHugeCTR,
@@ -39,6 +39,27 @@ INFERENCE_MULTI_HOT = os.path.join(INFERENCE_BASE_DIR, "models/")
 CRITEO_DIR = "examples/scaling-criteo"
 ROSSMAN_DIR = "examples/tabular-data-rossmann"
 MOVIELENS_DIR = "examples/getting-started-movielens"
+
+allowed_hosts = [
+    "merlin-training",
+    "merlin-tensorflow-training",
+    "merlin-torch-training",
+    "merlin-inference",
+]
+
+
+def test_container_size(asv_db, bench_info):
+    val = subprocess.run(
+        "du -s / 2>/dev/null", check=False, shell=True, capture_output=True  # pylint: disable=W1510
+    ).stdout.decode("utf-8")
+    val = int(re.findall(r"[0-9]+\.?[0-9]*|\.[0-9]+", val)[0])
+    assert val and val > 0
+
+    hostname = socket.gethostname()
+    assert hostname in allowed_hosts
+
+    bench_results = [create_bench_result(f"{hostname}_container_size", [], val, unit="megabytes")]
+    send_results(asv_db, bench_info, bench_results)
 
 
 def test_criteo(asv_db, bench_info, tmpdir, report):
@@ -199,25 +220,3 @@ def test_movielens(asv_db, bench_info, tmpdir, devices):
         send_results(asv_db, bench_info, bench_results)
     except ImportError:
         print("Tensorflow not installed, skipping " + notebook)
-
-
-allowed_hosts = [
-    "merlin-training",
-    "merlin-tensorflow-training",
-    "merlin-torch-training",
-    "merlin-inference",
-]
-
-
-def test_container_size(asv_db, bench_info):
-    val = subprocess.run(
-        "du -s / 2>/dev/null", check=True, shell=True, capture_output=True
-    ).stdout.decode("utf-8")
-    val = re.findall(r"[0-9]+\.?[0-9]*|\.[0-9]+", val)
-    assert val and val > 0
-
-    hostname = socket.gethostname()
-    assert hostname in allowed_hosts
-
-    bench_results = StandardBenchmark(f"{hostname}_container_size", val)
-    send_results(asv_db, bench_info, bench_results)
