@@ -4,17 +4,15 @@ import pathlib
 from abc import abstractclassmethod, abstractmethod
 from shutil import copyfile
 
-from merlin.dag import BaseOperator
-
-import nvtabular as nvt
-
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
 
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
+import merlin.systems.triton.model_config_pb2 as model_config  # noqa
+from merlin.dag import BaseOperator  # noqa
+from merlin.systems.dag.node import InferenceNode  # noqa
+from merlin.systems.triton.export import _convert_dtype  # noqa
 
 
 class InferenceDataFrame:
@@ -52,7 +50,7 @@ class InferenceOperator(BaseOperator):
         pass
 
     def create_node(self, selector):
-        return nvt.inference.graph.node.InferenceNode(selector)
+        return InferenceNode(selector)
 
 
 class PipelineableInferenceOperator(InferenceOperator):
@@ -75,8 +73,10 @@ class PipelineableInferenceOperator(InferenceOperator):
             Returns a transformed dataframe for this operator
         """
 
-    def export(self, path, input_schema, output_schema, node_id=None, version=1):
-        node_name = f"{self.export_name}_{node_id}" if node_id is not None else self.export_name
+    def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
+        params = params or {}
+
+        node_name = f"{node_id}_{self.export_name}" if node_id is not None else self.export_name
 
         node_export_path = pathlib.Path(path) / node_name
         node_export_path.mkdir(exist_ok=True)
@@ -91,13 +91,14 @@ class PipelineableInferenceOperator(InferenceOperator):
                 "class_name": self.__class__.__name__,
                 "input_dict": json.dumps(_schema_to_dict(input_schema)),
                 "output_dict": json.dumps(_schema_to_dict(output_schema)),
+                "params": json.dumps(params),
             }
         )
 
         for col_name, col_dict in _schema_to_dict(input_schema).items():
             config.input.append(
                 model_config.ModelInput(
-                    name=col_name, data_type=_convert_dtype(col_dict["dtype"]), dims=[-1, 1]
+                    name=col_name, data_type=_convert_dtype(col_dict["dtype"]), dims=[-1, -1]
                 )
             )
 
@@ -107,7 +108,7 @@ class PipelineableInferenceOperator(InferenceOperator):
                 model_config.ModelOutput(
                     name=col_name.split("/")[0],
                     data_type=_convert_dtype(col_dict["dtype"]),
-                    dims=[-1, 1],
+                    dims=[-1, -1],
                 )
             )
 
@@ -131,6 +132,7 @@ def _schema_to_dict(schema):
         schema_dict[col_name] = {
             "dtype": col_schema.dtype.name,
             "is_list": col_schema.is_list,
+            "is_ragged": col_schema.is_ragged,
         }
 
     return schema_dict

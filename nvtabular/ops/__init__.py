@@ -16,13 +16,22 @@
 
 # alias submodules here to avoid breaking everything with moving to submodules
 # flake8: noqa
-from .add_metadata import AddMetadata
+from .add_metadata import (
+    AddMetadata,
+    AddProperties,
+    AddTags,
+    TagAsItemFeatures,
+    TagAsItemID,
+    TagAsUserFeatures,
+    TagAsUserID,
+)
 from .bucketize import Bucketize
 from .categorify import Categorify, get_embedding_sizes
 from .clip import Clip
 from .column_similarity import ColumnSimilarity
 from .data_stats import DataStats
 from .difference_lag import DifferenceLag
+from .drop_low_cardinality import DropLowCardinality
 from .dropna import Dropna
 from .fill import FillMedian, FillMissing
 from .filter import Filter

@@ -1,6 +1,6 @@
 import pytest
 
-inf_op = pytest.importorskip("nvtabular.inference.graph.ops.operator")
+inf_op = pytest.importorskip("merlin.systems.dag.ops.operator")
 
 
 class PlusTwoOp(inf_op.PipelineableInferenceOperator):

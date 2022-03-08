@@ -22,7 +22,6 @@ except ImportError:
     cp = None
 
 from merlin.schema import Tags
-
 from nvtabular.dispatch import DataFrameType, annotate, build_cudf_list_column, is_cpu_object
 
 from .operator import ColumnSelector, Operator

@@ -25,9 +25,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import logging
+import sys
+import traceback
 from typing import List
 
+import triton_python_backend_utils as pb_utils
 from triton_python_backend_utils import (
     InferenceRequest,
     InferenceResponse,
@@ -35,10 +37,8 @@ from triton_python_backend_utils import (
     get_input_tensor_by_name,
 )
 
-from nvtabular.inference.graph.op_runner import OperatorRunner
-from nvtabular.inference.graph.ops.operator import InferenceDataFrame
-
-LOG = logging.getLogger("nvtabular")
+from merlin.systems.dag.op_runner import OperatorRunner
+from merlin.systems.dag.ops.operator import InferenceDataFrame
 
 
 class TritonPythonModel:
@@ -47,9 +47,6 @@ class TritonPythonModel:
         self.runner = OperatorRunner(self.model_config)
 
     def execute(self, requests: List[InferenceRequest]) -> List[InferenceResponse]:
-        """Transforms the input batches by running through a NVTabular workflow.transform
-        function.
-        """
         params = self.model_config["parameters"]
         op_names = json.loads(params["operator_names"]["string_value"])
         first_operator_name = op_names[0]
@@ -57,19 +54,35 @@ class TritonPythonModel:
         input_column_names = list(json.loads(operator_params["input_dict"]).keys())
 
         responses = []
+
         for request in requests:
-            # transform the triton tensors to a dict of name:numpy tensor
-            input_tensors = {
-                name: get_input_tensor_by_name(request, name).as_numpy()
-                for name in input_column_names
-            }
+            try:
+                # transform the triton tensors to a dict of name:numpy tensor
+                input_tensors = {
+                    name: get_input_tensor_by_name(request, name).as_numpy()
+                    for name in input_column_names
+                }
 
-            inf_df = InferenceDataFrame(input_tensors)
+                inf_df = InferenceDataFrame(input_tensors)
 
-            raw_tensor_tuples = self.runner.execute(inf_df)
+                raw_tensor_tuples = self.runner.execute(inf_df)
 
-            result = [Tensor(name, data) for name, data in raw_tensor_tuples]
+                tensors = {
+                    name: (data.get() if hasattr(data, "get") else data)
+                    for name, data in raw_tensor_tuples
+                }
 
-            responses.append(InferenceResponse(result))
+                result = [Tensor(name, data) for name, data in tensors.items()]
+
+                responses.append(InferenceResponse(result))
+
+            except Exception:  # pylint: disable=broad-except
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                tb_string = repr(traceback.extract_tb(exc_traceback))
+                responses.append(
+                    pb_utils.InferenceResponse(
+                        tensors=[], error=f"{exc_type}, {exc_value}, {tb_string}"
+                    )
+                )
 
         return responses

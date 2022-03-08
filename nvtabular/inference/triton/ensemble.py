@@ -26,9 +26,9 @@ from nvtabular import ColumnSelector
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.schema import Tags  # noqa
 
 import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
+from merlin.schema import Tags  # noqa
 from nvtabular.dispatch import is_string_dtype  # noqa
 
 
@@ -494,6 +494,9 @@ def export_tensorflow_model(model, name, output_path, version=1):
 
         inputs = list(default_signature.structured_input_signature[1].values())
         outputs = list(default_signature.structured_outputs.values())
+
+    config.parameters["TF_GRAPH_TAG"].string_value = "serve"
+    config.parameters["TF_SIGNATURE_DEF"].string_value = "serving_default"
 
     for col in inputs:
         config.input.append(
