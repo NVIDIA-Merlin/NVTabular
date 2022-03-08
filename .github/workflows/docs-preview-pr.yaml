@@ -1,9 +1,11 @@
 name: docs-preview-pr
 
 on:
-  workflow_run:
-    workflows: [CPU CI]
-    types: [completed]
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, closed]
 
 env:
   WF_ID: ${{ github.event.workflow_run.id }}
@@ -14,6 +16,7 @@ jobs:
   get-gh-pages-url:
     if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+   
     outputs:
       url: ${{ steps.api-resp.outputs.html_url }}
       branch: ${{ steps.api-resp.outputs.branch }}
