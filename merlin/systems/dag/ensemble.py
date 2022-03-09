@@ -21,10 +21,10 @@ from merlin.dag import postorder_iter_nodes
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 from google.protobuf import text_format  # noqa
-from merlin.dag import Graph  # noqa
 
-import nvtabular.inference.triton.model_config_pb2 as model_config  # noqa
-from nvtabular.inference.triton.ensemble import _convert_dtype  # noqa
+import merlin.systems.triton.model_config_pb2 as model_config  # noqa
+from merlin.dag import Graph  # noqa
+from merlin.systems.triton.export import _convert_dtype  # noqa
 
 
 class Ensemble:
@@ -45,14 +45,14 @@ class Ensemble:
         for col_name, col_schema in self.graph.input_schema.column_schemas.items():
             ensemble_config.input.append(
                 model_config.ModelInput(
-                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, 1]
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, -1]
                 )
             )
 
         for col_name, col_schema in self.graph.output_schema.column_schemas.items():
             ensemble_config.output.append(
                 model_config.ModelOutput(
-                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, 1]
+                    name=col_name, data_type=_convert_dtype(col_schema.dtype), dims=[-1, -1]
                 )
             )
 
@@ -71,20 +71,28 @@ class Ensemble:
         for node in postorder_nodes:
             if node.exportable:
                 node_id = node_id_lookup.get(node, None)
-                node_name = f"{node.export_name}_{node_id}"
+                node_name = f"{node_id}_{node.export_name}"
+
+                found = False
+                for step in ensemble_config.ensemble_scheduling.step:
+                    if step.model_name == node_name:
+                        found = True
+                if found:
+                    continue
+
                 node_config = node.export(export_path, node_id=node_id, version=version)
 
                 config_step = model_config.ModelEnsembling.Step(
                     model_name=node_name, model_version=-1
                 )
 
-                for input_col_name in node.input_columns.names:
-                    source = _find_column_source(node, input_col_name)
+                for input_col_name in node.input_schema.column_names:
+                    source = _find_column_source(node.parents_with_dependencies, input_col_name)
                     source_id = node_id_lookup.get(source, None)
                     in_suffix = f"_{source_id}" if source_id is not None else ""
                     config_step.input_map[input_col_name] = input_col_name + in_suffix
 
-                for output_col_name in node.output_columns.names:
+                for output_col_name in node.output_schema.column_names:
                     out_suffix = (
                         f"_{node_id}" if node_id is not None and node_id < node_idx - 1 else ""
                     )
@@ -104,14 +112,14 @@ class Ensemble:
         return (ensemble_config, node_configs)
 
 
-def _find_column_source(node, column_name):
-    for upstream_node in node.parents_with_dependencies:
-        if column_name in upstream_node.output_columns.names and upstream_node.exportable:
-            return upstream_node
+def _find_column_source(upstream_nodes, column_name):
+    source_node = None
+    for upstream_node in upstream_nodes:
+        if column_name in upstream_node.output_columns.names:
+            source_node = upstream_node
+            break
 
-    for upstream_node in node.parents_with_dependencies:
-        source = _find_column_source(upstream_node, column_name)
-        if source:
-            return source
-
-    return None
+    if source_node and not source_node.exportable:
+        return _find_column_source(source_node.parents_with_dependencies, column_name)
+    else:
+        return source_node

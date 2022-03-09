@@ -3,15 +3,15 @@ import os
 
 import numpy as np
 import pytest
-from merlin.dag import Graph
-from merlin.schema import Tags
 
 import nvtabular as nvt
 import nvtabular.ops as wf_ops
-from tests.unit.inference.inf_test_ops import PlusTwoOp
+from merlin.dag import Graph
+from merlin.schema import Tags
+from tests.unit.systems.inf_test_ops import PlusTwoOp
 
-op_runner = pytest.importorskip("nvtabular.inference.graph.op_runner")
-inf_op = pytest.importorskip("nvtabular.inference.graph.ops.operator")
+op_runner = pytest.importorskip("merlin.systems.dag.op_runner")
+inf_op = pytest.importorskip("merlin.systems.dag.ops.operator")
 
 
 @pytest.mark.parametrize("engine", ["parquet"])

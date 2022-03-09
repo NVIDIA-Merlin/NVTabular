@@ -16,6 +16,7 @@
 from typing import Dict, Union
 
 import numpy
+
 from merlin.schema import Tags
 
 from ..dispatch import DataFrameType, annotate, encode_list_column, hash_series, is_list_dtype
