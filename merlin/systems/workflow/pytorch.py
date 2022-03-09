@@ -25,9 +25,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from merlin.systems.workflow.base import WorkflowRunner
+from nvtabular.dispatch import annotate
 
 
 class PyTorchWorkflowRunner(WorkflowRunner):
+    @annotate("torch_transform_outputs", color="darkgreen", domain="nvt_python")
     def _transform_outputs(self, tensors):
         output_tensors = []
         for col_name in self.cats + self.conts:

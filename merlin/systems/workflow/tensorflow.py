@@ -26,6 +26,7 @@
 import json
 
 from merlin.systems.workflow.base import WorkflowRunner
+from nvtabular.dispatch import annotate
 
 
 class TensorflowWorkflowRunner(WorkflowRunner):
@@ -34,6 +35,7 @@ class TensorflowWorkflowRunner(WorkflowRunner):
 
         self.offsets = None
 
+    @annotate("tensorflow_transform_outputs", color="darkgreen", domain="nvt_python")
     def _transform_outputs(self, tensors):
         # Load extra info needed for the Transformer4Rec (if exists)
         sparse_feat = None

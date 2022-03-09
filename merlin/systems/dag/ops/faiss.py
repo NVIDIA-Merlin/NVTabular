@@ -22,6 +22,7 @@ import numpy as np
 from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from nvtabular.dispatch import annotate
 
 
 class QueryFaiss(PipelineableInferenceOperator):
@@ -42,6 +43,7 @@ class QueryFaiss(PipelineableInferenceOperator):
 
         return operator
 
+    @annotate("QueryFaiss_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
 
@@ -55,6 +57,7 @@ class QueryFaiss(PipelineableInferenceOperator):
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
+    @annotate("QueryFaiss_Transform", color="darkgreen", domain="nvt_python")
     def transform(self, df: InferenceDataFrame):
         user_vector = list(df.tensors.values())[0]
 

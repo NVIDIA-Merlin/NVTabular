@@ -16,6 +16,7 @@
 import os
 
 from merlin.dag import postorder_iter_nodes
+from nvtabular.dispatch import annotate
 
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
@@ -34,6 +35,7 @@ class Ensemble:
         self.name = name
         self.label_columns = label_columns or []
 
+    @annotate("Ensemble_export", color="darkgreen", domain="nvt_python")
     def export(self, export_path, version=1):
         # Create ensemble config
         ensemble_config = model_config.ModelConfig(

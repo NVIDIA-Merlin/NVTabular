@@ -19,6 +19,7 @@ from merlin.dag import ColumnSelector
 from merlin.schema import Schema
 from merlin.systems.dag.ops.operator import InferenceOperator
 from merlin.systems.triton.export import _generate_nvtabular_config
+from nvtabular.dispatch import annotate
 
 
 class TransformWorkflow(InferenceOperator):
@@ -48,6 +49,7 @@ class TransformWorkflow(InferenceOperator):
     ) -> Schema:
         return self.workflow.output_schema
 
+    @annotate("Workflow_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
         modified_workflow = self.workflow.remove_inputs(self.label_columns)

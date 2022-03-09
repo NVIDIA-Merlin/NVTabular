@@ -6,6 +6,7 @@ from feast import FeatureStore, ValueType
 from merlin.dag import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from nvtabular.dispatch import annotate
 
 # Feast_key: (numpy dtype, is_list, is_ragged)
 feast_2_numpy = {
@@ -159,6 +160,7 @@ class QueryFeast(PipelineableInferenceOperator):
             suffix_int,
         )
 
+    @annotate("QueryFeast_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
         self_params = {
@@ -175,6 +177,7 @@ class QueryFeast(PipelineableInferenceOperator):
         self_params.update(params)
         return super().export(path, input_schema, output_schema, self_params, node_id, version)
 
+    @annotate("QueryFeast_transform", color="darkgreen", domain="nvt_python")
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
         entity_ids = df[self.entity_column]
         entity_rows = [{self.entity_id: int(entity_id)} for entity_id in entity_ids]

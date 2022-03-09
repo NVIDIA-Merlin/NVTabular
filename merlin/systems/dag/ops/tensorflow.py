@@ -18,6 +18,8 @@ import pathlib
 import tempfile
 from shutil import copytree
 
+from nvtabular.dispatch import annotate
+
 # this needs to be before any modules that import protobuf
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
@@ -73,6 +75,7 @@ class PredictTensorflow(InferenceOperator):
             )
         super().__init__()
 
+    @annotate("Tensorflow_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, node_id=None, version=1):
         """Create a directory inside supplied path based on our export name"""
         node_name = f"{node_id}_{self.export_name}" if node_id is not None else self.export_name

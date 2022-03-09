@@ -21,6 +21,7 @@ from merlin.dag import Node
 from merlin.dag.selector import ColumnSelector
 from merlin.schema import Schema
 from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from nvtabular.dispatch import annotate
 
 
 class UnrollFeatures(PipelineableInferenceOperator):
@@ -38,6 +39,7 @@ class UnrollFeatures(PipelineableInferenceOperator):
         unrolled_prefix = parameters["unrolled_prefix"]
         return UnrollFeatures(candidate_col, unroll_cols, unrolled_prefix)
 
+    @annotate("Unroll_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
         self_params = {
@@ -63,6 +65,7 @@ class UnrollFeatures(PipelineableInferenceOperator):
 
         return schema
 
+    @annotate("Unroll_Transform", color="darkgreen", domain="nvt_python")
     def transform(self, df: InferenceDataFrame):
         num_items = df[self.item_id_col].shape[0]
         outputs = {}

@@ -21,6 +21,7 @@ import numpy as np
 from merlin.dag import ColumnSelector, Node
 from merlin.schema import ColumnSchema, Schema
 from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from nvtabular.dispatch import annotate
 
 
 class FilterCandidates(PipelineableInferenceOperator):
@@ -79,6 +80,7 @@ class FilterCandidates(PipelineableInferenceOperator):
     ) -> Schema:
         return Schema([ColumnSchema("filtered_ids", dtype=np.int32, is_list=False)])
 
+    @annotate("Filter_Transform", color="darkgreen", domain="nvt_python")
     def transform(self, df: InferenceDataFrame):
         candidate_ids = df[self._input_col]
         filter_ids = df[self._filter_out_col]
@@ -86,6 +88,7 @@ class FilterCandidates(PipelineableInferenceOperator):
         filtered_results = np.array([candidate_ids[~np.isin(candidate_ids, filter_ids)]]).T
         return InferenceDataFrame({"filtered_ids": filtered_results})
 
+    @annotate("Filter_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         params = params or {}
         self_params = {

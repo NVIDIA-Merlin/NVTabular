@@ -6,6 +6,7 @@ from merlin.dag.node import Node
 from merlin.dag.selector import ColumnSelector
 from merlin.schema import ColumnSchema, Schema
 from merlin.systems.dag.ops.operator import InferenceDataFrame, PipelineableInferenceOperator
+from nvtabular.dispatch import annotate
 
 
 class SoftmaxSampling(PipelineableInferenceOperator):
@@ -33,6 +34,7 @@ class SoftmaxSampling(PipelineableInferenceOperator):
     def dependencies(self):
         return self.relevance_col
 
+    @annotate("Softmax_export", color="darkgreen", domain="nvt_python")
     def export(self, path, input_schema, output_schema, params=None, node_id=None, version=1):
         """Write out a Triton model config directory"""
         params = params or {}
@@ -71,6 +73,7 @@ class SoftmaxSampling(PipelineableInferenceOperator):
         """Describe the operator's outputs"""
         return Schema([ColumnSchema("ordered_ids", dtype=np.int32, is_list=True, is_ragged=True)])
 
+    @annotate("Softmax_transform", color="darkgreen", domain="nvt_python")
     def transform(self, df: InferenceDataFrame) -> InferenceDataFrame:
         """Transform the dataframe by applying this operator to the set of input columns"""
         # Extract parameters from the request

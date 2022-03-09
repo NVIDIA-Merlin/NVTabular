@@ -16,6 +16,8 @@
 import importlib
 import json
 
+from nvtabular.dispatch import annotate
+
 
 class OperatorRunner:
     def __init__(self, config, repository="./", version=1, kind=""):
@@ -33,6 +35,7 @@ class OperatorRunner:
             operator = op_class.from_config(op_config)
             self.operators.append(operator)
 
+    @annotate("OpRunner_execute", color="darkblue", domain="nvt_python")
     def execute(self, tensors):
         for operator in self.operators:
             tensors = operator.transform(tensors)

@@ -28,6 +28,7 @@ import numpy as np
 
 from merlin.systems.workflow import get_embedding_sizes
 from merlin.systems.workflow.base import WorkflowRunner
+from nvtabular.dispatch import annotate
 
 
 class HugeCTRWorkflowRunner(WorkflowRunner):
@@ -37,6 +38,7 @@ class HugeCTRWorkflowRunner(WorkflowRunner):
         if self.cats:
             self.offsets = self.get_offsets(self.workflow, self.cats)
 
+    @annotate("hugectr_transform_outputs", color="darkgreen", domain="nvt_python")
     def _transform_outputs(self, tensors):
         output_tensors = []
         if self.conts:
